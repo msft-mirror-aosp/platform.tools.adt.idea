@@ -1186,6 +1186,14 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS = Flag.create(
+    COMPOSE, "deploy.live.edit.deploy.confined.analysis",
+    "LiveEdit: Limit compilation error analysis to only the current file",
+    "If enabled, Live Edit will aggressively live update even if there are analysis errors " +
+      "provided that the current file is error-free.",
+    false
+  );
+
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_R8_DESUGAR = Flag.create(
     COMPOSE, "deploy.live.edit.deploy.desugar.r8",
     "LiveEdit: Desugar kotlinc outputs with R8",
@@ -1402,6 +1410,11 @@ public final class StudioFlags {
     "Use static timeline in Network Inspector",
     true
   );
+  public static final Flag<Boolean> NETWORK_INSPECTOR_GRPC = Flag.create(
+    NETWORK_INSPECTOR, "grpc", "Track gRPC Connections",
+    "Track gRPC Connections",
+    false
+  );
   // endregion
 
   // region BackgroundTask Inspector
@@ -1464,6 +1477,14 @@ public final class StudioFlags {
       "Direct Access",
       "Enable FTL DirectAccess",
       false);
+
+  public static final Flag<Boolean> DIRECT_ACCESS_SETTINGS_PAGE =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.settings.page",
+      "Device Streaming Settings Page",
+      "Show Device Streaming Settings Page",
+      true);
 
   public static final Flag<Boolean> DIRECT_ACCESS_ADD_DEVICE =
     Flag.create(
@@ -1567,6 +1588,14 @@ public final class StudioFlags {
       "play.vitals.grpc.use.transport.security",
       "Use transport security",
       "Set Play Vitals gRpc channel to use transport security",
+      true);
+
+  public static final Flag<Boolean> PLAY_VITALS_VCS_INTEGRATION_ENABLED =
+    Flag.create(
+      APP_INSIGHTS,
+      "play.vitals.vcs.integration",
+      "Enable VCS integration for Play Vitals.",
+      "Enhance code navigation in the Play Vitals tab to aid crash investigation with the recorded VCS info",
       true);
   // endregion App Insights
 
@@ -1677,6 +1706,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
     Flag.create(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
                 "When enabled, inline code completion suggestions will be shown.", false);
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
+    Flag.create(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
+                "Enable sending inline code completion metrics to the AIDA CES service",
+                "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.", false);
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI

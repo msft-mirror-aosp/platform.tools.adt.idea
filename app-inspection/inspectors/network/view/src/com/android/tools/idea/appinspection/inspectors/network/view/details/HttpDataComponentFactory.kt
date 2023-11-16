@@ -20,7 +20,7 @@ import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.common.AdtUiUtils
 import com.android.tools.adtui.event.NestedScrollPaneMouseWheelListener
 import com.android.tools.adtui.stdui.ContentType
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.view.UiComponentsProvider
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.inspectors.common.ui.dataviewer.DataViewer
@@ -97,26 +97,26 @@ class HttpDataComponentFactory(
 
   private fun getContentType(type: ConnectionType) =
     when (type) {
-      ConnectionType.REQUEST -> httpData.requestHeader.contentType
-      ConnectionType.RESPONSE -> httpData.responseHeader.contentType
+      ConnectionType.REQUEST -> httpData.getRequestContentType()
+      ConnectionType.RESPONSE -> httpData.getResponseContentType()
     }
 
   private fun getPayload(type: ConnectionType) =
     when (type) {
       ConnectionType.REQUEST -> httpData.requestPayload
-      ConnectionType.RESPONSE -> httpData.responsePayload
+      ConnectionType.RESPONSE -> httpData.getReadableResponsePayload()
     }
 
-  private fun getHeader(type: ConnectionType) =
+  private fun getHeaders(type: ConnectionType) =
     when (type) {
-      ConnectionType.REQUEST -> httpData.requestHeader
-      ConnectionType.RESPONSE -> httpData.responseHeader
+      ConnectionType.REQUEST -> httpData.requestHeaders
+      ConnectionType.RESPONSE -> httpData.responseHeaders
     }
 
   private fun getMimeTypeString(type: ConnectionType) =
     when (type) {
-      ConnectionType.REQUEST -> getHeader(type).contentType.mimeType
-      ConnectionType.RESPONSE -> getHeader(type).contentType.mimeType
+      ConnectionType.REQUEST -> httpData.getRequestContentType().mimeType
+      ConnectionType.RESPONSE -> httpData.getResponseContentType().mimeType
     }
 
   /**
@@ -124,7 +124,7 @@ class HttpDataComponentFactory(
    * pairs.
    */
   fun createHeaderComponent(type: ConnectionType): JComponent {
-    return createStyledMapComponent(getHeader(type).fields)
+    return createStyledMapComponent(getHeaders(type))
   }
 
   /**
@@ -132,8 +132,7 @@ class HttpDataComponentFactory(
    * [.createBodyComponent].
    */
   private fun getBodyTitle(type: ConnectionType): String {
-    val header = getHeader(type)
-    val contentType = header.contentType
+    val contentType = getContentType(type)
     return if (contentType.isEmpty) {
       "Body"
     } else "Body ( ${getDisplayName(contentType)} )"
@@ -384,9 +383,9 @@ class HttpDataComponentFactory(
             .associate { s ->
               val splits = s.split('=', limit = 2)
               if (splits.size > 1) {
-                splits[0] to splits[1]
+                splits[0] to listOf(splits[1])
               } else {
-                splits[0] to ""
+                splits[0] to listOf("")
               }
             }
         return createStyledMapComponent(parsedContent)

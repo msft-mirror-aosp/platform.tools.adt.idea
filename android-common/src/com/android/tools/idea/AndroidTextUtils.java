@@ -15,14 +15,10 @@
  */
 package com.android.tools.idea;
 
-import com.intellij.util.Consumer;
+import java.util.Collection;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 
 /**
  * Various utilities for generating user-facing text
@@ -63,24 +59,6 @@ public class AndroidTextUtils {
   }
 
   /**
-   * Invoke callback for every index of {@code needle} occurrence in {@code haystack}
-   */
-  public static void forEachOccurrence(@NotNull String haystack, char needle, @NotNull Consumer<Integer> callback) {
-    forEachOccurrence(haystack, needle, 0, callback);
-  }
-
-  /**
-   * Invoke callback for every index of {@code needle} occurrence in {@code haystack}, starting search from {@code startIndex}
-   */
-  public static void forEachOccurrence(@NotNull String haystack, char needle, int startIndex, @NotNull Consumer<Integer> callback) {
-    int curr = haystack.indexOf(needle, startIndex);
-    while (curr != -1) {
-      callback.consume(curr);
-      curr = haystack.indexOf(needle, curr + 1);
-    }
-  }
-
-  /**
    * An analogue of StringUtil.trimEnd, but which returns null in case one string is not a suffix of another
    *
    * @return {@code haystack}, with suffix of {@code needle} dropped
@@ -92,16 +70,5 @@ public class AndroidTextUtils {
       return haystack.substring(0, haystack.length() - needle.length());
     }
     return null;
-  }
-
-  /***
-   * Splits the string but includes the delimiter in the resulting list
-   * @param string  the string to be split
-   * @param delimiter separator
-   * @return the string broken into a list split by delimiter including the delimiter
-   */
-  @NotNull
-  public static List<String> splitKeepDelimiter(@NotNull String string, @NotNull String delimiter) {
-    return Arrays.asList(string.split(String.format("((?<=%1$s)|(?=%1$s))", delimiter)));
   }
 }

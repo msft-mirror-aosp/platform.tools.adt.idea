@@ -16,6 +16,7 @@
 package google.simpleapplication
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.Button
@@ -46,6 +47,10 @@ fun VisualLintErrorPreview() {
       text =
         "This is a very very very very\n\nvery very very very very very very very very very very very very very very very very long text that has a line with more than 120 characters."
     )
+    Box {
+      Text(text = "This is a background text")
+      Button(onClick = {}) { Text(text = "Button") }
+    }
   }
 }
 
@@ -74,8 +79,36 @@ fun ColorContrastIssuePreview() {
 
 @Preview
 @Composable
-fun ColorBlindErrorPreview() {
+fun OneColorBlindErrorPreview() {
+  val backgroundColor = Color(0xFF833901)
+  val foregroundColor = Color(0xFFFDE300)
+  Text(
+    color = foregroundColor,
+    text = "Hello Android",
+    modifier = Modifier.background(backgroundColor)
+  )
+}
+
+@Preview
+@Composable
+fun TwoColorBlindErrorsPreview() {
+  val backgroundColor = Color(0xFF994200)
+  val foregroundColor = Color(0xFF06FF61)
+  Text(
+    color = foregroundColor,
+    text = "Hello Android",
+    modifier = Modifier.background(backgroundColor),
+  )
+}
+
+@Preview
+@Composable
+fun ThreeColorBlindErrorPreview() {
   val purpleColor = Color(0xFFB3003D)
   val veryLightColor = Color(0xFFBCD5E2)
-  Text(color = purpleColor, text = "Hello Android!", modifier = Modifier.background(veryLightColor))
+  Text(
+    color = purpleColor,
+    text = "Hello Android!",
+    modifier = Modifier.background(veryLightColor),
+  )
 }

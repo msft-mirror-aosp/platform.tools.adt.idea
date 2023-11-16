@@ -15,5 +15,6 @@
   -->
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
   <xi:include href="/META-INF/safeargs.common.xml" xpointer="xpointer(/idea-plugin/*)"/>
+  <xi:include href="/META-INF/safeargs.common.gradle.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="/META-INF/safeargs.k1.xml" xpointer="xpointer(/idea-plugin/*)" includeUnless="idea.kotlin.plugin.use.k2"/>
 </idea-plugin>

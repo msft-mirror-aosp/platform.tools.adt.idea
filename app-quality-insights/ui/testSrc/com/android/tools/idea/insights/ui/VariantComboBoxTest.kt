@@ -106,6 +106,26 @@ class VariantComboBoxTest {
     }
 
   @Test
+  fun `combo box shows offline text when AQI is offline`() =
+    runBlocking(AndroidDispatchers.uiThread) {
+      val flow = MutableSharedFlow<AppInsightsState>(1)
+      val comboBox = VariantComboBox(flow, projectRule.testRootDisposable)
+
+      flow.emit(
+        AppInsightsState(
+          connections = Selection.emptySelection(),
+          filters = TEST_FILTERS,
+          issues = LoadingState.Ready(Timed(Selection(ISSUE1, listOf(ISSUE1)), Instant.now())),
+          currentIssueVariants = LoadingState.NetworkFailure("offline")
+        )
+      )
+
+      delayUntilCondition(200) {
+        comboBox.selectedItem == DisabledTextRow("Not available offline.")
+      }
+    }
+
+  @Test
   fun `combo box shows loading text when in between requests`() =
     runBlocking(AndroidDispatchers.uiThread) {
       val flow = MutableSharedFlow<AppInsightsState>(1)
@@ -146,9 +166,12 @@ class VariantComboBoxTest {
       // Verify list of variants and selected variant.
       assertThat(comboBox.model.getElementAt(0)).isSameAs(HeaderRow)
       assertThat(comboBox.model.getElementAt(1)).isEqualTo(ISSUE1.toVariantRow(2))
-      assertThat(comboBox.model.getElementAt(2)).isEqualTo(variant1.toVariantRow())
-      assertThat(comboBox.model.getElementAt(3)).isEqualTo(variant2.toVariantRow())
-      assertThat(comboBox.selectedIndex).isEqualTo(3)
+      val firstVariantRow = comboBox.model.getElementAt(2) as VariantRow
+      assertThat(firstVariantRow).isEqualTo(variant1.toVariantRow())
+      assertThat(firstVariantRow.name).isEqualTo("Variant #ant1")
+      val secondVariantRow = comboBox.model.getElementAt(3) as VariantRow
+      assertThat(secondVariantRow).isEqualTo(variant2.toVariantRow())
+      assertThat(secondVariantRow.name).isEqualTo("Variant #ant2")
     }
 
   @Test

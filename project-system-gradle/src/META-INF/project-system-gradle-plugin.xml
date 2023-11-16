@@ -29,6 +29,9 @@
     <androidConfigurationExecutorProvider
         implementation="com.android.tools.idea.testartifacts.instrumented.GradleAndroidTestRunConfigurationExecutorProvider"/>
   </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.testartifacts.instrumented">
+    <testRunConfigurationOptions implementation="com.android.tools.idea.run.configuration.AndroidBaselineProfileTestOptions"/>
+  </extensions>
   <extensions defaultExtensionNs="com.intellij">
     <applicationService serviceInterface="com.android.tools.idea.gradle.dsl.api.GradleModelProvider"
                         serviceImplementation="com.android.tools.idea.projectsystem.gradle.GradleModelSource"/>
@@ -158,8 +161,8 @@
       <className>org.jetbrains.android.intentions.AndroidAddLibraryDependencyAction</className>
       <category>Android</category>
     </intentionAction>
-    <runLineMarkerContributor language="JAVA" implementationClass="com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor"/>
-    <runLineMarkerContributor language="kotlin" implementationClass="com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor"/>
+    <runLineMarkerContributor language="JAVA" implementationClass="com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor" order="first"/>
+    <runLineMarkerContributor language="kotlin" implementationClass="com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor" order="first"/>
     <configurationType implementation="com.android.tools.idea.run.configuration.AndroidBaselineProfileRunConfigurationType"/>
     <programRunner implementation="com.android.tools.idea.run.AndroidBaselineProfileProgramRunner" order="after DefaultStudioProgramRunner"/>
   </extensions>
@@ -307,10 +310,6 @@
     </action>
     <action id="NewVersionCatalogFile" class="com.android.tools.idea.actions.NewVersionCatalogAction">
       <add-to-group group-id="NewGroup" anchor="last"/>
-    </action>
-    <action id="AndroidMigrateToAppCompatAction" class="org.jetbrains.android.refactoring.MigrateToAppCompatAction" text="Migrate to AppCompat..."
-            description="Migrates app to AppCompat">
-      <add-to-group group-id="RefactoringMenu"/>
     </action>
     <action id="AndroidMigrateToResourceNamespacesAction" class="org.jetbrains.android.refactoring.namespaces.MigrateToResourceNamespacesAction" text="Migrate to Resource Namespaces..."
             description="Migrates to resource namespaces">

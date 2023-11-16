@@ -23,6 +23,7 @@ import static com.android.tools.idea.run.deployment.liveedit.PrebuildChecksKt.Pr
 import com.android.annotations.Nullable;
 import com.android.annotations.Trace;
 import com.android.ddmlib.AndroidDebugBridge;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrClass;
@@ -263,7 +264,7 @@ public class LiveEditProjectMonitor implements Disposable {
       return;
     }
 
-    if (ProjectSystemUtil.getProjectSystem(project).getSyncManager().isSyncNeeded() || intermediateSyncs.get()) {
+    if (isGradleSyncNeeded()) {
       updateEditStatus(LiveEditStatus.SyncNeeded.INSTANCE);
       return;
     }
@@ -384,15 +385,28 @@ public class LiveEditProjectMonitor implements Disposable {
   // Called before an edit to a Kotlin file is made. Only called on the class-differ code path.
   public void beforeFileChanged(KtFile ktFile) {
     if (shouldLiveEdit()) {
+      System.out.println("before file changed: " + ktFile.getName());
       psiValidator.beforeChanges(ktFile);
     }
   }
 
   // Called when a Kotlin file is modified. Only called on the class-differ code path.
   public void fileChanged(KtFile ktFile) {
-    if (shouldLiveEdit()) {
-      scheduleCompile(ktFile);
+    if (!shouldLiveEdit()) {
+      return;
     }
+
+    // Add this while we're still inside a write action, so that no compile can be running while we queue this. This minimizes the risk of a
+    // race condition between any retried compilations and this newly queued event.
+    changedMethodQueue.add(new EditEvent(ktFile, ktFile, new ArrayList<>(), new ArrayList<>()));
+
+    mainThreadExecutor.schedule(() -> {
+      if (ProjectSystemUtil.getProjectSystem(project).getSyncManager().isSyncNeeded() || intermediateSyncs.get()) {
+        updateEditStatus(LiveEditStatus.SyncNeeded.INSTANCE);
+        return;
+      }
+      processQueuedChanges();
+    }, LiveEditAdvancedConfiguration.getInstance().getRefreshRateMs(), TimeUnit.MILLISECONDS);
   }
 
   private boolean shouldLiveEdit() {
@@ -400,18 +414,6 @@ public class LiveEditProjectMonitor implements Disposable {
            StringUtil.isNotEmpty(applicationId) &&
            !liveEditDevices.isUnrecoverable() &&
            !liveEditDevices.isDisabled();
-  }
-
-  private void scheduleCompile(KtFile ktFile) {
-    mainThreadExecutor.schedule(() -> {
-      if (ProjectSystemUtil.getProjectSystem(project).getSyncManager().isSyncNeeded() || intermediateSyncs.get()) {
-        updateEditStatus(LiveEditStatus.SyncNeeded.INSTANCE);
-        return;
-      }
-
-      changedMethodQueue.add(new EditEvent(ktFile, ktFile, new ArrayList<>(), new ArrayList<>()));
-      processQueuedChanges();
-    }, LiveEditAdvancedConfiguration.getInstance().getRefreshRateMs(), TimeUnit.MILLISECONDS);
   }
 
   @VisibleForTesting
@@ -504,6 +506,9 @@ public class LiveEditProjectMonitor implements Disposable {
       for (EditEvent change : changes) {
         filesWithCompilationErrors.remove(change.getFile().getName());
       }
+
+      // Mark validation as finished only if the compilation doesn't need to be retried, either because it succeeded or an error occurred.
+      changes.stream().filter(e -> e.getFile() instanceof KtFile).map(e -> (KtFile) e.getFile()).forEach(psiValidator::validationFinished);
     } catch (LiveEditUpdateException e) {
       boolean recoverable = e.getError().getRecoverable();
 
@@ -528,14 +533,21 @@ public class LiveEditProjectMonitor implements Disposable {
         logLiveEditEvent(event);
       }
 
+      // Mark validation as finished only if the compilation doesn't need to be retried, either because it succeeded or an error occurred.
+      changes.stream().filter(v -> v.getFile() instanceof KtFile).map(v -> (KtFile) v.getFile()).forEach(psiValidator::validationFinished);
       return true;
     }
 
     if (mode == LiveEditEvent.Mode.AUTO && !filesWithCompilationErrors.isEmpty()) {
-      Optional<String> errorFilename = filesWithCompilationErrors.stream().findFirst();
-      String errorMsg = ErrorReporterKt.leErrorMessage(LiveEditUpdateException.Error.COMPILATION_ERROR, errorFilename.get());
-      updateEditStatus(LiveEditStatus.createPausedStatus(errorMsg));
-      return true;
+
+      // When we are only confined to the current file, we are not going to check of there
+      // are errors in other files.
+      if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get()) {
+        Optional<String> errorFilename = filesWithCompilationErrors.stream().findFirst();
+        String errorMsg = ErrorReporterKt.leErrorMessage(LiveEditUpdateException.Error.COMPILATION_ERROR, errorFilename.get());
+        updateEditStatus(LiveEditStatus.createPausedStatus(errorMsg));
+        return true;
+      }
     }
 
     final LiveEditDesugarResponse desugaredResponse = compiled.get();
@@ -687,9 +699,18 @@ public class LiveEditProjectMonitor implements Disposable {
         !resetState,
         useDebugMode);
 
-    LiveUpdateDeployer.UpdateLiveEditResult result = deployer.updateLiveEdit(installer, adb, applicationId, param);
+    LiveUpdateDeployer.UpdateLiveEditResult result = null;
 
-    if (filesWithCompilationErrors.isEmpty()) {
+    // Sometimes we get a PSI event for a top-level file when no top-level class exists. In this
+    // case, just treat it as a no-op success. This isn't an issue with the class differ
+    // as we would no longer get spurious PSI update events anymore.
+    if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER.get() && param.classes.isEmpty()) {
+      result = new LiveUpdateDeployer.UpdateLiveEditResult();
+    } else {
+      result = deployer.updateLiveEdit(installer, adb, applicationId, param);
+    }
+
+    if (filesWithCompilationErrors.isEmpty() || StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get()) {
       updateEditStatus(device, LiveEditStatus.UpToDate.INSTANCE);
     } else {
       Optional<String> errorFilename = filesWithCompilationErrors.stream().sequential().findFirst();
@@ -707,6 +728,11 @@ public class LiveEditProjectMonitor implements Disposable {
       }
     }
     return result;
+  }
+
+  @VisibleForTesting
+  boolean isGradleSyncNeeded(){
+    return ProjectSystemUtil.getProjectSystem(project).getSyncManager().isSyncNeeded() || intermediateSyncs.get();
   }
 
 

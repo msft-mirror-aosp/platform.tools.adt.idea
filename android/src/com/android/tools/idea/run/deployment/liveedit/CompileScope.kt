@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.run.deployment.liveedit
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -43,6 +44,7 @@ import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.InvalidModuleException
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.idea.base.projectStructure.languageVersionSettings
+import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.idea.core.util.analyzeInlinedFunctions
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import org.jetbrains.kotlin.idea.resolve.ResolutionFacade
@@ -151,7 +153,9 @@ private object CompileScopeImpl : CompileScope {
       var exception: LiveEditUpdateException? = null
       val analysisResult = resolution.analyzeWithAllCompilerChecks(input) {
         if (it.severity == Severity.ERROR) {
-          exception = LiveEditUpdateException.analysisError("Analyze Error. $it", it.psiFile)
+          if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get() || input.contains(it.psiFile)) {
+            exception = LiveEditUpdateException.analysisError("Analyze Error. $it", it.psiFile)
+          }
         }
       }
       if (exception != null) {
@@ -164,7 +168,9 @@ private object CompileScopeImpl : CompileScope {
 
       for (diagnostic in analysisResult.bindingContext.diagnostics) {
         if (diagnostic.severity == Severity.ERROR) {
-          throw LiveEditUpdateException.analysisError("Binding Context Error. $diagnostic", diagnostic.psiFile)
+          if (!StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS.get() || input.contains(diagnostic.psiFile)) {
+            throw LiveEditUpdateException.analysisError("Binding Context Error. $diagnostic", diagnostic.psiFile)
+          }
         }
       }
 
@@ -177,6 +183,9 @@ private object CompileScopeImpl : CompileScope {
 
   override fun backendCodeGen(project: Project, analysisResult: AnalysisResult, input: List<KtFile>,  module: Module,
                               inlineClassRequest : Set<SourceInlineCandidate>?): GenerationState {
+
+    input.firstOrNull { it.module != module }?.let {
+      throw LiveEditUpdateException.internalError("KtFile outside targeted module found in code generation", it) }
 
     val compilerConfiguration = CompilerConfiguration()
     compilerConfiguration.languageVersionSettings = input.first().languageVersionSettings

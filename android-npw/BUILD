@@ -37,6 +37,7 @@ iml_module(
         "//tools/base/pixelprobe:studio.android.sdktools.pixelprobe[module]",
         "//tools/adt/idea/android-templates:intellij.android.templates[module]",
         "//tools/adt/idea/analytics[module]",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module]",
     ],
 )
 
@@ -72,10 +73,13 @@ iml_module(
             # b/192269906 flaky on windows, taking longer than 15 minutes
             "tags": ["no_windows"],
         },
-        "other": {
-            # b/291605661 flaky on Windows, taking longer than 30 minutes
+        "ConfigureBaselineProfilesModuleStepTest": {
+            # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
+            "test_filter": "com.android.tools.idea.npw.module.ConfigureBaselineProfilesModuleStepTest",
+            # b/309976473 may be flaky on Windows
             "tags": ["no_windows"],
         },
+        "other": {},
     },
     test_class = "com.android.tools.idea.npw.NewProjectWizardTestSuite",
     # keep sorted
@@ -149,8 +153,8 @@ maven_repository(
     artifacts = [
         "@maven//:androidx.activity.activity-ktx_1.8.0",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
-        "@maven//:androidx.benchmark.benchmark-baseline-profile-gradle-plugin_1.2.0-rc02",
-        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0-rc02",
+        "@maven//:androidx.benchmark.benchmark-baseline-profile-gradle-plugin_1.2.0",
+        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",  # TODO(b/273872043) Remove once tests pass without 2.1.3
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.4",

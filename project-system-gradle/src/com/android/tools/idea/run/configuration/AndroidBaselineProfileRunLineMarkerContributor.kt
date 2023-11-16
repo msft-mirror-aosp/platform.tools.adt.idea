@@ -19,26 +19,34 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.kotlin.getQualifiedName
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManagerEx
+import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.lineMarker.ExecutorAction
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionGroupWrapper
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.psi.JavaTokenType
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
+import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.idea.base.util.isUnderKotlinSourceRootTypes
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.plugins.groovy.intentions.style.inference.resolve
 
 class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
@@ -47,112 +55,134 @@ class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
     private const val FQ_NAME_ORG_JUNIT_RULE = "org.junit.Rule"
     private const val NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE = "androidx/benchmark/macro/junit4/BaselineProfileRule"
     private const val FQ_NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE = "androidx.benchmark.macro.junit4.BaselineProfileRule"
-  }
 
-  private val actions by lazy(LazyThreadSafetyMode.PUBLICATION) {
-    arrayOf(
-      ActionManager.getInstance().getAction("AndroidX.BaselineProfile.RunGenerate"))
+    private val generateAction = ActionManager.getInstance().getAction("AndroidX.BaselineProfile.RunGenerate")
+
+    private val executorActions = ExecutorAction.getActionList()
+      .mapNotNull { it as? ExecutorAction }
+      .filter { it.executor == DefaultRunExecutor.getRunExecutorInstance() ||
+                it.executor == DefaultDebugExecutor.getDebugExecutorInstance() }
+
+    private val createRunConfigAction = ExecutorAction.getActionList()
+      .mapNotNull { it as? ActionGroupWrapper }
+      .firstOrNull { it.delegate == ActionManager.getInstance().getAction("CreateRunConfiguration") }
+
+    private val allActions = mutableListOf(generateAction).apply {
+      if (executorActions.isNotEmpty()) {
+        add(Separator.getInstance())
+        addAll(executorActions)
+        createRunConfigAction?.let { add(createRunConfigAction) }
+      }
+    }.toTypedArray()
+
+    internal fun isKtTestClassIdentifier(e: PsiElement): Boolean {
+      if (e.node?.elementType != KtTokens.IDENTIFIER) {
+        return false
+      }
+
+      val declaration = e.getStrictParentOfType<KtNamedDeclaration>()?.takeIf { it.nameIdentifier == e } ?: return false
+
+      return declaration is KtClassOrObject &&
+             declaration.isUnderKotlinSourceRootTypes() &&
+             e.parent is KtClass &&
+             doesKtClassHaveBaselineProfileRule(e)
+    }
+
+    internal fun isJavaTestClassIdentifier(e: PsiElement): Boolean {
+      return e is PsiIdentifier && e.parent is PsiClass && doesJavaClassHaveBaselineProfileRule(e)
+    }
+
+    private fun doesKtClassHaveBaselineProfileRule(psiElement: PsiElement): Boolean {
+
+      // Find class body
+      val topLevelClass = if (psiElement is KtClass) {
+        psiElement
+      }
+      else {
+        PsiTreeUtil.getParentOfType(psiElement, KtClass::class.java) ?: return false
+      }
+
+      // Find properties
+      val ktProperties = PsiTreeUtil.findChildrenOfType(topLevelClass, KtProperty::class.java).toList()
+      if (ktProperties.isEmpty()) {
+        return false
+      }
+
+      // Analyzes the class to check each property to see if there is at least a BaselineProfileRule applied.
+      return analyze(topLevelClass) {
+        ktProperties
+          .any { prop ->
+
+            // Check that this property has a rule annotation applied.
+            val isRule = prop
+              .annotationEntries
+              .any { it.getQualifiedName() == FQ_NAME_ORG_JUNIT_RULE }
+
+            // TODO(b/303222395): Only using the receiver type here, but this won't work if the baseline profile rule
+            // gets extended.
+            val isBaselineProfileCallExpression = PsiTreeUtil
+              .findChildOfType(prop, KtCallExpression::class.java)
+              ?.getExpectedType()
+              ?.asStringForDebugging() == NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE
+
+            // Check that the parent class node is the same of the method (to ensure both method and rule are in the same class).
+            val isInSameClassOfMethod = PsiTreeUtil.getParentOfType(prop, KtClass::class.java) == topLevelClass
+
+            // All the three conditions have to be true.
+            isRule && isBaselineProfileCallExpression && isInSameClassOfMethod
+          }
+      }
+    }
+
+    private fun doesJavaClassHaveBaselineProfileRule(psiElement: PsiElement): Boolean {
+
+      // Find class body
+      val topLevelClass = if (psiElement is PsiClass) {
+        psiElement
+      }
+      else {
+        PsiTreeUtil.getParentOfType(psiElement, PsiClass::class.java) ?: return false
+      }
+
+      // Find class members
+      val classMembers = PsiTreeUtil.findChildrenOfType(topLevelClass, PsiMember::class.java).toList()
+      if (classMembers.isEmpty()) {
+        return false
+      }
+
+      // Find a class member that has a BaselineProfileRule applied.
+      for (member : PsiMember in classMembers.filterIsInstance<PsiField>()) {
+        // Only evaluate direct field member of the top level class
+        if (PsiTreeUtil.getDepth(member, topLevelClass) == 1 &&
+            PsiTreeUtil.findChildrenOfType(member, PsiAnnotation::class.java).any {
+              it.resolveAnnotationType()?.qualifiedName == FQ_NAME_ORG_JUNIT_RULE &&
+              PsiTreeUtil.findChildOfType(member, PsiNewExpression::class.java)?.type.resolve()?.qualifiedName ==
+              FQ_NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE
+            }) {
+              return true
+        }
+      }
+      return false
+    }
   }
 
   override fun getInfo(e: PsiElement): Info? {
-
     // If the studio flag is not enabled, skip entirely.
     if (!StudioFlags.GENERATE_BASELINE_PROFILE_GUTTER_ICON.get()) return null
 
-    return when (e.node.elementType) {
-      KtTokens.CLASS_KEYWORD -> {
-        if (e.parent is KtClass && doesKtClassHaveBaselineProfileRule(e)) {
-          Info(AllIcons.RunConfigurations.TestState.Run_run, actions) {
-            AndroidBundle.message("android.run.configuration.generate.baseline.profile")
-          }
-        }
-        else null
-      }
-      JavaTokenType.CLASS_KEYWORD -> {
-        if (e.parent is PsiClass && doesJavaClassHaveBaselineProfileRule(e)) {
-          Info(AllIcons.RunConfigurations.TestState.Run_run, actions) {
-            AndroidBundle.message("android.run.configuration.generate.baseline.profile")
-          }
-        }
-        else null
-      }
-      else -> null
-    }
-  }
-
-  private fun doesKtClassHaveBaselineProfileRule(psiElement: PsiElement): Boolean {
-
-    // Find class body
-    val topLevelClass = if (psiElement is KtClass) {
-      psiElement
-    }
-    else {
-      PsiTreeUtil.getParentOfType(psiElement, KtClass::class.java) ?: return false
+    if (!isKtTestClassIdentifier(e) && !isJavaTestClassIdentifier(e)) {
+      return null
     }
 
-    // Find properties
-    val ktProperties = PsiTreeUtil.findChildrenOfType(topLevelClass, KtProperty::class.java).toList()
-    if (ktProperties.isEmpty()) {
-      return false
-    }
-
-    // Analyzes the class to check each property to see if there is at least a BaselineProfileRule applied.
-    return analyze(topLevelClass) {
-      ktProperties
-        .any { prop ->
-
-          // Check that this property has a rule annotation applied.
-          val isRule = prop
-            .annotationEntries
-            .any { it.getQualifiedName() == FQ_NAME_ORG_JUNIT_RULE }
-
-          // TODO(b/303222395): Only using the receiver type here, but this won't work if the baseline profile rule
-          // gets extended.
-          val isBaselineProfileCallExpression = PsiTreeUtil
-            .findChildOfType(prop, KtCallExpression::class.java)
-            ?.getExpectedType()
-            ?.asStringForDebugging() == NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE
-
-            // Check that the parent class node is the same of the method (to ensure both method and rule are in the same class).
-          val isInSameClassOfMethod = PsiTreeUtil.getParentOfType(prop, KtClass::class.java) == topLevelClass
-
-          // All the three conditions have to be true.
-          isRule && isBaselineProfileCallExpression && isInSameClassOfMethod
-        }
-    }
-  }
-
-  private fun doesJavaClassHaveBaselineProfileRule(psiElement: PsiElement): Boolean {
-
-    // Find class body
-    val topLevelClass = if (psiElement is PsiClass) {
-      psiElement
-    }
-    else {
-      PsiTreeUtil.getParentOfType(psiElement, PsiClass::class.java) ?: return false
-    }
-
-    // Find class members
-    val classMembers = PsiTreeUtil.findChildrenOfType(topLevelClass, PsiMember::class.java).toList()
-    if (classMembers.isEmpty()) {
-      return false
-    }
-
-    // Find a class member that has a BaselineProfileRule applied.
-    for (member : PsiMember in classMembers.filter { it is PsiField }) {
-      // Only evaluate direct field member of the top level class
-      if (PsiTreeUtil.getDepth(member, topLevelClass) == 1) {
-        PsiTreeUtil.findChildrenOfType(member, PsiAnnotation::class.java).forEach {
-          if (it.resolveAnnotationType()?.qualifiedName == FQ_NAME_ORG_JUNIT_RULE) {
-            return PsiTreeUtil.findChildOfType(member, PsiNewExpression::class.java)
-              ?.type
-              .resolve()
-              ?.qualifiedName == FQ_NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE
-          }
-        }
+    return object: Info(
+      AllIcons.RunConfigurations.TestState.Run_run,
+      allActions,
+      { AndroidBundle.message("android.run.configuration.generate.baseline.profile") }
+    ) {
+      override fun shouldReplace(other: Info): Boolean {
+        return other.actions.intersect(executorActions.toSet()).isNotEmpty()
       }
     }
-    return false
   }
 }
 

@@ -461,9 +461,6 @@
     <option name="gradle" path="ActionManager" hit="Migrate BuildConfig to Gradle Build Files" />
     <option name="migrate" path="ActionManager" hit="Migrate BuildConfig to Gradle Build Files" />
     <option name="to" path="ActionManager" hit="Migrate BuildConfig to Gradle Build Files" />
-    <option name="appcompat" path="ActionManager" hit="Migrate to AppCompat..." />
-    <option name="migrate" path="ActionManager" hit="Migrate to AppCompat..." />
-    <option name="to" path="ActionManager" hit="Migrate to AppCompat..." />
     <option name="classes" path="ActionManager" hit="Migrate to Non-Transitive R Classes..." />
     <option name="migrate" path="ActionManager" hit="Migrate to Non-Transitive R Classes..." />
     <option name="non-transitive" path="ActionManager" hit="Migrate to Non-Transitive R Classes..." />
@@ -473,10 +470,6 @@
     <option name="namespaces" path="ActionManager" hit="Migrate to Resource Namespaces..." />
     <option name="resource" path="ActionManager" hit="Migrate to Resource Namespaces..." />
     <option name="to" path="ActionManager" hit="Migrate to Resource Namespaces..." />
-    <option name="app" path="ActionManager" hit="Migrates app to AppCompat" />
-    <option name="appcompat" path="ActionManager" hit="Migrates app to AppCompat" />
-    <option name="migrates" path="ActionManager" hit="Migrates app to AppCompat" />
-    <option name="to" path="ActionManager" hit="Migrates app to AppCompat" />
     <option name="classes" path="ActionManager" hit="Migrates the project to use Non-Transitive R classes" />
     <option name="migrates" path="ActionManager" hit="Migrates the project to use Non-Transitive R classes" />
     <option name="non-transitive" path="ActionManager" hit="Migrates the project to use Non-Transitive R classes" />
@@ -731,6 +724,11 @@
     <option name="replaces" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
     <option name="style" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
     <option name="where" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
+    <option name="data" path="ActionManager" hit="Reset Data Sharing User Identifier" />
+    <option name="identifier" path="ActionManager" hit="Reset Data Sharing User Identifier" />
+    <option name="reset" path="ActionManager" hit="Reset Data Sharing User Identifier" />
+    <option name="sharing" path="ActionManager" hit="Reset Data Sharing User Identifier" />
+    <option name="user" path="ActionManager" hit="Reset Data Sharing User Identifier" />
     <option name="manager" path="ActionManager" hit="Resource Manager" />
     <option name="resource" path="ActionManager" hit="Resource Manager" />
     <option name="logcat" path="ActionManager" hit="Restart Logcat" />
@@ -1562,14 +1560,9 @@
     <option name="libraries" hit="Derive runtime classpaths for libraries from application modules" />
     <option name="modules" hit="Derive runtime classpaths for libraries from application modules" />
     <option name="runtime" hit="Derive runtime classpaths for libraries from application modules" />
-    <option name="device" hit="Device Streaming" />
-    <option name="streaming" hit="Device Streaming" />
     <option name="enable" hit="Enable @Preview picker" />
     <option name="picker" hit="Enable @Preview picker" />
     <option name="preview" hit="Enable @Preview picker" />
-    <option name="device" hit="Enable Device Streaming" />
-    <option name="enable" hit="Enable Device Streaming" />
-    <option name="streaming" hit="Enable Device Streaming" />
     <option name="enable" hit="Enable parallel Gradle Sync" />
     <option name="gradle" hit="Enable parallel Gradle Sync" />
     <option name="parallel" hit="Enable parallel Gradle Sync" />

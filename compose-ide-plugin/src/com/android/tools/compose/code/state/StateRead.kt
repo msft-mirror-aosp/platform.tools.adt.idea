@@ -36,6 +36,7 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtProperty
@@ -61,10 +62,11 @@ internal data class StateRead(
       val scopeName =
         when (scope) {
           is KtLambdaExpression ->
-            ComposeBundle.message("compose.state.read.recompose.target.enclosing.lambda")
+            ComposeBundle.message("state.read.recompose.target.enclosing.lambda")
           else -> scope.name ?: return null
         }
-      return StateRead(stateVar, scope, scopeName)
+      val bodyScope = (scope as? KtFunction)?.bodyExpression ?: scope
+      return StateRead(stateVar, bodyScope, scopeName)
     }
   }
 }

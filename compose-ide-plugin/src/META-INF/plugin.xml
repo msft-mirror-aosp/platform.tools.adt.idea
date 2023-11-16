@@ -33,10 +33,8 @@
 
     <annotator language="kotlin" implementationClass="com.android.tools.compose.code.state.ComposeStateReadAnnotator"/>
 
-    <additionalTextAttributes scheme="Default" file="colorschemes/ComposableHighlighterExtensionColorSchemeDefault.xml"/>
-    <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposableHighlighterExtensionColorSchemeDarcula.xml"/>
-    <additionalTextAttributes scheme="Default" file="colorschemes/ComposeStateReadAnnotatorColorSchemeDefault.xml"/>
-    <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposeStateReadAnnotatorColorSchemeDarcula.xml"/>
+    <additionalTextAttributes scheme="Default" file="colorschemes/ComposeColorSchemeDefault.xml"/>
+    <additionalTextAttributes scheme="Darcula" file="colorschemes/ComposeColorSchemeDarcula.xml"/>
 
     <colorSettingsPage implementation="com.android.tools.compose.ComposeColorSettingsPage"/>
 
@@ -159,6 +157,17 @@
                                     implementationClass="com.android.tools.compose.ComposeColorLineMarkerProviderDescriptor" />
 
     <usageGroupingRuleProvider implementation="com.android.tools.compose.ComposeUsageGroupingRuleProvider" />
+
+    <codeInsight.declarativeInlayProvider language="kotlin"
+                                          implementationClass="com.android.tools.compose.code.state.ComposeStateReadInlayHintsProvider"
+                                          isEnabledByDefault="false"
+                                          group="OTHER_GROUP"
+                                          providerId="compose.state.read"
+                                          bundle="messages.ComposeBundle"
+                                          nameKey="state.read.inlay.provider.name"
+                                          descriptionKey="state.read.inlay.provider.description"/>
+    <codeInsight.inlayActionHandler implementationClass="com.android.tools.compose.code.state.ComposeStateReadInlayActionHandler"
+                                    handlerId="compose.state.read" />
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin.extensions.internal">

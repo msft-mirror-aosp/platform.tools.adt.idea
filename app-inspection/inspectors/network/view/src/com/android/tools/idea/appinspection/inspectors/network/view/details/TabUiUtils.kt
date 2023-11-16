@@ -92,7 +92,7 @@ fun createHideablePanel(
 ): HideablePanel {
   return HideablePanel.Builder(title, content)
     .setNorthEastComponent(northEastComponent)
-    .setPanelBorder(JBUI.Borders.empty(10, 0, 0, 0))
+    .setPanelBorder(JBUI.Borders.emptyTop(10))
     .setContentBorder(JBUI.Borders.empty(10, 12, 0, 0))
     .setIsTitleBold(true)
     .build()
@@ -102,7 +102,7 @@ fun createHideablePanel(
  * Create a component that shows a list of key/value pairs and some additional margins. If there are
  * no values in the map, this returns a label indicating that no data is available.
  */
-fun createStyledMapComponent(map: Map<String, String>): JComponent {
+fun createStyledMapComponent(map: Map<String, List<String>>): JComponent {
   if (map.isEmpty()) {
     return JLabel("Not available")
   }
@@ -122,7 +122,7 @@ fun createStyledMapComponent(map: Map<String, String>): JComponent {
           BorderLayout.LINE_START
         )
         add(
-          WrappedTextArea(value).apply {
+          WrappedTextArea(if (value.size == 1) value.first() else value.toString()).apply {
             border = emptyBorder
             background = null
             isOpaque = false
@@ -187,7 +187,7 @@ fun createCategoryPanel(
   return panel
 }
 
-/** Create a [JBTextField] with preferred [width] and focus lost listener. */
+/** Create a [JBTextField] with preferred `width` and focus lost listener. */
 fun createTextField(
   initialText: String?,
   hintText: String,

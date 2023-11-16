@@ -17,8 +17,17 @@ package com.android.tools.idea.appinspection.inspectors.network.model
 
 import com.android.tools.idea.protobuf.ByteString
 import studio.network.inspection.NetworkInspectorProtocol
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcCallEnded
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcCallStarted
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcMessageReceived.*
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcMessageSent
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcMetadata
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcPayload
+import studio.network.inspection.NetworkInspectorProtocol.GrpcEvent.GrpcStreamCreated
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.Closed
+import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.Header
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.Payload
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.RequestCompleted
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.RequestStarted
@@ -27,49 +36,60 @@ import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.Re
 import studio.network.inspection.NetworkInspectorProtocol.SpeedEvent
 
 @Suppress("SameParameterValue")
-internal fun requestStarted(
+internal fun httpRequestStarted(
   id: Long,
   timestampNanos: Long,
   url: String = "",
   method: String = "",
-  fields: String = "",
+  headers: List<Header> = emptyList(),
   trace: String = "",
 ) =
   httpConnectionEvent(id, timestampNanos) {
       setHttpRequestStarted(
-        RequestStarted.newBuilder().setUrl(url).setMethod(method).setTrace(trace).setFields(fields)
+        RequestStarted.newBuilder()
+          .setUrl(url)
+          .setMethod(method)
+          .setTrace(trace)
+          .addAllHeaders(headers)
       )
     }
     .build()
 
 @Suppress("SameParameterValue")
-internal fun requestPayload(id: Long, timestampNanos: Long, payload: String) =
+internal fun httpRequestPayload(id: Long, timestampNanos: Long, payload: String) =
   httpConnectionEvent(id, timestampNanos) {
       setRequestPayload(Payload.newBuilder().setPayload(ByteString.copyFromUtf8(payload)))
     }
     .build()
 
 @Suppress("SameParameterValue")
-internal fun requestCompleted(id: Long, timestampNanos: Long) =
+internal fun httpRequestCompleted(id: Long, timestampNanos: Long) =
   httpConnectionEvent(id, timestampNanos) { setHttpRequestCompleted(RequestCompleted.newBuilder()) }
     .build()
 
 @Suppress("SameParameterValue")
-internal fun responseStarted(id: Long, timestampNanos: Long, fields: String) =
+internal fun httpResponseStarted(
+  id: Long,
+  timestampNanos: Long,
+  responseCode: Int,
+  headers: List<Header>
+) =
   httpConnectionEvent(id, timestampNanos) {
-      setHttpResponseStarted(ResponseStarted.newBuilder().setFields(fields))
+      setHttpResponseStarted(
+        ResponseStarted.newBuilder().setResponseCode(responseCode).addAllHeaders(headers)
+      )
     }
     .build()
 
 @Suppress("SameParameterValue")
-internal fun responsePayload(id: Long, timestampNanos: Long, payload: String) =
+internal fun httpResponsePayload(id: Long, timestampNanos: Long, payload: String) =
   httpConnectionEvent(id, timestampNanos) {
       setResponsePayload(Payload.newBuilder().setPayload(ByteString.copyFromUtf8(payload)))
     }
     .build()
 
 @Suppress("SameParameterValue")
-internal fun responseCompleted(id: Long, timestampNanos: Long) =
+internal fun httpResponseCompleted(id: Long, timestampNanos: Long) =
   httpConnectionEvent(id, timestampNanos) {
       setHttpResponseCompleted(ResponseCompleted.newBuilder())
     }
@@ -97,6 +117,92 @@ internal fun speedEvent(timestampNanos: Long, rxSpeed: Long = 0, txSpeed: Long =
     .setSpeedEvent(SpeedEvent.newBuilder().setRxSpeed(rxSpeed).setTxSpeed(txSpeed))
     .build()
 
+internal fun grpcCallStarted(
+  id: Long,
+  timestampNanos: Long,
+  service: String = "",
+  method: String = "",
+  headers: List<GrpcMetadata> = emptyList(),
+  trace: String = "",
+) =
+  grpcEvent(id, timestampNanos) {
+      setGrpcCallStarted(
+        GrpcCallStarted.newBuilder()
+          .setService(service)
+          .setMethod(method)
+          .addAllHeaders(headers)
+          .setTrace(trace)
+      )
+    }
+    .build()
+
+internal fun grpcMessageSent(
+  id: Long,
+  timestampNanos: Long,
+  bytes: ByteString,
+  type: String,
+  text: String,
+) =
+  grpcEvent(id, timestampNanos) {
+      setGrpcMessageSent(
+        GrpcMessageSent.newBuilder()
+          .setPayload(GrpcPayload.newBuilder().setBytes(bytes).setType(type).setText(text))
+      )
+    }
+    .build()
+
+internal fun grpcStreamCreated(
+  id: Long,
+  timestampNanos: Long,
+  address: String,
+  headers: List<GrpcMetadata>,
+) =
+  grpcEvent(id, timestampNanos) {
+      setGrpcStreamCreated(
+        GrpcStreamCreated.newBuilder().setAddress(address).addAllHeaders(headers)
+      )
+    }
+    .build()
+
+internal fun grpcMessageReceived(
+  id: Long,
+  timestampNanos: Long,
+  bytes: ByteString,
+  type: String,
+  text: String,
+) =
+  grpcEvent(id, timestampNanos) {
+      setGrpcMessageReceived(
+        newBuilder()
+          .setPayload(GrpcPayload.newBuilder().setBytes(bytes).setType(type).setText(text))
+      )
+    }
+    .build()
+
+internal fun grpcCallEnded(
+  id: Long,
+  timestampNanos: Long,
+  status: String = "",
+  error: String = "",
+  trailers: List<GrpcMetadata> = emptyList(),
+) =
+  grpcEvent(id, timestampNanos) {
+      setGrpcCallEnded(
+        GrpcCallEnded.newBuilder().setStatus(status).setError(error).addAllTrailers(trailers)
+      )
+    }
+    .build()
+
+internal fun grpcThread(id: Long, timestampNanos: Long, threadId: Long, threadName: String) =
+  grpcEvent(id, timestampNanos) {
+      setGrpcThread(
+        NetworkInspectorProtocol.ThreadData.newBuilder()
+          .setThreadId(threadId)
+          .setThreadName(threadName)
+      )
+    }
+    .build()
+
 private fun httpConnectionEvent(
   id: Long,
   timestampNanos: Long,
@@ -105,3 +211,18 @@ private fun httpConnectionEvent(
   NetworkInspectorProtocol.Event.newBuilder()
     .setTimestamp(timestampNanos)
     .setHttpConnectionEvent(HttpConnectionEvent.newBuilder().setConnectionId(id).block())
+
+internal fun httpHeader(key: String, vararg values: String) =
+  Header.newBuilder().setKey(key).addAllValues(values.asList()).build()
+
+private fun grpcEvent(
+  id: Long,
+  timestampNanos: Long,
+  block: GrpcEvent.Builder.() -> GrpcEvent.Builder
+) =
+  NetworkInspectorProtocol.Event.newBuilder()
+    .setTimestamp(timestampNanos)
+    .setGrpcEvent(GrpcEvent.newBuilder().setConnectionId(id).block().build())
+
+internal fun grpcMetadata(key: String, vararg values: String) =
+  GrpcMetadata.newBuilder().setKey(key).addAllValues(values.asList()).build()

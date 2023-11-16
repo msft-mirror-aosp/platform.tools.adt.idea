@@ -23,12 +23,12 @@ import com.android.tools.idea.appinspection.inspectors.network.model.FakeCodeNav
 import com.android.tools.idea.appinspection.inspectors.network.model.FakeNetworkInspectorDataSource
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.TestNetworkInspectorServices
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.FAKE_CONTENT_TYPE
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.FAKE_RESPONSE_CODE
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpDataModel
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.createFakeHttpData
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.fakeResponseFields
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.ConnectionDataModel
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.FAKE_CONTENT_TYPE
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.FAKE_RESPONSE_CODE
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.HttpData
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.createFakeHttpData
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.fakeResponseHeaders
 import com.android.tools.idea.appinspection.inspectors.network.view.FakeUiComponentsProvider
 import com.android.tools.idea.appinspection.inspectors.network.view.NetworkInspectorView
 import com.android.tools.idea.protobuf.ByteString
@@ -50,14 +50,14 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.Header
 
 private val FAKE_DATA =
   listOf(
     createHttpData(1, 1, 2, ByteString.copyFromUtf8("1")),
     createHttpData(2, 3, 5, ByteString.copyFromUtf8("12")),
     createHttpData(3, 8, 13, ByteString.copyFromUtf8("1234")),
-    createHttpData(4, 21, 34, ByteString.copyFromUtf8("123"))
-      .copy(responseFields = fakeResponseFields(4, "bmp"))
+    createHttpData(4, 21, 34, ByteString.copyFromUtf8("123"), fakeResponseHeaders(4, "bmp"))
   )
 
 @RunsInEdt
@@ -94,7 +94,7 @@ class ConnectionsViewTest {
         services,
         fakeNetworkInspectorDataSource,
         scope,
-        object : HttpDataModel {
+        object : ConnectionDataModel {
           private val dataList = FAKE_DATA
 
           override fun getData(timeCurrentRangeUs: Range): List<HttpData> {
@@ -135,7 +135,8 @@ class ConnectionsViewTest {
     Truth.assertThat(ConnectionColumn.NAME.getValueFrom(data)).isEqualTo(data.id.toString())
     Truth.assertThat(ConnectionColumn.SIZE.getValueFrom(data)).isEqualTo(4)
     Truth.assertThat(FAKE_CONTENT_TYPE).endsWith(ConnectionColumn.TYPE.getValueFrom(data) as String)
-    Truth.assertThat(ConnectionColumn.STATUS.getValueFrom(data)).isEqualTo(FAKE_RESPONSE_CODE)
+    Truth.assertThat(ConnectionColumn.STATUS.getValueFrom(data))
+      .isEqualTo(FAKE_RESPONSE_CODE.toString())
     Truth.assertThat(ConnectionColumn.TIME.getValueFrom(data))
       .isEqualTo(TimeUnit.SECONDS.toMicros(5))
     Truth.assertThat(ConnectionColumn.TIMELINE.getValueFrom(data))
@@ -274,7 +275,13 @@ class ConnectionsViewTest {
   }
 }
 
-private fun createHttpData(id: Long, startS: Long, endS: Long, responsePayload: ByteString) =
+private fun createHttpData(
+  id: Long,
+  startS: Long,
+  endS: Long,
+  responsePayload: ByteString,
+  responseHeaders: List<Header> = fakeResponseHeaders(id)
+) =
   createFakeHttpData(
     id,
     TimeUnit.SECONDS.toMicros(startS),
@@ -282,5 +289,6 @@ private fun createHttpData(id: Long, startS: Long, endS: Long, responsePayload: 
     TimeUnit.SECONDS.toMicros(endS),
     TimeUnit.SECONDS.toMicros(endS),
     TimeUnit.SECONDS.toMicros(endS),
-    responsePayload = responsePayload
+    responsePayload = responsePayload,
+    responseHeaders = responseHeaders,
   )

@@ -29,8 +29,8 @@ import com.android.tools.idea.appinspection.inspectors.network.model.FakeNetwork
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorClient
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.TestNetworkInspectorServices
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpDataModel
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.ConnectionDataModel
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.model.rules.RuleData
 import com.android.tools.idea.appinspection.inspectors.network.view.FakeUiComponentsProvider
 import com.android.tools.idea.appinspection.inspectors.network.view.NetworkInspectorView
@@ -135,7 +135,7 @@ class RuleDetailsViewTest {
         services,
         FakeNetworkInspectorDataSource(),
         scope,
-        object : HttpDataModel {
+        object : ConnectionDataModel {
           override fun getData(timeCurrentRangeUs: Range) = listOf<HttpData>()
         }
       )
@@ -672,7 +672,9 @@ class RuleDetailsViewTest {
     val headerTable = findComponentWithUniqueName(ruleDetailsView, "headerRules") as TableView<*>
 
     val addAction = findAction(headerTable.parent.parent.parent, "Add")
-    createModalDialogAndInteractWithIt({ addAction.actionPerformed(TestActionEvent()) }) {
+    createModalDialogAndInteractWithIt({
+      addAction.actionPerformed(TestActionEvent.createTestEvent())
+    }) {
       val dialog = it as HeaderRuleDialog
       dialog.tabs.selectedComponent = dialog.editHeaderPanel
 
@@ -713,7 +715,9 @@ class RuleDetailsViewTest {
     assertThat(headerTable.rowCount).isEqualTo(0)
 
     val addAction = findAction(headerTable.parent.parent.parent, "Add")
-    createModalDialogAndInteractWithIt({ addAction.actionPerformed(TestActionEvent()) }) {
+    createModalDialogAndInteractWithIt({
+      addAction.actionPerformed(TestActionEvent.createTestEvent())
+    }) {
       val dialog = it as HeaderRuleDialog
       dialog.tabs.selectedComponent = dialog.newHeaderPanel
       // Assert that OK button is disabled since the default value is empty

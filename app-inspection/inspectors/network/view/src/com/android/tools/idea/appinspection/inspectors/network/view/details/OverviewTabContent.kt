@@ -21,9 +21,7 @@ import com.android.tools.adtui.TabularLayout
 import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.legend.FixedLegend
 import com.android.tools.adtui.model.legend.LegendComponentModel
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.HttpData
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.NO_STATUS_CODE
-import com.android.tools.idea.appinspection.inspectors.network.model.httpdata.getUrlName
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.view.ConnectionsStateChart
 import com.android.tools.idea.appinspection.inspectors.network.view.NetworkState
 import com.android.tools.inspectors.common.ui.dataviewer.ImageDataViewer
@@ -211,18 +209,15 @@ class OverviewTabContent : TabContent() {
 
       var row = 0
       myFieldsPanel.add(NoWrapBoldLabel("Request"), TabularLayout.Constraint(row, 0))
-      myFieldsPanel.add(JLabel(httpData.getUrlName()), TabularLayout.Constraint(row, 2))
+      myFieldsPanel.add(JLabel(httpData.name), TabularLayout.Constraint(row, 2))
       row++
       myFieldsPanel.add(NoWrapBoldLabel("Method"), TabularLayout.Constraint(row, 0))
       myFieldsPanel.add(JLabel(httpData.method), TabularLayout.Constraint(row, 2))
 
-      val responseHeader = httpData.responseHeader
-      if (responseHeader.statusCode != NO_STATUS_CODE) {
-        row++
-        myFieldsPanel.add(NoWrapBoldLabel("Status"), TabularLayout.Constraint(row, 0))
-        val statusCode = JLabel(java.lang.String.valueOf(responseHeader.statusCode))
-        myFieldsPanel.add(statusCode, TabularLayout.Constraint(row, 2))
-      }
+      row++
+      myFieldsPanel.add(NoWrapBoldLabel("Status"), TabularLayout.Constraint(row, 0))
+      val statusCode = JLabel(java.lang.String.valueOf(httpData.responseCode))
+      myFieldsPanel.add(statusCode, TabularLayout.Constraint(row, 2))
 
       if (image != null) {
         row++
@@ -231,15 +226,16 @@ class OverviewTabContent : TabContent() {
         myFieldsPanel.add(dimension, TabularLayout.Constraint(row, 2))
       }
 
-      if (!responseHeader.contentType.isEmpty) {
+      val responseContentType = httpData.getResponseContentType()
+      if (!responseContentType.isEmpty) {
         row++
         myFieldsPanel.add(NoWrapBoldLabel("Content type"), TabularLayout.Constraint(row, 0))
-        val contentTypeLabel = JLabel(responseHeader.contentType.mimeType)
+        val contentTypeLabel = JLabel(responseContentType.mimeType)
         contentTypeLabel.name = ID_CONTENT_TYPE
         myFieldsPanel.add(contentTypeLabel, TabularLayout.Constraint(row, 2))
       }
 
-      val contentLength = responseHeader.contentLength
+      val contentLength = httpData.getResponseContentLength()
       if (contentLength != -1) {
         try {
           row++
@@ -252,16 +248,16 @@ class OverviewTabContent : TabContent() {
 
       row++
       myFieldsPanel.add(NoWrapBoldLabel("Initiating thread"), TabularLayout.Constraint(row, 0))
-      val initiatingThreadLabel = JLabel(httpData.javaThreads[0].name)
+      val initiatingThreadLabel = JLabel(httpData.threads[0].name)
       initiatingThreadLabel.name = ID_INITIATING_THREAD
       myFieldsPanel.add(initiatingThreadLabel, TabularLayout.Constraint(row, 2))
-      if (httpData.javaThreads.size > 1) {
+      if (httpData.threads.size > 1) {
         val otherThreadsBuilder = StringBuilder()
-        for (i in 1 until httpData.javaThreads.size) {
+        for (i in 1 until httpData.threads.size) {
           if (otherThreadsBuilder.isNotEmpty()) {
             otherThreadsBuilder.append(", ")
           }
-          otherThreadsBuilder.append(httpData.javaThreads[i].name)
+          otherThreadsBuilder.append(httpData.threads[i].name)
         }
         row++
         myFieldsPanel.add(NoWrapBoldLabel("Other threads"), TabularLayout.Constraint(row, 0))

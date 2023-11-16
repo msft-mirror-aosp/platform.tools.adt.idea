@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.preview.modes
 
-import com.android.tools.idea.compose.preview.LayoutMode
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.Colors
 import com.android.tools.preview.PreviewElement
@@ -63,9 +62,6 @@ sealed class PreviewMode {
   val isNormal: Boolean
     get() = this is Default || this is Gallery
 
-  /** Type if [LayoutMode] to be used with this [PreviewMode]. */
-  open val layoutMode: LayoutMode = LayoutMode.Default
-
   /** Background color. */
   open val backgroundColor: Color = Colors.DEFAULT_BACKGROUND_COLOR
 
@@ -87,25 +83,27 @@ sealed class PreviewMode {
     if (javaClass != other?.javaClass) return false
 
     other as PreviewMode
-    return layoutMode == other.layoutMode &&
-      backgroundColor == other.backgroundColor &&
+    return backgroundColor == other.backgroundColor &&
       layoutOption == other.layoutOption &&
       selected == other.selected
   }
 
   override fun hashCode(): Int {
-    return Objects.hashCode(layoutMode, backgroundColor, layoutOption, selected)
+    return Objects.hashCode(backgroundColor, layoutOption, selected)
   }
 
   class Default(
     override val layoutOption: SurfaceLayoutManagerOption = LIST_LAYOUT_MANAGER_OPTION
-  ) : PreviewMode() {
+  ) : RestorePreviewMode() {
     override fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
       return Default(layoutOption)
     }
   }
 
   sealed class Focus<T : PreviewElement>(override val selected: T) : PreviewMode()
+
+  /** Represents a mode that can be restored when clicking on "Stop" when inside a mode. */
+  sealed class RestorePreviewMode : PreviewMode()
 
   class UiCheck(
     val baseElement: PreviewElement,
@@ -128,9 +126,7 @@ sealed class PreviewMode {
     }
   }
 
-  // TODO(b/290579083): extract Essential mode outside of PreviewMode
-  class Gallery(override val selected: PreviewElement?) : PreviewMode() {
-    override val layoutMode: LayoutMode = LayoutMode.Gallery
+  class Gallery(override val selected: PreviewElement?) : RestorePreviewMode() {
     override val layoutOption: SurfaceLayoutManagerOption = PREVIEW_LAYOUT_GALLERY_OPTION
 
     /**

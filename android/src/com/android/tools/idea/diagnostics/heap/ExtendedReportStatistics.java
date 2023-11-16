@@ -126,6 +126,15 @@ public class ExtendedReportStatistics {
       .addObjectClassName(className, size, isMergePoint, isDisposedButReferenced);
   }
 
+  public void logClusterHistogram(@NotNull Consumer<String> writer,
+                                  @NotNull final ComponentsSet.Cluster cluster,
+                                  @NotNull final ExtendedReportStatistics.ClusterHistogram.ClusterType clusterType) {
+    switch (clusterType) {
+      case COMPONENT -> logComponentHistogram(writer, (ComponentsSet.Component)cluster);
+      case CATEGORY -> logCategoryHistogram(writer, (ComponentsSet.ComponentCategory)cluster);
+    }
+  }
+
   public void logCategoryHistogram(@NotNull Consumer<String> writer, @NotNull final ComponentsSet.ComponentCategory componentCategory) {
     categoryHistograms.get(componentCategory.getId()).print(writer);
   }
@@ -243,9 +252,6 @@ public class ExtendedReportStatistics {
 
   public void printExceededClusterStatisticsIfNeeded(@NotNull final Consumer<String> writer,
                                                      @NotNull final ComponentsSet.Component component) {
-    if (!componentToExceededClustersStatistics.containsKey(component)) {
-      return;
-    }
     ExceededClusterStatistics statistics = componentToExceededClustersStatistics.get(component);
     List<Pair<String, ObjectsStatistics>> nominatedClassesInOrder = statistics.nominatedClassesTotalStatistics.entrySet().stream()
       .sorted(Comparator.comparingInt((Map.Entry<String, ObjectsStatistics> e) -> e.getValue().getObjectsCount()).reversed())
@@ -255,7 +261,8 @@ public class ExtendedReportStatistics {
     for (ObjectsStatistics value : componentHistograms.get(component.getId()).disposedButReferencedObjects.values()) {
       totalDisposedButReferencedObjectsStatistics.addStats(value);
     }
-    rootPathTree.printPathTreeForComponentDisposedReferencedObjects(writer, statistics, totalDisposedButReferencedObjectsStatistics);
+    new RootPathTreePrinter.RootPathTreeDisposedObjectsPrinter(totalDisposedButReferencedObjectsStatistics, this,
+                                                               statistics).print(writer);
 
     writer.accept("======== INSTANCES OF EACH NOMINATED CLASS ========");
     writer.accept("Nominated classes:");
@@ -267,11 +274,12 @@ public class ExtendedReportStatistics {
 
     for (Pair<String, ObjectsStatistics> pair : nominatedClassesInOrder) {
       writer.accept(String.format(Locale.US, "CLASS: %s (%d objects)", pair.first, pair.second.getObjectsCount()));
-      rootPathTree.printPathTreeForComponentAndNominatedType(writer, statistics, statistics.nominatedClassesEnumeration.getInt(pair.first),
-                                                             pair.second);
+      new RootPathTreePrinter.RootPathTreeNominatedTypePrinter(pair.second, this, statistics,
+                                                               statistics.nominatedClassesEnumeration.getInt(pair.first)).print(writer);
     }
 
-    rootPathTree.printPathTreeForComponentObjectsReferringNominatedLoaders(writer, statistics, component);
+    new RootPathTreePrinter.RootPathTreeNominatedLoadersPrinter(rootPathTree.totalNominatedLoadersReferringObjectsStatistics, this,
+                                                                statistics).print(writer);
   }
 
   class CategoryHistogram extends ClusterHistogram {

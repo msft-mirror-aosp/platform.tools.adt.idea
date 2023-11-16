@@ -294,6 +294,7 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner[module, test]",
         "//tools/base/adblib:studio.android.sdktools.adblib[module, test]",
         "//tools/adt/idea/preview-elements:intellij.android.preview-elements[module, test]",
+        "//tools/base/environment-services:studio.intellij.android.environment-services[module, test]",
     ],
 )
 
@@ -439,7 +440,7 @@ maven_repository(
         "@maven//:androidx.annotation.annotation-jvm_1.6.0",
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
-        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0-rc02",
+        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0",
         "@maven//:androidx.compose.foundation.foundation_1.5.0",
         "@maven//:androidx.compose.ui.ui-tooling_1.5.0",
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",

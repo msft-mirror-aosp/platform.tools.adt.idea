@@ -253,8 +253,7 @@ class ComposeStateReadAnnotatorTest {
   private fun PsiFile.assertSingleHighlight(
     window: String,
     stateVariable: String = "stateVar",
-    composeScope: String =
-      ComposeBundle.message("compose.state.read.recompose.target.enclosing.lambda")
+    composeScope: String = ComposeBundle.message("state.read.recompose.target.enclosing.lambda")
   ) {
     val allElements = collectDescendantsOfType<PsiElement>()
     val annotations = CodeInsightTestUtil.testAnnotator(annotator, *allElements.toTypedArray())
@@ -266,12 +265,14 @@ class ComposeStateReadAnnotatorTest {
 
     with(annotations.single()) {
       val expectedMessage =
-        ComposeBundle.message("compose.state.read.message", stateVariable, composeScope)
+        ComposeBundle.message("state.read.message.titled", stateVariable, composeScope)
       assertThat(message).isEqualTo(expectedMessage)
       assertThat(gutterIconRenderer).isNull()
       assertThat(textAttributes).isEqualTo(COMPOSE_STATE_READ_TEXT_ATTRIBUTES_KEY)
       assertThat(startOffset).isEqualTo(fixture.offsetForWindow(windowStart))
       assertThat(endOffset).isEqualTo(fixture.offsetForWindow(windowEnd))
+      assertThat(quickFixes?.map { it.quickFix })
+        .containsExactly(EnableComposeStateReadInlayHintsAction)
     }
   }
 }
