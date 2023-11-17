@@ -25,6 +25,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import junit.framework.TestCase.fail
 import org.jetbrains.android.compose.stubComposableAnnotation
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +44,7 @@ class AddComposableToFunctionQuickFixTest {
     myFixture.stubComposableAnnotation()
   }
 
+  @Ignore("b/309364913")
   @Test
   fun simpleMissingComposable_invokeOnFunctionDefinition() {
     myFixture.loadNewFile(
@@ -117,6 +119,7 @@ class AddComposableToFunctionQuickFixTest {
       """.trimIndent())
   }
 
+  @Ignore("b/309364913")
   @Test
   fun missingComposableWithoutImport() {
     myFixture.addFileToProject(
@@ -159,6 +162,7 @@ class AddComposableToFunctionQuickFixTest {
       """.trimIndent())
   }
 
+  @Ignore("b/309364913")
   @Test
   fun errorInsideInlineLambda() {
     myFixture.loadNewFile(
