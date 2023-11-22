@@ -6,6 +6,8 @@ import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.help.AndroidWebHelpProvider
 import com.android.tools.idea.projectsystem.gradle.getGradlePluginVersion
+import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.resolve
 import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.AndroidRunConfigurationFactoryBase
 import com.android.tools.idea.run.DeviceFutures
@@ -27,7 +29,6 @@ import com.intellij.execution.configurations.WithoutOwnBeforeRunSteps
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAction
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Pair
@@ -109,10 +110,6 @@ class AndroidBaselineProfileRunConfiguration(project: Project, factory: Configur
   @JvmField
   var generateAllVariants: Boolean = false
 
-  override fun setModule(module: Module?) {
-    super.setModule(module)
-  }
-
   override fun getBeforeRunTasks(): MutableList<BeforeRunTask<*>> {
     // Do not allow build, as the gradle task will do it for us.
     return mutableListOf()
@@ -140,7 +137,8 @@ class AndroidBaselineProfileRunConfiguration(project: Project, factory: Configur
     val variantName = if (generateAllVariants) "" else configurationModule.module?.let {
       GradleAndroidModel.get(it)?.selectedVariant?.name?.capitalize() ?: ""
     }
-    return listOf("generate${variantName}BaselineProfile")
+    val taskName = "generate${variantName}BaselineProfile"
+    return listOf(configurationModule.module?.getGradleProjectPath()?.resolve(taskName)?.path ?: taskName)
   }
 
   fun getPath(): String? {

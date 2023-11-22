@@ -228,7 +228,9 @@ maven_repository(
         "@maven//:androidx.test.monitor_1.6.1",
         "@maven//:androidx.tv.tv-foundation_1.0.0-alpha07",
         "@maven//:androidx.tv.tv-material_1.0.0-alpha07",
-        "@maven//:androidx.wear.compose.compose-material_1.1.2",
+        "@maven//:androidx.wear.compose.compose-material_1.2.1",
+        "@maven//:androidx.wear.compose.compose-navigation_1.2.1",
+        "@maven//:androidx.wear.compose.compose-ui-tooling_1.2.1",
         "@maven//:androidx.wear.tiles.tiles-material_1.2.0-alpha05",
         "@maven//:androidx.wear.tiles.tiles_1.2.0-alpha05",
         "@maven//:androidx.wear.watchface.watchface-complications-data-source-ktx_1.1.1",
@@ -318,7 +320,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.7.1",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.7.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-test_1.7.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
-        "@maven//:org.mockito.mockito-core_4.8.0",
+        "@maven//:org.mockito.mockito-core_5.6.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )
@@ -1628,21 +1630,6 @@ java_test(
         "no_windows",
         "qa_smoke",
         "requires-fakeroot",
-    ],
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [":intellij.android.guiTests_testlib"],
-)
-
-java_test(
-    name = "ImportSampleProjectTest",
-    size = "large",
-    data = COMMON_DATA + glob([
-        "testData/SimpleApplication/**",
-    ]),
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.emulator.ImportSampleProjectTest"],
-    tags = [
-        "no_windows",
-        "qa_smoke",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

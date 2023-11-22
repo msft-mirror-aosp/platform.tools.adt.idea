@@ -15,12 +15,14 @@
  */
 package com.android.tools.idea.flags;
 
+import com.android.flags.BooleanFlag;
 import com.android.flags.Flag;
 import com.android.flags.FlagGroup;
 import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
+import com.android.tools.idea.IdeChannel;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
@@ -1047,12 +1049,14 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_STATE_READ_HIGHLIGHTING_ENABLED = Flag.create(
-    EDITOR, "compose.state.read.highlighting.enabled",
-    "Enable highlighting of State reads in @Composable functions",
+  public static final Flag<Boolean> COMPOSE_STATE_READ_INLAY_HINTS_ENABLED = new BooleanFlag(
+    EDITOR, "compose.state.read.inlay.hints.enabled",
+    "Enable inlay hints for State reads in @Composable functions",
     "If enabled, calls out reads of variables of type State inside @Composable functions.",
-    false
-  );
+    ChannelDefault.of(false)
+      .withDevOverride(true)
+      .withNightlyOverride(true)
+      .withCanaryOverride(true));
 
   public static final Flag<Boolean> RENDER_DRAWABLES_IN_AUTOCOMPLETE_ENABLED = Flag.create(
     EDITOR, "render.drawables.in.autocomplete.enabled",
@@ -1341,7 +1345,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> GLANCE_APP_WIDGET_PREVIEW = Flag.create(
     WEAR_SURFACES, "glance.preview.appwidget.enabled", "Enable Glance AppWidget preview",
     "If enabled, a preview for annotated glance app widget composable functions is displayed",
-    true);
+    IdeChannel.getChannel().isLessStableThan(IdeChannel.Channel.BETA));
 
   public static final Flag<Boolean> GLANCE_TILE_PREVIEW = Flag.create(
     WEAR_SURFACES, "glance.preview.tile.enabled", "Enable Glance Tile preview",
@@ -1350,7 +1354,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> WEAR_TILE_PREVIEW = Flag.create(
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
-    "If enabled, a preview for functions annotated with @TilePreview and returning TilePreviewData is displayed",
+    "If enabled, a preview for functions annotated with @Preview and returning TilePreviewData is displayed",
     true);
   // endregion
 
@@ -1704,8 +1708,12 @@ public final class StudioFlags {
     Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
-    Flag.create(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
-                "When enabled, inline code completion suggestions will be shown.", false);
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
+                    "When enabled, inline code completion suggestions will be shown.",
+                    ChannelDefault.of(false)
+                      .withDevOverride(true)
+                      .withNightlyOverride(true)
+                      .withCanaryOverride(true));
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
     Flag.create(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",

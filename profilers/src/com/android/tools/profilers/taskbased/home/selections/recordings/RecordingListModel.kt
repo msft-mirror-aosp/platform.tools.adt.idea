@@ -22,6 +22,7 @@ import com.android.tools.profilers.sessions.SessionItem
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.TaskSupportUtils
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandler
+import com.google.common.annotations.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -33,7 +34,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * recordings as artifacts. This equivalence has precedence as imported files are converted to SessionItems in the Sessions-Based UX.
  */
 class RecordingListModel(val profilers: StudioProfilers,
-                         private val taskHandlers: Map<ProfilerTaskType, ProfilerTaskHandler>) : AspectObserver() {
+                         private val taskHandlers: Map<ProfilerTaskType, ProfilerTaskHandler>,
+                         private val resetTaskSelection: () -> Unit) : AspectObserver() {
   private val _recordingList = MutableStateFlow(listOf<SessionItem>())
   val recordingList = _recordingList.asStateFlow()
   private val _selectedRecording = MutableStateFlow<SessionItem?>(null)
@@ -45,16 +47,18 @@ class RecordingListModel(val profilers: StudioProfilers,
   }
 
   fun onRecordingSelection(newRecording: SessionItem?) {
+    resetTaskSelection()
     _selectedRecording.value = newRecording
   }
 
-  fun isSelectedRecordingExportable(): Boolean {
-    val recording = selectedRecording.value
-    return recording != null && recording.containsExactlyOneArtifact() && (recording.getChildArtifacts().firstOrNull()?.canExport ?: false)
+  fun isSelectedRecordingExportable() = selectedRecording.value.let {
+    it != null && it.containsExactlyOneArtifact() && (it.getChildArtifacts().firstOrNull()?.canExport ?: false)
   }
 
+  val exportableArtifact get() = if (isSelectedRecordingExportable()) selectedRecording.value!!.getChildArtifacts().first() else null
+
   private fun sessionItemsUpdated() {
-    val sessionItems = profilers.sessionsManager.sessionArtifacts.filterIsInstance<SessionItem>()
+    val sessionItems = profilers.sessionsManager.sessionArtifacts.filterIsInstance<SessionItem>().filter { !it.isOngoing }
     val newRecordingList = mutableListOf<SessionItem>()
     newRecordingList.addAll(sessionItems)
     _recordingList.value = newRecordingList
@@ -68,6 +72,11 @@ class RecordingListModel(val profilers: StudioProfilers,
       TaskSupportUtils.isTaskSupportedByRecording(taskHandler, recording)
     }.keys
 
-    return supportedTaskTypes.joinToString(separator = ", ") { it.description }
+    return if (supportedTaskTypes.isEmpty()) "No tasks available" else supportedTaskTypes.joinToString(separator = ", ") { it.description }
+  }
+
+  @VisibleForTesting
+  fun setRecordingList(recordingList: List<SessionItem>) {
+    _recordingList.value = recordingList
   }
 }

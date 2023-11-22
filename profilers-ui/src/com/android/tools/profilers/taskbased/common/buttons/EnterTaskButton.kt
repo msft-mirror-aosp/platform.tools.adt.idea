@@ -15,7 +15,11 @@
  */
 package com.android.tools.profilers.taskbased.common.buttons
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxStrings.OPEN_PROFILER_TASK
 import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxStrings.START_PROFILER_TASK
@@ -34,7 +38,7 @@ fun OpenTaskButton(isEnabled: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun EnterTaskButton(text: String, isEnabled: Boolean, onClick: () -> Unit) {
-  DefaultButton(onClick = onClick, enabled = isEnabled) {
-    Text(text = text, fontSize = 20.sp, lineHeight = 21.sp)
+  DefaultButton(onClick = onClick, enabled = isEnabled, modifier = Modifier.testTag("EnterTaskButton")) {
+    Text(text = text, fontSize = 20.sp, lineHeight = 21.sp, modifier = Modifier.padding(vertical = 5.dp))
   }
 }

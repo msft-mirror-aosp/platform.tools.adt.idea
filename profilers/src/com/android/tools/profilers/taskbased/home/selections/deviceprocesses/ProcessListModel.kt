@@ -19,15 +19,16 @@ import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.ProfilerAspect
 import com.android.tools.profilers.StudioProfilers
-import com.android.tools.profilers.SupportLevel
 import com.google.common.annotations.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
+class ProcessListModel(val profilers: StudioProfilers, private val resetTaskSelection: () -> Unit) : AspectObserver() {
   private val _deviceToProcesses = MutableStateFlow(mapOf<Common.Device, List<Common.Process>>())
   val deviceToProcesses = _deviceToProcesses.asStateFlow()
 
+  private val _deviceList = MutableStateFlow(listOf<Common.Device>())
+  val deviceList = _deviceList.asStateFlow()
   private val _selectedDevice = MutableStateFlow(Common.Device.getDefaultInstance())
   val selectedDevice = _selectedDevice.asStateFlow()
   private val _selectedProcess = MutableStateFlow(Common.Process.getDefaultInstance())
@@ -60,6 +61,7 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
     }
 
     _deviceToProcesses.value = newDeviceToProcesses
+    _deviceList.value = newDeviceToProcesses.keys.toList()
     reorderProcessList()
   }
 
@@ -115,10 +117,15 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
   }
 
   fun onDeviceSelection(newDevice: Common.Device) {
+    resetTaskSelection()
     _selectedDevice.value = newDevice
+    // Force reordering now that device is selected. This makes sure the process list is reordered correctly using the preferred process
+    // in the case the preferred process was set before a device selection was made.
+    reorderProcessList()
   }
 
   fun onProcessSelection(newProcess: Common.Process) {
+    resetTaskSelection()
     _selectedProcess.value = newProcess
   }
 
@@ -131,5 +138,5 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
   @VisibleForTesting
   fun getPreferredProcessName() = preferredProcessName
 
-  private fun isDeviceSelected() = selectedDevice.value != Common.Device.getDefaultInstance()
+  private fun isDeviceSelected() = _selectedDevice.value != Common.Device.getDefaultInstance()
 }

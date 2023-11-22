@@ -16,7 +16,11 @@
 package com.android.tools.idea.run.configuration
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.kotlin.getQualifiedName
+import com.android.tools.idea.projectsystem.getSyncManager
+import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.resolve
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManagerEx
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -28,6 +32,7 @@ import com.intellij.openapi.actionSystem.ActionGroupWrapper
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
@@ -54,7 +59,9 @@ class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
   companion object {
     private const val FQ_NAME_ORG_JUNIT_RULE = "org.junit.Rule"
     private const val NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE = "androidx/benchmark/macro/junit4/BaselineProfileRule"
+    private const val NAME_ANDROIDX_JUNIT_MACROBENCHMARK_RULE = "androidx/benchmark/macro/junit4/MacrobenchmarkRule"
     private const val FQ_NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE = "androidx.benchmark.macro.junit4.BaselineProfileRule"
+    private const val FQ_NAME_ANDROIDX_JUNIT_MACROBENCHMARK_RULE = "androidx.benchmark.macro.junit4.MacrobenchmarkRule"
 
     private val generateAction = ActionManager.getInstance().getAction("AndroidX.BaselineProfile.RunGenerate")
 
@@ -123,7 +130,8 @@ class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
             val isBaselineProfileCallExpression = PsiTreeUtil
               .findChildOfType(prop, KtCallExpression::class.java)
               ?.getExpectedType()
-              ?.asStringForDebugging() == NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE
+              ?.asStringForDebugging()
+              ?.let { it == NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE || it == NAME_ANDROIDX_JUNIT_MACROBENCHMARK_RULE } == true
 
             // Check that the parent class node is the same of the method (to ensure both method and rule are in the same class).
             val isInSameClassOfMethod = PsiTreeUtil.getParentOfType(prop, KtClass::class.java) == topLevelClass
@@ -156,10 +164,15 @@ class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
         if (PsiTreeUtil.getDepth(member, topLevelClass) == 1 &&
             PsiTreeUtil.findChildrenOfType(member, PsiAnnotation::class.java).any {
               it.resolveAnnotationType()?.qualifiedName == FQ_NAME_ORG_JUNIT_RULE &&
-              PsiTreeUtil.findChildOfType(member, PsiNewExpression::class.java)?.type.resolve()?.qualifiedName ==
-              FQ_NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE
+              PsiTreeUtil.findChildOfType(member, PsiNewExpression::class.java)
+                ?.type
+                .resolve()
+                ?.qualifiedName
+                ?.let { name ->
+                  name == FQ_NAME_ANDROIDX_JUNIT_BASELINE_PROFILE_RULE || name == FQ_NAME_ANDROIDX_JUNIT_MACROBENCHMARK_RULE
+                } == true
             }) {
-              return true
+          return true
         }
       }
       return false
@@ -169,6 +182,8 @@ class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
   override fun getInfo(e: PsiElement): Info? {
     // If the studio flag is not enabled, skip entirely.
     if (!StudioFlags.GENERATE_BASELINE_PROFILE_GUTTER_ICON.get()) return null
+
+    if (e.project.getSyncManager().isSyncNeeded()) return null
 
     if (!isKtTestClassIdentifier(e) && !isJavaTestClassIdentifier(e)) {
       return null
@@ -189,12 +204,16 @@ class BaselineProfileRunLineMarkerContributor : RunLineMarkerContributor() {
 class BaselineProfileAction : AnAction() {
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
+    val sourceModule = e.getData(PlatformCoreDataKeys.MODULE) ?: return
+    val targetModulePath = GradleAndroidModel.get(sourceModule)?.selectedVariant?.testedTargetVariants?.map { it.targetProjectPath }?.firstOrNull() ?: return
+    val targetModuleGradlePath = sourceModule.getGradleProjectPath()?.resolve(targetModulePath)
     val runManager = RunManagerEx.getInstanceEx(project)
-    val runConfiguration = runManager.findConfigurationByTypeAndName(
-      AndroidBaselineProfileRunConfigurationType.getInstance(),
-      AndroidBaselineProfileRunConfigurationType.NAME)
+    val runConfiguration = runManager.allSettings
+      .asSequence()
+      .filter { it.type == AndroidBaselineProfileRunConfigurationType.getInstance() }
+      .filter { (it.configuration as AndroidBaselineProfileRunConfiguration).configurationModule.module?.getGradleProjectPath() == targetModuleGradlePath }
+      .firstOrNull()
       .let {
-
         // If the configuration was found, use this one
         if (it != null) return@let it
 

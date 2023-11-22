@@ -298,31 +298,9 @@
     <option name="zip" path="ActionManager" hit="Export to Zip File..." />
     <option name="extend" path="ActionManager" hit="Extend Reservation" />
     <option name="reservation" path="ActionManager" hit="Extend Reservation" />
-    <option name="1" path="ActionManager" hit="Extend Reservation by 1 Hour" />
-    <option name="by" path="ActionManager" hit="Extend Reservation by 1 Hour" />
-    <option name="extend" path="ActionManager" hit="Extend Reservation by 1 Hour" />
-    <option name="hour" path="ActionManager" hit="Extend Reservation by 1 Hour" />
-    <option name="reservation" path="ActionManager" hit="Extend Reservation by 1 Hour" />
-    <option name="30" path="ActionManager" hit="Extend Reservation by 30 Minutes" />
-    <option name="by" path="ActionManager" hit="Extend Reservation by 30 Minutes" />
-    <option name="extend" path="ActionManager" hit="Extend Reservation by 30 Minutes" />
-    <option name="minutes" path="ActionManager" hit="Extend Reservation by 30 Minutes" />
-    <option name="reservation" path="ActionManager" hit="Extend Reservation by 30 Minutes" />
     <option name="device" path="ActionManager" hit="Extend device reservation" />
     <option name="extend" path="ActionManager" hit="Extend device reservation" />
     <option name="reservation" path="ActionManager" hit="Extend device reservation" />
-    <option name="1" path="ActionManager" hit="Extend device reservation by 1 hour" />
-    <option name="by" path="ActionManager" hit="Extend device reservation by 1 hour" />
-    <option name="device" path="ActionManager" hit="Extend device reservation by 1 hour" />
-    <option name="extend" path="ActionManager" hit="Extend device reservation by 1 hour" />
-    <option name="hour" path="ActionManager" hit="Extend device reservation by 1 hour" />
-    <option name="reservation" path="ActionManager" hit="Extend device reservation by 1 hour" />
-    <option name="30" path="ActionManager" hit="Extend device reservation by 30 minutes" />
-    <option name="by" path="ActionManager" hit="Extend device reservation by 30 minutes" />
-    <option name="device" path="ActionManager" hit="Extend device reservation by 30 minutes" />
-    <option name="extend" path="ActionManager" hit="Extend device reservation by 30 minutes" />
-    <option name="minutes" path="ActionManager" hit="Extend device reservation by 30 minutes" />
-    <option name="reservation" path="ActionManager" hit="Extend device reservation by 30 minutes" />
     <option name="controls" path="ActionManager" hit="Extended Controls" />
     <option name="extended" path="ActionManager" hit="Extended Controls" />
     <option name="a" path="ActionManager" hit="Extracts one or more views into a separate layout" />
@@ -724,6 +702,14 @@
     <option name="replaces" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
     <option name="style" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
     <option name="where" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
+    <option name="180" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="device" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="duration" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="for" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="maximum" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="minutes" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="reserve" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
+    <option name="the" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
     <option name="data" path="ActionManager" hit="Reset Data Sharing User Identifier" />
     <option name="identifier" path="ActionManager" hit="Reset Data Sharing User Identifier" />
     <option name="reset" path="ActionManager" hit="Reset Data Sharing User Identifier" />
@@ -1540,6 +1526,14 @@
     <option name="settings" hit=" Note: These settings are for features that are considered experimental." />
     <option name="that" hit=" Note: These settings are for features that are considered experimental." />
     <option name="these" hit=" Note: These settings are for features that are considered experimental." />
+    <option name="experimental" hit="Experimental" />
+    <option name="gradle" hit="Gradle" />
+    <option name="compose" hit="Jetpack Compose" />
+    <option name="jetpack" hit="Jetpack Compose" />
+    <option name="editor" hit="Layout Editor" />
+    <option name="layout" hit="Layout Editor" />
+  </configurable>
+  <configurable id="experimental" configurable_name="Experimental">
     <option name="all" hit="Configure all Gradle tasks during Gradle Sync (this can make Gradle Sync slower)" />
     <option name="can" hit="Configure all Gradle tasks during Gradle Sync (this can make Gradle Sync slower)" />
     <option name="configure" hit="Configure all Gradle tasks during Gradle Sync (this can make Gradle Sync slower)" />
@@ -1560,9 +1554,6 @@
     <option name="libraries" hit="Derive runtime classpaths for libraries from application modules" />
     <option name="modules" hit="Derive runtime classpaths for libraries from application modules" />
     <option name="runtime" hit="Derive runtime classpaths for libraries from application modules" />
-    <option name="enable" hit="Enable @Preview picker" />
-    <option name="picker" hit="Enable @Preview picker" />
-    <option name="preview" hit="Enable @Preview picker" />
     <option name="enable" hit="Enable parallel Gradle Sync" />
     <option name="gradle" hit="Enable parallel Gradle Sync" />
     <option name="parallel" hit="Enable parallel Gradle Sync" />
@@ -1574,12 +1565,6 @@
     <option name="multi-variant" hit="Enable support for multi-variant Javadocs and Sources" />
     <option name="sources" hit="Enable support for multi-variant Javadocs and Sources" />
     <option name="support" hit="Enable support for multi-variant Javadocs and Sources" />
-    <option name="experimental" hit="Experimental" />
-    <option name="gradle" hit="Gradle" />
-    <option name="compose" hit="Jetpack Compose" />
-    <option name="jetpack" hit="Jetpack Compose" />
-    <option name="editor" hit="Layout Editor" />
-    <option name="layout" hit="Layout Editor" />
     <option name="api" hit="Optimize build for target device API level only" />
     <option name="build" hit="Optimize build for target device API level only" />
     <option name="device" hit="Optimize build for target device API level only" />
@@ -1588,6 +1573,18 @@
     <option name="only" hit="Optimize build for target device API level only" />
     <option name="optimize" hit="Optimize build for target device API level only" />
     <option name="target" hit="Optimize build for target device API level only" />
+    <option name="location" hit="Specified location" />
+    <option name="specified" hit="Specified location" />
+    <option name="gradle" hit="Trace Gradle import with profile:" />
+    <option name="import" hit="Trace Gradle import with profile:" />
+    <option name="profile" hit="Trace Gradle import with profile:" />
+    <option name="trace" hit="Trace Gradle import with profile:" />
+    <option name="with" hit="Trace Gradle import with profile:" />
+  </configurable>
+  <configurable id="experimental" configurable_name="Experimental">
+    <option name="enable" hit="Enable @Preview picker" />
+    <option name="picker" hit="Enable @Preview picker" />
+    <option name="preview" hit="Enable @Preview picker" />
     <option name="annotation" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="editing" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="editor" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
@@ -1599,15 +1596,10 @@
     <option name="the" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="tools" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
     <option name="with" hit="Popup with editing tools for @Preview annotation from the Editor gutter" />
+  </configurable>
+  <configurable id="experimental" configurable_name="Experimental">
     <option name="quality" hit="Quality Setting" />
     <option name="setting" hit="Quality Setting" />
-    <option name="location" hit="Specified location" />
-    <option name="specified" hit="Specified location" />
-    <option name="gradle" hit="Trace Gradle import with profile:" />
-    <option name="import" hit="Trace Gradle import with profile:" />
-    <option name="profile" hit="Trace Gradle import with profile:" />
-    <option name="trace" hit="Trace Gradle import with profile:" />
-    <option name="with" hit="Trace Gradle import with profile:" />
   </configurable>
   <configurable id="gradle.compiler" configurable_name="Gradle-Android Compiler">
     <option name="" hit=" Note: These settings are used for compiling Gradle-based Android projects." />

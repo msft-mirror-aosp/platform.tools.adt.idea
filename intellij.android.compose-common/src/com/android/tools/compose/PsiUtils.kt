@@ -43,14 +43,18 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtAnnotated
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClassInitializer
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFunction
+import org.jetbrains.kotlin.psi.KtFunctionLiteral
 import org.jetbrains.kotlin.psi.KtLambdaArgument
 import org.jetbrains.kotlin.psi.KtLambdaExpression
+import org.jetbrains.kotlin.psi.KtModifierListOwner
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
@@ -127,72 +131,89 @@ fun PsiElement.isInsideComposableCode(): Boolean {
 }
 
 /** Returns the `@Composable` scope around this [KtElement]. */
-tailrec fun KtElement.composableScope(): KtExpression? {
-  return when (val nextParent = parentOfTypes(KtNamedFunction::class, KtLambdaExpression::class)) {
-    // Always stop at a named function - if it's not composable, we're done.
-    is KtNamedFunction -> nextParent.takeIf { it.hasComposableAnnotation() }
-    // A lambda that is a @Composable function argument may be what recomposes, unless it is
-    // inlined.
-    is KtLambdaExpression -> {
-      val argument = nextParent.parent as? KtValueArgument ?: return null
-      val function = argument.toFunction() ?: return null
-      val param = function.getParameterForArgument(argument) ?: return null
-      if (function.hasInlineModifier() && !param.hasModifier(KtTokens.NOINLINE_KEYWORD)) {
-        // If it's inlined then continue up to the enclosing function (i.e. recurse).
-        argument.composableScope()
-      } else {
-        nextParent.takeIf { param.typeReference?.hasComposableAnnotation() == true }
-      }
-    }
-    else -> null
+fun KtElement.composableScope(): KtExpression? =
+  composableHolderAndScope()?.let { (holder, scope) ->
+    scope.takeIf { holder.hasComposableAnnotation() }
   }
-}
 
 /**
- * Returns the [KtAnnotated] that should hold the `@Composable` annotation for this [KtElement],
- * irrespective of whether it actually has the annotation.
+ * Returns the [KtModifierListOwner] that should hold the `@Composable` annotation for this
+ * [KtElement], irrespective of whether it actually has the annotation.
  */
-tailrec fun KtElement.expectedComposableAnnotationHolder(): KtAnnotated? {
-  return when (val nextParent = parentOfTypes(KtNamedFunction::class, KtLambdaExpression::class)) {
-    // Always stop at a named function.
-    is KtNamedFunction -> nextParent
-    // A lambda that is a function argument
+fun KtElement.expectedComposableAnnotationHolder(): KtModifierListOwner? =
+  composableHolderAndScope()?.first
+
+/**
+ * Returns the [KtModifierListOwner] that we would expect to be holding the `@Composable` annotation
+ * as well as what would be the `@Composable` scope for `this` [KtElement].
+ */
+private tailrec fun KtElement.composableHolderAndScope(): Pair<KtModifierListOwner, KtExpression>? {
+  when (val scope = possibleComposableScope()) {
+    // Named function - the holder and the scope are the same
+    is KtNamedFunction -> return scope to scope
+    // Property accessor - if it's a getter, the holder and the scope are the same, otherwise, we
+    // have neither
+    is KtPropertyAccessor -> return scope.takeIf(KtPropertyAccessor::isGetter)?.let { it to it }
+    // Lambdas are the most complicated case
     is KtLambdaExpression -> {
-      when (val lambdaParent = nextParent.parent) {
-        is KtValueArgument -> {
-          val function = lambdaParent.toFunction() ?: return null
-          val param = function.getParameterForArgument(lambdaParent) ?: return null
-          if (function.hasInlineModifier() && !param.hasModifier(KtTokens.NOINLINE_KEYWORD)) {
-            // If it's inlined then continue up to the enclosing function (i.e. recurse).
-            lambdaParent.expectedComposableAnnotationHolder()
-          } else {
-            param.typeReference
-          }
+      val lambdaParent = scope.parent
+      // If we have a lambda argument, then either it's inline, in which case we skip and keep going
+      // up, or it's not, in which case, we need to look at the function parameter's type.
+      if (lambdaParent is KtValueArgument) {
+        val function = lambdaParent.toFunction() ?: return null
+        val param = function.getParameterForArgument(lambdaParent) ?: return null
+        // If this is an inline function and we're not a noinline parameter, then we keep going up.
+        if (function.hasInlineModifier() && !param.hasModifier(KtTokens.NOINLINE_KEYWORD)) {
+          return lambdaParent.composableHolderAndScope()
         }
-        is KtProperty -> lambdaParent.typeReference
-        else -> return null
+        // Otherwise, the type of the parameter is where the annotation would go, and the lambda
+        // itself is the scope.
+        return param.typeReference?.let { it to scope }
       }
+      // If we're a lambda stored in a property, and that property has an explicit type, then the
+      // type has to be annotated. The lambda is again the actual scope.
+      if (lambdaParent is KtProperty) {
+        val typeReference = lambdaParent.typeReference
+        if (typeReference != null) return typeReference to scope
+      }
+      // Otherwise, the function literal itself may be annotated, and type inference makes this
+      // work. In this case, the function literal is the annotation holder, and the lambda is
+      // again the scope.
+      val functionLiteral = scope.children.singleOrNull() as? KtFunctionLiteral
+      if (functionLiteral != null) return functionLiteral to scope
     }
-    else -> null
   }
+  // None of the cases we understand worked out, so we don't have anything to return.
+  return null
 }
 
-private fun KtFunction.hasComposableAnnotation(): Boolean =
+private fun KtElement.possibleComposableScope(): KtExpression? =
+  parentOfTypes(
+      KtNamedFunction::class,
+      KtPropertyAccessor::class,
+      KtLambdaExpression::class,
+      KtClassInitializer::class
+    )
+    ?.takeIf { it !is KtClassInitializer }
+
+private fun KtModifierListOwner.hasComposableAnnotation(): Boolean =
   if (isK2Plugin()) {
     hasAnnotation(COMPOSABLE_CLASS_ID)
   } else {
-    descriptor?.annotations?.findAnnotation(COMPOSABLE_CLASS_ID.asSingleFqName()) != null
+    when (this) {
+      is KtFunction ->
+        descriptor?.annotations?.findAnnotation(COMPOSABLE_CLASS_ID.asSingleFqName()) != null
+      is KtTypeReference,
+      is KtPropertyAccessor -> annotationEntries.any { it.isComposableAnnotation() }
+      else -> false
+    }
   }
 
-private fun KtTypeReference.hasComposableAnnotation() =
-  if (isK2Plugin()) {
-    hasAnnotation(COMPOSABLE_CLASS_ID)
-  } else {
-    annotationEntries.any { it.isComposableAnnotation() }
-  }
-
-private fun KtValueArgument.toFunction(): KtFunction? =
-  parentOfType<KtCallExpression>()?.calleeExpression?.mainReference?.resolve() as? KtFunction
+private fun KtValueArgument.toFunction(): KtFunction? {
+  val callee = parentOfType<KtCallExpression>()?.calleeExpression?.mainReference?.resolve()
+  if (callee is KtFunction) return callee
+  return (callee as? KtProperty)?.initializer as? KtFunction
+}
 
 private fun KtFunction.getParameterForArgument(argument: KtValueArgument): KtParameter? {
   // If it's a lambda argument, it's always the last one.

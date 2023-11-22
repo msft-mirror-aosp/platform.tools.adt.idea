@@ -31,7 +31,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
-import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintErrorType
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.AtfAnalyzerInspection
@@ -43,6 +42,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
@@ -54,7 +54,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.testFramework.TestActionEvent.createTestEvent
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.runInEdtAndGet
-import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JPanel
@@ -122,21 +121,19 @@ class RenderErrorTest {
     projectRule.fixture.enableInspections(*visualLintInspections)
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
 
-    UIUtil.invokeAndWaitIfNeeded(
-      Runnable {
-        fakeUi =
-          FakeUi(
-            JPanel().apply {
-              layout = BorderLayout()
-              size = Dimension(1000, 800)
-              add(previewView, BorderLayout.CENTER)
-            },
-            1.0,
-            true,
-          )
-        fakeUi.root.validate()
-      },
-    )
+    ApplicationManager.getApplication().invokeAndWait {
+      fakeUi =
+        FakeUi(
+          JPanel().apply {
+            layout = BorderLayout()
+            size = Dimension(1000, 800)
+            add(previewView, BorderLayout.CENTER)
+          },
+          1.0,
+          true,
+        )
+      fakeUi.root.validate()
+    }
 
     runBlocking {
       composePreviewRepresentation.activateAndWaitForRender(fakeUi, timeout = 1.minutes)
@@ -338,7 +335,5 @@ class RenderErrorTest {
     return issues
   }
 
-  private suspend fun accessibilityIssues() = visualLintRenderIssues {
-    it.type == VisualLintErrorType.ATF
-  }
+  private suspend fun accessibilityIssues() = visualLintRenderIssues { it.type.isAtfErrorType() }
 }

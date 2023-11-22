@@ -177,6 +177,13 @@ class IssuePanelService(private val project: Project) {
             }
           DesignerCommonIssuePanelUsageTracker.getInstance().trackSelectingTab(selectedTab, project)
         }
+
+        override fun contentRemoved(event: ContentManagerEvent) {
+          event.content.let {
+            nameToTabMap.remove(it.tabName)
+            tabToPanelMap.remove(it)
+          }
+        }
       }
     contentManager.addContentManagerListener(contentManagerListener)
 
@@ -230,7 +237,7 @@ class IssuePanelService(private val project: Project) {
       } else {
         problemsViewWindow.hide {
           updateSharedIssuePanelTabName()
-          selectSharedIssuePanelTab()
+          selectTab(DESIGN_TOOL_TAB_NAME)
         }
       }
     }
@@ -255,8 +262,8 @@ class IssuePanelService(private val project: Project) {
     updateSharedIssuePanelTabName()
   }
 
-  private fun selectSharedIssuePanelTab() {
-    val tab = nameToTabMap[SHARED_ISSUE_PANEL_TAB_NAME]?.get() ?: return
+  private fun selectTab(name: String) {
+    val tab = nameToTabMap[name]?.get() ?: return
     tab.manager?.setSelectedContent(tab)
   }
 
@@ -317,25 +324,42 @@ class IssuePanelService(private val project: Project) {
   }
 
   /**
-   * Set the visibility of shared issue panel. When [visible] is true, this opens the problem panel
-   * and switch the tab to shared issue panel tab. The optional given [onAfterSettingVisibility] is
-   * executed after the visibility is changed.
+   * Set the visibility of the issue panel tab with name [tabName]. When [visible] is true, this
+   * opens the problem panel and switch the tab to the one with the given name. The optional given
+   * [onAfterSettingVisibility] is executed after the visibility is changed.
    */
-  fun setSharedIssuePanelVisibility(visible: Boolean, onAfterSettingVisibility: Runnable? = null) {
-    val tab = nameToTabMap[SHARED_ISSUE_PANEL_TAB_NAME]?.get() ?: return
+  fun setIssuePanelVisibilityByTabName(
+    visible: Boolean,
+    tabName: String,
+    onAfterSettingVisibility: Runnable? = null
+  ) {
+    val tab = nameToTabMap[tabName]?.get() ?: return
     val problemsViewPanel = ProblemsView.getToolWindow(project) ?: return
     DesignerCommonIssuePanelUsageTracker.getInstance()
       .trackChangingCommonIssuePanelVisibility(visible, project)
     if (visible) {
-      if (!isSharedIssueTabShowing(tab)) {
+      if (!isTabShowing(tab)) {
         problemsViewPanel.show {
-          updateSharedIssuePanelTabName()
-          selectSharedIssuePanelTab()
+          selectTab(tabName)
           onAfterSettingVisibility?.run()
         }
       }
     } else {
       problemsViewPanel.hide { onAfterSettingVisibility?.run() }
+    }
+  }
+
+  /**
+   * Set the visibility of shared issue panel. When [visible] is true, this opens the problem panel
+   * and switch the tab to shared issue panel tab. The optional given [onAfterSettingVisibility] is
+   * executed after the visibility is changed.
+   */
+  fun setSharedIssuePanelVisibility(visible: Boolean, onAfterSettingVisibility: Runnable? = null) {
+    setIssuePanelVisibilityByTabName(visible, SHARED_ISSUE_PANEL_TAB_NAME) {
+      if (visible) {
+        updateSharedIssuePanelTabName()
+      }
+      onAfterSettingVisibility?.run()
     }
   }
 
@@ -456,13 +480,13 @@ class IssuePanelService(private val project: Project) {
 
   /** Return the visibility of the issue panel. */
   fun isIssuePanelVisible(): Boolean {
-    return isSharedIssueTabShowing(nameToTabMap[SHARED_ISSUE_PANEL_TAB_NAME]?.get())
+    return isTabShowing(nameToTabMap[SHARED_ISSUE_PANEL_TAB_NAME]?.get())
   }
 
   /**
    * Return true if IJ's problem panel is visible and selecting the given [tab], false otherwise.
    */
-  private fun isSharedIssueTabShowing(tab: Content?): Boolean {
+  private fun isTabShowing(tab: Content?): Boolean {
     if (tab == null) {
       return false
     }
@@ -555,27 +579,10 @@ class IssuePanelService(private val project: Project) {
           }
 
       contentManager.addContent(tab)
-      contentManager.addContentManagerListener(
-        object : ContentManagerListener {
-          override fun selectionChanged(event: ContentManagerEvent) {
-            surface.isIssueTabSelected = event.content == tab
-          }
-
-          override fun contentRemoved(event: ContentManagerEvent) {
-            if (tab == event.content) {
-              nameToTabMap.remove(name)
-              tabToPanelMap.remove(tab)
-              surface.isIssueTabSelected = false
-              contentManager.removeContentManagerListener(this)
-            }
-          }
-        }
-      )
       Disposer.register(parentDisposable) { contentManager.removeContent(tab, true) }
       nameToTabMap[name] = WeakReference(tab)
       tabToPanelMap[tab] = WeakReference(uiCheckIssuePanel)
       contentManager.setSelectedContent(tab)
-      surface.isIssueTabSelected = true
     }
     uiCheckIssuePanel.issueProvider.registerUpdateListener(postIssueUpdateListener)
     uiCheckIssuePanel.addIssueSelectionListener(surface.issueListener, surface)

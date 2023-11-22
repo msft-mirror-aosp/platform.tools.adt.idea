@@ -20,6 +20,7 @@ import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.stdui.CloseButton
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorAspect
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
+import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel.DetailContent.CONNECTION
 import com.android.tools.idea.appinspection.inspectors.network.model.analytics.NetworkInspectorTracker
 import com.android.tools.idea.appinspection.inspectors.network.model.connections.ConnectionData
 import com.android.tools.idea.appinspection.inspectors.network.model.rules.RuleData
@@ -32,12 +33,12 @@ import java.awt.CardLayout
 import javax.swing.JPanel
 
 /** View to display detailed information of an interception rule or connection. */
-class NetworkInspectorDetailsPanel(
+internal class NetworkInspectorDetailsPanel(
   inspectorView: NetworkInspectorView,
   usageTracker: NetworkInspectorTracker
 ) : JPanel(BorderLayout()) {
 
-  @VisibleForTesting val connectionDetailsView: ConnectionDetailsView
+  @VisibleForTesting val connectionDataDetailsView: ConnectionDataDetailsView
 
   val ruleDetailsView: RuleDetailsView
 
@@ -55,9 +56,9 @@ class NetworkInspectorDetailsPanel(
     val rootPanel = JPanel(TabularLayout("*,Fit-", "Fit-,*"))
 
     cardLayoutView = JPanel(cardLayout)
-    connectionDetailsView = ConnectionDetailsView(inspectorView, usageTracker)
+    connectionDataDetailsView = ConnectionDataDetailsView(inspectorView, usageTracker)
     ruleDetailsView = RuleDetailsView(usageTracker)
-    cardLayoutView.add(connectionDetailsView, NetworkInspectorModel.DetailContent.CONNECTION.name)
+    cardLayoutView.add(connectionDataDetailsView, CONNECTION.name)
     cardLayoutView.add(ruleDetailsView, NetworkInspectorModel.DetailContent.RULE.name)
     val model = inspectorView.model
     model.aspect.addDependency(aspectObserver).onChange(NetworkInspectorAspect.DETAILS) {
@@ -90,7 +91,7 @@ class NetworkInspectorDetailsPanel(
   /** Updates the view to show given [data]. */
   private fun setConnectionData(data: ConnectionData) {
     background = JBColor.background()
-    connectionDetailsView.setHttpData(data)
+    connectionDataDetailsView.setConnectionData(data)
   }
 
   /** Updates the view to show given [rule]. */

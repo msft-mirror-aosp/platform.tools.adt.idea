@@ -19,6 +19,7 @@ import com.android.testutils.MockitoKt
 import com.android.testutils.time.FakeClock
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.client.AppConnection
@@ -57,17 +58,20 @@ private suspend fun <T> ReceiveChannel<T>.receiveWithTimeout(): T = withTimeout(
 
 class AppInsightsProjectLevelControllerRule(
   private val projectProvider: () -> Project,
+  private val key: InsightsProviderKey,
   private val onErrorAction: (String, HyperlinkListener?) -> Unit = { _, _ -> }
 ) : NamedExternalResource() {
   constructor(
     projectRule: ProjectRule,
+    key: InsightsProviderKey = TEST_KEY,
     onErrorAction: (String, HyperlinkListener?) -> Unit = { _, _ -> }
-  ) : this({ projectRule.project }, onErrorAction)
+  ) : this({ projectRule.project }, key, onErrorAction)
 
   constructor(
     androidProjectRule: AndroidProjectRule,
+    key: InsightsProviderKey = TEST_KEY,
     onErrorAction: (String, HyperlinkListener?) -> Unit = { _, _ -> }
-  ) : this({ androidProjectRule.project }, onErrorAction)
+  ) : this({ androidProjectRule.project }, key, onErrorAction)
 
   private val disposableRule = DisposableRule()
   val disposable: Disposable
@@ -83,6 +87,7 @@ class AppInsightsProjectLevelControllerRule(
   private lateinit var cache: AppInsightsCache
 
   override fun before(description: Description) {
+    StudioFlags.CRASHLYTICS_J_UI.override(true)
     val offlineStatusManager = OfflineStatusManagerImpl()
     scope = AndroidCoroutineScope(disposable, AndroidDispatchers.uiThread)
     clock = FakeClock(NOW)
@@ -100,7 +105,7 @@ class AppInsightsProjectLevelControllerRule(
       )
     controller =
       AppInsightsProjectLevelControllerImpl(
-        InsightsProviderKey("Fake provider"),
+        key,
         scope,
         AndroidDispatchers.workerThread,
         client,
@@ -121,6 +126,7 @@ class AppInsightsProjectLevelControllerRule(
   override fun after(description: Description) {
     runInEdtAndWait { disposableRule.after() }
     internalState.close()
+    StudioFlags.CRASHLYTICS_J_UI.clearOverride()
   }
 
   suspend fun consumeFetchState(
@@ -147,14 +153,18 @@ class AppInsightsProjectLevelControllerRule(
     var resultState = consumeNext()
     if (state.value.issues.isNotEmpty()) {
       if (resultState.mode == ConnectionMode.ONLINE) {
-        client.completeIssueVariantsCallWith(issueVariantsState)
         client.completeDetailsCallWith(detailsState)
-        client.completeListEvents(eventsState)
+        if (key != VITALS_KEY) {
+          client.completeIssueVariantsCallWith(issueVariantsState)
+          client.completeListEvents(eventsState)
+        }
       }
-      consumeNext()
-      consumeNext()
-      consumeNext()
-      client.completeListNotesCallWith(notesState)
+      if (key != VITALS_KEY) {
+        consumeNext()
+        consumeNext()
+        consumeNext()
+        client.completeListNotesCallWith(notesState)
+      }
       resultState = consumeNext()
     }
     return resultState

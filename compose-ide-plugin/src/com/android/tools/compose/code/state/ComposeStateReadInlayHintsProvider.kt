@@ -17,7 +17,7 @@ package com.android.tools.compose.code.state
 
 import com.android.tools.compose.ComposeBundle
 import com.android.tools.idea.flags.StudioFlags
-import com.google.common.base.Suppliers
+import com.android.utils.function.RunOnce
 import com.intellij.codeInsight.hints.declarative.InlayActionData
 import com.intellij.codeInsight.hints.declarative.InlayActionHandler
 import com.intellij.codeInsight.hints.declarative.InlayActionPayload
@@ -65,7 +65,7 @@ val COMPOSE_STATE_READ_SCOPE_HIGHLIGHTING_TEXT_ATTRIBUTES_KEY: TextAttributesKey
 class ComposeStateReadInlayHintsProvider : InlayHintsProvider {
   override fun createCollector(file: PsiFile, editor: Editor): InlayHintsCollector? {
     if (file !is KtFile) return null
-    if (!StudioFlags.COMPOSE_STATE_READ_HIGHLIGHTING_ENABLED.get()) return null
+    if (!StudioFlags.COMPOSE_STATE_READ_INLAY_HINTS_ENABLED.get()) return null
     return ComposeStateReadInlayHintsCollector
   }
 
@@ -108,22 +108,21 @@ private fun Editor.runAtNextCaretChange(block: () -> Unit) {
   with(caretModel) {
     addCaretListener(
       object : CaretListener {
-        private val payload =
-          Suppliers.memoize {
-            removeCaretListener(this)
-            block.invoke()
-          }
+        private val payload = RunOnce {
+          removeCaretListener(this)
+          block.invoke()
+        }
 
         override fun caretPositionChanged(event: CaretEvent) {
-          payload.get()
+          payload()
         }
 
         override fun caretAdded(event: CaretEvent) {
-          payload.get()
+          payload()
         }
 
         override fun caretRemoved(event: CaretEvent) {
-          payload.get()
+          payload()
         }
       }
     )
