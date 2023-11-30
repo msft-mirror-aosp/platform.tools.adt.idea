@@ -23,6 +23,7 @@ import com.android.resources.Keyboard;
 import com.android.resources.ScreenOrientation;
 import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.SdkVersionInfo;
+import com.android.sdklib.SystemImageTags;
 import com.android.sdklib.devices.Abi;
 import com.android.sdklib.devices.CameraLocation;
 import com.android.sdklib.devices.Device;
@@ -385,17 +386,6 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
   }
 
   private void refreshSnapshotPullDown() {
-    if (!AvdWizardUtils.emulatorSupportsSnapshotManagement(AndroidSdks.getInstance().tryToChooseSdkHandler())) {
-      // Emulator does not support stand-alone snapshot control
-      if (getModel().useChosenSnapshotBoot().get()) {
-        // The unsupported option is selected. De-select it.
-        getModel().useChosenSnapshotBoot().set(false);
-        getModel().useFastBoot().set(true);
-      }
-      myChosenSnapshotComboBox.setVisible(false);
-      myChooseBootRadioButton.setVisible(false);
-      return;
-    }
     CollectionComboBoxModel<String> snapshotModel = new CollectionComboBoxModel<>();
     // Put up to 3 snapshots onto the pull-down
     mySnapshotList.stream()
@@ -476,11 +466,11 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
 
   @VisibleForTesting
   static boolean isGoogleApiTag(IdDisplay tag) {
-    return SystemImage.WEAR_TAG.equals(tag) ||
-           SystemImage.DESKTOP_TAG.equals(tag) ||
-           SystemImage.ANDROID_TV_TAG.equals(tag) ||
-           SystemImage.GOOGLE_TV_TAG.equals(tag) ||
-           SystemImage.GOOGLE_APIS_TAG.equals(tag);
+    return SystemImageTags.WEAR_TAG.equals(tag) ||
+           SystemImageTags.DESKTOP_TAG.equals(tag) ||
+           SystemImageTags.ANDROID_TV_TAG.equals(tag) ||
+           SystemImageTags.GOOGLE_TV_TAG.equals(tag) ||
+           SystemImageTags.GOOGLE_APIS_TAG.equals(tag);
   }
 
   private boolean isIntel() {

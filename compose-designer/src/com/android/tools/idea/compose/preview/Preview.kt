@@ -500,9 +500,8 @@ class ComposePreviewRepresentation(
         var hasVisiblePreviews = false
         if (newValue) {
           surface.updateSceneViewVisibilities {
-            (it.sceneManager.model in uiCheckFilterFlow.value.modelsWithErrors).also { visible ->
-              hasVisiblePreviews = hasVisiblePreviews || visible
-            }
+            (uiCheckFilterFlow.value.modelsWithErrors?.contains(it.sceneManager.model) == true)
+              .also { visible -> hasVisiblePreviews = hasVisiblePreviews || visible }
           }
         } else {
           hasVisiblePreviews = true
@@ -514,7 +513,18 @@ class ComposePreviewRepresentation(
 
   private val postIssueUpdateListenerForUiCheck =
     object : Runnable {
-      var activated = false
+      private var activated = false
+
+      fun activate() {
+        if (!activated) {
+          activated = true
+          uiCheckFilterFlow.value.modelsWithErrors = null
+        }
+      }
+
+      fun deactivate() {
+        activated = false
+      }
 
       override fun run() {
         if (!activated) {
@@ -526,6 +536,10 @@ class ComposePreviewRepresentation(
           .getUnsuppressedIssues()
           .map { it.source }
           .forEach { models.addAll(it.models) }
+        if (models == uiCheckFilterFlow.value.modelsWithErrors) {
+          // No changes in which models have error, so no need to recompute preview visibilities
+          return
+        }
         uiCheckFilterFlow.value.modelsWithErrors = models
         if (isUiCheckFilterEnabled) {
           ApplicationManager.getApplication().invokeLater {
@@ -589,7 +603,7 @@ class ComposePreviewRepresentation(
     )
     val startTime = System.currentTimeMillis()
     qualityManager.pause()
-    uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance, surface.scale)
+    uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance)
     withContext(uiThread) {
       emptyUiCheckPanel.apply {
         isVisible = true
@@ -600,7 +614,7 @@ class ComposePreviewRepresentation(
     val completableDeferred =
       CompletableDeferred<Unit>().apply {
         invokeOnCompletion {
-          postIssueUpdateListenerForUiCheck.activated = true
+          postIssueUpdateListenerForUiCheck.activate()
           VisualLintUsageTracker.getInstance()
             .trackFirstRunTime(
               System.currentTimeMillis() - startTime,
@@ -633,7 +647,7 @@ class ComposePreviewRepresentation(
 
   private suspend fun onUiCheckPreviewStop() {
     qualityManager.resume()
-    postIssueUpdateListenerForUiCheck.activated = false
+    postIssueUpdateListenerForUiCheck.deactivate()
     uiCheckFilterFlow.value.basePreviewInstance?.let {
       IssuePanelService.getInstance(project)
         .stopUiCheck(it.instanceId, surface, postIssueUpdateListenerForUiCheck)
@@ -641,9 +655,6 @@ class ComposePreviewRepresentation(
     withContext(uiThread) {
       surface.layeredPane.remove(emptyUiCheckPanel)
       surface.updateSceneViewVisibilities { true }
-      (uiCheckFilterFlow.value as? UiCheckModeFilter.Enabled)?.let {
-        surface.setScale(it.surfaceScale)
-      }
     }
     uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
   }
@@ -1004,18 +1015,26 @@ class ComposePreviewRepresentation(
       quality = qualityManager.getTargetQuality(layoutlibSceneManager),
     )
 
-  private fun onAfterRender() {
+  private fun onAfterRender(previewsCount: Int) {
     composeWorkBench.hasRendered = true
-    if (!hasRenderedAtLeastOnce.getAndSet(true)) {
-      logComposePreviewLiteModeEvent(
-        ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.OPEN_AND_RENDER
-      )
-    }
     // Some Composables (e.g. Popup) delay their content placement and wrap them into a coroutine
     // controlled by the Compose clock. For that reason, we need to call
     // executeCallbacksAndRequestRender() once, to make sure the queued behaviors are triggered
     // and displayed in static preview.
     surface.sceneManagers.forEach { it.executeCallbacksAndRequestRender(null) }
+
+    // Only update the hasRenderedAtLeastOnce field if we rendered at least one preview. Otherwise,
+    // we might end up triggering unwanted behaviors (e.g. zooming incorrectly) when refresh happens
+    // with 0 previews, e.g. when the panel is initializing. hasRenderedAtLeastOnce is also checked
+    // when updating the animation panel visibility and when looking for render errors, which can
+    // only happen if at least one preview is (attempted to be) rendered.
+    if (previewsCount > 0 && !hasRenderedAtLeastOnce.getAndSet(true)) {
+      logComposePreviewLiteModeEvent(
+        ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.OPEN_AND_RENDER
+      )
+      // Restore the zoom or zoom-to-fit when rendering the previews for the first time
+      surface.restoreZoomOrZoomToFit()
+    }
   }
 
   /**
@@ -1266,6 +1285,8 @@ class ComposePreviewRepresentation(
             refreshProgressIndicator.text =
               message("refresh.progress.indicator.refreshing.all.previews")
             composeWorkBench.updateProgress(message("panel.initializing"))
+            postIssueUpdateListenerForUiCheck.deactivate()
+            emptyUiCheckPanel.isVisible = previewModeManager.mode.value is PreviewMode.UiCheck
             doRefreshSync(
               previewsToRender,
               refreshRequest.refreshType == ComposePreviewRefreshType.QUICK,
@@ -1292,6 +1313,10 @@ class ComposePreviewRepresentation(
       } else {
         if (it != null) invalidate()
         composeWorkBench.onRefreshCompleted()
+      }
+
+      if (previewModeManager.mode.value is PreviewMode.UiCheck) {
+        postIssueUpdateListenerForUiCheck.activate()
       }
 
       launch(uiThread) {
@@ -1474,7 +1499,10 @@ class ComposePreviewRepresentation(
       is PreviewMode.Default -> {
         sceneComponentProvider.enabled = true
         invalidateAndRefresh()
-        surface.repaint()
+        withContext(uiThread) {
+          surface.repaint()
+          surface.zoomToFit()
+        }
       }
       is PreviewMode.Interactive -> {
         startInteractivePreview(mode.selected as ComposePreviewElementInstance)
@@ -1518,14 +1546,14 @@ class ComposePreviewRepresentation(
       is PreviewMode.Interactive -> {
         log.debug("Stopping interactive")
         onInteractivePreviewStop()
-        requestVisibilityAndNotificationsUpdate()
       }
       is PreviewMode.UiCheck -> {
         log.debug("Stopping UI check")
         onUiCheckPreviewStop()
       }
       is PreviewMode.AnimationInspection -> {
-        onInteractivePreviewStop()
+        log.debug("Stopping Animation Preview")
+        requestVisibilityAndNotificationsUpdate()
         withContext(uiThread) {
           // Close the animation inspection panel
           ComposePreviewAnimationManager.closeCurrentInspector()

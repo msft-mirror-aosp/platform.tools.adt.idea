@@ -32,6 +32,7 @@ import com.android.builder.model.ProjectBuildOutput;
 import com.android.builder.model.TestVariantBuildOutput;
 import com.android.builder.model.VariantBuildOutput;
 import com.android.ddmlib.IDevice;
+import com.android.ide.common.build.BaselineProfileDetails;
 import com.android.ide.common.build.GenericBuiltArtifact;
 import com.android.ide.common.build.GenericBuiltArtifacts;
 import com.android.ide.common.build.GenericBuiltArtifactsLoader;
@@ -80,6 +81,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -224,19 +226,22 @@ public final class GradleApkProvider implements ApkProvider {
                   variant.getMainArtifact().getAbiFilters(),
                   deviceAbis));
               // Add the additional split containing the use-sdk-library manifest element
-              apkFileList.add(new ApkFileUnit(androidModel.getModuleName(), variant.getMainArtifact().getPrivacySandboxSdkInfo().getAdditionalApkSplitFile()));
+              apkFileList.addAll(getSplitApksForPrivacySandbox(androidModel.getModuleName(),
+                                                            variant.getMainArtifact().getPrivacySandboxSdkInfo()
+                                                              .getAdditionalApkSplitFile()));
             } else {
               // Legacy Privacy Sandbox APKs need to be installed together and with
               // the base APK.
               apkFileList.addAll(
-                getApksFromLegacyPrivacySandboxSdks(
+                getSplitApksForPrivacySandbox(
                   androidModel.getModuleName(),
                   variant.getMainArtifact()
                     .getPrivacySandboxSdkInfo()
                     .getOutputListingLegacyFile()));
             }
           }
-          apkList.add(new ApkInfo(apkFileList, pkgName));
+
+          apkList.add(new ApkInfo(apkFileList, pkgName, getBaselineProfiles(variant.getMainArtifact(), myFacet)));
           break;
 
         case AppBundleOutputModel:
@@ -304,11 +309,46 @@ public final class GradleApkProvider implements ApkProvider {
     for (ApkInfo info : apkList) {
       logger.info(String.format("  %s =>", info.getApplicationId()));
       for (ApkFileUnit file : info.getFiles()) {
-        logger.info(String.format("    %s : %s", file.getModuleName(), file.getApkFile()));
+        logger.info(String.format("    apk from %s : %s", file.getModuleName(), file.getApkFile()));
+      }
+      for (BaselineProfileDetails bps: info.getBaselineProfiles()) {
+        logger.info("    baseline prof: api ["+ bps.getMinApi()+","+bps.getMaxApi()+"]");
+        for (File f: bps.getBaselineProfiles()) {
+          logger.info("        md : '" + f.getName() + "'");
+        }
       }
     }
 
     return apkList;
+  }
+
+  @NotNull
+  private List<BaselineProfileDetails> getBaselineProfiles(IdeAndroidArtifact artifact, AndroidFacet facet) {
+    GradleAndroidModel androidModel = GradleAndroidModel.get(facet);
+    if (androidModel == null) {
+      return emptyList();
+    }
+
+    if (!androidModel.getFeatures().isBuildOutputFileSupported()) {
+      return emptyList();
+    }
+
+    String outputFile = getOutputListingFile(artifact.getBuildInformation(), OutputType.Apk);
+    if (outputFile == null) {
+        return emptyList();
+    }
+
+    GenericBuiltArtifacts builtArtifacts = GenericBuiltArtifactsLoader.loadFromFile(new File(outputFile), new LogWrapper(getLogger()));
+    if (builtArtifacts == null) {
+        return emptyList();
+    }
+
+    List<BaselineProfileDetails> bp = builtArtifacts.getBaselineProfiles();
+    if (bp == null) {
+      return emptyList();
+    }
+
+    return bp;
   }
 
   @NotNull
@@ -453,13 +493,13 @@ public final class GradleApkProvider implements ApkProvider {
   }
 
   @NotNull
-  static List<ApkFileUnit> getApksFromLegacyPrivacySandboxSdks(
+  static List<ApkFileUnit> getSplitApksForPrivacySandbox(
     @NotNull String moduleName,
-    @NotNull File outputListingForLegacyPrivacySandboxFile
+    @NotNull File builtArtifactMetadataFile
   ) {
     List<GenericBuiltArtifacts> builtArtifacts =
       GenericBuiltArtifactsLoader.loadListFromFile(
-        outputListingForLegacyPrivacySandboxFile, new LogWrapper(getLogger()));
+        builtArtifactMetadataFile, new LogWrapper(getLogger()));
 
     List<ApkFileUnit> list = new ArrayList<>();
     for (GenericBuiltArtifacts builtArtifact : builtArtifacts) {

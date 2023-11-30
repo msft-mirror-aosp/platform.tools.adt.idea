@@ -141,6 +141,33 @@ public class RenderTaskTest extends AndroidTestCase {
     });
   }
 
+  public void testRenderCrash() {
+    VirtualFile layoutFile = myFixture.addFileToProject("res/layout/foo.xml", "").getVirtualFile();
+    Configuration configuration = RenderTestUtil.getConfiguration(myModule, layoutFile);
+    RenderLogger logger = mock(RenderLogger.class);
+
+    RenderTask.TestEventListener eventListener = new RenderTask.TestEventListener() {
+      @Override
+      public void onAfterRender() {
+        // Inject an exception during rendering.
+        // Inflation will work fine without errors.
+        throw new IllegalStateException();
+      }
+    };
+    RenderTestUtil.withRenderTask(myFacet, layoutFile, configuration, logger, task -> {
+      // Make sure we throw an exception during the inflate call
+      try {
+        RenderResult result = task.render().get();
+        assertEquals(Result.Status.ERROR_RENDER, result.getRenderResult().getStatus());
+        assertTrue(result.getRenderResult().getException() instanceof IllegalStateException);
+        assertEquals("Render error", result.getRenderResult().getErrorMessage());
+      }
+      catch (ExecutionException | InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }, false, eventListener);
+  }
+
 
   public void testDrawableRender() {
     VirtualFile drawableFile = myFixture.addFileToProject("res/drawable/test.xml",
@@ -367,11 +394,12 @@ public class RenderTaskTest extends AndroidTestCase {
       assertEquals(expectedWidth / 2, result.getRenderedImage().getWidth());
 
       // Using 0% quality doesn't make much sense, but the image should
-      // be of size 1x1 in such unexpected cases
+      // be of size 0x0 in such unexpected cases
       task.setQuality(0f);
       result = checkSimpleLayoutResult(task.render());
-      assertEquals(1, result.getRenderedImage().getHeight());
-      assertEquals(1, result.getRenderedImage().getWidth());
+      assertFalse(result.getRenderedImage().isValid());
+      assertEquals(0, result.getRenderedImage().getHeight());
+      assertEquals(0, result.getRenderedImage().getWidth());
 
       // Setting the quality back to 100%
       task.setQuality(1f);
@@ -955,9 +983,9 @@ public class RenderTaskTest extends AndroidTestCase {
     Configuration configuration = RenderTestUtil.getConfiguration(myModule, file);
     RenderLogger logger = mock(RenderLogger.class);
 
-    RenderTask task1 = createRenderTask(myFacet, file, configuration, logger, getLowPriorityRenderingTopicForTest());
-    RenderTask task2 = createRenderTask(myFacet, file, configuration, logger, getHighPriorityRenderingTopicForTest());
-    RenderTask task3 = createRenderTask(myFacet, file, configuration, logger, getLowPriorityRenderingTopicForTest());
+    RenderTask task1 = createRenderTask(myFacet, file, configuration, logger, getLowPriorityRenderingTopicForTest(), RenderTask.NOP_TEST_EVENT_LISTENER);
+    RenderTask task2 = createRenderTask(myFacet, file, configuration, logger, getHighPriorityRenderingTopicForTest(), RenderTask.NOP_TEST_EVENT_LISTENER);
+    RenderTask task3 = createRenderTask(myFacet, file, configuration, logger, getLowPriorityRenderingTopicForTest(), RenderTask.NOP_TEST_EVENT_LISTENER);
 
     CountDownLatch latch = new CountDownLatch(1);
 

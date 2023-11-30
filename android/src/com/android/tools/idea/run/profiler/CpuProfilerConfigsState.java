@@ -98,6 +98,17 @@ public class CpuProfilerConfigsState implements PersistentStateComponent<CpuProf
     return false;
   }
 
+  public CpuProfilerConfig getNativeAllocationsConfigForTaskConfig() {
+    var nativeAllocationsConfig =
+      myTaskConfigs.stream().filter(x -> CpuProfilerConfig.Technology.NATIVE_ALLOCATIONS.getName().equals(x.getName())).findFirst();
+
+    if (!nativeAllocationsConfig.isPresent()) {
+      // Task config should always have Native allocations config
+      return new CpuProfilerConfig(CpuProfilerConfig.Technology.NATIVE_ALLOCATIONS);
+    }
+    return nativeAllocationsConfig.get();
+  }
+
   @NotNull
   public static List<CpuProfilerConfig> getDefaultConfigs() {
     ImmutableList.Builder<CpuProfilerConfig> configs = new ImmutableList.Builder<CpuProfilerConfig>()
@@ -110,11 +121,12 @@ public class CpuProfilerConfigsState implements PersistentStateComponent<CpuProf
 
   @NotNull
   public static List<CpuProfilerConfig> getTaskDefaultConfigs() {
-    //Exclude System Trace config since it doesn't have any updatable attribute
     ImmutableList.Builder<CpuProfilerConfig> configs = new ImmutableList.Builder<CpuProfilerConfig>()
       .add(new CpuProfilerConfig(CpuProfilerConfig.Technology.SAMPLED_NATIVE))
       .add(new CpuProfilerConfig(CpuProfilerConfig.Technology.INSTRUMENTED_JAVA))
-      .add(new CpuProfilerConfig(CpuProfilerConfig.Technology.SAMPLED_JAVA));
+      .add(new CpuProfilerConfig(CpuProfilerConfig.Technology.SAMPLED_JAVA))
+      .add(new CpuProfilerConfig(CpuProfilerConfig.Technology.NATIVE_ALLOCATIONS))
+      .add(new CpuProfilerConfig(CpuProfilerConfig.Technology.SYSTEM_TRACE));
     return configs.build();
   }
 

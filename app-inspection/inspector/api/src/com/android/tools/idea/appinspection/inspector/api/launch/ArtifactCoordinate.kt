@@ -16,6 +16,7 @@
 package com.android.tools.idea.appinspection.inspector.api.launch
 
 import com.android.tools.app.inspection.AppInspection
+import org.jetbrains.annotations.TestOnly
 
 /**
  * Contains information that uniquely identifies the library.
@@ -25,12 +26,12 @@ import com.android.tools.app.inspection.AppInspection
  * [version] can optionally be '+' to match any version of the artifact, when used in the context of
  * compatibility checks.
  */
-data class ArtifactCoordinate(val groupId: String, val artifactId: String, val version: String) {
-  /** The coordinate for this library, i.e. how it would appear in a Gradle dependencies block. */
-  override fun toString() = "${groupId}:${artifactId}:${version}"
+interface ArtifactCoordinate {
+  val groupId: String
+  val artifactId: String
+  val version: String
 
-  /** Returns true if the artifacts are the same without checking the version. */
-  fun sameArtifact(other: ArtifactCoordinate): Boolean =
+  fun sameArtifact(other: ArtifactCoordinate) =
     groupId == other.groupId && artifactId == other.artifactId
 
   fun toArtifactCoordinateProto(): AppInspection.ArtifactCoordinate =
@@ -39,4 +40,25 @@ data class ArtifactCoordinate(val groupId: String, val artifactId: String, val v
       .setArtifactId(artifactId)
       .setVersion(version)
       .build()
+
+  fun toCoordinateString() = "${groupId}:${artifactId}:${version}"
+
+  fun toAny(): ArtifactCoordinate = AnyArtifactCoordinate(this)
+
+  private class AnyArtifactCoordinate(private val coordinate: ArtifactCoordinate) :
+    ArtifactCoordinate by coordinate {
+    override val version = "0.0.0"
+  }
+
+  companion object {
+    @TestOnly
+    operator fun invoke(groupId: String, artifactId: String, version: String) =
+      object : ArtifactCoordinate {
+        override val groupId = groupId
+        override val artifactId = artifactId
+        override val version = version
+
+        override fun toString() = toCoordinateString()
+      }
+  }
 }

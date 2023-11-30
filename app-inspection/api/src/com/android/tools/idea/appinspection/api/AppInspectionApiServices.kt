@@ -17,10 +17,10 @@ package com.android.tools.idea.appinspection.api
 
 import com.android.tools.idea.appinspection.api.process.ProcessDiscovery
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
-import com.android.tools.idea.appinspection.inspector.api.launch.ArtifactCoordinate
 import com.android.tools.idea.appinspection.inspector.api.launch.LaunchParameters
 import com.android.tools.idea.appinspection.inspector.api.launch.LibraryCompatibility
 import com.android.tools.idea.appinspection.inspector.api.launch.LibraryCompatibilityInfo
+import com.android.tools.idea.appinspection.inspector.api.launch.MinimumArtifactCoordinate
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.internal.AppInspectionProcessDiscovery
@@ -99,11 +99,10 @@ interface AppInspectionApiServices {
 suspend fun AppInspectionApiServices.checkVersion(
   project: String,
   process: ProcessDescriptor,
-  groupId: String,
-  artifactId: String,
+  artifactCoordinate: MinimumArtifactCoordinate,
   expectedClassNames: List<String> = emptyList()
 ): LibraryCompatibilityInfo? {
-  val coordinateAnyVersion = ArtifactCoordinate(groupId, artifactId, "0.0.0")
+  val coordinateAnyVersion = artifactCoordinate.toAny()
   return attachToProcess(process, project)
     .getLibraryVersions(listOf(LibraryCompatibility(coordinateAnyVersion, expectedClassNames)))
     .singleOrNull()

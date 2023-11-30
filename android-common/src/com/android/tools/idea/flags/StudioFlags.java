@@ -826,6 +826,11 @@ public final class StudioFlags {
     "When this flag is enabled, LayoutInspector be integrated in the Running Devices tool window, instead of in its own tool window.",
     true);
 
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_THROW_UNEXPECTED_ERROR = Flag.create(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.throw.unexpected.error", "Throw exception when encountering an unexpected error",
+    "When this flag is enabled, LayoutInspector will throw an exception when an unexpected error is being logged to the metrics.",
+    StudioPathManager.isRunningFromSources());
+
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IGNORE_RECOMPOSITIONS_IN_FRAMEWORK = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.ignore.framework.recompositions", "Ignore recompositions in compose framework",
     "When this flag is enabled, LayoutInspector will disregard all recomposition counts for framework composables, " +
@@ -1163,7 +1168,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_ESSENTIALS_MODE = Flag.create(
     COMPOSE, "preview.essentials.mode", "Enable Compose Preview Essentials Mode",
     "If enabled, Compose Preview Essentials Mode will be enabled.",
-    true);
+    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_DOUBLE_RENDER = Flag.create(
     COMPOSE, "preview.double.render", "Enable the Compose double render mode",
@@ -1337,6 +1342,11 @@ public final class StudioFlags {
     COMPOSE, "compose.preview.render.quality.notify.time", "Notify refresh time for render quality refreshes",
     "If enabled, the time taken in render quality refreshes will be notified each time",
     false);
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR = Flag.create(
+    COMPOSE, "compose.preview.keep.image.on.error", "Keeps the last valid image after a render error",
+    "If enabled, when an error happens, the surface will keep the last valid image",
+    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
   //endregion
 
   // region Wear surfaces
@@ -1345,7 +1355,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> GLANCE_APP_WIDGET_PREVIEW = Flag.create(
     WEAR_SURFACES, "glance.preview.appwidget.enabled", "Enable Glance AppWidget preview",
     "If enabled, a preview for annotated glance app widget composable functions is displayed",
-    IdeChannel.getChannel().isLessStableThan(IdeChannel.Channel.BETA));
+    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
 
   public static final Flag<Boolean> GLANCE_TILE_PREVIEW = Flag.create(
     WEAR_SURFACES, "glance.preview.tile.enabled", "Enable Glance Tile preview",
@@ -1355,7 +1365,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> WEAR_TILE_PREVIEW = Flag.create(
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
     "If enabled, a preview for functions annotated with @Preview and returning TilePreviewData is displayed",
-    true);
+    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
   // endregion
 
   // region Wear Health Services
@@ -1417,7 +1427,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NETWORK_INSPECTOR_GRPC = Flag.create(
     NETWORK_INSPECTOR, "grpc", "Track gRPC Connections",
     "Track gRPC Connections",
-    false
+    true
   );
   // endregion
 
@@ -1605,12 +1615,6 @@ public final class StudioFlags {
 
   // region App Links Assistant
   private static final FlagGroup APP_LINKS_ASSISTANT = new FlagGroup(FLAGS, "app.links.assistant", "App Links Assistant");
-  public static final Flag<Boolean> KOTLIN_INTENT_HANDLING =
-    Flag.create(APP_LINKS_ASSISTANT, "kotlin.intent.handling", "Kotlin Intent Handling",
-                "Support adding logic for intent handling in Kotlin.", true);
-  public static final Flag<Boolean> APP_LINKS_ASSISTANT_V2 =
-    Flag.create(APP_LINKS_ASSISTANT, "v2", "App Links Assistant V2",
-                "Revamped App Links Assistant (new surfaces and navigation between surfaces).", true);
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
                 "Improvements to Website Association Generator.", false);

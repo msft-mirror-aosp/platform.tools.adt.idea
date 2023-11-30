@@ -24,14 +24,14 @@ import com.android.repository.impl.meta.TypeDetails
 import com.android.repository.testframework.FakePackage
 import com.android.repository.testframework.FakeRepoManager
 import com.android.resources.Density
+import com.android.sdklib.SystemImageTags.DEFAULT_TAG
+import com.android.sdklib.SystemImageTags.GOOGLE_APIS_TAG
+import com.android.sdklib.SystemImageTags.PLAY_STORE_TAG
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.sdklib.repository.IdDisplay
 import com.android.sdklib.repository.targets.SystemImage
-import com.android.sdklib.repository.targets.SystemImage.DEFAULT_TAG
-import com.android.sdklib.repository.targets.SystemImage.GOOGLE_APIS_TAG
-import com.android.sdklib.repository.targets.SystemImage.PLAY_STORE_TAG
 import com.android.testutils.MockitoKt.any
 import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
@@ -51,11 +51,12 @@ import com.android.tools.idea.appinspection.inspector.api.AppInspectionLibraryMi
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionProcessNoLongerExistsException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionServiceException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionVersionIncompatibleException
-import com.android.tools.idea.appinspection.inspector.api.launch.ArtifactCoordinate
 import com.android.tools.idea.appinspection.inspector.api.launch.LaunchParameters
+import com.android.tools.idea.appinspection.inspector.api.launch.RunningArtifactCoordinate
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
+import com.android.tools.idea.appinspection.test.mockMinimumArtifactCoordinate
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
@@ -1471,7 +1472,8 @@ class AppInspectionInspectorClientWithFailingClientTest {
   private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
   private val inspectionRule = AppInspectionInspectorRule(projectRule)
   private var throwOnState: AttachErrorState = AttachErrorState.UNKNOWN_ATTACH_ERROR_STATE
-  private var exceptionToThrow: Exception = RuntimeException("expected")
+  private var exceptionToThrow: Exception =
+    ConnectionFailedException("expected", AttachErrorCode.CONNECT_TIMEOUT)
   private val getMonitor: (AbstractInspectorClient) -> InspectorClientLaunchMonitor = { client ->
     spy(
         InspectorClientLaunchMonitor(
@@ -1526,7 +1528,7 @@ class AppInspectionInspectorClientWithFailingClientTest {
     invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     val notifications = inspectorRule.notificationModel.notifications
     assertThat(notifications).hasSize(1)
-    assertThat(notifications[0].message).isEqualTo("An unknown error happened.")
+    assertThat(notifications[0].message).isEqualTo("expected")
     assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
     val usages =
       usageTrackerRule.testTracker.usages.filter {
@@ -1551,7 +1553,7 @@ class AppInspectionInspectorClientWithFailingClientTest {
     invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     val notifications = inspectorRule.notificationModel.notifications
     assertThat(notifications).hasSize(1)
-    assertThat(notifications[0].message).isEqualTo("An unknown error happened.")
+    assertThat(notifications[0].message).isEqualTo("expected")
     assertThat(inspectorRule.inspectorClient.isConnected).isFalse()
     val usages =
       usageTrackerRule.testTracker.usages.filter {
@@ -1623,21 +1625,27 @@ class AppInspectionInspectorClientWithFailingClientTest {
     checkException(
       AppInspectionArtifactNotFoundException(
         "expected",
-        ArtifactCoordinate("group", "id", "1.1.0")
+        RunningArtifactCoordinate(mockMinimumArtifactCoordinate("group", "id", "1.1.0"), "1.1.0")
       ),
       AttachErrorCode.APP_INSPECTION_ARTIFACT_NOT_FOUND
     )
     checkException(
       AppInspectionArtifactNotFoundException(
         "expected",
-        ArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0")
+        RunningArtifactCoordinate(
+          mockMinimumArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0"),
+          "1.3.0"
+        )
       ),
       AttachErrorCode.APP_INSPECTION_COMPOSE_INSPECTOR_NOT_FOUND
     )
     checkException(
       AppInspectionArtifactNotFoundException(
         "Artifact androidx.compose.ui:ui:1.3.0 could not be resolved on $GMAVEN_HOSTNAME.",
-        ArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0"),
+        RunningArtifactCoordinate(
+          mockMinimumArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0"),
+          "1.3.0"
+        ),
         UnknownHostException(GMAVEN_HOSTNAME)
       ),
       AttachErrorCode.APP_INSPECTION_FAILED_MAVEN_DOWNLOAD
@@ -1687,7 +1695,8 @@ private fun runWithFlagState(desiredFlagState: Boolean, task: () -> Unit) {
 
 private val failingApiServices =
   object : AppInspectionApiServices {
-    var exception: Throwable = RuntimeException()
+    var exception: Throwable =
+      ConnectionFailedException("expected", AttachErrorCode.CONNECT_TIMEOUT)
 
     override val processDiscovery
       get() = throw RuntimeException()

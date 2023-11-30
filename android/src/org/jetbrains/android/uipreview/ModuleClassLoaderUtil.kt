@@ -54,6 +54,7 @@ import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget
 import org.jetbrains.annotations.VisibleForTesting
 import org.objectweb.asm.ClassWriter
 import java.io.File
+import java.lang.ref.WeakReference
 import java.net.URL
 import java.nio.file.Path
 import java.util.Collections
@@ -149,7 +150,7 @@ internal class ModuleClassLoaderImpl(module: Module,
                                      val projectTransforms: ClassTransform,
                                      val nonProjectTransforms: ClassTransform,
                                      private val binaryCache: ClassBinaryCache,
-                                     private val diagnostics: ModuleClassLoaderDiagnosticsWrite) : UserDataHolderBase(), DelegatingClassLoader.Loader, Disposable {
+                                     private val diagnostics: ModuleClassLoaderDiagnosticsWrite) : DelegatingClassLoader.Loader, Disposable {
   private val loader: DelegatingClassLoader.Loader
   private val parentLoader = parentClassLoader?.let { ClassLoaderLoader(it) }
 
@@ -158,6 +159,8 @@ internal class ModuleClassLoaderImpl(module: Module,
   private val _projectLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
   private val _nonProjectLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
   private val _projectOverlayLoadedClassNames: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
+
+  private val holder = UserDataHolderBase()
 
 
   /**
@@ -340,14 +343,21 @@ internal class ModuleClassLoaderImpl(module: Module,
    * Checks whether any of the .class files loaded by this loader have changed since the creation of this class loader.
    */
   fun isUserCodeUpToDate(module: Module?): Boolean {
-    return if (module == null) true
+    return if (module == null) {
+      true
+    }
     // Cache the result of isUserCodeUpToDateNonCached until any PSI modifications have happened.
-    else CachedValuesManager.getManager(module.project).getCachedValue(this) {
-      CachedValueProvider.Result.create(
-        isUserCodeUpToDateNonCached(),
-        PsiModificationTracker.MODIFICATION_COUNT,
-        ModuleClassLoaderOverlays.getInstance(module)
-      )
+    else {
+      val overlayModificationTracker = ModuleClassLoaderOverlays.getInstance(module).modificationTracker
+      // Avoid the cached value holding "this"
+      val thisReference = WeakReference(this)
+      CachedValuesManager.getManager(module.project).getCachedValue(holder) {
+        CachedValueProvider.Result.create(
+          thisReference.get()?.isUserCodeUpToDateNonCached() ?: false,
+          PsiModificationTracker.MODIFICATION_COUNT,
+          overlayModificationTracker
+        )
+      }
     }
   }
 

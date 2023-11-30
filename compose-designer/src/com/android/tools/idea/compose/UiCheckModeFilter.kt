@@ -60,7 +60,7 @@ private val lightDarkModes =
  * and generate multiple previews, one per reference device for the user to check.
  */
 sealed class UiCheckModeFilter {
-  var modelsWithErrors: Set<NlModel> = emptySet()
+  var modelsWithErrors: Set<NlModel>? = null
   abstract val basePreviewInstance: ComposePreviewElementInstance?
 
   abstract fun filterPreviewInstances(
@@ -79,8 +79,7 @@ sealed class UiCheckModeFilter {
     override fun filterGroups(groups: Set<PreviewGroup.Named>): Set<PreviewGroup.Named> = groups
   }
 
-  class Enabled(selected: ComposePreviewElementInstance, val surfaceScale: Double) :
-    UiCheckModeFilter() {
+  class Enabled(selected: ComposePreviewElementInstance) : UiCheckModeFilter() {
     override val basePreviewInstance = selected
 
     private val uiCheckPreviews: Collection<ComposePreviewElementInstance> =

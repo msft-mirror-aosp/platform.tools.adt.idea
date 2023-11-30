@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.profilers.taskbased.tasks
+package com.android.tools.idea.appinspection.inspector.api.launch
 
-import com.android.tools.profilers.tasks.ProfilerTaskType
-import javax.swing.Icon
+data class RunningArtifactCoordinate(
+  private val minimum: MinimumArtifactCoordinate,
+  override val version: String
+) : ArtifactCoordinate {
+  override val groupId = minimum.groupId
+  override val artifactId = minimum.artifactId
 
-/**
- * Module for individual task grid item UI.
- * Used to represent each item in the Task-Based UX home tab's grid of tasks.
- */
-data class TaskGridItemModel(
-  val type: ProfilerTaskType,
-  val iconPath: String,
-)
+  override fun toString() = toCoordinateString()
+}

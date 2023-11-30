@@ -16,18 +16,20 @@
 package com.android.tools.idea.flags;
 
 import com.android.tools.idea.flags.ExperimentalConfigurable.ApplyState;
-import com.google.common.annotations.VisibleForTesting;
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.CompositeConfigurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SearchableConfigurable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.TitledSeparator;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
@@ -95,6 +97,7 @@ public class ExperimentalSettingsConfigurable extends CompositeConfigurable<Expe
   public JComponent createComponent() {
     myExtensionPanel.setLayout(new BoxLayout(myExtensionPanel, BoxLayout.PAGE_AXIS));
     myConfigurableMap.forEach((name, configurable) -> {
+      myExtensionPanel.add(new JLabel(" "));
       myExtensionPanel.add(new TitledSeparator(name));
       myExtensionPanel.add(configurable.createComponent());
     });
@@ -104,13 +107,29 @@ public class ExperimentalSettingsConfigurable extends CompositeConfigurable<Expe
   @Override
   public void apply() throws ConfigurationException {
     boolean shouldApply = true;
+    boolean shouldAskForRestart = false;
     boolean shouldRestart = false;
+    Application application = ApplicationManager.getApplication();
     for (ExperimentalConfigurable configurable : getConfigurables()) {
       ApplyState state = configurable.preApplyCallback();
       shouldApply &= (state != ApplyState.BLOCK);
-      shouldRestart |= (state == ApplyState.RESTART);
+      shouldAskForRestart |= (state == ApplyState.RESTART);
     }
+    // Don't ask for restart in unit test mode
+    shouldAskForRestart &= !application.isUnitTestMode();
     if (!shouldApply) return;
+    if (shouldAskForRestart) {
+      String action = application.isRestartCapable() ? "Restart" : "Shutdown";
+      int result =
+        Messages.showYesNoDialog("Android Studio must be restarted for changes to take effect.", "Restart Required", action, "Cancel",
+                                 Messages.getQuestionIcon());
+      if (result == Messages.YES) {
+        shouldRestart = true;
+      }
+      else {
+        return;
+      }
+    }
     super.apply();
     for (ExperimentalConfigurable configurable : getConfigurables()) {
       configurable.postApplyCallback();

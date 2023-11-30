@@ -25,12 +25,14 @@ import com.android.tools.idea.appinspection.api.AppInspectionApiServices
 import com.android.tools.idea.appinspection.ide.InspectorArtifactService
 import com.android.tools.idea.appinspection.inspector.api.AppInspectionArtifactNotFoundException
 import com.android.tools.idea.appinspection.inspector.api.AppInspectorMessenger
-import com.android.tools.idea.appinspection.inspector.api.launch.ArtifactCoordinate
 import com.android.tools.idea.appinspection.inspector.api.launch.LibraryCompatibilityInfo
 import com.android.tools.idea.appinspection.inspector.api.launch.LibraryCompatibilityInfo.Status
+import com.android.tools.idea.appinspection.inspector.api.launch.MinimumArtifactCoordinate
+import com.android.tools.idea.appinspection.inspector.api.launch.RunningArtifactCoordinate
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.internal.AppInspectionTarget
+import com.android.tools.idea.appinspection.test.mockMinimumArtifactCoordinate
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.Info
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
@@ -41,12 +43,11 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.COM
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.COMPOSE_JAR_FOUND_FOUND_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.COMPOSE_MAY_CAUSE_APP_CRASH_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient
-import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient.Companion.determineArtifactId
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient.Companion.determineArtifactCoordinate
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient.Companion.resolveFolder
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.INCOMPATIBLE_LIBRARY_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.INSPECTOR_NOT_FOUND_USE_SNAPSHOT_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.MAVEN_DOWNLOAD_PROBLEM
-import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.MINIMUM_COMPOSE_COORDINATE
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.PROGUARDED_LIBRARY_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.VERSION_MISSING_MESSAGE_KEY
 import com.android.tools.idea.projectsystem.ProjectSystemService
@@ -147,12 +148,15 @@ class ComposeLayoutInspectorClientTest {
     val artifactService =
       object : InspectorArtifactService {
         override suspend fun getOrResolveInspectorArtifact(
-          artifactCoordinate: ArtifactCoordinate,
+          artifactCoordinate: RunningArtifactCoordinate,
           project: Project
         ): Path {
           throw AppInspectionArtifactNotFoundException(
             "not found",
-            ArtifactCoordinate("group", "id", "1.3.0-SNAPSHOT")
+            RunningArtifactCoordinate(
+              mockMinimumArtifactCoordinate("group", "id", "1.3.0-SNAPSHOT"),
+              "1.3.0-SNAPSHOT"
+            )
           )
         }
       }
@@ -177,12 +181,15 @@ class ComposeLayoutInspectorClientTest {
     val artifactService =
       object : InspectorArtifactService {
         override suspend fun getOrResolveInspectorArtifact(
-          artifactCoordinate: ArtifactCoordinate,
+          artifactCoordinate: RunningArtifactCoordinate,
           project: Project
         ): Path {
           throw AppInspectionArtifactNotFoundException(
             "not found",
-            ArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0")
+            RunningArtifactCoordinate(
+              mockMinimumArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0"),
+              "1.3.0"
+            )
           )
         }
       }
@@ -207,12 +214,15 @@ class ComposeLayoutInspectorClientTest {
     val artifactService =
       object : InspectorArtifactService {
         override suspend fun getOrResolveInspectorArtifact(
-          artifactCoordinate: ArtifactCoordinate,
+          artifactCoordinate: RunningArtifactCoordinate,
           project: Project
         ): Path {
           throw AppInspectionArtifactNotFoundException(
             "not found",
-            ArtifactCoordinate("androidx.compose.ui", "ui-android", "1.5.0")
+            RunningArtifactCoordinate(
+              mockMinimumArtifactCoordinate("androidx.compose.ui", "ui-android", "1.5.0"),
+              "1.5.0"
+            )
           )
         }
       }
@@ -284,11 +294,15 @@ class ComposeLayoutInspectorClientTest {
 
   @Test
   fun inspectorCouldNotDownloadArtifact_showBanner() = runBlocking {
-    val artifact = ArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0")
+    val artifact =
+      RunningArtifactCoordinate(
+        mockMinimumArtifactCoordinate("androidx.compose.ui", "ui", "1.3.0"),
+        "1.3.0"
+      )
     val artifactService =
       object : InspectorArtifactService {
         override suspend fun getOrResolveInspectorArtifact(
-          artifactCoordinate: ArtifactCoordinate,
+          artifactCoordinate: RunningArtifactCoordinate,
           project: Project
         ): Path {
           throw AppInspectionArtifactNotFoundException(
@@ -443,7 +457,9 @@ class ComposeLayoutInspectorClientTest {
   }
 
   private fun comp(version: String): List<LibraryCompatibilityInfo> =
-    listOf(LibraryCompatibilityInfo(MINIMUM_COMPOSE_COORDINATE, Status.COMPATIBLE, version, ""))
+    listOf(
+      LibraryCompatibilityInfo(MinimumArtifactCoordinate.COMPOSE_UI, Status.COMPATIBLE, version, "")
+    )
 
   @Test
   fun testResolveFolder() {
@@ -480,17 +496,38 @@ class ComposeLayoutInspectorClientTest {
 
   @Test
   fun `determine artifact id of compose coordinates around kmp migration version`() {
-    assertThat(determineArtifactId("0.9.9")).isEqualTo("ui")
-    assertThat(determineArtifactId("1.4.0-alpha01")).isEqualTo("ui")
-    assertThat(determineArtifactId("1.4.0")).isEqualTo("ui")
-    assertThat(determineArtifactId("1.5.0-alpha01")).isEqualTo("ui")
-    assertThat(determineArtifactId("1.5.0-beta01")).isEqualTo("ui-android")
-    assertThat(determineArtifactId("1.5.0-beta02")).isEqualTo("ui-android")
-    assertThat(determineArtifactId("1.5.0-rc01")).isEqualTo("ui-android")
-    assertThat(determineArtifactId("1.5.0")).isEqualTo("ui-android")
-    assertThat(determineArtifactId("1.5.1-alpha01")).isEqualTo("ui-android")
-    assertThat(determineArtifactId("1.5.1")).isEqualTo("ui-android")
-    assertThat(determineArtifactId("2.0.0-alpha01")).isEqualTo("ui-android")
+    assertThat(determineArtifactCoordinate("0.9.9"))
+      .isEqualTo(RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI, "0.9.9"))
+    assertThat(determineArtifactCoordinate("1.4.0-alpha01"))
+      .isEqualTo(RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI, "1.4.0-alpha01"))
+    assertThat(determineArtifactCoordinate("1.4.0"))
+      .isEqualTo(RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI, "1.4.0"))
+    assertThat(determineArtifactCoordinate("1.5.0-alpha01"))
+      .isEqualTo(RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI, "1.5.0-alpha01"))
+    assertThat(determineArtifactCoordinate("1.5.0-beta01"))
+      .isEqualTo(
+        RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "1.5.0-beta01")
+      )
+    assertThat(determineArtifactCoordinate("1.5.0-beta02"))
+      .isEqualTo(
+        RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "1.5.0-beta02")
+      )
+    assertThat(determineArtifactCoordinate("1.5.0-rc01"))
+      .isEqualTo(
+        RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "1.5.0-rc01")
+      )
+    assertThat(determineArtifactCoordinate("1.5.0"))
+      .isEqualTo(RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "1.5.0"))
+    assertThat(determineArtifactCoordinate("1.5.1-alpha01"))
+      .isEqualTo(
+        RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "1.5.1-alpha01")
+      )
+    assertThat(determineArtifactCoordinate("1.5.1"))
+      .isEqualTo(RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "1.5.1"))
+    assertThat(determineArtifactCoordinate("2.0.0-alpha01"))
+      .isEqualTo(
+        RunningArtifactCoordinate(MinimumArtifactCoordinate.COMPOSE_UI_ANDROID, "2.0.0-alpha01")
+      )
   }
 
   private suspend fun checkLaunch(

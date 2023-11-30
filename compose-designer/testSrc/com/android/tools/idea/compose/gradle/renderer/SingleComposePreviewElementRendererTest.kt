@@ -154,6 +154,12 @@ class SingleComposePreviewElementRendererTest {
 
     assertTrue(applyObservers.isNotEmpty())
 
+    val globalWriteObserversField =
+      snapshotKt.getDeclaredField("globalWriteObservers").apply { isAccessible = true }
+    val globalWriteObservers = globalWriteObserversField.get(null) as List<*>
+
+    assertTrue(globalWriteObservers.isNotEmpty())
+
     val uiDispatcher = classLoader.loadClass("androidx.compose.ui.platform.AndroidUiDispatcher")
     val uiDispatcherCompanion =
       classLoader.loadClass("androidx.compose.ui.platform.AndroidUiDispatcher\$Companion")
@@ -177,9 +183,8 @@ class SingleComposePreviewElementRendererTest {
       "animationScale should have been cleared",
       (animationScaleField.get(windowRecomposer) as Map<*, *>).isEmpty()
     )
-
     assertTrue("applyObservers should have been cleared", applyObservers.isEmpty())
-
+    assertTrue("globalWriteObservers should have been cleared", globalWriteObservers.isEmpty())
     assertTrue("toRunTrampolined should have been cleared", toRunTrampolined.isEmpty())
   }
 
@@ -238,7 +243,7 @@ class SingleComposePreviewElementRendererTest {
   @Test
   fun testEmptyRender() {
     val defaultRender =
-      renderPreviewElement(
+      renderPreviewElementForResult(
           projectRule.androidFacet(":app"),
           SingleComposePreviewElementInstance.forTesting(
             "google.simpleapplication.OtherPreviewsKt.EmptyPreview"
@@ -246,7 +251,8 @@ class SingleComposePreviewElementRendererTest {
         )
         .get()!!
 
-    assertTrue(defaultRender.width > 0 && defaultRender.height > 0)
+    assertEquals(0, defaultRender.renderedImage.width)
+    assertEquals(0, defaultRender.renderedImage.height)
   }
 
   /** Checks that key events are correctly dispatched to Compose Preview. */

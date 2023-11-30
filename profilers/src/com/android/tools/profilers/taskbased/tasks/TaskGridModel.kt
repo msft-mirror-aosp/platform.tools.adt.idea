@@ -19,13 +19,13 @@ import com.android.tools.profilers.tasks.ProfilerTaskType
 import icons.StudioIcons
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import javax.swing.Icon
 
 /**
  * This class serves as the model for the list/grid of Profiler tasks a user can select from. Each task is represented via a TaskGridItem
  * which shows the name and icon of the respective task.
  */
 class TaskGridModel {
-  val tasks: List<TaskGridItemModel>
   private val _selectedTaskType = MutableStateFlow(ProfilerTaskType.UNSPECIFIED)
   val selectedTaskType = _selectedTaskType.asStateFlow()
 
@@ -35,44 +35,5 @@ class TaskGridModel {
 
   fun resetTaskSelection() {
     onTaskSelection(ProfilerTaskType.UNSPECIFIED)
-  }
-
-  fun getTaskGridItem(taskType: ProfilerTaskType): TaskGridItemModel? = tasks.firstOrNull { it.type == taskType }
-
-  init {
-    tasks = listOf(
-      TaskGridItemModel(
-        type = ProfilerTaskType.CALLSTACK_SAMPLE,
-        iconPath = "studio/icons/profiler/sessions/cpu.svg",
-      ),
-      TaskGridItemModel(
-        type = ProfilerTaskType.SYSTEM_TRACE,
-        iconPath = "studio/icons/profiler/sessions/cpu.svg",
-      ),
-      TaskGridItemModel(
-        type = ProfilerTaskType.JAVA_KOTLIN_METHOD_TRACE,
-        iconPath = "studio/icons/profiler/sessions/cpu.svg",
-      ),
-      TaskGridItemModel(
-        type = ProfilerTaskType.JAVA_KOTLIN_METHOD_SAMPLE,
-        iconPath = "studio/icons/profiler/sessions/cpu.svg",
-      ),
-      TaskGridItemModel(
-        type = ProfilerTaskType.HEAP_DUMP,
-        iconPath = "studio/icons/profiler/sessions/heap.svg",
-      ),
-      TaskGridItemModel(
-        type = ProfilerTaskType.NATIVE_ALLOCATIONS,
-        iconPath = "studio/icons/profiler/sessions/allocations.svg",
-      ),
-      TaskGridItemModel(
-        type = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
-        iconPath = "studio/icons/profiler/sessions/allocations.svg",
-      ),
-    )
-  }
-
-  companion object {
-    const val DISABLED_TASK_ICON = "studio/icons/profiler/sidebar/issue.svg"
   }
 }
