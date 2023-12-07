@@ -135,7 +135,7 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.appcompat.appcompat_1.4.1",
         "@maven//:androidx.appcompat.appcompat_1.6.1",
-        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.0",
+        "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.2",
         "@maven//:androidx.compose.animation.animation-core-android_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.animation.animation_1.3.0",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.compose.animation.animation_1.5.0-beta01",  # Necessary for Compose for TV
@@ -3652,6 +3652,7 @@ java_test(
 # fat test
 java_test(
     name = "SurroundWithShortcutTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -3667,6 +3668,7 @@ java_test(
 # fat test
 java_test(
     name = "ForeachLiveTemplateTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -3682,6 +3684,7 @@ java_test(
 # fat test
 java_test(
     name = "ForiLiveTemplateTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -3697,6 +3700,7 @@ java_test(
 # fat test
 java_test(
     name = "ToastLiveTemplateTest",
+    size = "large",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
     ]),

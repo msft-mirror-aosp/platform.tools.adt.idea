@@ -162,6 +162,9 @@
     <option name="data" path="ActionManager" hit="Collect logs and diagnostic data" />
     <option name="diagnostic" path="ActionManager" hit="Collect logs and diagnostic data" />
     <option name="logs" path="ActionManager" hit="Collect logs and diagnostic data" />
+    <option name="android" path="ActionManager" hit="Common Android Settings" />
+    <option name="common" path="ActionManager" hit="Common Android Settings" />
+    <option name="settings" path="ActionManager" hit="Common Android Settings" />
     <option name="configure" path="ActionManager" hit="Configure project structure" />
     <option name="project" path="ActionManager" hit="Configure project structure" />
     <option name="structure" path="ActionManager" hit="Configure project structure" />
@@ -554,6 +557,11 @@
     <option name="studio" path="ActionManager" hit="Open Vector Asset Studio to create an image asset" />
     <option name="to" path="ActionManager" hit="Open Vector Asset Studio to create an image asset" />
     <option name="vector" path="ActionManager" hit="Open Vector Asset Studio to create an image asset" />
+    <option name="health" path="ActionManager" hit="Open Wear Health Services panel" />
+    <option name="open" path="ActionManager" hit="Open Wear Health Services panel" />
+    <option name="panel" path="ActionManager" hit="Open Wear Health Services panel" />
+    <option name="services" path="ActionManager" hit="Open Wear Health Services panel" />
+    <option name="wear" path="ActionManager" hit="Open Wear Health Services panel" />
     <option name="open" path="ActionManager" hit="Open recent test session" />
     <option name="recent" path="ActionManager" hit="Open recent test session" />
     <option name="session" path="ActionManager" hit="Open recent test session" />
@@ -786,6 +794,11 @@
     <option name="set" path="ActionManager" hit="Set up Android Test Retention" />
     <option name="test" path="ActionManager" hit="Set up Android Test Retention" />
     <option name="up" path="ActionManager" hit="Set up Android Test Retention" />
+    <option name="android" path="ActionManager" hit="Shortcuts to common Android settings" />
+    <option name="common" path="ActionManager" hit="Shortcuts to common Android settings" />
+    <option name="settings" path="ActionManager" hit="Shortcuts to common Android settings" />
+    <option name="shortcuts" path="ActionManager" hit="Shortcuts to common Android settings" />
+    <option name="to" path="ActionManager" hit="Shortcuts to common Android settings" />
     <option name="in" path="ActionManager" hit="Show In Resource Manager" />
     <option name="manager" path="ActionManager" hit="Show In Resource Manager" />
     <option name="resource" path="ActionManager" hit="Show In Resource Manager" />
@@ -948,6 +961,9 @@
     <option name="volume" path="ActionManager" hit="Volume Down" />
     <option name="up" path="ActionManager" hit="Volume Up" />
     <option name="volume" path="ActionManager" hit="Volume Up" />
+    <option name="health" path="ActionManager" hit="Wear Health Services" />
+    <option name="services" path="ActionManager" hit="Wear Health Services" />
+    <option name="wear" path="ActionManager" hit="Wear Health Services" />
   </configurable>
   <configurable id="reference.settingsdialog.IDE.editor.colors.Android Logcat" configurable_name="Android Logcat">
     <option name="android" hit="Android Logcat" />
@@ -1021,15 +1037,6 @@
     <option name="backend" hit="Use libusb backend" />
     <option name="libusb" hit="Use libusb backend" />
     <option name="use" hit="Use libusb backend" />
-  </configurable>
-  <configurable id="essentials.mode.settings" configurable_name="Essentials Mode">
-    <option name="enable" hit="Enable Essentials Mode" />
-    <option name="essentials" hit="Enable Essentials Mode" />
-    <option name="mode" hit="Enable Essentials Mode" />
-    <option name="essentials" hit="Essentials Mode" />
-    <option name="mode" hit="Essentials Mode" />
-    <option name="features" hit="Related Features" />
-    <option name="related" hit="Related Features" />
   </configurable>
   <configurable id="instant.run" configurable_name="Deployment">
     <option name="apply" hit="Automatically perform &quot;Run&quot; when Apply Changes fails" />

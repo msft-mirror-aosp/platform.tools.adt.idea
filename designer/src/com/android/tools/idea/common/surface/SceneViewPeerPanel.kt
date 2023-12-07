@@ -103,9 +103,9 @@ class SceneViewPeerPanel(
   private val labelPanel: LabelPanel,
   private val sceneViewStatusIconAction: AnAction?,
   private val sceneViewToolbarActions: List<AnAction>,
-  private val sceneViewBottomBar: JComponent?,
-  private val sceneViewLeftBar: JComponent?,
-  private val sceneViewRightBar: JComponent?,
+  sceneViewBottomBar: JComponent?,
+  sceneViewLeftBar: JComponent?,
+  sceneViewRightBar: JComponent?,
   private val sceneViewErrorsPanel: JComponent?,
 ) : JPanel(), PositionablePanel, DataProvider {
 
@@ -132,9 +132,6 @@ class SceneViewPeerPanel(
 
       override val y: Int
         get() = sceneView.y
-
-      override val isVisible: Boolean
-        get() = sceneView.isVisible
 
       override fun getMargin(scale: Double): Insets {
         val contentSize = getContentSize(null).scaleBy(scale)

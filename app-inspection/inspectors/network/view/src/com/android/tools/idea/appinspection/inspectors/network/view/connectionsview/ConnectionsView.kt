@@ -15,29 +15,29 @@
  */
 package com.android.tools.idea.appinspection.inspectors.network.view.connectionsview
 
-import com.android.tools.adtui.TooltipComponent
-import com.android.tools.adtui.TooltipView
 import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.stdui.TimelineTable
-import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.adtui.table.ConfigColumnTableAspect
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorAspect
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel
 import com.android.tools.idea.appinspection.inspectors.network.model.NetworkInspectorModel.DetailContent
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.ConnectionData
+import com.android.tools.idea.appinspection.inspectors.network.model.connections.HttpData
 import com.android.tools.idea.appinspection.inspectors.network.view.NetworkInspectorViewState
 import com.android.tools.idea.appinspection.inspectors.network.view.connectionsview.ConnectionColumn.TIMELINE
 import com.android.tools.idea.appinspection.inspectors.network.view.constants.DEFAULT_BACKGROUND
 import com.android.tools.idea.appinspection.inspectors.network.view.constants.ROW_HEIGHT_PADDING
-import com.android.tools.idea.appinspection.inspectors.network.view.constants.TOOLTIP_BACKGROUND
-import com.android.tools.idea.appinspection.inspectors.network.view.constants.TOOLTIP_BORDER
-import com.android.tools.idea.appinspection.inspectors.network.view.constants.TOOLTIP_TEXT
 import com.android.tools.idea.appinspection.inspectors.network.view.rules.registerEnterKeyAction
+import com.android.tools.idea.flags.StudioFlags
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.DataContext.EMPTY_CONTEXT
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.ui.awt.RelativePoint
 import java.awt.KeyboardFocusManager
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
-import javax.swing.JTable
-import javax.swing.JTextPane
 import javax.swing.ListSelectionModel
 import javax.swing.event.ListSelectionEvent
 import javax.swing.table.TableCellRenderer
@@ -46,23 +46,18 @@ import javax.swing.table.TableCellRenderer
  * This class responsible for displaying table of connections information (e.g. url, duration,
  * timeline) for network inspector. Each row in the table represents a single connection.
  */
-class ConnectionsView(
-  private val model: NetworkInspectorModel,
-  private val parentPane: TooltipLayeredPane
-) : AspectObserver() {
+class ConnectionsView(private val model: NetworkInspectorModel) : AspectObserver() {
 
   private val tableModel = ConnectionsTableModel(model.selectionRangeDataFetcher)
-  private val connectionsTable: JTable
+  private val connectionsTable =
+    TimelineTable.create(tableModel, model.timeline, TIMELINE.displayString, true)
 
   val component: JComponent
     get() = connectionsTable
 
   init {
-    connectionsTable =
-      TimelineTable.create(tableModel, model.timeline, TIMELINE.displayString, true)
     customizeConnectionsTable()
     ConfigColumnTableAspect.apply(connectionsTable, NetworkInspectorViewState.getInstance().columns)
-    createTooltip()
     model.aspect.addDependency(this).onChange(NetworkInspectorAspect.SELECTED_CONNECTION) {
       updateTableSelection()
     }
@@ -78,11 +73,23 @@ class ConnectionsView(
     connectionsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
     connectionsTable.addMouseListener(
       object : MouseAdapter() {
+        override fun mouseMoved(e: MouseEvent) {
+          connectionsTable.toolTipText = e.getConnectionData()?.url
+        }
+
         override fun mouseClicked(e: MouseEvent) {
           val row = connectionsTable.rowAtPoint(e.point)
           if (row != -1) {
             model.detailContent = DetailContent.CONNECTION
           }
+        }
+
+        override fun mouseReleased(e: MouseEvent) {
+          openContextMenu(e)
+        }
+
+        override fun mousePressed(e: MouseEvent) {
+          openContextMenu(e)
         }
       }
     )
@@ -117,33 +124,30 @@ class ConnectionsView(
     }
   }
 
+  private fun openContextMenu(e: MouseEvent) {
+    if (!e.isPopupTrigger) {
+      return
+    }
+    val connectionData = e.getConnectionData() ?: return
+    val actions = connectionData.getActions()
+    if (actions.isEmpty()) {
+      return
+    }
+    JBPopupFactory.getInstance()
+      .createActionGroupPopup(null, DefaultActionGroup(actions), EMPTY_CONTEXT, true, null, -1)
+      .show(RelativePoint(e))
+  }
+
   private fun setRenderer(column: ConnectionColumn, renderer: TableCellRenderer) {
     connectionsTable.columnModel.getColumn(column.ordinal).cellRenderer = renderer
   }
 
-  private fun createTooltip() {
-    val textPane = JTextPane()
-    textPane.isEditable = false
-    textPane.border = TOOLTIP_BORDER
-    textPane.background = TOOLTIP_BACKGROUND
-    textPane.foreground = TOOLTIP_TEXT
-    textPane.font = TooltipView.TOOLTIP_BODY_FONT
-    val tooltip = TooltipComponent.Builder(textPane, connectionsTable, parentPane).build()
-    tooltip.registerListenersOn(connectionsTable)
-    connectionsTable.addMouseMotionListener(
-      object : MouseAdapter() {
-        override fun mouseMoved(e: MouseEvent) {
-          val row = connectionsTable.rowAtPoint(e.point)
-          if (row >= 0) {
-            tooltip.isVisible = true
-            val url = tableModel.getConnectionData(connectionsTable.convertRowIndexToModel(row)).url
-            textPane.text = url
-          } else {
-            tooltip.isVisible = false
-          }
-        }
-      }
-    )
+  private fun MouseEvent.getConnectionData(): ConnectionData? {
+    val row = connectionsTable.rowAtPoint(point)
+    return when {
+      row < 0 -> null
+      else -> tableModel.getConnectionData(connectionsTable.convertRowIndexToModel(row))
+    }
   }
 
   private fun updateTableSelection() {
@@ -158,6 +162,16 @@ class ConnectionsView(
       }
     } else {
       connectionsTable.clearSelection()
+    }
+  }
+}
+
+private fun ConnectionData.getActions(): List<AnAction> {
+  val data = this@getActions
+  return buildList {
+    add(CopyUrlAction(data))
+    if (data is HttpData && StudioFlags.NETWORK_INSPECTOR_COPY_AS_CURL.get()) {
+      add(CopyAsCurlAction(data))
     }
   }
 }

@@ -27,7 +27,9 @@ import com.android.tools.idea.streaming.core.scaled
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.util.text.StringUtil.toHexString
 import com.intellij.util.containers.ContainerUtil
+import com.intellij.util.io.toByteArray
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -209,20 +211,20 @@ internal class VideoDecoder(
 
   private inner class PacketReader : AutoCloseable {
 
-    private val headerBuffer: ByteBuffer = PacketHeader.createBuffer()
+    private val headerBuffer: ByteBuffer = VideoPacketHeader.createBuffer()
     private val packet: AVPacket = av_packet_alloc()
 
     suspend fun readAndProcessPacket() {
-      // Each video packet contains a 40-byte header followed by the packet data.
+      // Each video packet contains a 44-byte header followed by the packet data.
       videoChannel.readFully(headerBuffer)
       headerBuffer.rewind()
-      val header = PacketHeader.deserialize(headerBuffer)
-      headerBuffer.clear()
+      val header = VideoPacketHeader.deserialize(headerBuffer)
       val presentationTimestampUs = header.presentationTimestampUs
       val packetSize = header.packetSize
       if (presentationTimestampUs < 0 || packetSize <= 0) {
-        throw VideoDecoderException("Invalid packet header: $headerBuffer")
+        throw VideoDecoderException("Invalid packet header: ${toHexString(headerBuffer.rewind().toByteArray())}")
       }
+      headerBuffer.clear()
 
       try {
         if (av_new_packet(packet, packetSize) != 0) {
@@ -340,7 +342,7 @@ internal class VideoDecoder(
     }
 
     @Synchronized
-    fun processPacket(packet: AVPacket, header: PacketHeader) { // stream_push_packet
+    fun processPacket(packet: AVPacket, header: VideoPacketHeader) { // stream_push_packet
       @Suppress("OPT_IN_USAGE")
       if (!ensureInitialized(codec.getCompleted())) {
         return
@@ -398,7 +400,7 @@ internal class VideoDecoder(
       }
     }
 
-    private fun processDataPacket(packet: AVPacket, header: PacketHeader) {
+    private fun processDataPacket(packet: AVPacket, header: VideoPacketHeader) {
       val outData = BytePointer()
       val outLen = IntPointer(0)
       val ret =
@@ -412,7 +414,7 @@ internal class VideoDecoder(
       processFrame(packet, header)
     }
 
-    private fun processFrame(packet: AVPacket, header: PacketHeader) {
+    private fun processFrame(packet: AVPacket, header: VideoPacketHeader) {
       val ret = avcodec_send_packet(codecContext, packet)
       if (ret < 0) {
         throw VideoDecoderException(
@@ -519,17 +521,17 @@ internal class VideoDecoder(
     }
   }
 
-  private class PacketHeader private constructor(
+  private class VideoPacketHeader private constructor(
     val displayId: Int,
     val displaySize: Dimension,
     val displayOrientation: Int,
     /** The difference between [displayOrientation] and the orientation according to the DisplayInfo Android data structure. */
     val displayOrientationCorrection: Int,
     private val flags: Int,
+    val bitRate: Int,
     val frameNumber: UInt,
     val originationTimestampUs: Long,
     val presentationTimestampUs: Long,
-    val bitRate: Int,
     val packetSize: Int,
   ) {
 
@@ -558,7 +560,7 @@ internal class VideoDecoder(
           8 + // presentationTimestampUs
           4   // packetSize
 
-      fun deserialize(buffer: ByteBuffer): PacketHeader {
+      fun deserialize(buffer: ByteBuffer): VideoPacketHeader {
         val displayId = buffer.getInt()
         val width = buffer.getInt()
         val height = buffer.getInt()
@@ -570,8 +572,8 @@ internal class VideoDecoder(
         val originationTimestampUs = buffer.getLong()
         val presentationTimestampUs = buffer.getLong()
         val packetSize = buffer.getInt()
-        return PacketHeader(displayId, Dimension(width, height), displayOrientation, displayOrientationCorrection, flags,
-                            frameNumber, originationTimestampUs, presentationTimestampUs, bitRate, packetSize)
+        return VideoPacketHeader(displayId, Dimension(width, height), displayOrientation, displayOrientationCorrection, flags,
+                                 bitRate, frameNumber, originationTimestampUs, presentationTimestampUs, packetSize)
       }
 
       fun createBuffer(): ByteBuffer =

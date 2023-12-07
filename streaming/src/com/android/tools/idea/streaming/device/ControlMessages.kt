@@ -72,6 +72,9 @@ sealed class ControlMessage(val type: Int) {
         DeviceStateNotification.TYPE -> DeviceStateNotification.deserialize(stream)
         DisplayAddedNotification.TYPE -> DisplayAddedNotification.deserialize(stream)
         DisplayRemovedNotification.TYPE -> DisplayRemovedNotification.deserialize(stream)
+        UiSettingsRequest.TYPE -> UiSettingsRequest.deserialize(stream)
+        UiSettingsResponse.TYPE -> UiSettingsResponse.deserialize(stream)
+        SetDarkModeMessage.TYPE -> SetDarkModeMessage.deserialize(stream)
         else -> throw StreamFormatException("Unrecognized control message type $type")
       }
       FlightRecorder.log { "${TraceUtils.currentTime()} deserialize: message = $message" }
@@ -436,7 +439,7 @@ internal data class ErrorResponse(override val requestId: Int, val errorMessage:
   }
 
   override fun toString(): String {
-    return "ErrorResponse(requestId=$requestId, errorMesage=\"$errorMessage\")"
+    return "ErrorResponse(requestId=$requestId, errorMessage=\"$errorMessage\")"
   }
 
   companion object : Deserializer {
@@ -466,7 +469,7 @@ internal class DisplayConfigurationResponse(override val requestId: Int, val dis
   }
 
   override fun toString(): String {
-    return "ScreenshotResponse(requestId=$requestId, displays=$displays"
+    return "ScreenshotResponse(requestId=$requestId, displays=$displays)"
   }
 
   companion object : Deserializer {
@@ -613,6 +616,73 @@ internal data class DisplayRemovedNotification(val displayId: Int) : ControlMess
     override fun deserialize(stream: Base128InputStream): DisplayRemovedNotification {
       val displayId = stream.readInt()
       return DisplayRemovedNotification(displayId)
+    }
+  }
+}
+
+/**
+ * Queries the current UI settings from a device.
+ */
+internal class UiSettingsRequest private constructor (override val requestId: Int) : CorrelatedMessage(TYPE) {
+
+  constructor(requestIdGenerator: () -> Int) : this(requestIdGenerator())
+
+  override fun toString(): String =
+    "UiSettingsRequest(requestId=$requestId)"
+
+  companion object : Deserializer {
+    const val TYPE = 19
+
+    override fun deserialize(stream: Base128InputStream): UiSettingsRequest {
+      val requestId = stream.readInt()
+      return UiSettingsRequest(requestId)
+    }
+  }
+}
+
+/**
+ * The current UI settings received from a device.
+ */
+internal data class UiSettingsResponse(override val requestId: Int, val darkMode: Boolean) : CorrelatedMessage(TYPE) {
+
+  override fun serialize(stream: Base128OutputStream) {
+    super.serialize(stream)
+    stream.writeBoolean(darkMode)
+  }
+
+  override fun toString(): String =
+    "UiSettingsResponse(requestId=$requestId, darkMode=$darkMode)"
+
+  companion object : Deserializer {
+    const val TYPE = 20
+
+    override fun deserialize(stream: Base128InputStream): UiSettingsResponse {
+      val requestId = stream.readInt()
+      val darkMode = stream.readBoolean()
+      return UiSettingsResponse(requestId, darkMode)
+    }
+  }
+}
+
+/**
+ * Changes the DarkMode setting on a device.
+ */
+internal data class SetDarkModeMessage(val darkMode: Boolean) : ControlMessage(TYPE) {
+
+  override fun serialize(stream: Base128OutputStream) {
+    super.serialize(stream)
+    stream.writeBoolean(darkMode)
+  }
+
+  override fun toString(): String =
+    "SetDarkModeMessage(darkMode=$darkMode)"
+
+  companion object : Deserializer {
+    const val TYPE = 21
+
+    override fun deserialize(stream: Base128InputStream): SetDarkModeMessage {
+      val darkMode = stream.readBoolean()
+      return SetDarkModeMessage(darkMode)
     }
   }
 }

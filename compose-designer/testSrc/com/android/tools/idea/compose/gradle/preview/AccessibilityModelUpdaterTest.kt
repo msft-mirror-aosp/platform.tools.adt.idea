@@ -111,15 +111,18 @@ class AccessibilityModelUpdaterTest {
 
     val uiCheckElement = twoElementsPreviewModel.dataContext.previewElement()!!
 
-    val onRefreshCompletable = previewView.getOnRefreshCompletable()
-    composePreviewRepresentation.setMode(
-      PreviewMode.UiCheck(
-        uiCheckElement,
-        atfChecksEnabled = true,
-      ),
-    )
+    runBlocking {
+      composePreviewRepresentation.waitForAnyPendingRefresh()
+      val onRefreshCompletable = previewView.getOnRefreshCompletable()
+      composePreviewRepresentation.setMode(
+        PreviewMode.UiCheck(
+          uiCheckElement,
+          atfChecksEnabled = true,
+        )
+      )
+      onRefreshCompletable.join()
+    }
 
-    runBlocking { onRefreshCompletable.join() }
     val twoElementsPreviewRoot =
       previewView.mainSurface.models
         .first { it.modelDisplayName == "Medium Phone - TwoElementsPreview" }

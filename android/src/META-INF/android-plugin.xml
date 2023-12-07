@@ -213,14 +213,6 @@
     <cachesInvalidator implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$CacheInvalidator"/>
     <cachesInvalidator implementation="com.android.tools.idea.project.metrics.CacheInvalidatorMetricCollector"/>
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$PopulateCachesActivity"/>
-    <postStartupActivity implementation="com.android.tools.idea.modes.essentials.EssentialsModeRecommender"/>
-    <postStartupActivity implementation="com.android.tools.idea.modes.essentials.EssentialsModeNotifierOnStartup"/>
-    <applicationConfigurable groupId="appearance" groupWeight="140" id="essentials.mode.settings"
-                             instance="com.android.tools.idea.modes.essentials.EssentialsModeSettingsPage"
-                             bundle="messages.AndroidBundle"
-                             key="configurable.EssentialsModeSettingsPage.displayName"/>
-    <statusBarWidgetFactory id="Essentials Mode Widget" implementation="com.android.tools.idea.modes.essentials.EssentialsModeWidgetFactory"/>
-    <postStartupActivity implementation="com.intellij.ide.actions.EssentialHighlightingNotifier"/>
     <lang.foldingBuilder language="JAVA" implementationClass="com.android.tools.idea.folding.ResourceFoldingBuilder" />
     <codeFoldingOptionsProvider instance="com.android.tools.idea.folding.AndroidCodeFoldingOptionsProvider"/>
 
@@ -350,8 +342,6 @@
     <programRunner implementation="com.android.tools.idea.run.DefaultStudioProgramRunner" order="first" id="DefaultStudioProgramRunner"/>
     <facetType implementation="org.jetbrains.android.facet.AndroidFacetType"/>
     <facetType implementation="com.android.tools.idea.facet.AndroidArtifactFacetType"/>
-    <facetType implementation="com.android.tools.idea.gradle.project.facet.gradle.GradleFacetType"/>
-    <facetType implementation="com.android.tools.idea.gradle.project.facet.ndk.NdkFacetType"/>
 
     <facetType implementation="com.android.tools.idea.gradle.project.facet.java.JavaFacetType"/>
     <externalProjectDataService implementation="com.android.tools.idea.gradle.project.facet.java.DoNotUseLegacyJavaFacetRemover" />
@@ -736,6 +726,12 @@
                     dynamic="true"/>
     <extensionPoint qualifiedName="com.android.tools.idea.flags.experimentalSettingsContributor"
                     interface="com.android.tools.idea.flags.ExperimentalSettingsContributor"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.run.editor.testRunParametersToken"
+                    interface="com.android.tools.idea.run.editor.TestRunParameters$TestRunParametersToken"
+                    area="IDEA_PROJECT"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.testartifacts.instrumented.androidTestConfigurationProducerToken"
+                    interface="com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducerToken"
+                    area="IDEA_PROJECT"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="com.android.tools.idea.flags">

@@ -19,6 +19,7 @@ iml_module(
         "//tools/adt/idea/profilers-android/gradle:intellij.android.profilersAndroid.gradle",
         "//tools/adt/idea/app-inspection/ide/gradle:app-inspection.ide.gradle",
         "//tools/adt/idea/nav/safeargs/common/gradle:intellij.android.nav.safeargs.common.gradle",
+        "//tools/adt/idea/native-symbolizer/gradle:native-symbolizer.gradle",
     ],
     # do not sort: must match IML order
     deps = [
@@ -73,5 +74,6 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions[module]",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea[module]",
         "//tools/adt/idea/samples-browser[module]",
+        "//tools/adt/idea/native-symbolizer[module]",
     ],
 )

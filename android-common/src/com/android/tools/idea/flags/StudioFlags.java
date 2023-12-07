@@ -20,6 +20,8 @@ import com.android.flags.Flag;
 import com.android.flags.FlagGroup;
 import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
+import com.android.flags.IntFlag;
+import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
 import com.android.tools.idea.IdeChannel;
@@ -398,12 +400,15 @@ public final class StudioFlags {
     "To allow toggling between automatic or user managed ADB server mode.",
     false);
 
-  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = Flag.create(
+  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = new BooleanFlag(
     RUNDEBUG,
     "deployment.target.deviceprovisioner",
     "Use Device Provisioner to provide deployment targets",
     "Uses the Device Provisioner to get the list of potential devices to deploy to.",
-    false);
+    ChannelDefault.of(false)
+      .withDevOverride(true)
+      .withNightlyOverride(true)
+      .withCanaryOverride(true));
 
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = Flag.create(
     RUNDEBUG,
@@ -857,77 +862,77 @@ public final class StudioFlags {
 
   //region Embedded Emulator
   private static final FlagGroup EMBEDDED_EMULATOR = new FlagGroup(FLAGS, "embedded.emulator", "Embedded Emulator");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_RESIZABLE_FOLDING = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_RESIZABLE_FOLDING = new BooleanFlag(
     EMBEDDED_EMULATOR, "resizable.folding", "Folding Support in Resizable AVD",
     "Folding toolbar button in the Foldable mode of Resizable AVD",
     true);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_SCREENSHOT_STATISTICS = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_SCREENSHOT_STATISTICS = new BooleanFlag(
     EMBEDDED_EMULATOR, "screenshot.statistics", "Enable Collection of Screenshot Statistics",
     "Captures statistics of received Emulator screenshots",
     false);
-  public static final Flag<Integer> EMBEDDED_EMULATOR_STATISTICS_INTERVAL_SECONDS = Flag.create(
+  public static final Flag<Integer> EMBEDDED_EMULATOR_STATISTICS_INTERVAL_SECONDS = new IntFlag(
     EMBEDDED_EMULATOR, "screenshot.statistics.interval", "Aggregation Interval for Screenshot Statistics",
     "Aggregation interval in seconds for statistics of received Emulator screenshots",
     120);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_GRPC_CALLS = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_GRPC_CALLS = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.grpc.calls", "Enable Emulator gRPC Tracing",
     "Enables tracing of most Emulator gRPC calls",
     false);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_HIGH_VOLUME_GRPC_CALLS = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_HIGH_VOLUME_GRPC_CALLS = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.high.volume.grpc.calls", "Enable High Volume Emulator gRPC Tracing",
     "Enables tracing of high volume Emulator gRPC calls",
     false);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_SCREENSHOTS = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_SCREENSHOTS = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.screenshots", "Enable Emulator Screenshot Tracing",
     "Enables tracing of received Emulator screenshots",
     false);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_NOTIFICATIONS = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_NOTIFICATIONS = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.notifications", "Enable Emulator Notification Tracing",
     "Enables tracing of received Emulator notifications",
     true);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_DISCOVERY = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_DISCOVERY = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery",
+    false);
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_SETTINGS_PICKER = Flag.create(
+    EMBEDDED_EMULATOR, "settings.picker", "Show settings picker",
+    "Enables the settings picker to be shown for testing an application",
     false);
   //endregion
 
   //region Device Mirroring
   private static final FlagGroup DEVICE_MIRRORING = new FlagGroup(FLAGS, "device.mirroring", "Device Mirroring");
-  public static final Flag<Boolean> DEVICE_MIRRORING_STANDALONE_EMULATORS = Flag.create(
+  public static final Flag<Boolean> DEVICE_MIRRORING_STANDALONE_EMULATORS = new BooleanFlag(
     DEVICE_MIRRORING, "allow.standalone.emulators", "Allow Mirroring of Standalone Emulators",
     "Treats standalone emulators the same as physical devices for the purpose of display mirroring;" +
     " not intended for production use due to slowness of video encoding in emulated mode",
     false);
-  public static final Flag<Boolean> DEVICE_MIRRORING_REMOTE_EMULATORS = Flag.create(
+  public static final Flag<Boolean> DEVICE_MIRRORING_REMOTE_EMULATORS = new BooleanFlag(
     DEVICE_MIRRORING, "allow.remote.emulators", "Allow Mirroring of Remote Emulators",
     "Treats remote emulators the same as physical devices for the purpose of display mirroring",
     false);
-  public static final Flag<Boolean> DEVICE_MIRRORING_MULTIPLE_DISPLAYS = Flag.create(
-    DEVICE_MIRRORING, "multiple.displays", "Mirror All Displays",
-    "Mirror all device displays",
-    true);
-  public static final Flag<Boolean> B_303684492_WORKAROUND = Flag.create(
+  public static final Flag<Boolean> B_303684492_WORKAROUND = new BooleanFlag(
     DEVICE_MIRRORING, "b.303684492.workaround", "Workaround for Bug 303684492",
     "Workaround for Android bug 303684492",
     true);
-  public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = Flag.create(
+  public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
     false);
-  public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = Flag.create(
+  public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = new StringFlag(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
     " the default is \"info\"",
     "");
-  public static final Flag<Integer> DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS = Flag.create(
+  public static final Flag<Integer> DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS = new IntFlag(
     DEVICE_MIRRORING, "connection.timeout", "Connection Timeout for Mirroring",
     "Connection timeout for mirroring in milliseconds",
     10_000);
-  public static final Flag<Integer> DEVICE_MIRRORING_MAX_BIT_RATE = Flag.create(
+  public static final Flag<Integer> DEVICE_MIRRORING_MAX_BIT_RATE = new IntFlag(
     DEVICE_MIRRORING, "max.bit.rate", "Maximum Bit Rate for Mirroring of Physical Devices",
     "The maximum bit rate of video stream, zero means no limit",
     0);
-  public static final Flag<String> DEVICE_MIRRORING_VIDEO_CODEC = Flag.create(
+  public static final Flag<String> DEVICE_MIRRORING_VIDEO_CODEC = new StringFlag(
     DEVICE_MIRRORING, "video.codec", "Video Codec Used for Mirroring of Physical Devices",
     "The name of a video codec, e.g. \"vp8\" or \"vp9\"; the default is \"vp8\"",
     "");
@@ -1077,20 +1082,20 @@ public final class StudioFlags {
     ESSENTIALS_MODE, "essentials.mode.action.visible",
     "Show Essentials Mode visible in File drop down menu",
     "If enabled, makes Essential Highlighting action visible",
-    true
+    false
   );
   public static final Flag<Boolean> ESSENTIALS_HIGHLIGHTING_MODE = Flag.create(
     ESSENTIALS_MODE, "essential.highlighting.in.essentials.mode",
     "Essential Highlighting mode on in Essentials mode",
    "When enabled turns on Essential Highlighting mode when in Essentials Mode. Essential Highlighting mode enables " +
    "limited code inspections and highlighting while editing until a save all action is received e.g. Lint.",
-   true);
+   false);
 
   public static final Flag<Boolean> ESSENTIALS_MODE_GETS_RECOMMENDED = Flag.create(
     ESSENTIALS_MODE, "essentials.mode.gets.recommend",
     "Essentials Mode is able to get recommended to the user",
     "When enabled this allows Android Studio to drive adoption of Essentials Mode by recommending users should try it out.",
-    true);
+    false);
 
   //endregion
 
@@ -1429,6 +1434,12 @@ public final class StudioFlags {
     "Track gRPC Connections",
     true
   );
+  public static final Flag<Boolean> NETWORK_INSPECTOR_COPY_AS_CURL = Flag.create(
+    NETWORK_INSPECTOR, "copy.as.curl",
+    "Copy as a cURL command",
+    "Copy as a cURL command",
+    false
+  );
   // endregion
 
   // region BackgroundTask Inspector
@@ -1625,9 +1636,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
                 "Improvements to the Create App Links functionalities.", false);
-  public static final Flag<Boolean> DATALAYER_MEMORY_IMPROVEMENT =
-    Flag.create(APP_LINKS_ASSISTANT, "datalayer.memory.improvement", "Data layer memory improvements",
-                "Memory improvements in the data layer.", true);
   public static final Flag<Boolean> IMPACT_TRACKING =
     Flag.create(APP_LINKS_ASSISTANT, "app.links.assistant.impact.tracking", "App Links Assistant impact tracking",
                 "Impact tracking for the App Links Assistant", false);
