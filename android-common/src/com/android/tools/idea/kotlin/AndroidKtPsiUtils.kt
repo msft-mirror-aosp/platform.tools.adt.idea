@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KtPropertySymbol
 import org.jetbrains.kotlin.analysis.api.calls.KtAnnotationCall
 import org.jetbrains.kotlin.analysis.api.calls.singleFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.calls.symbol
+import org.jetbrains.kotlin.analysis.api.symbols.KtDeclarationSymbol
 import org.jetbrains.kotlin.asJava.LightClassUtil
 import org.jetbrains.kotlin.asJava.findFacadeClass
 import org.jetbrains.kotlin.asJava.getAccessorLightMethods
@@ -123,7 +124,7 @@ fun KtAnnotationEntry.getQualifiedName(analysisSession: KtAnalysisSession? = nul
  * name first and thus has better performance.
  */
 fun KtAnalysisSession.getQualifiedName(ktAnnotationEntry: KtAnnotationEntry): String? =
-  (ktAnnotationEntry.resolveCall().singleFunctionCallOrNull() as? KtAnnotationCall)?.symbol?.containingClassIdIfNonLocal?.asFqNameString()
+  (ktAnnotationEntry.resolveCall()?.singleFunctionCallOrNull() as? KtAnnotationCall)?.symbol?.containingClassIdIfNonLocal?.asFqNameString()
 
 /**
  * Determines whether this [KtAnnotationEntry] has the specified qualified name.

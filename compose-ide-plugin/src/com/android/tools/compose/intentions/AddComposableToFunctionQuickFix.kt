@@ -141,7 +141,8 @@ class AddComposableToFunctionQuickFix private constructor(element: KtModifierLis
       quickFixes.register(ComposeErrors.COMPOSABLE_INVOCATION, ComposableInvocationFactory)
 
       // COMPOSABLE_EXPECTED: error goes on the non-Composable function with Composable calls
-      quickFixes.register(ComposeErrors.COMPOSABLE_EXPECTED, ComposableExpectedFactory)
+      // Disabled due to b/309364913
+      // quickFixes.register(ComposeErrors.COMPOSABLE_EXPECTED, ComposableExpectedFactory)
     }
   }
 }

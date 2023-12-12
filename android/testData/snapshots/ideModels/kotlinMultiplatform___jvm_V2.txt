@@ -2733,6 +2733,7 @@ MODULE                        : kotlinMultiPlatform.module2
     kotlinMppGradleModel          : {androidInstrumentedTest=androidInstrumentedTest, androidMain=androidMain, androidUnitTest=androidUnitTest, commonMain=commonMain, commonTest=commonTest, jvmMain=jvmMain, jvmTest=jvmTest} (KotlinMPPGradleModelImpl)
         dependencies                  : IdeaKotlinDeserializedDependenciesContainer
         extraFeatures                 : ExtraFeaturesImpl
+            isHMPPEnabled                 : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
             major                         : 1
             minor                         : 9
@@ -2742,7 +2743,9 @@ MODULE                        : kotlinMultiPlatform.module2
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
                     actualPlatforms               : KotlinPlatformContainerImpl
-                        - platforms                   : COMMON
+                        arePlatformsInitialized       : true
+                        - platforms                   : ANDROID
+                        - platforms                   : JVM
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2904,7 +2907,9 @@ MODULE                        : kotlinMultiPlatform.module2
             - compilations                : debugUnitTest (KotlinCompilationImpl)
                 - allSourceSets               : commonTest (KotlinSourceSetImpl)
                     actualPlatforms               : KotlinPlatformContainerImpl
-                        - platforms                   : COMMON
+                        arePlatformsInitialized       : true
+                        - platforms                   : ANDROID
+                        - platforms                   : JVM
                     - additionalVisibleSourceSets : commonMain
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
@@ -3131,6 +3136,7 @@ MODULE                        : kotlinMultiPlatform.module2
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/module2/build/libs/module2-jvm.jar [-]
+                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             presetName                    : jvm
             - testRunTasks                : KotlinTestRunTaskImpl

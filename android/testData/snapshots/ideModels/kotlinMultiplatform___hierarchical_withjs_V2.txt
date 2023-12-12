@@ -2492,6 +2492,7 @@ Required by:
                     platform                      : JS
                 jar                           : KotlinTargetJarImpl
                     archiveFile                   : <ROOT>/jsModule/build/libs/jsModule.klib [-]
+                    - compilations                : main (KotlinCompilationImpl) (*seen*)
                 platform                      : JS
                 presetName                    : jsIr
                 - testRunTasks                : KotlinTestRunTaskImpl

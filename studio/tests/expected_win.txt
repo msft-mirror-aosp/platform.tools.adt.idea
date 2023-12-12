@@ -642,6 +642,7 @@ android-studio/plugins/Kotlin/kotlinc/lib/assignment-compiler-plugin.jar
 android-studio/plugins/Kotlin/kotlinc/lib/js.engines.jar
 android-studio/plugins/Kotlin/kotlinc/lib/jvm-abi-gen.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-cli.jar
+android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-compiler.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-runtime.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-annotations-jvm-sources.jar
@@ -669,6 +670,7 @@ android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-jdk8-sources.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-jdk8.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js-sources.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js.jar
+android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js.klib
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-sources.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar
 android-studio/plugins/Kotlin/kotlinc/lib/kotlin-test-js-sources.jar
@@ -689,6 +691,7 @@ android-studio/plugins/Kotlin/kotlinc/lib/noarg-compiler-plugin.jar
 android-studio/plugins/Kotlin/kotlinc/lib/parcelize-compiler.jar
 android-studio/plugins/Kotlin/kotlinc/lib/parcelize-runtime.jar
 android-studio/plugins/Kotlin/kotlinc/lib/sam-with-receiver-compiler-plugin.jar
+android-studio/plugins/Kotlin/kotlinc/lib/scripting-compiler.jar
 android-studio/plugins/Kotlin/kotlinc/lib/trove4j.jar
 android-studio/plugins/Kotlin/kotlinc/license/COPYRIGHT.txt
 android-studio/plugins/Kotlin/kotlinc/license/COPYRIGHT_HEADER.txt
@@ -761,7 +764,7 @@ android-studio/plugins/Kotlin/lib/kotlinc.sam-with-receiver-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinx-collections-immutable.jar
 android-studio/plugins/android-apk/lib/android-apk.jar
 android-studio/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.jar
-android-studio/plugins/android-compose-ide-plugin/lib/compiler-hosted-1.5.1.jar
+android-studio/plugins/android-compose-ide-plugin/lib/compiler-hosted-1.5.4.jar
 android-studio/plugins/android-ndk/lib/android-ndk.jar
 android-studio/plugins/android-ndk/lib/org.eclipse.cdt.core_6.8.1.201907021957.jar
 android-studio/plugins/android-ndk/lib/org.eclipse.equinox.common_3.10.500.v20190815-1535.jar

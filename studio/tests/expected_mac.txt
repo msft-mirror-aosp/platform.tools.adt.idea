@@ -581,6 +581,7 @@ Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/assignment-compiler-plugi
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/js.engines.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/jvm-abi-gen.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-cli.jar
+Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-compiler.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing-runtime.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotation-processing.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-annotations-jvm-sources.jar
@@ -608,6 +609,7 @@ Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-jdk8-source
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-jdk8.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js-sources.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js.jar
+Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-js.klib
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib-sources.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-stdlib.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/kotlin-test-js-sources.jar
@@ -628,6 +630,7 @@ Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/noarg-compiler-plugin.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/parcelize-compiler.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/parcelize-runtime.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/sam-with-receiver-compiler-plugin.jar
+Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/scripting-compiler.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/lib/trove4j.jar
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/license/COPYRIGHT.txt
 Android Studio.app/Contents/plugins/Kotlin/kotlinc/license/COPYRIGHT_HEADER.txt
@@ -700,7 +703,7 @@ Android Studio.app/Contents/plugins/Kotlin/lib/kotlinc.sam-with-receiver-compile
 Android Studio.app/Contents/plugins/Kotlin/lib/kotlinx-collections-immutable.jar
 Android Studio.app/Contents/plugins/android-apk/lib/android-apk.jar
 Android Studio.app/Contents/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.jar
-Android Studio.app/Contents/plugins/android-compose-ide-plugin/lib/compiler-hosted-1.5.1.jar
+Android Studio.app/Contents/plugins/android-compose-ide-plugin/lib/compiler-hosted-1.5.4.jar
 Android Studio.app/Contents/plugins/android-ndk/lib/android-ndk.jar
 Android Studio.app/Contents/plugins/android-ndk/lib/org.eclipse.cdt.core_6.8.1.201907021957.jar
 Android Studio.app/Contents/plugins/android-ndk/lib/org.eclipse.equinox.common_3.10.500.v20190815-1535.jar

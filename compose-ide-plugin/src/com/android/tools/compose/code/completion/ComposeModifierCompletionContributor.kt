@@ -43,6 +43,8 @@ import org.jetbrains.kotlin.analysis.api.symbols.markers.KtSymbolWithVisibility
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptorWithVisibility
+import org.jetbrains.kotlin.idea.base.plugin.isK2Plugin
+import org.jetbrains.kotlin.idea.base.psi.imports.addImport
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.caches.resolve.resolveImportReference
@@ -332,8 +334,12 @@ class ComposeModifierCompletionContributor : CompletionContributor() {
         psiDocumentManager.doPostponedOperationsAndUnblockDocument(context.document)
       }
       val ktFile = context.file as KtFile
-      val modifierDescriptor = ktFile.resolveImportReference(FqName(COMPOSE_MODIFIER_FQN)).singleOrNull()
-      modifierDescriptor?.let { ImportInsertHelper.getInstance(context.project).importDescriptor(ktFile, it) }
+      if (isK2Plugin()) {
+        ktFile.addImport(FqName(COMPOSE_MODIFIER_FQN))
+      } else {
+        val modifierDescriptor = ktFile.resolveImportReference(FqName(COMPOSE_MODIFIER_FQN)).singleOrNull()
+        modifierDescriptor?.let { ImportInsertHelper.getInstance(context.project).importDescriptor(ktFile, it) }
+      }
       psiDocumentManager.commitAllDocuments()
       psiDocumentManager.doPostponedOperationsAndUnblockDocument(context.document)
       super.handleInsert(context)

@@ -2765,9 +2765,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib.jar [-]
             platform                      : JVM
-            - testRunTasks                : KotlinTestRunTaskImpl
-                compilationName               : test
-                taskName                      : testAndroidUnitTest
         sourceSets
             androidInstrumentedTest       : androidInstrumentedTest (KotlinSourceSetImpl) (*seen*)
             androidMain                   : androidMain (KotlinSourceSetImpl) (*seen*)
@@ -2958,6 +2955,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
+                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             presetName                    : jvm
             - testRunTasks                : KotlinTestRunTaskImpl
@@ -3321,6 +3319,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
+                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             presetName                    : jvm
             - testRunTasks                : KotlinTestRunTaskImpl
