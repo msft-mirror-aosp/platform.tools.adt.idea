@@ -113,15 +113,6 @@ public final class StudioFlags {
     NPW, "enable.version.catalog", "Enable Gradle Version Catalog",
     "Use Gradle Version Catalogs for dependencies added in the new project/module wizard. (when existing project already uses Version Catalogs for new modules)",
     true);
-
-  public static final Flag<Boolean> NPW_ENABLE_GENAI_TEMPLATE = new BooleanFlag(
-    NPW, "genai.template",
-    "Enable GenAI template",
-    "Allows the GenAI template to be used.",
-    ChannelDefault.of(false)
-      .withDevOverride(true)
-      .withNightlyOverride(true)
-      .withCanaryOverride(true));
   //endregion
 
   //region Memory Usage Reporting
@@ -622,7 +613,7 @@ public final class StudioFlags {
     GRADLE_IDE, "android.sdk.ide.compatibility.rules",
     "Enable compatibility rules support between IDE version and compile SDK version",
     "Enable compatibility rules support between IDE version and compile SDK version",
-    false
+    true
   );
 
   public static final Flag<Boolean> API_OPTIMIZATION_ENABLE = Flag.create(
@@ -923,7 +914,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> B_303684492_WORKAROUND = new BooleanFlag(
     DEVICE_MIRRORING, "b.303684492.workaround", "Workaround for Bug 303684492",
     "Workaround for Android bug 303684492",
-    true);
+    false);
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
@@ -1518,7 +1509,7 @@ public final class StudioFlags {
       "direct.access.settings.page",
       "Device Streaming Settings Page",
       "Show Device Streaming Settings Page",
-      true);
+      false);
 
   public static final Flag<Boolean> DIRECT_ACCESS_ADD_DEVICE =
     Flag.create(
@@ -1726,15 +1717,12 @@ public final class StudioFlags {
   // region STUDIO_BOT
   private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Studio Bot");
   public static final Flag<Boolean> STUDIOBOT_ENABLED =
-    Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
+    Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", false);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
                     "When enabled, inline code completion suggestions will be shown.",
-                    ChannelDefault.of(false)
-                      .withDevOverride(true)
-                      .withNightlyOverride(true)
-                      .withCanaryOverride(true));
+                    false);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
     Flag.create(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
