@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.flags;
 
+import static com.android.tools.idea.IdeChannel.Channel.CANARY;
+import static com.android.tools.idea.IdeChannel.Channel.DEV;
+import static com.android.tools.idea.IdeChannel.Channel.NIGHTLY;
+
 import com.android.flags.BooleanFlag;
 import com.android.flags.Flag;
 import com.android.flags.FlagGroup;
@@ -24,7 +28,6 @@ import com.android.flags.IntFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
-import com.android.tools.idea.IdeChannel;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
@@ -113,6 +116,12 @@ public final class StudioFlags {
     NPW, "enable.version.catalog", "Enable Gradle Version Catalog",
     "Use Gradle Version Catalogs for dependencies added in the new project/module wizard. (when existing project already uses Version Catalogs for new modules)",
     true);
+
+  public static final Flag<Boolean> NPW_ENABLE_GENAI_TEMPLATE = new BooleanFlag(
+    NPW, "genai.template",
+    "Enable GenAI template",
+    "Allows the GenAI template to be used.",
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
   //endregion
 
   //region Memory Usage Reporting
@@ -256,10 +265,10 @@ public final class StudioFlags {
     "Allow running accessibility checks for Compose using ATF.",
     true);
 
-  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_MODE = Flag.create(
+  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_MODE = new BooleanFlag(
     NELE, "compose.ui.check.mode", "Enable UI Check mode for Compose preview",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
-    true);
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = Flag.create(
     NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
@@ -284,10 +293,16 @@ public final class StudioFlags {
 
   //region Resource Repository
   private static final FlagGroup RESOURCE_REPOSITORY = new FlagGroup(FLAGS, "resource.repository", "Resource Repository");
-  public static final Flag<Integer> RESOURCE_REPOSITORY_TRACE_SIZE = Flag.create(
+  public static final Flag<Integer> RESOURCE_REPOSITORY_TRACE_SIZE = new IntFlag(
     RESOURCE_REPOSITORY, "trace.size", "Maximum Size of Resource Repository Update Trace",
     "Size of the in-memory cyclic buffer used for tracing of resource repository updates",
     10000);
+
+  public static final Flag<Boolean> RESOURCE_REPOSITORY_NOTIFY_PARENT_ON_DISPOSE = new BooleanFlag(
+    RESOURCE_REPOSITORY, "notify.parent.on.dispose", "Notify parent resource repositories on disposal.",
+    "Allows a LocalResourceRepository that implements Disposable to notify its parents when it is being disposed, so that they can "
+    + "release any stale references.",
+    true);
   //endregion
 
   //region Run/Debug
@@ -400,15 +415,12 @@ public final class StudioFlags {
     "To allow toggling between automatic or user managed ADB server mode.",
     false);
 
-  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = new BooleanFlag(
+  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = Flag.create(
     RUNDEBUG,
     "deployment.target.deviceprovisioner",
     "Use Device Provisioner to provide deployment targets",
     "Uses the Device Provisioner to get the list of potential devices to deploy to.",
-    ChannelDefault.of(false)
-      .withDevOverride(true)
-      .withNightlyOverride(true)
-      .withCanaryOverride(true));
+    false);
 
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = Flag.create(
     RUNDEBUG,
@@ -613,7 +625,7 @@ public final class StudioFlags {
     GRADLE_IDE, "android.sdk.ide.compatibility.rules",
     "Enable compatibility rules support between IDE version and compile SDK version",
     "Enable compatibility rules support between IDE version and compile SDK version",
-    false
+    true
   );
 
   public static final Flag<Boolean> API_OPTIMIZATION_ENABLE = Flag.create(
@@ -911,10 +923,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.remote.emulators", "Allow Mirroring of Remote Emulators",
     "Treats remote emulators the same as physical devices for the purpose of display mirroring",
     false);
-  public static final Flag<Boolean> B_303684492_WORKAROUND = new BooleanFlag(
-    DEVICE_MIRRORING, "b.303684492.workaround", "Workaround for Bug 303684492",
-    "Workaround for Android bug 303684492",
-    true);
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
@@ -936,6 +944,10 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "video.codec", "Video Codec Used for Mirroring of Physical Devices",
     "The name of a video codec, e.g. \"vp8\" or \"vp9\"; the default is \"vp8\"",
     "");
+  public static final Flag<Boolean> DEVICE_MIRRORING_AUTO_RESET_UI_SETTINGS = Flag.create(
+    DEVICE_MIRRORING, "auto.reset", "The agent should reset all changed UI settings on disconnect",
+    "Enables the reset logic in the device agent for the UI settings picker",
+    true);
   //endregion
 
   // region Device Definition Download Service
@@ -1063,15 +1075,19 @@ public final class StudioFlags {
     EDITOR, "compose.state.read.inlay.hints.enabled",
     "Enable inlay hints for State reads in @Composable functions",
     "If enabled, calls out reads of variables of type State inside @Composable functions.",
-    ChannelDefault.of(false)
-      .withDevOverride(true)
-      .withNightlyOverride(true)
-      .withCanaryOverride(true));
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   public static final Flag<Boolean> RENDER_DRAWABLES_IN_AUTOCOMPLETE_ENABLED = Flag.create(
     EDITOR, "render.drawables.in.autocomplete.enabled",
     "Enable rendering of drawable resources in autocomplete popup UI",
     "If enabled, renders drawable resources in the autocomplete popup UI.",
+    true
+  );
+
+  public static final Flag<Boolean> RENDER_COLORS_IN_AUTOCOMPLETE_ENABLED = Flag.create(
+    EDITOR, "render.colors.in.autocomplete.enabled",
+    "Enable rendering of color resources in autocomplete popup UI",
+    "If enabled, renders color resources in the autocomplete popup UI.",
     true
   );
 
@@ -1170,10 +1186,10 @@ public final class StudioFlags {
   //region Compose
   private static final FlagGroup COMPOSE = new FlagGroup(FLAGS, "compose", "Compose");
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_ESSENTIALS_MODE = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_ESSENTIALS_MODE = new BooleanFlag(
     COMPOSE, "preview.essentials.mode", "Enable Compose Preview Essentials Mode",
     "If enabled, Compose Preview Essentials Mode will be enabled.",
-    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_DOUBLE_RENDER = Flag.create(
     COMPOSE, "preview.double.render", "Enable the Compose double render mode",
@@ -1348,29 +1364,29 @@ public final class StudioFlags {
     "If enabled, the time taken in render quality refreshes will be notified each time",
     false);
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR = new BooleanFlag(
     COMPOSE, "compose.preview.keep.image.on.error", "Keeps the last valid image after a render error",
     "If enabled, when an error happens, the surface will keep the last valid image",
-    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
   //endregion
 
   // region Wear surfaces
   private static final FlagGroup WEAR_SURFACES = new FlagGroup(FLAGS, "wear.surfaces", "Wear Surfaces");
 
-  public static final Flag<Boolean> GLANCE_APP_WIDGET_PREVIEW = Flag.create(
+  public static final Flag<Boolean> GLANCE_APP_WIDGET_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "glance.preview.appwidget.enabled", "Enable Glance AppWidget preview",
     "If enabled, a preview for annotated glance app widget composable functions is displayed",
-    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
-  public static final Flag<Boolean> GLANCE_TILE_PREVIEW = Flag.create(
+  public static final Flag<Boolean> GLANCE_TILE_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "glance.preview.tile.enabled", "Enable Glance Tile preview",
     "If enabled, a preview for annotated glance tile composable functions is displayed",
     false);
 
-  public static final Flag<Boolean> WEAR_TILE_PREVIEW = Flag.create(
+  public static final Flag<Boolean> WEAR_TILE_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
     "If enabled, a preview for functions annotated with @Preview and returning TilePreviewData is displayed",
-    IdeChannel.getChannel().isAtMost(IdeChannel.Channel.CANARY));
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
   // endregion
 
   // region Wear Health Services
@@ -1722,10 +1738,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
                     "When enabled, inline code completion suggestions will be shown.",
-                    ChannelDefault.of(false)
-                      .withDevOverride(true)
-                      .withNightlyOverride(true)
-                      .withCanaryOverride(true));
+                    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
     Flag.create(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",

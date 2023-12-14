@@ -146,10 +146,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -167,10 +167,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -442,10 +442,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -463,10 +463,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -647,10 +647,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -668,10 +668,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1169,105 +1169,105 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/buildSrc/src/main/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/generated-gradle-jars/gradle-api-<GRADLE_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/gradle-installation-beacon-<GRADLE_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-ant-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-astbuilder-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-console-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-datetime-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-dateutil-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-groovydoc-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-json-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-nio-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-sql-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-templates-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-test-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-xml-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/javaparser-core-3.17.0.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-reflect-<KOTLIN_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-<KOTLIN_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-common-<KOTLIN_VERSION>.jar!/
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : BuildSrcWithComposite.buildSrc.lib1.main
         ORDER_ENTRY                   : BuildSrcWithComposite.buildSrc.lib2.main
             Scope                         : Runtime
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/generated-gradle-jars/gradle-api-<GRADLE_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-ant-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-astbuilder-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-console-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-datetime-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-dateutil-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-groovydoc-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-json-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-nio-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-sql-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-templates-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-test-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-xml-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/javaparser-core-3.17.0.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-<KOTLIN_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-common-<KOTLIN_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-reflect-<KOTLIN_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/gradle-installation-beacon-<GRADLE_VERSION>.jar!/
         Classes
             -                             : file://<PROJECT>/buildSrc/build/classes/java/main
             -                             : file://<PROJECT>/buildSrc/build/classes/groovy/main
@@ -1310,106 +1310,106 @@ PROJECT                       : BuildSrcWithComposite
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/buildSrc/src/test/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/generated-gradle-jars/gradle-api-<GRADLE_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/gradle-installation-beacon-<GRADLE_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-ant-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-astbuilder-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-console-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-datetime-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-dateutil-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-groovydoc-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-json-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-nio-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-sql-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-templates-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-test-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-xml-3.0.17.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/javaparser-core-3.17.0.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-reflect-<KOTLIN_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-<KOTLIN_VERSION>.jar!/
-        LIBRARY
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY
-                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-common-<KOTLIN_VERSION>.jar!/
         ORDER_ENTRY                   : <Module source>
         ORDER_ENTRY                   : BuildSrcWithComposite.buildSrc.lib1.main
         ORDER_ENTRY                   : BuildSrcWithComposite.buildSrc.lib2.main
             Scope                         : Runtime
         ORDER_ENTRY                   : BuildSrcWithComposite.buildSrc.main
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/generated-gradle-jars/gradle-api-<GRADLE_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-ant-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-astbuilder-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-console-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-datetime-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-dateutil-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-groovydoc-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-json-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-nio-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-sql-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-templates-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-test-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/groovy-xml-3.0.17.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/javaparser-core-3.17.0.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-<KOTLIN_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-stdlib-common-<KOTLIN_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/kotlin-reflect-<KOTLIN_VERSION>.jar!/
+        LIBRARY                       : Gradle:  [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle:
+                *CLASSES                      : jar://<GRADLE>/wrapper/dists/gradle-<GRADLE_VERSION>-bin/xxxxxxxxxxxxxxxxxxxxxxxxx/gradle-<GRADLE_VERSION>/lib/gradle-installation-beacon-<GRADLE_VERSION>.jar!/
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
                 ASSEMBLE                      : <PROJECT>::buildSrc:assemble, <PROJECT>::buildSrc:testClasses
@@ -1572,10 +1572,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1593,10 +1593,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1782,10 +1782,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1803,10 +1803,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1958,10 +1958,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -1979,10 +1979,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2237,10 +2237,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2258,10 +2258,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2383,10 +2383,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2404,10 +2404,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2523,10 +2523,10 @@ PROJECT                       : BuildSrcWithComposite
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
-            ApiLevel                      : 1.9
+            ApiLevel                      : 2.0
             CompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar
@@ -2544,10 +2544,10 @@ PROJECT                       : BuildSrcWithComposite
                 outputDirectoryForJsLibraryFiles        : lib
             IsTestModule                  : false
             Kind                          : DEFAULT
-            LanguageLevel                 : 1.9
+            LanguageLevel                 : 2.0
             MergedCompilerArguments
-                apiVersion                    : 1.9
-                languageVersion               : 1.9
+                apiVersion                    : 2.0
+                languageVersion               : 2.0
                 - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar
                 - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-android-extensions/<KOTLIN_VERSION>/kotlin-android-extensions-<KOTLIN_VERSION>.jar

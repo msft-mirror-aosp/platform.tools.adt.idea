@@ -16,16 +16,18 @@
 package com.android.tools.idea.gradle.project.sync.issues
 
 import com.android.tools.analytics.UsageTracker
-import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot
 import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent.GradleSyncFailure
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.issue.BuildIssueException
-import com.intellij.openapi.project.Project
 import com.jetbrains.rd.util.concurrentMapOf
+import groovy.lang.MissingMethodException
+import groovy.lang.MissingPropertyException
 import org.jetbrains.annotations.SystemIndependent
+import org.jetbrains.plugins.gradle.issue.UnsupportedGradleVersionIssue
 
 private val LOG = Logger.getInstance(SyncFailureUsageReporter::class.java)
 
@@ -37,7 +39,7 @@ private val LOG = Logger.getInstance(SyncFailureUsageReporter::class.java)
  */
 @Service(Service.Level.APP)
 class SyncFailureUsageReporter {
-  private val collectedFailures = concurrentMapOf<String, AndroidStudioEvent.GradleSyncFailure>()
+  private val collectedFailures = concurrentMapOf<String, GradleSyncFailure>()
 
   companion object {
     @JvmStatic
@@ -48,7 +50,7 @@ class SyncFailureUsageReporter {
     collectedFailures.remove(rootProjectPath)
   }
 
-  fun collectFailure(rootProjectPath: @SystemIndependent String, failure: AndroidStudioEvent.GradleSyncFailure) {
+  fun collectFailure(rootProjectPath: @SystemIndependent String, failure: GradleSyncFailure) {
     val previousValue = collectedFailures.put(rootProjectPath, failure)
     if (previousValue != null) {
       LOG.warn("Multiple sync failures reported. Discarding: $previousValue")
@@ -67,14 +69,18 @@ class SyncFailureUsageReporter {
   }
 
   private fun deriveSyncFailureFromProcessedError(error: Throwable?) = if (error is BuildIssueException) {
-    if (error.buildIssue.javaClass.packageName.startsWith("com.android.tools.")) {
-      AndroidStudioEvent.GradleSyncFailure.ANDROID_BUILD_ISSUE_CREATED_UNKNOWN_FAILURE
-    }
-    else {
-      AndroidStudioEvent.GradleSyncFailure.BUILD_ISSUE_CREATED_UNKNOWN_FAILURE
+    when {
+      error.buildIssue.javaClass.packageName.startsWith("com.android.tools.") -> GradleSyncFailure.ANDROID_BUILD_ISSUE_CREATED_UNKNOWN_FAILURE
+      error.buildIssue is UnsupportedGradleVersionIssue -> GradleSyncFailure.UNSUPPORTED_GRADLE_VERSION
+      else -> GradleSyncFailure.BUILD_ISSUE_CREATED_UNKNOWN_FAILURE
     }
   }
   else {
-    AndroidStudioEvent.GradleSyncFailure.UNKNOWN_GRADLE_FAILURE
+    when {
+      error?.message?.startsWith("Could not find method ") == true -> GradleSyncFailure.DSL_METHOD_NOT_FOUND
+      error?.message?.startsWith("Could not get unknown property ") == true -> GradleSyncFailure.DSL_METHOD_NOT_FOUND
+      error?.message?.startsWith("Could not set unknown property ") == true -> GradleSyncFailure.DSL_METHOD_NOT_FOUND
+      else -> GradleSyncFailure.UNKNOWN_GRADLE_FAILURE
+    }
   }
 }

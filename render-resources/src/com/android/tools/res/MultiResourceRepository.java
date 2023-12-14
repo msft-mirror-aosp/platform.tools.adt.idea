@@ -49,6 +49,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -148,6 +149,12 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
 
       invalidateParentCaches();
     }
+  }
+
+  abstract protected void refreshChildren();
+
+  public void onChildDisposed() {
+    refreshChildren();
   }
 
   @GuardedBy("ITEM_MAP_LOCK")
@@ -514,7 +521,7 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
    * before exposing it to callers.
    */
   private static class PerConfigResourceMap implements ListMultimap<String, ResourceItem> {
-    private final Map<String, List<ResourceItem>> myMap = new HashMap<>();
+    private final Map<String, List<ResourceItem>> myMap = new LinkedHashMap<>();
     private int mySize = 0;
     @NotNull private final ResourceItemComparator myComparator;
     @Nullable private Values myValues;

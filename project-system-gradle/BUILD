@@ -3,6 +3,7 @@ load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_7_4")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
+load("//tools/base/build-system/integration-test:common-dependencies.bzl", "KGP_VERSION_FOR_TESTS")
 
 # managed by go/iml_to_build
 iml_module(
@@ -55,7 +56,7 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-toml",
         "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl[module]",
         "//tools/adt/idea/execution/common:intellij.android.execution.common[module]",
-        "//tools/adt/idea/explainer:intellij.android.explainer[module]",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api[module]",
         "//tools/adt/idea/analytics[module]",
         "//tools/adt/idea/server-flags:intellij.android.server-flags[module]",
         "//tools/adt/idea/project-system-gradle:libandroid-core-proto",
@@ -285,7 +286,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.0",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.6.21",
-        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_1.9.20-RC",
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_" + KGP_VERSION_FOR_TESTS,
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.5.2",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.6.4",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.5.2",

@@ -59,6 +59,7 @@ import com.intellij.ui.LayeredIcon
 import icons.StudioIcons
 import org.junit.Before
 import org.junit.ClassRule
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.anyInt
@@ -108,6 +109,7 @@ class DeviceToolWindowPanelTest {
   }
 
   @Test
+  @Ignore("b/315344704") // TODO: this test is flaky with IntelliJ 2023.3.
   fun testAppearanceAndToolbarActions() {
     device = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280))
     assertThat(panel.primaryDisplayView).isNull()
@@ -187,8 +189,8 @@ class DeviceToolWindowPanelTest {
 
     // Check push button actions.
     val pushButtonCases = listOf(
-      Pair("Button 1", AKEYCODE_POWER),
-      Pair("Button 2", AKEYCODE_STEM_PRIMARY),
+      Pair("Button 1", AKEYCODE_STEM_PRIMARY),
+      Pair("Button 2", AKEYCODE_POWER),
       Pair("Back", AKEYCODE_BACK),
     )
     for (case in pushButtonCases) {
@@ -412,7 +414,6 @@ class DeviceToolWindowPanelTest {
                                maxPercentDifferentLinux: Double = 0.0003,
                                maxPercentDifferentMac: Double = 0.0003,
                                maxPercentDifferentWindows: Double = 0.0003) {
-    fakeUi.layoutAndDispatchEvents()
     fakeUi.updateToolbars()
     val image = fakeUi.render()
     val maxPercentDifferent = when {

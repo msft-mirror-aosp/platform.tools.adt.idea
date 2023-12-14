@@ -143,6 +143,7 @@ import com.intellij.build.events.BuildEvent
 import com.intellij.build.events.MessageEvent
 import com.intellij.build.internal.DummySyncViewManager
 import com.intellij.externalSystem.JavaProjectData
+import com.intellij.gradle.toolingExtension.impl.model.sourceSetModel.DefaultGradleSourceSetModel
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.Disposable
@@ -202,8 +203,6 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
-import org.jetbrains.kotlin.idea.core.script.configuration.ScriptingSupport
-import org.jetbrains.kotlin.idea.core.script.configuration.listener.ScriptChangeListener
 import org.jetbrains.kotlin.idea.core.script.dependencies.KotlinScriptWorkspaceFileIndexContributor
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtension
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtensions
@@ -211,6 +210,7 @@ import org.jetbrains.plugins.gradle.model.ExternalProject
 import org.jetbrains.plugins.gradle.model.ExternalSourceSet
 import org.jetbrains.plugins.gradle.model.ExternalTask
 import org.jetbrains.plugins.gradle.model.GradleExtensions
+import org.jetbrains.plugins.gradle.model.GradleSourceSetModel
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
 import org.jetbrains.plugins.gradle.service.project.data.GradleExtensionsDataService
@@ -1412,6 +1412,7 @@ private fun setupTestProjectFromAndroidModelCore(
         override fun getSourceSets(): Map<String, ExternalSourceSet> = mapOf()
         override fun getArtifacts(): List<File> = listOf()
         override fun getArtifactsByConfiguration(): Map<String, MutableSet<File>> = mapOf()
+        override fun getSourceSetModel(): GradleSourceSetModel = DefaultGradleSourceSetModel()
       },
       null
     )
@@ -2176,12 +2177,6 @@ private fun <T> openPreparedProject(
               javaHome = jdkPath
               save()
             }
-          }
-
-          @Suppress("UnstableApiUsage")
-          if (options.disableKtsRelatedIndexing) {
-            ScriptingSupport.EPN.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
-            ScriptChangeListener.LISTENER.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
           }
           project.messageBus.connect(disposable).let {
             options.subscribe(it)

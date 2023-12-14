@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.rendering;
 
+import static com.android.AndroidXConstants.CLASS_V4_FRAGMENT;
 import static com.android.SdkConstants.ANDROID_URI;
 import static com.android.SdkConstants.ATTR_CLASS;
 import static com.android.SdkConstants.ATTR_ID;
@@ -23,7 +24,6 @@ import static com.android.SdkConstants.ATTR_NAME;
 import static com.android.SdkConstants.CLASS_ATTRIBUTE_SET;
 import static com.android.SdkConstants.CLASS_CONTEXT;
 import static com.android.SdkConstants.CLASS_FRAGMENT;
-import static com.android.AndroidXConstants.CLASS_V4_FRAGMENT;
 import static com.android.SdkConstants.CLASS_VIEW;
 import static com.android.SdkConstants.LAYOUT_RESOURCE_PREFIX;
 import static com.android.SdkConstants.TOOLS_URI;
@@ -51,7 +51,6 @@ import static com.android.tools.rendering.HtmlLinkManagerKt.URL_SYNC;
 
 import com.android.annotations.concurrency.UiThread;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
-import com.android.ide.common.repository.GradleCoordinate;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.projectsystem.DependencyType;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
@@ -120,12 +119,12 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.uipreview.ChooseClassDialog;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.idea.debugger.core.DebuggerUtils;
+import org.jetbrains.kotlin.resolve.jvm.JvmClassName;
 
 public class StudioHtmlLinkManager implements HtmlLinkManager {
   private static final String URL_SHOW_XML = "action:showXml";
@@ -545,7 +544,24 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
     }
 
     Project project = module.getProject();
-    PsiClass clz = JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project));
+    GlobalSearchScope searchScope = GlobalSearchScope.allScope(project);
+
+    // First, try to find a source file corresponding to the class, because other search mechanisms below might return the .class files.
+    if (fileName != null) {
+      PsiFile containingFile = DebuggerUtils.INSTANCE.findSourceFileForClassIncludeLibrarySources(
+        project,
+        searchScope,
+        JvmClassName.byInternalName(className.replace(".", "/")),
+        fileName,
+        null
+      );
+      if (containingFile != null) {
+        openEditor(project, containingFile, line - 1, -1);
+        return;
+      }
+    }
+
+    PsiClass clz = JavaPsiFacade.getInstance(project).findClass(className, searchScope);
     if (clz != null) {
       PsiFile containingFile = clz.getContainingFile();
       if (fileName != null && containingFile != null && line != -1) {
@@ -576,7 +592,7 @@ public class StudioHtmlLinkManager implements HtmlLinkManager {
       }
 
       if (fileName != null) {
-        PsiFile[] files = FilenameIndex.getFilesByName(project, fileName, GlobalSearchScope.allScope(project));
+        PsiFile[] files = FilenameIndex.getFilesByName(project, fileName, searchScope);
         for (PsiFile psiFile : files) {
           if (openEditor(project, psiFile, line != -1 ? line - 1 : -1, -1)) {
             break;

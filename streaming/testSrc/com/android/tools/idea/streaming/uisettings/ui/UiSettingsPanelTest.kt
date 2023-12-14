@@ -15,8 +15,12 @@
  */
 package com.android.tools.idea.streaming.uisettings.ui
 
+import com.android.testutils.MockitoKt.any
+import com.android.testutils.MockitoKt.mock
+import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.common.AdtUiUtils
+import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.popup.FakeBalloon
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.streaming.uisettings.binding.ChangeListener
@@ -28,7 +32,13 @@ import com.intellij.testFramework.RuleChain
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.doAnswer
+import java.awt.Dimension
+import java.awt.event.WindowFocusListener
 import javax.swing.JCheckBox
+import javax.swing.JPanel
+import javax.swing.JSlider
+import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.seconds
 
 class UiSettingsPanelTest {
@@ -44,13 +54,15 @@ class UiSettingsPanelTest {
 
   @Before
   fun before() {
-    model = UiSettingsModel()
+    model = UiSettingsModel(Dimension(1344, 2992), 480)
     panel = UiSettingsPanel(model, projectRule.disposable)
     model.inDarkMode.uiChangeListener = ChangeListener { lastCommand = "dark=$it" }
+    model.fontSizeInPercent.uiChangeListener = ChangeListener { lastCommand = "fontSize=$it" }
+    model.screenDensity.uiChangeListener = ChangeListener { lastCommand = "density=$it" }
   }
 
   @Test
-  fun testSetFromUi() {
+  fun testSetDarkModeFromUi() {
     val checkBox = AdtUiUtils.allComponents(panel).filterIsInstance<JCheckBox>().filter { it.name == DARK_THEME_TITLE }.single()
     assertThat(checkBox.isSelected).isFalse()
 
@@ -62,9 +74,61 @@ class UiSettingsPanelTest {
   }
 
   @Test
+  fun testSetFontSizeFromUi() {
+    val slider = AdtUiUtils.allComponents(panel).filterIsInstance<JSlider>().filter { it.name == FONT_SIZE_TITLE }.single()
+    assertThat(slider.value).isEqualTo(FontSize.NORMAL.ordinal)
+
+    slider.value = FontSize.values().size - 1
+    waitForCondition(1.seconds) { lastCommand == "fontSize=200" }
+
+    slider.value = 0
+    waitForCondition(1.seconds) { lastCommand == "fontSize=85" }
+  }
+
+  @Test
+  fun testSetDensityFromUi() {
+    val slider = AdtUiUtils.allComponents(panel).filterIsInstance<JSlider>().filter { it.name == DENSITY_TITLE }.single()
+    assertThat(slider.value).isEqualTo(1)
+
+    val densities = GoogleDensityRange.computeDensityRange(Dimension(1344, 2992), 480)
+    slider.value = densities.lastIndex
+    waitForCondition(1.seconds) { lastCommand == "density=672" }
+
+    slider.value = 0
+    waitForCondition(1.seconds) { lastCommand == "density=408" }
+  }
+
+  @Test
   fun testCreatePicker() {
-    val balloon = panel.createPicker() as FakeBalloon
-    Disposer.register(projectRule.disposable, balloon)
+    val component = JPanel().apply { setBounds(0, 0, 600, 800) }
+    FakeUi(component, createFakeWindow = true)
+    val balloon = panel.createPicker(component, projectRule.disposable) as FakeBalloon
     assertThat(balloon.component).isInstanceOf(UiSettingsPanel::class.java)
+  }
+
+  @Test
+  fun testPickerClosesWhenWindowCloses() {
+    val component = JPanel().apply { setBounds(0, 0, 600, 800) }
+    FakeUi(component, createFakeWindow = true)
+    val window = SwingUtilities.windowForComponent(component)
+    val listeners = mutableListOf<WindowFocusListener>()
+    doAnswer { invocation ->
+      listeners.add(invocation.arguments[0] as WindowFocusListener)
+    }.whenever(window).addWindowFocusListener(any())
+    val balloon = panel.createPicker(component, projectRule.disposable) as FakeBalloon
+    listeners.forEach { it.windowLostFocus(mock()) }
+    assertThat(balloon.isDisposed).isTrue()
+  }
+
+  @Test
+  fun testPickerClosesWithParentDisposable() {
+    val component = JPanel().apply { setBounds(0, 0, 600, 800) }
+    FakeUi(component, createFakeWindow = true)
+    val parentDisposable = Disposer.newDisposable()
+    Disposer.register(projectRule.disposable, parentDisposable)
+    val balloon = panel.createPicker(component, parentDisposable) as FakeBalloon
+
+    Disposer.dispose(parentDisposable)
+    assertThat(balloon.isDisposed).isTrue()
   }
 }

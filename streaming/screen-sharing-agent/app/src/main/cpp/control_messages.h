@@ -590,8 +590,34 @@ public:
 
   virtual void Serialize(Base128OutputStream& stream) const;
 
+  void copy(UiSettingsResponse* result) {
+    result->set_dark_mode(dark_mode_);
+    result->set_font_size(font_size_);
+    result->set_density(density_);
+  }
+
   void set_dark_mode(bool dark_mode) {
     dark_mode_ = dark_mode;
+  }
+
+  bool dark_mode() {
+    return dark_mode_;
+  }
+
+  void set_font_size(int32_t font_size) {
+    font_size_ = font_size;
+  }
+
+  int32_t font_size() {
+    return font_size_;
+  }
+
+  void set_density(int32_t density) {
+    density_ = density;
+  }
+
+  int32_t density() {
+    return density_;
   }
 
   static constexpr int TYPE = 20;
@@ -600,11 +626,13 @@ private:
   friend class ControlMessage;
 
   bool dark_mode_;
+  int32_t font_size_;
+  int32_t density_;
 
   DISALLOW_COPY_AND_ASSIGN(UiSettingsResponse);
 };
 
-// Changes the DarkMode setting on the device.
+// Changes the Dark Mode setting on the device.
 class SetDarkModeMessage : ControlMessage {
 public:
   SetDarkModeMessage(bool dark_mode)
@@ -629,6 +657,62 @@ private:
   bool dark_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(SetDarkModeMessage);
+};
+
+// Changes the Font Size setting on the device.
+// The font_size is specified as a percentage of the normal font.
+// A value of 100 is the normal size.
+class SetFontSizeMessage : ControlMessage {
+public:
+  SetFontSizeMessage(int32_t font_size)
+      : ControlMessage(TYPE),
+        font_size_(font_size) {
+  }
+  virtual ~SetFontSizeMessage() = default;
+
+  virtual void Serialize(Base128OutputStream& stream) const;
+
+  int32_t font_size() const {
+    return font_size_;
+  }
+
+  static constexpr int TYPE = 22;
+
+private:
+  friend class ControlMessage;
+
+  static SetFontSizeMessage* Deserialize(Base128InputStream& stream);
+
+  int32_t font_size_;
+
+  DISALLOW_COPY_AND_ASSIGN(SetFontSizeMessage);
+};
+
+// Changes the Screen Density setting on the device.
+class SetScreenDensityMessage : ControlMessage {
+public:
+  SetScreenDensityMessage(int32_t density)
+      : ControlMessage(TYPE),
+        density_(density) {
+  }
+  virtual ~SetScreenDensityMessage() = default;
+
+  virtual void Serialize(Base128OutputStream& stream) const;
+
+  int32_t density() const {
+    return density_;
+  }
+
+  static constexpr int TYPE = 23;
+
+private:
+  friend class ControlMessage;
+
+  static SetScreenDensityMessage* Deserialize(Base128InputStream& stream);
+
+  int32_t density_;
+
+  DISALLOW_COPY_AND_ASSIGN(SetScreenDensityMessage);
 };
 
 }  // namespace screensharing

@@ -39,6 +39,7 @@ import com.intellij.openapi.ui.popup.TreePopupStep
 import com.intellij.openapi.util.Condition
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.ui.popup.ActionPopupStep
+import com.intellij.util.ui.Html
 import java.awt.Color
 import java.awt.Component
 import java.awt.Point
@@ -212,11 +213,8 @@ class FakeJBPopupFactory : JBPopupFactory() {
   private fun getComponentContextSupplier(parentDataContext: DataContext,
                                           component: Component?): Supplier<DataContext> {
     if (component == null) return Supplier { parentDataContext }
-    val dataContext = Utils.wrapDataContext(DataManager.getInstance().getDataContext(component))
-    return when {
-      Utils.isAsyncDataContext(dataContext) -> Supplier { dataContext }
-      else -> Supplier { DataManager.getInstance().getDataContext(component) }
-    }
+    val dataContext = Utils.createAsyncDataContext(DataManager.getInstance().getDataContext(component))
+    return Supplier { dataContext }
   }
 
 
@@ -292,6 +290,14 @@ class FakeJBPopupFactory : JBPopupFactory() {
   }
 
   override fun createHtmlTextBalloonBuilder(htmlContent: String,
+                                            icon: Icon?,
+                                            textColor: Color?,
+                                            fillColor: Color?,
+                                            listener: HyperlinkListener?): BalloonBuilder {
+    TODO("Not yet implemented")
+  }
+
+  override fun createHtmlTextBalloonBuilder(html: Html,
                                             icon: Icon?,
                                             textColor: Color?,
                                             fillColor: Color?,

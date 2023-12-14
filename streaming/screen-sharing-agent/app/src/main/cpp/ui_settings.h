@@ -21,16 +21,25 @@
 namespace screensharing {
 
 // Handles requests and commands related to the UI for the settings shortcut dialog in Studio.
-// TODO: This class should keep the initial state of each setting, such that we can revert the settings when the agent is disconnected.
 class UiSettings {
 public:
-  UiSettings() = default;
+  UiSettings();
 
   void Get(UiSettingsResponse* response);
 
   void SetDarkMode(bool dark_mode);
 
+  void SetFontSize(int32_t font_size);
+
+  void SetScreenDensity(int32_t density);
+
+  void Reset();
+
 private:
+  bool initial_settings_recorded_ = false;
+  UiSettingsResponse initial_settings_;
+  UiSettingsResponse last_settings_;
+
   DISALLOW_COPY_AND_ASSIGN(UiSettings);
 };
 

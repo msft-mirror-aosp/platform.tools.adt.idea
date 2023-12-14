@@ -113,12 +113,8 @@ private:
 
   void SendUiSettings(const UiSettingsRequest& request);
   void SetDarkMode(const SetDarkModeMessage& message);
-
-  // TODO: Remove the following 4 methods when b/303684492 is fixed.
-  void StartDisplayPolling();
-  void StopDisplayPolling();
-  void PollDisplays();
-  std::map<int32_t, DisplayInfo> GetDisplays();
+  void SetFontSize(const SetFontSizeMessage& message);
+  void SetScreenDensity(const SetScreenDensityMessage& message);
 
   Jni jni_ = nullptr;
   int socket_fd_;  // Owned.
@@ -145,10 +141,6 @@ private:
   std::vector<DisplayEvent> pending_display_events_;  // GUARDED_BY(display_events_mutex_)
 
   UiSettings ui_settings_;
-
-  // TODO: Remove the following 2 fields when b/303684492 is fixed.
-  std::map<int32_t, DisplayInfo> current_displays_;
-  std::chrono::steady_clock::time_point poll_displays_until_;
 
   DISALLOW_COPY_AND_ASSIGN(Controller);
 };

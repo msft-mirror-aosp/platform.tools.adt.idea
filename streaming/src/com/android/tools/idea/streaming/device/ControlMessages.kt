@@ -75,6 +75,8 @@ sealed class ControlMessage(val type: Int) {
         UiSettingsRequest.TYPE -> UiSettingsRequest.deserialize(stream)
         UiSettingsResponse.TYPE -> UiSettingsResponse.deserialize(stream)
         SetDarkModeMessage.TYPE -> SetDarkModeMessage.deserialize(stream)
+        SetFontSizeMessage.TYPE -> SetFontSizeMessage.deserialize(stream)
+        SetScreenDensityMessage.TYPE -> SetScreenDensityMessage.deserialize(stream)
         else -> throw StreamFormatException("Unrecognized control message type $type")
       }
       FlightRecorder.log { "${TraceUtils.currentTime()} deserialize: message = $message" }
@@ -623,7 +625,7 @@ internal data class DisplayRemovedNotification(val displayId: Int) : ControlMess
 /**
  * Queries the current UI settings from a device.
  */
-internal class UiSettingsRequest private constructor (override val requestId: Int) : CorrelatedMessage(TYPE) {
+internal class UiSettingsRequest private constructor(override val requestId: Int) : CorrelatedMessage(TYPE) {
 
   constructor(requestIdGenerator: () -> Int) : this(requestIdGenerator())
 
@@ -643,15 +645,26 @@ internal class UiSettingsRequest private constructor (override val requestId: In
 /**
  * The current UI settings received from a device.
  */
-internal data class UiSettingsResponse(override val requestId: Int, val darkMode: Boolean) : CorrelatedMessage(TYPE) {
+internal data class UiSettingsResponse(
+  override val requestId: Int,
+  val darkMode: Boolean,
+  val fontSize: Int,
+  val density: Int
+) : CorrelatedMessage(TYPE) {
 
   override fun serialize(stream: Base128OutputStream) {
     super.serialize(stream)
     stream.writeBoolean(darkMode)
+    stream.writeInt(fontSize)
+    stream.writeInt(density)
   }
 
   override fun toString(): String =
-    "UiSettingsResponse(requestId=$requestId, darkMode=$darkMode)"
+    "UiSettingsResponse(" +
+    "requestId=$requestId, " +
+    "darkMode=$darkMode, " +
+    "fontSize=$fontSize, " +
+    "density=$density)"
 
   companion object : Deserializer {
     const val TYPE = 20
@@ -659,13 +672,20 @@ internal data class UiSettingsResponse(override val requestId: Int, val darkMode
     override fun deserialize(stream: Base128InputStream): UiSettingsResponse {
       val requestId = stream.readInt()
       val darkMode = stream.readBoolean()
-      return UiSettingsResponse(requestId, darkMode)
+      val fontSize = stream.readInt()
+      val density = stream.readInt()
+      return UiSettingsResponse(
+        requestId,
+        darkMode,
+        fontSize,
+        density
+      )
     }
   }
 }
 
 /**
- * Changes the DarkMode setting on a device.
+ * Changes the Dark Mode setting on a device.
  */
 internal data class SetDarkModeMessage(val darkMode: Boolean) : ControlMessage(TYPE) {
 
@@ -683,6 +703,55 @@ internal data class SetDarkModeMessage(val darkMode: Boolean) : ControlMessage(T
     override fun deserialize(stream: Base128InputStream): SetDarkModeMessage {
       val darkMode = stream.readBoolean()
       return SetDarkModeMessage(darkMode)
+    }
+  }
+}
+
+/**
+ * Changes the Font Size setting on a device.
+ *
+ * The [fontSize] is specified as a percentage of the normal font.
+ * A value of 100 is the normal size.
+ */
+internal data class SetFontSizeMessage(val fontSize: Int) : ControlMessage(TYPE) {
+
+  override fun serialize(stream: Base128OutputStream) {
+    super.serialize(stream)
+    stream.writeInt(fontSize)
+  }
+
+  override fun toString(): String =
+    "SetFontSizeMessage(fontSize=$fontSize)"
+
+  companion object : Deserializer {
+    const val TYPE = 22
+
+    override fun deserialize(stream: Base128InputStream): SetFontSizeMessage {
+      val fontSize = stream.readInt()
+      return SetFontSizeMessage(fontSize)
+    }
+  }
+}
+
+/**
+ * Changes the Screen Density setting on a device.
+ */
+internal data class SetScreenDensityMessage(val density: Int) : ControlMessage(TYPE) {
+
+  override fun serialize(stream: Base128OutputStream) {
+    super.serialize(stream)
+    stream.writeInt(density)
+  }
+
+  override fun toString(): String =
+    "SetScreenDensityMessage(density=$density)"
+
+  companion object : Deserializer {
+    const val TYPE = 23
+
+    override fun deserialize(stream: Base128InputStream): SetScreenDensityMessage {
+      val density = stream.readInt()
+      return SetScreenDensityMessage(density)
     }
   }
 }

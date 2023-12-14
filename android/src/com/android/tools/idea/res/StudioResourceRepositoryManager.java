@@ -56,8 +56,10 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.CachedValue;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -309,7 +311,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
           if (myFacet.isDisposed()) {
             return new EmptyRepository<>(getNamespace());
           }
-          myAppResources = AppResourceRepository.create(myFacet, getLibraryResources(), getSampleDataResources());
+          myAppResources = AppResourceRepository.create(myFacet);
           Disposer.register(this, myAppResources);
         }
         return myAppResources;
@@ -474,8 +476,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
 
   @NotNull
   private LocalResourceRepository<VirtualFile> computeTestAppResources() {
-    LocalResourceRepository<VirtualFile> moduleTestResources = getTestModuleResources();
-    return TestAppResourceRepository.create(myFacet, moduleTestResources);
+    return TestAppResourceRepository.create(myFacet);
   }
 
   @Slow
@@ -547,18 +548,22 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
 
   @SuppressWarnings("Duplicates") // No way to refactor this without something like Variable Handles.
   public void resetResources() {
-    resetLibraries();
+    List<Disposable> objectsToDispose = new ArrayList<>(6);
+
+    synchronized (myLibraryLock) {
+      myLibraryResourceMap = null;
+    }
 
     synchronized (MODULE_RESOURCES_LOCK) {
       if (myModuleResources != null) {
-        disposeIfDisposable(myModuleResources);
+        addIfDisposable(objectsToDispose, myModuleResources);
         myModuleResources = null;
       }
     }
 
     synchronized (PROJECT_RESOURCES_LOCK) {
       if (myProjectResources != null) {
-        Disposer.dispose(myProjectResources);
+        addIfDisposable(objectsToDispose, myProjectResources);
         myProjectResources = null;
         myLocalesAndLanguages = null;
       }
@@ -567,32 +572,36 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     synchronized (APP_RESOURCES_LOCK) {
       synchronized (mySampleDataLock) {
         if (mySampleDataResources != null) {
-          Disposer.dispose(mySampleDataResources);
+          addIfDisposable(objectsToDispose, mySampleDataResources);
           mySampleDataResources = null;
         }
       }
 
       if (myAppResources != null) {
-        Disposer.dispose(myAppResources);
+        addIfDisposable(objectsToDispose, myAppResources);
         myAppResources = null;
       }
     }
 
     synchronized (TEST_RESOURCES_LOCK) {
       if (myTestAppResources != null) {
-        disposeIfDisposable(myTestAppResources);
+        addIfDisposable(objectsToDispose, myTestAppResources);
         myTestAppResources = null;
       }
       if (myTestModuleResources != null) {
-        disposeIfDisposable(myTestModuleResources);
+        addIfDisposable(objectsToDispose, myTestModuleResources);
         myTestModuleResources = null;
       }
     }
+
+    for (Disposable disposable : objectsToDispose) {
+      Disposer.dispose(disposable);
+    }
   }
 
-  private static void disposeIfDisposable(@NotNull Object object) {
-    if (object instanceof Disposable) {
-      Disposer.dispose((Disposable)object);
+  private static void addIfDisposable(@NotNull List<Disposable> disposables, @NotNull Object object) {
+    if (object instanceof Disposable disposable) {
+      disposables.add(disposable);
     }
   }
 
@@ -624,18 +633,12 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     return myFacet.getModule().getProject();
   }
 
-  private void resetLibraries() {
-    synchronized (myLibraryLock) {
-      myLibraryResourceMap = null;
-    }
-  }
-
   void updateRootsAndLibraries() {
     try {
       ProjectResourceRepository projectResources = (ProjectResourceRepository)getCachedProjectResources();
       AppResourceRepository appResources = (AppResourceRepository)getCachedAppResources();
       if (projectResources != null) {
-        projectResources.updateRoots();
+        projectResources.refreshChildren();
       }
 
       Map<ExternalAndroidLibrary, AarResourceRepository> oldLibraryResourceMap;
@@ -645,7 +648,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
         myLibraryResourceMap = null;
       }
       if (appResources != null) {
-        appResources.updateRoots(getLibraryResources(), getSampleDataResources());
+        appResources.refreshChildren();
       }
 
       // Access oldLibraryResourceMap to make sure that it is still in scope at this point.
@@ -656,7 +659,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       }
 
       if (getCachedTestAppResources() instanceof TestAppResourceRepository testAppResources) {
-        testAppResources.updateRoots(myFacet, getTestModuleResources());
+        testAppResources.refreshChildren();
       }
     }
     catch (IllegalStateException e) {
