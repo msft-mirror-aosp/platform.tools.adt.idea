@@ -512,10 +512,13 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       contentManager.addContent(content)
     }
     else {
-      val index = Arrays.binarySearch(contentManager.contents, content, TAB_COMPARATOR).inv()
+      var index = Arrays.binarySearch(contentManager.contents, content, TAB_COMPARATOR).inv()
       if (index < 0) {
-        reportDuplicatePanel(content)
-        return
+        index = index.inv()
+        if (panel.id == ID_KEY.get(contentManager.contents[index])) {
+          reportDuplicatePanel(content)
+          return
+        }
       }
 
       // Insert panel in alphabetical order of the title.
@@ -948,7 +951,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     override fun update(event: AnActionEvent) {
       super.update(event)
       event.presentation.isEnabledAndVisible =
-          findContent { (it.component as? EmulatorToolWindowPanel)?.emulator?.emulatorConfig?.skinFolder != null } != null
+          findContent {
+            (it.component as? EmulatorToolWindowPanel).let { it?.emulator?.emulatorConfig?.skinFolder != null && it.hasContent }
+          } != null
     }
 
     override fun isSelected(event: AnActionEvent): Boolean {
