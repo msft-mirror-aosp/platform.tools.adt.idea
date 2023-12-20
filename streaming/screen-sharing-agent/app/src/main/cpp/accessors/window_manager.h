@@ -33,7 +33,6 @@ public:
 
   ~WindowManager();
 
-  static int GetDefaultDisplayRotation(Jni jni);
   static void FreezeRotation(Jni jni, int32_t rotation);
   static void ThawRotation(Jni jni);
   static bool IsRotationFrozen(Jni jni);
@@ -47,10 +46,10 @@ private:
   static WindowManager& GetInstance(Jni jni);
 
   JObject window_manager_;
-  jmethodID get_default_display_rotation_method_;
   jmethodID freeze_rotation_method_;
   jmethodID thaw_rotation_method_;
   jmethodID is_rotation_frozen_method_;
+  bool freeze_display_rotation_method_requires_attribution_tag_ = false;
   std::atomic_int32_t rotation_;
   JObject watcher_object_;
   // Copy-on-write set of display_rotation watchers.
