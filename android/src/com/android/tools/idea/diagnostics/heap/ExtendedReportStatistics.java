@@ -251,18 +251,15 @@ public class ExtendedReportStatistics {
   }
 
   public void printExceededClusterStatisticsIfNeeded(@NotNull final Consumer<String> writer,
-                                                     @NotNull final ComponentsSet.Component component) {
+                                                     @NotNull final ComponentsSet.Component component,
+                                                     @NotNull final  HeapSnapshotStatistics.DisposedObjectsInfo disposedObjectsInfo) {
     ExceededClusterStatistics statistics = componentToExceededClustersStatistics.get(component);
     List<Pair<String, ObjectsStatistics>> nominatedClassesInOrder = statistics.nominatedClassesTotalStatistics.entrySet().stream()
       .sorted(Comparator.comparingInt((Map.Entry<String, ObjectsStatistics> e) -> e.getValue().getObjectsCount()).reversed())
       .map(e -> new Pair<>(e.getKey(), e.getValue())).toList();
 
-    ObjectsStatistics totalDisposedButReferencedObjectsStatistics = new ObjectsStatistics();
-    for (ObjectsStatistics value : componentHistograms.get(component.getId()).disposedButReferencedObjects.values()) {
-      totalDisposedButReferencedObjectsStatistics.addStats(value);
-    }
-    new RootPathTreePrinter.RootPathTreeDisposedObjectsPrinter(totalDisposedButReferencedObjectsStatistics, this,
-                                                               statistics).print(writer);
+    new RootPathTreePrinter.RootPathTreeDisposedObjectsPrinter(rootPathTree.totalRetainedDisposedObjectsStatistics, this,
+                                                               statistics, disposedObjectsInfo).print(writer);
 
     writer.accept("======== INSTANCES OF EACH NOMINATED CLASS ========");
     writer.accept("Nominated classes:");

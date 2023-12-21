@@ -784,7 +784,7 @@ public class HeapAnalyzerTest extends PlatformLiteFixture {
     Disposer.dispose(b);
 
     MemoryReportCollector.collectAndSendExtendedMemoryReport(componentsSet, List.of(componentsSet.getComponents().get(1)), () -> roots,
-                                                             200);
+                                                             50);
     assertSize(1, crushReporter.crashReports);
     CrashReport report = crushReporter.crashReports.get(0);
     MultipartEntityBuilder builder = MultipartEntityBuilder.create();
@@ -885,6 +885,8 @@ public class HeapAnalyzerTest extends PlatformLiteFixture {
     serializedExtendedReport = replaceNewlines(serializedExtendedReport);
     assertRequestContainsField(serializedExtendedReport, "Target exceeded cluster", "B");
     assertRequestContainsField(serializedExtendedReport, "Total used memory", "472B/23 objects");
+    assertRequestContainsField(serializedExtendedReport, "Number of duplicated class loaders", "20");
+    assertRequestContainsField(serializedExtendedReport, "Number of nominated class loaders", "0");
 
     assertExtendedMemoryReport("testExtendedReportCustomClassLoaders", serializedExtendedReport);
     assertExtendedMemoryReportSummary("testExtendedReportCustomClassLoaders", serializedExtendedReport);

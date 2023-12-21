@@ -27,6 +27,11 @@ import org.junit.rules.ExternalResource
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
+const val DEFAULT_FONT_SIZE = 100
+const val CUSTOM_FONT_SIZE = 130
+const val DEFAULT_DENSITY = 480
+const val CUSTOM_DENSITY = 560
+
 /**
  * Supplies fakes for UI settings tests
  */
@@ -58,20 +63,43 @@ class UiSettingsRule(emulatorPort: Int) : ExternalResource() {
 
   fun configureUiSettings(
     darkMode: Boolean = false,
-    fontSize: Int = 100,
-    physicalDensity: Int = 480,
-    overrideDensity: Int = 480
+    talkBackInstalled: Boolean = false,
+    talkBackOn: Boolean = false,
+    selectToSpeakOn: Boolean = false,
+    fontSize: Int = DEFAULT_FONT_SIZE,
+    physicalDensity: Int = DEFAULT_DENSITY,
+    overrideDensity: Int = DEFAULT_DENSITY
   ) {
     val overrideLine = if (physicalDensity != overrideDensity) "\nOverride density: $overrideDensity" else ""
 
     adb.configureShellCommand(deviceSelector, POPULATE_COMMAND, """
       -- Dark Mode --
       Night mode: ${if (darkMode) "yes" else "no"}
+      -- List Packages --
+      package:com.google.some.package1
+      ${if (talkBackInstalled) "package:com.google.android.marvin.talkback" else "package:com.google.some.package2"}
+      package:com.google.some.package3
+      -- Accessibility Services --
+      ${formatAccessibilityServices(talkBackOn, selectToSpeakOn)}
+      -- Accessibility Button Targets --
+      ${formatAccessibilityServices(talkBackOn = false, selectToSpeakOn)}
       -- Font Size --
       ${(fontSize.toFloat() / 100f)}
       -- Density --
       Physical density: $physicalDensity
     """.trimIndent() + overrideLine)
+
+    adb.configureShellCommand(deviceSelector, "settings get secure $ENABLED_ACCESSIBILITY_SERVICES",
+                              formatAccessibilityServices(talkBackOn, selectToSpeakOn))
+    adb.configureShellCommand(deviceSelector, "settings get secure $ACCESSIBILITY_BUTTON_TARGETS",
+                              formatAccessibilityServices(talkBackOn = false, selectToSpeakOn))
+  }
+
+  private fun formatAccessibilityServices(talkBackOn: Boolean, selectToSpeakOn: Boolean): String = when {
+    talkBackOn && selectToSpeakOn -> "$TALK_BACK_SERVICE_NAME:$SELECT_TO_SPEAK_SERVICE_NAME"
+    talkBackOn && !selectToSpeakOn -> TALK_BACK_SERVICE_NAME
+    !talkBackOn && selectToSpeakOn -> SELECT_TO_SPEAK_SERVICE_NAME
+    else -> "null"
   }
 
   override fun apply(base: Statement, description: Description): Statement =

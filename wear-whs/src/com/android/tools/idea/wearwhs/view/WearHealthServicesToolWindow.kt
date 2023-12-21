@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.wearwhs.view
 
+import com.android.tools.adtui.stdui.StandardColors
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.wearwhs.WearWhsBundle.message
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.intellij.openapi.Disposable
@@ -28,13 +30,18 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.layout.selected
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.JBUI.Borders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
+import javax.swing.Box
+import javax.swing.BoxLayout
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JCheckBox
@@ -45,22 +52,45 @@ import javax.swing.event.DocumentEvent
 
 private const val PADDING = 15
 
-private val horizontalBorders = JBUI.Borders.empty(0, PADDING)
+private val horizontalBorders = Borders.empty(0, PADDING)
 
 internal class WearHealthServicesToolWindow(private val stateManager: WearHealthServicesToolWindowStateManager) : SimpleToolWindowPanel(
   true, true), Disposable {
   private val uiScope: CoroutineScope = AndroidCoroutineScope(this, uiThread)
+  private val workerScope: CoroutineScope = AndroidCoroutineScope(this, workerThread)
+
+  private var serialNumber: String? = null
+
+  fun setSerialNumber(serialNumber: String) {
+    stateManager.serialNumber = serialNumber
+    this.serialNumber = serialNumber
+    removeAll()
+    add(createContentPanel())
+  }
 
   private fun getLogger() = Logger.getInstance(this::class.java)
 
-  private val contentPanel = run {
+  private fun createContentPanel(): JPanel {
+    if (serialNumber == null) {
+      return JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        border = Borders.empty(JBUI.scale(20))
+        add(Box.createVerticalGlue())
+        add(JLabel("<html><center>" + message("wear.whs.panel.launch.from.emulator") + "</center></html>", JLabel.CENTER).apply {
+          foreground = StandardColors.PLACEHOLDER_TEXT_COLOR
+        })
+        add(Box.createVerticalGlue())
+      }
+    }
     val header = JPanel(BorderLayout()).apply {
       border = horizontalBorders
       val capabilitiesComboBox = ComboBox<Preset>().apply {
         model = DefaultComboBoxModel(Preset.values())
       }
       capabilitiesComboBox.addActionListener {
-        stateManager.setPreset(capabilitiesComboBox.selectedItem as Preset)
+        workerScope.launch {
+          stateManager.setPreset(capabilitiesComboBox.selectedItem as Preset)
+        }
       }
       stateManager.getPreset().onEach {
         capabilitiesComboBox.selectedItem = it
@@ -101,16 +131,28 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       })
       add(JButton(message("wear.whs.panel.reset")).apply {
         addActionListener {
-          stateManager.reset()
+          workerScope.launch {
+            stateManager.reset()
+          }
         }
       })
       add(JButton(message("wear.whs.panel.apply")).apply {
         addActionListener {
-          stateManager.applyChanges()
+          isEnabled = false
+          workerScope.launch {
+            try {
+              stateManager.applyChanges()
+            }
+            finally {
+              uiScope.launch {
+                isEnabled = true
+              }
+            }
+          }
         }
       })
     }
-    JPanel(BorderLayout()).apply {
+    return JPanel(BorderLayout()).apply {
       add(header, BorderLayout.NORTH)
       add(content, BorderLayout.CENTER)
       add(footer, BorderLayout.SOUTH)
@@ -140,10 +182,10 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
           val checkBox = JCheckBox(message(capability.labelKey)).also { checkBox ->
             val plainFont = checkBox.font.deriveFont(Font.PLAIN)
             val italicFont = checkBox.font.deriveFont(Font.ITALIC)
-            stateManager.getCapabilityEnabled(capability).onEach { enabled ->
+            stateManager.getState(capability).map { it.enabled }.onEach { enabled ->
               checkBox.isSelected = enabled
             }.launchIn(uiScope)
-            stateManager.getSynced(capability).onEach { synced ->
+            stateManager.getState(capability).map { it.synced }.onEach { synced ->
               if (!synced) {
                 checkBox.font = italicFont
                 checkBox.text = "${message(capability.labelKey)}*"
@@ -154,8 +196,10 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
               }
             }.launchIn(uiScope)
             checkBox.addActionListener {
-              stateManager.setCapabilityEnabled(capability, checkBox.isSelected)
-              stateManager.setPreset(Preset.CUSTOM)
+              workerScope.launch {
+                stateManager.setCapabilityEnabled(capability, checkBox.isSelected)
+                stateManager.setPreset(Preset.CUSTOM)
+              }
             }
           }
           add(checkBox, BorderLayout.CENTER)
@@ -163,20 +207,22 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
             add(JTextField().also { textField ->
               textField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
-                  try {
-                    stateManager.setOverrideValue(capability, textField.text.toFloat())
-                  }
-                  catch (exception: NumberFormatException) { // TODO(b/309931192): Show a tooltip to the user that the value is not a float
-                    getLogger().warn("String is not a float")
+                  workerScope.launch {
+                    try {
+                      stateManager.setOverrideValue(capability, textField.text.toFloat())
+                    }
+                    catch (exception: NumberFormatException) { // TODO(b/309931192): Show a tooltip to the user that the value is not a float
+                      getLogger().warn("String is not a float")
+                    }
                   }
                 }
               })
-              stateManager.getOverrideValue(capability).onEach {
+              stateManager.getState(capability).map { it.overrideValue }.onEach {
                 if (!textField.isFocusOwner) {
                   textField.text = it?.toString() ?: ""
                 }
               }.launchIn(uiScope)
-              textField.preferredSize = Dimension(50, preferredSize.height)
+              textField.preferredSize = Dimension(JBUI.scale(50), JBUI.scale(20))
               textField.isEnabled = checkBox.isSelected
               checkBox.selected.addListener {
                 textField.isEnabled = it
@@ -185,7 +231,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
             })
             add(JLabel(message(capability.unitKey)).also { label ->
               label.isVisible = capability.isOverrideable
-              label.preferredSize = Dimension(50, label.preferredSize.height)
+              label.preferredSize = Dimension(JBUI.scale(50), JBUI.scale(20))
             })
           }, BorderLayout.EAST)
         })
@@ -194,7 +240,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
   }
 
   init {
-    add(contentPanel)
+    add(createContentPanel())
   }
 
   override fun dispose() {}

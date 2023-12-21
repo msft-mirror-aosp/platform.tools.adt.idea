@@ -271,7 +271,7 @@ class GalleryTabsTest {
       // so the ActionButtonWithText can be found when using TreeWalker.
       tabs.setUpdateToolbarExecutorForTests(MoreExecutors.directExecutor())
       // Width is 100, so only first tab is actually visible.
-      val root = JPanel(BorderLayout()).apply { size = Dimension(100, 400) }
+      val root = JPanel(BorderLayout()).apply { size = Dimension(130, 400) }
       root.add(tabs, BorderLayout.NORTH)
 
       FakeUi(root).apply { updateNestedActions() }

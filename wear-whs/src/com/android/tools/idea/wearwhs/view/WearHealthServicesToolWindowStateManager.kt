@@ -41,39 +41,30 @@ internal interface WearHealthServicesToolWindowStateManager {
   /**
    * Sets the current preset.
    */
-  fun setPreset(preset: Preset)
-
-  /**
-   * State flow for the enabled state of the capability.
-   */
-  fun getCapabilityEnabled(capability: WhsCapability): StateFlow<Boolean>
+  suspend fun setPreset(preset: Preset)
 
   /**
    * Sets the current capability enabled state.
    */
-  fun setCapabilityEnabled(capability: WhsCapability, enabled: Boolean)
-
-  /**
-   * State flow for the overridden sensor value of the capability. Null value here means there's no
-   * overridden value and WHS is using the default value.
-   */
-  fun getOverrideValue(capability: WhsCapability): StateFlow<Float?>
+  suspend fun setCapabilityEnabled(capability: WhsCapability, enabled: Boolean)
 
   /**
    * Sets the overridden sensor value for the given capability. Null value here means there's no
    * overridden value and WHS should use the default value.
    */
-  fun setOverrideValue(capability: WhsCapability, value: Float?)
+  suspend  fun setOverrideValue(capability: WhsCapability, value: Float?)
 
-  /**
+  fun getState(capability: WhsCapability): StateFlow<CapabilityState>
+
+    /**
    * Applies the changes on current device.
    */
-  fun applyChanges()
+  suspend fun applyChanges()
 
   /**
    * Resets the state to the defaults, in this case, to selected preset.
    */
-  fun reset()
+  suspend fun reset()
 
   /**
    * State flow for the ongoing status updates, it's an instance of [WhsStateManagerStatus]
@@ -83,9 +74,9 @@ internal interface WearHealthServicesToolWindowStateManager {
   fun getStatus(): StateFlow<WhsStateManagerStatus?>
 
   /**
-   * State flow for checking if the current capability overrides are synced with the device.
+   * Used to get/set the serial number of the currently running emulator.
    */
-  fun getSynced(capability: WhsCapability): StateFlow<Boolean>
+  var serialNumber: String?
 }
 
 /**
@@ -113,3 +104,12 @@ internal sealed class WhsStateManagerStatus {
   object ConnectionLost : WhsStateManagerStatus()
   object Idle : WhsStateManagerStatus()
 }
+
+/**
+ * Data class representing current state of a WHS capability.
+ */
+internal data class CapabilityState(
+  val enabled: Boolean = false,
+  val overrideValue: Float? = null,
+  val synced: Boolean = false,
+)

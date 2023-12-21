@@ -176,20 +176,6 @@ MODULE                        : Kotlin_Multiplatform
                     sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     configurationArtifacts
-                        _internal-unified-test-platform-android-device-provider-ddmlib        : <empty>
-                        _internal-unified-test-platform-android-device-provider-gradle        : <empty>
-                        _internal-unified-test-platform-android-driver-instrumentation        : <empty>
-                        _internal-unified-test-platform-android-test-plugin         : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-additional-test-output : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-apk-installer          : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-coverage     : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-device-info  : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-emulator-control       : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-logcat       : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-retention    : <empty>
-                        _internal-unified-test-platform-android-test-plugin-result-listener-gradle      : <empty>
-                        _internal-unified-test-platform-core    : <empty>
-                        _internal-unified-test-platform-launcher          : <empty>
                         androidApis                   : <empty>
                         androidJdkImage               : <empty>
                         androidTestAnnotationProcessor          : <empty>
@@ -620,20 +606,6 @@ MODULE                        : Kotlin_Multiplatform
                     sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     configurationArtifacts
-                        _internal-unified-test-platform-android-device-provider-ddmlib        : <empty>
-                        _internal-unified-test-platform-android-device-provider-gradle        : <empty>
-                        _internal-unified-test-platform-android-driver-instrumentation        : <empty>
-                        _internal-unified-test-platform-android-test-plugin         : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-additional-test-output : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-apk-installer          : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-coverage     : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-device-info  : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-emulator-control       : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-logcat       : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-retention    : <empty>
-                        _internal-unified-test-platform-android-test-plugin-result-listener-gradle      : <empty>
-                        _internal-unified-test-platform-core    : <empty>
-                        _internal-unified-test-platform-launcher          : <empty>
                         androidApis                   : <empty>
                         androidJdkImage               : <empty>
                         androidTestAnnotationProcessor          : <empty>
@@ -750,20 +722,6 @@ MODULE                        : Kotlin_Multiplatform
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     - taskArtifacts               : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
                     configurationArtifacts
-                        _internal-unified-test-platform-android-device-provider-ddmlib        : <empty>
-                        _internal-unified-test-platform-android-device-provider-gradle        : <empty>
-                        _internal-unified-test-platform-android-driver-instrumentation        : <empty>
-                        _internal-unified-test-platform-android-test-plugin         : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-additional-test-output : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-apk-installer          : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-coverage     : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-device-info  : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-emulator-control       : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-logcat       : <empty>
-                        _internal-unified-test-platform-android-test-plugin-host-retention    : <empty>
-                        _internal-unified-test-platform-android-test-plugin-result-listener-gradle      : <empty>
-                        _internal-unified-test-platform-core    : <empty>
-                        _internal-unified-test-platform-launcher          : <empty>
                         allSourceSetsCompileDependenciesMetadata          : <empty>
                         androidApiElements            : <empty>
                         - androidApiElements-published          : <ROOT>/kmpFirstLib/build/outputs/aar/kmpFirstLib.aar [-]
@@ -1589,7 +1547,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                 BuildTasksAndOutputInformation
                     AssembleTaskName              : assembleTypeoneModetwoDebug
                 GeneratedResourceFolders      : <ROOT>/androidLib/build/generated/res/resValues/typeoneModetwo/debug [-]
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
             AndroidTestArtifact
                 Name                          : ANDROID_TEST
                 CompileTaskName               : compileTypeoneModetwoDebugAndroidTestSources
@@ -1636,7 +1594,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssembleTaskName              : assembleTypeoneModetwoDebugAndroidTest
                     AssembleTaskOutputListingFile : <ROOT>/androidLib/build/intermediates/apk_ide_redirect_file/typeoneModetwoDebugAndroidTest/createTypeoneModetwoDebugAndroidTestApkListingFileRedirect/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/androidLib/build/generated/res/resValues/androidTest/typeoneModetwo/debug [-]
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -1678,7 +1636,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                         module                        : <ROOT>-:androidLib-MAIN
                     runtimeClasspath
                         module                        : <ROOT>-:androidLib-MAIN
-                MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+                MockablePlatformJar           : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     externalProject               : :androidLib (DefaultExternalProject) (*seen*)
 MODULE                        : Kotlin_Multiplatform.androidLib.androidTest
 MODULE                        : Kotlin_Multiplatform.androidLib.main
@@ -1987,7 +1945,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     ApkFromBundleTaskName         : extractApksForDebug
                     ApkFromBundleTaskOutputListingFile      : <ROOT>/app/build/intermediates/apk_from_bundle_ide_redirect_file/debug/createDebugApksFromBundleListingFileRedirect/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/debug [-]
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
             AndroidTestArtifact
                 Name                          : ANDROID_TEST
                 CompileTaskName               : compileDebugAndroidTestSources
@@ -2020,7 +1978,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     AssembleTaskName              : assembleDebugAndroidTest
                     AssembleTaskOutputListingFile : <ROOT>/app/build/intermediates/apk_ide_redirect_file/debugAndroidTest/createDebugAndroidTestApkListingFileRedirect/redirect.txt [-]
                 GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/androidTest/debug [-]
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -2123,7 +2081,7 @@ MODULE                        : Kotlin_Multiplatform.app
                         module                        : <ROOT>-:kmpJvmOnly-commonMain
                         module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+                MockablePlatformJar           : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     externalProject               : :app (DefaultExternalProject) (*seen*)
 MODULE                        : Kotlin_Multiplatform.app.androidTest
 MODULE                        : Kotlin_Multiplatform.app.main
@@ -2273,7 +2231,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
                     AssembleTaskName              : assembleAndroidMain
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
             AndroidTestArtifact
                 Name                          : ANDROID_TEST
                 CompileTaskName               : compileAndroidInstrumentedTest
@@ -2376,7 +2334,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                 BuildTasksAndOutputInformation
                     AssembleTaskName              : assembleAndroidInstrumentedTest
                     AssembleTaskOutputListingFile : <ROOT>/kmpFirstLib/build/intermediates/apk_ide_redirect_file/androidInstrumentedTest/createAndroidInstrumentedTestApkListingFileRedirect/redirect.txt [-]
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
                     Execution                     : HOST
@@ -2418,7 +2376,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:kmpSecondLib-androidMain
                         module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
-                MockablePlatformJar           : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+                MockablePlatformJar           : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     kotlinMppGradleModel          : {androidInstrumentedTest=androidInstrumentedTest, androidMain=androidMain, androidUnitTest=androidUnitTest, commonMain=commonMain, commonTest=commonTest} (KotlinMPPGradleModelImpl)
         dependencies
             androidInstrumentedTest
@@ -3045,7 +3003,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
                     AssembleTaskName              : assembleAndroidMain
-                DesugaredMethodFiles          : <GRADLE>/caches/transforms-3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
+                DesugaredMethodFiles          : <GRADLE>/caches/<TRANSFORMS>/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
     kotlinMppGradleModel          : {androidMain=androidMain, commonMain=commonMain, commonTest=commonTest, jvmMain=jvmMain, jvmTest=jvmTest} (KotlinMPPGradleModelImpl)
         dependencies
             androidMain

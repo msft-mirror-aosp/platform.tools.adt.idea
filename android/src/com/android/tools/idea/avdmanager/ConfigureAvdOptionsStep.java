@@ -23,7 +23,6 @@ import com.android.resources.Keyboard;
 import com.android.resources.ScreenOrientation;
 import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.SdkVersionInfo;
-import com.android.sdklib.SystemImageTags;
 import com.android.sdklib.devices.Abi;
 import com.android.sdklib.devices.CameraLocation;
 import com.android.sdklib.devices.Device;
@@ -34,12 +33,11 @@ import com.android.sdklib.internal.avd.AvdNetworkLatency;
 import com.android.sdklib.internal.avd.AvdNetworkSpeed;
 import com.android.sdklib.internal.avd.EmulatedProperties;
 import com.android.sdklib.internal.avd.GpuMode;
-import com.android.sdklib.repository.IdDisplay;
-import com.android.sdklib.repository.targets.SystemImage;
 import com.android.tools.adtui.ASGallery;
 import com.android.tools.adtui.util.FormScalingUtil;
 import com.android.tools.adtui.validation.Validator;
 import com.android.tools.adtui.validation.ValidatorPanel;
+import com.android.tools.idea.avdmanager.skincombobox.SkinCollector;
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBox;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.log.LogWrapper;
@@ -260,7 +258,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
   private ArrayList<SnapshotListItem> mySnapshotList;
 
   public ConfigureAvdOptionsStep(@Nullable Project project, @NotNull AvdOptionsModel model) {
-    this(project, model, new SkinComboBox(project, DeviceSkinUpdater::updateSkin));
+    this(project, model, new SkinComboBox(project, SkinCollector::updateAndCollect));
   }
 
   @VisibleForTesting
@@ -460,17 +458,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
 
   private boolean isGoogleApiSelected() {
     assert getModel().systemImage().get().isPresent();
-    SystemImageDescription systemImage = getModel().systemImage().getValue();
-    return isGoogleApiTag(systemImage.getTag());
-  }
-
-  @VisibleForTesting
-  static boolean isGoogleApiTag(IdDisplay tag) {
-    return SystemImageTags.WEAR_TAG.equals(tag) ||
-           SystemImageTags.DESKTOP_TAG.equals(tag) ||
-           SystemImageTags.ANDROID_TV_TAG.equals(tag) ||
-           SystemImageTags.GOOGLE_TV_TAG.equals(tag) ||
-           SystemImageTags.GOOGLE_APIS_TAG.equals(tag);
+    return getModel().systemImage().getValue().hasGoogleApis();
   }
 
   private boolean isIntel() {
@@ -564,14 +552,10 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     myAvdConfigurationOptionHelpPanel.setSystemImageDescription(getModel().systemImage().getValueOrNull());
     myOrientationToggle.setSelectedElement(getModel().selectedAvdOrientation().get());
 
-    String avdDisplayName;
     if (!getModel().isInEditMode().get() && getModel().systemImage().get().isPresent() && getModel().device().get().isPresent()) {
-      // A device name might include the device's screen size as, e.g., 7". The " is not allowed in
-      // a display name. Ensure that the display name does not include any forbidden characters.
-      avdDisplayName = AvdNameVerifier.stripBadCharacters(getModel().device().getValue().getDisplayName());
-
-      getModel().avdDisplayName()
-        .set(connection.uniquifyDisplayName(String.format(Locale.getDefault(), "%1$s API %2$s", avdDisplayName, getSelectedApiString())));
+      Device device = getModel().device().getValue();
+      AndroidVersion version = getModel().systemImage().getValue().getVersion();
+      getModel().avdDisplayName().set(connection.getDefaultDeviceDisplayName(device, version));
     }
 
     myOriginalName = getModel().isInEditMode().get() ? getModel().avdDisplayName().get() : "";

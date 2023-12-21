@@ -127,10 +127,6 @@
             description="Removes unused resources">
       <add-to-group group-id="RefactoringMenu"/>
     </action>
-    <action id="AndroidEnableInstantAppsSupport" class="com.android.tools.idea.actions.EnableInstantAppsSupportAction" text="Enable Instant Apps Support..."
-            description="Enables Instant Apps Support for a Module">
-      <add-to-group group-id="RefactoringMenu"/>
-    </action>
     <action id="AndroidExtractStyleAction" class="org.jetbrains.android.refactoring.AndroidExtractStyleAction" text="St_yle..."
             description="Pulls out style-related attributes from layout and extract them as a new style">
       <add-to-group group-id="IntroduceActionsGroup"/>
@@ -486,6 +482,7 @@
     <moduleService serviceImplementation="com.android.tools.idea.model.MergedManifestModificationTracker" />
     <moduleService serviceImplementation="com.android.tools.idea.databinding.DataBindingAnnotationsService" />
     <moduleService serviceImplementation="org.jetbrains.android.uipreview.ModuleClassLoaderOverlays" />
+    <moduleService serviceImplementation="com.android.tools.idea.res.AndroidDependenciesCache" />
 
     <problemFileHighlightFilter implementation="org.jetbrains.android.AndroidProblemFileHighlightingFilter"/>
     <spellchecker.dictionary.runtimeDictionaryProvider implementation="com.android.tools.idea.AndroidDictionaryProvider"/>

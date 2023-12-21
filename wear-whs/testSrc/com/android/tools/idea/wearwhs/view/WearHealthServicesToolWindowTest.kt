@@ -24,7 +24,6 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.communication.FakeDeviceManager
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import kotlinx.coroutines.TimeoutCancellationException
@@ -34,7 +33,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.awt.Dimension
@@ -55,7 +53,11 @@ class WearHealthServicesToolWindowTest {
 
   private val deviceManager by lazy { FakeDeviceManager() }
   private val stateManager by lazy { WearHealthServicesToolWindowStateManagerImpl(deviceManager) }
-  private val toolWindow by lazy { WearHealthServicesToolWindow(stateManager) }
+  private val toolWindow by lazy {
+    WearHealthServicesToolWindow(stateManager).apply {
+      setSerialNumber("test")
+    }
+  }
 
   @Before
   fun setUp() {
@@ -65,11 +67,6 @@ class WearHealthServicesToolWindowTest {
 
   @Test
   fun `test panel screenshot matches expectation for current platform`() = runBlocking {
-    // Fails on Windows: b/315869760
-    if (SystemInfo.isWindows) {
-      return@runBlocking
-    }
-
     val fakeUi = FakeUi(toolWindow)
 
     fakeUi.waitForCheckbox("Heart rate", true)
@@ -88,11 +85,6 @@ class WearHealthServicesToolWindowTest {
 
   @Test
   fun `test panel screenshot matches expectation with modified state manager values`() = runBlocking {
-    // Fails on Windows: b/315869760
-    if (SystemInfo.isWindows) {
-      return@runBlocking
-    }
-
     stateManager.getCapabilitiesList().waitForValue(deviceManager.capabilities)
 
     deviceManager.failState = true
@@ -132,7 +124,8 @@ class WearHealthServicesToolWindowTest {
     val received = mutableListOf<T>()
     try {
       withTimeout(timeout) { takeWhile { it != value }.collect { received.add(it) } }
-    } catch (ex: TimeoutCancellationException) {
+    }
+    catch (ex: TimeoutCancellationException) {
       Assert.fail("Timed out waiting for value $value. Received values so far $received")
     }
   }

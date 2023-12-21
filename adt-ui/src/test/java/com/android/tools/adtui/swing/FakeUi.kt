@@ -24,6 +24,7 @@ import com.android.tools.adtui.swing.FakeMouse.Button.RIGHT
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.WindowManager
@@ -97,11 +98,7 @@ class FakeUi @JvmOverloads constructor(
     if (!root.isPreferredSizeSet) {
       root.preferredSize = root.size
     }
-    layout()
-    if (SwingUtilities.isEventDispatchThread()) {
-      // Allow resizing events to propagate.
-      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    }
+    updateToolbars()
   }
 
   /**
@@ -136,7 +133,6 @@ class FakeUi @JvmOverloads constructor(
    * Renders the given component and returns the image reflecting its appearance.
    */
   fun render(component: Component): BufferedImage {
-    @Suppress("UndesirableClassUsage")
     val image =
         BufferedImage((component.width * screenScale).toInt(), (component.height * screenScale).toInt(), BufferedImage.TYPE_INT_ARGB)
     val graphics = image.createGraphics()
@@ -276,7 +272,14 @@ class FakeUi @JvmOverloads constructor(
    */
   fun updateToolbars() {
     updateToolbars(root)
-    layoutAndDispatchEvents()
+    if (SwingUtilities.isEventDispatchThread()) {
+      UIUtil.dispatchAllInvocationEvents()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+      layoutAndDispatchEvents()
+    }
+    else {
+      layout()
+    }
   }
 
   private fun updateToolbars(component: Component) {
@@ -285,8 +288,8 @@ class FakeUi @JvmOverloads constructor(
       component.updateIcon()
     }
     if (component is ActionToolbar) {
-      val toolbar = component as ActionToolbar
-      toolbar.updateActionsImmediately()
+      check(component is ActionToolbarImpl) // Downcast needed until we get IntelliJ commit 2c2720e223 in 2024.1.
+      PlatformTestUtil.waitForFuture(component.updateActionsAsync())
     }
     if (component is Container) {
       for (child in component.components) {
@@ -324,7 +327,6 @@ class FakeUi @JvmOverloads constructor(
     private val capabilities: ImageCapabilities?,
   ) : VolatileImage() {
 
-    @Suppress("UndesirableClassUsage")
     private val bufferedImage = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
 
     override fun getWidth(): Int = width
