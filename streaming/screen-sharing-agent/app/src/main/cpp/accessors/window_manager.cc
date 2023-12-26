@@ -28,6 +28,7 @@ using namespace std;
 
 namespace {
 
+const char ATTRIBUTION_TAG[] = "studio.screen.sharing";
 WindowManager* window_manager_instance = nullptr;
 
 }  // namespace
@@ -37,13 +38,26 @@ WindowManager::WindowManager(Jni jni)
       rotation_(),
       rotation_watchers_(new set<RotationWatcher*>()) {
   JClass window_manager_class(window_manager_.GetClass());
-  // The getDefaultDisplayRotation method was called getRotation before API 26.
-  // See https://android.googlesource.com/platform/frameworks/base/+/5406e7ade87c33f70c83a283781dcc48fb67cdb9%5E%21/#F2.
-  const char* method_name = Agent::api_level() >= 26 ? "getDefaultDisplayRotation" : "getRotation";
-  get_default_display_rotation_method_ = window_manager_class.GetMethod(method_name, "()I");
-  freeze_rotation_method_ = window_manager_class.GetMethod("freezeRotation", "(I)V");
-  thaw_rotation_method_ = window_manager_class.GetMethod("thawRotation", "()V");
-  is_rotation_frozen_method_ = window_manager_class.GetMethod("isRotationFrozen", "()Z");
+  if (Agent::api_level() >= 29) {
+    if (Agent::api_level() >= 34) {
+      freeze_rotation_method_ = window_manager_class.FindMethod("freezeDisplayRotation", "(IILjava/lang/String;)V");
+      if (freeze_rotation_method_ == nullptr) {
+        freeze_rotation_method_ = window_manager_class.GetMethod("freezeDisplayRotation", "(II)V");
+        thaw_rotation_method_ = window_manager_class.GetMethod("thawDisplayRotation", "(I)V");
+      } else {
+        thaw_rotation_method_ = window_manager_class.GetMethod("thawDisplayRotation", "(ILjava/lang/String;)V");
+        freeze_display_rotation_method_requires_attribution_tag_ = true;
+      }
+    } else {
+      freeze_rotation_method_ = window_manager_class.GetMethod("freezeDisplayRotation", "(II)V");
+      thaw_rotation_method_ = window_manager_class.GetMethod("thawDisplayRotation", "(I)V");
+    }
+    is_rotation_frozen_method_ = window_manager_class.GetMethod("isDisplayRotationFrozen", "(I)Z");
+  } else {
+    freeze_rotation_method_ = window_manager_class.FindMethod("freezeRotation", "(I)V");
+    thaw_rotation_method_ = window_manager_class.GetMethod("thawRotation", "()V");
+    is_rotation_frozen_method_ = window_manager_class.GetMethod("isRotationFrozen", "()Z");
+  }
   // The second parameter was added in API 26.
   // See https://android.googlesource.com/platform/frameworks/base/+/35fa3c26adcb5f6577849fd0df5228b1f67cf2c6%5E%21/#F4.
   const char* signature = Agent::api_level() >= 26 ? "(Landroid/view/IRotationWatcher;I)I" : "(Landroid/view/IRotationWatcher;)I";
@@ -73,26 +87,37 @@ WindowManager& WindowManager::GetInstance(Jni jni) {
   return *window_manager_instance;
 }
 
-int WindowManager::GetDefaultDisplayRotation(Jni jni) {
-  WindowManager& instance = GetInstance(jni);
-  return instance.window_manager_.CallIntMethod(jni, instance.get_default_display_rotation_method_);
-}
-
 void WindowManager::FreezeRotation(Jni jni, int32_t rotation) {
   Log::D("WindowManager::FreezeRotation: setting display orientation to %d", rotation);
   WindowManager& instance = GetInstance(jni);
-  instance.window_manager_.CallVoidMethod(jni, instance.freeze_rotation_method_, rotation);
+  if (instance.freeze_display_rotation_method_requires_attribution_tag_) {
+    instance.window_manager_.CallVoidMethod(jni, instance.freeze_rotation_method_, 0, rotation, JString(jni, ATTRIBUTION_TAG).ref());
+  } else if (Agent::api_level() >= 29) {
+    instance.window_manager_.CallVoidMethod(jni, instance.freeze_rotation_method_, 0, rotation);
+  } else {
+    instance.window_manager_.CallVoidMethod(jni, instance.freeze_rotation_method_, rotation);
+  }
 }
 
 void WindowManager::ThawRotation(Jni jni) {
   Log::D("WindowManager::ThawRotation");
   WindowManager& instance = GetInstance(jni);
-  instance.window_manager_.CallVoidMethod(jni, instance.thaw_rotation_method_);
+  if (instance.freeze_display_rotation_method_requires_attribution_tag_) {
+    instance.window_manager_.CallVoidMethod(jni, instance.thaw_rotation_method_, 0, JString(jni, ATTRIBUTION_TAG).ref());
+  } else if (Agent::api_level() >= 29) {
+    instance.window_manager_.CallVoidMethod(jni, instance.thaw_rotation_method_, 0);
+  } else {
+    instance.window_manager_.CallVoidMethod(jni, instance.thaw_rotation_method_);
+  }
 }
 
 bool WindowManager::IsRotationFrozen(Jni jni) {
   WindowManager& instance = GetInstance(jni);
-  return instance.window_manager_.CallBooleanMethod(jni, instance.is_rotation_frozen_method_);
+  if (Agent::api_level() >= 29) {
+    return instance.window_manager_.CallBooleanMethod(jni, instance.is_rotation_frozen_method_, 0);
+  } else {
+    return instance.window_manager_.CallBooleanMethod(jni, instance.is_rotation_frozen_method_);
+  }
 }
 
 int32_t WindowManager::WatchRotation(Jni jni, RotationWatcher* watcher) {

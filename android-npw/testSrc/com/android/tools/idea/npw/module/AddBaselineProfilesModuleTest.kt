@@ -46,6 +46,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@org.junit.Ignore("http://b/315835415 the wizard is disabled in Hedgehog")
 @RunWith(Parameterized::class)
 class AddBaselineProfilesModuleTest(
   private val useGradleKtsParam: Boolean,

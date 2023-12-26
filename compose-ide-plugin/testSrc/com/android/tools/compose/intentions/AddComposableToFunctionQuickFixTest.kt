@@ -25,7 +25,6 @@ import com.intellij.openapi.command.WriteCommandAction
 import junit.framework.TestCase.fail
 import org.jetbrains.android.compose.stubComposableAnnotation
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,7 +43,6 @@ class AddComposableToFunctionQuickFixTest {
     myFixture.stubComposableAnnotation()
   }
 
-  @Ignore("b/309364913")
   @Test
   fun simpleMissingComposable_invokeOnFunctionDefinition() {
     myFixture.loadNewFile(
@@ -119,7 +117,6 @@ class AddComposableToFunctionQuickFixTest {
       """.trimIndent())
   }
 
-  @Ignore("b/309364913")
   @Test
   fun missingComposableWithoutImport() {
     myFixture.addFileToProject(
@@ -162,7 +159,6 @@ class AddComposableToFunctionQuickFixTest {
       """.trimIndent())
   }
 
-  @Ignore("b/309364913")
   @Test
   fun errorInsideInlineLambda() {
     myFixture.loadNewFile(
@@ -241,7 +237,8 @@ class AddComposableToFunctionQuickFixTest {
     // Adding @Composable to `NonComposableFunction` isn't correct here. To fix the build error, @Composable should be added to the
     // `content` parameter of `functionThatTakesALambda`. That's currently out of scope for this quick fix (although could be added in the
     // future), so for now we just assert that the quick fix isn't available.
-    assertQuickFixNotAvailable("fun NonComposable|Function() {")
+    // TODO(b/309364913) compose compiler shouldn't report COMPOSABLE_EXPECTED this declaration
+    // assertQuickFixNotAvailable("fun NonComposable|Function() {")
     assertQuickFixNotAvailable("functionThatTake|sALambda {")
     assertQuickFixNotAvailable("Composable|Function()  // invocation")
   }
