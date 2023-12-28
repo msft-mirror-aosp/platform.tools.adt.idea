@@ -21,6 +21,7 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.wearwhs.WearWhsBundle.message
 import com.android.tools.idea.wearwhs.WhsCapability
+import com.intellij.codeInsight.hint.HintUtil.createWarningLabel
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.ComboBox
@@ -40,6 +41,8 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
+import java.awt.event.FocusEvent
+import java.awt.event.FocusListener
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.DefaultComboBoxModel
@@ -114,7 +117,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
             }
 
             is WhsStateManagerStatus.Syncing -> {
-              text = message(it.capability.labelKey)
+              text = message(it.capability.label)
             }
 
             is WhsStateManagerStatus.ConnectionLost -> {
@@ -160,7 +163,12 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
   }
 
   private fun createCenterPanel(capabilities: List<WhsCapability>): JPanel {
+    val warningLabel = createWarningLabel(message("wear.whs.panel.overridden.value.invalid")).apply {
+      setBorder(Borders.empty(2))
+      isVisible = false
+    }
     return JPanel(VerticalFlowLayout()).apply {
+      add(warningLabel)
       border = horizontalBorders
       add(JPanel(BorderLayout()).apply {
         add(JLabel(message("wear.whs.panel.sensor")).apply {
@@ -179,7 +187,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       capabilities.forEach { capability ->
         add(JPanel(BorderLayout()).apply {
           preferredSize = Dimension(0, 35)
-          val checkBox = JCheckBox(message(capability.labelKey)).also { checkBox ->
+          val checkBox = JCheckBox(message(capability.label)).also { checkBox ->
             val plainFont = checkBox.font.deriveFont(Font.PLAIN)
             val italicFont = checkBox.font.deriveFont(Font.ITALIC)
             stateManager.getState(capability).map { it.enabled }.onEach { enabled ->
@@ -188,11 +196,11 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
             stateManager.getState(capability).map { it.synced }.onEach { synced ->
               if (!synced) {
                 checkBox.font = italicFont
-                checkBox.text = "${message(capability.labelKey)}*"
+                checkBox.text = "${message(capability.label)}*"
               }
               else {
                 checkBox.font = plainFont
-                checkBox.text = message(capability.labelKey)
+                checkBox.text = message(capability.label)
               }
             }.launchIn(uiScope)
             checkBox.addActionListener {
@@ -205,14 +213,40 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
           add(checkBox, BorderLayout.CENTER)
           add(JPanel(FlowLayout()).apply {
             add(JTextField().also { textField ->
+              textField.addFocusListener(object : FocusListener {
+                override fun focusGained(e: FocusEvent?) {}
+
+                override fun focusLost(e: FocusEvent?) {
+                  // Validate the field when the user navigates away and clear it
+                  try {
+                    textField.text.toFloat()
+                  }
+                  catch (exception: NumberFormatException) {
+                    getLogger().warn("String is not a float")
+                    textField.text = ""
+                    workerScope.launch {
+                      stateManager.setOverrideValue(capability, null)
+                    }
+                  }
+                  finally {
+                    warningLabel.isVisible = false
+                  }
+                }
+              })
               textField.document.addDocumentListener(object : DocumentAdapter() {
                 override fun textChanged(e: DocumentEvent) {
                   workerScope.launch {
                     try {
                       stateManager.setOverrideValue(capability, textField.text.toFloat())
+                      uiScope.launch {
+                        warningLabel.isVisible = false
+                      }
                     }
-                    catch (exception: NumberFormatException) { // TODO(b/309931192): Show a tooltip to the user that the value is not a float
+                    catch (exception: NumberFormatException) {
                       getLogger().warn("String is not a float")
+                      uiScope.launch {
+                        warningLabel.isVisible = true
+                      }
                     }
                   }
                 }
@@ -229,7 +263,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
               }
               textField.isVisible = capability.isOverrideable
             })
-            add(JLabel(message(capability.unitKey)).also { label ->
+            add(JLabel(message(capability.unit)).also { label ->
               label.isVisible = capability.isOverrideable
               label.preferredSize = Dimension(JBUI.scale(50), JBUI.scale(20))
             })
