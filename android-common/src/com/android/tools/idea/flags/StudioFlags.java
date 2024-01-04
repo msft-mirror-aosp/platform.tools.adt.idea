@@ -346,6 +346,13 @@ public final class StudioFlags {
     "Requires applychanges.optimisticswap to be true.",
     true);
 
+  public static final Flag<Boolean> INSTALL_FORGO_DONT_KILL = Flag.create(
+    RUNDEBUG,
+    "install.forgo.dont.kill",
+    "When installing via the Package Manager, do not use the --dont-kill flag and skip process termination for API33+",
+    "We assume there are no race conditions with the package manager and give full control to it.",
+    true);
+
   /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
    * "deploy-without-installing" path. Deploying changes that exceed the level of support
@@ -923,6 +930,10 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.remote.emulators", "Allow Mirroring of Remote Emulators",
     "Treats remote emulators the same as physical devices for the purpose of display mirroring",
     false);
+  public static final Flag<Boolean> DEVICE_MIRRORING_AUDIO = new BooleanFlag(
+    DEVICE_MIRRORING, "audio", "Enable Audio Streaming",
+    "Enables streaming of audio",
+    false);
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
@@ -1288,21 +1299,6 @@ public final class StudioFlags {
     "If enabled, animation dragging will be available in Animation Inspector timeline.",
     false
   );
-
-  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_ANIMATE_X_AS_STATE = Flag.create(
-    COMPOSE, "preview.animation.animate.as.state", "Enable animate*AsState support",
-    "If enabled, the animate*AsState Compose API support will be available in Animation Preview.",
-    true);
-
-  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_ANIMATED_CONTENT = Flag.create(
-    COMPOSE, "preview.animation.animated.content", "Enable animatedContent support",
-    "If enabled, the animatedContent Compose API support will be available in Animation Preview.",
-    true);
-
-  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_INFINITE_TRANSITION = Flag.create(
-    COMPOSE, "preview.animation.infinite.transition", "Enable rememberInfiniteTransition support",
-    "If enabled, the rememberInfiniteTransition Compose API support will be available in Animation Preview.",
-    true);
 
   public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_DAEMON_DEBUG = Flag.create(
     COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
