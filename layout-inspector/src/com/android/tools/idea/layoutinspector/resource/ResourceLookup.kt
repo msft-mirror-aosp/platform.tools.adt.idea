@@ -30,6 +30,7 @@ import com.android.tools.idea.layoutinspector.properties.InspectorPropertyItem
 import com.android.tools.idea.res.RESOURCE_ICON_SIZE
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
 import com.intellij.psi.JavaPsiFacade
@@ -145,39 +146,42 @@ class ResourceLookup(private val project: Project) {
   /**
    * Find the file locations for a [property].
    *
-   * The list of file locations will start from [InspectorPropertyItem.source]. If that is a
-   * reference the definition of that reference will be next etc. The [max] guards against recursive
-   * indirection in the resources. Each file location is specified by:
+   * The list of file locations will start from [source]. If that is a reference the definition of
+   * that reference will be next etc. The [max] guards against recursive indirection in the
+   * resources. Each file location is specified by:
    * - a string containing the file name and a line number
    * - a [Navigatable] that can be used to goto the source location
    */
-  fun findFileLocations(
+  suspend fun findFileLocations(
     property: InspectorPropertyItem,
     view: ViewNode,
+    source: ResourceReference?,
+    sourceLocations: MutableList<SourceLocation>,
     max: Int = MAX_RESOURCE_INDIRECTION
-  ): List<SourceLocation> =
-    resolver?.findFileLocations(property, view, property.source, max) ?: emptyList()
+  ) = readAction { resolver?.findFileLocations(property, view, source, sourceLocations, max) }
 
   /** Find the location of the specified [view]. */
-  fun findFileLocation(view: ViewNode): SourceLocation? = resolver?.findFileLocation(view)
+  suspend fun findFileLocation(view: ViewNode): SourceLocation? = readAction {
+    resolver?.findFileLocation(view)
+  }
 
   /** Find the attribute value from resource reference. */
-  fun findAttributeValue(
+  suspend fun findAttributeValue(
     property: InspectorPropertyItem,
     view: ViewNode,
     location: ResourceReference
-  ): String? = resolver?.findAttributeValue(property, view, location)
+  ): String? = readAction { resolver?.findAttributeValue(property, view, location) }
 
   /** Find the lambda source location. */
   @Slow
-  fun findLambdaLocation(
+  suspend fun findLambdaLocation(
     packageName: String,
     fileName: String,
     lambdaName: String,
     functionName: String,
     startLine: Int,
     endLine: Int
-  ): SourceLocation =
+  ): SourceLocation = readAction {
     composeResolver.findLambdaLocation(
       packageName,
       fileName,
@@ -186,29 +190,33 @@ class ResourceLookup(private val project: Project) {
       startLine,
       endLine
     )
+  }
 
   /** Find the source navigatable of a composable function. */
   @Slow
-  fun findComposableNavigatable(composable: ComposeViewNode): Navigatable? =
+  suspend fun findComposableNavigatable(composable: ComposeViewNode): Navigatable? = readAction {
     composeResolver.findComposableNavigatable(composable)
+  }
 
   /** Find the icon from this drawable property. */
-  fun resolveAsIcon(property: InspectorPropertyItem, view: ViewNode): Icon? {
-    resolver?.resolveAsIcon(property, view)?.let {
-      return it
-    }
-    val value = property.value
+  suspend fun resolveAsIcon(value: String?, view: ViewNode): Icon? {
+    readAction { resolver?.resolveAsIcon(value, view) }
+      ?.let {
+        return it
+      }
     val color = value?.let { parseColor(value) } ?: return null
     return JBUIScale.scaleIcon(ColorIcon(RESOURCE_ICON_SIZE, color, false))
   }
 
   /** Convert a class name to a source location. */
-  fun resolveClassNameAsSourceLocation(className: String): SourceLocation? {
-    val psiClass =
-      JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project))
-    val navigatable = psiClass?.let { findNavigatable(psiClass) } ?: return null
-    val source = ClassUtil.extractClassName(className)
-    return SourceLocation(source, navigatable)
+  suspend fun resolveClassNameAsSourceLocation(className: String): SourceLocation? {
+    return readAction {
+      val psiClass =
+        JavaPsiFacade.getInstance(project).findClass(className, GlobalSearchScope.allScope(project))
+      val navigatable = psiClass?.let { findNavigatable(psiClass) }
+      val source = ClassUtil.extractClassName(className)
+      navigatable?.let { SourceLocation(source, it) }
+    }
   }
 
   /** Is this attribute a dimension according to the resource manager. */

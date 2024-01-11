@@ -17,39 +17,123 @@ package com.android.tools.idea.adddevicedialog
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import com.android.resources.ScreenOrientation
+import com.android.sdklib.internal.avd.AvdCamera
+import com.android.sdklib.internal.avd.AvdNetworkLatency
+import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import kotlinx.collections.immutable.ImmutableCollection
+import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.ui.component.Dropdown
+import org.jetbrains.jewel.ui.component.GroupHeader
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 
 @Composable
 internal fun AdditionalSettingsPanel(
-  selectedSkin: Skin,
+  device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
-  onSelectedSkinChange: (Skin) -> Unit
+  onDeviceChange: (VirtualDevice) -> Unit,
+  onImportButtonClick: () -> Unit
 ) {
   Row {
     Text("Device skin")
-    DeviceSkinDropdown(selectedSkin, skins, onSelectedSkinChange)
+    Dropdown(device.skin, skins) { onDeviceChange(device.copy(skin = it)) }
+    OutlinedButton(onImportButtonClick) { Text("Import") }
   }
+
+  CameraGroup(device, onDeviceChange)
+  NetworkGroup(device, onDeviceChange)
+  StartupGroup(device, onDeviceChange)
 }
 
 @Composable
-private fun DeviceSkinDropdown(
-  selectedSkin: Skin,
-  skins: ImmutableCollection<Skin>,
-  onSelectedSkinChange: (Skin) -> Unit
+private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
+  GroupHeader("Camera")
+
+  Row {
+    Text("Front")
+    Dropdown(device.frontCamera, FRONT_CAMERAS) { onDeviceChange(device.copy(frontCamera = it)) }
+  }
+
+  Row {
+    Text("Rear")
+    Dropdown(device.rearCamera, REAR_CAMERAS) { onDeviceChange(device.copy(rearCamera = it)) }
+  }
+}
+
+private val FRONT_CAMERAS =
+  listOf(AvdCamera.NONE, AvdCamera.EMULATED, AvdCamera.WEBCAM).toImmutableList()
+
+private val REAR_CAMERAS = AvdCamera.values().asIterable().toImmutableList()
+
+@Composable
+private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
+  GroupHeader("Network")
+
+  Row {
+    Text("Speed")
+    Dropdown(device.speed, SPEEDS) { onDeviceChange(device.copy(speed = it)) }
+  }
+
+  Row {
+    Text("Latency")
+    Dropdown(device.latency, LATENCIES) { onDeviceChange(device.copy(latency = it)) }
+  }
+}
+
+private val SPEEDS = AvdNetworkSpeed.values().asIterable().toImmutableList()
+private val LATENCIES = AvdNetworkLatency.values().asIterable().toImmutableList()
+
+@Composable
+private fun StartupGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
+  GroupHeader("Startup")
+
+  Row {
+    Text("Orientation")
+
+    Dropdown(
+      menuContent = {
+        ORIENTATIONS.forEach {
+          selectableItem(
+            device.orientation == it,
+            onClick = { onDeviceChange(device.copy(orientation = it)) }
+          ) {
+            Text(it.shortDisplayValue)
+          }
+        }
+      }
+    ) {
+      Text(device.orientation.shortDisplayValue)
+    }
+  }
+
+  Row {
+    Text("Default boot")
+    Dropdown(device.defaultBoot, BOOTS) { onDeviceChange(device.copy(defaultBoot = it)) }
+  }
+}
+
+private val ORIENTATIONS =
+  listOf(ScreenOrientation.PORTRAIT, ScreenOrientation.LANDSCAPE).toImmutableList()
+
+private val BOOTS = enumValues<Boot>().asIterable().toImmutableList()
+
+@Composable
+private fun <I> Dropdown(
+  selectedItem: I,
+  items: ImmutableCollection<I>,
+  onSelectedItemChange: (I) -> Unit
 ) {
   Dropdown(
     menuContent = {
-      skins.forEach {
-        selectableItem(
-          selected = selectedSkin == it,
-          onClick = { onSelectedSkinChange(it) },
-          content = { Text(it.toString()) }
-        )
+      items.forEach {
+        selectableItem(selectedItem == it, onClick = { onSelectedItemChange(it) }) {
+          Text(it.toString())
+        }
       }
-    },
-    content = { Text(selectedSkin.toString()) }
-  )
+    }
+  ) {
+    Text(selectedItem.toString())
+  }
 }

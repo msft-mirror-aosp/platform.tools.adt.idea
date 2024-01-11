@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.vitals.ui
 
+import com.android.testutils.delayUntilCondition
 import com.android.testutils.time.FakeClock
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
@@ -25,6 +26,7 @@ import com.android.tools.idea.insights.DEFAULT_FETCHED_OSES
 import com.android.tools.idea.insights.DEFAULT_FETCHED_PERMISSIONS
 import com.android.tools.idea.insights.DEFAULT_FETCHED_VERSIONS
 import com.android.tools.idea.insights.DetailedIssueStats
+import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.EventPage
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.ISSUE1_DETAILS
@@ -41,7 +43,6 @@ import com.android.tools.idea.insights.ui.actions.AppInsightsDropDownAction
 import com.android.tools.idea.insights.ui.actions.TreeDropDownAction
 import com.android.tools.idea.insights.ui.dateFormatter
 import com.android.tools.idea.insights.ui.shortenEventId
-import com.android.tools.idea.insights.waitForCondition
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_CONNECTION_2
 import com.android.tools.idea.vitals.TEST_CONNECTION_3
@@ -126,7 +127,7 @@ class VitalsTabTest {
 
       // Wait for the stacktrace to render. It's a good indicator for when the UI is ready to be
       // checked.
-      waitForCondition(5000) {
+      delayUntilCondition(200) {
         val consoleView = fakeUi.findComponent<ConsoleViewImpl>()!!
         consoleView.text.trim() ==
           """
@@ -138,7 +139,7 @@ class VitalsTabTest {
       }
       // Also wait for the details panel to have some content. It should come quickly after the
       // above check.
-      waitForCondition {
+      delayUntilCondition(200) {
         // Make sure each DistributionPanel has a JProgressBar
         fakeUi.findAllComponents<DistributionPanel>().all {
           it.findDescendant<JProgressBar>() != null
@@ -180,7 +181,9 @@ class VitalsTabTest {
       val detailsPanelHeader = fakeUi.findComponent<DetailsPanelHeader>()!!
       // Set header to a large size so the title label don't get truncated.
       detailsPanelHeader.size = Dimension(500, 500)
-      waitForCondition { detailsPanelHeader.titleLabel.text == "<html>crash.<B>Crash</B></html>" }
+      delayUntilCondition(200) {
+        detailsPanelHeader.titleLabel.text == "<html>crash.<B>Crash</B></html>"
+      }
       assertThat(detailsPanelHeader.eventsCountLabel.text).isEqualTo("50,000,000")
       assertThat(detailsPanelHeader.usersCountLabel.text).isEqualTo("3,000")
 
@@ -267,7 +270,7 @@ class VitalsTabTest {
       )
 
       with(fakeUi.findComponent<DistributionsContainerPanel>()!!.emptyText) {
-        waitForCondition { text == "Detailed stats unavailable." }
+        delayUntilCondition(200) { text == "Detailed stats unavailable." }
         assertThat(isStatusVisible).isTrue()
       }
     }
@@ -293,7 +296,9 @@ class VitalsTabTest {
           )
       )
 
-      waitForCondition { fakeUi.findComponent<JLabel> { it.text == "No data available" } != null }
+      delayUntilCondition(200) {
+        fakeUi.findComponent<JLabel> { it.text == "No data available" } != null
+      }
       fakeUi
         .findAllComponents<DistributionPanel>()[1]
         .assertContent(ISSUE1_DETAILS.osStats, "Android version")
@@ -320,9 +325,39 @@ class VitalsTabTest {
           )
       )
 
-      waitForCondition { fakeUi.findComponent<JLabel> { it.text == "No data available" } != null }
+      delayUntilCondition(200) {
+        fakeUi.findComponent<JLabel> { it.text == "No data available" } != null
+      }
       fakeUi
         .findAllComponents<DistributionPanel>()[0]
         .assertContent(ISSUE1_DETAILS.deviceStats, "device")
+    }
+
+  @Test
+  fun `missing sample event does not cause crash when shown`() =
+    runBlocking(AndroidDispatchers.uiThread) {
+      val tab = createTab()
+      val fakeUi = FakeUi(tab)
+      controllerRule.consumeInitialState(
+        LoadingState.Ready(
+          IssueResponse(
+            listOf(ISSUE1.copy(sampleEvent = Event())),
+            listOf(DEFAULT_FETCHED_VERSIONS),
+            listOf(DEFAULT_FETCHED_DEVICES),
+            listOf(DEFAULT_FETCHED_OSES),
+            DEFAULT_FETCHED_PERMISSIONS
+          )
+        ),
+        detailsState =
+          LoadingState.Ready(
+            DetailedIssueStats(ISSUE1_DETAILS.deviceStats, IssueStats(null, emptyList()))
+          )
+      )
+
+      delayUntilCondition(200) {
+        fakeUi.findComponent<JLabel> {
+          it.icon == StudioIcons.LayoutEditor.Toolbar.ANDROID_API && it.text == "unknown"
+        } != null
+      }
     }
 }

@@ -43,19 +43,15 @@ internal object VirtualDevices {
     val skin = device.skin.path()
 
     val properties =
-      mapOf(
+      mutableMapOf(
         "AvdId" to id,
         "avd.ini.displayname" to device.name,
         "disk.dataPartition.size" to "2G",
-        "fastboot.chosenSnapshotFile" to "",
-        "fastboot.forceChosenSnapshotBoot" to "no",
-        "fastboot.forceColdBoot" to "no",
-        "fastboot.forceFastBoot" to "yes",
         "hw.accelerometer" to "yes",
         "hw.audioInput" to "yes",
         "hw.battery" to "yes",
-        "hw.camera.back" to "virtualscene",
-        "hw.camera.front" to "emulated",
+        "hw.camera.back" to device.rearCamera.asParameter,
+        "hw.camera.front" to device.frontCamera.asParameter,
         "hw.cpu.ncore" to "4",
         "hw.dPad" to "no",
         "hw.device.hash2" to "MD5:3db3250dab5d0d93b29353040181c7e9",
@@ -64,7 +60,7 @@ internal object VirtualDevices {
         "hw.gps" to "yes",
         "hw.gpu.enabled" to "yes",
         "hw.gpu.mode" to "auto",
-        "hw.initialOrientation" to "Portrait",
+        "hw.initialOrientation" to ScreenOrientation.PORTRAIT.shortDisplayValue.lowercase(),
         "hw.keyboard" to "yes",
         "hw.lcd.density" to "420",
         "hw.lcd.height" to "2400",
@@ -75,20 +71,22 @@ internal object VirtualDevices {
         "hw.sensors.orientation" to "yes",
         "hw.sensors.proximity" to "yes",
         "hw.trackBall" to "no",
-        "runtime.network.latency" to "none",
-        "runtime.network.speed" to "full",
+        "runtime.network.latency" to device.latency.asParameter,
+        "runtime.network.speed" to device.speed.asParameter,
         "showDeviceFrame" to "yes",
         "skin.dynamic" to "yes",
         "skin.path" to skin.toString(),
         "vm.heapSize" to "256"
       )
 
+    properties.putAll(device.defaultBoot.properties)
+
     connection.createOrUpdateAvd(
       /* currentInfo= */ null,
       /* avdName= */ id,
       /* device= */ definition,
       /* systemImageDescription= */ SystemImageDescription(image),
-      /* orientation= */ ScreenOrientation.PORTRAIT,
+      /* orientation= */ device.orientation,
       /* isCircular= */ false,
       /* sdCard= */ "512M",
       /* skinFolder= */ skin,

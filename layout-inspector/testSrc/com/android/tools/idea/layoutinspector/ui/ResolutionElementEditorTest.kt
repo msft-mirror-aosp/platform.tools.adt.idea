@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.layoutinspector.ui
 
-import com.android.SdkConstants.ANDROID_URI
 import com.android.SdkConstants.ATTR_ELEVATION
 import com.android.SdkConstants.ATTR_TEXT_COLOR
 import com.android.ide.common.rendering.api.ResourceNamespace
@@ -31,9 +30,8 @@ import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.model.ResolutionStackModel
 import com.android.tools.idea.layoutinspector.properties.InspectorGroupPropertyItem
 import com.android.tools.idea.layoutinspector.properties.InspectorPropertiesModel
-import com.android.tools.idea.layoutinspector.properties.InspectorPropertyItem
-import com.android.tools.idea.layoutinspector.properties.PropertySection
 import com.android.tools.idea.layoutinspector.properties.PropertyType
+import com.android.tools.idea.layoutinspector.properties.createTestProperty
 import com.android.tools.idea.layoutinspector.util.DemoExample
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -45,7 +43,7 @@ import com.android.tools.property.panel.impl.ui.PropertyTextField
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.ui.laf.IntelliJLaf
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.ui.JBColor
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -58,6 +56,7 @@ import javax.swing.LookAndFeel
 import javax.swing.UIManager
 import javax.swing.plaf.metal.MetalLookAndFeel
 import javax.swing.plaf.metal.MetalTheme
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExternalResource
@@ -66,7 +65,6 @@ import org.junit.rules.RuleChain
 private const val TEST_DATA_PATH = "tools/adt/idea/layout-inspector/testData/ui"
 private const val DIFF_THRESHOLD = 0.01
 
-@RunsInEdt
 class ResolutionElementEditorTest {
   private val projectRule = AndroidProjectRule.withSdk()
 
@@ -79,20 +77,20 @@ class ResolutionElementEditorTest {
       .around(IconLoaderRule())!!
 
   @Test
-  fun testPaintClosed() {
+  fun testPaintClosed() = runBlocking {
     val editors = createEditors()
     getEditor(editors, 1).isVisible = false
     checkImage(editors, "Closed")
   }
 
   @Test
-  fun testPaintOpen() {
+  fun testPaintOpen() = runBlocking {
     val editors = createEditors()
     checkImage(editors, "Open")
   }
 
   @Test
-  fun testPaintOpenWithDetails() {
+  fun testPaintOpenWithDetails() = runBlocking {
     val editors = createEditors()
     getEditor(editors, 0).editorModel.isExpandedTableItem = true
     expandFirstLabel(getEditor(editors, 0), true)
@@ -100,7 +98,7 @@ class ResolutionElementEditorTest {
   }
 
   @Test
-  fun testPaintOpenWithTwoDetails() {
+  fun testPaintOpenWithTwoDetails() = runBlocking {
     val editors = createEditors()
     getEditor(editors, 0).editorModel.isExpandedTableItem = true
     expandFirstLabel(getEditor(editors, 0), true)
@@ -109,7 +107,7 @@ class ResolutionElementEditorTest {
   }
 
   @Test
-  fun testDynamicHeight() {
+  fun testDynamicHeight() = runBlocking {
     var updateCount = 0
     val editors = createEditors()
     val editor = getEditor(editors, 0)
@@ -140,38 +138,28 @@ class ResolutionElementEditorTest {
   }
 
   @Test
-  fun testHasLinkPanel() {
-    val model =
+  fun testHasLinkPanel() = runBlocking {
+    val model = runInEdtAndGet {
       model(
+        projectRule.testRootDisposable,
         projectRule.project,
         FakeTreeSettings(),
         body = DemoExample.setUpDemo(projectRule.fixture)
       )
+    }
     val node = model["title"]!!
     val item1 =
-      InspectorPropertyItem(
-        ANDROID_URI,
-        ATTR_TEXT_COLOR,
+      createTestProperty(
         ATTR_TEXT_COLOR,
         PropertyType.COLOR,
         null,
-        PropertySection.DECLARED,
         node.layout,
-        node.drawId,
+        emptyList(),
+        node,
         model
       )
     val item2 =
-      InspectorPropertyItem(
-        ANDROID_URI,
-        ATTR_ELEVATION,
-        ATTR_ELEVATION,
-        PropertyType.FLOAT,
-        null,
-        PropertySection.DEFAULT,
-        null,
-        node.drawId,
-        model
-      )
+      createTestProperty(ATTR_ELEVATION, PropertyType.FLOAT, null, null, emptyList(), node, model)
 
     // The "textColor" attribute is defined in the layout file, and we should have a link to the
     // layout definition
@@ -182,7 +170,7 @@ class ResolutionElementEditorTest {
   }
 
   @Test
-  fun testDoubleClick() {
+  fun testDoubleClick() = runBlocking {
     val editors = createEditors()
     val editor = getEditor(editors, 0)
     var toggleCount = 0
@@ -223,46 +211,43 @@ class ResolutionElementEditorTest {
     action.actionPerformed(event)
   }
 
-  private fun createEditors(): JPanel {
-    val model =
+  private suspend fun createEditors(): JPanel {
+    val model = runInEdtAndGet {
       model(
+        projectRule.testRootDisposable,
         projectRule.project,
         FakeTreeSettings(),
         body = DemoExample.setUpDemo(projectRule.fixture)
       )
+    }
     val node = model["title"]!!
-    val item =
-      InspectorPropertyItem(
-        ANDROID_URI,
-        ATTR_TEXT_COLOR,
-        ATTR_TEXT_COLOR,
-        PropertyType.COLOR,
-        null,
-        PropertySection.DECLARED,
-        node.layout,
-        node.drawId,
-        model
-      )
     val textStyleMaterial =
       ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "TextAppearance.Material")
-    val map =
-      listOf(textStyleMaterial).associateWith {
-        model.resourceLookup.findAttributeValue(item, node, it)
-      }
-    val value = model.resourceLookup.findAttributeValue(item, node, item.source!!)
-    val property =
-      InspectorGroupPropertyItem(
-        ANDROID_URI,
-        item.attrName,
-        item.type,
-        value,
-        null,
-        item.section,
-        item.source,
-        node.drawId,
-        model,
-        map
+    var property =
+      createTestProperty(
+        ATTR_TEXT_COLOR,
+        PropertyType.COLOR,
+        value = null,
+        node.layout,
+        listOf(textStyleMaterial),
+        node,
+        model
       )
+        as InspectorGroupPropertyItem
+    val value = model.resourceLookup.findAttributeValue(property, node, property.source!!)
+    if (value != null) {
+      property =
+        createTestProperty(
+          ATTR_TEXT_COLOR,
+          PropertyType.COLOR,
+          value,
+          node.layout,
+          listOf(textStyleMaterial),
+          node,
+          model
+        )
+          as InspectorGroupPropertyItem
+    }
     val editors = JPanel()
     editors.layout = BoxLayout(editors, BoxLayout.PAGE_AXIS)
     val propertiesModel = InspectorPropertiesModel(projectRule.testRootDisposable)

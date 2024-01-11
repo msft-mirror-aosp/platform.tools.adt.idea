@@ -79,8 +79,11 @@ iml_module(
             "test_filter": "com.android.tools.idea.gradle.navigation.DeclarativeGotoApiDeclarationHandlerTest",
             "shard_count": 2,
         },
+        "errors.integration": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.errors.integration",
+        },
         "other": {
-            "shard_count": 27,
+            "shard_count": 26,
         },
     },
     tags = ["no_test_windows"],

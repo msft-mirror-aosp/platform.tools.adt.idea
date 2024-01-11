@@ -268,7 +268,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_MODE = new BooleanFlag(
     NELE, "compose.ui.check.mode", "Enable UI Check mode for Compose preview",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
-    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
+    true);
 
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = Flag.create(
     NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
@@ -346,9 +346,9 @@ public final class StudioFlags {
     "Requires applychanges.optimisticswap to be true.",
     true);
 
-  public static final Flag<Boolean> INSTALL_FORGO_DONT_KILL = Flag.create(
+  public static final Flag<Boolean> INSTALL_USE_PM_TERMINATE = Flag.create(
     RUNDEBUG,
-    "install.forgo.dont.kill",
+    "install.use.pm.terminate",
     "When installing via the Package Manager, do not use the --dont-kill flag and skip process termination for API33+",
     "We assume there are no race conditions with the package manager and give full control to it.",
     true);
@@ -1244,6 +1244,13 @@ public final class StudioFlags {
    false
   );
 
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_BUILD_SYSTEM_MIN_SDK_VERSION_FOR_DEXING = Flag.create(
+    COMPOSE, "deploy.live.edit.build.system.min.sdk.version.for.dexing",
+    "LiveEdit: Use Min SDK for Dexing from the build system",
+    "If enabled, Live Edit uses the Min SDK information from the build system. Otherwise, use the information from the DEX marker",
+    false
+  );
+
   public static final Flag<Boolean> COMPOSE_DEBUG_BOUNDS = Flag.create(
     COMPOSE, "preview.debug.bounds",
     "Enable the debug bounds switch controls",
@@ -1358,6 +1365,11 @@ public final class StudioFlags {
     COMPOSE, "compose.preview.keep.image.on.error", "Keeps the last valid image after a render error",
     "If enabled, when an error happens, the surface will keep the last valid image",
     ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
+
+  public static final Flag<Boolean> COMPOSE_INVALIDATE_ON_RESOURCE_CHANGE = new BooleanFlag(
+    COMPOSE, "compose.preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
+    "Invalidates the preview is there is a resource change",
+    true);
   //endregion
 
   // region Wear surfaces

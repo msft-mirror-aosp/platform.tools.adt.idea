@@ -48,6 +48,7 @@ import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.DisposableRule
 import com.intellij.ui.treeStructure.Tree
 import java.util.EnumSet
 import javax.swing.JComponent
@@ -66,6 +67,8 @@ class TreeSettingsActionsTest {
     @JvmField @ClassRule val rule = ApplicationRule()
   }
 
+  @get:Rule val disposableRule = DisposableRule()
+
   @get:Rule
   val recompositionFlagRule =
     FlagRule(StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_COUNTS, true)
@@ -75,6 +78,7 @@ class TreeSettingsActionsTest {
   private val stats = SessionStatisticsImpl(APP_INSPECTION_CLIENT)
   private val capabilities = EnumSet.noneOf(Capability::class.java)
   private var isConnected = false
+  private var inLiveMode = true
 
   @Test
   fun testFilterSystemNodeAction() {
@@ -156,7 +160,14 @@ class TreeSettingsActionsTest {
     assertThat(event.presentation.text)
       .isEqualTo("Show Recomposition Counts (Needs Compose 1.2.1+)")
     capabilities.add(Capability.SUPPORTS_COMPOSE_RECOMPOSITION_COUNTS)
+
+    inLiveMode = false
     RecompositionCounts.update(event)
+    assertThat(event.presentation.isVisible).isFalse()
+
+    inLiveMode = true
+    RecompositionCounts.update(event)
+    assertThat(event.presentation.isVisible).isTrue()
     assertThat(event.presentation.isEnabled).isTrue()
     assertThat(event.presentation.text).isEqualTo("Show Recomposition Counts")
 
@@ -172,6 +183,7 @@ class TreeSettingsActionsTest {
 
     // Disconnect and check modifying setting:
     isConnected = false
+    inLiveMode = false
     assertThat(RecompositionCounts.isSelected(event)).isFalse()
     RecompositionCounts.setSelected(event, true)
     assertThat(RecompositionCounts.isSelected(event)).isTrue()
@@ -258,6 +270,7 @@ class TreeSettingsActionsTest {
     whenever(client.stats).thenReturn(stats)
     Mockito.doAnswer { capabilities }.whenever(client).capabilities
     Mockito.doAnswer { isConnected }.whenever(client).isConnected
+    Mockito.doAnswer { inLiveMode }.whenever(client).inLiveMode
 
     val dataContext =
       object : DataContext {
@@ -285,7 +298,7 @@ class TreeSettingsActionsTest {
       ResourceReference(ResourceNamespace.APPCOMPAT, ResourceType.LAYOUT, "abc_screen_simple")
     val mainLayout =
       ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "activity_main")
-    return model {
+    return model(disposableRule.disposable) {
       view(ROOT) {
         view(VIEW1, layout = mainLayout) {
           view(VIEW2, layout = screenSimple) { view(VIEW3, layout = appcompatScreenSimple) }

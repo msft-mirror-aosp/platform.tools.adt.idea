@@ -40,7 +40,6 @@ import org.jetbrains.kotlin.analysis.api.KtAnalysisSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.hasAnnotation
 import org.jetbrains.kotlin.analysis.api.components.KtCompilationResult
-import org.jetbrains.kotlin.analysis.api.components.KtCompiledFile
 import org.jetbrains.kotlin.analysis.api.components.KtCompilerTarget
 import org.jetbrains.kotlin.analysis.api.diagnostics.getDefaultMessageWithFactoryName
 import org.jetbrains.kotlin.analysis.api.symbols.KtFunctionSymbol
@@ -60,21 +59,8 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtFunction
 import org.jetbrains.kotlin.psi.KtNamedDeclarationUtil
 import org.jetbrains.kotlin.psi.KtNamedFunction
-import java.io.File
 
 private val ComposableFqName = ClassId(FqName("androidx.compose.runtime"), FqName("Composable"), false)
-
-private class OutputFileForKtCompiledFile(private val compiledFile: KtCompiledFile): OutputFile {
-  override val relativePath: String
-    get() = compiledFile.path
-
-  override val sourceFiles: List<File>
-    get() = compiledFile.sourceFiles
-
-  override fun asByteArray(): ByteArray = compiledFile.content
-
-  override fun asText(): String = String(compiledFile.content)
-}
 
 /**
  * A class to help [LiveEditCompilerForK2.getGeneratedCode] function to collect internal class names and seal classes.
@@ -148,13 +134,13 @@ internal class LiveEditCompilerForK2(
 
     val selectedClasses = InternalClassNamesToSealedClasses()
     for (input in inputs) {
+      val element = input.element
       // The function we are looking at no longer belongs to file. This is mostly an IDE refactor / copy-and-paste action.
       // This should be solved nicely with a ClassDiffer.
-      if (input.element.containingFile == null) {
+      if (element?.containingFile == null) {
         continue
       }
 
-      val element = input.element
       val (internalClassName, containingFile) = analyze(element) {
         when(element) {
           // When the edit event was contained in a function

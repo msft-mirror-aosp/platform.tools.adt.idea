@@ -18,6 +18,7 @@ package com.android.tools.idea.layoutinspector.snapshots
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
 import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
@@ -99,7 +100,7 @@ class AppInspectionSnapshotSupportTest {
 
   @Test
   fun saveAndLoadLiveSnapshot() {
-    inspectorClientSettings.isCapturingModeOn = false
+    inspectorClientSettings.inLiveMode = false
     runBlocking { inspectorRule.inspectorClient.stopFetching() }
     appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
       appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
@@ -120,7 +121,8 @@ class AppInspectionSnapshotSupportTest {
 
     inspectorRule.inspectorClient.saveSnapshot(savePath)
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel = InspectorModel(inspectorRule.project)
+    val newModel =
+      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     snapshotLoader.loadFile(
       savePath,
       newModel,
@@ -136,7 +138,7 @@ class AppInspectionSnapshotSupportTest {
 
   @Test
   fun saveAndLoadLiveSnapshotWithDeepComposeNesting() {
-    inspectorClientSettings.isCapturingModeOn = true
+    inspectorClientSettings.inLiveMode = true
     val inspectorState =
       FakeInspectorState(appInspectorRule.viewInspector, appInspectorRule.composeInspector)
     inspectorState.createFakeViewTree()
@@ -150,7 +152,8 @@ class AppInspectionSnapshotSupportTest {
     inspectorRule.inspectorModel.resourceLookup.updateConfiguration(null, null, null)
 
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel = InspectorModel(inspectorRule.project)
+    val newModel =
+      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     val newNotificationModel = NotificationModel(inspectorRule.project)
     snapshotLoader.loadFile(
       savePath,
@@ -171,7 +174,7 @@ class AppInspectionSnapshotSupportTest {
 
   @Test
   fun saveAndLoadNonLiveSnapshot() {
-    inspectorClientSettings.isCapturingModeOn = false
+    inspectorClientSettings.inLiveMode = false
     runBlocking { inspectorRule.inspectorClient.stopFetching() }
     appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
       appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(1L) } }
@@ -192,7 +195,8 @@ class AppInspectionSnapshotSupportTest {
 
     inspectorRule.inspectorClient.saveSnapshot(savePath)
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel = InspectorModel(inspectorRule.project)
+    val newModel =
+      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     val newNotificationModel = NotificationModel(inspectorRule.project)
     snapshotLoader.loadFile(
       savePath,
@@ -210,7 +214,7 @@ class AppInspectionSnapshotSupportTest {
   @Test
   fun saveNonLiveSnapshotImmediately() {
     // Connect initially in live mode
-    inspectorClientSettings.isCapturingModeOn = true
+    inspectorClientSettings.inLiveMode = true
     appInspectorRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
       appInspectorRule.viewInspector.connection.sendEvent { rootsEventBuilder.apply { addIds(2L) } }
 
@@ -252,7 +256,7 @@ class AppInspectionSnapshotSupportTest {
     inspectorRule.processes.selectedProcess = PROCESS
 
     // Now switch to non-live
-    inspectorClientSettings.isCapturingModeOn = false
+    inspectorClientSettings.inLiveMode = false
     runBlocking { inspectorRule.inspectorClient.stopFetching() }
 
     val startedLatch = CountDownLatch(1)
@@ -276,7 +280,8 @@ class AppInspectionSnapshotSupportTest {
 
     // Ensure the snapshot was saved correctly
     val snapshotLoader = SnapshotLoader.createSnapshotLoader(savePath)!!
-    val newModel = InspectorModel(inspectorRule.project)
+    val newModel =
+      InspectorModel(inspectorRule.project, AndroidCoroutineScope(inspectorRule.disposable))
     val newNotificationModel = NotificationModel(inspectorRule.project)
     snapshotLoader.loadFile(
       savePath,

@@ -18,19 +18,14 @@ package com.android.tools.idea.layoutinspector.properties
 import com.android.SdkConstants.ATTR_TEXT_SIZE
 import com.android.annotations.concurrency.Slow
 import com.android.ide.common.rendering.api.ResourceReference
-import com.android.ide.common.resources.parseColor
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.resource.ResourceLookup
-import com.android.tools.idea.res.RESOURCE_ICON_SIZE
+import com.android.tools.idea.layoutinspector.resource.SourceLocation
 import com.android.tools.property.panel.api.ActionIconButton
 import com.android.tools.property.panel.api.HelpSupport
 import com.android.tools.property.panel.api.PropertyItem
 import com.android.utils.HashCodes
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.ui.scale.JBUIScale
-import com.intellij.util.ui.ColorIcon
 import java.text.DecimalFormat
-import javax.swing.Icon
 
 private const val DEFAULT_DENSITY = 160 // Same as Density.MEDIUM.dpiValue
 private const val DEFAULT_DENSITY_FLOAT = 160.0f
@@ -84,6 +79,9 @@ open class InspectorPropertyItem(
       dimensionValue = computeDimensionValue(value)
     }
 
+  /** The source locations for this [source] reference (populated late) */
+  val sourceLocations = mutableListOf<SourceLocation>()
+
   /** Return true if this property has details that will require a ResolutionEditor */
   open val needsResolutionEditor: Boolean
     get() = false
@@ -132,16 +130,13 @@ open class InspectorPropertyItem(
   override val helpSupport =
     object : HelpSupport {
       override fun browse() {
-        val view = lookup[viewId] ?: return
-        val location =
-          lookup.resourceLookup
-            .findFileLocations(this@InspectorPropertyItem, view, 1)
-            .singleOrNull() ?: return
-        location.navigatable?.navigate(true)
+        val location = sourceLocations.firstOrNull()
+        location?.navigatable?.navigate(true)
       }
     }
 
-  override var colorButton = createColorButton()
+  /** The color Icon button used for some types of properties (populated late) */
+  override var colorButton: ActionIconButton? = null
 
   private fun formatDimension(pixels: Int): String? {
     if (pixels == -1 || pixels == Int.MIN_VALUE || pixels == Int.MAX_VALUE) {
@@ -225,13 +220,6 @@ open class InspectorPropertyItem(
   private fun formatFloat(value: Float): String =
     if (value == 0.0f) "0" else DecimalFormat("0.0##").format(value)
 
-  private fun createColorButton(): ActionIconButton? =
-    when (type) {
-      PropertyType.COLOR,
-      PropertyType.DRAWABLE -> value?.let { ColorActionIconButton(this) }
-      else -> null
-    }
-
   @Slow
   fun resolveDimensionType(view: ViewNode) {
     if (
@@ -241,23 +229,5 @@ open class InspectorPropertyItem(
       type =
         if (type == PropertyType.INT32) PropertyType.DIMENSION else PropertyType.DIMENSION_FLOAT
     }
-  }
-
-  private class ColorActionIconButton(private val property: InspectorPropertyItem) :
-    ActionIconButton {
-    override val actionButtonFocusable = false
-    override val action: AnAction? = null
-    override val actionIcon: Icon?
-      get() {
-        val view = property.lookup[property.viewId]
-        if (view != null) {
-          property.lookup.resourceLookup.resolveAsIcon(property, view)?.let {
-            return it
-          }
-        }
-        val value = property.value
-        val color = value?.let { parseColor(value) } ?: return null
-        return JBUIScale.scaleIcon(ColorIcon(RESOURCE_ICON_SIZE, color, false))
-      }
   }
 }

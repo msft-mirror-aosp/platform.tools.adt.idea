@@ -174,7 +174,7 @@ class DeviceViewPanelWithFullInspectorTest {
   @Test
   fun testShowAndClearPerformanceWarnings() {
     val clientSettings = InspectorClientSettings(projectRule.project)
-    clientSettings.isCapturingModeOn = true
+    clientSettings.inLiveMode = true
 
     installCommandHandlers()
     latch = CountDownLatch(1)
@@ -187,7 +187,9 @@ class DeviceViewPanelWithFullInspectorTest {
       panel.flatten(false).filterIsInstance<DeviceViewContentPanel>().first().renderModel
     delegateDataProvider(panel)
     panel.flatten(false).filterIsInstance<ActionToolbar>().forEach { toolbar ->
-      check(toolbar is ActionToolbarImpl) // Downcast needed until we get IntelliJ commit 2c2720e223 in 2024.1.
+      check(
+        toolbar is ActionToolbarImpl
+      ) // Downcast needed until we get IntelliJ commit 2c2720e223 in 2024.1.
       PlatformTestUtil.waitForFuture(toolbar.updateActionsAsync())
     }
     val toggle =
@@ -531,10 +533,10 @@ class DeviceViewPanelTest {
 
   @Test
   fun testZoomOnConnect() {
-    val model = InspectorModel(projectRule.project)
+    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
+    val model = InspectorModel(projectRule.project, coroutineScope)
     val processModel = ProcessesModel(TestProcessDiscovery())
     val deviceModel = DeviceModel(disposableRule.disposable, processModel)
-    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
     val launcher =
       InspectorClientLauncher(
         processModel,
@@ -587,11 +589,11 @@ class DeviceViewPanelTest {
 
   @Test
   fun testZoomOnConnectWithFiltering() {
-    val model = InspectorModel(projectRule.project)
+    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
+    val model = InspectorModel(projectRule.project, coroutineScope)
     val notificationModel = NotificationModel(projectRule.project)
     val processModel = ProcessesModel(TestProcessDiscovery())
     val deviceModel = DeviceModel(disposableRule.disposable, processModel)
-    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
     val launcher =
       InspectorClientLauncher(
         processModel,
@@ -635,11 +637,11 @@ class DeviceViewPanelTest {
 
   @Test
   fun testZoomOnConnectWithFilteringAndScreenSizeFromAppContext() {
-    val model = InspectorModel(projectRule.project)
+    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
+    val model = InspectorModel(projectRule.project, coroutineScope)
     val notificationModel = NotificationModel(projectRule.project)
     val processModel = ProcessesModel(TestProcessDiscovery())
     val deviceModel = DeviceModel(disposableRule.disposable, processModel)
-    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
     val launcher =
       InspectorClientLauncher(
         processModel,
@@ -684,11 +686,11 @@ class DeviceViewPanelTest {
 
   @Test
   fun testDrawNewWindow() {
-    val model = InspectorModel(projectRule.project)
+    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
+    val model = InspectorModel(projectRule.project, coroutineScope)
     val notificationModel = NotificationModel(projectRule.project)
     val processModel = ProcessesModel(TestProcessDiscovery())
     val deviceModel = DeviceModel(disposableRule.disposable, processModel)
-    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
     val launcher =
       InspectorClientLauncher(
         processModel,
@@ -738,11 +740,11 @@ class DeviceViewPanelTest {
 
   @Test
   fun testNewWindowDoesntResetZoom() {
-    val model = InspectorModel(projectRule.project)
+    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
+    val model = InspectorModel(projectRule.project, coroutineScope)
     val notificationModel = NotificationModel(projectRule.project)
     val processModel = ProcessesModel(TestProcessDiscovery())
     val deviceModel = DeviceModel(disposableRule.disposable, processModel)
-    val coroutineScope = AndroidCoroutineScope(disposableRule.disposable)
     val launcher: InspectorClientLauncher = mock()
     val client: InspectorClient = mock()
     whenever(client.isConnected).thenReturn(true)
@@ -834,7 +836,10 @@ class DeviceViewPanelTest {
     panButton: Button = Button.LEFT,
     fromSnapshot: Boolean = false
   ) {
-    val model = model { view(ROOT, 0, 0, 100, 200) { view(VIEW1, 25, 30, 50, 50) } }
+    val model =
+      model(disposableRule.disposable) {
+        view(ROOT, 0, 0, 100, 200) { view(VIEW1, 25, 30, 50, 50) }
+      }
 
     val notificationModel = NotificationModel(projectRule.project)
     val launcher: InspectorClientLauncher = mock()

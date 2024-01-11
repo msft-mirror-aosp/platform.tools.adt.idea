@@ -50,10 +50,10 @@
     <errorHandler implementation="com.android.tools.idea.diagnostics.error.AndroidStudioErrorReportSubmitter"/>
     <applicationInitializedListener id="Startup.StartLowMemoryReporter"
                                     implementation="com.android.tools.idea.stats.LowMemoryReporter$OnStartup"/>
-    <backgroundPostStartupActivity implementation="com.android.tools.idea.stats.GcPauseWatcher$Initializer" />
-    <backgroundPostStartupActivity implementation="com.android.tools.idea.serverflags.ServerFlagDownloader$Initializer" />
-    <backgroundPostStartupActivity implementation="com.android.tools.idea.diagnostics.WindowsCRuntimeChecker" os="windows" />
-    <backgroundPostStartupActivity implementation="com.android.tools.idea.diagnostics.DiagnosticsReportCleaner" />
+    <postStartupActivity implementation="com.android.tools.idea.stats.GcPauseWatcher" />
+    <postStartupActivity implementation="com.android.tools.idea.serverflags.ServerFlagDownloader$Initializer" />
+    <postStartupActivity implementation="com.android.tools.idea.diagnostics.WindowsCRuntimeChecker" os="windows" />
+    <postStartupActivity implementation="com.android.tools.idea.diagnostics.DiagnosticsReportCleaner" />
     <defender.config implementation="com.android.tools.idea.diagnostics.windows.AndroidWindowsDefenderCheckerExt"/>
     <defaultToolWindowLayout
       id="AndroidStudioDefaultToolWindowLayoutExtension"

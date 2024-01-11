@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
@@ -62,19 +63,41 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
   private val uiScope: CoroutineScope = AndroidCoroutineScope(this, uiThread)
   private val workerScope: CoroutineScope = AndroidCoroutineScope(this, workerThread)
 
-  private var serialNumber: String? = null
-
   fun setSerialNumber(serialNumber: String) {
-    stateManager.serialNumber = serialNumber
-    this.serialNumber = serialNumber
-    removeAll()
-    add(createContentPanel())
+    if (serialNumber != stateManager.serialNumber) {
+      stateManager.serialNumber = serialNumber
+      workerScope.launch {
+        if (stateManager.isWhsVersionSupported()) {
+          withContext(uiThread) {
+            removeAll()
+            add(createContentPanel())
+          }
+        }
+        else {
+          withContext(uiThread) {
+            removeAll()
+            add(createWhsVersionNotSupportedPanel())
+          }
+        }
+      }
+    }
   }
 
   private fun getLogger() = Logger.getInstance(this::class.java)
 
+  private fun createWhsVersionNotSupportedPanel(): JPanel =
+    JPanel().apply {
+      layout = BoxLayout(this, BoxLayout.Y_AXIS)
+      border = Borders.empty(JBUI.scale(20))
+      add(Box.createVerticalGlue())
+      add(JLabel("<html><center>" + message("wear.whs.panel.version.not.supported") + "</center></html>", JLabel.CENTER).apply {
+        foreground = StandardColors.PLACEHOLDER_TEXT_COLOR
+      })
+      add(Box.createVerticalGlue())
+    }
+
   private fun createContentPanel(): JPanel {
-    if (serialNumber == null) {
+    if (stateManager.serialNumber == null) {
       return JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         border = Borders.empty(JBUI.scale(20))
@@ -237,7 +260,12 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
                 override fun textChanged(e: DocumentEvent) {
                   workerScope.launch {
                     try {
-                      stateManager.setOverrideValue(capability, textField.text.toFloat())
+                      if (textField.text.isEmpty()) {
+                        stateManager.setOverrideValue(capability, null)
+                      }
+                      else {
+                        stateManager.setOverrideValue(capability, textField.text.toFloat())
+                      }
                       uiScope.launch {
                         warningLabel.isVisible = false
                       }

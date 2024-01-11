@@ -20,6 +20,7 @@ import com.android.adblib.DeviceSelector
 import com.android.adblib.shellAsText
 import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WhsCapability
+import com.android.tools.idea.wearwhs.WhsDataType
 
 const val whsUri: String = "content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config"
 
@@ -47,29 +48,51 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
   // TODO(b/305924111) Implement loadOngoingExercise method
   override suspend fun loadOngoingExercise() = false
 
-  private fun contentUpdateCapability(key: String, value: Boolean): String {
-    return "content update --uri $whsUri --bind $key:b:$value --where \"$key\""
+  private inline fun <reified T> contentUpdateCapability(key: String, value: T): String {
+    val type = when (value) {
+      is Boolean -> 'b'
+      is Int -> 'i'
+      is Float -> 'f'
+      else -> 's'
+    }
+    return "content update --uri $whsUri --bind $key:$type:$value"
+  }
+
+  private suspend fun setCapability(capability: WhsCapability, newValue: Boolean) {
+    if (serialNumber == null) {
+      // TODO: Log this error
+      return
+    }
+
+    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+    val contentUpdateCommand = contentUpdateCapability(capability.key.name, newValue)
+    adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
   }
 
   override suspend fun enableCapability(capability: WhsCapability) {
-    if (serialNumber == null) {
-      // TODO: Log this error
-      return
-    }
-
-    adbSession.deviceServices.shellAsText(DeviceSelector.fromSerialNumber(serialNumber!!), contentUpdateCapability(capability.key.name, true))
+    setCapability(capability, true)
   }
 
   override suspend fun disableCapability(capability: WhsCapability) {
+    setCapability(capability, false)
+  }
+
+  override suspend fun overrideValue(capability: WhsCapability, value: Number?) {
     if (serialNumber == null) {
       // TODO: Log this error
       return
     }
 
-    adbSession.deviceServices.shellAsText(DeviceSelector.fromSerialNumber(serialNumber!!), contentUpdateCapability(capability.key.name, false))
-  }
+    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
 
-  // TODO(b/305924073): Implement override methods
-  override suspend fun overrideValue(capability: WhsCapability, value: Float?) {}
+    val contentUpdateCommand = if (value == null) {
+      contentUpdateCapability(capability.key.name, "\"\"")
+    } else if (capability.key == WhsDataType.STEPS) {
+      contentUpdateCapability(capability.key.name, value.toInt())
+    } else {
+      contentUpdateCapability(capability.key.name, value.toFloat())
+    }
+    adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
+  }
 }
 

@@ -20,13 +20,18 @@ import androidx.compose.compiler.plugins.kotlin.ComposeClassIds
 import androidx.compose.compiler.plugins.kotlin.k1.hasComposableAnnotation
 import com.android.tools.idea.kotlin.hasAnnotation
 import com.android.tools.idea.projectsystem.getModuleSystem
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.analysis.api.KtAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.KtAnalysisSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KtAnnotated
 import org.jetbrains.kotlin.analysis.api.annotations.hasAnnotation
-import org.jetbrains.kotlin.analysis.api.calls.singleFunctionCallOrNull
+import org.jetbrains.kotlin.analysis.api.calls.KtCallableMemberCall
+import org.jetbrains.kotlin.analysis.api.calls.calls
 import org.jetbrains.kotlin.analysis.api.calls.symbol
 import org.jetbrains.kotlin.analysis.api.lifetime.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.symbols.KtCallableSymbol
@@ -55,6 +60,21 @@ import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.typeUtil.supertypes
 import org.jetbrains.kotlin.util.OperatorNameConventions
+
+private const val COMPOSABLE_CALL_TEXT_ATTRIBUTES_NAME = "ComposableCallTextAttributes"
+
+internal val COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY: TextAttributesKey =
+  TextAttributesKey.createTextAttributesKey(
+    COMPOSABLE_CALL_TEXT_ATTRIBUTES_NAME,
+    DefaultLanguageHighlighterColors.FUNCTION_CALL
+  )
+
+internal val COMPOSABLE_CALL_TEXT_TYPE: HighlightInfoType =
+  HighlightInfoType.HighlightInfoTypeImpl(
+    HighlightInfoType.SYMBOL_TYPE_SEVERITY,
+    COMPOSABLE_CALL_TEXT_ATTRIBUTES_KEY,
+    false
+  )
 
 fun isComposeEnabled(element: PsiElement): Boolean = element.getModuleSystem()?.usesCompose ?: false
 
@@ -98,9 +118,10 @@ internal fun KtElement.callReturnTypeFqName() =
   if (isK2Plugin()) {
     allowAnalysisOnEdt {
       analyze(this) {
-        val callReturnType =
-          this@callReturnTypeFqName.resolveCall()?.singleFunctionCallOrNull()?.symbol?.returnType
-        callReturnType?.let { asFqName(it) }
+        val call =
+          this@callReturnTypeFqName.resolveCall()?.calls?.firstOrNull()
+            as? KtCallableMemberCall<*, *>
+        call?.let { asFqName(it.symbol.returnType) }
       }
     }
   } else {
@@ -142,3 +163,8 @@ internal fun KtAnalysisSession.isComposableInvocation(callableSymbol: KtCallable
     else -> hasComposableAnnotation(callableSymbol)
   }
 }
+
+internal fun isInLibrarySource(element: PsiElement) =
+  element.containingFile.virtualFile != null &&
+    ProjectFileIndex.getInstance(element.project)
+      .isInLibrarySource(element.containingFile.virtualFile)

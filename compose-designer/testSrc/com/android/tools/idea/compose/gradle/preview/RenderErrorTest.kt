@@ -23,10 +23,12 @@ import com.android.tools.idea.common.surface.SceneViewErrorsPanel
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.compose.gradle.ComposeGradleProjectRule
 import com.android.tools.idea.compose.gradle.activateAndWaitForRender
+import com.android.tools.idea.compose.gradle.waitForRender
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
 import com.android.tools.idea.compose.preview.util.previewElement
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.modes.PreviewMode
@@ -43,7 +45,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
@@ -60,13 +61,14 @@ import java.awt.Dimension
 import javax.swing.JPanel
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.utils.alwaysTrue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -123,26 +125,24 @@ class RenderErrorTest {
     projectRule.fixture.enableInspections(*visualLintInspections)
     Disposer.register(fixture.testRootDisposable, composePreviewRepresentation)
 
-    ApplicationManager.getApplication().invokeAndWait {
-      fakeUi =
-        FakeUi(
-          JPanel().apply {
-            layout = BorderLayout()
-            size = Dimension(1000, 800)
-            add(previewView, BorderLayout.CENTER)
-          },
-          1.0,
-          true,
-        )
-      fakeUi.root.validate()
-    }
-
     runBlocking {
+      fakeUi =
+        withContext(uiThread) {
+          FakeUi(
+              JPanel().apply {
+                layout = BorderLayout()
+                size = Dimension(1000, 800)
+                add(previewView, BorderLayout.CENTER)
+              },
+              1.0,
+              true,
+            )
+            .also { it.root.validate() }
+        }
       composePreviewRepresentation.activateAndWaitForRender(fakeUi, timeout = 1.minutes)
     }
   }
 
-  @Ignore("b/314295523")
   @Test
   fun testSceneViewWithRenderErrors() =
     runBlocking(workerThread) {
@@ -205,7 +205,6 @@ class RenderErrorTest {
       }
     }
 
-  @Ignore("b/314295523")
   @Test
   fun testSceneViewWithoutRenderErrors() =
     runBlocking(workerThread) {
@@ -270,35 +269,35 @@ class RenderErrorTest {
       assertEquals("RenderError.kt", navigatable.file.name)
     }
 
-  @Ignore("b/307260641")
   @Test
   fun testVisualLintErrors() =
     runBlocking(workerThread) {
-      val modelsWithIssues =
-        listOf(
+      listOf(
           "PreviewWithContrastError",
           "PreviewWithContrastErrorAgain",
           "PreviewWithWideButton",
           "PreviewWithLongText",
         )
+        .forEach { modelWithIssues ->
+          launch {
+            startUiCheckForModel(modelWithIssues)
 
-      modelsWithIssues.forEach { modelWithIssues ->
-        startUiCheckForModel(modelWithIssues)
+            val issues = visualLintRenderIssues()
+            // 1-2% of the time we get two issues instead of one. Only one of the issues has a
+            // component
+            // field that is populated. We attempt to retrieve it here.
+            val issue = runInEdtAndGet {
+              issues.first { it.components.firstOrNull()?.navigatable is OpenFileDescriptor }
+            }
 
-        val issues = visualLintRenderIssues()
-        // 1-2% of the time we get two issues instead of one. Only one of the issues has a component
-        // field that is populated. We attempt to retrieve it here.
-        val issue = runInEdtAndGet {
-          issues.first { it.components.firstOrNull()?.navigatable is OpenFileDescriptor }
+            assertEquals("Visual Lint Issue", issue.category)
+            val navigatable = issue.components[0].navigatable
+            assertTrue(navigatable is OpenFileDescriptor)
+            assertEquals("RenderError.kt", (navigatable as OpenFileDescriptor).file.name)
+
+            stopUiCheck()
+          }
         }
-
-        assertEquals("Visual Lint Issue", issue.category)
-        val navigatable = issue.components[0].navigatable
-        assertTrue(navigatable is OpenFileDescriptor)
-        assertEquals("RenderError.kt", (navigatable as OpenFileDescriptor).file.name)
-
-        stopUiCheck()
-      }
     }
 
   private fun countVisibleActions(
@@ -351,6 +350,15 @@ class RenderErrorTest {
       ),
     )
     onRefreshCompletable.join()
+
+    // Once we enable Ui Check we need to render again since we are now showing the selected preview
+    // with the different analyzers of Ui Check (for example screen sizes, colorblind check etc).
+    withContext(uiThread) {
+      composePreviewRepresentation.waitForRender(
+        fakeUi.findAllComponents<SceneViewPeerPanel>().toSet(),
+      )
+      fakeUi.root.validate()
+    }
   }
 
   private suspend fun stopUiCheck() {
