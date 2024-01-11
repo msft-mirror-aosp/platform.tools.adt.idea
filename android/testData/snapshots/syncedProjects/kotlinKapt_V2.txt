@@ -301,7 +301,11 @@ PROJECT                       : MainActivity
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
             Scope                         : Test
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
             Scope                         : Test
+            LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
+                *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         ORDER_ENTRY                   : MainActivity.app.main
             Scope                         : Test
         ORDER_ENTRY                   : MainActivity.javaLib.main
@@ -498,6 +502,10 @@ PROJECT                       : MainActivity
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
+                *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         ORDER_ENTRY                   : MainActivity.javaLib.main
         Classes
             -                             : file://<PROJECT>/app/build/intermediates/javac/localDebug/classes
@@ -705,7 +713,11 @@ PROJECT                       : MainActivity
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
             Scope                         : Test
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
             Scope                         : Test
+            LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
+                *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         ORDER_ENTRY                   : MainActivity.app.main
             Scope                         : Test
         ORDER_ENTRY                   : MainActivity.javaLib.main
@@ -1221,7 +1233,11 @@ PROJECT                       : MainActivity
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
             Scope                         : Test
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
             Scope                         : Test
+            LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
+                *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         ORDER_ENTRY                   : MainActivity.lib.main
             Scope                         : Test
         BUILD_TASKS
@@ -1393,6 +1409,10 @@ PROJECT                       : MainActivity
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
+            LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
+                *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         BUILD_TASKS
             TEST_COMPILE_MODE             : All
                 CLEAN                         : :lib:createMockableJar, :lib:generateDebugAndroidTestSources, :lib:generateDebugSources
@@ -1594,7 +1614,11 @@ PROJECT                       : MainActivity
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
             Scope                         : Test
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
             Scope                         : Test
+            LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
+                *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         ORDER_ENTRY                   : MainActivity.lib.main
             Scope                         : Test
         BUILD_TASKS
