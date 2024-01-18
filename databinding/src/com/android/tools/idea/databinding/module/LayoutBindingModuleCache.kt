@@ -36,7 +36,9 @@ import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_SYNC_TOPIC
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.util.dependsOn
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
@@ -51,16 +53,18 @@ private val LIGHT_BINDING_CLASSES_KEY =
   Key.create<List<LightBindingClass>>("LIGHT_BINDING_CLASSES_KEY")
 
 @ThreadSafe
-class LayoutBindingModuleCache(private val module: Module) {
+class LayoutBindingModuleCache(private val module: Module) : Disposable {
   companion object {
     // We are using facet.mainModule as a temporary workaround. This is needed because main,
-    // unitTest and androidTest modules
-    // all access the same resources (all the resources). Ideally, they should only access their own
-    // resources.
+    // unitTest and androidTest modules all access the same resources (all the resources). Ideally,
+    // they should only access their own resources.
     @JvmStatic
-    fun getInstance(facet: AndroidFacet) =
-      facet.mainModule.getService(LayoutBindingModuleCache::class.java)!!
+    fun getInstance(facet: AndroidFacet): LayoutBindingModuleCache = facet.mainModule.service()
   }
+
+  // Since this service is only ever constructed using a facet (and its corresponding module), it's
+  // reasonable to assume there will always be a facet available.
+  private val facet = requireNotNull(AndroidFacet.getInstance(module))
 
   private val lock = Any()
 
@@ -74,13 +78,13 @@ class LayoutBindingModuleCache(private val module: Module) {
       synchronized(lock) {
         if (_dataBindingMode != value) {
           _dataBindingMode = value
-          DataBindingModeTrackingService.getInstance().incrementModificationCount()
+          DataBindingModeTrackingService.getInstance().incModificationCount()
         }
       }
     }
 
   @GuardedBy("lock") private var _viewBindingEnabled = false
-  var viewBindingEnabled: Boolean
+  private var viewBindingEnabled: Boolean
     get() =
       synchronized(lock) {
         return _viewBindingEnabled
@@ -89,7 +93,7 @@ class LayoutBindingModuleCache(private val module: Module) {
       synchronized(lock) {
         if (_viewBindingEnabled != value) {
           _viewBindingEnabled = value
-          ViewBindingEnabledTrackingService.instance.incrementModificationCount()
+          ViewBindingEnabledTrackingService.getInstance().incModificationCount()
         }
       }
     }
@@ -97,20 +101,14 @@ class LayoutBindingModuleCache(private val module: Module) {
   init {
     fun syncModeWithDependencies() {
       dataBindingMode = determineDataBindingMode(module)
-      AndroidFacet.getInstance(module)?.let { facet ->
-        viewBindingEnabled = facet.isViewBindingEnabled()
-      }
+      viewBindingEnabled = facet.isViewBindingEnabled()
     }
 
     module.project.messageBus
-      .connect(module)
+      .connect(this)
       .subscribe(
         PROJECT_SYSTEM_SYNC_TOPIC,
-        object : ProjectSystemSyncManager.SyncResultListener {
-          override fun syncEnded(result: ProjectSystemSyncManager.SyncResult) {
-            syncModeWithDependencies()
-          }
-        }
+        ProjectSystemSyncManager.SyncResultListener { syncModeWithDependencies() }
       )
     syncModeWithDependencies()
   }
@@ -135,8 +133,6 @@ class LayoutBindingModuleCache(private val module: Module) {
    */
   val lightBrClass: LightBrClass?
     get() {
-      val facet = AndroidFacet.getInstance(module) ?: return null
-
       synchronized(lock) {
         if (_lightBrClass == null) {
           val qualifiedName = DataBindingUtil.getBrQualifiedName(facet) ?: return null
@@ -159,9 +155,7 @@ class LayoutBindingModuleCache(private val module: Module) {
    */
   val lightDataBindingComponentClass: LightDataBindingComponentClass?
     get() {
-      val facet =
-        AndroidFacet.getInstance(module)?.takeUnless { it.configuration.isLibraryProject }
-          ?: return null
+      if (facet.configuration.isLibraryProject) return null
 
       synchronized(lock) {
         if (_lightDataBindingComponentClass == null) {
@@ -171,9 +165,6 @@ class LayoutBindingModuleCache(private val module: Module) {
         return _lightDataBindingComponentClass
       }
     }
-
-  private val BindingLayoutGroup.layoutFileName: String
-    get() = mainLayout.file.name
 
   /**
    * A modification tracker for module resources.
@@ -192,8 +183,6 @@ class LayoutBindingModuleCache(private val module: Module) {
    */
   val bindingLayoutGroups: Collection<BindingLayoutGroup>
     get() {
-      val facet = AndroidFacet.getInstance(module) ?: return emptySet()
-
       // This method is designed to occur only within a read action, so we know that dumb mode
       // won't change on us in the middle of it.
       ApplicationManager.getApplication().assertReadAccessAllowed()
@@ -246,8 +235,6 @@ class LayoutBindingModuleCache(private val module: Module) {
    * @param group A group that you can get by calling [bindingLayoutGroups]
    */
   fun getLightBindingClasses(group: BindingLayoutGroup): List<LightBindingClass> {
-    val facet = AndroidFacet.getInstance(module) ?: return emptyList()
-
     synchronized(lock) {
       var bindingClasses = group.getUserData(LIGHT_BINDING_CLASSES_KEY)
       if (bindingClasses == null) {
@@ -276,4 +263,6 @@ class LayoutBindingModuleCache(private val module: Module) {
       return bindingClasses
     }
   }
+
+  override fun dispose() {}
 }

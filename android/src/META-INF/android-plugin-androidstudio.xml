@@ -63,6 +63,7 @@
     <applicationService serviceInterface="com.intellij.diagnostic.LowMemoryNotifier" preload="true" overrides="true"
                         serviceImplementation="com.android.tools.idea.memorysettings.AndroidLowMemoryNotifier"/>
     <execution.applicationRunLineMarkerHider implementation="com.android.tools.idea.run.AndroidRunMarkerHider"/>
+    <postStartupActivity implementation="com.android.tools.idea.project.LibraryToolWindowInitializer"/>
   </extensions>
 
   <!--The following suppression is currently needed because PluginXmlDomInspection says, "Could not determine target platform version." -->
@@ -180,6 +181,8 @@
                         headlessImplementation="com.android.tools.idea.sdk.StudioJdkConfigurator"
     />
 
+    <ApplicationLoadListener implementation="com.intellij.android.safemode.SafeMode"/>
+
     <welcomeFrameProvider implementation="com.android.tools.idea.welcome.wizard.FirstRunWizardFrameProvider" order="FIRST"/>
 
     <localInspection groupPath="Java" language="JAVA" suppressId="deprecation" shortName="Deprecation" displayName="Deprecated API usage"
@@ -205,4 +208,10 @@
     <listener class="com.android.tools.idea.startup.ProjectMetricsInitializer"
               topic="com.intellij.openapi.project.ProjectCloseListener"/>
   </applicationListeners>
+  <projectListeners>
+    <listener class="com.android.tools.idea.navigator.ProjectViewListener"
+              activeInHeadlessMode="false"
+              activeInTestMode="false"
+              topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
+  </projectListeners>
 </idea-plugin>

@@ -17,6 +17,9 @@ package com.android.tools.idea.adddevicedialog
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
@@ -28,11 +31,13 @@ import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.TextField
 
 @Composable
 internal fun AdditionalSettingsPanel(
   device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
+  state: AdditionalSettingsPanelState,
   onDeviceChange: (VirtualDevice) -> Unit,
   onImportButtonClick: () -> Unit
 ) {
@@ -45,6 +50,7 @@ internal fun AdditionalSettingsPanel(
   CameraGroup(device, onDeviceChange)
   NetworkGroup(device, onDeviceChange)
   StartupGroup(device, onDeviceChange)
+  StorageGroup(device, state, onDeviceChange)
 }
 
 @Composable
@@ -118,6 +124,50 @@ private val ORIENTATIONS =
   listOf(ScreenOrientation.PORTRAIT, ScreenOrientation.LANDSCAPE).toImmutableList()
 
 private val BOOTS = enumValues<Boot>().asIterable().toImmutableList()
+
+@Composable
+private fun StorageGroup(
+  device: VirtualDevice,
+  state: AdditionalSettingsPanelState,
+  onDeviceChange: (VirtualDevice) -> Unit
+) {
+  GroupHeader("Storage")
+
+  Row {
+    Text("Internal storage")
+
+    TextField(
+      state.internalStorageTextFieldValue,
+      onValueChange = {
+        try {
+          val value = if (it.isEmpty()) 0 else it.toLong()
+          val newStorage = StorageCapacity(value, device.internalStorage.unit)
+          onDeviceChange(device.copy(internalStorage = newStorage))
+
+          state.internalStorageTextFieldValue = it
+        } catch (exception: NumberFormatException) {
+          // Use the old storage
+        }
+      }
+    )
+
+    Dropdown(
+      device.internalStorage.unit,
+      UNITS,
+      onSelectedItemChange = {
+        val newStorage = StorageCapacity(device.internalStorage.value, it)
+        onDeviceChange(device.copy(internalStorage = newStorage))
+      }
+    )
+  }
+}
+
+private val UNITS = enumValues<StorageCapacity.Unit>().asIterable().toImmutableList()
+
+internal class AdditionalSettingsPanelState internal constructor(device: VirtualDevice) {
+  internal var internalStorageTextFieldValue by
+    mutableStateOf(device.internalStorage.value.toString())
+}
 
 @Composable
 private fun <I> Dropdown(

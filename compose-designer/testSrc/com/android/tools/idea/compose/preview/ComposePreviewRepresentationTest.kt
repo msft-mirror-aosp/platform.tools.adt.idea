@@ -16,6 +16,8 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.testutils.delayUntilCondition
+import com.android.tools.idea.common.error.DesignerCommonIssuePanel
+import com.android.tools.idea.common.error.SharedIssuePanelProvider
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.DesignSurfaceListener
@@ -50,9 +52,11 @@ import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.idea.util.TestToolWindowManager
 import com.google.common.truth.Truth.assertThat
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
+import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
@@ -84,8 +88,7 @@ import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -216,6 +219,8 @@ class ComposePreviewRepresentationTest {
   @Test
   fun testUiCheckMode() {
     StudioFlags.NELE_ATF_FOR_COMPOSE.override(true)
+    StudioFlags.NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE.override(true)
+
     runBlocking(workerThread) {
       val composeTest = createComposeTest()
 
@@ -258,9 +263,11 @@ class ComposePreviewRepresentationTest {
       val previewElements = mainSurface.models.mapNotNull { it.dataContext.previewElement() }
       val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
 
-      val contentManager =
-        ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)!!.contentManager
-      assertEquals(0, contentManager.contents.size)
+      val contentManager = ProblemsView.getToolWindow(project)!!.contentManager
+      withContext(uiThread) {
+        ProblemsViewToolWindowUtils.addTab(project, SharedIssuePanelProvider(project))
+        assertEquals(1, contentManager.contents.size)
+      }
 
       // Start UI Check mode
       run {
@@ -280,7 +287,7 @@ class ComposePreviewRepresentationTest {
 
       assertTrue(preview.atfChecksEnabled)
       assertThat(preview.availableGroupsFlow.value.map { it.displayName })
-        .containsExactly("Screen sizes", "Font scales", "Light/Dark")
+        .containsExactly("Screen sizes", "Font scales", "Light/Dark", "Colorblind filters")
         .inOrder()
       preview.filteredPreviewElementsInstancesFlowForTest().awaitStatus(
         "Failed set uiCheckMode",
@@ -334,6 +341,27 @@ class ComposePreviewRepresentationTest {
           TestKt.Preview1
           PreviewDisplaySettings(name=Dark - Preview1, group=Light/Dark, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Original - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Protanopes - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Protanomaly - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Deuteranopes - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Deuteranomaly - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Tritanopes - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.Preview1
+          PreviewDisplaySettings(name=Tritanomaly - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
         """
           .trimIndent(),
         preview.filteredPreviewElementsInstancesFlowForTest().value.asCollection().joinToString(
@@ -350,7 +378,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that the UI Check tab has been created
       assertEquals(2, contentManager.contents.size)
-      assertNotNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+      assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       run {
         preview.waitForAnyPendingRefresh()
@@ -396,7 +424,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that the UI Check tab is still present
       assertEquals(2, contentManager.contents.size)
-      assertNotNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+      assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       // Restart UI Check mode on the same preview
       run {
@@ -415,9 +443,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that the UI Check tab is being reused
       assertEquals(2, contentManager.contents.size)
-      val tab = contentManager.findContent(uiCheckElement.displaySettings.name)
-      assertNotNull(tab)
-      assertTrue(contentManager.selectedContent == tab)
+      assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)?.show()
       val reopenTabAction = UiCheckReopenTabAction(preview)
@@ -430,7 +456,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that UiCheckReopenTabAction is enabled when the UI Check tab is not selected
       contentManager.setSelectedContent(contentManager.getContent(0)!!)
-      assertFalse(contentManager.selectedContent == tab)
+      assertNotEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
       run {
         val actionEvent = TestActionEvent.createTestEvent()
         reopenTabAction.update(actionEvent)
@@ -438,15 +464,19 @@ class ComposePreviewRepresentationTest {
       }
 
       // Check that performing UiCheckReopenTabAction selects the UI Check tab
-      run {
+      withContext(uiThread) {
         val actionEvent = TestActionEvent.createTestEvent()
         reopenTabAction.actionPerformed(actionEvent)
-        assertTrue(contentManager.selectedContent == tab)
+      }
+      invokeAndWaitIfNeeded {
+        assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
       }
 
       // Check that UiCheckReopenTabAction is enabled when the UI Check tab has been closed
-      contentManager.removeContent(tab, true)
-      assertNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+      withContext(uiThread) {
+        ProblemsViewToolWindowUtils.removeTab(project, uiCheckElement.instanceId)
+      }
+      assertEquals(1, contentManager.contents.size)
       run {
         val actionEvent = TestActionEvent.createTestEvent()
         reopenTabAction.update(actionEvent)
@@ -454,13 +484,13 @@ class ComposePreviewRepresentationTest {
       }
 
       // Check that performing UiCheckReopenTabAction recreates the UI Check tab
-      run {
+      withContext(uiThread) {
         val actionEvent = TestActionEvent.createTestEvent()
         reopenTabAction.actionPerformed(actionEvent)
+      }
+      invokeAndWaitIfNeeded {
         assertEquals(2, contentManager.contents.size)
-        val newTab = contentManager.findContent(uiCheckElement.displaySettings.name)
-        assertNotNull(newTab)
-        assertTrue(contentManager.selectedContent == newTab)
+        assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
       }
 
       run {
@@ -526,9 +556,9 @@ class ComposePreviewRepresentationTest {
       val previewElements = mainSurface.models.mapNotNull { it.dataContext.previewElement() }
       val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
 
-      val contentManager =
-        ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)!!.contentManager
-      assertEquals(0, contentManager.contents.size)
+      val contentManager = ProblemsView.getToolWindow(project)!!.contentManager
+      ProblemsViewToolWindowUtils.addTab(project, SharedIssuePanelProvider(project))
+      assertEquals(1, contentManager.contents.size)
 
       // Start UI Check mode
       run {
@@ -598,25 +628,25 @@ class ComposePreviewRepresentationTest {
           PreviewDisplaySettings(name=Dark - Preview1, group=Light/Dark, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Original, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Original - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Protanopes, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Protanopes - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Protanomaly, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Protanomaly - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Deuteranopes, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Deuteranopes - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Deuteranomaly, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Deuteranomaly - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Tritanopes, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Tritanopes - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
           TestKt.Preview1
-          PreviewDisplaySettings(name=Tritanomaly, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=Tritanomaly - Preview1, group=Colorblind filters, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
 
         """
           .trimIndent(),
@@ -631,7 +661,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that the UI Check tab has been created
       assertEquals(2, contentManager.contents.size)
-      assertNotNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+      assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       // Stop UI Check mode
       run {
@@ -668,7 +698,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that the UI Check tab is still present
       assertEquals(2, contentManager.contents.size)
-      assertNotNull(contentManager.findContent(uiCheckElement.displaySettings.name))
+      assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       // Restart UI Check mode on the same preview
       run {
@@ -681,8 +711,7 @@ class ComposePreviewRepresentationTest {
 
       // Check that the UI Check tab is being reused
       assertEquals(2, contentManager.contents.size)
-      val tab = contentManager.findContent(uiCheckElement.displaySettings.name)
-      assertNotNull(tab)
+      assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       run {
         preview.waitForAnyPendingRefresh()
@@ -893,12 +922,13 @@ class ComposePreviewRepresentationTest {
       val contentManager =
         ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)!!.contentManager
       delayUntilCondition(250) {
-        contentManager.findContent(uiCheckElement.displaySettings.name) != null
+        contentManager.selectedContent?.tabName == uiCheckElement.instanceId
       }
-      val tab = contentManager.findContent(uiCheckElement.displaySettings.name)!!
+      val tab = contentManager.selectedContent!!
       val dataContext =
         withContext(uiThread) {
-          tab.component.components.filterIsInstance<ActionToolbarImpl>().first().toolbarDataContext
+          ((tab.component as DesignerCommonIssuePanel).toolbar as ActionToolbarImpl)
+            .toolbarDataContext
         }
 
       // Check that the rerun action is disabled

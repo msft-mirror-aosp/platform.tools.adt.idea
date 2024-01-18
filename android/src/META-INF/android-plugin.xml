@@ -188,12 +188,11 @@
   </actions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <projectService serviceImplementation="com.android.tools.idea.res.AndroidFileChangeListener" />
     <postStartupActivity implementation="com.android.tools.idea.res.AndroidFileChangeListener$MyStartupActivity"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceNotificationManager" />
     <projectService serviceImplementation="com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild" />
     <postStartupActivity implementation="com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild$MyStartupActivity"/>
-    <ApplicationLoadListener implementation="com.android.tools.idea.startup.AndroidPluginInitializer"/>
+    <ApplicationLoadListener implementation="com.android.tools.idea.startup.AndroidPluginInitializer" id="AndroidPlugingInitializer"/>
     <applicationInitializedListener implementation="com.android.tools.idea.progress.StudioProgressManagerAdapter$Installer" />
     <fileBasedIndex implementation="com.android.tools.idea.model.AndroidManifestIndex"/>
     <applicationService serviceImplementation="com.android.tools.idea.imports.MavenClassRegistryManager" />
@@ -201,7 +200,6 @@
     <postStartupActivity implementation="com.android.tools.idea.model.MergedManifestRefreshListener$SubscriptionStartupActivity"/>
     <projectService serviceImplementation="com.android.tools.idea.model.MergedManifestModificationListener$SubscriptionService"/>
     <postStartupActivity implementation="com.android.tools.idea.model.MergedManifestModificationListener$SubscriptionStartupActivity"/>
-    <postStartupActivity implementation="com.android.tools.idea.gradle.project.AndroidNewProjectInitializationStartupActivity" order="first"/>
     <applicationService serviceInterface="com.android.tools.idea.res.ResourceFolderRepositoryFileCache"
                         serviceImplementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl"/>
     <applicationService serviceImplementation="com.android.tools.res.FrameworkResourceRepositoryManager"/>
@@ -319,7 +317,7 @@
     <fileEditorProvider implementation="com.android.tools.idea.editors.NinePatchEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.apk.viewer.ApkEditorProvider"/>
     <fileEditorProvider implementation="com.android.tools.idea.apk.viewer.DexEditorProvider"/>
-    <fileEditorProvider implementation="com.android.tools.idea.editors.fonts.FontEditorProvider"/>
+    <fileEditorProvider implementation="com.android.tools.idea.editors.fonts.FontEditorProvider" fileType="Font"/>
 
     <runConfigurationProducer implementation="com.android.tools.idea.run.AndroidConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducer"
@@ -345,8 +343,6 @@
 
     <facetType implementation="com.android.tools.idea.apk.ApkFacetType"/>
     <fileTemplateGroup implementation="org.jetbrains.android.AndroidFileTemplateProvider"/>
-    <postStartupActivity implementation="com.android.tools.idea.stats.CompletionStats$MyStartupActivity"/>
-    <postStartupActivity implementation="com.android.tools.idea.project.LibraryToolWindowInitializer"/>
     <completion.contributor language="JAVA"
                             id="AndroidJavaCompletionContributor"
                             implementationClass="org.jetbrains.android.AndroidJavaCompletionContributor"
@@ -459,12 +455,11 @@
     <applicationService serviceImplementation="com.android.tools.idea.run.DeploymentService"/>
 
     <projectService serviceImplementation="com.android.tools.idea.run.profiler.CpuProfilerConfigsState" />
-    <projectService serviceInterface="com.android.tools.configurations.ConfigurationStateManager"
+    <projectService serviceInterface="com.android.tools.idea.configurations.ConfigurationStateManager"
                     serviceImplementation="com.android.tools.idea.configurations.StudioConfigurationStateManager"/>
 
     <projectService serviceImplementation="com.android.tools.idea.res.AndroidProjectRootListener"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceFolderRegistry"/>
-    <projectService serviceImplementation="com.android.tools.idea.res.SampleDataListener$Subscriber"/>
     <projectService serviceImplementation="com.android.tools.idea.rendering.RenderSettings" />
     <projectService serviceInterface="com.android.tools.idea.databinding.analytics.api.DataBindingTracker"
                     serviceImplementation="com.android.tools.idea.databinding.analytics.DataBindingDefaultTracker"/>
@@ -628,6 +623,7 @@
     <notificationGroup id="Create Diagnostic Report" displayType="BALLOON" isLogByDefault="true" />
     <notificationGroup id="Feature Survey" displayType="STICKY_BALLOON" isLogByDefault="true" />
     <notificationGroup id="Essentials Mode" displayType="STICKY_BALLOON" isLogByDefault="true" />
+    <notificationGroup id="Import Android Test Results" displayType="BALLOON" />
 
     <webHelpProvider implementation="com.android.tools.idea.help.AndroidWebHelpProvider"/>
 
@@ -753,6 +749,8 @@
   </extensions>
 
   <applicationListeners>
+    <listener class="com.android.tools.idea.stats.CompletionStats$MyCompletionPhaseListener"
+              topic="com.intellij.codeInsight.completion.CompletionPhaseListener"/>
     <listener class="com.android.tools.idea.editors.liveedit.LiveEditAnActionListener"
               topic="com.intellij.openapi.actionSystem.ex.AnActionListener"/>
     <listener class="com.android.tools.idea.stats.ManifestMergerStatsTracker"
@@ -760,15 +758,13 @@
   </applicationListeners>
 
   <projectListeners>
+    <listener class="com.android.tools.idea.stats.CompletionStats$MyLookupManagerListener"
+              topic="com.intellij.codeInsight.lookup.LookupManagerListener"/>
     <listener class="com.android.tools.idea.databinding.DataBindingTrackerSyncListener"
               topic="com.android.tools.idea.projectsystem.ProjectSystemSyncManager$SyncResultListener"/>
     <listener class="com.android.tools.idea.stats.ProjectSizeUsageTrackerListener"
               activeInTestMode="false"
               topic="com.android.tools.idea.projectsystem.ProjectSystemSyncManager$SyncResultListener"/>
-    <listener class="com.android.tools.idea.navigator.ProjectViewListener"
-              activeInHeadlessMode="false"
-              activeInTestMode="false"
-              topic="com.intellij.openapi.wm.ex.ToolWindowManagerListener"/>
   </projectListeners>
 
   <xi:include href="/META-INF/android-common.xml" xpointer="xpointer(/idea-plugin/*)"/>

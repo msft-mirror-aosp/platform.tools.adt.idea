@@ -21,7 +21,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.DialogWrapperDialog
-import com.intellij.openapi.util.SystemInfoRt
 import com.intellij.ui.PopupBorder
 import com.intellij.ui.TitlePanel
 import com.intellij.ui.WindowMoveListener
@@ -31,11 +30,11 @@ import com.intellij.ui.components.Label
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.Alarm
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
+import java.util.Locale
 import javax.swing.Box
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -83,16 +82,7 @@ internal class ScreenRecorderDialog(
     rootPane.windowDecorationStyle = JRootPane.NONE
     rootPane.border = JBUI.Borders.empty()
     panel.border = PopupBorder.Factory.create(true, true)
-
-    if (WindowRoundedCornersManager.isAvailable()) {
-      if (SystemInfoRt.isMac && UIUtil.isUnderDarcula()) {
-        WindowRoundedCornersManager.setRoundedCorners(window, JBUI.CurrentTheme.Popup.borderColor(true))
-        rootPane.border = PopupBorder.Factory.createEmpty()
-      }
-      else {
-        WindowRoundedCornersManager.setRoundedCorners(window)
-      }
-    }
+    WindowRoundedCornersManager.configure(this)
     pack()
   }
 
@@ -123,7 +113,8 @@ internal class ScreenRecorderDialog(
 
   private fun recordingTimeText(timeMillis: Long): String {
     val seconds = (timeMillis / 1000).toInt()
-    return AndroidAdbUiBundle.message("screenrecord.dialog.progress", String.format("%02d:%02d", seconds / 60, seconds % 60))
+    return AndroidAdbUiBundle.message("screenrecord.dialog.progress",
+                                      String.format(Locale.getDefault(), "%02d:%02d", seconds / 60, seconds % 60))
   }
 
   private fun updateRecordingTime() {

@@ -53,21 +53,6 @@ open class SingleDirectionLayoutManager(
   private var previousHorizontalPadding = 0
   private var previousVerticalPadding = 0
 
-  override fun getPreferredSize(
-    content: Collection<PositionableContent>,
-    @SwingCoordinate availableWidth: Int,
-    @SwingCoordinate availableHeight: Int,
-    @SwingCoordinate dimension: Dimension?
-  ): Dimension {
-    return getSize(
-      content,
-      PositionableContent::contentSize,
-      availableWidth,
-      availableHeight,
-      dimension
-    )
-  }
-
   override fun getRequiredSize(
     content: Collection<PositionableContent>,
     @SwingCoordinate availableWidth: Int,
@@ -255,28 +240,6 @@ open class SingleDirectionLayoutManager(
     }
     return positionMap
   }
-}
-
-/** [SingleDirectionLayoutManager] that forces the content to always be vertical. */
-class VerticalOnlyLayoutManager(
-  @SwingCoordinate horizontalPadding: Int,
-  @SwingCoordinate verticalPadding: Int,
-  @SwingCoordinate horizontalViewDelta: Int,
-  @SwingCoordinate verticalViewDelta: Int,
-  val startBorderAlignment: Alignment
-) :
-  SingleDirectionLayoutManager(
-    horizontalPadding,
-    verticalPadding,
-    horizontalViewDelta,
-    verticalViewDelta,
-    startBorderAlignment
-  ) {
-  override fun isVertical(
-    content: Collection<PositionableContent>,
-    @SwingCoordinate availableWidth: Int,
-    @SwingCoordinate availableHeight: Int
-  ): Boolean = true
 }
 
 // Helper functions to improve readability

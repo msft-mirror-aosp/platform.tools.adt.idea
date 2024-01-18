@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.run.configuration
 
+import com.android.tools.idea.util.CommonAndroidUtil
 import com.intellij.execution.JavaExecutionUtil
 import com.intellij.execution.lineMarker.ExecutorAction
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
@@ -38,6 +39,8 @@ class AndroidWearRunMarkerContributor : RunLineMarkerContributor() {
         && !(elementType is IJavaElementType && elementType == JavaTokenType.CLASS_KEYWORD)) {
       return null
     }
+
+    if (!CommonAndroidUtil.getInstance().isAndroidProject(e.project)) return null
 
     val psiClass = e.getPsiClass() ?: return null
     if (psiClass.isValidWatchFaceService() || psiClass.isValidTileService() || psiClass.isValidComplicationService()) {

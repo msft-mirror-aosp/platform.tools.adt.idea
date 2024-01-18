@@ -50,6 +50,12 @@ unique_ptr<ControlMessage> ControlMessage::Deserialize(int32_t type, Base128Inpu
     case StopVideoStreamMessage::TYPE:
       return unique_ptr<ControlMessage>(StopVideoStreamMessage::Deserialize(stream));
 
+    case StartAudioStreamMessage::TYPE:
+      return unique_ptr<ControlMessage>(StartAudioStreamMessage::Deserialize(stream));
+
+    case StopAudioStreamMessage::TYPE:
+      return unique_ptr<ControlMessage>(StopAudioStreamMessage::Deserialize(stream));
+
     case StartClipboardSyncMessage::TYPE:
       return unique_ptr<ControlMessage>(StartClipboardSyncMessage::Deserialize(stream));
 
@@ -162,6 +168,14 @@ StopVideoStreamMessage* StopVideoStreamMessage::Deserialize(Base128InputStream& 
   return new StopVideoStreamMessage(display_id);
 }
 
+StartAudioStreamMessage* StartAudioStreamMessage::Deserialize(Base128InputStream& stream) {
+  return new StartAudioStreamMessage();
+}
+
+StopAudioStreamMessage* StopAudioStreamMessage::Deserialize(Base128InputStream& stream) {
+  return new StopAudioStreamMessage();
+}
+
 StartClipboardSyncMessage* StartClipboardSyncMessage::Deserialize(Base128InputStream& stream) {
   int max_sync_length = stream.ReadInt32();
   string text = stream.ReadBytes();
@@ -184,12 +198,7 @@ DisplayConfigurationRequest* DisplayConfigurationRequest::Deserialize(Base128Inp
 
 UiSettingsRequest* UiSettingsRequest::Deserialize(Base128InputStream& stream) {
   int32_t request_id = stream.ReadInt32();
-  int32_t count = stream.ReadInt32();
-  vector<string> application_ids;
-  for (auto i = 0; i < count; i++) {
-    application_ids.push_back(stream.ReadBytes());
-  }
-  return new UiSettingsRequest(request_id, application_ids);
+  return new UiSettingsRequest(request_id);
 }
 
 SetDarkModeMessage* SetDarkModeMessage::Deserialize(Base128InputStream& stream) {
@@ -267,20 +276,13 @@ void DisplayRemovedNotification::Serialize(Base128OutputStream& stream) const {
 
 void UiSettingsRequest::Serialize(Base128OutputStream& stream) const {
   CorrelatedMessage::Serialize(stream);
-  stream.WriteInt32(application_ids_.size());
-  for (auto i = 0; i < application_ids_.size(); i++) {
-    stream.WriteBytes(application_ids_[i]);
-  }
 }
 
 void UiSettingsResponse::Serialize(Base128OutputStream& stream) const {
   CorrelatedMessage::Serialize(stream);
   stream.WriteBool(dark_mode_);
-  stream.WriteInt32(app_locales_.size());
-  for (std::map<string, string>::const_iterator it = app_locales_.begin(); it != app_locales_.end(); ++it) {
-    stream.WriteBytes(it->first);
-    stream.WriteBytes(it->second);
-  }
+  stream.WriteBytes(foreground_application_id_);
+  stream.WriteBytes(app_locale_);
   stream.WriteBool(talkback_installed_);
   stream.WriteBool(talkback_on_);
   stream.WriteBool(select_to_speak_on_);

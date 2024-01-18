@@ -22,9 +22,13 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.layout.findAllScanlines
 import com.android.tools.idea.common.surface.layout.findLargerScanline
 import com.android.tools.idea.common.surface.layout.findSmallerScanline
+import com.android.tools.idea.common.surface.organization.createOrganizationHeaders
+import com.android.tools.idea.common.surface.organization.paintLines
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
 import com.android.tools.idea.uibuilder.scene.hasValidImage
+import com.android.tools.idea.uibuilder.surface.NlDesignSurfacePositionableContentLayoutManager
+import com.android.tools.idea.uibuilder.surface.layout.GroupedSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContentLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.getScaledContentSize
@@ -34,6 +38,7 @@ import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.Rectangle
+import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
@@ -91,6 +96,8 @@ internal class SceneViewPanel(
     invalidate()
   }
 
+  val groups = mutableMapOf<String, MutableList<JComponent>>()
+
   @UiThread
   private fun revalidateSceneViews() {
     // Check if the SceneViews are still valid
@@ -101,6 +108,14 @@ internal class SceneViewPanel(
 
     // Invalidate the current components
     removeAll()
+
+    // Headers to be added.
+    val headers =
+      if (organizationIsEnabled()) designSurfaceSceneViews.createOrganizationHeaders()
+      else mutableMapOf()
+
+    groups.clear()
+
     designSurfaceSceneViews.forEachIndexed { index, sceneView ->
       val toolbarActions = actionManagerProvider().sceneViewContextToolbarActions
       val bottomBar = actionManagerProvider().getSceneViewBottomBar(sceneView)
@@ -111,22 +126,10 @@ internal class SceneViewPanel(
       val rightBar = actionManagerProvider().getSceneViewRightBar(sceneView)
 
       val errorsPanel =
-        if (shouldRenderErrorsPanel())
-          SceneViewErrorsPanel {
-            when {
-              // If the flag COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR is enabled and  there is a valid
-              // image, never display the error panel.
-              sceneView.hasValidImage() && StudioFlags.COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR.get() ->
-                SceneViewErrorsPanel.Style.HIDDEN
-              sceneView.hasRenderErrors() -> SceneViewErrorsPanel.Style.SOLID
-              else -> SceneViewErrorsPanel.Style.HIDDEN
-            }
-          }
-        else null
+        if (shouldRenderErrorsPanel()) actionManagerProvider().createErrorPanel(sceneView) else null
 
       val labelPanel = actionManagerProvider().createSceneViewLabel(sceneView)
-
-      add(
+      val peerPanel =
         SceneViewPeerPanel(
             sceneView,
             labelPanel,
@@ -138,9 +141,23 @@ internal class SceneViewPanel(
             errorsPanel,
           )
           .also { it.alignmentX = sceneViewAlignment }
-      )
+
+      // Add header to layout and store information about created group.
+      sceneView.scene.sceneManager.model.organizationGroup?.let { organizationGroup ->
+        headers.remove(organizationGroup)?.let {
+          add(it)
+          groups.putIfAbsent(organizationGroup, mutableListOf())
+        }
+        groups[organizationGroup]?.add(peerPanel)
+      }
+      add(peerPanel)
     }
   }
+
+  private fun organizationIsEnabled() =
+    StudioFlags.COMPOSE_PREVIEW_GROUP_LAYOUT.get() &&
+      ((layout as? NlDesignSurfacePositionableContentLayoutManager)?.layoutManager
+        is GroupedSurfaceLayoutManager)
 
   override fun doLayout() {
     revalidateSceneViews()
@@ -154,6 +171,8 @@ internal class SceneViewPanel(
     if (sceneViewPeerPanels.isEmpty()) {
       return
     }
+
+    groups.values.paintLines(graphics.create() as Graphics2D)
 
     val g2d = graphics.create() as Graphics2D
     try {

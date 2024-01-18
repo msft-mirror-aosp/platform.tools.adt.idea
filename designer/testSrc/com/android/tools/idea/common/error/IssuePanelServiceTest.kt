@@ -25,7 +25,7 @@ import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewPanel
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewState
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewTab
-import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindow
@@ -64,11 +64,8 @@ class IssuePanelServiceTest {
         .apply { isCloseable = false }
     contentManager.addContent(content)
     contentManager.setSelectedContent(content)
-
-    runInEdtAndWait {
-      service = IssuePanelService.getInstance(rule.project)
-      service.initIssueTabs(toolWindow)
-    }
+    ProblemsViewToolWindowUtils.addTab(rule.project, SharedIssuePanelProvider(rule.project))
+    service = IssuePanelService.getInstance(rule.project)
   }
 
   @Test
@@ -115,51 +112,41 @@ class IssuePanelServiceTest {
   fun testOpeningFileDoesNotOpenSharedIssuePanel() {
     val ktFile = rule.fixture.addFileToProject("/src/file.kt", "")
     val layoutFile = rule.fixture.addFileToProject("/res/layout/layout.xml", "<FrameLayout />")
-    val window = toolWindow as TestToolWindow
-    val contentManager = window.contentManager
 
     runInEdtAndWait { rule.fixture.openFileInEditor(ktFile.virtualFile) }
     assertFalse(
-      service.getTabCategory(contentManager.selectedContent!!) ==
-        IssuePanelService.TabCategory.DESIGN_TOOLS
+      ProblemsViewToolWindowUtils.getSelectedTab(rule.project)?.getTabId() ==
+        SHARED_ISSUE_PANEL_TAB_ID
     )
 
     runInEdtAndWait { rule.fixture.openFileInEditor(layoutFile.virtualFile) }
     assertFalse(
-      service.getTabCategory(contentManager.selectedContent!!) ==
-        IssuePanelService.TabCategory.DESIGN_TOOLS
+      ProblemsViewToolWindowUtils.getSelectedTab(rule.project)?.getTabId() ==
+        SHARED_ISSUE_PANEL_TAB_ID
     )
 
     runInEdtAndWait { rule.fixture.openFileInEditor(ktFile.virtualFile) }
     assertFalse(
-      service.getTabCategory(contentManager.selectedContent!!) ==
-        IssuePanelService.TabCategory.DESIGN_TOOLS
+      ProblemsViewToolWindowUtils.getSelectedTab(rule.project)?.getTabId() ==
+        SHARED_ISSUE_PANEL_TAB_ID
     )
   }
 
   @Test
   fun testSetVisibility() {
-    val toolWindow = ToolWindowManager.getInstance(rule.project).getToolWindow(ProblemsView.ID)!!
     toolWindow.hide()
-    val service =
-      IssuePanelService.getInstance(rule.project).apply {
-        runInEdtAndWait { initIssueTabs(toolWindow) }
-      }
     val layoutFile = rule.fixture.addFileToProject("/res/layout/layout.xml", "<FrameLayout />")
 
     runInEdtAndWait { rule.fixture.openFileInEditor(layoutFile.virtualFile) }
     toolWindow.contentManager.let {
       it.setSelectedContent(it.contents[0])
       assertTrue(
-        service.getTabCategory(it.selectedContent!!) == IssuePanelService.TabCategory.CURRENT_FILE
+        ProblemsViewToolWindowUtils.getSelectedTab(rule.project)?.getTabId() == HighlightingPanel.ID
       )
     } // select current file tab.
 
-    runInEdtAndWait { service.setSharedIssuePanelVisibility(true) }
+    runInEdtAndWait { service.showSharedIssuePanel() }
     assertTrue(toolWindow.isVisible)
-
-    runInEdtAndWait { service.setSharedIssuePanelVisibility(false) }
-    assertFalse(toolWindow.isVisible)
   }
 
   @Test
@@ -171,7 +158,7 @@ class IssuePanelServiceTest {
       val file =
         rule.fixture.addFileToProject("/res/layout/layout.xml", "<FrameLayout />").virtualFile
       rule.fixture.openFileInEditor(file)
-      service.setSharedIssuePanelVisibility(true)
+      service.showSharedIssuePanel()
       file
     }
     val issueSource = IssueSourceWithFile(layoutFile)
@@ -233,7 +220,7 @@ class IssuePanelServiceTest {
   @RunsInEdt
   @Test
   fun testSelectFirstTabWhenSharedIssuePanelIsRemoved() {
-    service.setSharedIssuePanelVisibility(true)
+    service.showSharedIssuePanel()
     val contentManager = toolWindow.contentManager
     // Add some tool between "Current File" tab and shared issue panel.
 
@@ -243,46 +230,22 @@ class IssuePanelServiceTest {
       contentManager.addContent(newContent, 1)
     }
 
-    service.setSharedIssuePanelVisibility(true)
+    service.showSharedIssuePanel()
     // It should select the shared issue panel.
     assertEquals(
       contentManager.selectedContent,
       contentManager.findContent("Designer".toTabTitle())
     )
 
-    service.removeSharedIssueTabFromProblemsPanel()
+    ProblemsViewToolWindowUtils.removeTab(rule.project, SHARED_ISSUE_PANEL_TAB_ID)
     // It should select the first tab, which is the "Current File" tab.
     assertEquals(contentManager.selectedContent, contentManager.findContent("Current File"))
   }
 
   @RunsInEdt
   @Test
-  fun testRegisterFileName() {
-    val randomFile = rule.fixture.addFileToProject("src/TestFile.kt", "")
-    val layoutFile = rule.fixture.addFileToProject("res/layout/my_layout.xml", "")
-
-    service.registerFile(randomFile.virtualFile, "My Random Surface")
-
-    FileEditorManager.getInstance(rule.project).openFile(randomFile.virtualFile, true)
-    assertEquals("My Random Surface", service.getSharedIssuePanelTabTitle())
-
-    service.unregisterFile(randomFile.virtualFile)
-    // No surface is found, return default name.
-    assertEquals("Designer", service.getSharedIssuePanelTabTitle())
-
-    FileEditorManager.getInstance(rule.project).openFile(layoutFile.virtualFile, true)
-    assertEquals("Layout and Qualifiers", service.getSharedIssuePanelTabTitle())
-
-    // If the registered file has no tab title, the default name would be used.
-    service.registerFile(randomFile.virtualFile, null)
-    FileEditorManager.getInstance(rule.project).openFile(randomFile.virtualFile, true)
-    assertEquals("Designer", service.getSharedIssuePanelTabTitle())
-  }
-
-  @RunsInEdt
-  @Test
   fun testIssuePanelNotPinnable() {
-    service.setSharedIssuePanelVisibility(true)
+    service.showSharedIssuePanel()
 
     val manager = toolWindow.contentManager
     val tab = manager.findContent("Designer".toTabTitle())
@@ -293,13 +256,14 @@ class IssuePanelServiceTest {
   fun testFocusingIssuePanelWhenVisible() {
     val window = toolWindow as TestToolWindow
 
-    service.setSharedIssuePanelVisibility(true)
+    service.showSharedIssuePanel()
     assertFalse(window.isFocused())
-    service.focusIssuePanelIfVisible()
+    window.hide()
+    service.showSharedIssuePanel(true)
     assertTrue(window.isFocused())
 
     // Hide issue panel will lose the focus because the component is no longer visible.
-    service.setSharedIssuePanelVisibility(false)
+    window.hide()
     assertFalse(window.isFocused())
   }
 
@@ -315,34 +279,16 @@ class IssuePanelServiceTest {
     window.hide()
     contentManager.setSelectedContent(additionalContent)
 
-    service.setIssuePanelVisibility(true, null)
+    ProblemsViewToolWindowUtils.selectTab(rule.project, HighlightingPanel.ID)
+    runInEdtAndWait { assertTrue(window.isVisible) }
+    assertTrue(ProblemsView.getSelectedTab(rule.project)?.getTabId() == HighlightingPanel.ID)
+
+    window.hide()
+    contentManager.setSelectedContent(additionalContent)
+
+    service.showSharedIssuePanel()
     assertTrue(window.isVisible)
-    assertEquals(additionalContent, window.contentManager.selectedContent)
-
-    service.setIssuePanelVisibility(false, null)
-    assertFalse(window.isVisible)
-    assertEquals(additionalContent, window.contentManager.selectedContent)
-
-    service.setIssuePanelVisibility(true, IssuePanelService.TabCategory.CURRENT_FILE)
-    assertTrue(window.isVisible)
-    assertTrue(
-      service.getTabCategory(contentManager.selectedContent!!) ==
-        IssuePanelService.TabCategory.CURRENT_FILE
-    )
-  }
-
-  @RunsInEdt
-  @Test
-  fun testRegisterFile() {
-    val file = rule.fixture.addFileToProject("/src/file.kt", "").virtualFile
-
-    service.removeSharedIssueTabFromProblemsPanel()
-    assertFalse(service.isSharedIssuePanelAddedToProblemsPane())
-
-    rule.fixture.openFileInEditor(file)
-    // The issue panel should be added back after register the file
-    service.registerFile(file, null)
-    assertTrue(service.isSharedIssuePanelAddedToProblemsPane())
+    assertTrue(ProblemsView.getSelectedTab(rule.project)?.getTabId() == SHARED_ISSUE_PANEL_TAB_ID)
   }
 
   @Test
@@ -352,7 +298,7 @@ class IssuePanelServiceTest {
     runInEdtAndWait { rule.fixture.openFileInEditor(layoutFile.virtualFile) }
     assertFalse(service.isIssuePanelVisible())
 
-    service.setIssuePanelVisibility(true, IssuePanelService.TabCategory.CURRENT_FILE)
+    ProblemsViewToolWindowUtils.selectTab(rule.project, HighlightingPanel.ID)
     assertFalse(service.isIssuePanelVisible())
   }
 }

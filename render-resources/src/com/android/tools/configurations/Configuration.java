@@ -57,16 +57,14 @@ import com.android.sdklib.devices.State;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.layoutlib.RenderingException;
 import com.android.tools.layoutlib.LayoutlibContext;
-import com.android.tools.layoutlib.LayoutlibFactory;
 import com.android.tools.res.ResourceUtils;
 import com.android.tools.sdk.AndroidPlatform;
 import com.android.tools.sdk.CompatibilityRenderTarget;
+import com.android.tools.sdk.LayoutlibFactory;
 import com.google.common.base.MoreObjects;
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.UserDataHolderBase;
-import com.intellij.openapi.vfs.VirtualFile;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,7 +77,7 @@ import org.jetbrains.annotations.Nullable;
  * A {@linkplain Configuration} is a selection of device, orientation, theme,
  * etc for use when rendering a layout.
  */
-public class Configuration extends UserDataHolderBase implements Disposable, ModificationTracker {
+public class Configuration extends UserDataHolderBase implements ModificationTracker {
   public static final String CUSTOM_DEVICE_ID = "Custom";
 
   // Set of constants from {@link android.content.res.Configuration} to be used in setUiModeFlagValue.
@@ -286,16 +284,6 @@ public class Configuration extends UserDataHolderBase implements Disposable, Mod
     return mySettings;
   }
 
-  /**
-   * Returns the file associated with this configuration, if any
-   *
-   * @return the file, or null
-   */
-  @Nullable
-  public VirtualFile getFile() {
-    return null;
-  }
-
   @Nullable
   protected String calculateActivity() {
     return null;
@@ -403,7 +391,7 @@ public class Configuration extends UserDataHolderBase implements Disposable, Mod
   public State getDeviceState() {
     if (myState == null) {
       Device device = getDevice();
-      myState = ConfigurationFileState.getState(device, myStateName);
+      myState = DeviceState.getDeviceState(device, myStateName);
     }
 
     return myState;
@@ -1227,10 +1215,6 @@ public class Configuration extends UserDataHolderBase implements Disposable, Mod
   @NotNull
   public ConfigurationModelModule getConfigModule() {
     return mySettings.getConfigModule();
-  }
-
-  @Override
-  public void dispose() {
   }
 
   public void setEffectiveDevice(@Nullable Device device, @Nullable State state) {

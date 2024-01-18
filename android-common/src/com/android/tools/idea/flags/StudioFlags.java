@@ -28,6 +28,7 @@ import com.android.flags.IntFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
+import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
@@ -270,10 +271,10 @@ public final class StudioFlags {
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
     true);
 
-  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = Flag.create(
+  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
     NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
     "Enable colorblind Check mode in UI Check Mode for Compose preview",
-    false);
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = Flag.create(
     NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
@@ -679,6 +680,9 @@ public final class StudioFlags {
     GRADLE_IDE, "build.analyzer.category.analysis", "Enable 'Group by Task Category' category task analysis",
     "Enable 'Group by Task Category' category task analysis in Build Analyzer.", true);
 
+  /**
+   * @see #isBuildOutputShowsDownloadInfo
+   */
   public static final Flag<Boolean> BUILD_OUTPUT_DOWNLOADS_INFORMATION = Flag.create(
     GRADLE_IDE, "build.output.downloads.information", "Enable downloads information in Build/Sync View",
     "Show separate node with downloads information in Build and Sync views.", true);
@@ -833,12 +837,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_DEVBUILD_SKIA_SERVER = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.devbuild.skia", "Use the locally-built skia rendering server",
     "If enabled and this is a locally-built studio instance, use the locally-built skia server instead of one from the SDK.", false);
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_COUNTS = Flag.create(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.counts", "Enable recomposition counts",
-    "Enable gathering and display of recomposition counts in the layout inspector.", true);
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_RECOMPOSITION_HIGHLIGHTS = Flag.create(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.recomposition.highlights", "Enable recomposition highlights",
-    "Enable recomposition highlights on the image in the layout inspector.", true);
 
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED = Flag.create(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.auto.connect.foreground", "Enable automatically connecting to foreground process",
@@ -916,7 +914,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_SETTINGS_PICKER = Flag.create(
     EMBEDDED_EMULATOR, "settings.picker", "Show settings picker",
     "Enables the settings picker to be shown for testing an application",
-    false);
+    true);
   //endregion
 
   //region Device Mirroring
@@ -933,7 +931,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_AUDIO = new BooleanFlag(
     DEVICE_MIRRORING, "audio", "Enable Audio Streaming",
     "Enables streaming of audio",
-    false);
+    true);
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
@@ -1316,11 +1314,6 @@ public final class StudioFlags {
     COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
     "If enabled, multiple previews associated with composable will be grouped. Please invalidates file caches after " +
     "enabling or disabling (File -> Invalidate Caches...)", false);
-
-  public static final Flag<Boolean> COMPOSE_NEW_PREVIEW_LAYOUT = Flag.create(
-    COMPOSE, "new.preview.layout", "Enable the new layout options of Compose Preview",
-    "If enabled, the options of new layout designs of compose preview will be shown in Compose Preview",
-    true);
 
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = Flag.create(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
@@ -1773,6 +1766,14 @@ public final class StudioFlags {
     Flag.create(GOOGLE_LOGIN, "enabled", "Enable new login settings UI",
                 "When enabled, a login settings page will replace the popup from the login action in the top right.", false);
   // endregion GOOGLE_LOGIN
+
+  public static Boolean isBuildOutputShowsDownloadInfo() {
+    // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.
+    // In IDEA: disables unless the user explicitly overrides BUILD_OUTPUT_DOWNLOADS_INFORMATION.
+    return IdeInfo.getInstance().isAndroidStudio() || BUILD_OUTPUT_DOWNLOADS_INFORMATION.isOverridden()
+           ? BUILD_OUTPUT_DOWNLOADS_INFORMATION.get()
+           : false;
+  }
 
   private StudioFlags() { }
 }

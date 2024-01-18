@@ -26,7 +26,6 @@ import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.Sets
-import com.intellij.ProjectTopics
 import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -61,7 +60,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     project.messageBus
       .connect(this)
       .subscribe(
-        ProjectTopics.PROJECT_ROOTS,
+        ModuleRootListener.TOPIC,
         object : ModuleRootListener {
           override fun rootsChanged(event: ModuleRootEvent) {
             removeStaleEntries()
@@ -158,7 +157,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
 
   fun dispatchToRepositories(
     file: VirtualFile,
-    handler: BiConsumer<ResourceFolderRepository?, VirtualFile?>
+    handler: BiConsumer<ResourceFolderRepository, VirtualFile>
   ) {
     ResourceUpdateTracer.log {
       "ResourceFolderRegistry.dispatchToRepositories(${pathForLogging(file)}, ...) VFS change"
@@ -167,16 +166,13 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     var dir = if (file.isDirectory) file else file.parent
     while (dir != null) {
       for (cache in myCaches) {
-        val repository = cache.getIfPresent(dir)
-        if (repository != null) {
-          handler.accept(repository, file)
-        }
+        cache.getIfPresent(dir)?.let { handler.accept(it, file) }
       }
       dir = dir.parent
     }
   }
 
-  fun dispatchToRepositories(file: VirtualFile, invokeCallback: Consumer<PsiTreeChangeListener?>) {
+  fun dispatchToRepositories(file: VirtualFile, invokeCallback: Consumer<PsiTreeChangeListener>) {
     ResourceUpdateTracer.log {
       "ResourceFolderRegistry.dispatchToRepositories(${pathForLogging(file)}, ...) PSI change"
     }
@@ -184,10 +180,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     var dir = if (file.isDirectory) file else file.parent
     while (dir != null) {
       for (cache in myCaches) {
-        val repository = cache.getIfPresent(dir)
-        if (repository != null) {
-          invokeCallback.consume(repository.psiListener)
-        }
+        cache.getIfPresent(dir)?.let { invokeCallback.consume(it.psiListener) }
       }
       dir = dir.parent
     }

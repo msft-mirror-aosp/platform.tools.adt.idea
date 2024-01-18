@@ -36,7 +36,7 @@ import org.junit.Test
 /** Tests for [ComposeCompletionContributor]. */
 class ComposeCompletionContributorTest {
 
-  @get:Rule val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().withKotlin()
 
   private val myFixture: CodeInsightTestFixture by lazy { projectRule.fixture }
 
@@ -725,7 +725,6 @@ class ComposeCompletionContributorTest {
       myFixture.completeBasic()
 
       // Then:
-      val indentation = if (isK2Plugin()) "  " else ""
       myFixture.checkResult(
         // language=kotlin
         """
@@ -735,7 +734,7 @@ class ComposeCompletionContributorTest {
 
       @Composable
       fun HomeScreen() {
-        ${indentation}FoobarOne()
+        FoobarOne()
       }
       """
           .trimIndent()

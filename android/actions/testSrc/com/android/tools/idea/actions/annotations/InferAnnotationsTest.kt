@@ -72,7 +72,7 @@ private const val INFER_PATH = "/infer/"
 @RunsInEdt
 class InferAnnotationsTest {
   @get:Rule val testName = TestName()
-  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().withKotlin().onEdt()
 
   private val project by lazy { projectRule.project }
   private val fixture by lazy { projectRule.fixture }
@@ -369,7 +369,7 @@ class InferAnnotationsTest {
         import androidx.annotation.*
         class InferTypes {
             fun test1(@HalfFloat d: Int) {
-                test1(arg3 = d)
+                test1(arg1 = d)
             }
 
             fun test1(arg1: Int = 0, arg2: Int = 0) { }
@@ -1512,11 +1512,12 @@ class InferAnnotationsTest {
         package test.pkg
         import androidx.annotation.*
         import androidx.annotation.Dimension.DP
+        import androidx.annotation.Dimension.SP
         fun test11(p1: Int, p2: Int, p3: Int) {
             paint(p1, p2, p3)
         }
         // @Dimension without unit defaults to PX, equivalent to @Px
-        fun paint(@Dimension d: Int, @Dimension(unit = Dimension.SP) s: Int, @Dimension(unit = DP) d2: Int) { }
+        fun paint(@Dimension d: Int, @Dimension(unit = SP) s: Int, @Dimension(unit = DP) d2: Int) { }
       """,
       expectedReport =
         """
@@ -1530,10 +1531,10 @@ class InferAnnotationsTest {
         """,
       expectedDiffs =
         """
-        @@ -4 +4
-          import androidx.annotation.Dimension.DP
+        @@ -5 +5
+          import androidx.annotation.Dimension.SP
         - fun test11(p1: Int, p2: Int, p3: Int) {
-        + fun test11(@Px p1: Int, @Dimension(Dimension.SP) p2: Int, @Dimension(DP) p3: Int) {
+        + fun test11(@Px p1: Int, @Dimension(SP) p2: Int, @Dimension(DP) p3: Int) {
               paint(p1, p2, p3)
         """
     )

@@ -15,33 +15,35 @@
  */
 package com.android.tools.idea.wearwhs.view
 
-import com.android.adblib.AdbSession
-import com.android.adblib.AdbSessionHost
-import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.android.tools.idea.wearwhs.communication.ConnectionLostException
-import com.android.tools.idea.wearwhs.communication.ContentProviderDeviceManager
 import com.android.tools.idea.wearwhs.communication.WearHealthServicesDeviceManager
+import com.android.tools.idea.wearwhs.logger.WearHealthServicesEventLogger
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.project.Project
 import io.ktor.util.collections.ConcurrentMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-internal class WearHealthServicesToolWindowStateManagerImpl(private val deviceManager: WearHealthServicesDeviceManager)
+internal class WearHealthServicesToolWindowStateManagerImpl(
+  private val deviceManager: WearHealthServicesDeviceManager,
+  private val logger: WearHealthServicesEventLogger = WearHealthServicesEventLogger())
   : WearHealthServicesToolWindowStateManager, Disposable {
   private val currentPreset = MutableStateFlow(Preset.ALL)
   private val capabilitiesList = MutableStateFlow(emptyList<WhsCapability>())
   private val capabilityToState = ConcurrentMap<WhsCapability, MutableStateFlow<CapabilityState>>()
   private val progress = MutableStateFlow<WhsStateManagerStatus>(WhsStateManagerStatus.Idle)
 
+  // TODO(b/305924111): Update this value periodically to reflect it on the UI
+  private val ongoingExercise = MutableStateFlow(false)
+
   override var serialNumber: String? = null
     set(value) {
       // Only accept non-null values to avoid tool window unbinding completely
       value?.let {
+        logger.logBindEmulator()
         deviceManager.setSerialNumber(it)
         field = value
       }
@@ -61,6 +63,7 @@ internal class WearHealthServicesToolWindowStateManagerImpl(private val deviceMa
   }
 
   override fun getStatus(): StateFlow<WhsStateManagerStatus> = progress.asStateFlow()
+  override fun getOngoingExercise(): StateFlow<Boolean> = ongoingExercise.asStateFlow()
 
   // TODO(b/309609475): Check the actual WHS version using the device manager
   override suspend fun isWhsVersionSupported(): Boolean = true
@@ -120,12 +123,14 @@ internal class WearHealthServicesToolWindowStateManagerImpl(private val deviceMa
         }
       }
       catch (exception: ConnectionLostException) {
+        logger.logApplyChangesFailure()
         progress.emit(WhsStateManagerStatus.ConnectionLost)
         return
       }
       stateFlow.emit(state.copy(synced = true))
       progress.emit(WhsStateManagerStatus.Idle)
     }
+    logger.logApplyChangesSuccess()
   }
 
   override suspend fun reset() {

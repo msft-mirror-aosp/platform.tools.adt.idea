@@ -29,6 +29,7 @@ import com.android.tools.idea.avdmanager.AvdOptionsModel
 import com.android.tools.idea.avdmanager.AvdWizardUtils
 import com.android.tools.idea.configurations.AdditionalDeviceService
 import com.android.tools.idea.configurations.CanonicalDeviceType
+import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.configurations.ConfigurationMatcher
 import com.android.tools.idea.configurations.DEVICE_CLASS_DESKTOP_TOOLTIP
 import com.android.tools.idea.configurations.DEVICE_CLASS_FOLDABLE_TOOLTIP
@@ -39,6 +40,7 @@ import com.android.tools.idea.configurations.ReferenceDeviceType
 import com.android.tools.idea.configurations.getCanonicalDevice
 import com.android.tools.idea.configurations.getReferenceDevice
 import com.android.tools.idea.configurations.getSuitableDevices
+import com.android.tools.idea.configurations.virtualFile
 import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -71,11 +73,18 @@ internal val DEVICE_ID_TO_TOOLTIPS =
     DEVICE_CLASS_DESKTOP_ID to DEVICE_CLASS_DESKTOP_TOOLTIP
   )
 
+private val EMPTY_DEVICE_CHANGE_LISTENER =
+  object : DeviceChangeListener {
+    override fun onDeviceChanged(oldDevice: Device?, newDevice: Device?) {}
+  }
+
 /**
  * New device menu for layout editor. Because we are going to deprecate [DeviceMenuAction], some of
  * the duplicated codes are not shared between them.
  */
-class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener) :
+class DeviceMenuAction(
+  private val deviceChangeListener: DeviceChangeListener = EMPTY_DEVICE_CHANGE_LISTENER
+) :
   DropDownAction(
     "Device for Preview",
     "Device for Preview",
@@ -546,7 +555,7 @@ open class SetDeviceAction(
     // (its default) unless of course there is a different layout that is the best fit for that
     // device.
     val prevDevice = configuration.cachedDevice
-    val projectState = configuration.settings.configModule.configurationStateManager.projectState
+    val projectState = (configuration.settings as ConfigurationManager).stateManager.projectState
     val lastSelectedNonWearStateName = projectState.nonWearDeviceLastSelectedStateName
     val newDefaultStateName: String = device.defaultState.name
     val wantedState: State? = lastSelectedNonWearStateName?.let { getMatchingState(device, it) }
@@ -571,7 +580,7 @@ open class SetDeviceAction(
     device: Device,
     stateName: String
   ): Boolean {
-    if (configuration.file == null) {
+    if (configuration.virtualFile == null) {
       return false
     }
     return ConfigurationMatcher.getBetterMatch(configuration, device, stateName, null, null) != null

@@ -237,7 +237,7 @@ public class LiveEditProjectMonitor implements Disposable {
   }
 
   @VisibleForTesting
-  IrClassCache getIrClassCache() {
+  MutableIrClassCache getIrClassCache() {
     return irClassCache;
   }
 
@@ -360,7 +360,7 @@ public class LiveEditProjectMonitor implements Disposable {
     }
 
     if (!supportLiveEdits(device)) {
-      LOGGER.info("Live edit not support for device %s targeting app %s", project.getName(), applicationId);
+      LOGGER.info("Live edit not support for device API %d targeting app %s", device.getVersion().getApiLevel(), applicationId);
       liveEditDevices.addDevice(device, LiveEditStatus.UnsupportedVersion.INSTANCE, app);
       return false;
     }
@@ -376,6 +376,11 @@ public class LiveEditProjectMonitor implements Disposable {
       this.applicationId = applicationId;
       intermediateSyncs.set(Boolean.FALSE);
       resetState();
+
+      // The app may have connected to ADB before we set up our ADB listeners.
+      if (device.getClient(applicationId) != null) {
+        updateEditStatus(device, LiveEditStatus.UpToDate.INSTANCE);
+      }
       deviceWatcher.setApplicationId(applicationId);
 
       irClassCache.clear();
@@ -562,6 +567,13 @@ public class LiveEditProjectMonitor implements Disposable {
       .map(device -> pushUpdatesToDevice(applicationId, device, desugaredResponse).errors)
       .flatMap(List::stream)
       .toList();
+
+    LiveEditEvent.Device type = switch (devices().size()) {
+      case 0 -> LiveEditEvent.Device.NONE;
+      case 1 -> devices().iterator().next().isEmulator() ? LiveEditEvent.Device.EMULATOR : LiveEditEvent.Device.PHYSICAL;
+      default -> LiveEditEvent.Device.MULTI;
+    };
+    event.setTargetDevice(type);
 
     if (!errors.isEmpty()) {
       event.setStatus(errorToStatus(errors.get(0)));

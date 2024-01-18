@@ -15,14 +15,16 @@
  */
 package com.android.tools.idea.serverflags
 
+import com.android.tools.idea.serverflags.protos.Brand
 import com.android.tools.idea.serverflags.protos.OSType
 import com.android.tools.idea.serverflags.protos.ServerFlag
 import com.android.tools.idea.serverflags.protos.ServerFlagData
 import com.android.tools.idea.serverflags.protos.ServerFlagList
 import com.android.tools.idea.serverflags.protos.ServerFlagTest
 import com.google.protobuf.Any
-import com.intellij.util.io.createFile
+import com.intellij.util.io.createParentDirectories
 import java.nio.file.Path
+import kotlin.io.path.createFile
 
 private const val FILE_NAME = "serverflaglist.protobuf"
 
@@ -86,6 +88,24 @@ val serverFlagTestDataByOs: ServerFlagList
     return builder.build()
   }
 
+val serverFlagTestDataByBrand: ServerFlagList
+  get() {
+    val flagData = enumValues<Brand>().map {
+      makeServerFlagData(it.toString(),
+                         ServerFlag.newBuilder().apply {
+                           percentEnabled = 100
+                           booleanValue = true
+                           addBrand(it)
+                         }.build())
+    }
+
+    val builder = ServerFlagList.newBuilder().apply {
+      configurationVersion = 1
+    }
+    builder.addAllServerFlags(flagData)
+    return builder.build()
+  }
+
 private fun makeServerFlagData(flagName: String, flag: ServerFlag): ServerFlagData {
   return ServerFlagData.newBuilder().apply {
     name = flagName
@@ -100,6 +120,6 @@ fun loadServerFlagList(path: Path, version: String): ServerFlagList {
 
 fun saveServerFlagList(serverFlagList: ServerFlagList, path: Path, version: String) {
   val filePath = path.resolve("$version/$FILE_NAME")
-  filePath.createFile()
+  filePath.createParentDirectories().createFile()
   filePath.toFile().outputStream().use { serverFlagList.writeTo(it) }
 }

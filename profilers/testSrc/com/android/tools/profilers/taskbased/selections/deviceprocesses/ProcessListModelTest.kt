@@ -28,6 +28,7 @@ import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel
 import com.android.tools.profilers.tasks.taskhandlers.TaskModelTestUtils.createDevice
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -53,7 +54,7 @@ class ProcessListModelTest {
       myTimer
     )
     myManager = myProfilers.sessionsManager
-    processListModel = ProcessListModel(myProfilers) {}
+    processListModel = ProcessListModel(myProfilers, MutableStateFlow(false)) {}
     ideProfilerServices.enableTaskBasedUx(true)
   }
 
@@ -326,7 +327,7 @@ class ProcessListModelTest {
                      deviceState: Common.Device.State,
                      version: String,
                      apilevel: Int) = Common.Device.newBuilder().setDeviceId(deviceName.hashCode().toLong()).setSerial(deviceName).setState(
-      deviceState).setModel(deviceName).setVersion(version).setApiLevel(apilevel).build()
+      deviceState).setModel(deviceName).setVersion(version).setApiLevel(apilevel).setFeatureLevel(apilevel).build()
 
     fun createProcess(pid: Int,
                       processName: String,
