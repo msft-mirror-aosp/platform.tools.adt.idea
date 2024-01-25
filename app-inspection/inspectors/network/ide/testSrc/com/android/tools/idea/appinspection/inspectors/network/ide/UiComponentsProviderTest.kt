@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.appinspection.inspectors.network.ide
 
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.stdui.ContentType
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.inspectors.common.ui.dataviewer.DataViewer
@@ -24,9 +25,12 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import javax.swing.JLabel
+import kotlin.io.path.readBytes
+import kotlin.time.Duration.Companion.seconds
 import org.junit.Rule
 import org.junit.Test
-import kotlin.io.path.readBytes
+
+private val TIMEOUT = 5.seconds
 
 @RunsInEdt
 class UiComponentsProviderTest {
@@ -46,7 +50,7 @@ class UiComponentsProviderTest {
           TEST_IMAGE.readBytes(),
           ContentType.PNG,
           DataViewer.Style.RAW,
-          false
+          false,
         )
       )
       .isInstanceOf(IntellijImageDataViewer::class.java)
@@ -56,12 +60,14 @@ class UiComponentsProviderTest {
         ByteArray(0),
         ContentType.GIF,
         DataViewer.Style.RAW,
-        false
+        false,
       )
     // Invalid image bytes in the creation of a regular data viewer with text saying preview is not
     // available.
-    assertThat(viewer).isInstanceOf(IntellijDataViewer::class.java)
-    assertThat((viewer.component as JLabel).text).isEqualTo("No preview available")
+    assertThat(viewer).isInstanceOf(IntellijImageDataViewer::class.java)
+    waitForCondition(TIMEOUT) { viewer.component.components.isNotEmpty() }
+    assertThat((viewer.component.components.first() as JLabel).text)
+      .isEqualTo("No preview available")
   }
 
   @Test
@@ -74,7 +80,7 @@ class UiComponentsProviderTest {
         "csv,file".toByteArray(),
         ContentType.CSV,
         DataViewer.Style.RAW,
-        false
+        false,
       )
     assertThat(viewer).isInstanceOf(IntellijDataViewer::class.java)
     assertThat(viewer.style).isEqualTo(DataViewer.Style.RAW)
@@ -90,7 +96,7 @@ class UiComponentsProviderTest {
         "<html></html>".toByteArray(),
         ContentType.HTML,
         DataViewer.Style.PRETTY,
-        true
+        true,
       )
     assertThat(viewer).isInstanceOf(IntellijDataViewer::class.java)
     assertThat(viewer.style).isEqualTo(DataViewer.Style.PRETTY)

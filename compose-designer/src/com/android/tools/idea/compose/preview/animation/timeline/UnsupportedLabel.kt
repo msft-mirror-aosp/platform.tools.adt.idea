@@ -17,10 +17,10 @@ package com.android.tools.idea.compose.preview.animation.timeline
 
 import com.android.tools.adtui.TabularLayout
 import com.android.tools.idea.compose.preview.animation.DispatchToTargetAdapter
-import com.android.tools.idea.compose.preview.animation.InspectorColors
-import com.android.tools.idea.compose.preview.animation.InspectorLayout
 import com.android.tools.idea.compose.preview.animation.TimelinePanel
 import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.preview.animation.InspectorColors
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
@@ -45,13 +45,13 @@ class UnsupportedLabel(
   parent: JComponent,
   state: ElementState,
   private val rowMinY: Int,
-  positionProxy: PositionProxy
+  positionProxy: PositionProxy,
 ) :
   TimelineElement(
     state,
     positionProxy.minimumXPosition(),
     positionProxy.maximumXPosition(),
-    positionProxy
+    positionProxy,
   ) {
 
   init {
@@ -70,7 +70,7 @@ class UnsupportedLabel(
       Point(
         positionProxy.minimumXPosition() + InspectorLayout.labelOffset -
           InspectorLayout.boxedLabelOffset,
-        rowMinY + InspectorLayout.labelOffset / 2
+        rowMinY + InspectorLayout.labelOffset / 2,
       )
 
   /** [UnsupportedLabel] has a fixed height. */
@@ -121,7 +121,7 @@ class UnsupportedLabel(
         width,
         height,
         InspectorLayout.boxedLabelColorBoxArc.width,
-        InspectorLayout.boxedLabelColorBoxArc.height
+        InspectorLayout.boxedLabelColorBoxArc.height,
       )
     }
 
@@ -142,7 +142,7 @@ class UnsupportedLabel(
           font = JBFont.medium()
           foreground = InspectorColors.BOXED_LABEL_NAME_COLOR
         },
-        TabularLayout.Constraint(0, 2)
+        TabularLayout.Constraint(0, 2),
       )
 
       add(
@@ -151,7 +151,7 @@ class UnsupportedLabel(
           setHyperlinkTarget(LEARN_MORE_LINK)
           setHyperlinkText(message("animation.inspector.message.not.supported.learn.more"))
         },
-        TabularLayout.Constraint(0, 4)
+        TabularLayout.Constraint(0, 4),
       )
 
       components.forEach {

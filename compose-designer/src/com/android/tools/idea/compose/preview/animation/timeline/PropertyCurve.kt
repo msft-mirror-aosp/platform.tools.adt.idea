@@ -17,8 +17,8 @@ package com.android.tools.idea.compose.preview.animation.timeline
 
 import com.android.tools.idea.compose.preview.animation.AnimatedProperty
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
-import com.android.tools.idea.compose.preview.animation.InspectorLayout
-import com.android.tools.idea.compose.preview.animation.TooltipInfo
+import com.android.tools.idea.preview.animation.InspectorLayout
+import com.android.tools.idea.preview.animation.TooltipInfo
 import java.awt.Graphics2D
 import java.awt.Point
 
@@ -28,7 +28,7 @@ private constructor(
   state: ElementState,
   private val property: AnimatedProperty<Double>,
   private val componentCurves: List<ComponentCurve>,
-  positionProxy: PositionProxy
+  positionProxy: PositionProxy,
 ) : ParentTimelineElement(state, componentCurves, positionProxy) {
 
   companion object {
@@ -37,7 +37,7 @@ private constructor(
       property: AnimatedProperty<Double>,
       rowMinY: Int,
       colorIndex: Int,
-      positionProxy: PositionProxy
+      positionProxy: PositionProxy,
     ): PropertyCurve {
       val curves =
         List(property.components.size) { componentId ->
@@ -47,7 +47,7 @@ private constructor(
               componentId,
               rowMinY + componentId * InspectorLayout.timelineCurveRowHeightScaled(),
               positionProxy,
-              colorIndex
+              colorIndex,
             )
           }
           .toList()

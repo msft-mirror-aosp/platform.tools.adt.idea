@@ -15,14 +15,13 @@
  */
 package com.android.tools.idea.compose.preview.animation.timeline
 
-import com.android.tools.idea.compose.preview.animation.InspectorColors
-import com.android.tools.idea.compose.preview.animation.InspectorLayout
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.lineHalfHeightScaled
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.lineHeightScaled
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.outlinePaddingScaled
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.timelineLineRowHeightScaled
 import com.android.tools.idea.compose.preview.animation.TimelinePanel
-import com.android.tools.idea.compose.preview.animation.Transition
+import com.android.tools.idea.preview.animation.InspectorColors
+import com.android.tools.idea.preview.animation.InspectorLayout
+import com.android.tools.idea.preview.animation.InspectorLayout.lineHalfHeightScaled
+import com.android.tools.idea.preview.animation.InspectorLayout.lineHeightScaled
+import com.android.tools.idea.preview.animation.InspectorLayout.outlinePaddingScaled
+import com.android.tools.idea.preview.animation.InspectorLayout.timelineLineRowHeightScaled
 import java.awt.Graphics2D
 import java.awt.Rectangle
 import java.awt.RenderingHints
@@ -40,33 +39,18 @@ class TimelineLine(
   minX: Int,
   maxX: Int,
   rowMinY: Int,
-  positionProxy: PositionProxy
+  positionProxy: PositionProxy,
 ) : TimelineElement(state, minX, maxX, positionProxy) {
 
   /** Middle of the row. */
   private val middleY = rowMinY + timelineLineRowHeightScaled() / 2
-
-  constructor(
-    state: ElementState,
-    transition: Transition,
-    maxY: Int,
-    positionProxy: PositionProxy
-  ) : this(
-    state,
-    transition.startMillis?.let { positionProxy.xPositionForValue(it) }
-      ?: (positionProxy.minimumXPosition()),
-    transition.endMillis?.let { positionProxy.xPositionForValue(it) }
-      ?: positionProxy.minimumXPosition(),
-    maxY,
-    positionProxy
-  )
 
   private val rectNoOffset =
     Rectangle(
       minX - lineHalfHeightScaled() - outlinePaddingScaled(),
       middleY - lineHalfHeightScaled() - outlinePaddingScaled(),
       maxX - minX + lineHeightScaled() + 2 * outlinePaddingScaled(),
-      lineHeightScaled() + 2 * outlinePaddingScaled()
+      lineHeightScaled() + 2 * outlinePaddingScaled(),
     )
 
   override var height: Int = InspectorLayout.TIMELINE_LINE_ROW_HEIGHT
@@ -91,7 +75,7 @@ class TimelineLine(
           rectNoOffset.width,
           rectNoOffset.height - 2 * outlinePaddingScaled(),
           lineHeightScaled() + 2 * outlinePaddingScaled(),
-          lineHeightScaled() + 2 * outlinePaddingScaled()
+          lineHeightScaled() + 2 * outlinePaddingScaled(),
         )
         stroke = InspectorLayout.simpleStroke
       }
@@ -101,7 +85,7 @@ class TimelineLine(
           rectNoOffset.x + offsetPx,
           rectNoOffset.y + yOffset,
           rectNoOffset.width,
-          rectNoOffset.height
+          rectNoOffset.height,
         )
       if (status == TimelineElementStatus.Dragged || status == TimelineElementStatus.Hovered) {
         color = InspectorColors.LINE_OUTLINE_COLOR_ACTIVE
@@ -112,7 +96,7 @@ class TimelineLine(
           rect.width + 2 * outlinePaddingScaled(),
           rect.height + 2 * outlinePaddingScaled(),
           lineHeightScaled() + 2 * outlinePaddingScaled(),
-          lineHeightScaled() + 2 * outlinePaddingScaled()
+          lineHeightScaled() + 2 * outlinePaddingScaled(),
         )
       }
       color = InspectorColors.LINE_COLOR
@@ -135,14 +119,14 @@ class TimelineLine(
         x - lineHalfHeightScaled(),
         y - lineHalfHeightScaled(),
         lineHeightScaled(),
-        lineHeightScaled()
+        lineHeightScaled(),
       )
       color = InspectorColors.LINE_CIRCLE_COLOR
       fillOval(
         x - lineHalfHeightScaled() + outlinePaddingScaled(),
         y - lineHalfHeightScaled() + outlinePaddingScaled(),
         lineHeightScaled() - 2 * outlinePaddingScaled(),
-        lineHeightScaled() - 2 * outlinePaddingScaled()
+        lineHeightScaled() - 2 * outlinePaddingScaled(),
       )
     }
   }

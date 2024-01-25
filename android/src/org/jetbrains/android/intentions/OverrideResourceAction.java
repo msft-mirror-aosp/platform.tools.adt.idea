@@ -289,7 +289,7 @@ public class OverrideResourceAction extends AbstractIntentionAction {
         assert false;
         return; // Should not happen
       }
-      Project project = configuration.getConfigModule().getProject();
+      Project project = ConfigurationManager.getFromConfiguration(configuration).getProject();
       PsiFile psiFile = AndroidPsiUtils.getPsiFileSafely(project, file);
       XmlFile xmlFile = (XmlFile)psiFile;
       ResourceFolderType folderType = IdeResourcesUtil.getFolderType(xmlFile);
@@ -400,7 +400,7 @@ public class OverrideResourceAction extends AbstractIntentionAction {
     else {
       // First create a compatible configuration based on the current configuration
       if (configuration != null) {
-        ConfigurationManager configurationManager = ConfigurationManager.getOrCreateInstance(configuration.getModule());
+        ConfigurationManager configurationManager = ConfigurationManager.getFromConfiguration(configuration);
         configurationManager.createSimilar(newFile, file);
       }
 

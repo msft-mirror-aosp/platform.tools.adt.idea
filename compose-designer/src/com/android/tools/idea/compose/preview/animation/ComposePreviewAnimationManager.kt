@@ -62,7 +62,7 @@ object ComposePreviewAnimationManager {
     else
       AppExecutorUtil.createBoundedApplicationPoolExecutor(
         "Animation Subscribe/Unsubscribe Callback Handler",
-        1
+        1,
       )
 
   @Slow
@@ -70,14 +70,14 @@ object ComposePreviewAnimationManager {
     surface: DesignSurface<LayoutlibSceneManager>,
     parent: Disposable,
     psiFilePointer: SmartPsiElementPointer<PsiFile>,
-    onNewInspectorOpen: () -> Unit
+    onNewInspectorOpen: () -> Unit,
   ): AnimationPreview {
     newInspectorOpenedCallback = onNewInspectorOpen
     return invokeAndWaitIfNeeded {
       val animationInspectorPanel =
         AnimationPreview(
           surface.project,
-          AnimationTracker(AnimationToolingUsageTracker.getInstance(surface)),
+          ComposeAnimationTracker(AnimationToolingUsageTracker.getInstance(surface)),
           { surface.sceneManager },
           surface,
           psiFilePointer,

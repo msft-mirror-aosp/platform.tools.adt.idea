@@ -24,8 +24,10 @@ import com.android.tools.idea.projectsystem.setupBuildListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
+import com.intellij.util.SlowOperations
 import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.base.util.module
@@ -38,7 +40,7 @@ class PreviewBuildListenersManager(
   private val psiFilePointerProvider: () -> SmartPsiElementPointer<PsiFile>,
   private val invalidate: () -> Unit,
   private val refresh: () -> Unit,
-  private val requestVisibilityAndNotificationsUpdate: () -> Unit
+  private val requestVisibilityAndNotificationsUpdate: () -> Unit,
 ) {
 
   private val log = Logger.getInstance(PreviewBuildListenersManager::class.java)
@@ -54,7 +56,9 @@ class PreviewBuildListenersManager(
   ) {
     val psiFile = psiFilePointerProvider().element
     requireNotNull(psiFile) { "PsiFile was disposed before the preview initialization completed." }
-    val module = runReadAction { psiFile.module }
+    val module = runReadAction {
+      SlowOperations.allowSlowOperations(ThrowableComputable { psiFile.module })
+    }
     val project =
       module?.project
         ?: run {
@@ -111,7 +115,7 @@ class PreviewBuildListenersManager(
           afterBuildStarted()
         }
       },
-      disposable
+      disposable,
     )
 
     FastPreviewManager.getInstance(project)
@@ -126,13 +130,13 @@ class PreviewBuildListenersManager(
 
           override fun onCompilationComplete(
             result: CompilationResult,
-            files: Collection<PsiFile>
+            files: Collection<PsiFile>,
           ) {
             // Notify on any Fast Preview compilation to ensure we refresh all the previews
             // correctly.
             afterBuildComplete(result == CompilationResult.Success)
           }
-        }
+        },
       )
   }
 

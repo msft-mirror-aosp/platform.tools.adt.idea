@@ -37,7 +37,6 @@ import com.android.tools.idea.gradle.util.getOutputFilesFromListingFile
 import com.android.tools.idea.gradle.util.getOutputListingFile
 import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.model.ClassJarProvider
-import com.android.tools.idea.project.DefaultToken
 import com.android.tools.idea.project.FacetBasedApplicationProjectContext
 import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.ApplicationProjectContext
@@ -74,6 +73,7 @@ import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.util.androidFacet
 import com.intellij.execution.configurations.ModuleBasedConfiguration
 import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -106,6 +106,10 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
       AndroidManifestClassPsiElementFinder.getInstance(project),
       AndroidResourceClassPsiElementFinder(getLightResourceClassService())
     )
+  }
+
+  override fun isAndroidProject(): Boolean {
+    return ProjectFacetManager.getInstance(project).hasFacets(AndroidFacet.ID)
   }
 
   override fun getBootClasspath(module: Module): Collection<String> {
@@ -495,7 +499,7 @@ fun AssembleInvocationResult.getBuiltApksForSelectedVariant(androidFacet: Androi
  * An [ApplicationProjectContextProvider] for the Gradle project system.
  */
 class GradleApplicationProjectContextProvider(val project: Project) : ApplicationProjectContextProvider, GradleToken {
-  override fun getApplicationProjectContextProvider(client: Client): ApplicationProjectContext {
+  override fun getApplicationProjectContext(client: Client): ApplicationProjectContext {
     // This hard code might not make b/305650392 feasible anymore
     if (client.clientData.packageName == SANDBOX_SDK_APPLICATION_ID) {
       return object : ApplicationProjectContext {

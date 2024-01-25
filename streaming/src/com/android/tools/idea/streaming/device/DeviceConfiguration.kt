@@ -56,11 +56,11 @@ internal fun DeviceProperties?.composeDeviceName(useTitleAsName: Boolean = false
   if (!model.isNullOrBlank()) {
     if (!model.startsWith("Pixel")) {
       val manufacturer = manufacturer
-      if (!manufacturer.isNullOrBlank() && manufacturer != "unknown") {
+      if (!manufacturer.isNullOrBlank() && manufacturer != "unknown" && !model.startsWith(manufacturer, ignoreCase = true)) {
         name.append(manufacturer).append(' ')
       }
     }
-    name.append(model)
+    name.append(if (model.startsWith("Google Pixel")) model.removePrefix("Google ") else model)
   }
   else {
     name.append("unknown")

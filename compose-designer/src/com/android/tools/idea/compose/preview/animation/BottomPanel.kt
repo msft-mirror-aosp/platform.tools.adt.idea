@@ -18,6 +18,7 @@ package com.android.tools.idea.compose.preview.animation
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.util.createToolbarWithNavigation
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
@@ -40,7 +41,7 @@ import javax.swing.border.MatteBorder
 class BottomPanel(
   val previewState: AnimationPreviewState,
   rootComponent: JComponent,
-  private val tracker: AnimationTracker
+  private val tracker: ComposeAnimationTracker,
 ) : JPanel(BorderLayout()) {
 
   var clockTimeMs = 0
@@ -55,7 +56,7 @@ class BottomPanel(
       "ResetCoordinationTimeline",
       listOf(ClockTimeLabel(), Separator()) +
         if (COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG.get()) listOf(ResetTimelineAction())
-        else emptyList()
+        else emptyList(),
     )
 
   private val resetListeners: MutableList<() -> Unit> = mutableListOf()
@@ -90,7 +91,7 @@ class BottomPanel(
   private inner class ResetTimelineAction :
     AnActionButton(
       message("animation.inspector.action.reset.timeline"),
-      StudioIcons.LayoutEditor.Toolbar.LEFT_ALIGNED
+      StudioIcons.LayoutEditor.Toolbar.LEFT_ALIGNED,
     ) {
     override fun actionPerformed(e: AnActionEvent) {
       resetListeners.forEach { it() }

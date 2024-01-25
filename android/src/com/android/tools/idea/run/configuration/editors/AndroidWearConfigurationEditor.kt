@@ -70,16 +70,7 @@ open class AndroidWearConfigurationEditor<T : AndroidWearConfiguration>(private 
       }
       val facet = AndroidFacet.getInstance(module) ?: return false
       if (!module.isHolderModule()) return false
-      return when (facet.getModuleSystem().type) {
-        AndroidModuleSystem.Type.TYPE_NON_ANDROID -> false
-        AndroidModuleSystem.Type.TYPE_APP -> true
-        AndroidModuleSystem.Type.TYPE_LIBRARY -> false
-        AndroidModuleSystem.Type.TYPE_TEST -> false
-        AndroidModuleSystem.Type.TYPE_ATOM -> false
-        AndroidModuleSystem.Type.TYPE_INSTANTAPP -> false
-        AndroidModuleSystem.Type.TYPE_FEATURE -> false
-        AndroidModuleSystem.Type.TYPE_DYNAMIC_FEATURE -> false
-      }
+      return facet.getModuleSystem().type == AndroidModuleSystem.Type.TYPE_APP
     }
   }
 
@@ -105,7 +96,7 @@ open class AndroidWearConfigurationEditor<T : AndroidWearConfiguration>(private 
           if (module == null || DumbService.isDumb(project)) {
             return
           }
-          availableComponents = ApplicationManager.getApplication().runReadAction(Computable {findAvailableComponents(module)})
+          availableComponents = ApplicationManager.getApplication().runReadAction(Computable { findAvailableComponents(module) })
         }
 
         override fun onFinished() {
@@ -115,7 +106,7 @@ open class AndroidWearConfigurationEditor<T : AndroidWearConfiguration>(private 
             component?.parent?.parent?.apply {
               removeAll()
               layout = BorderLayout()
-              add(JBPanelWithEmptyText().withEmptyText("Can't edit configuration while Project is synchronizing"))
+              add(JBPanelWithEmptyText().withEmptyText(AndroidBundle.message("android.run.configuration.synchronization.warning")))
             }
           }
         }
@@ -152,11 +143,9 @@ open class AndroidWearConfigurationEditor<T : AndroidWearConfiguration>(private 
     }
 
   protected fun Panel.getInstallFlagsTextField() {
-    row {
-      label("Install Flags:")
-      textField().bindText(getter = { installFlags }, setter = { installFlags = it })
-        .align(AlignX.FILL)
-    }.layout(RowLayout.LABEL_ALIGNED)
+    row(AndroidBundle.message("android.run.configuration.wear.install.flags")) {
+      textField().bindText(::installFlags).align(AlignX.FILL)
+    }
   }
 
   protected fun Panel.getComponentComboBox() {
@@ -168,13 +157,16 @@ open class AndroidWearConfigurationEditor<T : AndroidWearConfiguration>(private 
           override fun customize(list: JList<out String>, value: String?, index: Int, selected: Boolean, hasFocus: Boolean) {
             text = when {
               value != null -> value
-              modulesComboBox.item == null -> "Module is not chosen"
-              list.selectionModel.maxSelectionIndex == -1 -> "${configuration.componentLaunchOptions.userVisibleComponentTypeName} not found"
-              else -> "${configuration.componentLaunchOptions.userVisibleComponentTypeName} is not chosen"
+              modulesComboBox.item == null -> AndroidBundle.message("android.run.configuration.wear.module.not.chosen")
+              list.selectionModel.maxSelectionIndex == -1 -> AndroidBundle.message("android.run.configuration.wear.component.not.found",
+                                                                                   configuration.componentLaunchOptions.userVisibleComponentTypeName)
+
+              else -> AndroidBundle.message("android.run.configuration.wear.component.not.chosen",
+                                            configuration.componentLaunchOptions.userVisibleComponentTypeName)
             }
           }
         })
-        .bindItem(getter = { componentName }, setter = { componentName = it })
+        .bindItem(::componentName)
         .enabledIf(modulesComboBox.selectedValueIs(null).not())
         .align(AlignX.FILL)
         .applyToComponent {

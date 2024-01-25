@@ -18,10 +18,13 @@ package com.android.tools.idea.preview.modes
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.PreviewBundle.message
+import com.android.tools.idea.uibuilder.surface.layout.GridLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.GroupPadding
 import com.android.tools.idea.uibuilder.surface.layout.GroupedGridSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.GroupedListSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.HeaderPositionableContent
+import com.android.tools.idea.uibuilder.surface.layout.ListLayoutManager
+import com.android.tools.idea.uibuilder.surface.layout.OrganizationPadding
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent
 import com.android.tools.idea.uibuilder.surface.layout.PositionableGroup
 import com.android.tools.idea.uibuilder.surface.layout.SurfaceLayoutManager
@@ -36,39 +39,45 @@ import org.jetbrains.annotations.VisibleForTesting
 data class SurfaceLayoutManagerOption(
   val displayName: String,
   val layoutManager: SurfaceLayoutManager,
-  val sceneViewAlignment: DesignSurface.SceneViewAlignment =
-    DesignSurface.SceneViewAlignment.CENTER,
+  val sceneViewAlignment: DesignSurface.SceneViewAlignment = DesignSurface.SceneViewAlignment.CENTER,
 )
 
 private val PREVIEW_FRAME_PADDING_PROVIDER: (Double) -> Int = { scale ->
-  // Minimum 5 at 20% and maximum 20 at 100%, responsive.
-  val min = 5
-  val max = 20
-
-  when {
-    scale <= 0.2 -> min
-    scale >= 1.0 -> max
-    else ->
-      min + ((max - min) / (1 - 0.2)) * (scale - 0.2) // find interpolated value between min and max
-  }.toInt()
+  dynamicPadding(scale, 5, 20)
 }
 
 /**
  * Provider of the horizontal and vertical paddings for preview. The input value is the scale value
  * of the current [PositionableContent].
  */
-private val ORGANIZATION_PREVIEW_PADDING_PROVIDER: (Double) -> Int = { scale ->
-  // Minimum 5 at 20% and maximum 15 at 100%, responsive.
-  val min = 5
-  val max = 15
+private val ORGANIZATION_PREVIEW_RIGHT_PADDING: (Double, PositionableContent) -> Int =
+  { scale, content ->
+    if (content is HeaderPositionableContent) dynamicPadding(scale, 0, 0)
+    else dynamicPadding(scale, 5, 15)
+  }
 
+/**
+ * Provider of the horizontal and vertical paddings for preview. The input value is the scale value
+ * of the current [PositionableContent].
+ */
+private val ORGANIZATION_PREVIEW_BOTTOM_PADDING: (Double, PositionableContent) -> Int =
+  { scale, content ->
+    if (content is HeaderPositionableContent) dynamicPadding(scale, 0, 0)
+    else dynamicPadding(scale, 5, 7)
+  }
+
+/**
+ * Provider of the padding for preview. The input value is the scale value of the current
+ * [PositionableContent]. Minimum padding is min at 20% and maximum padding is max at 100%,
+ * responsive.
+ */
+private fun dynamicPadding(scale: Double, min: Int, max: Int): Int =
   when {
     scale <= 0.2 -> min
     scale >= 1.0 -> max
     else ->
       min + ((max - min) / (1 - 0.2)) * (scale - 0.2) // find interpolated value between min and max
   }.toInt()
-}
 
 private val NO_GROUP_TRANSFORM: (Collection<PositionableContent>) -> List<PositionableGroup> = {
   // FIXME(b/258718991): we decide not group the previews for now.
@@ -84,9 +93,9 @@ val GROUP_BY_BASE_COMPONENT: (Collection<PositionableContent>) -> List<Positiona
     }
 
     groups.values
-      .fold(
-        Pair(mutableListOf<PositionableGroup>(), mutableListOf<PositionableContent>()),
-      ) { temp, next ->
+      .fold(Pair(mutableListOf<PositionableGroup>(), mutableListOf<PositionableContent>())) {
+        temp,
+        next ->
         val hasHeader = next.any { it is HeaderPositionableContent }
         // If next is not in its own group - keep it in temp.second
         if (!hasHeader) {
@@ -102,7 +111,7 @@ val GROUP_BY_BASE_COMPONENT: (Collection<PositionableContent>) -> List<Positiona
               PositionableGroup(
                 temp.second.filter { it !is HeaderPositionableContent },
                 temp.second.filterIsInstance<HeaderPositionableContent>().singleOrNull(),
-              ),
+              )
             )
             temp.second.clear()
           }
@@ -114,7 +123,7 @@ val GROUP_BY_BASE_COMPONENT: (Collection<PositionableContent>) -> List<Positiona
             PositionableGroup(
               next.filter { it !is HeaderPositionableContent },
               next.filterIsInstance<HeaderPositionableContent>().singleOrNull(),
-            ),
+            )
           )
         }
 
@@ -126,8 +135,24 @@ val GROUP_BY_BASE_COMPONENT: (Collection<PositionableContent>) -> List<Positiona
 private val galleryPadding = GroupPadding(5, 0, PREVIEW_FRAME_PADDING_PROVIDER)
 private val listPadding = GroupPadding(5, 25, PREVIEW_FRAME_PADDING_PROVIDER)
 private val gridPadding = GroupPadding(5, 0, PREVIEW_FRAME_PADDING_PROVIDER)
-private val organizationListPadding = GroupPadding(10, 10, ORGANIZATION_PREVIEW_PADDING_PROVIDER)
-private val organizationGridPadding = GroupPadding(10, 10, ORGANIZATION_PREVIEW_PADDING_PROVIDER)
+private val organizationListPadding =
+  OrganizationPadding(
+    10,
+    10,
+    24,
+    PREVIEW_FRAME_PADDING_PROVIDER,
+    ORGANIZATION_PREVIEW_RIGHT_PADDING,
+    ORGANIZATION_PREVIEW_BOTTOM_PADDING,
+  )
+private val organizationGridPadding =
+  OrganizationPadding(
+    10,
+    10,
+    24,
+    PREVIEW_FRAME_PADDING_PROVIDER,
+    ORGANIZATION_PREVIEW_RIGHT_PADDING,
+    ORGANIZATION_PREVIEW_BOTTOM_PADDING,
+  )
 
 /** Toolbar option to select [PreviewMode.Gallery] layout. */
 val PREVIEW_LAYOUT_GALLERY_OPTION =
@@ -142,7 +167,7 @@ val LIST_LAYOUT_MANAGER_OPTION =
     SurfaceLayoutManagerOption(
       // TODO(b/289994157) Change name to "List"
       message("vertical.groups"),
-      GroupedListSurfaceLayoutManager(organizationListPadding, GROUP_BY_BASE_COMPONENT),
+      ListLayoutManager(organizationListPadding, GROUP_BY_BASE_COMPONENT),
       DesignSurface.SceneViewAlignment.LEFT,
     )
   } else {
@@ -158,7 +183,7 @@ val GRID_LAYOUT_MANAGER_OPTIONS =
     SurfaceLayoutManagerOption(
       // TODO(b/289994157) Change name to "Grid"
       message("grid.groups"),
-      GroupedGridSurfaceLayoutManager(organizationGridPadding, GROUP_BY_BASE_COMPONENT),
+      GridLayoutManager(organizationGridPadding, GROUP_BY_BASE_COMPONENT),
       DesignSurface.SceneViewAlignment.LEFT,
     )
   } else {

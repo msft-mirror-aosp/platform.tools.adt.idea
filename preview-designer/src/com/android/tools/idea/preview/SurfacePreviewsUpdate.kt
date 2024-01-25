@@ -49,7 +49,7 @@ import org.jetbrains.kotlin.backend.common.pop
 private fun <T : PreviewElement, M> calcAffinityMatrix(
   elements: List<T>,
   models: List<M>,
-  previewElementModelAdapter: PreviewElementModelAdapter<T, M>
+  previewElementModelAdapter: PreviewElementModelAdapter<T, M>,
 ): List<List<Int>> {
   val modelElements = models.map { previewElementModelAdapter.modelToElement(it) }
   return elements.map { element ->
@@ -66,7 +66,7 @@ private fun <T : PreviewElement, M> calcAffinityMatrix(
 fun <T : PreviewElement, M> matchElementsToModels(
   models: List<M>,
   elements: List<T>,
-  previewElementModelAdapter: PreviewElementModelAdapter<T, M>
+  previewElementModelAdapter: PreviewElementModelAdapter<T, M>,
 ): List<Int> {
   val affinityMatrix = calcAffinityMatrix(elements, models, previewElementModelAdapter)
   if (affinityMatrix.isEmpty()) {
@@ -127,7 +127,7 @@ suspend fun <T : PreviewElement> NlDesignSurface.refreshExistingPreviewElements(
     (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager,
   refreshFilter: (LayoutlibSceneManager) -> Boolean = { true },
   refreshOrder: (LayoutlibSceneManager) -> Int = { 0 },
-  refreshEventBuilder: PreviewRefreshEventBuilder? = null
+  refreshEventBuilder: PreviewRefreshEventBuilder? = null,
 ) {
   val previewElementsToSceneManagers =
     sceneManagers.filter(refreshFilter).sortedBy(refreshOrder).mapNotNull {
@@ -143,13 +143,13 @@ suspend fun <T : PreviewElement> NlDesignSurface.refreshExistingPreviewElements(
       message(
         "refresh.progress.indicator.rendering.preview",
         index + 1,
-        previewElementsToSceneManagers.size
+        previewElementsToSceneManagers.size,
       )
     val (previewElement, sceneManager) = pair
     // When showing decorations, show the full device size
     renderAndTrack(
       configureLayoutlibSceneManager(previewElement.displaySettings, sceneManager),
-      refreshEventBuilder
+      refreshEventBuilder,
     )
   }
 }
@@ -187,14 +187,17 @@ suspend fun <T : PreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
   navigationHandler: PreviewNavigationHandler,
   configureLayoutlibSceneManager:
     (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager,
-  refreshEventBuilder: PreviewRefreshEventBuilder? = null
+  refreshEventBuilder: PreviewRefreshEventBuilder? = null,
 ): List<T> {
   val debugLogger = if (log.isDebugEnabled) PreviewElementDebugLogger(log) else null
-  val facet = AndroidFacet.getInstance(psiFile) ?: return emptyList()
-  val configurationManager =
+
+  val (facet, configurationManager) =
     withContext(AndroidDispatchers.workerThread) {
-      ConfigurationManager.getOrCreateInstance(facet.module)
+      AndroidFacet.getInstance(psiFile)?.let { facet ->
+        return@withContext facet to ConfigurationManager.getOrCreateInstance(facet.module)
+      } ?: (null to null)
     }
+  if (facet == null || configurationManager == null) return emptyList()
   // Retrieve the models that were previously displayed so we can reuse them instead of creating new
   // ones.
   val existingModels = models.toMutableList()
@@ -236,7 +239,7 @@ suspend fun <T : PreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
       val fileContents = previewElementModelAdapter.toXml(previewElement)
       debugLogger?.logPreviewElement(
         previewElementModelAdapter.toLogString(previewElement),
-        fileContents
+        fileContents,
       )
 
       val newModel: NlModel
@@ -247,7 +250,7 @@ suspend fun <T : PreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
         val affinity =
           previewElementModelAdapter.calcAffinity(
             previewElement,
-            previewElementModelAdapter.modelToElement(model)
+            previewElementModelAdapter.modelToElement(model),
           )
         // If the model is for the same element (affinity=0) and we know that it is not spoiled by
         // previous actions (reinflate=false) we can skip reinflate and therefore refresh much
@@ -286,7 +289,7 @@ suspend fun <T : PreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
       val sceneManager =
         configureLayoutlibSceneManager(
             previewElement.displaySettings,
-            addModelWithoutRender(newModel)
+            addModelWithoutRender(newModel),
           )
           .also {
             if (forceReinflate) {
@@ -336,7 +339,7 @@ suspend fun <T : PreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
 private suspend fun renderAndTrack(
   sceneManager: LayoutlibSceneManager,
   refreshEventBuilder: PreviewRefreshEventBuilder? = null,
-  onCompleteCallback: (Throwable?) -> Unit = {}
+  onCompleteCallback: (Throwable?) -> Unit = {},
 ) {
   val inflate = sceneManager.isForceReinflate
   val quality = sceneManager.quality
@@ -347,7 +350,7 @@ private suspend fun renderAndTrack(
       sceneManager.renderResult?.isErrorResult() ?: false,
       inflate,
       quality,
-      System.currentTimeMillis() - startMs
+      System.currentTimeMillis() - startMs,
     )
   }
 }

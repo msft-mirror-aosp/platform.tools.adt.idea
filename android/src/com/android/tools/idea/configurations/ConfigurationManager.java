@@ -30,7 +30,6 @@ import com.android.sdklib.internal.avd.AvdInfo;
 import com.android.sdklib.internal.avd.AvdManager;
 import com.android.sdklib.repository.targets.PlatformTarget;
 import com.android.tools.configurations.Configuration;
-import com.android.tools.configurations.ConfigurationModelModule;
 import com.android.tools.configurations.ConfigurationSettings;
 import com.android.tools.configurations.ResourceResolverCache;
 import com.android.tools.layoutlib.AndroidTargets;
@@ -79,7 +78,7 @@ public class ConfigurationManager implements Disposable, ConfigurationSettings {
     ConfigurationManager.class.getName() + "ProjectCanonicalKey"
   );
 
-  @NotNull private final ConfigurationModelModule myConfigurationModule;
+  @NotNull private final StudioConfigurationModelModule myConfigurationModule;
 
   @NotNull private final Module myModule;
   private final Map<VirtualFile, ConfigurationForFile> myCache = ContainerUtil.createSoftValueMap();
@@ -149,14 +148,14 @@ public class ConfigurationManager implements Disposable, ConfigurationSettings {
 
     return configurationManager.getConfiguration(projectFile);
   }
-  protected ConfigurationManager(@NotNull Module module, ConfigurationModelModule config) {
+  protected ConfigurationManager(@NotNull Module module, StudioConfigurationModelModule config) {
     myConfigurationModule = config;
     myModule = module;
     Disposer.register(myModule, this);
   }
 
   protected ConfigurationManager(@NotNull Module module) {
-    this(module,new StudioConfigurationModelModule(module));
+    this(module, new StudioConfigurationModelModule(module));
   }
 
   /**
@@ -350,7 +349,6 @@ public class ConfigurationManager implements Disposable, ConfigurationSettings {
     return false;
   }
 
-  @Override
   @NotNull
   public final Module getModule() {
     return myModule;
@@ -363,7 +361,7 @@ public class ConfigurationManager implements Disposable, ConfigurationSettings {
 
   @Override
   @NotNull
-  public final ConfigurationModelModule getConfigModule() {
+  public final StudioConfigurationModelModule getConfigModule() {
     return myConfigurationModule;
   }
 
@@ -655,5 +653,15 @@ public class ConfigurationManager implements Disposable, ConfigurationSettings {
       .filter(Objects::nonNull)
       .map(this::createDeviceForAvd)
       .collect(Collectors.toList());
+  }
+
+  /**
+   * All {@link Configuration}s in studio has {@link ConfigurationManager} as {@link Configuration#getSettings()} since this is the only
+   * implementation, so this is a safe cast. We can't make {@link ConfigurationManager} as the return type of
+   * {@link Configuration#getSettings()} because {@link Configuration} is also used outside of studio.
+   */
+  @NotNull
+  public static ConfigurationManager getFromConfiguration(@NotNull Configuration configuration) {
+    return (ConfigurationManager)configuration.getSettings();
   }
 }

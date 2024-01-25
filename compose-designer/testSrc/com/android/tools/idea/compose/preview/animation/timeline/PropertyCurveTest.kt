@@ -18,9 +18,9 @@ package com.android.tools.idea.compose.preview.animation.timeline
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.compose.preview.animation.AnimatedProperty
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
-import com.android.tools.idea.compose.preview.animation.InspectorLayout
 import com.android.tools.idea.compose.preview.animation.TestUtils
 import com.android.tools.idea.compose.preview.animation.TestUtils.scanForTooltips
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.intellij.openapi.application.ApplicationManager
 import kotlin.test.assertNotNull
 import org.junit.Assert.assertEquals
@@ -48,7 +48,7 @@ class PropertyCurveTest {
             property,
             InspectorLayout.timelineHeaderHeightScaled(),
             0,
-            slider.sliderUI.positionProxy
+            slider.sliderUI.positionProxy,
           )
           .also { it.timelineUnit = ComposeUnit.TimelineUnit("UnitOne", ComposeUnit.IntSize(1, 2)) }
 
@@ -58,7 +58,7 @@ class PropertyCurveTest {
           property,
           InspectorLayout.timelineHeaderHeightScaled() + propertyCurveOne.height,
           1,
-          slider.sliderUI.positionProxy
+          slider.sliderUI.positionProxy,
         )
 
       slider.sliderUI.elements.add(propertyCurveOne)

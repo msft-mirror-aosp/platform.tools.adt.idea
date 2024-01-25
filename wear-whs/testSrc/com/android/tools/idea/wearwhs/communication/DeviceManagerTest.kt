@@ -17,11 +17,14 @@ package com.android.tools.idea.wearwhs.communication
 
 import com.android.adblib.DeviceSelector
 import com.android.adblib.testing.FakeAdbSession
+import com.android.tools.idea.wearwhs.EventTrigger
+import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.android.tools.idea.wearwhs.WhsDataType
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -74,6 +77,13 @@ class DeviceManagerTest {
   private val adbCommandClearSpeed = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind SPEED:s:\"\""
   private val adbCommandClearPace = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind PACE:s:\"\""
   private val adbCommandClearStepsPerMinute = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind STEPS_PER_MINUTE:s:\"\""
+  private val adbCommandDeleteEntries = "content delete --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config"
+  private val adbCommandSetMultipleCapabilities = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind ABSOLUTE_ELEVATION:b:false --bind DISTANCE:b:false --bind ELEVATION_GAIN:b:true --bind ELEVATION_LOSS:b:false --bind FLOORS:b:false --bind HEART_RATE_BPM:b:true --bind LOCATION:b:true --bind PACE:b:true --bind SPEED:b:false --bind STEPS:b:true --bind STEPS_PER_MINUTE:b:false --bind TOTAL_CALORIES:b:false"
+  private val adbCommandMultipleFloatOverrides = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind DISTANCE:f:12.0 --bind FLOORS:f:5.0 --bind TOTAL_CALORIES:f:123.0"
+  private val adbCommandFloatIntOverrides = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind ELEVATION_LOSS:f:5.0 --bind STEPS:i:55"
+  private val adbCommandFloatIntNullOverrides = "content update --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config --bind ELEVATION_LOSS:f:5.0 --bind PACE:s:\"\" --bind STEPS:i:55"
+  private val adbCommandCheckWhsVersionCode = "dumpsys package com.google.android.wearable.healthservices | grep versionCode | head -n1"
+  private val adbCommandQueryContentProvider = "content query --uri content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config"
 
   private val capabilities = mapOf(
     WhsDataType.STEPS to WhsCapability(
@@ -177,7 +187,7 @@ class DeviceManagerTest {
     val deviceManager = ContentProviderDeviceManager(adbSession)
 
     val job = launch {
-      deviceManager.enableCapability(WhsDataType.STEPS.toCapability())
+      deviceManager.setCapabilities(mapOf(WhsDataType.STEPS to true))
     }
     job.join()
   }
@@ -187,7 +197,7 @@ class DeviceManagerTest {
     val deviceManager = ContentProviderDeviceManager(adbSession)
 
     val job = launch {
-      deviceManager.disableCapability(WhsDataType.STEPS.toCapability())
+      deviceManager.setCapabilities(mapOf(WhsDataType.STEPS to false))
     }
     job.join()
   }
@@ -217,11 +227,11 @@ class DeviceManagerTest {
   }
 
   private fun assertEnablingCapabilitySendsAdbCommand(dataType: WhsDataType, expectedAdbCommand: String) = runTest {
-    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.enableCapability(dataType.toCapability()) }, expectedAdbCommand)
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.setCapabilities(mapOf(dataType to true)) }, expectedAdbCommand)
   }
 
   private fun assertDisablingCapabilitySendsAdbCommand(dataType: WhsDataType, expectedAdbCommand: String) = runTest {
-    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.disableCapability(dataType.toCapability()) }, expectedAdbCommand)
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.setCapabilities(mapOf(dataType to false)) }, expectedAdbCommand)
   }
 
   @Test
@@ -301,13 +311,13 @@ class DeviceManagerTest {
     val deviceManager = ContentProviderDeviceManager(adbSession)
 
     val job = launch {
-      deviceManager.overrideValue(WhsDataType.STEPS.toCapability(), 55)
+      deviceManager.overrideValues(mapOf(WhsDataType.STEPS to 55))
     }
     job.join()
   }
 
   private fun assertOverrideSendsAdbCommand(dataType: WhsDataType, overrideValue: Number?, expectedAdbCommand: String) = runTest {
-    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.overrideValue(dataType.toCapability(), overrideValue) }, expectedAdbCommand)
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.overrideValues(mapOf(dataType to overrideValue)) }, expectedAdbCommand)
   }
 
   @Test
@@ -374,5 +384,238 @@ class DeviceManagerTest {
   fun `Override steps per minute`() {
     assertOverrideSendsAdbCommand(WhsDataType.STEPS_PER_MINUTE, 25, adbCommandSetStepsPerMinuteTo25)
     assertOverrideSendsAdbCommand(WhsDataType.STEPS_PER_MINUTE, null, adbCommandClearStepsPerMinute)
+  }
+
+  @Test
+  fun `trigger auto pause event`() = runBlocking {
+    assertDeviceManagerFunctionSendsAdbCommand(
+      { deviceManager -> deviceManager.triggerEvent(EventTrigger("whs.AUTO_PAUSE_DETECTED", "label")) },
+      "am broadcast -a \"whs.AUTO_PAUSE_DETECTED\" com.google.android.wearable.healthservices")
+  }
+
+  @Test
+  fun `trigger golf shot event`() = runBlocking {
+    assertDeviceManagerFunctionSendsAdbCommand(
+      { deviceManager -> deviceManager.triggerEvent(EventTrigger("whs.GOLF_SHOT", "label")) },
+      "am broadcast -a \"whs.GOLF_SHOT\" com.google.android.wearable.healthservices")
+  }
+
+  @Test
+  fun `Delete entries without setting serial number does not result in crash`() = runTest {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+
+    val job = launch {
+      deviceManager.clearContentProvider()
+    }
+    job.join()
+  }
+
+  @Test
+  fun `Delete entries triggers correct adb command`() {
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.clearContentProvider() }, adbCommandDeleteEntries)
+  }
+
+  @Test
+  fun `Setting multiple capabilities without setting serial number does not result in crash`() = runTest {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+
+    val job = launch {
+      deviceManager.setCapabilities(mapOf(WhsDataType.STEPS to true))
+    }
+    job.join()
+  }
+
+  @Test
+  fun `Setting multiple capabilities triggers expected adb command with keys in alphabetical order`() {
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.setCapabilities(mapOf(
+      WhsDataType.STEPS to true,
+      WhsDataType.DISTANCE to false,
+      WhsDataType.TOTAL_CALORIES to false,
+      WhsDataType.FLOORS to false,
+      WhsDataType.ELEVATION_GAIN to true,
+      WhsDataType.ELEVATION_LOSS to false,
+      WhsDataType.ABSOLUTE_ELEVATION to false,
+      WhsDataType.LOCATION to true,
+      WhsDataType.HEART_RATE_BPM to true,
+      WhsDataType.SPEED to false,
+      WhsDataType.PACE to true,
+      WhsDataType.STEPS_PER_MINUTE to false,
+    )) }, adbCommandSetMultipleCapabilities)
+  }
+
+  @Test
+  fun `Setting multiple override values without setting serial number does not result in crash`() = runTest {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+
+    val job = launch {
+      deviceManager.overrideValues(mapOf(WhsDataType.STEPS to 55))
+    }
+    job.join()
+  }
+
+  @Test
+  fun `Setting multiple float override values triggers expected adb command with keys in alphabetical order`() {
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.overrideValues(mapOf(
+      WhsDataType.DISTANCE to 12.0,
+      WhsDataType.TOTAL_CALORIES to 123.0,
+      WhsDataType.FLOORS to 5.0,
+    )) }, adbCommandMultipleFloatOverrides)
+  }
+
+  @Test
+  fun `Setting float and int override values triggers expected adb command with keys in alphabetical order`() {
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.overrideValues(mapOf(
+      WhsDataType.STEPS to 55,
+      WhsDataType.ELEVATION_LOSS to 5.0,
+    )) }, adbCommandFloatIntOverrides)
+  }
+
+  @Test
+  fun `Setting float, int and null override values triggers expected adb command with keys in alphabetical order`() {
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.overrideValues(mapOf(
+      WhsDataType.STEPS to 55,
+      WhsDataType.ELEVATION_LOSS to 5.0,
+      WhsDataType.PACE to null,
+    )) }, adbCommandFloatIntNullOverrides)
+  }
+
+  @Test
+  fun `Setting location override value is ignored`() {
+    assertDeviceManagerFunctionSendsAdbCommand({ deviceManager -> deviceManager.overrideValues(mapOf(
+      WhsDataType.STEPS to 55,
+      WhsDataType.ELEVATION_LOSS to 5.0,
+      WhsDataType.PACE to null,
+      WhsDataType.LOCATION to null,
+    )) }, adbCommandFloatIntNullOverrides)
+  }
+
+  @Test
+  fun `Checking is WHS version is supported without setting serial number does not result in crash`() = runTest {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+
+    val job = launch {
+      deviceManager.isWhsVersionSupported()
+    }
+    job.join()
+  }
+
+  private fun assertWhsVersionCheckAdbResponseIsParsedCorrectly(response: String, expectedIsSupportedBool: Boolean) = runTest {
+    adbSession.deviceServices.configureShellCommand(DeviceSelector.fromSerialNumber(serialNumber), adbCommandCheckWhsVersionCode, response)
+
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    val previousCount = adbSession.deviceServices.shellV2Requests.size
+
+    var isSupported = false
+    val job = launch {
+      isSupported = deviceManager.isWhsVersionSupported()
+    }
+    job.join()
+
+    val currentCount = adbSession.deviceServices.shellV2Requests.size
+    val newRequestsCount = currentCount - previousCount
+
+    assertEquals(1, newRequestsCount)
+
+    val shellRequest = adbSession.deviceServices.shellV2Requests.last
+
+    assert(shellRequest.deviceSelector.contains(serialNumber))
+    assertEquals(adbCommandCheckWhsVersionCode, shellRequest.command)
+
+    assertEquals(expectedIsSupportedBool, isSupported)
+  }
+
+  @Test
+  fun `Unexpected ADB response results in WHS version being reported as unsupported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("Unexpected response", false)
+  }
+
+  @Test
+  fun `Dev WHS version codes are supported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1 minSdk=30 targetSdk=33", true)
+  }
+
+  @Test
+  fun `Non dev WHS version codes are not supported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1417661 minSdk=30 targetSdk=33", false)
+  }
+
+  @Test
+  fun `Loading capabilities without setting serial number does not result in crash`() = runTest {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+
+    val job = launch {
+      deviceManager.loadCapabilities()
+    }
+    job.join()
+  }
+
+  private fun assertLoadCapabilitiesAdbResponseIsParsedCorrectly(response: String, expectedCapabilites: Map<WhsDataType, CapabilityStatus>) = runTest {
+    adbSession.deviceServices.configureShellCommand(DeviceSelector.fromSerialNumber(serialNumber), adbCommandQueryContentProvider, response)
+
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    val previousCount = adbSession.deviceServices.shellV2Requests.size
+
+    var parsedCapabilities = WHS_CAPABILITIES.associate { it.dataType to CapabilityStatus(false, null) }
+    val job = launch {
+      parsedCapabilities = deviceManager.loadCurrentCapabilityStates()
+    }
+    job.join()
+
+    val currentCount = adbSession.deviceServices.shellV2Requests.size
+    val newRequestsCount = currentCount - previousCount
+
+    assertEquals(1, newRequestsCount)
+
+    val shellRequest = adbSession.deviceServices.shellV2Requests.last
+
+    assert(shellRequest.deviceSelector.contains(serialNumber))
+    assertEquals(adbCommandQueryContentProvider, shellRequest.command)
+
+    assertEquals(expectedCapabilites, parsedCapabilities)
+  }
+
+  @Test
+  fun `Unexpected ADB response results in no capabilities being reported`() {
+    assertLoadCapabilitiesAdbResponseIsParsedCorrectly("Unexpected response", emptyMap())
+  }
+
+  @Test
+  fun `Enabled state of capabilities are parsed, override values are ignored`() {
+    assertLoadCapabilitiesAdbResponseIsParsedCorrectly("Row: 0 data_type=STEPS_PER_MINUTE, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 1 data_type=SPEED, is_enabled=true, override_value=0.0\n" +
+                                                       "Row: 2 data_type=FLOORS, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 3 data_type=ABSOLUTE_ELEVATION, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 4 data_type=ELEVATION_LOSS, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 5 data_type=DISTANCE, is_enabled=true, override_value=0.0\n" +
+                                                       "Row: 6 data_type=ELEVATION_GAIN, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 7 data_type=TOTAL_CALORIES, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 8 data_type=PACE, is_enabled=false, override_value=0.0\n" +
+                                                       "Row: 9 data_type=HEART_RATE_BPM, is_enabled=true, override_value=55.0\n" +
+                                                       "Row: 10 data_type=STEPS, is_enabled=true, override_value=0", mapOf(
+                                                        WhsDataType.STEPS_PER_MINUTE to CapabilityStatus(false, null),
+                                                        WhsDataType.SPEED to CapabilityStatus(true, null),
+                                                        WhsDataType.FLOORS to CapabilityStatus(false, null),
+                                                        WhsDataType.ABSOLUTE_ELEVATION to CapabilityStatus(false, null),
+                                                        WhsDataType.ELEVATION_LOSS to CapabilityStatus(false, null),
+                                                        WhsDataType.DISTANCE to CapabilityStatus(true, null),
+                                                        WhsDataType.ELEVATION_GAIN to CapabilityStatus(false, null),
+                                                        WhsDataType.TOTAL_CALORIES to CapabilityStatus(false, null),
+                                                        WhsDataType.PACE to CapabilityStatus(false, null),
+                                                        WhsDataType.HEART_RATE_BPM to CapabilityStatus(true, null),
+                                                        WhsDataType.STEPS to CapabilityStatus(true, null),
+                                                       ))
+  }
+
+  @Test
+  fun `Unknown data type capabilities are ignored`() {
+    assertLoadCapabilitiesAdbResponseIsParsedCorrectly("Row: 0 data_type=DATA_TYPE_UNKNOWN, is_enabled=true, override_value=0\n" +
+                                                       "Row: 1 data_type=STEPS, is_enabled=true, override_value=0\n" +
+                                                       "Row: 2 data_type=DATA_TYPE_UNKNOWN, is_enabled=true, override_value=0", mapOf(
+                                                        WhsDataType.STEPS to CapabilityStatus(true, null),
+                                                      ))
   }
 }

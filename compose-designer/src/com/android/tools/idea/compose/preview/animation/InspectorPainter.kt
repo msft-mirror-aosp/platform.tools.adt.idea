@@ -16,6 +16,8 @@
 package com.android.tools.idea.compose.preview.animation
 
 import com.android.tools.idea.compose.preview.util.createToolbarWithNavigation
+import com.android.tools.idea.preview.animation.InspectorColors
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.ui.JBColor
@@ -59,7 +61,7 @@ object InspectorPainter {
         50,
         10,
         5,
-        2
+        2,
       )
 
     /**
@@ -117,7 +119,7 @@ object InspectorPainter {
           x - HANDLE_HALF_WIDTH,
           x - HANDLE_HALF_WIDTH,
           x + HANDLE_HALF_WIDTH,
-          x + HANDLE_HALF_WIDTH
+          x + HANDLE_HALF_WIDTH,
         )
       val yPoints =
         intArrayOf(
@@ -125,7 +127,7 @@ object InspectorPainter {
           y - HANDLE_HALF_HEIGHT,
           y - handleHeight,
           y - handleHeight,
-          y - HANDLE_HALF_HEIGHT
+          y - HANDLE_HALF_HEIGHT,
         )
       g.fillPolygon(xPoints, yPoints, xPoints.size)
     }

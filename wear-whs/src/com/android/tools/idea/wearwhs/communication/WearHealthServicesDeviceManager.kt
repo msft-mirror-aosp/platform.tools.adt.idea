@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.wearwhs.communication
 
+import com.android.tools.idea.wearwhs.EventTrigger
 import com.android.tools.idea.wearwhs.WhsCapability
+import com.android.tools.idea.wearwhs.WhsDataType
 
 /**
  * Interface for the Wear Health Services Device Manager.
@@ -36,32 +38,35 @@ internal interface WearHealthServicesDeviceManager {
   suspend fun loadOngoingExercise(): Boolean
 
   /**
-   * Enables a capability of WHS on the device.
+   * Set multiple WHS capabilities on the device.
    */
-  suspend fun enableCapability(capability: WhsCapability)
+  suspend fun setCapabilities(capabilityUpdates: Map<WhsDataType, Boolean>)
 
   /**
-   * Disables a capability of WHS on the device.
+   * Overrides the sensor value for the given capabilities.
    */
-  suspend fun disableCapability(capability: WhsCapability)
-
-  /**
-   * Overrides the sensor value for the given capability.
-   */
-  suspend fun overrideValue(capability: WhsCapability, value: Number?)
+  suspend fun overrideValues(overrideUpdates: Map<WhsDataType, Number?>)
 
   /**
    * Loads the current state from WHS to compare with the current UI.
    */
-  suspend fun loadCurrentCapabilityStates(): Map<WhsCapability, OnDeviceCapabilityState>
+  suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityStatus>
+
+  /**
+   * Deletes all data from the WHS content provider
+   */
+  suspend fun clearContentProvider()
+
+  suspend fun isWhsVersionSupported(): Boolean
 
   /**
    * Sets the serial number of the emulator to connect.
    */
   fun setSerialNumber(serialNumber: String)
+  suspend fun triggerEvent(eventTrigger: EventTrigger)
 }
 
-internal data class OnDeviceCapabilityState(
+internal data class CapabilityStatus(
   var enabled: Boolean,
   var overrideValue: Float?,
 )

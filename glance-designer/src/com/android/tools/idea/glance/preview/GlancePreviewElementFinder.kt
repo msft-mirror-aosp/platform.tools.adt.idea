@@ -25,11 +25,9 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.toUElementOfType
 
 private const val GLANCE_PREVIEW_ANNOTATION_NAME = "Preview"
 private const val GLANCE_PREVIEW_ANNOTATION_FQN =
@@ -61,7 +59,7 @@ private fun UAnnotation.isGlancePreview(surfaceName: String) =
  */
 private fun toGlancePreviewElements(
   methods: List<UMethod>,
-  surfaceName: String
+  surfaceName: String,
 ): Sequence<GlancePreviewElement> =
   methods
     .flatMap { method ->
@@ -75,7 +73,7 @@ private fun toGlancePreviewElements(
             displaySettings,
             it.toSmartPsiPointer(),
             method.uastBody.toSmartPsiPointer(),
-            methodFqn
+            methodFqn,
           )
         }
     }
@@ -86,12 +84,6 @@ open class GlancePreviewElementFinder(private val surfaceName: String) :
   FilePreviewElementFinder<GlancePreviewElement> {
   private val glanceSurfaceUAnnotationFilter: (UAnnotation?) -> Boolean = {
     surfaceFilter(it, surfaceName)
-  }
-
-  private val glanceSurfaceKtAnnotationFilter: (KtAnnotationEntry) -> Boolean = {
-    ReadAction.compute<Boolean, Throwable> {
-      glanceSurfaceUAnnotationFilter(it.psiOrParent.toUElementOfType())
-    }
   }
 
   private val methodsToElements: (List<UMethod>) -> Sequence<GlancePreviewElement> = {
@@ -105,7 +97,7 @@ open class GlancePreviewElementFinder(private val surfaceName: String) :
       GLANCE_PREVIEW_ANNOTATION_FQN,
       GLANCE_PREVIEW_ANNOTATION_NAME,
       glanceSurfaceUAnnotationFilter,
-      methodsToElements
+      methodsToElements,
     )
 
   override suspend fun hasPreviewElements(project: Project, vFile: VirtualFile): Boolean {
@@ -121,7 +113,7 @@ open class GlancePreviewElementFinder(private val surfaceName: String) :
       vFile,
       GLANCE_PREVIEW_ANNOTATION_FQN,
       GLANCE_PREVIEW_ANNOTATION_NAME,
-      glanceSurfaceKtAnnotationFilter
+      glanceSurfaceUAnnotationFilter,
     )
   }
 }

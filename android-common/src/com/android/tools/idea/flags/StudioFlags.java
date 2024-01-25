@@ -28,6 +28,7 @@ import com.android.flags.IntFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
+import com.android.tools.idea.IdeChannel;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
@@ -416,19 +417,12 @@ public final class StudioFlags {
     "Enables and shows the ADB connection status widget in the status bar",
     false);
 
-  public static final Flag<Boolean> ADB_SERVER_MANAGEMENT_MODE_SETTINGS_VISIBLE = Flag.create(
-    RUNDEBUG,
-    "adb.server.management.mode.settings.visible",
-    "Show ADB server management mode settings",
-    "To allow toggling between automatic or user managed ADB server mode.",
-    false);
-
-  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = Flag.create(
+  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = new BooleanFlag(
     RUNDEBUG,
     "deployment.target.deviceprovisioner",
     "Use Device Provisioner to provide deployment targets",
     "Uses the Device Provisioner to get the list of potential devices to deploy to.",
-    false);
+    true);
 
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = Flag.create(
     RUNDEBUG,
@@ -459,7 +453,7 @@ public final class StudioFlags {
     "Use adblib to track devices (IDevice)",
     "Use adblib instead of ddmlib to track and implement `IDevice` instances. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    false);
+    true);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_USAGE_TRACKER = Flag.create(
     RUNDEBUG,
@@ -551,6 +545,14 @@ public final class StudioFlags {
     "emit.console.output.to.logcat",
     "Emit console output to Logcat",
     "Emit console output, specifically breakpoint log expressions, to Logcat.",
+    true
+  );
+
+  public static final Flag<Boolean> RISC_V = Flag.create(
+    RUNDEBUG,
+    "riscv.support",
+    "Support for RISC V",
+    "Allow support for RISC V architecture and targeted architecture selection.",
     true
   );
 
@@ -911,10 +913,10 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery",
     false);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_SETTINGS_PICKER = Flag.create(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_SETTINGS_PICKER = new BooleanFlag(
     EMBEDDED_EMULATOR, "settings.picker", "Show settings picker",
     "Enables the settings picker to be shown for testing an application",
-    true);
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
   //endregion
 
   //region Device Mirroring
@@ -1644,6 +1646,10 @@ public final class StudioFlags {
     Flag.create(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
                 "Deep links gRPC server address. Use a non-default value for testing purposes.",
                 "deeplinkassistant-pa.googleapis.com");
+  public static final Flag<String> DEEPLINKS_DAL_VALIDATION_API_KEY =
+    Flag.create(APP_LINKS_ASSISTANT, "deeplinks.dal.validation.api.key", "Deep links DAL validation API key",
+                "API key for deep links JSON validation.",
+                "AIzaSyDwhmCMfuDe1wM1nZj1gJsRSPviNrQbN14");
   public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
                 "Improvements to the Create App Links functionalities.", false);
@@ -1736,9 +1742,52 @@ public final class StudioFlags {
                     ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
-    Flag.create(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
-                "Enable sending inline code completion metrics to the AIDA CES service",
-                "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.", false);
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
+                    "Enable sending inline code completion metrics to the AIDA CES service",
+                    "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.", false);
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_FILE_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
+                    "Enable sending additional file context with completion requests",
+                    "When enabled, additional file context (eg, currently open files) are included in inline code completion requests.",
+                    false);
+
+  public static final Flag<Boolean> STUDIOBOT_BUILD_SYNC_ERROR_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "build.and.sync.error.context.enabled",
+                    "Enable sending context with build/sync error queries.",
+                    "When enabled, build/sync error queries will attach context from the project.",
+                    ChannelDefault.of(false).withOverride(true, DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "compiler.error.context.enabled",
+                "Enable sending context with compiler error queries.",
+                "When enabled, compiler queries will attach context (e.g. error location, full trace), from the project.",
+                    ChannelDefault.of(false).withOverride(true, DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_GRADLE_ERROR_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "gradle.error.context.enabled",
+                    "Enable sending contents of Gradle build files with applicable sync/build error queries.",
+                    "When enabled, applicable sync/build error queries will attach context (e.g. build file contents), from the project.",
+                    ChannelDefault.of(false).withOverride(true, DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_EDITOR_ACTION_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.action.context.enabled",
+                    "Enable sending context with editor actions.",
+                    "When enabled, queries sent by editor actions, like Explain Code, will attach context (e.g. resolved references) from the project.",
+                    ChannelDefault.of(false).withOverride(true, DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_CHAT_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.context.enabled",
+                    "Enable sending context with chat queries.",
+                    "When enabled, chat queries will attach context (e.g. project structure, currently open file) from the project.",
+                    ChannelDefault.of(false).withOverride(true, DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_EDITOR_AI_ACTIONS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.actions.enabled",
+                    "Enable AI Actions in the editor.",
+                    "When enabled, shows the 'AI Actions' item in the editor popup menu along with allowing individual actions to be enabled.",
+                    ChannelDefault.of(false).withOverride(true, DEV));
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI

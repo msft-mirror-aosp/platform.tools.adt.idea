@@ -16,6 +16,7 @@
 package com.android.tools.idea.wearwhs.view
 
 import com.android.tools.idea.wearwhs.BUNDLE_NAME
+import com.android.tools.idea.wearwhs.EventTrigger
 import com.android.tools.idea.wearwhs.WearWhsBundle.message
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.android.tools.idea.wearwhs.view.Preset.ALL
@@ -86,6 +87,11 @@ internal interface WearHealthServicesToolWindowStateManager {
   fun getOngoingExercise(): StateFlow<Boolean>
 
   /**
+   * Triggers given event on the device.
+   */
+  suspend fun triggerEvent(eventTrigger: EventTrigger)
+
+  /**
    * Used to get/set the serial number of the currently running emulator.
    */
   var serialNumber: String?
@@ -112,7 +118,7 @@ internal enum class Preset(@PropertyKey(resourceBundle = BUNDLE_NAME) val labelK
  */
 internal sealed class WhsStateManagerStatus {
   object Ready : WhsStateManagerStatus()
-  class Syncing(val capability: WhsCapability) : WhsStateManagerStatus()
+  object Syncing : WhsStateManagerStatus()
   object ConnectionLost : WhsStateManagerStatus()
   object Idle : WhsStateManagerStatus()
 }

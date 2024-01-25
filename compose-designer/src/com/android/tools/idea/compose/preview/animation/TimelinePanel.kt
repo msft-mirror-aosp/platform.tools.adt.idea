@@ -19,6 +19,9 @@ import com.android.tools.idea.compose.preview.animation.timeline.PositionProxy
 import com.android.tools.idea.compose.preview.animation.timeline.TimelineElement
 import com.android.tools.idea.compose.preview.animation.timeline.TimelineElementStatus
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG
+import com.android.tools.idea.preview.animation.AnimationTracker
+import com.android.tools.idea.preview.animation.InspectorColors
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.UIUtil
@@ -46,7 +49,7 @@ internal const val DEFAULT_MAX_DURATION_MS = 10000L
 open class TimelinePanel(
   val tooltip: Tooltip,
   val previewState: AnimationPreviewState,
-  val tracker: AnimationTracker
+  val tracker: AnimationTracker,
 ) : JSlider(0, DEFAULT_MAX_DURATION_MS.toInt(), 0) {
   private var cachedSliderWidth = 0
   private var cachedMax = 0
@@ -59,7 +62,7 @@ open class TimelinePanel(
         g as Graphics2D,
         x = sliderUI.panelThumbRect().x + sliderUI.panelThumbRect().width / 2,
         y = InspectorLayout.timelineHeaderHeightScaled(),
-        height = sliderUI.panelThumbRect().height
+        height = sliderUI.panelThumbRect().height,
       )
     }
 
@@ -127,7 +130,7 @@ open class TimelinePanel(
   override fun getPreferredSize(): Dimension {
     return Dimension(
       zoomValue * width - 50,
-      InspectorLayout.timelineHeaderHeightScaled() + sliderUI.elements.sumOf { it.heightScaled() }
+      InspectorLayout.timelineHeaderHeightScaled() + sliderUI.elements.sumOf { it.heightScaled() },
     )
   }
 
@@ -211,7 +214,7 @@ open class TimelineSliderUI(val timeline: TimelinePanel) : BasicSliderUI(timelin
     else
       Dimension(
         originalSize.width,
-        slider.parent.height - InspectorLayout.timelineHeaderHeightScaled()
+        slider.parent.height - InspectorLayout.timelineHeaderHeightScaled(),
       )
   }
 
@@ -272,7 +275,7 @@ open class TimelineSliderUI(val timeline: TimelinePanel) : BasicSliderUI(timelin
       0,
       InspectorLayout.timelineHeaderHeightScaled(),
       slider.width,
-      slider.height - InspectorLayout.timelineHeaderHeightScaled()
+      slider.height - InspectorLayout.timelineHeaderHeightScaled(),
     )
 
     var totalHeight = InspectorLayout.timelineHeaderHeightScaled()
@@ -446,7 +449,7 @@ open class TimelineSliderUI(val timeline: TimelinePanel) : BasicSliderUI(timelin
       val thumbX =
         currentMouseX.coerceIn(
           xPositionForValue(slider.minimum),
-          xPositionForValue(slider.maximum)
+          xPositionForValue(slider.maximum),
         ) - halfWidth
       setThumbLocation(thumbX, thumbRect.y)
       slider.value = valueForXPosition(currentMouseX)

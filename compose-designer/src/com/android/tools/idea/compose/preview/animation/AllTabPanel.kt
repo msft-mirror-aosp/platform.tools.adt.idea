@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.preview.animation
 
 import com.android.tools.adtui.TabularLayout
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ui.JBColor
 import com.intellij.ui.OnePixelSplitter
@@ -87,7 +88,7 @@ class AllTabPanel : JPanel(TabularLayout("6px,*", "32px,*")) {
   fun addPlayback(playback: JComponent) {
     add(
       playback.apply { border = MatteBorder(0, 0, 1, 0, JBColor.border()) },
-      TabularLayout.Constraint(0, 1)
+      TabularLayout.Constraint(0, 1),
     )
   }
 
@@ -97,7 +98,7 @@ class AllTabPanel : JPanel(TabularLayout("6px,*", "32px,*")) {
     cards.add(card)
     cardsLayout.setRowSizing(
       cards.indexOf(card),
-      TabularLayout.SizingRule(TabularLayout.SizingRule.Type.FIXED, card.getCurrentHeight())
+      TabularLayout.SizingRule(TabularLayout.SizingRule.Type.FIXED, card.getCurrentHeight()),
     )
     card.state.addExpandedListener { updateCardSize(card) }
     updateDimension()
@@ -106,7 +107,7 @@ class AllTabPanel : JPanel(TabularLayout("6px,*", "32px,*")) {
   fun updateCardSize(card: Card) {
     cardsLayout.setRowSizing(
       cards.indexOf(card),
-      TabularLayout.SizingRule(TabularLayout.SizingRule.Type.FIXED, card.getCurrentHeight())
+      TabularLayout.SizingRule(TabularLayout.SizingRule.Type.FIXED, card.getCurrentHeight()),
     )
     updateDimension()
     card.component.revalidate()

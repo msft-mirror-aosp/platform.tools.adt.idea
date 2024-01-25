@@ -23,6 +23,7 @@ import com.android.tools.idea.compose.preview.analytics.AnimationToolingUsageTra
 import com.android.tools.idea.compose.preview.animation.timeline.ElementState
 import com.android.tools.idea.compose.preview.animation.timeline.PositionProxy
 import com.android.tools.idea.compose.preview.animation.timeline.TimelineElement
+import com.android.tools.idea.preview.animation.TooltipInfo
 import com.intellij.openapi.actionSystem.ex.ComboBoxAction
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.ui.JBColor
@@ -37,7 +38,8 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 import org.junit.Assert.assertTrue
 
-val NoopAnimationTracker = AnimationTracker(AnimationToolingUsageTracker.getInstance(null))
+val NoopComposeAnimationTracker =
+  ComposeAnimationTracker(AnimationToolingUsageTracker.getInstance(null))
 
 object TestUtils {
   private const val TEST_ELEMENT_WIDTH = 100
@@ -49,7 +51,7 @@ object TestUtils {
     private val x: Int,
     private val y: Int,
     positionProxy: PositionProxy,
-    state: ElementState = ElementState()
+    state: ElementState = ElementState(),
   ) : TimelineElement(state, x, x + TEST_ELEMENT_WIDTH, positionProxy) {
     override fun contains(x: Int, y: Int): Boolean {
       return x in this.x + offsetPx..this.x + TEST_ELEMENT_WIDTH + offsetPx &&
@@ -78,7 +80,7 @@ object TestUtils {
       TimelinePanel(
         Tooltip(root, TooltipLayeredPane(root)),
         testPreviewState(),
-        NoopAnimationTracker
+        NoopComposeAnimationTracker,
       )
     slider.maximum = 100
     root.apply {
@@ -97,7 +99,7 @@ object TestUtils {
 
   fun createComposeAnimation(
     label: String? = null,
-    type: ComposeAnimationType = ComposeAnimationType.ANIMATED_VALUE
+    type: ComposeAnimationType = ComposeAnimationType.ANIMATED_VALUE,
   ) =
     object : ComposeAnimation {
       override val animationObject = Any()

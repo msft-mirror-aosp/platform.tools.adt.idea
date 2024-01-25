@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.common.error
 
+import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.uibuilder.type.LayoutFileType
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewPanelProvider
@@ -35,10 +36,11 @@ class SharedIssuePanelProvider(private val project: Project) : ProblemsViewPanel
       SHARED_ISSUE_PANEL_TAB_ID,
       { LayoutValidationNodeFactory },
       NotSuppressedFilter + SelectedEditorFilter(project),
-      ::getEmptyMessage
+      ::getEmptyMessage,
     )
   }
 
+  @WorkerThread
   private fun getEmptyMessage(): String {
     val files = FileEditorManager.getInstance(project).selectedEditors.mapNotNull { it.file }
     if (files.isEmpty()) {

@@ -51,13 +51,13 @@ import static com.android.SdkConstants.XMLNS_URI;
 import static com.android.ide.common.rendering.api.SessionParams.RenderingMode.V_SCROLL;
 
 import com.android.ide.common.fonts.FontFamily;
-import com.android.ide.common.rendering.api.HardwareConfig;
 import com.android.ide.common.rendering.api.ILayoutPullParser;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.xml.XmlPrettyPrinter;
 import com.android.resources.ResourceFolderType;
 import com.android.tools.apk.analyzer.ResourceIdResolver;
+import com.android.tools.fonts.DownloadableFontCacheService;
 import com.android.tools.fonts.ProjectFonts;
 import com.android.tools.rendering.IRenderLogger;
 import com.android.tools.rendering.RenderTask;
@@ -66,10 +66,9 @@ import com.android.tools.res.ResourceRepositoryManager;
 import com.android.tools.res.ids.ResourceIdManagerHelper;
 import com.android.utils.SdkUtils;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Computable;
-import com.intellij.openapi.util.text.StringUtil;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -202,7 +201,8 @@ public class LayoutPullParsers {
         renderTask.setDecorations(false);
         renderTask.setRenderingMode(V_SCROLL);
         ResourceIdResolver resolver = ResourceIdManagerHelper.getResolver(renderTask.getContext().getModule().getResourceIdManager());
-        return createFontFamilyParser(file, (fontName) -> (new ProjectFonts(manager, resolver)).getFont(fontName), renderTask.getDefaultForegroundColor());
+        DownloadableFontCacheService fontService = renderTask.getContext().getModule().getEnvironment().getDownloadableFontCacheService();
+        return createFontFamilyParser(file, (fontName) -> (new ProjectFonts(fontService, manager, resolver)).getFont(fontName), renderTask.getDefaultForegroundColor());
       default:
         // Should have been prevented by isSupported(PsiFile)
         assert false : folderType;
@@ -337,7 +337,7 @@ public class LayoutPullParsers {
     else {
       fontStream = fontSubTags.stream()
         .map(font -> new String[]{font.getAttributeValue("font", ANDROID_URI), "normal"})
-        .filter(font -> StringUtil.isNotEmpty(font[0]));
+        .filter(font -> !Strings.isNullOrEmpty(font[0]));
     }
 
     boolean[] hasElements = new boolean[1];

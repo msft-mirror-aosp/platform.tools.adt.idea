@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.STRING_TYPE
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel
+import com.android.tools.idea.gradle.repositories.IdeGoogleMavenRepository
 import com.android.tools.idea.projectsystem.DependencyManagementException
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
@@ -111,7 +112,7 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
               if (existing == null) {
                   val updatedFiles = mutableSetOf<PsiFile>()
                   updatedFiles.addAll(
-                    DependenciesHelper(projectBuildModel).addClasspathDependencyWithVersionVariable(
+                    DependenciesHelper.withModel(projectBuildModel).addClasspathDependencyWithVersionVariable(
                       "org.jetbrains.kotlin:kotlin-gradle-plugin:$version",
                       "kotlin_version"
                     )
@@ -149,7 +150,7 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
                   // TODO(xof): kotlin("android") for kotlin [cosmetic]
                   val updatedFiles = mutableSetOf<PsiFile>()
                   updatedFiles.addAll(
-                    DependenciesHelper(projectBuildModel).addPlugin(
+                    DependenciesHelper.withModel(projectBuildModel).addPlugin(
                       "org.jetbrains.kotlin.android",
                       version,
                       apply = false,
@@ -186,7 +187,7 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
                   // TODO(xof): kotlin("android") for kotlin [cosmetic]
                   val updatedFiles = mutableSetOf<PsiFile>()
                   updatedFiles.addAll(
-                    DependenciesHelper(projectBuildModel).addPlugin(
+                    DependenciesHelper.withModel(projectBuildModel).addPlugin(
                       "org.jetbrains.kotlin.android",
                       version,
                       apply = null,
@@ -270,7 +271,8 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
         }
         else {
             if (file.project.isAndroidx()) {
-                (addDependency(projectBuildModel, moduleBuildModel, ANDROIDX_CORE_GROUP, CORE_KTX, "+") +
+                val ktxCoreVersion = IdeGoogleMavenRepository.findVersion(ANDROIDX_CORE_GROUP, CORE_KTX)?.toString() ?: "+"
+                (addDependency(projectBuildModel, moduleBuildModel, ANDROIDX_CORE_GROUP, CORE_KTX, ktxCoreVersion) +
                  addKtxDependenciesFromMap(projectBuildModel, module, moduleBuildModel, androidxKtxLibraryMap))
                   .let {
                       changedFiles.addAll(it)
@@ -286,7 +288,7 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
 
             Also, if we failed to find repositories in the top-level project, we should add repositories to this build file.
              */
-            DependenciesHelper(projectBuildModel).addPluginToModule("org.jetbrains.kotlin.android", version, moduleBuildModel).let {
+            DependenciesHelper.withModel(projectBuildModel).addPluginToModule("org.jetbrains.kotlin.android", version, moduleBuildModel).let {
                 changedFiles.addAll(it)
             }
 
@@ -349,9 +351,9 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
       artifactId: String,
       version: String
     ): Set<PsiFile> =
-      DependenciesHelper(projectBuildModel).addDependency("implementation",
-                                                          ArtifactDependencySpec.create(artifactId, groupId, version).compactNotation(),
-                                                          moduleBuildModel)
+      DependenciesHelper.withModel(projectBuildModel).addDependency("implementation",
+                                                                    ArtifactDependencySpec.create(artifactId, groupId, version).compactNotation(),
+                                                                    moduleBuildModel)
 
     // Return version string of the specified dependency if module depends on it, and null otherwise.
     private fun getDependencyVersion(module: Module, groupId: String, artifactId: String): String? {

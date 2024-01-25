@@ -29,6 +29,9 @@ import com.android.tools.idea.common.surface.GuiInputHandler
 import com.android.tools.idea.common.surface.handleLayoutlibNativeCrash
 import com.android.tools.idea.compose.preview.gallery.ComposeGalleryMode
 import com.android.tools.idea.compose.preview.gallery.GalleryModeWrapperPanel
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.editors.build.ProjectBuildStatusManager
 import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.notifications.NotificationPanel
@@ -67,6 +70,8 @@ import java.awt.Point
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.LayoutFocusTraversalPolicy
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 
 private const val COMPOSE_PREVIEW_DOC_URL = "https://d.android.com/jetpack/compose/preview"
@@ -150,7 +155,7 @@ interface ComposePreviewView {
     modelUpdater: NlModel.NlModelUpdaterInterface,
     navigationHandler: PreviewNavigationHandler,
     configureLayoutlibSceneManager:
-      (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager
+      (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager,
   ): List<ComposePreviewElementInstance> {
 
     return mainSurface.updatePreviewsAndRefresh(
@@ -167,7 +172,7 @@ interface ComposePreviewView {
       previewElementModelAdapter,
       modelUpdater,
       navigationHandler,
-      configureLayoutlibSceneManager
+      configureLayoutlibSceneManager,
     )
   }
 
@@ -186,14 +191,14 @@ interface ComposePreviewView {
     configureLayoutlibSceneManager:
       (PreviewDisplaySettings, LayoutlibSceneManager) -> LayoutlibSceneManager,
     refreshFilter: (LayoutlibSceneManager) -> Boolean,
-    refreshOrder: (LayoutlibSceneManager) -> Int
+    refreshOrder: (LayoutlibSceneManager) -> Int,
   ) {
     mainSurface.refreshExistingPreviewElements(
       progressIndicator,
       modelToPreview,
       configureLayoutlibSceneManager,
       refreshFilter,
-      refreshOrder
+      refreshOrder,
     )
   }
 }
@@ -205,7 +210,7 @@ fun interface ComposePreviewViewProvider {
     projectBuildStatusManager: ProjectBuildStatusManager,
     dataProvider: DataProvider,
     mainDesignSurfaceBuilder: NlDesignSurface.Builder,
-    parentDisposable: Disposable
+    parentDisposable: Disposable,
   ): ComposePreviewView
 }
 
@@ -246,13 +251,15 @@ internal class ComposePreviewViewImpl(
   private val projectBuildStatusManager: ProjectBuildStatusManager,
   dataProvider: DataProvider,
   mainDesignSurfaceBuilder: NlDesignSurface.Builder,
-  parentDisposable: Disposable
+  parentDisposable: Disposable,
 ) : ComposePreviewView, Pannable, DataProvider {
 
   private val workbench =
     WorkBench<DesignSurface<*>>(project, "Compose Preview", null, parentDisposable, 0)
 
   private val log = Logger.getInstance(ComposePreviewViewImpl::class.java)
+
+  private val scope = AndroidCoroutineScope(parentDisposable)
 
   override val mainSurface =
     mainDesignSurfaceBuilder
@@ -327,10 +334,15 @@ internal class ComposePreviewViewImpl(
       val actionDataText =
         "${message("panel.needs.build.action.text")}${getBuildAndRefreshShortcut().asString()}"
       return ActionData(actionDataText) {
-        psiFilePointer.element?.virtualFile?.let { project.requestBuild(it) }
-        workbench
-          .repaint() // Repaint the workbench, otherwise the text and link will keep displaying if
-        // the mouse is hovering the link
+        val virtualFile = psiFilePointer.element?.virtualFile
+        scope.launch(workerThread) {
+          if (virtualFile != null) project.requestBuild(virtualFile)
+          withContext(uiThread) {
+            // Repaint the workbench, otherwise the text and link will keep displaying if the mouse
+            // is hovering the link
+            workbench.repaint()
+          }
+        }
       }
     }
 
@@ -495,7 +507,7 @@ internal class ComposePreviewViewImpl(
               message("panel.no.previews.defined"),
               null,
               UrlData(message("panel.no.previews.action"), COMPOSE_PREVIEW_DOC_URL),
-              null
+              null,
             )
           }
         }

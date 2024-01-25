@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.wearwhs.communication
 
+import com.android.tools.idea.wearwhs.EventTrigger
 import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WhsCapability
+import com.android.tools.idea.wearwhs.WhsDataType
 import kotlinx.coroutines.delay
 
 private const val DELAY_MS = 100L
@@ -27,7 +29,9 @@ private const val DELAY_MS = 100L
 internal class FakeDeviceManager(
   internal val capabilities: List<WhsCapability> = WHS_CAPABILITIES) : WearHealthServicesDeviceManager {
   internal var failState = false
-  private val onDeviceStates = capabilities.associateWith { OnDeviceCapabilityState(false, null) }
+  internal val triggeredEvents = mutableListOf<EventTrigger>()
+  internal var clearContentProviderInvocations = 0
+  private val onDeviceStates = capabilities.associate { it.dataType to CapabilityStatus(false, null) }
 
   override suspend fun loadCapabilities() = if (failState) {
     throw ConnectionLostException("Failed to load capabilities")
@@ -45,31 +49,19 @@ internal class FakeDeviceManager(
     false
   }
 
-  override suspend fun enableCapability(capability: WhsCapability) = if (failState) {
-    throw ConnectionLostException("Failed to enable capability")
-  }
-  else {
-    delay(DELAY_MS)
-    onDeviceStates[capability]?.enabled = true
-  }
-
-  override suspend fun disableCapability(capability: WhsCapability) = if (failState) {
-    throw ConnectionLostException("Failed to disable capability")
-  }
-  else {
-    delay(DELAY_MS)
-    onDeviceStates[capability]?.enabled = false
-  }
-
-  override suspend fun overrideValue(capability: WhsCapability, value: Number?) = if (failState) {
+  override suspend fun setCapabilities(capabilityUpdates: Map<WhsDataType, Boolean>) = if (failState) {
     throw ConnectionLostException("Failed to override value")
-  }
-  else {
-    delay(DELAY_MS)
-    onDeviceStates[capability]?.overrideValue = value?.toFloat()
+  } else {
+    capabilityUpdates.forEach { (capability, enabled) -> onDeviceStates[capability]?.enabled = enabled }
   }
 
-  override suspend fun loadCurrentCapabilityStates(): Map<WhsCapability, OnDeviceCapabilityState> = if (failState) {
+  override suspend fun overrideValues(overrideUpdates: Map<WhsDataType, Number?>)  = if (failState) {
+    throw ConnectionLostException("Failed to override value")
+  } else {
+    overrideUpdates.forEach { (capability, value) -> onDeviceStates[capability]?.overrideValue = value?.toFloat() }
+  }
+
+  override suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityStatus> = if (failState) {
     throw ConnectionLostException("Failed to load capability states")
   }
   else {
@@ -77,5 +69,23 @@ internal class FakeDeviceManager(
     onDeviceStates
   }
 
+  override suspend fun clearContentProvider() {
+    clearContentProviderInvocations++
+  }
+
+  override suspend fun isWhsVersionSupported(): Boolean {
+    if (failState) {
+      throw ConnectionLostException("Failed to load capability states")
+    }
+    return true
+  }
+
   override fun setSerialNumber(serialNumber: String) {}
+
+  override suspend fun triggerEvent(eventTrigger: EventTrigger) {
+    if (failState) {
+      throw ConnectionLostException("Failed to trigger event")
+    }
+    triggeredEvents.add(eventTrigger)
+  }
 }

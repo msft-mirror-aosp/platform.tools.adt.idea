@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.compose.preview.animation.timeline
 
-import com.android.tools.idea.compose.preview.animation.TooltipInfo
+import com.android.tools.idea.preview.animation.TooltipInfo
 import com.android.tools.idea.res.clamp
 import com.intellij.openapi.Disposable
 import com.intellij.util.ui.JBUI
@@ -48,13 +48,13 @@ enum class TimelineElementStatus {
 open class ParentTimelineElement(
   state: ElementState,
   private val children: List<TimelineElement>,
-  positionProxy: PositionProxy
+  positionProxy: PositionProxy,
 ) :
   TimelineElement(
     state = state,
     minX = children.minOfOrNull { it.minX } ?: 0,
     maxX = children.maxOfOrNull { it.maxX } ?: 0,
-    positionProxy = positionProxy
+    positionProxy = positionProxy,
   ) {
   override var height = children.sumOf { it.height }
 
@@ -92,7 +92,7 @@ abstract class TimelineElement(
   val state: ElementState,
   val minX: Int,
   val maxX: Int,
-  protected val positionProxy: PositionProxy
+  protected val positionProxy: PositionProxy,
 ) : Disposable {
 
   var offsetPx: Int = 0
@@ -130,7 +130,7 @@ abstract class TimelineElement(
       clamp(
         offsetPx + deltaPx,
         positionProxy.minimumXPosition() - maxX,
-        positionProxy.maximumXPosition() - minX
+        positionProxy.maximumXPosition() - minX,
       )
     state.valueOffset =
       if (offsetPx >= 0)

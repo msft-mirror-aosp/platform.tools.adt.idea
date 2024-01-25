@@ -16,7 +16,6 @@
 package com.android.tools.idea.layoutinspector
 
 import com.android.tools.adtui.workbench.WorkBench
-import com.android.tools.idea.flags.ExperimentalSettingsConfigurable
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
@@ -25,6 +24,7 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.runningdevices.actions.EMBEDDED_LAYOUT_INSPECTOR_MIN_API
 import com.android.tools.idea.layoutinspector.runningdevices.getRunningDevicesExistingTabsDeviceSerialNumber
+import com.android.tools.idea.layoutinspector.settings.LayoutInspectorConfigurable
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefinition
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
@@ -65,7 +65,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
         showTryEmbeddedLayoutInspectorBanner(
           layoutInspector.inspectorModel.project,
           layoutInspector.notificationModel,
-          client
+          client,
         )
       }
     }
@@ -76,7 +76,7 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
           devicePanel,
           layoutInspector,
           listOf(LayoutInspectorTreePanelDefinition(), LayoutInspectorPropertiesPanelDefinition()),
-          false
+          false,
         )
       }
 
@@ -99,14 +99,14 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
           project,
           toolWindow,
           layoutInspector,
-          layoutInspector.launcher!!
-        )
+          layoutInspector.launcher!!,
+        ),
       )
   }
 
   private fun createDevicePanel(
     disposable: Disposable,
-    layoutInspector: LayoutInspector
+    layoutInspector: LayoutInspector,
   ): DeviceViewPanel {
     val deviceViewPanel =
       DeviceViewPanel(layoutInspector = layoutInspector, disposableParent = disposable)
@@ -154,7 +154,7 @@ constructor(
           You can either <a href="stop">stop</a> it, or leave it running and resume your session later.
         """
             .trimIndent(),
-          null
+          null,
         ) { hyperlinkEvent ->
           if (hyperlinkEvent.eventType == HyperlinkEvent.EventType.ACTIVATED) {
             stopInspectors()
@@ -173,7 +173,7 @@ const val TRY_EMBEDDED_INSPECTOR_BANNER_ID = "try.embedded.layout.inspector"
 private fun showTryEmbeddedLayoutInspectorBanner(
   project: Project,
   notificationModel: NotificationModel,
-  client: InspectorClient
+  client: InspectorClient,
 ) {
   val defaultValue = true
   val shouldShowBanner = {
@@ -204,16 +204,16 @@ private fun showTryEmbeddedLayoutInspectorBanner(
           },
           StatusNotificationAction(LayoutInspectorBundle.message("turn.on")) {
             ShowSettingsUtil.getInstance()
-              .showSettingsDialog(project, ExperimentalSettingsConfigurable::class.java)
-          }
-        )
+              .showSettingsDialog(project, LayoutInspectorConfigurable::class.java)
+          },
+        ),
     )
   }
 }
 
 private fun isDeviceInRunningDevicesToolWindow(
   project: Project,
-  requiredDeviceId: String
+  requiredDeviceId: String,
 ): Boolean {
   val devicesIds = project.getRunningDevicesExistingTabsDeviceSerialNumber()
   return devicesIds.map { it.serialNumber }.contains(requiredDeviceId)

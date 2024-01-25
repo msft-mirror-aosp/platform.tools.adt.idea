@@ -20,6 +20,7 @@ import com.android.tools.idea.compose.preview.animation.actions.FreezeAction
 import com.android.tools.idea.compose.preview.animation.timeline.ElementState
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.util.createToolbarWithNavigation
+import com.android.tools.idea.preview.animation.InspectorLayout
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.ui.AnActionButton
@@ -41,7 +42,7 @@ class AnimationCard(
   rootComponent: JComponent,
   override val state: ElementState,
   extraActions: List<AnAction> = emptyList(),
-  private val tracker: AnimationTracker
+  private val tracker: ComposeAnimationTracker,
 ) : JPanel(TabularLayout("*", "30px,40px")), Card {
 
   // Collapsed view:
@@ -106,7 +107,7 @@ class AnimationCard(
       createToolbarWithNavigation(
         rootComponent,
         "AnimationCard",
-        listOf(FreezeAction(previewState, state, tracker)) + extraActions
+        listOf(FreezeAction(previewState, state, tracker)) + extraActions,
       )
     secondRow.add(secondRowToolbar.component, BorderLayout.CENTER)
     add(firstRow, TabularLayout.Constraint(0, 0))

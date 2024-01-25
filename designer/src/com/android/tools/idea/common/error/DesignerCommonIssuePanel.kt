@@ -15,7 +15,11 @@
  */
 package com.android.tools.idea.common.error
 
+import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.common.model.NlComponent
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintSettings
 import com.google.common.annotations.VisibleForTesting
@@ -55,6 +59,8 @@ import com.intellij.util.ui.tree.TreeUtil
 import javax.swing.event.TreeModelEvent
 import javax.swing.tree.TreePath
 import javax.swing.tree.TreeSelectionModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TOOLBAR_ACTIONS_ID = "Android.Designer.IssuePanel.ToolbarActions"
 
@@ -74,10 +80,11 @@ class DesignerCommonIssuePanel(
   private val tabId: String,
   nodeFactoryProvider: () -> NodeFactory,
   issueFilter: DesignerCommonIssueProvider.Filter,
-  private val emptyMessageProvider: () -> String,
-  private val onContentPopulated: (Content) -> Unit = {}
+  @WorkerThread private val emptyMessageProvider: () -> String,
+  private val onContentPopulated: (Content) -> Unit = {},
 ) : SimpleToolWindowPanel(vertical), ProblemsViewTab, Disposable {
 
+  private val coroutineScope = AndroidCoroutineScope(this)
   private val issueListeners = mutableListOf<IssueListener>()
 
   var sidePanelVisible =
@@ -111,7 +118,7 @@ class DesignerCommonIssuePanel(
     PopupHandler.installPopupMenu(
       tree,
       POPUP_HANDLER_ACTION_ID,
-      "Android.Designer.IssuePanel.TreePopup"
+      "Android.Designer.IssuePanel.TreePopup",
     )
 
     tree.isRootVisible = false
@@ -132,7 +139,7 @@ class DesignerCommonIssuePanel(
 
     sidePanel = DesignerCommonIssueSidePanel(project, this)
 
-    splitter = OnePixelSplitter(false, 0.5f, 0.3f, 0.7f)
+    splitter = OnePixelSplitter(vertical, 0.5f, 0.3f, 0.7f)
     splitter.proportion = 0.5f
     splitter.firstComponent = ScrollPaneFactory.createScrollPane(tree, true)
     splitter.secondComponent = sidePanel
@@ -253,9 +260,11 @@ class DesignerCommonIssuePanel(
 
   private fun updateEmptyMessageIfNeed() {
     if (issueProvider.getFilteredIssues().isEmpty()) {
-      val newEmptyString = emptyMessageProvider()
-      if (newEmptyString != tree.emptyText.text) {
-        tree.emptyText.text = newEmptyString
+      coroutineScope.launch(workerThread) {
+        val newEmptyString = emptyMessageProvider()
+        if (newEmptyString != tree.emptyText.text) {
+          withContext(uiThread) { tree.emptyText.text = newEmptyString }
+        }
       }
     }
   }
@@ -334,7 +343,7 @@ class DesignerIssueNodeVisitor(private val node: DesignerCommonIssueNode) : Tree
 
   private fun compareNode(
     node1: DesignerCommonIssueNode?,
-    node2: DesignerCommonIssueNode?
+    node2: DesignerCommonIssueNode?,
   ): TreeVisitor.Action {
     if (node1 == null || node2 == null) {
       return if (node1 == null && node2 == null) TreeVisitor.Action.INTERRUPT
@@ -355,13 +364,13 @@ class DesignerIssueNodeVisitor(private val node: DesignerCommonIssueNode) : Tree
 
   private fun visitIssuedFileNode(
     node1: IssuedFileNode,
-    node2: IssuedFileNode
+    node2: IssuedFileNode,
   ): TreeVisitor.Action {
     return if (node1.file != node2.file) TreeVisitor.Action.CONTINUE
     else {
       compareNode(
         node1.parentDescriptor?.element as? DesignerCommonIssueNode,
-        node2.parentDescriptor?.element as? DesignerCommonIssueNode
+        node2.parentDescriptor?.element as? DesignerCommonIssueNode,
       )
     }
   }
@@ -371,7 +380,7 @@ class DesignerIssueNodeVisitor(private val node: DesignerCommonIssueNode) : Tree
     else {
       compareNode(
         node1.parentDescriptor?.element as? DesignerCommonIssueNode,
-        node2.parentDescriptor?.element as? DesignerCommonIssueNode
+        node2.parentDescriptor?.element as? DesignerCommonIssueNode,
       )
     }
   }
@@ -384,7 +393,7 @@ class DesignerIssueNodeVisitor(private val node: DesignerCommonIssueNode) : Tree
     val actionAfterComparingParents =
       compareNode(
         node1.parentDescriptor?.element as? DesignerCommonIssueNode,
-        node2.parentDescriptor?.element as? DesignerCommonIssueNode
+        node2.parentDescriptor?.element as? DesignerCommonIssueNode,
       )
     if (actionAfterComparingParents == TreeVisitor.Action.CONTINUE) {
       return TreeVisitor.Action.CONTINUE

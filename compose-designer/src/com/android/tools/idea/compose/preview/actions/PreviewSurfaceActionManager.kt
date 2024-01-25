@@ -25,6 +25,7 @@ import com.android.tools.idea.common.surface.LayoutData
 import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.preview.actions.AnimationInspectorAction
 import com.android.tools.idea.preview.actions.EnableInteractiveAction
 import com.android.tools.idea.preview.actions.hideIfRenderErrors
 import com.android.tools.idea.preview.actions.visibleOnlyInStaticPreview
@@ -47,7 +48,7 @@ internal class PreviewSurfaceActionManager(
   private val copyResultImageAction =
     CopyResultImageAction(
       message("copy.result.image.action.title"),
-      message("copy.result.image.action.done.text")
+      message("copy.result.image.action.done.text"),
     )
 
   override fun registerActionsShortcuts(component: JComponent) {
@@ -58,7 +59,7 @@ internal class PreviewSurfaceActionManager(
     return InteractiveLabelPanel(
       LayoutData.fromSceneView(sceneView),
       surface,
-      suspend { navigationHandler.handleNavigate(sceneView, false) }
+      suspend { navigationHandler.handleNavigate(sceneView, false) },
     )
   }
 
@@ -83,12 +84,16 @@ internal class PreviewSurfaceActionManager(
     listOf(Separator()) +
       listOfNotNull(
           EnableUiCheckAction(),
-          AnimationInspectorAction(),
-          EnableInteractiveAction(
+          AnimationInspectorAction(
             isEssentialsModeEnabled = {
               ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
             },
-            essentialsModeDescription = message("action.interactive.essentials.mode.description")
+            defaultModeDescription = message("action.animation.inspector.description"),
+          ),
+          EnableInteractiveAction(
+            isEssentialsModeEnabled = {
+              ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
+            }
           ),
           DeployToDeviceAction(),
         )

@@ -87,14 +87,14 @@ class LayoutInspectorManagerTest {
         DeviceId.ofPhysicalDevice("tab1"),
         JPanel(),
         JPanel(),
-        spy(displayViewRule.newEmulatorView())
+        spy(displayViewRule.newEmulatorView()),
       )
     tab2 =
       TabInfo(
         DeviceId.ofPhysicalDevice("tab2"),
         JPanel(),
         JPanel(),
-        spy(displayViewRule.newEmulatorView())
+        spy(displayViewRule.newEmulatorView()),
       )
     fakeToolWindowManager = FakeToolWindowManager(displayViewRule.project, listOf(tab1, tab2))
 
@@ -102,7 +102,7 @@ class LayoutInspectorManagerTest {
     displayViewRule.project.replaceService(
       ToolWindowManager::class.java,
       fakeToolWindowManager,
-      displayViewRule.disposable
+      displayViewRule.disposable,
     )
 
     val mockLayoutInspectorProjectService = mock<LayoutInspectorProjectService>()
@@ -134,14 +134,14 @@ class LayoutInspectorManagerTest {
         launcher = launcher,
         layoutInspectorModel = model(displayViewRule.disposable) {},
         notificationModel = notificationModel,
-        treeSettings = FakeTreeSettings()
+        treeSettings = FakeTreeSettings(),
       )
 
     whenever(mockLayoutInspectorProjectService.getLayoutInspector()).thenAnswer { layoutInspector }
     displayViewRule.project.replaceService(
       LayoutInspectorProjectService::class.java,
       mockLayoutInspectorProjectService,
-      displayViewRule.disposable
+      displayViewRule.disposable,
     )
 
     RunningDevicesStateObserver.getInstance(displayViewRule.project).update(true)
@@ -425,8 +425,8 @@ class LayoutInspectorManagerTest {
 
   @Test
   @RunsInEdt
-  fun testToggleLayoutInspectorShowsWarningFirstTime() = withEmbeddedLayoutInspector {
-    PropertiesComponent.getInstance().unsetValue(SHOW_EXPERIMENTAL_WARNING_KEY)
+  fun testToggleLayoutInspectorShowsOptOutFirstTime() = withEmbeddedLayoutInspector {
+    PropertiesComponent.getInstance().unsetValue(SHOW_EMBEDDED_LI_BANNER_KEY)
 
     val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
 
@@ -437,9 +437,7 @@ class LayoutInspectorManagerTest {
     assertThat(notifications1).hasSize(1)
     val firstNotification = notifications1.single()
     assertThat(firstNotification.message)
-      .isEqualTo(
-        "(Experimental) Layout Inspector is now embedded within the Running Devices window"
-      )
+      .isEqualTo("Layout Inspector is now embedded within the Running Devices window")
     assertThat(firstNotification.actions[0].name).isEqualTo("Don't Show Again")
     assertThat(firstNotification.actions[1].name).isEqualTo("Opt-out")
 

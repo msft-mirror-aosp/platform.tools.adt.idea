@@ -52,14 +52,16 @@ internal object VirtualDevices {
         "hw.battery" to "yes",
         "hw.camera.back" to device.rearCamera.asParameter,
         "hw.camera.front" to device.frontCamera.asParameter,
-        "hw.cpu.ncore" to "4",
         "hw.dPad" to "no",
         "hw.device.hash2" to "MD5:3db3250dab5d0d93b29353040181c7e9",
         "hw.device.manufacturer" to "Google",
         "hw.device.name" to "pixel_7",
         "hw.gps" to "yes",
+        // TODO This depends on the system image and device.graphicAcceleration. See
+        //   ConfigureAvdOptionsStep.java.
         "hw.gpu.enabled" to "yes",
-        "hw.gpu.mode" to "auto",
+        // TODO Older emulators expect "guest" instead of "software". See AvdOptionsModel.java.
+        "hw.gpu.mode" to device.graphicAcceleration.gpuSetting,
         "hw.initialOrientation" to ScreenOrientation.PORTRAIT.shortDisplayValue.lowercase(),
         "hw.keyboard" to "yes",
         "hw.lcd.density" to "420",
@@ -76,10 +78,14 @@ internal object VirtualDevices {
         "showDeviceFrame" to "yes",
         "skin.dynamic" to "yes",
         "skin.path" to skin.toString(),
-        "vm.heapSize" to "256"
+        "vm.heapSize" to "256",
       )
 
     properties.putAll(device.defaultBoot.properties)
+
+    if (device.cpuCoreCount != null) {
+      properties["hw.cpu.ncore"] = device.cpuCoreCount.toString()
+    }
 
     connection.createOrUpdateAvd(
       /* currentInfo= */ null,
@@ -91,7 +97,8 @@ internal object VirtualDevices {
       /* sdCard= */ "512M",
       /* skinFolder= */ skin,
       /* hardwareProperties= */ properties,
-      /* removePrevious= */ true
+      /* userSettings= */ null,
+      /* removePrevious= */ true,
     )
   }
 }

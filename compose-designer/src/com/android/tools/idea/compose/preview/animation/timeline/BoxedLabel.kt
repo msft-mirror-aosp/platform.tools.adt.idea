@@ -16,12 +16,12 @@
 package com.android.tools.idea.compose.preview.animation.timeline
 
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
-import com.android.tools.idea.compose.preview.animation.InspectorColors
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.BOXED_LABEL_COLOR_OUTLINE_OFFSET
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.boxedLabelColorBoxArc
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.boxedLabelColorBoxSize
-import com.android.tools.idea.compose.preview.animation.InspectorLayout.boxedLabelOffset
-import com.android.tools.idea.compose.preview.animation.TooltipInfo
+import com.android.tools.idea.preview.animation.InspectorColors
+import com.android.tools.idea.preview.animation.InspectorLayout.BOXED_LABEL_COLOR_OUTLINE_OFFSET
+import com.android.tools.idea.preview.animation.InspectorLayout.boxedLabelColorBoxArc
+import com.android.tools.idea.preview.animation.InspectorLayout.boxedLabelColorBoxSize
+import com.android.tools.idea.preview.animation.InspectorLayout.boxedLabelOffset
+import com.android.tools.idea.preview.animation.TooltipInfo
 import com.intellij.util.alsoIfNull
 import com.intellij.util.ui.JBFont
 import java.awt.Graphics2D
@@ -33,7 +33,7 @@ import java.awt.font.TextLayout
 class BoxedLabel(
   private val componentId: Int,
   private val grouped: Boolean,
-  private val position: () -> Point
+  private val position: () -> Point,
 ) {
   fun paint(g: Graphics2D) {
     timelineUnit?.let { paintBoxedLabel(g, it, componentId, grouped, position()) }
@@ -44,7 +44,7 @@ class BoxedLabel(
       timelineUnit?.let {
         TooltipInfo(
           it.propertyLabel,
-          "${if (grouped) it.unit?.toString() else it.unit?.toString(componentId)}"
+          "${if (grouped) it.unit?.toString() else it.unit?.toString(componentId)}",
         )
       }
     else null
@@ -64,7 +64,7 @@ class BoxedLabel(
     timelineUnit: ComposeUnit.TimelineUnit,
     componentId: Int,
     grouped: Boolean,
-    point: Point
+    point: Point,
   ) {
     //       Property label
     //       |       (Optional) Colored box for a [ComposeUnit.Color] properties
@@ -119,7 +119,7 @@ class BoxedLabel(
       boxRect.width,
       boxRect.height,
       boxedLabelOffset,
-      boxedLabelOffset
+      boxedLabelOffset,
     )
     // Label
     g.color = InspectorColors.BOXED_LABEL_NAME_COLOR
@@ -136,7 +136,7 @@ class BoxedLabel(
         boxedLabelColorBoxSize.width(),
         boxedLabelColorBoxSize.height(),
         boxedLabelColorBoxArc.width(),
-        boxedLabelColorBoxArc.height()
+        boxedLabelColorBoxArc.height(),
       )
 
       g.color = color
@@ -146,7 +146,7 @@ class BoxedLabel(
         boxedLabelColorBoxSize.width() - BOXED_LABEL_COLOR_OUTLINE_OFFSET * 2,
         boxedLabelColorBoxSize.height() - BOXED_LABEL_COLOR_OUTLINE_OFFSET * 2,
         boxedLabelColorBoxArc.width(),
-        boxedLabelColorBoxArc.height()
+        boxedLabelColorBoxArc.height(),
       )
     }
     // Value

@@ -188,7 +188,7 @@
   </actions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <postStartupActivity implementation="com.android.tools.idea.res.AndroidFileChangeListener$MyStartupActivity"/>
+    <postStartupActivity implementation="com.android.tools.idea.res.AndroidPsiTreeChangeListener$MyStartupActivity"/>
     <projectService serviceImplementation="com.android.tools.idea.res.ResourceNotificationManager" />
     <projectService serviceImplementation="com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild" />
     <postStartupActivity implementation="com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild$MyStartupActivity"/>
@@ -202,7 +202,8 @@
     <postStartupActivity implementation="com.android.tools.idea.model.MergedManifestModificationListener$SubscriptionStartupActivity"/>
     <applicationService serviceInterface="com.android.tools.idea.res.ResourceFolderRepositoryFileCache"
                         serviceImplementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl"/>
-    <applicationService serviceImplementation="com.android.tools.res.FrameworkResourceRepositoryManager"/>
+    <applicationService serviceInterface="com.android.tools.res.FrameworkResourceRepositoryManagerImpl"
+                        serviceImplementation="com.android.tools.idea.res.StudioFrameworkResourceRepositoryManager"/>
     <postStartupActivity implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$MaintenanceActivity"/>
     <cachesInvalidator implementation="com.android.tools.idea.res.ResourceFolderRepositoryFileCacheImpl$CacheInvalidator"/>
     <cachesInvalidator implementation="com.android.tools.idea.project.metrics.CacheInvalidatorMetricCollector"/>
@@ -472,8 +473,8 @@
     <moduleService serviceImplementation="org.jetbrains.android.resourceManagers.ModuleResourceManagers" />
     <moduleService serviceImplementation="org.jetbrains.android.facet.ResourceFolderManager" />
     <moduleService serviceInterface="com.android.tools.res.ids.ResourceIdManager"
-                   serviceImplementation="com.android.tools.idea.res.ResourceIdManagerImpl"
-                   testServiceImplementation="com.android.tools.res.ids.TestResourceIdManager" />
+                   serviceImplementation="com.android.tools.idea.res.StudioResourceIdManager"
+                   testServiceImplementation="com.android.tools.idea.res.TestResourceIdManager" />
     <moduleService serviceImplementation="com.android.tools.idea.model.MergedManifestManager" />
     <moduleService serviceImplementation="com.android.tools.idea.model.MergedManifestModificationTracker" />
     <moduleService serviceImplementation="com.android.tools.idea.databinding.DataBindingAnnotationsService" />
@@ -726,6 +727,9 @@
                     area="IDEA_PROJECT"/>
     <extensionPoint qualifiedName="com.android.tools.idea.testartifacts.instrumented.androidTestConfigurationProducerToken"
                     interface="com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducerToken"
+                    area="IDEA_PROJECT"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.ui.resourcemanager.importer.createDefaultResDirectoryToken"
+                    interface="com.android.tools.idea.ui.resourcemanager.importer.CreateDefaultResDirectoryToken"
                     area="IDEA_PROJECT"/>
   </extensionPoints>
 

@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UElement
 import org.jetbrains.uast.UMethod
-import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.tryResolve
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -39,7 +38,7 @@ private class DfsSubtreeEdges {
 
 private class TestNodeInfo(
   override val parent: NodeInfo<DfsSubtreeEdges>?,
-  override val element: UElement
+  override val element: UElement,
 ) : NodeInfo<DfsSubtreeEdges> {
   override val subtreeInfo: DfsSubtreeEdges = DfsSubtreeEdges()
   // Timers or step counters needed to differentiate cross edges from forward edges
@@ -78,7 +77,7 @@ private class TestNodeInfo(
 private object TestNodeInfoFactory : NodeInfoFactory<DfsSubtreeEdges> {
   override fun create(
     parent: NodeInfo<DfsSubtreeEdges>?,
-    curElement: UElement
+    curElement: UElement,
   ): NodeInfo<DfsSubtreeEdges> {
     return TestNodeInfo(parent, curElement)
   }
@@ -152,10 +151,9 @@ class AnnotationsGraphTest {
 
     val psiFile = fixture.configureByText(KotlinFileType.INSTANCE, fileContent)
     val rootMethod = runReadAction {
-      findAnnotations(project, psiFile.virtualFile, "node0")
-        .mapNotNull { it.psiOrParent.toUElementOfType<UAnnotation>() }
-        .single()
-        .let { it.getContainingUMethodAnnotatedWith(it.qualifiedName!!) }!!
+      findAnnotations(project, psiFile.virtualFile, "node0").single().let {
+        it.getContainingUMethodAnnotatedWith(it.qualifiedName!!)
+      }!!
     }
     val traverseResult = annotationsGraph.traverse(listOf(rootMethod)).toList()
     // Results are computed in post-order
@@ -194,10 +192,9 @@ class AnnotationsGraphTest {
 
     val psiFile = fixture.configureByText(KotlinFileType.INSTANCE, fileContent)
     val rootMethod = runReadAction {
-      findAnnotations(project, psiFile.virtualFile, "node0")
-        .mapNotNull { it.psiOrParent.toUElementOfType<UAnnotation>() }
-        .single()
-        .let { it.getContainingUMethodAnnotatedWith(it.qualifiedName!!) }!!
+      findAnnotations(project, psiFile.virtualFile, "node0").single().let {
+        it.getContainingUMethodAnnotatedWith(it.qualifiedName!!)
+      }!!
     }
     val traverseResult = annotationsGraph.traverse(listOf(rootMethod)).toList()
     // Results are computed in post-order
@@ -239,10 +236,9 @@ class AnnotationsGraphTest {
 
     val psiFile = fixture.configureByText(KotlinFileType.INSTANCE, fileContent)
     val rootMethod = runReadAction {
-      findAnnotations(project, psiFile.virtualFile, "node0")
-        .mapNotNull { it.psiOrParent.toUElementOfType<UAnnotation>() }
-        .single()
-        .let { it.getContainingUMethodAnnotatedWith(it.qualifiedName!!) }!!
+      findAnnotations(project, psiFile.virtualFile, "node0").single().let {
+        it.getContainingUMethodAnnotatedWith(it.qualifiedName!!)
+      }!!
     }
     val traverseResult = annotationsGraph.traverse(listOf(rootMethod)).toList()
     // Results are computed in post-order
@@ -284,10 +280,9 @@ class AnnotationsGraphTest {
   fun testTraverse_allEdges() {
     val psiFile = fixture.configureByText(KotlinFileType.INSTANCE, fileContentWithAllEdgeTypes)
     val rootMethod = runReadAction {
-      findAnnotations(project, psiFile.virtualFile, "node0")
-        .mapNotNull { it.psiOrParent.toUElementOfType<UAnnotation>() }
-        .single()
-        .let { it.getContainingUMethodAnnotatedWith(it.qualifiedName!!) }!!
+      findAnnotations(project, psiFile.virtualFile, "node0").single().let {
+        it.getContainingUMethodAnnotatedWith(it.qualifiedName!!)
+      }!!
     }
     val traverseResult = annotationsGraph.traverse(listOf(rootMethod)).toList()
     // Results are computed in post-order
@@ -303,10 +298,9 @@ class AnnotationsGraphTest {
   fun testIsLeafAnnotation() {
     val psiFile = fixture.configureByText(KotlinFileType.INSTANCE, fileContentWithAllEdgeTypes)
     val rootMethod = runReadAction {
-      findAnnotations(project, psiFile.virtualFile, "node0")
-        .mapNotNull { it.psiOrParent.toUElementOfType<UAnnotation>() }
-        .single()
-        .let { it.getContainingUMethodAnnotatedWith(it.qualifiedName!!) }!!
+      findAnnotations(project, psiFile.virtualFile, "node0").single().let {
+        it.getContainingUMethodAnnotatedWith(it.qualifiedName!!)
+      }!!
     }
     val traverseResult =
       annotationsGraph
@@ -314,13 +308,13 @@ class AnnotationsGraphTest {
           listOf(rootMethod),
           isLeafAnnotation = { annotation ->
             runReadAction { annotation.qualifiedName!!.contains("node3") }
-          }
+          },
         )
         .toList()
     // Results are computed in post-order, and 3 is a "leaf", so its visited many times
     assertEquals(
       listOf("3", "2", "3", "4", "3", "1", "0"),
-      traverseResult.filterIsInstance<String>()
+      traverseResult.filterIsInstance<String>(),
     )
     // As node3 is a leaf annotation, then:
     // 1- All its incoming edges should be tree edges (the forward and cross edges become tree
@@ -337,10 +331,9 @@ class AnnotationsGraphTest {
   fun testAnnotationFilter() {
     val psiFile = fixture.configureByText(KotlinFileType.INSTANCE, fileContentWithAllEdgeTypes)
     val rootMethod = runReadAction {
-      findAnnotations(project, psiFile.virtualFile, "node0")
-        .mapNotNull { it.psiOrParent.toUElementOfType<UAnnotation>() }
-        .single()
-        .let { it.getContainingUMethodAnnotatedWith(it.qualifiedName!!) }!!
+      findAnnotations(project, psiFile.virtualFile, "node0").single().let {
+        it.getContainingUMethodAnnotatedWith(it.qualifiedName!!)
+      }!!
     }
     val traverseResult =
       annotationsGraph
@@ -348,7 +341,7 @@ class AnnotationsGraphTest {
           listOf(rootMethod),
           annotationFilter = { _, annotation ->
             runReadAction { !annotation.qualifiedName!!.contains("node4") }
-          }
+          },
         )
         .toList()
     // Results are computed in post-order, and node4 is filtered out due to the annotationFilter

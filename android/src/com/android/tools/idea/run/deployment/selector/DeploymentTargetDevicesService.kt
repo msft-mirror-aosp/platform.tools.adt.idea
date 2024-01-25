@@ -36,6 +36,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.serviceContainer.NonInjectable
+import com.intellij.util.containers.orNull
+import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineName
@@ -84,7 +86,7 @@ constructor(
     project.service<DeviceProvisionerService>().deviceProvisioner.templates,
     Clock.System,
     adbFlow(),
-    launchCompatibilityCheckerFlow(project)
+    launchCompatibilityCheckerFlow(project),
   )
 
   companion object {
@@ -102,9 +104,9 @@ constructor(
 
   private fun deviceHandleFlow(
     ddmlibDeviceLookup: DdmlibDeviceLookup,
-    launchCompatibilityChecker: LaunchCompatibilityChecker
+    launchCompatibilityChecker: LaunchCompatibilityChecker,
   ): Flow<List<DeploymentTargetDevice>> = channelFlow {
-    val handles = ConcurrentHashMap<DeviceHandle, DeploymentTargetDevice>()
+    val handles = ConcurrentHashMap<DeviceHandle, Optional<DeploymentTargetDevice>>()
     // Immediately send empty list, since if the actual list is empty, there will be no Add,
     // and we don't want to be stuck in the Loading state.
     send(emptyList())
@@ -115,29 +117,36 @@ constructor(
         when (it) {
           is SetChange.Add -> {
             val handle = it.value
+            // Create a slot for the handle, to be filled in by a coroutine tracking the handle
+            handles[handle] = Optional.empty()
             handle.scope.launch {
               handle.stateFlow.collect { state ->
                 val connectionTime =
-                  if (handle.state.isOnline()) {
+                  if (state.isOnline()) {
                     connectionTimes.computeIfAbsent(handle.id) { clock.now() }
                   } else {
                     connectionTimes.remove(handle.id)
                     null
                   }
-                handles[handle] =
-                  DeploymentTargetDevice.create(
-                    DeviceHandleAndroidDevice(ddmlibDeviceLookup, handle, state),
-                    connectionTime,
-                    launchCompatibilityChecker
-                  )
-                send(handles.values.toList())
+                // Don't update the handle if it has already been removed. (We can reach this point
+                // after processing SetChange.Remove, and must not undo the remove.)
+                if (handles.containsKey(handle)) {
+                  val targetDevice =
+                    DeploymentTargetDevice.create(
+                      DeviceHandleAndroidDevice(ddmlibDeviceLookup, handle, state),
+                      connectionTime,
+                      launchCompatibilityChecker,
+                    )
+                  handles.computeIfPresent(handle) { _, _ -> Optional.of(targetDevice) }
+                }
+                send(handles.values.mapNotNull { it.orNull() })
               }
             }
           }
           is SetChange.Remove -> {
             handles.remove(it.value)
             connectionTimes.remove(it.value.id)
-            send(handles.values.toList())
+            send(handles.values.mapNotNull { it.orNull() })
           }
         }
       }
@@ -145,7 +154,7 @@ constructor(
 
   private fun deviceTemplateFlow(
     ddmlibDeviceLookup: DdmlibDeviceLookup,
-    launchCompatibilityChecker: LaunchCompatibilityChecker
+    launchCompatibilityChecker: LaunchCompatibilityChecker,
   ): Flow<List<DeploymentTargetDevice>> = flow {
     val templateDevices = mutableMapOf<DeviceTemplate, DeploymentTargetDevice>()
     templatesFlow.collect { templates ->
@@ -156,7 +165,7 @@ constructor(
             DeploymentTargetDevice.create(
               DeviceTemplateAndroidDevice(coroutineScope, ddmlibDeviceLookup, template),
               null,
-              launchCompatibilityChecker
+              launchCompatibilityChecker,
             )
         }
       }

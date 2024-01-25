@@ -23,6 +23,7 @@ import com.android.resources.ScreenOrientation
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.EmulatedProperties
+import com.android.sdklib.internal.avd.GpuMode
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import com.android.tools.idea.sdk.AndroidSdks
@@ -34,7 +35,7 @@ import kotlinx.collections.immutable.toImmutableList
 internal class AddDeviceWizardModel
 internal constructor(
   internal val systemImages: ImmutableCollection<SystemImage>,
-  skins: ImmutableCollection<Skin>
+  skins: ImmutableCollection<Skin>,
 ) : WizardModel() {
   internal var device by initDevice()
   internal var skins by mutableStateOf(skins)
@@ -54,7 +55,9 @@ internal constructor(
         EmulatedProperties.DEFAULT_NETWORK_LATENCY,
         ScreenOrientation.PORTRAIT,
         Boot.QUICK,
-        StorageCapacity(2_048, StorageCapacity.Unit.MB)
+        StorageCapacity(2_048, StorageCapacity.Unit.MB),
+        EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
+        GpuMode.AUTO,
       )
     )
   }

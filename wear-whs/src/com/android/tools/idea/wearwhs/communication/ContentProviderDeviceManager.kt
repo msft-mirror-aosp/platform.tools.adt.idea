@@ -18,11 +18,17 @@ package com.android.tools.idea.wearwhs.communication
 import com.android.adblib.AdbSession
 import com.android.adblib.DeviceSelector
 import com.android.adblib.shellAsText
+import com.android.tools.idea.wearwhs.EventTrigger
 import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.android.tools.idea.wearwhs.WhsDataType
+import com.intellij.openapi.diagnostic.Logger
 
-const val whsUri: String = "content://com.google.android.wearable.healthservices.dev.synthetic/synthetic_config"
+const val whsPackage: String = "com.google.android.wearable.healthservices"
+const val whsUri: String = "content://$whsPackage.dev.synthetic/synthetic_config"
+const val whsDevVersionCode = 1
+val capabilityStatePattern = Regex("Row: \\d+ data_type=(\\w+), is_enabled=(true|false), override_value=(\\d+\\.?\\d*)")
+val versionCodePattern = Regex("versionCode=(\\d+)")
 
 /**
  * Content provider implementation of [WearHealthServicesDeviceManager].
@@ -32,13 +38,58 @@ const val whsUri: String = "content://com.google.android.wearable.healthservices
  */
 internal class ContentProviderDeviceManager(private val adbSession: AdbSession, private var capabilities: List<WhsCapability> = WHS_CAPABILITIES) : WearHealthServicesDeviceManager {
   private var serialNumber: String? = null
+  private val logger = Logger.getInstance(ContentProviderDeviceManager::class.java)
 
-  // TODO(b/309608749): Implement loadCapabilities method
   override suspend fun loadCapabilities() = capabilities
 
-  // TODO(b/309607065): Implement loadCurrentCapabilityStates method
-  override suspend fun loadCurrentCapabilityStates() = capabilities.associateWith {
-    OnDeviceCapabilityState(false, null)
+  override suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityStatus> {
+    if (serialNumber == null) {
+      // TODO: Log this error
+      return emptyMap()
+    }
+
+    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+    val output = adbSession.deviceServices.shellAsText(device, "content query --uri $whsUri")
+
+    val contentProviderEntryMatches = capabilityStatePattern.findAll(output.stdout)
+
+    val capabilities = mutableMapOf<WhsDataType, CapabilityStatus>()
+
+    for (match in contentProviderEntryMatches) {
+      val dataType = match.groupValues[1].toDataType()
+      if (dataType == WhsDataType.DATA_TYPE_UNKNOWN) {
+        continue
+      }
+      val isEnabled = match.groupValues[2].toBoolean()
+
+      capabilities[dataType] = CapabilityStatus(isEnabled, null)
+    }
+
+    return capabilities
+  }
+
+  override suspend fun clearContentProvider() {
+    if (serialNumber == null) {
+      // TODO: Log this error
+      return
+    }
+
+    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+    adbSession.deviceServices.shellAsText(device, "content delete --uri $whsUri")
+  }
+
+  override suspend fun isWhsVersionSupported(): Boolean {
+    if (serialNumber == null) {
+      // TODO: Log this error
+      return false
+    }
+
+    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+    val output = adbSession.deviceServices.shellAsText(device, "dumpsys package $whsPackage | grep versionCode | head -n1")
+
+    val versionCode: Int? = versionCodePattern.find(output.stdout)?.groupValues?.get(1)?.toInt()
+
+    return versionCode != null && versionCode == whsDevVersionCode
   }
 
   override fun setSerialNumber(serialNumber: String) {
@@ -48,36 +99,63 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
   // TODO(b/305924111) Implement loadOngoingExercise method
   override suspend fun loadOngoingExercise() = false
 
-  private inline fun <reified T> contentUpdateCapability(key: String, value: T): String {
+  private fun contentUpdateMultipleCapabilities(capabilityUpdates: Map<WhsDataType, Any?>): String {
+    val sb = StringBuilder("content update --uri $whsUri")
+    for ((dataType, value) in capabilityUpdates.toSortedMap(compareBy { it.name })) {
+      if (dataType == WhsDataType.LOCATION && value !is Boolean) {
+        continue // Location does not have an override value
+      }
+
+      val bindValue = when (value) {
+        is Boolean -> value // enable or disable capability
+        null -> "\"\"" // clear override by setting it to empty string
+        else -> { // set override
+          val override = value as Number
+          if (dataType == WhsDataType.STEPS) override.toInt() else override.toFloat()
+        }
+      }
+
+      sb.append(bindString(dataType.name, bindValue))
+    }
+    return sb.toString()
+  }
+
+  private inline fun <reified T> bindString(key: String, value: T): String {
     val type = when (value) {
       is Boolean -> 'b'
       is Int -> 'i'
       is Float -> 'f'
       else -> 's'
     }
-    return "content update --uri $whsUri --bind $key:$type:$value"
+    return " --bind $key:$type:$value"
   }
 
-  private suspend fun setCapability(capability: WhsCapability, newValue: Boolean) {
+  override suspend fun setCapabilities(capabilityUpdates: Map<WhsDataType, Boolean>) {
     if (serialNumber == null) {
       // TODO: Log this error
       return
     }
 
+    val contentUpdateCommand = contentUpdateMultipleCapabilities(capabilityUpdates)
     val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    val contentUpdateCommand = contentUpdateCapability(capability.key.name, newValue)
+
     adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
   }
 
-  override suspend fun enableCapability(capability: WhsCapability) {
-    setCapability(capability, true)
+  override suspend fun triggerEvent(eventTrigger: EventTrigger) {
+    if (serialNumber == null) {
+      logger.warn(IllegalStateException("Serial number not set"))
+      return
+    }
+
+    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+    adbSession.deviceServices.shellAsText(device, triggerEventCommand(eventTrigger))
   }
 
-  override suspend fun disableCapability(capability: WhsCapability) {
-    setCapability(capability, false)
-  }
+  private fun triggerEventCommand(eventTrigger: EventTrigger) =
+    "am broadcast -a \"${eventTrigger.eventKey}\" $whsPackage"
 
-  override suspend fun overrideValue(capability: WhsCapability, value: Number?) {
+  override suspend fun overrideValues(overrideUpdates: Map<WhsDataType, Number?>) {
     if (serialNumber == null) {
       // TODO: Log this error
       return
@@ -85,14 +163,11 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
 
     val device = DeviceSelector.fromSerialNumber(serialNumber!!)
 
-    val contentUpdateCommand = if (value == null) {
-      contentUpdateCapability(capability.key.name, "\"\"")
-    } else if (capability.key == WhsDataType.STEPS) {
-      contentUpdateCapability(capability.key.name, value.toInt())
-    } else {
-      contentUpdateCapability(capability.key.name, value.toFloat())
-    }
+    val contentUpdateCommand = contentUpdateMultipleCapabilities(overrideUpdates)
     adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
   }
 }
 
+private fun String.toDataType(): WhsDataType {
+  return WhsDataType.values().find { it.name == this } ?: WhsDataType.DATA_TYPE_UNKNOWN
+}

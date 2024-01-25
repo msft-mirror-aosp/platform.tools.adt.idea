@@ -16,15 +16,17 @@
 package com.android.tools.idea.wearwhs.view
 
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.wearwhs.EventTrigger
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.android.tools.idea.wearwhs.WhsDataType
 import com.android.tools.idea.wearwhs.communication.FakeDeviceManager
-import com.android.tools.idea.wearwhs.communication.OnDeviceCapabilityState
+import com.android.tools.idea.wearwhs.communication.CapabilityStatus
 import com.android.tools.idea.wearwhs.logger.WearHealthServicesEventLogger
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.WearHealthServicesEvent
 import com.intellij.openapi.util.Disposer
+import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -35,6 +37,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
+import org.junit.Assert.assertFalse
 
 private val capabilities = listOf(WhsCapability(
   WhsDataType.HEART_RATE_BPM,
@@ -119,12 +122,14 @@ class WearHealthServicesToolWindowStateManagerTest {
   }
 
   @Test
-  fun `test reset sets the preset to all and removes overrides`() = runBlocking {
+  fun `test reset sets the preset to all, removes overrides and invokes device manager`() = runBlocking {
     stateManager.getCapabilitiesList().waitForValue(capabilities)
 
     stateManager.setPreset(Preset.STANDARD)
 
     stateManager.setOverrideValue(capabilities[1], 3f)
+
+    assertEquals(0, deviceManager.clearContentProviderInvocations)
 
     stateManager.reset()
 
@@ -132,6 +137,8 @@ class WearHealthServicesToolWindowStateManagerTest {
     stateManager.getState(capabilities[2]).map { it.enabled }.waitForValue(true)
     stateManager.getState(capabilities[1]).map { it.overrideValue }.waitForValue(null)
     stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(false)
+
+    assertEquals(1, deviceManager.clearContentProviderInvocations)
   }
 
   @Test
@@ -156,9 +163,9 @@ class WearHealthServicesToolWindowStateManagerTest {
     stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(true)
 
     assertThat(deviceManager.loadCurrentCapabilityStates()).containsExactly(
-      capabilities[0], OnDeviceCapabilityState(false, null),
-      capabilities[1], OnDeviceCapabilityState(true, 3f),
-      capabilities[2], OnDeviceCapabilityState(true, null)
+      capabilities[0].dataType, CapabilityStatus(false, null),
+      capabilities[1].dataType, CapabilityStatus(true, 3f),
+      capabilities[2].dataType, CapabilityStatus(true, null)
     )
 
     assertThat(loggedEvents).hasSize(1)
@@ -207,5 +214,31 @@ class WearHealthServicesToolWindowStateManagerTest {
     catch (ex: TimeoutCancellationException) {
       Assert.fail("Timed out waiting for value $value. Received values so far $received")
     }
+  }
+
+  @Test
+  fun `test isWhsVersionSupported fail state reports whs version as not supported`(): Unit = runBlocking {
+    deviceManager.failState = true
+
+    val isSupported = stateManager.isWhsVersionSupported()
+
+    assertFalse(isSupported)
+  }
+
+  @Test
+  fun `test triggered events are forwarded to device manager`(): Unit = runBlocking {
+    stateManager.triggerEvent(EventTrigger("key", "label"))
+
+    assertThat(deviceManager.triggeredEvents).hasSize(1)
+    assertThat(deviceManager.triggeredEvents[0].eventKey).isEqualTo("key")
+  }
+
+  @Test
+  fun `test triggered event failures are reflected in state manager`(): Unit = runBlocking {
+    deviceManager.failState = true
+
+    stateManager.triggerEvent(EventTrigger("key", "label"))
+
+    stateManager.getStatus().waitForValue(WhsStateManagerStatus.ConnectionLost)
   }
 }
