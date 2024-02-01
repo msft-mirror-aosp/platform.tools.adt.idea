@@ -139,6 +139,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/git4insights/git4insights.iml" filepath="$PROJECT_DIR$/../../vendor/google/git4insights/git4insights.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../studio/google/cloud/tools/android-studio-plugin/google-cloud-tools-as.iml" filepath="$PROJECT_DIR$/../../studio/google/cloud/tools/android-studio-plugin/google-cloud-tools-as.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../studio/google/cloud/tools/google-login-plugin/google-login-as.iml" filepath="$PROJECT_DIR$/../../studio/google/cloud/tools/google-login-plugin/google-login-as.iml" />
+      <module fileurl="file://$PROJECT_DIR$/intellij-integration/intellij-integration-tests.iml" filepath="$PROJECT_DIR$/intellij-integration/intellij-integration-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-adb/intellij.android.adb.iml" filepath="$PROJECT_DIR$/android-adb/intellij.android.adb.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-adb/intellij.android.adb.testUtil.iml" filepath="$PROJECT_DIR$/android-adb/intellij.android.adb.testUtil.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-adb/intellij.android.adb.tests.iml" filepath="$PROJECT_DIR$/android-adb/intellij.android.adb.tests.iml" />
@@ -299,8 +300,10 @@
       <module fileurl="file://$PROJECT_DIR$/nav/safeargs/common/intellij.android.nav.safeargs.common.iml" filepath="$PROJECT_DIR$/nav/safeargs/common/intellij.android.nav.safeargs.common.iml" />
       <module fileurl="file://$PROJECT_DIR$/nav/safeargs/common/gradle/intellij.android.nav.safeargs.common.gradle.iml" filepath="$PROJECT_DIR$/nav/safeargs/common/gradle/intellij.android.nav.safeargs.common.gradle.iml" />
       <module fileurl="file://$PROJECT_DIR$/nav/safeargs/k1/intellij.android.nav.safeargs.k1.iml" filepath="$PROJECT_DIR$/nav/safeargs/k1/intellij.android.nav.safeargs.k1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/nav/safeargs/k2/intellij.android.nav.safeargs.k2.iml" filepath="$PROJECT_DIR$/nav/safeargs/k2/intellij.android.nav.safeargs.k2.iml" />
       <module fileurl="file://$PROJECT_DIR$/nav/safeargs/tests/common/intellij.android.nav.safeargs.tests.common.iml" filepath="$PROJECT_DIR$/nav/safeargs/tests/common/intellij.android.nav.safeargs.tests.common.iml" />
       <module fileurl="file://$PROJECT_DIR$/nav/safeargs/tests/k1/intellij.android.nav.safeargs.tests.k1.iml" filepath="$PROJECT_DIR$/nav/safeargs/tests/k1/intellij.android.nav.safeargs.tests.k1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/nav/safeargs/tests/k2/intellij.android.nav.safeargs.tests.k2.iml" filepath="$PROJECT_DIR$/nav/safeargs/tests/k2/intellij.android.nav.safeargs.tests.k2.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-navigator/intellij.android.navigator.iml" filepath="$PROJECT_DIR$/android-navigator/intellij.android.navigator.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-navigator/intellij.android.navigator.testutils.iml" filepath="$PROJECT_DIR$/android-navigator/intellij.android.navigator.testutils.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-npw/intellij.android.newProjectWizard.iml" filepath="$PROJECT_DIR$/android-npw/intellij.android.newProjectWizard.iml" />
@@ -381,7 +384,6 @@
       <module fileurl="file://$PROJECT_DIR$/../../base/wizard/template-plugin/intellij.android.wizardTemplate.plugin.iml" filepath="$PROJECT_DIR$/../../base/wizard/template-plugin/intellij.android.wizardTemplate.plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/lint/intellij.lint.iml" filepath="$PROJECT_DIR$/lint/intellij.lint.iml" />
       <module fileurl="file://$PROJECT_DIR$/lint/tests/intellij.lint.tests.iml" filepath="$PROJECT_DIR$/lint/tests/intellij.lint.tests.iml" />
-      <module fileurl="file://$PROJECT_DIR$/kotlin-integration/kotlin-integration-tests.iml" filepath="$PROJECT_DIR$/kotlin-integration/kotlin-integration-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/lldb-integration-tests/lldb-integration-tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/lldb-integration-tests/lldb-integration-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/memory-usage/memory-usage.iml" filepath="$PROJECT_DIR$/memory-usage/memory-usage.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/sml-android/ml.sml-android.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/sml-android/ml.sml-android.iml" />

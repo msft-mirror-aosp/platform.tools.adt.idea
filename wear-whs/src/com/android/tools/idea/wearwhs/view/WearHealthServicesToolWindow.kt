@@ -54,6 +54,7 @@ import javax.swing.BoxLayout
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JCheckBox
+import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JTextField
@@ -67,19 +68,22 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
   true, true), Disposable {
   private val uiScope: CoroutineScope = AndroidCoroutineScope(this, uiThread)
   private val workerScope: CoroutineScope = AndroidCoroutineScope(this, workerThread)
+  private var isErrorState = false
 
   fun setSerialNumber(serialNumber: String) {
-    if (serialNumber != stateManager.serialNumber) {
+    if (serialNumber != stateManager.serialNumber || isErrorState) {
       stateManager.serialNumber = serialNumber
       workerScope.launch {
         if (stateManager.isWhsVersionSupported()) {
           withContext(uiThread) {
+            isErrorState = false
             removeAll()
             add(createContentPanel())
           }
         }
         else {
           withContext(uiThread) {
+            isErrorState = true
             removeAll()
             add(createWhsVersionNotSupportedPanel())
           }
@@ -227,6 +231,14 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       setBorder(Borders.empty(2))
       isVisible = false
     }
+    // List of elements that should be hidden if there's an active exercise
+    val overrideElementsList = mutableListOf<JComponent>()
+    overrideElementsList.add(warningLabel)
+    stateManager.getOngoingExercise().onEach {
+      overrideElementsList.forEach { element ->
+        element.isVisible = it
+      }
+    }.launchIn(uiScope)
     return JPanel(VerticalFlowLayout()).apply {
       add(warningLabel)
       border = horizontalBorders
@@ -236,11 +248,8 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
         }, BorderLayout.CENTER)
         add(JPanel(FlowLayout()).apply {
           add(JLabel(message("wear.whs.panel.override")).apply {
+            overrideElementsList.add(this)
             font = font.deriveFont(Font.BOLD)
-          })
-          add(JLabel(message("wear.whs.panel.unit")).apply {
-            font = font.deriveFont(Font.BOLD)
-            preferredSize = Dimension(50, preferredSize.height)
           })
         }, BorderLayout.EAST)
       })
@@ -250,7 +259,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
           val checkBox = JCheckBox(message(capability.label)).also { checkBox ->
             val plainFont = checkBox.font.deriveFont(Font.PLAIN)
             val italicFont = checkBox.font.deriveFont(Font.ITALIC)
-            stateManager.getState(capability).map { it.enabled }.onEach { enabled ->
+            stateManager.getState(capability).map { it.capabilityState.enabled }.onEach { enabled ->
               checkBox.isSelected = enabled
             }.launchIn(uiScope)
             stateManager.getState(capability).map { it.synced }.onEach { synced ->
@@ -272,6 +281,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
           }
           add(checkBox, BorderLayout.CENTER)
           add(JPanel(FlowLayout()).apply {
+            overrideElementsList.add(this)
             add(JTextField().also { textField ->
               textField.addFocusListener(object : FocusListener {
                 override fun focusGained(e: FocusEvent?) {}
@@ -316,7 +326,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
                   }
                 }
               })
-              stateManager.getState(capability).map { it.overrideValue }.onEach {
+              stateManager.getState(capability).map { it.capabilityState.overrideValue }.onEach {
                 if (!textField.isFocusOwner) {
                   textField.text = it?.toString() ?: ""
                 }

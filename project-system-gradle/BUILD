@@ -39,7 +39,6 @@ iml_module(
         "//tools/vendor/google/ml/sml-android:ml.sml-android",
         "//tools/vendor/google/android-ndk:android-ndk",
         "//tools/adt/idea/compose-designer:intellij.android.compose-designer",
-        "//tools/adt/idea/designer/customview:intellij.android.designer.customview",
         "//tools/adt/idea/designer:intellij.android.designer",
         "//tools/vendor/google/firebase:firebase",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
@@ -107,7 +106,8 @@ iml_module(
     split_test_targets = {
         "jdk.integration": {
             "data": [
-                "//prebuilts/studio/jdk/jdk11",
+                "//prebuilts/studio/jdk/jdk11:jdk11",
+                "//prebuilts/studio/jdk/jdk17:jdk17_runtime_files",
             ],
             "test_filter": "com.android.tools.idea.gradle.project.sync.jdk.integration",
         },

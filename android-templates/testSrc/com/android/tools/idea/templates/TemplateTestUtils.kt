@@ -20,7 +20,7 @@ package com.android.tools.idea.templates
 
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.SdkVersionInfo
-import com.android.tools.idea.gradle.npw.project.GradleAndroidModuleTemplate.createDefaultModuleTemplate
+import com.android.tools.idea.npw.project.GradleAndroidModuleTemplate.createDefaultModuleTemplate
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.npw.template.ModuleTemplateDataBuilder
 import com.android.tools.idea.npw.template.ProjectTemplateDataBuilder
@@ -92,6 +92,7 @@ internal fun getDefaultModuleState(
       isLibrary = false
       formFactor = template.formFactor
       category = template.category
+      isCompose = template.constraints.contains(TemplateConstraint.Compose)
       isMaterial3 = template.constraints.contains(TemplateConstraint.Material3)
       themesData = ThemesData("App")
       apis =

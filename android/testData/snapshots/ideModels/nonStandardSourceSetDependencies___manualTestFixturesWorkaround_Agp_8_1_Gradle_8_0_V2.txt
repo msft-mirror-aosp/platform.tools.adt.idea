@@ -2458,6 +2458,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
         UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         applicationId                 : me.monori.gradleprojectpathissue
         testApplicationId             : me.monori.gradleprojectpathissue.test
@@ -2530,6 +2531,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -2582,6 +2584,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
             ProguardFiles                 : <ROOT>/app/proguard-rules.pro
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -3551,6 +3554,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
         UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : me.monori.feature.a.test
     - basicVariant:               : release
@@ -3608,6 +3612,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -3658,6 +3663,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -4615,6 +4621,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : me.monori.feature.b.test
     - basicVariant:               : release
@@ -4690,6 +4697,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -4758,6 +4766,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -5603,6 +5612,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : test.test
     - basicVariant:               : release
@@ -5660,6 +5670,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -5710,6 +5721,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             Name                          : release
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -5901,6 +5913,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
         UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : com.example.lib.test
     - basicVariant:               : release
@@ -5968,6 +5981,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -6020,6 +6034,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             ProguardFiles                 : <ROOT>/lib/proguard-rules.pro
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false

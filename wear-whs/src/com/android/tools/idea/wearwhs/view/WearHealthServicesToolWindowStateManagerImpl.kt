@@ -17,27 +17,42 @@ package com.android.tools.idea.wearwhs.view
 
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.wearwhs.EventTrigger
+import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WhsCapability
+import com.android.tools.idea.wearwhs.WhsDataType
+import com.android.tools.idea.wearwhs.communication.CapabilityState
 import com.android.tools.idea.wearwhs.communication.ConnectionLostException
 import com.android.tools.idea.wearwhs.communication.WearHealthServicesDeviceManager
 import com.android.tools.idea.wearwhs.logger.WearHealthServicesEventLogger
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.diagnostic.Logger
 import io.ktor.util.collections.ConcurrentMap
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jetbrains.annotations.VisibleForTesting
+import org.jetbrains.annotations.TestOnly
+import kotlin.time.Duration.Companion.seconds
+
+/**
+ * Default polling interval for updating the state manager with values from [WearHealthServicesDeviceManager].
+ */
+private const val POLLING_INTERVAL_SECONDS: Long = 10L
 
 internal class WearHealthServicesToolWindowStateManagerImpl(
   private val deviceManager: WearHealthServicesDeviceManager,
-  private val logger: WearHealthServicesEventLogger = WearHealthServicesEventLogger())
+  private val logger: WearHealthServicesEventLogger = WearHealthServicesEventLogger(),
+  @VisibleForTesting private val pollingIntervalSeconds: Long = POLLING_INTERVAL_SECONDS)
   : WearHealthServicesToolWindowStateManager, Disposable {
+
   private val currentPreset = MutableStateFlow(Preset.ALL)
   private val capabilitiesList = MutableStateFlow(emptyList<WhsCapability>())
-  private val capabilityToState = ConcurrentMap<WhsCapability, MutableStateFlow<CapabilityState>>()
+  private val capabilityToState = ConcurrentMap<WhsCapability, MutableStateFlow<CapabilityUIState>>()
   private val progress = MutableStateFlow<WhsStateManagerStatus>(WhsStateManagerStatus.Idle)
+  private val workerScope = AndroidCoroutineScope(this)
 
-  // TODO(b/305924111): Update this value periodically to reflect it on the UI
   private val ongoingExercise = MutableStateFlow(false)
 
   override var serialNumber: String? = null
@@ -51,14 +66,45 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
     }
 
   init {
-    AndroidCoroutineScope(this).launch {
+    workerScope.launch {
       setCapabilities(deviceManager.loadCapabilities())
+      while (true) {
+        updateState()
+        delay(pollingIntervalSeconds.seconds)
+      }
+    }
+  }
+
+  private suspend fun updateState() {
+    if (serialNumber == null) {
+      // Panel is not bound to an emulator yet
+      return
+    }
+    try {
+      ongoingExercise.emit(deviceManager.loadActiveExercise())
+      val currentStates = deviceManager.loadCurrentCapabilityStates()
+      currentStates.forEach { (dataType, state) ->
+        // Update values only if they're synced through and got changed in the background
+        capabilityToState[dataType.toCapability()]?.let { stateFlow ->
+          if (stateFlow.value.synced) {
+            stateFlow.emit(
+              stateFlow.value.copy(
+                capabilityState = CapabilityState(state.enabled, state.overrideValue),
+                synced = true
+              )
+            )
+          }
+        }
+      }
+    }
+    catch (e: ConnectionLostException) {
+      Logger.getInstance(WearHealthServicesToolWindowStateManager::class.java).warn(e)
     }
   }
 
   private suspend fun setCapabilities(whsCapabilities: List<WhsCapability>) {
     capabilityToState.clear()
-    capabilityToState.putAll(whsCapabilities.associateWith { MutableStateFlow(CapabilityState()) })
+    capabilityToState.putAll(whsCapabilities.associateWith { MutableStateFlow(CapabilityUIState()) })
     setPreset(currentPreset.value)
     capabilitiesList.emit(whsCapabilities)
   }
@@ -69,7 +115,8 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
   override suspend fun isWhsVersionSupported(): Boolean {
     return try {
       deviceManager.isWhsVersionSupported()
-    } catch (exception: ConnectionLostException) {
+    }
+    catch (exception: ConnectionLostException) {
       // TODO(b/320432666): For now catch this error and show whs version not supported UI, eventually show separate could not connect UI
       false
     }
@@ -80,7 +127,8 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
   override suspend fun triggerEvent(eventTrigger: EventTrigger) {
     try {
       deviceManager.triggerEvent(eventTrigger)
-    } catch (exception: ConnectionLostException) {
+    }
+    catch (exception: ConnectionLostException) {
       progress.emit(WhsStateManagerStatus.ConnectionLost)
     }
   }
@@ -102,29 +150,30 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
     currentPreset.emit(preset)
   }
 
-  override fun getState(capability: WhsCapability): StateFlow<CapabilityState> =
+  override fun getState(capability: WhsCapability): StateFlow<CapabilityUIState> =
     capabilityToState[capability]?.asStateFlow() ?: throw IllegalArgumentException()
 
   override suspend fun setCapabilityEnabled(capability: WhsCapability, enabled: Boolean) {
     val stateFlow = capabilityToState[capability] ?: throw IllegalArgumentException()
-    val newState = stateFlow.value.copy(enabled = enabled, synced = false)
+    val newState = stateFlow.value.copy(capabilityState = CapabilityState(enabled, stateFlow.value.capabilityState.overrideValue), synced = false)
     stateFlow.emit(newState)
   }
 
   override suspend fun setOverrideValue(capability: WhsCapability, value: Float?) {
     val stateFlow = capabilityToState[capability] ?: throw IllegalArgumentException()
-    val newState = stateFlow.value.copy(overrideValue = value, synced = false)
+    val newState = stateFlow.value.copy(capabilityState = CapabilityState(stateFlow.value.capabilityState.enabled, value), synced = false)
     stateFlow.emit(newState)
   }
 
   override suspend fun applyChanges() {
     progress.emit(WhsStateManagerStatus.Syncing)
-    val capabilityUpdates = capabilityToState.entries.associate { it.key.dataType to it.value.value.enabled }
-    val overrideUpdates = capabilityToState.entries.associate { it.key.dataType to it.value.value.overrideValue }
+    val capabilityUpdates = capabilityToState.entries.associate { it.key.dataType to it.value.value.capabilityState.enabled }
+    val overrideUpdates = capabilityToState.entries.associate { it.key.dataType to it.value.value.capabilityState.overrideValue }
     try {
       deviceManager.setCapabilities(capabilityUpdates)
       deviceManager.overrideValues(overrideUpdates)
-    } catch (exception: ConnectionLostException) {
+    }
+    catch (exception: ConnectionLostException) {
       logger.logApplyChangesFailure()
       progress.emit(WhsStateManagerStatus.ConnectionLost)
       return
@@ -148,5 +197,16 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
 
   override fun dispose() { // Clear all callbacks to avoid memory leaks
     capabilityToState.clear()
+  }
+
+  @TestOnly
+  internal suspend fun forceUpdateState() {
+    updateState()
+  }
+}
+
+private fun WhsDataType.toCapability(): WhsCapability {
+  return WHS_CAPABILITIES.single {
+    it.dataType == this
   }
 }

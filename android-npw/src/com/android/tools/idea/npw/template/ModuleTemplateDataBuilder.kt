@@ -18,12 +18,11 @@ package com.android.tools.idea.npw.template
 import com.android.AndroidProjectTypes.PROJECT_TYPE_DYNAMIC_FEATURE
 import com.android.SdkConstants.FD_TEST
 import com.android.SdkConstants.FD_UNIT_TEST
-import com.android.ide.common.repository.AgpVersion
 import com.android.sdklib.AndroidVersion.VersionCodes.P
 import com.android.sdklib.SdkVersionInfo.HIGHEST_KNOWN_STABLE_API
 import com.android.sdklib.SdkVersionInfo.LOWEST_ACTIVE_API
 import com.android.tools.idea.configurations.ConfigurationManager
-import com.android.tools.idea.gradle.npw.project.GradleAndroidModuleTemplate
+import com.android.tools.idea.npw.project.GradleAndroidModuleTemplate
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.util.DynamicAppUtils
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
@@ -84,6 +83,7 @@ class ModuleTemplateDataBuilder(
   var baseFeature: BaseFeature? = null
   var apis: ApiTemplateData? = null
   var category: Category? = null
+  var isCompose: Boolean = false
   var isMaterial3: Boolean = false
   var useGenericLocalTests: Boolean = true
   var useGenericInstrumentedTests: Boolean = true
@@ -217,29 +217,33 @@ class ModuleTemplateDataBuilder(
     }
   }
 
-  fun build() = ModuleTemplateData(
-    projectTemplateDataBuilder.build(),
-    srcDir!!,
-    resDir!!,
-    manifestDir!!,
-    testDir ?: srcDir!!.resolve(FD_TEST),
-    unitTestDir ?: srcDir!!.resolve(FD_UNIT_TEST),
-    aidlDir,
-    rootDir!!,
-    isNewModule,
-    name!!,
-    isLibrary!!,
-    packageName!!,
-    formFactor!!,
-    themesData ?: ThemesData(appName = getAppNameForTheme(projectTemplateDataBuilder.applicationName!!)),
-    baseFeature,
-    apis!!,
-    viewBindingSupport = viewBindingSupport,
-    category!!,
-    isMaterial3,
-    useGenericLocalTests = useGenericLocalTests,
-    useGenericInstrumentedTests = useGenericInstrumentedTests
-  )
+  fun build(): ModuleTemplateData {
+    check(category != Category.Compose || isCompose) { "Template in Compose category must have isCompose set" }
+    return ModuleTemplateData(
+      projectTemplateDataBuilder.build(),
+      srcDir!!,
+      resDir!!,
+      manifestDir!!,
+      testDir ?: srcDir!!.resolve(FD_TEST),
+      unitTestDir ?: srcDir!!.resolve(FD_UNIT_TEST),
+      aidlDir,
+      rootDir!!,
+      isNewModule,
+      name!!,
+      isLibrary!!,
+      packageName!!,
+      formFactor!!,
+      themesData ?: ThemesData(appName = getAppNameForTheme(projectTemplateDataBuilder.applicationName!!)),
+      baseFeature,
+      apis!!,
+      viewBindingSupport = viewBindingSupport,
+      category!!,
+      isCompose,
+      isMaterial3,
+      useGenericLocalTests = useGenericLocalTests,
+      useGenericInstrumentedTests = useGenericInstrumentedTests
+    )
+  }
 }
 
 fun getExistingModuleTemplateDataBuilder(module: Module): ModuleTemplateDataBuilder {

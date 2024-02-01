@@ -1228,6 +1228,7 @@
             UseAndroidX                   : false
             UsesCompose                   : false
             MlModelBindingEnabled         : false
+            AndroidResourcesEnabled       : true
         - basicVariant:               : debug
             applicationId                 : com.example.android.kotlin
             testApplicationId             : com.example.android.kotlin.test
@@ -1300,6 +1301,7 @@
                 Name                          : debug
                 IsDebuggable                  : true
                 IsJniDebuggable               : false
+                IsPseudoLocalesEnabled        : false
                 IsRenderscriptDebuggable      : false
                 RenderscriptOptimLevel        : 3
                 IsMinifyEnabled               : false
@@ -1350,6 +1352,7 @@
                 Name                          : release
                 IsDebuggable                  : false
                 IsJniDebuggable               : false
+                IsPseudoLocalesEnabled        : false
                 IsRenderscriptDebuggable      : false
                 RenderscriptOptimLevel        : 3
                 IsMinifyEnabled               : false
@@ -2521,6 +2524,7 @@ Required by:
             UseAndroidX                   : false
             UsesCompose                   : false
             MlModelBindingEnabled         : false
+            AndroidResourcesEnabled       : true
         - basicVariant:               : debug
             testApplicationId             : com.example.test.multiproject.module2.test
         - basicVariant:               : release
@@ -2602,6 +2606,7 @@ Required by:
                 Name                          : debug
                 IsDebuggable                  : true
                 IsJniDebuggable               : false
+                IsPseudoLocalesEnabled        : false
                 IsRenderscriptDebuggable      : false
                 RenderscriptOptimLevel        : 3
                 IsMinifyEnabled               : false
@@ -2670,6 +2675,7 @@ Required by:
                 Name                          : release
                 IsDebuggable                  : false
                 IsJniDebuggable               : false
+                IsPseudoLocalesEnabled        : false
                 IsRenderscriptDebuggable      : false
                 RenderscriptOptimLevel        : 3
                 IsMinifyEnabled               : false

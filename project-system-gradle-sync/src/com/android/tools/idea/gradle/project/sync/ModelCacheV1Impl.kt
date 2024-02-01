@@ -291,6 +291,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       multiDexEnabled = copyNewProperty(buildType::multiDexEnabled),
       isDebuggable = buildType.isDebuggable,
       isJniDebuggable = buildType.isJniDebuggable,
+      isPseudoLocalesEnabled = buildType.isPseudoLocalesEnabled,
       isRenderscriptDebuggable = buildType.isRenderscriptDebuggable,
       renderscriptOptimLevel = buildType.renderscriptOptimLevel,
       isMinifyEnabled = buildType.isMinifyEnabled,
@@ -801,7 +802,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
   fun androidArtifactFrom(
     artifact: AndroidArtifact,
     bootClasspath: Collection<String>,
-    agpVersion: AgpVersion?,
+    modelVersions: ModelVersions,
     variantName: String?,
     variantNameForDependencies: String?,
     androidModuleId: ModuleId?,
@@ -927,7 +928,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     androidProject: IdeAndroidProjectImpl,
     variant: Variant,
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-    modelVersion: AgpVersion?,
+    modelVersions: ModelVersions,
     androidModuleId: ModuleId
   ): ModelResult<IdeVariantWithPostProcessor> {
     val mergedFlavor = copyModel(variant.mergedFlavor, ::productFlavorFrom)
@@ -947,7 +948,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       androidArtifactFrom(
         artifact = it,
         bootClasspath = androidProject.bootClasspath,
-        agpVersion = modelVersion,
+        modelVersions = modelVersions,
         variantName = variant.name,
         // For main artifacts, we shouldn't use the variant's name in module dependencies, but Test projects are an exception because
         // we only have one main artifact that is a test artifact, so we need to handle this as a special case.
@@ -973,7 +974,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       androidArtifactFrom(
         artifact = it,
         bootClasspath = androidProject.bootClasspath,
-        agpVersion = modelVersion,
+        modelVersions = modelVersions,
         variantName = variant.name,
         variantNameForDependencies = variant.name,
         androidModuleId = androidModuleId,
@@ -998,9 +999,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       versionCode = mergedFlavor.versionCode,
       versionNameWithSuffix = mergedFlavor.versionName?.let { it + versionNameSuffix.orEmpty() },
       versionNameSuffix = versionNameSuffix,
-      instantAppCompatible = (modelVersion != null &&
-        modelVersion.isAtLeast(3, 3, 0, "alpha", 10, true) &&
-        variant.isInstantAppCompatible),
+      instantAppCompatible = (modelVersions.agp.isAtLeast(3, 3, 0, "alpha", 10, true) && variant.isInstantAppCompatible),
       vectorDrawablesUseSupportLibrary = mergedFlavor.vectorDrawables?.useSupportLibrary ?: false,
       resourceConfigurations = mergedFlavor.resourceConfigurations,
       testInstrumentationRunner = mergedFlavor.testInstrumentationRunner,
@@ -1246,6 +1245,8 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       transitiveRClasses = booleanFlagMap.getBooleanFlag(AndroidGradlePluginProjectFlags.BooleanFlag.TRANSITIVE_R_CLASS),
       usesCompose = booleanFlagMap.getBooleanFlag(AndroidGradlePluginProjectFlags.BooleanFlag.JETPACK_COMPOSE),
       mlModelBindingEnabled = booleanFlagMap.getBooleanFlag(AndroidGradlePluginProjectFlags.BooleanFlag.ML_MODEL_BINDING),
+      /** Treated as enabled for AGP < 8.4. if we need to know the actual answer we could add it to LegacyAndroidGradlePluginPropertiesModelBuilder */
+      androidResourcesEnabled = true,
       unifiedTestPlatformEnabled = booleanFlagMap.getBooleanFlag(AndroidGradlePluginProjectFlags.BooleanFlag.UNIFIED_TEST_PLATFORM),
       useAndroidX = gradlePropertiesModel.useAndroidX ?: com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags.BooleanFlag.USE_ANDROID_X.legacyDefault
     )
@@ -1383,10 +1384,10 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       androidProject: IdeAndroidProjectImpl,
       variant: Variant,
       legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-      modelVersion: AgpVersion?,
+      modelVersions: ModelVersions,
       androidModuleId: ModuleId
     ): ModelResult<IdeVariantWithPostProcessor> =
-      variantFrom(androidProject, variant, legacyAndroidGradlePluginProperties, modelVersion, androidModuleId)
+      variantFrom(androidProject, variant, legacyAndroidGradlePluginProperties, modelVersions, androidModuleId)
 
     override fun androidProjectFrom(
       rootBuildId: BuildId,

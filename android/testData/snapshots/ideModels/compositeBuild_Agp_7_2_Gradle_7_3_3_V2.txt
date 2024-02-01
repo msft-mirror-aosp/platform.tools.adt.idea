@@ -1145,6 +1145,7 @@ MODULE                        : TestCompositeLib1.app
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         applicationId                 : com.test.composite1
         testApplicationId             : com.test.composite1.test
@@ -1220,6 +1221,7 @@ MODULE                        : TestCompositeLib1.app
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -1275,6 +1277,7 @@ MODULE                        : TestCompositeLib1.app
             ProguardFiles                 : <ROOT>/TestCompositeLib1/app/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -2310,6 +2313,7 @@ MODULE                        : TestCompositeLib1.lib
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : com.test.composite1.test
     - basicVariant:               : release
@@ -2379,6 +2383,7 @@ MODULE                        : TestCompositeLib1.lib
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -2434,6 +2439,7 @@ MODULE                        : TestCompositeLib1.lib
             ProguardFiles                 : <ROOT>/TestCompositeLib1/lib/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -3875,6 +3881,7 @@ MODULE                        : TestCompositeLib3.app
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         applicationId                 : com.test.composite3
         testApplicationId             : com.test.composite3.test
@@ -3950,6 +3957,7 @@ MODULE                        : TestCompositeLib3.app
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -4005,6 +4013,7 @@ MODULE                        : TestCompositeLib3.app
             ProguardFiles                 : <ROOT>/TestCompositeLib3/app/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -5016,6 +5025,7 @@ MODULE                        : TestCompositeLib3.lib
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : com.test.composite3.test
     - basicVariant:               : release
@@ -5085,6 +5095,7 @@ MODULE                        : TestCompositeLib3.lib
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -5140,6 +5151,7 @@ MODULE                        : TestCompositeLib3.lib
             ProguardFiles                 : <ROOT>/TestCompositeLib3/lib/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -6870,6 +6882,7 @@ MODULE                        : project.app
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         applicationId                 : com.test.compositeapp
         testApplicationId             : com.test.compositeapp.test
@@ -6945,6 +6958,7 @@ MODULE                        : project.app
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -7000,6 +7014,7 @@ MODULE                        : project.app
             ProguardFiles                 : <ROOT>/app/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -8041,6 +8056,7 @@ MODULE                        : project.lib
         UseAndroidX                   : false
         UsesCompose                   : false
         MlModelBindingEnabled         : false
+        AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : com.test.composite0.test
     - basicVariant:               : release
@@ -8110,6 +8126,7 @@ MODULE                        : project.lib
             Name                          : debug
             IsDebuggable                  : true
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
@@ -8165,6 +8182,7 @@ MODULE                        : project.lib
             ProguardFiles                 : <ROOT>/lib/proguard-rules.pro [-]
             IsDebuggable                  : false
             IsJniDebuggable               : false
+            IsPseudoLocalesEnabled        : false
             IsRenderscriptDebuggable      : false
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false

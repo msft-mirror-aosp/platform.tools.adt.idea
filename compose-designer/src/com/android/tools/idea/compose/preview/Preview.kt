@@ -62,6 +62,8 @@ import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.getDefaultPreviewQuality
+import com.android.tools.idea.preview.groups.PreviewGroup
+import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.interactive.InteractivePreviewManager
 import com.android.tools.idea.preview.interactive.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.preview.lifecycle.PreviewLifecycleManager
@@ -180,7 +182,8 @@ private class PreviewElementDataContext(
   override fun getData(dataId: String): Any? =
     when (dataId) {
       COMPOSE_PREVIEW_MANAGER.name,
-      PreviewModeManager.KEY.name -> composePreviewManager
+      PreviewModeManager.KEY.name,
+      PreviewGroupManager.KEY.name -> composePreviewManager
       COMPOSE_PREVIEW_ELEMENT_INSTANCE.name,
       PREVIEW_ELEMENT_INSTANCE.name -> previewElement
       CommonDataKeys.PROJECT.name -> project
@@ -640,25 +643,31 @@ class ComposePreviewRepresentation(
   fun createUiCheckTab(instance: ComposePreviewElementInstance) {
     val uiCheckIssuePanel = UiCheckPanelProvider(instance, psiFilePointer).getPanel()
     uiCheckIssuePanel.issueProvider.registerUpdateListener(postIssueUpdateListenerForUiCheck)
+    uiCheckIssuePanel.issueProvider.activate()
     uiCheckIssuePanel.addIssueSelectionListener(surface.issueListener, surface)
-    surface.visualLintIssueProvider.uiCheckInstanceId = instance.instanceId
+    (surface.visualLintIssueProvider as? ComposeVisualLintIssueProvider)?.onUiCheckStart(
+      instance.instanceId
+    )
   }
 
   private suspend fun onUiCheckPreviewStop() {
     qualityManager.resume()
     postIssueUpdateListenerForUiCheck.deactivate()
-    uiCheckFilterFlow.value.basePreviewInstance?.let {
-      val panel =
-        ProblemsViewToolWindowUtils.getTabById(project, it.instanceId) as? DesignerCommonIssuePanel
-      panel?.removeIssueSelectionListener(surface.issueListener)
-      panel?.issueProvider?.removeUpdateListener(postIssueUpdateListenerForUiCheck)
-      surface.visualLintIssueProvider.uiCheckInstanceId = null
-    }
+    uiCheckFilterFlow.value.basePreviewInstance?.let { uiCheckPanelCleanup(it.instanceId) }
+    (surface.visualLintIssueProvider as? ComposeVisualLintIssueProvider)?.onUiCheckStop()
     uiCheckFilterFlow.value = UiCheckModeFilter.Disabled
     withContext(uiThread) {
       surface.layeredPane.remove(emptyUiCheckPanel)
       surface.updateSceneViewVisibilities { true }
     }
+  }
+
+  private fun uiCheckPanelCleanup(instanceId: String) {
+    val panel =
+      ProblemsViewToolWindowUtils.getTabById(project, instanceId) as? DesignerCommonIssuePanel
+    panel?.removeIssueSelectionListener(surface.issueListener)
+    panel?.issueProvider?.removeUpdateListener(postIssueUpdateListenerForUiCheck)
+    panel?.issueProvider?.deactivate()
   }
 
   private fun onInteractivePreviewStop() {
@@ -694,7 +703,8 @@ class ComposePreviewRepresentation(
   private val dataProvider = DataProvider {
     when (it) {
       COMPOSE_PREVIEW_MANAGER.name,
-      PreviewModeManager.KEY.name -> this@ComposePreviewRepresentation
+      PreviewModeManager.KEY.name,
+      PreviewGroupManager.KEY.name -> this@ComposePreviewRepresentation
       PlatformCoreDataKeys.BGT_DATA_PROVIDER.name -> DataProvider { slowId -> getSlowData(slowId) }
       CommonDataKeys.PROJECT.name -> project
       else -> null
@@ -950,6 +960,8 @@ class ComposePreviewRepresentation(
     isDisposed.set(true)
     if (mode.value is PreviewMode.Interactive) {
       interactiveManager.stop()
+    } else if (mode.value is PreviewMode.UiCheck) {
+      uiCheckFilterFlow.value.basePreviewInstance?.let { uiCheckPanelCleanup(it.instanceId) }
     }
   }
 
@@ -1163,7 +1175,13 @@ class ComposePreviewRepresentation(
     }
 
     refreshManager.requestRefresh(
-      ComposePreviewRefreshRequest(this.hashCode().toString(), ::refresh, completableDeferred, type)
+      ComposePreviewRefreshRequest(
+        surface,
+        this.hashCode().toString(),
+        ::refresh,
+        completableDeferred,
+        type,
+      )
     )
   }
 
@@ -1457,7 +1475,7 @@ class ComposePreviewRepresentation(
 
   private suspend fun requestFastPreviewRefreshAndTrack(): CompilationResult {
     val previewFile =
-      psiFilePointer.element
+      readAction { psiFilePointer.element }
         ?: return CompilationResult.RequestException(
           IllegalStateException("Preview File is no valid")
         )

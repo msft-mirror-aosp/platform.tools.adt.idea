@@ -25,10 +25,12 @@ import com.android.tools.idea.wearwhs.WhsDataType
 import com.intellij.openapi.diagnostic.Logger
 
 const val whsPackage: String = "com.google.android.wearable.healthservices"
-const val whsUri: String = "content://$whsPackage.dev.synthetic/synthetic_config"
+const val whsConfigUri: String = "content://$whsPackage.dev.synthetic/synthetic_config"
+const val whsActiveExerciseUri: String = "content://$whsPackage.dev.exerciseinfo"
 const val whsDevVersionCode = 1
 val capabilityStatePattern = Regex("Row: \\d+ data_type=(\\w+), is_enabled=(true|false), override_value=(\\d+\\.?\\d*)")
 val versionCodePattern = Regex("versionCode=(\\d+)")
+val activeExerciseRegex = Regex("active_exercise=(true|false)")
 
 /**
  * Content provider implementation of [WearHealthServicesDeviceManager].
@@ -36,24 +38,25 @@ val versionCodePattern = Regex("versionCode=(\\d+)")
  * This class uses the content provider for the synthetic HAL in WHS to sync the current state
  * of the UI to the selected Wear OS device.
  */
-internal class ContentProviderDeviceManager(private val adbSession: AdbSession, private var capabilities: List<WhsCapability> = WHS_CAPABILITIES) : WearHealthServicesDeviceManager {
+internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
+                                            private var capabilities: List<WhsCapability> = WHS_CAPABILITIES) : WearHealthServicesDeviceManager {
   private var serialNumber: String? = null
   private val logger = Logger.getInstance(ContentProviderDeviceManager::class.java)
 
   override suspend fun loadCapabilities() = capabilities
 
-  override suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityStatus> {
+  override suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityState> {
     if (serialNumber == null) {
-      // TODO: Log this error
+      logger.warn(IllegalStateException("Serial number not set"))
       return emptyMap()
     }
 
     val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    val output = adbSession.deviceServices.shellAsText(device, "content query --uri $whsUri")
+    val output = adbSession.deviceServices.shellAsText(device, "content query --uri $whsConfigUri")
 
     val contentProviderEntryMatches = capabilityStatePattern.findAll(output.stdout)
 
-    val capabilities = mutableMapOf<WhsDataType, CapabilityStatus>()
+    val capabilities = mutableMapOf<WhsDataType, CapabilityState>()
 
     for (match in contentProviderEntryMatches) {
       val dataType = match.groupValues[1].toDataType()
@@ -62,7 +65,7 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
       }
       val isEnabled = match.groupValues[2].toBoolean()
 
-      capabilities[dataType] = CapabilityStatus(isEnabled, null)
+      capabilities[dataType] = CapabilityState(isEnabled, null)
     }
 
     return capabilities
@@ -70,17 +73,17 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
 
   override suspend fun clearContentProvider() {
     if (serialNumber == null) {
-      // TODO: Log this error
+      logger.warn(IllegalStateException("Serial number not set"))
       return
     }
 
     val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    adbSession.deviceServices.shellAsText(device, "content delete --uri $whsUri")
+    adbSession.deviceServices.shellAsText(device, "content delete --uri $whsConfigUri")
   }
 
   override suspend fun isWhsVersionSupported(): Boolean {
     if (serialNumber == null) {
-      // TODO: Log this error
+      logger.warn(IllegalStateException("Serial number not set"))
       return false
     }
 
@@ -96,11 +99,23 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
     this.serialNumber = serialNumber
   }
 
-  // TODO(b/305924111) Implement loadOngoingExercise method
-  override suspend fun loadOngoingExercise() = false
+  private fun activeExerciseCommand(): String {
+    return "content query --uri $whsActiveExerciseUri"
+  }
+
+  override suspend fun loadActiveExercise(): Boolean {
+    if (serialNumber == null) {
+      logger.warn(IllegalStateException("Serial number not set"))
+      return false
+    }
+
+    val output = adbSession.deviceServices.shellAsText(DeviceSelector.fromSerialNumber(serialNumber!!), activeExerciseCommand())
+    val activeExercise = activeExerciseRegex.find(output.stdout)?.groupValues?.get(1)?.toBoolean()
+    return activeExercise ?: false
+  }
 
   private fun contentUpdateMultipleCapabilities(capabilityUpdates: Map<WhsDataType, Any?>): String {
-    val sb = StringBuilder("content update --uri $whsUri")
+    val sb = StringBuilder("content update --uri $whsConfigUri")
     for ((dataType, value) in capabilityUpdates.toSortedMap(compareBy { it.name })) {
       if (dataType == WhsDataType.LOCATION && value !is Boolean) {
         continue // Location does not have an override value
@@ -132,13 +147,12 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
 
   override suspend fun setCapabilities(capabilityUpdates: Map<WhsDataType, Boolean>) {
     if (serialNumber == null) {
-      // TODO: Log this error
+      logger.warn(IllegalStateException("Serial number not set"))
       return
     }
 
-    val contentUpdateCommand = contentUpdateMultipleCapabilities(capabilityUpdates)
     val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-
+    val contentUpdateCommand = contentUpdateMultipleCapabilities(capabilityUpdates)
     adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
   }
 
@@ -152,12 +166,18 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession, 
     adbSession.deviceServices.shellAsText(device, triggerEventCommand(eventTrigger))
   }
 
-  private fun triggerEventCommand(eventTrigger: EventTrigger) =
-    "am broadcast -a \"${eventTrigger.eventKey}\" $whsPackage"
+  private fun triggerEventCommand(eventTrigger: EventTrigger): String {
+    val commandStringBuilder = StringBuilder("am broadcast -a \"${eventTrigger.eventKey}\"")
+    for ((key, value) in eventTrigger.eventMetadata) {
+      commandStringBuilder.append(" --es $key \"$value\"")
+    }
+    commandStringBuilder.append(" $whsPackage")
+    return commandStringBuilder.toString()
+  }
 
   override suspend fun overrideValues(overrideUpdates: Map<WhsDataType, Number?>) {
     if (serialNumber == null) {
-      // TODO: Log this error
+      logger.warn(IllegalStateException("Serial number not set"))
       return
     }
 

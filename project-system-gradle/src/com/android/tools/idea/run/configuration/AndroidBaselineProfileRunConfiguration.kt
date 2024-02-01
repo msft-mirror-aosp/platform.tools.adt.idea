@@ -11,7 +11,6 @@ import com.android.tools.idea.projectsystem.gradle.resolve
 import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.AndroidRunConfigurationFactoryBase
 import com.android.tools.idea.run.DeviceFutures
-import com.android.tools.idea.run.PreferGradleMake
 import com.android.tools.idea.run.ValidationError
 import com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor.Companion.anyTopLevelJavaRule
 import com.android.tools.idea.run.configuration.BaselineProfileRunLineMarkerContributor.Companion.anyTopLevelKtRule
@@ -28,10 +27,8 @@ import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunConfiguration
-import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
 import com.intellij.execution.configurations.WithoutOwnBeforeRunSteps
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAction
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.options.SettingsEditor
@@ -125,7 +122,7 @@ class AndroidBaselineProfileTestOptions : TestRunConfigurationOptions() {
 }
 
 class AndroidBaselineProfileRunConfiguration(project: Project, factory: ConfigurationFactory, name: String? = factory.name) :
-  AndroidRunConfigurationBase(project, factory, name, true), RunConfigurationWithSuppressedDefaultRunAction, RunConfigurationWithSuppressedDefaultDebugAction, PreferGradleMake, WithoutOwnBeforeRunSteps {
+  AndroidRunConfigurationBase(project, factory, name, true), WithoutOwnBeforeRunSteps {
 
   @JvmField
   var generateAllVariants: Boolean = false

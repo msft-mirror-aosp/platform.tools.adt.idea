@@ -19,6 +19,7 @@ import com.android.sdklib.devices.Device;
 import com.android.tools.adtui.common.ColoredIconGenerator;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SortedSetMultimap;
@@ -167,7 +168,7 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
   private @NotNull Device first(@NotNull Category category) {
     // This should not happen and, yet, here we are
 
-    Logger.getInstance(DeviceDefinitionList.class).warn(
+    Logger.getInstance(DeviceDefinitionList.class).error(
       "Did not find default " + category.getDefaultDefinitionId() + ' ' + toString(category) + " in " + mapDefinitionsToIds(category));
 
     return myCategoryToDefinitionMultimap.get(category).first();
@@ -223,6 +224,11 @@ public class DeviceDefinitionList extends JPanel implements ListSelectionListene
   @Override
   public void selectDefaultDevice() {
     setSelectedDevice(myDefaultDevice);
+  }
+
+  @VisibleForTesting
+  @NotNull Multimap<Category, Device> getCategoryToDefinitionMultimap() {
+    return myCategoryToDefinitionMultimap;
   }
 
   @Nullable

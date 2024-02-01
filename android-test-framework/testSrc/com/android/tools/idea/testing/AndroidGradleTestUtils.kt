@@ -716,6 +716,7 @@ fun AndroidProjectStubBuilder.buildAgpProjectFlagsStub(): IdeAndroidGradlePlugin
     transitiveRClasses = true,
     usesCompose = false,
     mlModelBindingEnabled = mlModelBindingEnabled,
+    androidResourcesEnabled = true,
     unifiedTestPlatformEnabled = true,
     useAndroidX = false,
   )
@@ -764,6 +765,7 @@ fun AndroidProjectStubBuilder.buildDebugBuildTypeStub(): IdeBuildTypeContainerIm
         multiDexEnabled = null,
         isDebuggable = true,
         isJniDebuggable = true,
+        isPseudoLocalesEnabled = false,
         isRenderscriptDebuggable = true,
         renderscriptOptimLevel = 1,
         isMinifyEnabled = false,
@@ -792,6 +794,7 @@ fun AndroidProjectStubBuilder.buildReleaseBuildTypeStub(): IdeBuildTypeContainer
         multiDexEnabled = null,
         isDebuggable = false,
         isJniDebuggable = false,
+        isPseudoLocalesEnabled = false,
         isRenderscriptDebuggable = false,
         renderscriptOptimLevel = 1,
         isMinifyEnabled = true,

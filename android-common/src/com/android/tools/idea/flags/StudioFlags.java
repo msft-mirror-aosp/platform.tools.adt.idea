@@ -25,6 +25,7 @@ import com.android.flags.FlagGroup;
 import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
 import com.android.flags.IntFlag;
+import com.android.flags.LongFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
@@ -221,7 +222,7 @@ public final class StudioFlags {
   //region Design Tools
   private static final FlagGroup DESIGN_TOOLS = new FlagGroup(FLAGS, "design.tools", "Design Tools");
 
-  public static final Flag<Long> PROJECT_SYSTEM_CLASS_LOADER_CACHE_LIMIT = Flag.create(
+  public static final Flag<Long> PROJECT_SYSTEM_CLASS_LOADER_CACHE_LIMIT = new LongFlag(
     DESIGN_TOOLS,
     "project.system.class.loader.cache.max.size",
     "Configure the max size of the cache used by ProjectSystemClassLoader",
@@ -230,7 +231,7 @@ public final class StudioFlags {
     20_000_000L
   );
 
-  public static final Flag<Long> GRADLE_CLASS_FINDER_CACHE_LIMIT = Flag.create(
+  public static final Flag<Long> GRADLE_CLASS_FINDER_CACHE_LIMIT = new LongFlag(
     DESIGN_TOOLS,
     "gradle.class.finder.cache.max.size",
     "Configure the max size of the cache used by GradleClassFileFinder",
@@ -242,27 +243,27 @@ public final class StudioFlags {
   //region Layout Editor
   private static final FlagGroup NELE = new FlagGroup(FLAGS, "nele", "Layout Editor");
 
-  public static final Flag<Boolean> NELE_RENDER_DIAGNOSTICS = Flag.create(
+  public static final Flag<Boolean> NELE_RENDER_DIAGNOSTICS = new BooleanFlag(
     NELE, "diagnostics", "Enable rendering on-screen stats",
     "If enabled, the surface displays some debug information to diagnose performance",
     false);
 
-  public static final Flag<Boolean> NELE_LOG_ANDROID_FRAMEWORK = Flag.create(
+  public static final Flag<Boolean> NELE_LOG_ANDROID_FRAMEWORK = new BooleanFlag(
     NELE, "log.android.framework", "Log messages coming from Layoutlib Native.",
     "Log in the IDEA log the messages coming from Java and native code of Layoutlib Native.",
     false);
 
-  public static final Flag<Boolean> NELE_USE_CUSTOM_TRAFFIC_LIGHTS_FOR_RESOURCES = Flag.create(
+  public static final Flag<Boolean> NELE_USE_CUSTOM_TRAFFIC_LIGHTS_FOR_RESOURCES = new BooleanFlag(
     NELE, "use.custom.traffic.lights.for.resources", "Base traffic lights on the errors from the shared issue panel",
     "Use errors from the current file and qualifiers tab in the traffic light rendering for resource files.",
     true);
 
-  public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = Flag.create(
+  public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = new BooleanFlag(
     NELE, "asset.repository.include.aars.through.project.system", "Include AARs through project system",
     "Include resource directories from AARs found through project system.",
     false);
 
-  public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = Flag.create(
+  public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = new BooleanFlag(
     NELE, "atf.for.compose", "Enable ATF checks for Compose",
     "Allow running accessibility checks for Compose using ATF.",
     true);
@@ -277,20 +278,25 @@ public final class StudioFlags {
     "Enable colorblind Check mode in UI Check Mode for Compose preview",
     ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
-  public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = Flag.create(
+  public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = new BooleanFlag(
     NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
     "Enable so that visual lint runs on previews in the Compose Preview.",
     true);
 
-  public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = Flag.create(
+  public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = new BooleanFlag(
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
     "If enabled, the surface displays background class preloading progress",
     false);
 
-  public static final Flag<Boolean> NELE_NEW_COMPONENT_TREE = Flag.create(
+  public static final Flag<Boolean> NELE_NEW_COMPONENT_TREE = new BooleanFlag(
     NELE, "use.component.tree.builder", "Use the Component Tree builder",
     "If enabled, use the Component Tree builder for the Nele component tree",
     true);
+
+  public static final Flag<Boolean> NELE_XML_TO_COMPOSE = new BooleanFlag(
+    NELE, "xml.to.compose", "Enable XML to Compose conversion",
+    "Enable an action that converts XML layouts to Compose using the Studio Bot backend",
+    false);
   //endregion
 
   //region Resource Repository
@@ -836,44 +842,44 @@ public final class StudioFlags {
 
   //region Layout Inspector
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_DEVBUILD_SKIA_SERVER = Flag.create(
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_DEVBUILD_SKIA_SERVER = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.devbuild.skia", "Use the locally-built skia rendering server",
     "If enabled and this is a locally-built studio instance, use the locally-built skia server instead of one from the SDK.", false);
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED = Flag.create(
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.auto.connect.foreground", "Enable automatically connecting to foreground process",
     "When this flag is enabled, LayoutInspector will automatically connect to whatever debuggable process is in the foreground on the phone.",
     true);
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IN_RUNNING_DEVICES_ENABLED = Flag.create(
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IN_RUNNING_DEVICES_ENABLED = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.running.devices", "Enable Layout Inspector in Running Devices",
     "When this flag is enabled, LayoutInspector be integrated in the Running Devices tool window, instead of in its own tool window.",
     true);
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_THROW_UNEXPECTED_ERROR = Flag.create(
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_THROW_UNEXPECTED_ERROR = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.throw.unexpected.error", "Throw exception when encountering an unexpected error",
     "When this flag is enabled, LayoutInspector will throw an exception when an unexpected error is being logged to the metrics.",
     StudioPathManager.isRunningFromSources());
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IGNORE_RECOMPOSITIONS_IN_FRAMEWORK = Flag.create(
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IGNORE_RECOMPOSITIONS_IN_FRAMEWORK = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.ignore.framework.recompositions", "Ignore recompositions in compose framework",
     "When this flag is enabled, LayoutInspector will disregard all recomposition counts for framework composables, " +
     "such that the user can concentrate on their own code.",
     true);
 
-  public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER = Flag.create(
+  public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER = new StringFlag(
     LAYOUT_INSPECTOR, "dev.jar.location", "Location of prebuilt compose app inspection jar for development",
     "If APP_INSPECTION_USE_DEV_JAR is enabled use this location to load the inspector jar in development.",
     "prebuilts/tools/common/app-inspection/androidx/compose/ui/"
   );
 
-  public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_RELEASE_FOLDER = Flag.create(
+  public static final Flag<String> DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_RELEASE_FOLDER = new StringFlag(
     LAYOUT_INSPECTOR, "rel.jar.location", "Location of prebuilt compose app inspection jar for releases",
     "If APP_INSPECTION_USE_DEV_JAR is enabled use this location to load the inspector jar in releases.",
     ""
   );
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_EXTRA_LOGGING = Flag.create(
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_EXTRA_LOGGING = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.extra.logging", "Add extra logging for problem detection",
     "When this flag is enabled, LayoutInspector will add extra logging for detection of various problems.",
     false);
@@ -1202,26 +1208,26 @@ public final class StudioFlags {
     "If enabled, Compose Preview Essentials Mode will be enabled.",
     ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE = new BooleanFlag(
     COMPOSE, "preview.scroll.on.caret.move", "Enable the Compose Preview scrolling when the caret moves",
     "If enabled, when moving the caret in the text editor, the Preview will show the preview currently under the cursor.",
     false);
 
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ADVANCED_SETTINGS_MENU = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ADVANCED_SETTINGS_MENU = new BooleanFlag(
     COMPOSE, "deploy.live.edit.deploy.advanced.settings",
     "Enable live edit deploy settings menu",
     "If enabled, advanced Live Edit settings menu will be visible",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER = new BooleanFlag(
     COMPOSE, "deploy.live.edit.deploy.differ",
     "LiveEdit: Resolve changed classes and group IDs with the class differ.",
     "If enabled, the class differ will be used inside of the LE compiler",
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS = new BooleanFlag(
     COMPOSE, "deploy.live.edit.deploy.confined.analysis",
     "LiveEdit: Limit compilation error analysis to only the current file",
     "If enabled, Live Edit will aggressively live update even if there are analysis errors " +
@@ -1229,7 +1235,7 @@ public final class StudioFlags {
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_R8_DESUGAR = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_R8_DESUGAR = new BooleanFlag(
     COMPOSE, "deploy.live.edit.deploy.desugar.r8",
     "LiveEdit: Desugar kotlinc outputs with R8",
     "If enabled, the outputs of kotlinc are desugared before being sent to LiveEdit engine. This improves " +
@@ -1237,121 +1243,121 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ALLOW_MULTIPLE_MIN_API_DEX_MARKERS_IN_APK = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ALLOW_MULTIPLE_MIN_API_DEX_MARKERS_IN_APK = new BooleanFlag(
     COMPOSE, "deploy.live.edit.allow.multiple.min.api.dex.markers.in.apk",
     "LiveEdit: Allow multiple min api dex markers in apk",
     "If enabled, apk may contain multiple min api dex markers and LiveEdit picks the lowest among them",
    false
   );
 
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_BUILD_SYSTEM_MIN_SDK_VERSION_FOR_DEXING = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_BUILD_SYSTEM_MIN_SDK_VERSION_FOR_DEXING = new BooleanFlag(
     COMPOSE, "deploy.live.edit.build.system.min.sdk.version.for.dexing",
     "LiveEdit: Use Min SDK for Dexing from the build system",
     "If enabled, Live Edit uses the Min SDK information from the build system. Otherwise, use the information from the DEX marker",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_DEBUG_BOUNDS = Flag.create(
+  public static final Flag<Boolean> COMPOSE_DEBUG_BOUNDS = new BooleanFlag(
     COMPOSE, "preview.debug.bounds",
     "Enable the debug bounds switch controls",
     "If enabled, the user can enable/disable the painting of debug bounds",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_ELEMENT_PICKER = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_ELEMENT_PICKER = new BooleanFlag(
     COMPOSE, "preview.element.picker.enable",
     "Enable @Preview picker",
     "If enabled, the picker for @Preview elements will be available",
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_SPRING_PICKER = Flag.create(
+  public static final Flag<Boolean> COMPOSE_SPRING_PICKER = new BooleanFlag(
     COMPOSE, "preview.spring.picker",
     "Enable the SpringSpec picker",
     "If enabled, a picker will be available in SpringSpec calls on the Editor gutter",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = Flag.create(
+  public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = new BooleanFlag(
     COMPOSE, "view.inspector",
     "Show the switch of view inspection tool in Compose",
     "If enabled, the user can toggle the mouse inspection tool in the dropdown menu of Compose Preview. The tools is disabled by default",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_VIEW_FILTER = Flag.create(
+  public static final Flag<Boolean> COMPOSE_VIEW_FILTER = new BooleanFlag(
     COMPOSE, "view.filter",
     "Support filter the previews in Compose",
     "If enabled, the user can find the filter actions to filter the visible previews in compose preview",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_ZOOM_CONTROLS_DROPDOWN = Flag.create(
+  public static final Flag<Boolean> COMPOSE_ZOOM_CONTROLS_DROPDOWN = new BooleanFlag(
     COMPOSE, "preview.zoom.controls.dropdown",
     "Include Zoom Controls in the Compose Preview dropdown action",
     "If enabled, the zoom controls will also be displayed in the Compose Preview dropdown action, located on the top-left corner",
     false
   );
 
-  public static final Flag<Integer> COMPOSE_INTERACTIVE_FPS_LIMIT = Flag.create(
+  public static final Flag<Integer> COMPOSE_INTERACTIVE_FPS_LIMIT = new IntFlag(
     COMPOSE, "preview.interactive.fps.limit",
     "Interactive Preview FPS limit",
     "Controls the maximum number of frames per second in Compose Interactive Preview",
     30
   );
 
-  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG = Flag.create(
+  public static final Flag<Boolean> COMPOSE_ANIMATION_PREVIEW_COORDINATION_DRAG = new BooleanFlag(
     COMPOSE, "preview.animation.coordination.drag",
     "Enable animation dragging in timeline for Animation Inspector",
     "If enabled, animation dragging will be available in Animation Inspector timeline.",
     false
   );
 
-  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_DAEMON_DEBUG = Flag.create(
+  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_DAEMON_DEBUG = new BooleanFlag(
     COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
     "If enabled, the compiler daemon will wait for a debugger to be attached.",
     false);
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_GROUP_LAYOUT = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_GROUP_LAYOUT = new BooleanFlag(
     COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
     "If enabled, multiple previews associated with composable will be grouped. Please invalidates file caches after " +
     "enabling or disabling (File -> Invalidate Caches...)", false);
 
-  public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = new BooleanFlag(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
     "If enabled, the project will be treated as a Compose project, showing Previews if available and enhancing the Compose editing",
     false);
 
-  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_AUTO_DISABLE = Flag.create(
+  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_AUTO_DISABLE = new BooleanFlag(
     COMPOSE, "fast.preview.auto.disable", "If enabled, Fast Preview can auto-disable",
     "If enabled, if fast preview finds a compiler problem, it will be auto disable until the user re-enables it",
     false);
 
-  public static final Flag<Boolean> COMPOSE_ALLOCATION_LIMITER = Flag.create(
+  public static final Flag<Boolean> COMPOSE_ALLOCATION_LIMITER = new BooleanFlag(
     COMPOSE, "allocation.limiter", "If enabled, limits allocations per render",
     "If enabled, limits the number of allocations that user code can do in a single render action",
     true);
-  public static final Flag<Boolean> COMPOSE_PREVIEW_SELECTION = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_SELECTION = new BooleanFlag(
     COMPOSE, "compose.preview.selection", "Enable the select/deselect interaction with Previews",
     "If enabled, Previews will be selectable, and some interactions will only be enabled for selected Previews",
     true);
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY = new BooleanFlag(
     COMPOSE, "compose.preview.render.quality", "Enable the usage of a render quality management mechanism for Compose Preview",
     "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position",
     true);
 
-  public static final Flag<Long> COMPOSE_PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = Flag.create(
+  public static final Flag<Long> COMPOSE_PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = new LongFlag(
     COMPOSE, "compose.preview.render.quality.debounce.time", "Render quality debounce time",
     "Milliseconds to wait before adjusting the quality of Previews, after a scroll or zoom change happens",
     100L);
 
-  public static final Flag<Integer> COMPOSE_PREVIEW_RENDER_QUALITY_VISIBILITY_THRESHOLD = Flag.create(
+  public static final Flag<Integer> COMPOSE_PREVIEW_RENDER_QUALITY_VISIBILITY_THRESHOLD = new IntFlag(
     COMPOSE, "compose.preview.render.quality.visibility.threshold", "Render quality zoom visibility threshold",
     "When the zoom level is lower than this value, all previews will be rendered at low quality",
     20);
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME = Flag.create(
+  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME = new BooleanFlag(
     COMPOSE, "compose.preview.render.quality.notify.time", "Notify refresh time for render quality refreshes",
     "If enabled, the time taken in render quality refreshes will be notified each time",
     false);
@@ -1601,7 +1607,7 @@ public final class StudioFlags {
       "crashlytics.2023h2.ui",
       "Crashlytics UI changes for J",
       "Enabled Logs & Keys, Multi-event",
-      false
+      true
     );
 
   public static final Flag<Boolean> PLAY_VITALS_ENABLED =
@@ -1787,6 +1793,18 @@ public final class StudioFlags {
                     "Enable AI Actions in the editor.",
                     "When enabled, shows the 'AI Actions' item in the editor popup menu along with allowing individual actions to be enabled.",
                     ChannelDefault.of(false).withOverride(true, DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_CUSTOM_TRANSFORM_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
+                    "Enable the custom transform action in the editor.",
+                    "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
+                    ChannelDefault.of(false).withOverride(true, CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_USE_FACTS_FOR_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "chat.use.facts.for.context",
+                    "Use retrieval augmentation facts to attach context to queries.",
+                    "When enabled, project context is attached to queries using facts, instead of prepending them directly to the query string.",
+                    ChannelDefault.of(false).withOverride(true, CANARY));
 
   // endregion STUDIO_BOT
 

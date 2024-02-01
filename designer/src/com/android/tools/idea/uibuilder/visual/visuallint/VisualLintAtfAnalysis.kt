@@ -16,6 +16,7 @@
 package com.android.tools.idea.uibuilder.visual.visuallint
 
 import com.android.tools.idea.common.error.IssueSource
+import com.android.tools.idea.common.error.NlComponentIssueSource
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.uibuilder.surface.NlAtfIssue
@@ -28,11 +29,9 @@ import com.android.tools.idea.validator.ValidatorHierarchy
 import com.android.tools.idea.validator.ValidatorResult
 import com.android.tools.idea.validator.ValidatorUtil
 import com.android.tools.rendering.RenderResult
-import com.intellij.openapi.Disposable
-import com.intellij.openapi.util.Disposer
 import java.util.EnumSet
 
-class VisualLintAtfAnalysis(private val model: NlModel) : Disposable {
+class VisualLintAtfAnalysis(private val model: NlModel) {
 
   /**
    * Parses the layout and stores all metadata required for linking issues to source [NlComponent]
@@ -43,8 +42,6 @@ class VisualLintAtfAnalysis(private val model: NlModel) : Disposable {
   var renderMetric = RenderResultMetricData()
 
   init {
-    Disposer.register(model, this)
-
     // Enable retrieving text character locations from TextView to improve the
     // accuracy of TextContrastCheck in ATF.
     LayoutValidator.setObtainCharacterLocations(true)
@@ -116,7 +113,7 @@ class VisualLintAtfAnalysis(private val model: NlModel) : Disposable {
           if (component == null) {
             issuesWithoutSources++
           } else {
-            issues.add(VisualLintAtfIssue(it, component, model))
+            issues.add(VisualLintAtfIssue(it, component))
           }
         }
       }
@@ -130,22 +127,16 @@ class VisualLintAtfAnalysis(private val model: NlModel) : Disposable {
     }
     return issues
   }
-
-  override fun dispose() {
-    layoutParser.clear()
-  }
 }
 
-class VisualLintAtfIssue(
-  result: ValidatorData.Issue,
-  val component: NlComponent,
-  private val sourceModel: NlModel,
-) :
-  NlAtfIssue(result, IssueSource.fromNlComponent(component), sourceModel),
-  VisualLintHighlightingIssue {
+class VisualLintAtfIssue(result: ValidatorData.Issue, component: NlComponent) :
+  NlAtfIssue(result, NlComponentIssueSource(component)), VisualLintHighlightingIssue {
 
   private val visualLintIssueSource =
-    VisualLintIssueProvider.VisualLintIssueSource(setOf(sourceModel), listOf(component))
+    VisualLintIssueProvider.VisualLintIssueSource(setOf(component.model), listOf(component))
+  private val sourceModel: NlModel?
+    get() = visualLintIssueSource.components.firstOrNull()?.model
+
   override val source: IssueSource
     get() = visualLintIssueSource
 
@@ -155,7 +146,7 @@ class VisualLintAtfIssue(
 
   fun appliedColorBlindFilter(): ColorBlindMode {
     return ColorBlindMode.values().firstOrNull {
-      sourceModel.modelDisplayName?.startsWith(it.displayName) ?: false
+      sourceModel?.modelDisplayName?.startsWith(it.displayName) ?: false
     } ?: ColorBlindMode.NONE
   }
 }

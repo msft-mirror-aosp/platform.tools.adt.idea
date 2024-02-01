@@ -19,9 +19,6 @@ import com.android.tools.idea.wearwhs.EventTrigger
 import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.android.tools.idea.wearwhs.WhsDataType
-import kotlinx.coroutines.delay
-
-private const val DELAY_MS = 100L
 
 /**
  * Fake implementation of [WearHealthServicesDeviceManager] for testing.
@@ -31,41 +28,39 @@ internal class FakeDeviceManager(
   internal var failState = false
   internal val triggeredEvents = mutableListOf<EventTrigger>()
   internal var clearContentProviderInvocations = 0
-  private val onDeviceStates = capabilities.associate { it.dataType to CapabilityStatus(false, null) }
+  private val onDeviceStates: MutableMap<WhsDataType, CapabilityState> = capabilities.associate { it.dataType to CapabilityState(false, null) } as MutableMap<WhsDataType, CapabilityState>
+  internal var activeExercise = false
 
   override suspend fun loadCapabilities() = if (failState) {
     throw ConnectionLostException("Failed to load capabilities")
   }
   else {
-    delay(DELAY_MS)
     capabilities
   }
 
-  override suspend fun loadOngoingExercise() = if (failState) {
+  override suspend fun loadActiveExercise() = if (failState) {
     throw ConnectionLostException("Failed to load ongoing exercise")
   }
   else {
-    delay(DELAY_MS)
-    false
+    activeExercise
   }
 
   override suspend fun setCapabilities(capabilityUpdates: Map<WhsDataType, Boolean>) = if (failState) {
     throw ConnectionLostException("Failed to override value")
   } else {
-    capabilityUpdates.forEach { (capability, enabled) -> onDeviceStates[capability]?.enabled = enabled }
+    capabilityUpdates.forEach { (dataType, enabled) -> onDeviceStates[dataType] = CapabilityState(enabled, onDeviceStates[dataType]!!.overrideValue) }
   }
 
   override suspend fun overrideValues(overrideUpdates: Map<WhsDataType, Number?>)  = if (failState) {
     throw ConnectionLostException("Failed to override value")
   } else {
-    overrideUpdates.forEach { (capability, value) -> onDeviceStates[capability]?.overrideValue = value?.toFloat() }
+    overrideUpdates.forEach { (dataType, value) -> onDeviceStates[dataType] = CapabilityState(onDeviceStates[dataType]!!.enabled, value?.toFloat()) }
   }
 
-  override suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityStatus> = if (failState) {
+  override suspend fun loadCurrentCapabilityStates(): Map<WhsDataType, CapabilityState> = if (failState) {
     throw ConnectionLostException("Failed to load capability states")
   }
   else {
-    delay(DELAY_MS)
     onDeviceStates
   }
 
