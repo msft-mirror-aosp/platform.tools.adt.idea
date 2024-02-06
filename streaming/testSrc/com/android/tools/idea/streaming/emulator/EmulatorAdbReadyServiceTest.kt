@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.awt.Dimension
@@ -101,6 +102,7 @@ class EmulatorAdbReadyServiceTest {
     assertThat(isReadyForAdbCommands(project, serialNumber1)).isFalse()
   }
 
+  @Ignore("Toolbar is disabled in Jellyfish")
   @Test
   fun testMainToolbarUpdateOnConnect() = runBlocking {
     val panel = createWindowPanel()
