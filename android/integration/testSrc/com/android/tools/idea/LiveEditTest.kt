@@ -59,7 +59,6 @@ class LiveEditTest {
     Files.writeString(filetypePaths, filetypeContents, StandardCharsets.UTF_8)
   }
 
-  @Ignore("b/323239076")
   @Test
   fun liveEditTest() {
     val project = AndroidProject("tools/adt/idea/android/integration/testData/liveedit")
@@ -92,7 +91,7 @@ class LiveEditTest {
           studio.executeAction("Run")
 
           system.installation.ideaLog.waitForMatchingLine(
-            ".*AndroidProcessHandler - Adding device emulator-${emulator.portString} to monitor for launched app: com\\.example\\.liveedittest",
+            ".*AndroidProcessHandler - Adding device emu0 \\[emulator-${emulator.portString}\\] to monitor for launched app: com\\.example\\.liveedittest",
             60, TimeUnit.SECONDS)
           adb.runCommand("logcat", emulator = emulator) {
             waitForLog(".*Before editing.*", 600, TimeUnit.SECONDS);

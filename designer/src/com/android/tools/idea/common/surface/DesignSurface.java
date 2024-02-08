@@ -226,7 +226,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   @GuardedBy("myListenersLock")
   protected final ArrayList<DesignSurfaceListener> myListeners = new ArrayList<>();
   @GuardedBy("myListenersLock")
-  @NotNull private ArrayList<PanZoomListener> myZoomListeners = new ArrayList<>();
+  @NotNull private final ArrayList<PanZoomListener> myZoomListeners = new ArrayList<>();
   private final ActionManager<? extends DesignSurface<T>> myActionManager;
   @NotNull private WeakReference<FileEditor> myFileEditorDelegate = new WeakReference<>(null);
   private final ReentrantReadWriteLock myModelToSceneManagersLock = new ReentrantReadWriteLock();
@@ -582,44 +582,36 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   /**
    * Add an {@link NlModel} to DesignSurface and return the created {@link SceneManager}.
-   * If it is added before then it just returns the associated {@link SceneManager} which created before. The {@link NlModel} will be moved
-   * to the last position which might affect rendering.
+   * If it is added before then it just returns the associated {@link SceneManager} which was created before. The {@link NlModel} will be
+   * moved to the last position which might affect rendering.
    *
    * @param model the added {@link NlModel}
    * @see #addAndRenderModel(NlModel)
    */
   @NotNull
   private T addModel(@NotNull NlModel model) {
-    T manager = getSceneManager(model);
-    if (manager != null) {
-      // No need to add same model twice. We just move it to the bottom of the model list since order is important.
-      myModelToSceneManagersLock.writeLock().lock();
-      try {
+    myModelToSceneManagersLock.writeLock().lock();
+    try {
+      T manager = getSceneManager(model);
+      if (manager != null) {
+        // No need to add same model twice. We just move it to the bottom of the model list since order is important.
         T managerToMove = myModelToSceneManagers.remove(model);
         if (managerToMove != null) {
           myModelToSceneManagers.put(model, managerToMove);
         }
+        return manager;
       }
-      finally {
-        myModelToSceneManagersLock.writeLock().unlock();
+      model.addListener(myModelListener);
+      manager = createSceneManager(model);
+      myModelToSceneManagers.put(model, manager);
+      if (myIsActive) {
+        manager.activate(this);
       }
       return manager;
-    }
-
-    model.addListener(myModelListener);
-    manager = createSceneManager(model);
-    myModelToSceneManagersLock.writeLock().lock();
-    try {
-      myModelToSceneManagers.put(model, manager);
     }
     finally {
       myModelToSceneManagersLock.writeLock().unlock();
     }
-
-    if (myIsActive) {
-      manager.activate(this);
-    }
-    return manager;
   }
 
   /**
@@ -713,7 +705,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    * Remove an {@link NlModel} from DesignSurface. If it had not been added before then nothing happens.
    *
    * @param model the {@link NlModel} to remove
-   * @returns true if the model existed and was removed
+   * @return true if the model existed and was removed
    */
   private boolean removeModelImpl(@NotNull NlModel model) {
     SceneManager manager;
@@ -737,7 +729,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     model.removeListener(myModelListener);
 
     Disposer.dispose(manager);
-    UIUtil.invokeLaterIfNeeded(() -> revalidateScrollArea());
+    UIUtil.invokeLaterIfNeeded(this::revalidateScrollArea);
     return true;
   }
 
@@ -1163,6 +1155,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   }
 
   @Override
+  @NotNull
   @SwingCoordinate
   public Point getScrollPosition() {
     return getViewport().getViewPosition();

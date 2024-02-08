@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.profilers.com.android.tools.profilers.taskbased.taskgrid
+package com.android.tools.profilers.taskbased.taskgrid
 
 import androidx.compose.ui.test.assertAll
 import androidx.compose.ui.test.assertCountEquals
@@ -36,11 +36,11 @@ import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.SessionArtifactUtils
 import com.android.tools.profilers.StudioProfilers
-import com.android.tools.profilers.com.android.tools.profilers.JewelThemedComposableWrapper
+import com.android.tools.profilers.JewelThemedComposableWrapper
 import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.tabs.taskgridandbars.taskgrid.TaskGrid
-import com.android.tools.profilers.taskbased.tasks.TaskGridModel
+import com.android.tools.profilers.taskbased.task.TaskGridModel
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
 import com.google.common.truth.Truth.assertThat

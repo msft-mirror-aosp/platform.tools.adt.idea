@@ -28,6 +28,7 @@ const val whsPackage: String = "com.google.android.wearable.healthservices"
 const val whsConfigUri: String = "content://$whsPackage.dev.synthetic/synthetic_config"
 const val whsActiveExerciseUri: String = "content://$whsPackage.dev.exerciseinfo"
 const val whsDevVersionCode = 1
+const val whsMinimumVersionCode = 1447606
 val capabilityStatePattern = Regex("Row: \\d+ data_type=(\\w+), is_enabled=(true|false), override_value=(\\d+\\.?\\d*)")
 val versionCodePattern = Regex("versionCode=(\\d+)")
 val activeExerciseRegex = Regex("active_exercise=(true|false)")
@@ -51,24 +52,28 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return emptyMap()
     }
 
-    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    val output = adbSession.deviceServices.shellAsText(device, "content query --uri $whsConfigUri")
+    try {
+      val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+      val output = adbSession.deviceServices.shellAsText(device, "content query --uri $whsConfigUri")
 
-    val contentProviderEntryMatches = capabilityStatePattern.findAll(output.stdout)
+      val contentProviderEntryMatches = capabilityStatePattern.findAll(output.stdout)
 
-    val capabilities = mutableMapOf<WhsDataType, CapabilityState>()
+      val capabilities = mutableMapOf<WhsDataType, CapabilityState>()
 
-    for (match in contentProviderEntryMatches) {
-      val dataType = match.groupValues[1].toDataType()
-      if (dataType == WhsDataType.DATA_TYPE_UNKNOWN) {
-        continue
+      for (match in contentProviderEntryMatches) {
+        val dataType = match.groupValues[1].toDataType()
+        if (dataType == WhsDataType.DATA_TYPE_UNKNOWN) {
+          continue
+        }
+        val isEnabled = match.groupValues[2].toBoolean()
+
+        capabilities[dataType] = CapabilityState(isEnabled, null)
       }
-      val isEnabled = match.groupValues[2].toBoolean()
 
-      capabilities[dataType] = CapabilityState(isEnabled, null)
+      return capabilities
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't load current capability states", e)
     }
-
-    return capabilities
   }
 
   override suspend fun clearContentProvider() {
@@ -77,8 +82,12 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return
     }
 
-    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    adbSession.deviceServices.shellAsText(device, "content delete --uri $whsConfigUri")
+    try {
+      val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+      adbSession.deviceServices.shellAsText(device, "content delete --uri $whsConfigUri")
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't clear content provider", e)
+    }
   }
 
   override suspend fun isWhsVersionSupported(): Boolean {
@@ -87,12 +96,16 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return false
     }
 
-    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    val output = adbSession.deviceServices.shellAsText(device, "dumpsys package $whsPackage | grep versionCode | head -n1")
+    try {
+      val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+      val output = adbSession.deviceServices.shellAsText(device, "dumpsys package $whsPackage | grep versionCode | head -n1")
 
-    val versionCode: Int? = versionCodePattern.find(output.stdout)?.groupValues?.get(1)?.toInt()
+      val versionCode: Int? = versionCodePattern.find(output.stdout)?.groupValues?.get(1)?.toInt()
 
-    return versionCode != null && versionCode == whsDevVersionCode
+      return versionCode != null && (versionCode == whsDevVersionCode || versionCode >= whsMinimumVersionCode)
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't determine if WHS version is supported", e)
+    }
   }
 
   override fun setSerialNumber(serialNumber: String) {
@@ -109,9 +122,13 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return false
     }
 
-    val output = adbSession.deviceServices.shellAsText(DeviceSelector.fromSerialNumber(serialNumber!!), activeExerciseCommand())
-    val activeExercise = activeExerciseRegex.find(output.stdout)?.groupValues?.get(1)?.toBoolean()
-    return activeExercise ?: false
+    try {
+      val output = adbSession.deviceServices.shellAsText(DeviceSelector.fromSerialNumber(serialNumber!!), activeExerciseCommand())
+      val activeExercise = activeExerciseRegex.find(output.stdout)?.groupValues?.get(1)?.toBoolean()
+      return activeExercise ?: false
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't load active exercise", e)
+    }
   }
 
   private fun contentUpdateMultipleCapabilities(capabilityUpdates: Map<WhsDataType, Any?>): String {
@@ -151,9 +168,13 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return
     }
 
-    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    val contentUpdateCommand = contentUpdateMultipleCapabilities(capabilityUpdates)
-    adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
+    try {
+      val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+      val contentUpdateCommand = contentUpdateMultipleCapabilities(capabilityUpdates)
+      adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't set capabilities", e)
+    }
   }
 
   override suspend fun triggerEvent(eventTrigger: EventTrigger) {
@@ -162,8 +183,12 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return
     }
 
-    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
-    adbSession.deviceServices.shellAsText(device, triggerEventCommand(eventTrigger))
+    try {
+      val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+      adbSession.deviceServices.shellAsText(device, triggerEventCommand(eventTrigger))
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't trigger event", e)
+    }
   }
 
   private fun triggerEventCommand(eventTrigger: EventTrigger): String {
@@ -181,10 +206,14 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
       return
     }
 
-    val device = DeviceSelector.fromSerialNumber(serialNumber!!)
+    try {
+      val device = DeviceSelector.fromSerialNumber(serialNumber!!)
 
-    val contentUpdateCommand = contentUpdateMultipleCapabilities(overrideUpdates)
-    adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
+      val contentUpdateCommand = contentUpdateMultipleCapabilities(overrideUpdates)
+      adbSession.deviceServices.shellAsText(device, contentUpdateCommand)
+    } catch (e: Exception) {
+      throw ConnectionLostException("Couldn't override values", e)
+    }
   }
 }
 

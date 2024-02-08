@@ -254,11 +254,6 @@
     <projectTypesProvider implementation="com.android.tools.idea.project.AndroidProjectTypesProvider"/>
 
     <applicationService serviceImplementation="com.android.tools.idea.deploy.DeploymentConfiguration"/>
-    <applicationConfigurable groupId="build" id="testing.instrumented.configuration"
-                             provider="com.android.tools.idea.testartifacts.instrumented.configuration.AndroidTestConfigurableProvider"
-                             bundle="messages.AndroidBundle"
-                             key="configurable.AndroidTestingConfigurable.displayName"/>
-    <applicationService serviceImplementation="com.android.tools.idea.testartifacts.instrumented.configuration.AndroidTestConfiguration"/>
     <projectService serviceImplementation="com.android.tools.idea.testartifacts.instrumented.testsuite.view.state.AndroidTestResultsUserPreferences"/>
     <projectConfigurable provider="com.android.tools.idea.flags.StudioExperimentalConfigurableProvider"
                          id ="experimental" displayName="Experimental" groupId="root" groupWeight="-999"/>
@@ -337,9 +332,6 @@
     <programRunner implementation="com.android.tools.idea.run.DefaultStudioProgramRunner" order="first" id="DefaultStudioProgramRunner"/>
     <facetType implementation="org.jetbrains.android.facet.AndroidFacetType"/>
     <facetType implementation="com.android.tools.idea.facet.AndroidArtifactFacetType"/>
-
-    <facetType implementation="com.android.tools.idea.gradle.project.facet.java.JavaFacetType"/>
-    <externalProjectDataService implementation="com.android.tools.idea.gradle.project.facet.java.DoNotUseLegacyJavaFacetRemover" />
 
     <facetType implementation="com.android.tools.idea.apk.ApkFacetType"/>
     <fileTemplateGroup implementation="org.jetbrains.android.AndroidFileTemplateProvider"/>

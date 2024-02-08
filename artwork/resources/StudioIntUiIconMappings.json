@@ -185,12 +185,17 @@
         },
         "toolbar": {
           "back.svg": "studio/icons/emulator/toolbar/back.svg",
+          "device-settings.svg": "studio/icons/emulator/toolbar/device-settings.svg",
           "fold.svg": "studio/icons/emulator/toolbar/fold.svg",
           "hardware-input.svg": "studio/icons/emulator/toolbar/hardware-input.svg",
           "home.svg": "studio/icons/emulator/toolbar/home.svg",
           "overview.svg": "studio/icons/emulator/toolbar/overview.svg",
           "power.svg": "studio/icons/emulator/toolbar/power.svg",
           "power-menu.svg": "studio/icons/emulator/toolbar/power-menu.svg",
+          "resize-desktop.svg": "studio/icons/emulator/toolbar/resize-desktop.svg",
+          "resize-foldable.svg": "studio/icons/emulator/toolbar/resize-foldable.svg",
+          "resize-phone.svg": "studio/icons/emulator/toolbar/resize-phone.svg",
+          "resize-tablet.svg": "studio/icons/emulator/toolbar/resize-tablet.svg",
           "rotate-left.svg": "studio/icons/emulator/toolbar/rotate-left.svg",
           "rotate-right.svg": "studio/icons/emulator/toolbar/rotate-right.svg",
           "screenshot.svg": "studio/icons/emulator/toolbar/screenshot.svg",
@@ -202,6 +207,7 @@
         "wear": {
           "button-1.svg": "studio/icons/emulator/wear/button-1.svg",
           "button-2.svg": "studio/icons/emulator/wear/button-2.svg",
+          "health-services.svg": "studio/icons/emulator/wear/health-services.svg",
           "palm.svg": "studio/icons/emulator/wear/palm.svg",
           "tilt.svg": "studio/icons/emulator/wear/tilt.svg"
         }

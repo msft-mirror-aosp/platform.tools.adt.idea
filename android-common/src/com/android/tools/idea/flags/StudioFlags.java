@@ -29,7 +29,6 @@ import com.android.flags.LongFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
-import com.android.tools.idea.IdeChannel;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
@@ -276,7 +275,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
     NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
     "Enable colorblind Check mode in UI Check Mode for Compose preview",
-    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
+    true);
 
   public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = new BooleanFlag(
     NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
@@ -338,6 +337,13 @@ public final class StudioFlags {
     "deltainstall",
     "Delta install",
     "Upon installing, if application is already on device, only send parts of the apks which have changed (the delta).",
+    true);
+
+  public static final Flag<Boolean> INSTALL_WITH_ADBLIB = Flag.create(
+    RUNDEBUG,
+    "installwithadblib",
+    "Install apks with adblib instead of ddmlib",
+    "Studio can communicate with adb server via two backend, ddmlib and adblib. This option decides which backend to use.",
     true);
 
   public static final Flag<Boolean> APPLY_CHANGES_OPTIMISTIC_SWAP = Flag.create(
@@ -1158,12 +1164,6 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> UTP_INSTRUMENTATION_TESTING = Flag.create(
-    TESTING, "utp.instrumentation.testing", "Run instrumentation tests via UTP",
-    "If enabled, a checkbox to opt-in to running instrumentation tests via UTP feature is displayed in the settings.",
-    true
-  );
-
   public static final Flag<Boolean> ENABLE_SCREENSHOT_TESTING = Flag.create(
     TESTING, "screenshot.testing", "Run screenshot tests",
     "If enabled, a screenshotTest source set will be added for running screenshot tests",
@@ -1424,11 +1424,6 @@ public final class StudioFlags {
     "inspectors bundled in local, snapshot builds of Android libraries, as opposed to those released through the normal process on maven.",
     false
   );
-
-  public static final Flag<Boolean> COMPOSE_USE_LOADER_WITH_AFFINITY = Flag.create(
-    COMPOSE, "preview.loader.affinity", "Enable the class loading affinity.",
-    "If enabled, the class loading will cache which class loaders are more likely to have the class.",
-    true);
   // endregion
 
   // region Network Inspector
@@ -1520,7 +1515,7 @@ public final class StudioFlags {
       "direct.access",
       "Direct Access",
       "Enable FTL DirectAccess",
-      false);
+      true);
 
   public static final Flag<Boolean> DIRECT_ACCESS_SETTINGS_PAGE =
     Flag.create(
@@ -1655,7 +1650,7 @@ public final class StudioFlags {
   public static final Flag<String> DEEPLINKS_DAL_VALIDATION_API_KEY =
     Flag.create(APP_LINKS_ASSISTANT, "deeplinks.dal.validation.api.key", "Deep links DAL validation API key",
                 "API key for deep links JSON validation.",
-                "AIzaSyDwhmCMfuDe1wM1nZj1gJsRSPviNrQbN14");
+                "AIzaSyBRdKst7FwGcmWf6PGL65zRRPLZl2DfSqA");
   public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
                 "Improvements to the Create App Links functionalities.", false);
@@ -1798,13 +1793,13 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
                     "Enable the custom transform action in the editor.",
                     "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
-                    ChannelDefault.of(false).withOverride(true, CANARY));
+                    ChannelDefault.of(false).withOverride(true, DEV));
 
   public static final Flag<Boolean> STUDIOBOT_USE_FACTS_FOR_CONTEXT =
     new BooleanFlag(STUDIOBOT, "chat.use.facts.for.context",
                     "Use retrieval augmentation facts to attach context to queries.",
                     "When enabled, project context is attached to queries using facts, instead of prepending them directly to the query string.",
-                    ChannelDefault.of(false).withOverride(true, CANARY));
+                    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
 
   // endregion STUDIO_BOT
 

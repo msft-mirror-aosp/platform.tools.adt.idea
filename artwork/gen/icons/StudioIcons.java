@@ -261,12 +261,17 @@ public final class StudioIcons {
 
     public static final class Toolbar {
       /** 16x16 */ public static final @NotNull Icon BACK = load("studio/icons/emulator/toolbar/back.svg", -907760027, 2);
+      /** 16x16 */ public static final @NotNull Icon DEVICE_SETTINGS = load("studio/icons/emulator/toolbar/device-settings.svg", 1642204551, 2);
       /** 16x16 */ public static final @NotNull Icon FOLD = load("studio/icons/emulator/toolbar/fold.svg", 1707429587, 2);
       /** 16x16 */ public static final @NotNull Icon HARDWARE_INPUT = load("studio/icons/emulator/toolbar/hardware-input.svg", 1403595921, 2);
       /** 16x16 */ public static final @NotNull Icon HOME = load("studio/icons/emulator/toolbar/home.svg", 1912124078, 2);
       /** 16x16 */ public static final @NotNull Icon OVERVIEW = load("studio/icons/emulator/toolbar/overview.svg", -2043244680, 2);
       /** 16x16 */ public static final @NotNull Icon POWER_MENU = load("studio/icons/emulator/toolbar/power-menu.svg", 1895630158, 2);
       /** 16x16 */ public static final @NotNull Icon POWER = load("studio/icons/emulator/toolbar/power.svg", -923863756, 2);
+      /** 16x16 */ public static final @NotNull Icon RESIZE_DESKTOP = load("studio/icons/emulator/toolbar/resize-desktop.svg", 996021503, 2);
+      /** 16x16 */ public static final @NotNull Icon RESIZE_FOLDABLE = load("studio/icons/emulator/toolbar/resize-foldable.svg", 1519055537, 2);
+      /** 16x16 */ public static final @NotNull Icon RESIZE_PHONE = load("studio/icons/emulator/toolbar/resize-phone.svg", -1266400595, 2);
+      /** 16x16 */ public static final @NotNull Icon RESIZE_TABLET = load("studio/icons/emulator/toolbar/resize-tablet.svg", -1662752924, 2);
       /** 16x16 */ public static final @NotNull Icon ROTATE_LEFT = load("studio/icons/emulator/toolbar/rotate-left.svg", 1754123813, 2);
       /** 16x16 */ public static final @NotNull Icon ROTATE_RIGHT = load("studio/icons/emulator/toolbar/rotate-right.svg", 1209505819, 2);
       /** 16x16 */ public static final @NotNull Icon SCREENSHOT = load("studio/icons/emulator/toolbar/screenshot.svg", 1540467097, 2);
@@ -279,6 +284,7 @@ public final class StudioIcons {
     public static final class Wear {
       /** 16x16 */ public static final @NotNull Icon BUTTON_1 = load("studio/icons/emulator/wear/button-1.svg", -592773138, 2);
       /** 16x16 */ public static final @NotNull Icon BUTTON_2 = load("studio/icons/emulator/wear/button-2.svg", -1802564626, 2);
+      /** 16x16 */ public static final @NotNull Icon HEALTH_SERVICES = load("studio/icons/emulator/wear/health-services.svg", 386899898, 2);
       /** 16x16 */ public static final @NotNull Icon PALM = load("studio/icons/emulator/wear/palm.svg", -1981716285, 2);
       /** 16x16 */ public static final @NotNull Icon TILT = load("studio/icons/emulator/wear/tilt.svg", -296893865, 2);
     }

@@ -15,16 +15,23 @@
  */
 package com.android.tools.idea.run.deployment.liveedit
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import org.jetbrains.kotlin.idea.kdoc.each
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 
 internal fun compile(file: PsiFile, irClassCache: MutableIrClassCache = MutableIrClassCache()) : LiveEditCompilerOutput {
   val ktFile = file as KtFile
-  return compile(listOf(LiveEditCompilerInput(ktFile, ktFile)), irClassCache)
+  val psiState = ReadAction.compute<PsiState, Throwable> { getPsiValidationState(ktFile) }
+  return compile(listOf(LiveEditCompilerInput(ktFile, psiState)), irClassCache)
+}
+
+internal fun compile(vararg files: PsiFile, irClassCache: MutableIrClassCache = MutableIrClassCache()) : LiveEditCompilerOutput {
+  return compile( files.map { LiveEditCompilerInput(it as KtFile, it) }, irClassCache)
 }
 
 internal fun compile(file: PsiFile?, functionName: String, irClassCache: MutableIrClassCache = MutableIrClassCache()) =
@@ -38,8 +45,10 @@ internal fun compile(inputs: List<LiveEditCompilerInput>, irClassCache: IrClassC
   return compile(inputs, compiler)
 }
 
-internal fun compile(input: KtFile, compiler: LiveEditCompiler): LiveEditCompilerOutput = compile(
-  listOf(LiveEditCompilerInput(input, input)), compiler)
+internal fun compile(input: KtFile, compiler: LiveEditCompiler): LiveEditCompilerOutput {
+  val psiState = ReadAction.compute<PsiState, Throwable> { getPsiValidationState(input) }
+  return compile(listOf(LiveEditCompilerInput(input, psiState)), compiler)
+}
 
 internal fun compile(inputs: List<LiveEditCompilerInput>, compiler: LiveEditCompiler): LiveEditCompilerOutput {
   // The real Live Edit / Fast Preview has a retry system should the compilation got cancelled.

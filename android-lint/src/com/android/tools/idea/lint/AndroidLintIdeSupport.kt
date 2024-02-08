@@ -42,13 +42,13 @@ import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.StudioSdkUtil
+import com.android.tools.idea.util.CommonAndroidUtil
 import com.android.tools.lint.client.api.LintDriver
 import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.Platform
 import com.google.wireless.android.sdk.stats.LintSession
 import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.codeInspection.LocalQuickFix
-import com.intellij.facet.ProjectFacetManager
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.lang.properties.PropertiesFileType
@@ -117,9 +117,10 @@ class AndroidLintIdeSupport : LintIdeSupport() {
   }
 
   override fun canAnnotate(file: PsiFile, module: Module): Boolean {
-    // Limit checks to Android modules
+    // Limit checks to Android modules and modules within Android projects.
     val facet = AndroidFacet.getInstance(module)
-    if (facet == null && !AndroidLintIdeProject.hasAndroidModule(module.project)) return false
+    if (facet == null && !CommonAndroidUtil.getInstance().isAndroidProject(module.project))
+      return false
 
     return when (file.fileType) {
       JavaFileType.INSTANCE,
@@ -139,7 +140,7 @@ class AndroidLintIdeSupport : LintIdeSupport() {
   override fun canAnalyze(project: Project) =
     // Only run in Android projects. This is relevant when the Android plugin is
     // enabled in IntelliJ.
-    ProjectFacetManager.getInstance(project).hasFacets(AndroidFacet.ID)
+    CommonAndroidUtil.getInstance().isAndroidProject(project)
 
   // Projects
   override fun createProject(

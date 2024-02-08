@@ -2,7 +2,7 @@ package com.android.tools.idea.profilers
 
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.sdk.AndroidFacetChecker
+import com.android.tools.idea.sdk.AndroidProjectChecker
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact
@@ -11,7 +11,7 @@ import com.android.tools.profilers.memory.HeapProfdSessionArtifact
 import com.android.tools.profilers.memory.MainMemoryProfilerStage
 import com.android.tools.profilers.taskbased.home.OpenHomeTabListener
 import com.android.tools.profilers.taskbased.pastrecordings.OpenPastRecordingsTabListener
-import com.android.tools.profilers.taskbased.tasks.OpenProfilerTaskTabListener
+import com.android.tools.profilers.taskbased.task.OpenProfilerTaskTabListener
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.args.singleartifact.cpu.CpuTaskArgs
 import com.android.tools.profilers.tasks.args.singleartifact.memory.NativeAllocationsTaskArgs
@@ -59,7 +59,7 @@ class AndroidProfilerToolWindowFactoryTest {
       ?: fail("Tool window not found")
 
     assertThat(toolWindow.librarySearchClass)
-      .isEqualTo(AndroidFacetChecker::class.qualifiedName)
+      .isEqualTo(AndroidProjectChecker::class.qualifiedName)
   }
 
   @Test

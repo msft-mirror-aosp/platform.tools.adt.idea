@@ -25,6 +25,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 
@@ -41,6 +42,91 @@ class DeviceManagerTest {
   @Before
   fun setUp() {
     adbSession = FakeAdbSession()
+    adbSession.throwIfClosed()
+  }
+
+  @Test
+  fun `test setCapabilities throws connection lost exception when adb session is closed`() {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    adbSession.close()
+
+    assertThrows(ConnectionLostException::class.java) {
+      runBlocking {
+        deviceManager.setCapabilities(mapOf(WhsDataType.STEPS to true))
+      }
+    }
+  }
+
+  @Test
+  fun `test overrideValues throws connection lost exception when adb session is closed`() {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    adbSession.close()
+
+    assertThrows(ConnectionLostException::class.java) {
+      runBlocking {
+        deviceManager.overrideValues(mapOf(WhsDataType.STEPS to 50))
+      }
+    }
+  }
+
+  @Test
+  fun `test loadActiveExercise throws connection lost exception when adb session is closed`() {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    adbSession.close()
+
+    assertThrows(ConnectionLostException::class.java) {
+      runBlocking {
+        deviceManager.loadActiveExercise()
+      }
+    }
+  }
+
+  @Test
+  fun `test triggerEvent throws connection lost exception when adb session is closed`() {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    adbSession.close()
+
+    assertThrows(ConnectionLostException::class.java) {
+      runBlocking {
+        deviceManager.triggerEvent(EventTrigger("whs.TEST", "test"))
+      }
+    }
+  }
+
+  @Test
+  fun `test loadCurrentCapabilityStates throws connection lost exception when adb session is closed`() {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    adbSession.close()
+
+    assertThrows(ConnectionLostException::class.java) {
+      runBlocking {
+        deviceManager.loadCurrentCapabilityStates()
+      }
+    }
+  }
+
+  @Test
+  fun `test isWhsVersionSupported throws connection lost exception when adb session is closed`() {
+    val deviceManager = ContentProviderDeviceManager(adbSession)
+    deviceManager.setSerialNumber(serialNumber)
+
+    adbSession.close()
+
+    assertThrows(ConnectionLostException::class.java) {
+      runBlocking {
+        deviceManager.isWhsVersionSupported()
+      }
+    }
   }
 
   @Test
@@ -420,6 +506,31 @@ class DeviceManagerTest {
     assertEquals(expectedIsSupportedBool, isSupported)
   }
 
+  @Test
+  fun `unexpected ADB response results in WHS version being reported as unsupported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("Unexpected response", false)
+  }
+
+  @Test
+  fun `dev whs version code is supported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1 minSdk=30 targetSdk=33", true)
+  }
+
+  @Test
+  fun `minimum whs version code is supported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1447606 minSdk=30 targetSdk=33", true)
+  }
+
+  @Test
+  fun `whs version codes higher than minimum are supported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1448000 minSdk=30 targetSdk=33", true)
+  }
+
+  @Test
+  fun `whs version codes lower than minimum are not supported`() {
+    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1417661 minSdk=30 targetSdk=33", false)
+  }
+
   private fun assertExerciseCommandParsesResultsCorrectly(response: String, expected: Boolean) = runTest {
     val queryExerciseStateCommand = "content query --uri content://com.google.android.wearable.healthservices.dev.exerciseinfo"
     adbSession.deviceServices.configureShellCommand(DeviceSelector.fromSerialNumber(serialNumber), queryExerciseStateCommand,
@@ -459,21 +570,6 @@ class DeviceManagerTest {
   @Test
   fun `load active exercise returns false when response is unexpected`() = assertExerciseCommandParsesResultsCorrectly(
     "This is not supposed to happen", false)
-
-  @Test
-  fun `unexpected ADB response results in WHS version being reported as unsupported`() {
-    assertWhsVersionCheckAdbResponseIsParsedCorrectly("Unexpected response", false)
-  }
-
-  @Test
-  fun `dev WHS version codes are supported`() {
-    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1 minSdk=30 targetSdk=33", true)
-  }
-
-  @Test
-  fun `non dev WHS version codes are not supported`() {
-    assertWhsVersionCheckAdbResponseIsParsedCorrectly("    versionCode=1417661 minSdk=30 targetSdk=33", false)
-  }
 
   @Test
   fun `loading capabilities without setting serial number does not result in crash`() = runTest {

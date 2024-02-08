@@ -16,6 +16,7 @@
 package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.tools.idea.run.deployment.liveedit.analysis.createKtFile
+import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileByteArray
 import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileIr
 import com.android.tools.idea.run.deployment.liveedit.analysis.disableLiveEdit
 import com.android.tools.idea.run.deployment.liveedit.analysis.enableLiveEdit
@@ -156,7 +157,8 @@ class BasicCompileTest {
     val compiler = LiveEditCompiler(projectRule.project, cache, object: ApkClassProvider {
       override fun getClass(ktFile: KtFile, className: String) = apk[className]
     })
-    val output = compile(listOf(LiveEditCompilerInput(file, file)), compiler)
+    val state = getPsiValidationState(file)
+    val output = compile(listOf(LiveEditCompilerInput(file, state)), compiler)
     Assert.assertEquals(1, output.supportClassesMap.size)
     // Can't test invocation of the method since the functional interface "A" is not loaded.
   }
@@ -189,7 +191,8 @@ class BasicCompileTest {
     val compiler = LiveEditCompiler(projectRule.project, cache, object: ApkClassProvider {
       override fun getClass(ktFile: KtFile, className: String) = apk[className]
     })
-    compile(listOf(LiveEditCompilerInput(fileCallA, fileCallA)), compiler)
+    val state = getPsiValidationState(fileCallA)
+    compile(listOf(LiveEditCompilerInput(fileCallA, state)), compiler)
   }
 
   @Test
@@ -275,6 +278,34 @@ class BasicCompileTest {
   }
 
   @Test
+  fun modifyFieldValue() {
+    val file = projectRule.createKtFile("ModifyFieldValue.kt", """
+      class MyClass() {
+        val a = 100
+        val b = 200
+      }
+    """)
+    val cache = projectRule.initialCache(listOf(file))
+
+    projectRule.modifyKtFile(file, """
+      class MyClass() {
+        val a = 999
+        val b = 200
+      }
+    """)
+
+    try {
+      compile(file, cache)
+      fail("Expected exception due to modified field")
+    }
+    catch (e: LiveEditUpdateException) {
+      assertEquals(LiveEditUpdateException.Error.UNSUPPORTED_SRC_CHANGE_UNRECOVERABLE, e.error)
+      assertContains(e.details, "MyClass")
+      println(e.details)
+    }
+  }
+
+  @Test
   fun modifyStaticInit() {
     val file = projectRule.createKtFile("ModifyStaticInit.kt", "val x = 1")
     val cache = projectRule.initialCache(listOf(file))
@@ -291,5 +322,85 @@ class BasicCompileTest {
     }
   }
 
+  @Test
+  fun `Modify when Mapping`() {
+    val enumDef = projectRule.createKtFile("Food.kt", """
+      enum class Food { Pizza, Donuts }
+    """)
+
+    val file = projectRule.createKtFile("ModifyWhenMapping.kt", """
+      fun getUnits(food: Food) : String {
+        return when (food) {
+          Food.Pizza -> "slices"
+          Food.Donuts -> "dozens"
+        }
+      }
+    """)
+    val cache = projectRule.initialCache(listOf(enumDef, file))
+
+    projectRule.modifyKtFile(file, """
+      fun getUnits(food: Food) : String {
+        return when (food) {
+          Food.Donuts -> "x"
+          Food.Pizza -> "y"
+        }
+      }
+    """)
+
+    try {
+      compile(file, cache)
+      fail("Expected exception due to modified constructor")
+    } catch (e: LiveEditUpdateException) {
+      assertEquals(LiveEditUpdateException.Error.UNSUPPORTED_SRC_CHANGE_UNRECOVERABLE, e.error)
+      assertContains(e.details, "Changing `when` on enum code path")
+    }
+  }
+
+  @Test
+  fun `Adding new WithMapping`() {
+    val enumDef = projectRule.createKtFile("Food.kt", """
+      enum class Food { Pizza, Donuts }
+    """)
+
+    val file = projectRule.createKtFile("ModifyWhenMapping.kt", """
+      fun getUnits(food: Food) : String {
+        var suffix = when (food) {
+          Food.Pizza -> "!!"
+          Food.Donuts -> "!!!!!"
+        }
+        return suffix
+      }
+
+       fun getMessage(): String {
+          return getUnits(Food.Pizza)
+       }
+    """)
+    val cache = projectRule.initialCache(listOf(enumDef, file))
+
+    projectRule.modifyKtFile(file, """
+      fun getUnits(food: Food) : String {
+        var suffix = when (food) {
+          Food.Pizza -> "!!"
+          Food.Donuts -> "!!!!!"
+        }
+
+        return when (food) {
+          Food.Pizza -> "slices"
+          Food.Donuts -> "dozens"
+        } + suffix
+      }
+
+       fun getMessage(): String {
+          return getUnits(Food.Pizza)
+       }
+    """)
+
+    val output = compile(file, irClassCache = cache)
+    var apk = projectRule.directApiCompileByteArray(listOf(enumDef, file))
+
+    Assert.assertTrue(output.classesMap["ModifyWhenMappingKt"]!!.isNotEmpty())
+    val returnedValue = invokeStatic("getMessage", loadClass(output, extraClasses = apk))
+    Assert.assertEquals("slices!!", returnedValue)
+  }
 
 }

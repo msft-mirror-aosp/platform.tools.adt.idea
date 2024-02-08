@@ -24,7 +24,9 @@ import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.AppInsightsTrackerImpl
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.insights.ui.AppInsightsTabProvider
-import com.google.gct.login.GoogleLogin
+import com.android.tools.idea.vitals.VitalsLoginFeature
+import com.google.gct.login2.GoogleLoginService
+import com.google.gct.login2.LoginFeature
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
@@ -37,6 +39,7 @@ import icons.StudioIllustrations
 import java.awt.Graphics
 import java.time.Clock
 import javax.swing.JPanel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,7 +54,13 @@ class VitalsTabProvider : AppInsightsTabProvider {
       val configManager = project.service<VitalsConfigurationService>().manager
       val tracker = AppInsightsTrackerImpl(project, AppInsightsTracker.ProductType.PLAY_VITALS)
       withContext(AndroidDispatchers.uiThread) {
-        configManager.configuration.collect { appInsightsModel ->
+        // Combine with active user flow to get the logged out -> logged in + not authorized update
+        val loginService = service<GoogleLoginService>()
+        val flow =
+          if (loginService.useOldVersion) configManager.configuration
+          else
+            configManager.configuration.combine(loginService.activeUserFlow) { config, _ -> config }
+        flow.collect { appInsightsModel ->
           when (appInsightsModel) {
             AppInsightsModel.Unauthenticated -> {
               tracker.logZeroState(
@@ -126,10 +135,17 @@ class VitalsTabProvider : AppInsightsTabProvider {
             SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES,
             null,
           )
-          appendLine("Log in", SimpleTextAttributes.LINK_ATTRIBUTES) {
-            GoogleLogin.instance.logIn(null, null)
+          if (GoogleLoginService.instance.isLoggedIn()) {
+            appendLine("Authorize", SimpleTextAttributes.LINK_ATTRIBUTES) {
+              LoginFeature.feature<VitalsLoginFeature>().logInAsync()
+            }
+            appendText(" Android Studio to connect to your Play Console account.")
+          } else {
+            appendLine("Log in", SimpleTextAttributes.LINK_ATTRIBUTES) {
+              LoginFeature.feature<VitalsLoginFeature>().logInAsync()
+            }
+            appendText(" to Android Studio to connect to your Play Console account.")
           }
-          appendText(" to Android Studio to connect to your Play Console account.")
           appendLine("")
           appendLine(
             AllIcons.General.ContextHelp,

@@ -18,46 +18,43 @@ package com.android.tools.idea.uibuilder.actions
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
+import com.android.tools.idea.ml.xmltocompose.ComposeConverterDataType
+import com.android.tools.idea.ml.xmltocompose.NShotXmlToComposeConverter
 import com.android.tools.idea.studiobot.StudioBot
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys.VIRTUAL_FILE
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.util.Disposer
+import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBRadioButton
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import javax.swing.Box
+import javax.swing.ButtonGroup
 import javax.swing.JComponent
 import javax.swing.JPanel
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Question to precede every layout when querying Studio Bot. The exact same question is used to
- * train the model.
- */
-private const val PROMPT_PREFIX =
-  "What's the Jetpack Compose equivalent of the following Android XML layout?"
-
 private const val ACTION_TITLE = "I am feeling Compose"
 
-class ConvertToComposeAction : AnAction(ACTION_TITLE) {
-  /**
-   * Prompts to be appended after [PROMPT_PREFIX] to improve the quality of the Studio Bot
-   * responses.
-   */
-  private val nShotPrompts =
-    listOf(
-      "Include imports in your answer.",
-      "Add a @Preview function.",
-      "Don't use ConstraintLayout.",
-      "Use material3, not material.",
-    )
+/**
+ * List of possible types to use for storing data in a view model.
+ *
+ * TODO(b/322759144): Use ComposeConverterDataType
+ */
+private val optionalStateType =
+  listOf(
+    "androidx.compose.runtime.MutableState",
+    "kotlinx.coroutines.flow.StateFlow",
+    "androidx.lifecycle.LiveData",
+  )
 
-  private val logger = Logger.getInstance(ConvertToComposeAction::class.java)
+class ConvertToComposeAction : AnAction(ACTION_TITLE) {
 
   override fun update(e: AnActionEvent) {
     super.update(e)
@@ -69,30 +66,7 @@ class ConvertToComposeAction : AnAction(ACTION_TITLE) {
     val xmlFile = e.getData(VIRTUAL_FILE)?.contentsToByteArray() ?: return
     val project = e.project ?: return
 
-    val nShot = nShotPrompts.joinToString(" ")
-    val query = "$PROMPT_PREFIX ${nShot}\n\n${String(xmlFile)}"
-
-    val studioBot = StudioBot.getInstance()
-    try {
-      val validatedQueryRequest =
-        studioBot.aiExcludeService().validateQuery(project, query, listOf()).getOrThrow()
-      ComposeCodeDialog(project).run {
-        show()
-        AndroidCoroutineScope(disposable).launch(workerThread) {
-          // Note: you must complete the Studio Bot onboarding and enable context sharing, otherwise
-          // the following call will fail.
-          val response =
-            StudioBot.getInstance()
-              .model()
-              .sendQuery(validatedQueryRequest, StudioBot.RequestSource.DESIGN_TOOLS)
-              .toList()
-
-          withContext(uiThread) { updateContent(response.parseCode()) }
-        }
-      }
-    } catch (t: Throwable) {
-      logger.error("Error while trying to send query", t)
-    }
+    ConvertToComposeDialog(project, String(xmlFile)).showAndGet()
   }
 
   private class ComposeCodeDialog(project: Project) : DialogWrapper(project) {
@@ -113,20 +87,73 @@ class ConvertToComposeAction : AnAction(ACTION_TITLE) {
       textArea.text = content
     }
   }
-}
 
-/**
- * Takes a list of strings returned by Studio Bot and returns the first Kotlin code found, stripping
- * the formatting.
- *
- * See `LlmService#sendQuery` documentation for details about StudioBot's response formatting.
- */
-private fun List<String>.parseCode(): String {
-  val kotlinPattern = "```kotlin\n"
-  forEach { chunk ->
-    if (chunk.startsWith(kotlinPattern)) {
-      return chunk.substringAfter(kotlinPattern).trimEnd('`')
+  private class ConvertToComposeDialog(
+    private val project: Project,
+    private val xmlFileContent: String,
+  ) : DialogWrapper(project) {
+    private val displayDependencies = JBCheckBox("Display dependencies", false)
+    private val useViewModel = JBCheckBox("Use ViewModel", false)
+    private val dataTypeGroup = ButtonGroup()
+    private val dataTypeButtons: List<JBRadioButton>
+
+    init {
+      title = ACTION_TITLE
+      dataTypeButtons =
+        optionalStateType.map {
+          JBRadioButton("Use $it", false).apply {
+            isEnabled = false
+            actionCommand = it
+            dataTypeGroup.add(this)
+          }
+        }
+      dataTypeButtons[0].isSelected = true
+      useViewModel.addItemListener {
+        dataTypeButtons.forEach { it.isEnabled = useViewModel.isSelected }
+      }
+      init()
+    }
+
+    override fun createCenterPanel(): JComponent {
+      val dataTypePanel = Box.createVerticalBox().apply { dataTypeButtons.forEach { add(it) } }
+      return Box.createVerticalBox().apply {
+        add(displayDependencies)
+        add(useViewModel)
+        add(dataTypePanel)
+        preferredSize = JBUI.size(300, 300)
+      }
+    }
+
+    override fun doOKAction() {
+      super.doOKAction()
+      val dataType =
+        if (useViewModel.isSelected) {
+          // TODO(b/322759144): Use ComposeConverterDataType directly in the radio button
+          ComposeConverterDataType.values().firstOrNull {
+            it.classFqn == dataTypeGroup.selection.actionCommand
+          } ?: ComposeConverterDataType.UNKNOWN
+        } else {
+          ComposeConverterDataType.UNKNOWN
+        }
+      convertXmlToCompose(dataType)
+    }
+
+    private fun convertXmlToCompose(dataType: ComposeConverterDataType) {
+      NShotXmlToComposeConverter.Builder(project)
+        .useViewModel(useViewModel.isSelected)
+        .displayDependencies(displayDependencies.isSelected)
+        .withDataType(dataType)
+        .build()
+        .let { nShotXmlToComposeConverter ->
+          ComposeCodeDialog(project).run {
+            Disposer.register(disposable, nShotXmlToComposeConverter)
+            show()
+            AndroidCoroutineScope(disposable).launch(workerThread) {
+              val response = nShotXmlToComposeConverter.convertToCompose(xmlFileContent)
+              withContext(uiThread) { updateContent(response) }
+            }
+          }
+        }
     }
   }
-  return ""
 }
