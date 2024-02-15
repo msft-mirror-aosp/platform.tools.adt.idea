@@ -26,6 +26,11 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration
 import com.android.tools.profilers.memory.adapters.instancefilters.CaptureObjectInstanceFilter
 import com.android.tools.profilers.sessions.SessionArtifact
 import com.android.tools.profilers.sessions.SessionsManager.SessionCreationSource
+import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.android.tools.profilers.tasks.TaskAttachmentPoint
+import com.android.tools.profilers.tasks.TaskDataOrigin
+import com.android.tools.profilers.tasks.TaskFinishedState
+import com.android.tools.profilers.tasks.TaskMetadata
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent
 import com.google.wireless.android.sdk.stats.CpuImportTraceMetadata
 import com.google.wireless.android.sdk.stats.RunWithProfilingMetadata
@@ -480,6 +485,12 @@ interface FeatureTracker {
    * Tracks the number of power rails and battery counters found in captured power profiler data
    */
   fun trackPowerProfilerCapture(powerRailCount: Int, batteryCounterCount: Int)
+
+  fun trackTaskSettingsOpened(isSettingsChanged: Boolean)
+
+  fun trackTaskEntered(taskMetadata: TaskMetadata)
+
+  fun trackTaskFinished(taskMetadata: TaskMetadata, taskFinishedState: TaskFinishedState)
 }
 
 /**

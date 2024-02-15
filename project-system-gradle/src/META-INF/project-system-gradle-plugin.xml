@@ -135,6 +135,7 @@
     <completion.confidence language="TOML"
                            id="EnableAutoPopupInDeclarativeBuildCompletion"
                            implementationClass="com.android.tools.idea.gradle.completions.EnableAutoPopupInDeclarativeBuildCompletion" />
+    <annotator language="TOML" implementationClass="com.android.tools.idea.gradle.catalog.VersionsTomlAnnotator"/>
     <indexedRootsProvider implementation="com.android.tools.idea.gradle.index.VersionCatalogFileIndexContributor"/>
     <useScopeEnlarger implementation="com.android.tools.idea.gradle.navigation.GradleTomlUseScopeEnlarger"/>
     <vetoRenameCondition implementation="com.android.tools.idea.gradle.refactoring.GradleCatalogTomlVetoCondition"/>
@@ -181,6 +182,9 @@
     <facetType implementation="com.android.tools.idea.gradle.project.facet.ndk.NdkFacetType"/>
     <facetType implementation="com.android.tools.idea.gradle.project.facet.java.JavaFacetType"/>
     <externalProjectDataService implementation="com.android.tools.idea.gradle.project.facet.java.DoNotUseLegacyJavaFacetRemover" />
+  </extensions>
+  <extensions defaultExtensionNs="com.intellij.properties">
+    <implicitPropertyUsageProvider implementation="com.android.tools.idea.editors.GradleImplicitPropertyUsageProvider"/>
   </extensions>
   <extensions defaultExtensionNs="com.android.tools.idea.actions">
     <exportProjectZipExcludesContributor implementation="com.android.tools.idea.actions.ExportProjectZipExcludesGradleContributor"/>

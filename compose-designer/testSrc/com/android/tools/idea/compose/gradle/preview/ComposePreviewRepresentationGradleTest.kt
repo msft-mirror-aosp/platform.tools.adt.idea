@@ -26,6 +26,7 @@ import com.android.tools.idea.compose.preview.ComposePreviewRenderQualityPolicy
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
+import com.android.tools.idea.compose.preview.waitForAllRefreshesToFinish
 import com.android.tools.idea.compose.preview.waitForSmartMode
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
@@ -280,10 +281,9 @@ class ComposePreviewRepresentationGradleTest {
           FileDocumentManager.getInstance().saveAllDocuments()
         }
       }
-      withContext(uiThread) {
-        fakeUi.layoutAndDispatchEvents()
-        projectRule.validate()
-      }
+
+      projectRule.validate()
+
       assertEquals(
         """
         DefaultPreview - MyAnnotation 1
@@ -312,10 +312,7 @@ class ComposePreviewRepresentationGradleTest {
         }
       }
 
-      withContext(uiThread) {
-        fakeUi.layoutAndDispatchEvents()
-        projectRule.validate()
-      }
+      projectRule.validate()
 
       assertEquals(
         """
@@ -362,7 +359,7 @@ class ComposePreviewRepresentationGradleTest {
       )
       completableDeferred
     }
-    // Verify that is completed exceptionally
+    // Verify that it is completed exceptionally
     assertTrue(refreshDeferred.isCompleted)
     assertNotNull(refreshDeferred.getCompletionExceptionOrNull())
   }
@@ -405,7 +402,7 @@ class ComposePreviewRepresentationGradleTest {
 
   @Test
   fun `refresh cancellation`() = runBlocking {
-    // Wait for an "infinte" refresh to start
+    // Wait for an "infinite" refresh to start
     projectRule.waitForAnyRefreshToStart(30.seconds, ComposePreviewRefreshType.NORMAL) {
       runWriteActionAndWait {
         projectRule.fixture.openFileInEditor(psiMainFile.virtualFile)
@@ -416,7 +413,7 @@ class ComposePreviewRepresentationGradleTest {
       }
     }
 
-    assertFails { projectRule.waitForAllRefreshesToFinish(10.seconds) }
+    assertFails { waitForAllRefreshesToFinish(10.seconds) }
 
     // Delete the infinite loop, triggering a new refresh
     runWriteActionAndWait {
@@ -427,14 +424,14 @@ class ComposePreviewRepresentationGradleTest {
     }
 
     // First refresh should get cancelled and then second one should complete
-    projectRule.waitForAllRefreshesToFinish(30.seconds)
+    waitForAllRefreshesToFinish(30.seconds)
   }
 
   @Test
   fun `fast preview fixing syntax error triggers compilation`() = runBlocking {
     runAndWaitForFastRefresh {
       // Mark the file as invalid so the fast preview triggers a compilation when the problems
-      // dissapear
+      // disappear
       PsiCodeFileChangeDetectorService.getInstance(project).markFileAsOutOfDate(psiMainFile)
       project.messageBus
         .syncPublisher(ProblemListener.TOPIC)

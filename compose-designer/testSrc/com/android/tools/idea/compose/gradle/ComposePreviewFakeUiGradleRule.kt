@@ -19,10 +19,10 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.compose.gradle.preview.TestComposePreviewView
 import com.android.tools.idea.compose.gradle.preview.displayName
-import com.android.tools.idea.compose.preview.ComposePreviewRefreshManager
 import com.android.tools.idea.compose.preview.ComposePreviewRefreshType
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.TEST_DATA_PATH
+import com.android.tools.idea.compose.preview.waitForAllRefreshesToFinish
 import com.android.tools.idea.compose.preview.waitForSmartMode
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.concurrency.awaitStatus
@@ -30,9 +30,11 @@ import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.fast.FastPreviewConfiguration
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.preview.PreviewRefreshManager
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.NamedExternalResource
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
+import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Disposer
@@ -48,7 +50,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.junit.Assert
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.rules.RuleChain
@@ -87,7 +88,7 @@ class ComposePreviewFakeUiGradleRule(
   lateinit var fakeUi: FakeUi
     private set
 
-  private lateinit var refreshManager: ComposePreviewRefreshManager
+  private lateinit var refreshManager: PreviewRefreshManager
 
   override val delegate: RuleChain =
     super.delegate.around(
@@ -115,7 +116,7 @@ class ComposePreviewFakeUiGradleRule(
     psiMainFile = getPsiFile(project, previewFilePath)
     previewView = TestComposePreviewView(fixture.testRootDisposable, project)
     composePreviewRepresentation = createComposePreviewRepresentation(psiMainFile, previewView)
-    refreshManager = ComposePreviewRefreshManager.getInstance(project)
+    refreshManager = PreviewRefreshManager.getInstance(RenderingTopic.COMPOSE_PREVIEW)
 
     withContext(AndroidDispatchers.uiThread) {
       fakeUi =
@@ -144,13 +145,13 @@ class ComposePreviewFakeUiGradleRule(
       UIUtil.dispatchAllInvocationEvents()
     }
 
-    Assert.assertTrue(previewView.hasRendered)
-    Assert.assertTrue(previewView.hasContent)
-    Assert.assertTrue(!composePreviewRepresentation.status().hasErrors)
-    Assert.assertTrue(!composePreviewRepresentation.status().hasSyntaxErrors)
-    Assert.assertTrue(!composePreviewRepresentation.status().isOutOfDate)
+    assertTrue(previewView.hasRendered)
+    assertTrue(previewView.hasContent)
+    assertTrue(!composePreviewRepresentation.status().hasErrors)
+    assertTrue(!composePreviewRepresentation.status().hasSyntaxErrors)
+    assertTrue(!composePreviewRepresentation.status().isOutOfDate)
 
-    withContext(AndroidDispatchers.uiThread) { validate() }
+    validate()
     logger.info("ComposePreviewFakeUiGradleRuleImpl setUp completed")
   }
 
@@ -199,16 +200,6 @@ class ComposePreviewFakeUiGradleRule(
     assertFalse(awaitingJob.isCancelled)
   }
 
-  /** Wait for all running refreshes to complete. */
-  suspend fun waitForAllRefreshesToFinish(timeout: Duration) {
-    refreshManager.refreshingTypeFlow.awaitStatus(
-      "Timeout waiting for refresh to finish",
-      timeout,
-    ) {
-      it == null
-    }
-  }
-
   /**
    * Runs the [runnable]. The [runnable] is expected to trigger a refresh and this method will
    * return once the refresh has happened. Throws an exception if the timeout is exceeded while
@@ -239,19 +230,19 @@ class ComposePreviewFakeUiGradleRule(
 
   /** Validates the UI to ensure is up to date. */
   suspend fun validate(zoomToFit: Boolean = true) {
-    withContext(AndroidDispatchers.uiThread) {
-      fakeUi.root.validate()
-      if (zoomToFit) {
-        // zoom to fit might (but not always) trigger a render quality change
-        runAndWaitForRefresh(
-          expectedRefreshType = ComposePreviewRefreshType.QUALITY,
-          aRefreshMustStart = false,
-        ) {
+    runAndWaitForRefresh(
+      expectedRefreshType = ComposePreviewRefreshType.QUALITY,
+      aRefreshMustStart = false,
+    ) {
+      withContext(AndroidDispatchers.uiThread) {
+        fakeUi.root.validate()
+        fakeUi.layoutAndDispatchEvents()
+        if (zoomToFit) {
           previewView.mainSurface.zoomToFit()
           fakeUi.root.validate()
+          fakeUi.layoutAndDispatchEvents()
         }
       }
-      fakeUi.layoutAndDispatchEvents()
     }
   }
 

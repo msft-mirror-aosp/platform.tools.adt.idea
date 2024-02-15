@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.run.deployment.liveedit
 
+import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration
 import com.android.tools.idea.run.deployment.liveedit.analysis.createKtFile
 import com.android.tools.idea.run.deployment.liveedit.analysis.diff
 import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileIr
@@ -101,9 +102,9 @@ class ComposableCompileTest {
   fun simpleComposeNested() {
     val file = projectRule.createKtFile("ComposeNested.kt" , """
       import androidx.compose.runtime.Composable
-      @Composable
+      @Composable // group -1050554150
       fun composableNested(): @Composable (Int) -> Unit {
-        return { }
+        return { } // group 22704048
       }""")
     val cache = projectRule.initialCache(listOf(file))
     projectRule.modifyKtFile(file, """
@@ -114,7 +115,8 @@ class ComposableCompileTest {
         return { val y = 0 }
       }""")
     val output = compile(file, cache)
-    Assert.assertEquals(-1050554150, output.groupIds.first())
+    Assert.assertTrue(-1050554150 in output.groupIds)
+    Assert.assertTrue(22704048 in output.groupIds)
   }
 
   @Test
@@ -153,7 +155,7 @@ class ComposableCompileTest {
       @Composable
       fun composableNested(): @Composable (Int) -> Unit {
         val x = 0
-        return { val y = 0 }
+        return { }
       }""")
       val output = compile(listOf(
       LiveEditCompilerInput(simpleFile, simpleState),
@@ -209,7 +211,7 @@ class ComposableCompileTest {
       @Composable fun hasLambdaA(content: @Composable () -> Unit) { }
       @Composable fun hasLambdaB() { hasLambdaA {} }
     """)
-    val fileState = getPsiValidationState(file)
+    val fileState = ReadAction.compute<PsiState, Throwable> { getPsiValidationState(file) }
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileIr(file)
     val compiler = LiveEditCompiler(projectRule.project, cache, object: ApkClassProvider {
@@ -240,7 +242,7 @@ class ComposableCompileTest {
       @Composable fun composableFun4() {
         val a = { }
       }""")
-    val fileState = getPsiValidationState(file)
+    val fileState = ReadAction.compute<PsiState, Throwable> { getPsiValidationState(file) }
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileIr(file)
     val compiler = LiveEditCompiler(projectRule.project, cache, object: ApkClassProvider {
@@ -482,5 +484,42 @@ class ComposableCompileTest {
 
     assertNotNull(diff(firstClass, secondClass))
     assertTrue(onlyComposeDebugConstantChanges(firstMethod.instructions, secondMethod.instructions))
+  }
+
+  @Test
+  fun mutableState() {
+    val fileName = "Test.kt"
+    val className = "TestKt"
+    val file = projectRule.createKtFile(fileName, """
+        import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.getValue
+        import androidx.compose.runtime.mutableStateOf
+        import androidx.compose.runtime.remember
+        import androidx.compose.runtime.setValue
+        @Composable
+        fun C() { }
+      """)
+    val fileState = ReadAction.compute<PsiState, Throwable> { getPsiValidationState(file) }
+    val apk = projectRule.directApiCompileIr(file)
+    val compiler = LiveEditCompiler(projectRule.project, MutableIrClassCache(), object: ApkClassProvider {
+      override fun getClass(ktFile: KtFile, className: String): IrClass? {
+        return apk[className]
+      }
+    })
+
+    projectRule.modifyKtFile(file, """
+        import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.getValue
+        import androidx.compose.runtime.mutableStateOf
+        import androidx.compose.runtime.remember
+        import androidx.compose.runtime.setValue
+        @Composable
+        fun C() {
+            var c by remember { mutableStateOf(0) }
+        }
+      """)
+
+    val output = compile(listOf(LiveEditCompilerInput(file, fileState)), compiler)
+    Assert.assertTrue(output.classesMap[className]!!.isNotEmpty())
   }
 }

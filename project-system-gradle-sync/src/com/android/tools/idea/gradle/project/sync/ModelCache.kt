@@ -137,7 +137,11 @@ interface ModelCache {
       return if (useV2BuilderModels) {
         modelCacheV2Impl(
           internedModels,
-          ModelVersions(agp = AgpVersion.parse(Version.ANDROID_GRADLE_PLUGIN_VERSION), minimumModelConsumer = null),
+          ModelVersions(
+            agp = AgpVersion.parse(Version.ANDROID_GRADLE_PLUGIN_VERSION),
+            modelVersion = ModelVersion(Int.MAX_VALUE, Int.MAX_VALUE, "Fake model for tests"),
+            minimumModelConsumer = null,
+            ),
           syncTestMode = SyncTestMode.PRODUCTION,
           false,
         )
@@ -202,9 +206,6 @@ fun getDefaultVariant(variantNames: Collection<String>): String? {
   // Otherwise fall back to the first alphabetically
   return sortedNames.first()
 }
-
-internal val ModelVersions.agpModelIncludesApplicationId: Boolean
-   get() = agp.isAtLeast(7, 4, 0, "alpha", 4, false)
 
 internal fun convertArtifactName(name: String): IdeArtifactName = when (name) {
   ARTIFACT_NAME_MAIN -> IdeArtifactName.MAIN

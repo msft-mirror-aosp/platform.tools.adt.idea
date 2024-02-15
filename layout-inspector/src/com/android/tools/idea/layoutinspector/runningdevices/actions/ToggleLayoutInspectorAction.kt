@@ -15,22 +15,30 @@
  */
 package com.android.tools.idea.layoutinspector.runningdevices.actions
 
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.Compatibility
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.Compatibility.NotCompatible.Reason.API_29_PLAY_STORE
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.checkSystemImageForAppInspectionCompatibility
 import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManager
 import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManagerGlobalState
 import com.android.tools.idea.layoutinspector.runningdevices.RunningDevicesStateObserver
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.settings.STUDIO_RELEASE_NOTES_EMBEDDED_LI_URL
+import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.streaming.core.DEVICE_ID_KEY
 import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
+import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.ex.TooltipDescriptionProvider
 import com.intellij.openapi.actionSystem.ex.TooltipLinkProvider
+import com.intellij.openapi.project.Project
 import icons.StudioIcons
 import javax.swing.JComponent
+import org.jetbrains.annotations.VisibleForTesting
 
 /** Action used to turn Layout Inspector on and off in Running Devices tool window. */
 
@@ -48,6 +56,21 @@ class ToggleLayoutInspectorAction :
   ),
   TooltipDescriptionProvider,
   TooltipLinkProvider {
+
+  private val sdkHandler: AndroidSdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler()
+
+  @VisibleForTesting
+  var checkForSystemImageCompatibility:
+    (isEmulator: Boolean, apiLevel: Int, serialNumber: String, project: Project) -> Compatibility =
+    { isEmulator, apiLevel, serialNumber, project ->
+      checkSystemImageForAppInspectionCompatibility(
+        isEmulator,
+        apiLevel,
+        serialNumber,
+        project,
+        sdkHandler,
+      )
+    }
 
   override fun isSelected(e: AnActionEvent): Boolean {
     if (!LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled) {
@@ -77,15 +100,20 @@ class ToggleLayoutInspectorAction :
 
   override fun update(e: AnActionEvent) {
     super.update(e)
-    val isEnabled = LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
-    e.presentation.isVisible = isEnabled
 
     val project = e.project ?: return
+    val deviceId = DEVICE_ID_KEY.getData(e.dataContext) ?: return
+    val isEnabled = LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
+    e.presentation.isVisible =
+      isEnabled && LayoutInspectorManager.getInstance(project).isSupported(deviceId)
     RunningDevicesStateObserver.getInstance(project).update(isEnabled)
 
     val displayView = DISPLAY_VIEW_KEY.getData(e.dataContext)
     val apiLevel = runCatching { displayView?.apiLevel }.getOrNull()
-    if (apiLevel == null) {
+    val serialNumber = runCatching { displayView?.deviceSerialNumber }.getOrNull()
+    val isEmulator = displayView is EmulatorView
+
+    if (apiLevel == null || serialNumber == null) {
       e.presentation.isEnabled = false
     } else if (apiLevel < EMBEDDED_LAYOUT_INSPECTOR_MIN_API) {
       // We decided to always have Live Updates ON in Embedded Layout Inspector.
@@ -94,8 +122,25 @@ class ToggleLayoutInspectorAction :
       e.presentation.isEnabled = false
       e.presentation.description = LayoutInspectorBundle.message("api.29.limit")
     } else {
-      e.presentation.isEnabled = true
-      e.presentation.description = ""
+
+      val compatibility =
+        checkForSystemImageCompatibility(isEmulator, apiLevel, serialNumber, project)
+
+      when (compatibility) {
+        Compatibility.Compatible -> {
+          e.presentation.isEnabled = true
+          e.presentation.description = ""
+        }
+        is Compatibility.NotCompatible -> {
+          when (compatibility.reason) {
+            API_29_PLAY_STORE -> {
+              e.presentation.isEnabled = false
+              e.presentation.description =
+                LayoutInspectorBundle.message("api29.playstore.message.embedded.li")
+            }
+          }
+        }
+      }
     }
 
     if (e.presentation.isVisible && e.presentation.isEnabled) {

@@ -16,6 +16,7 @@
 package com.android.tools.idea.wearwhs.communication
 
 import com.android.adblib.AdbSession
+import com.android.adblib.ClosedSessionException
 import com.android.adblib.DeviceSelector
 import com.android.adblib.shellAsText
 import com.android.tools.idea.wearwhs.EventTrigger
@@ -39,10 +40,20 @@ val activeExerciseRegex = Regex("active_exercise=(true|false)")
  * This class uses the content provider for the synthetic HAL in WHS to sync the current state
  * of the UI to the selected Wear OS device.
  */
-internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
+internal class ContentProviderDeviceManager(private val adbSessionProvider: () -> AdbSession,
                                             private var capabilities: List<WhsCapability> = WHS_CAPABILITIES) : WearHealthServicesDeviceManager {
   private var serialNumber: String? = null
   private val logger = Logger.getInstance(ContentProviderDeviceManager::class.java)
+
+  private var adbSession: AdbSession = adbSessionProvider()
+    get() {
+      try {
+        field.throwIfClosed()
+      } catch (closedException: ClosedSessionException) {
+        field = adbSessionProvider()
+      }
+      return field
+    }
 
   override suspend fun loadCapabilities() = capabilities
 
@@ -66,8 +77,13 @@ internal class ContentProviderDeviceManager(private val adbSession: AdbSession,
           continue
         }
         val isEnabled = match.groupValues[2].toBoolean()
+        var overrideValue: Float? = match.groupValues[3].toFloat()
+        if (!isEnabled && overrideValue == 0f) {
+          // If data type is disabled and override has not been set content provider returns override as 0, so ignore this value
+          overrideValue = null
+        }
 
-        capabilities[dataType] = CapabilityState(isEnabled, null)
+        capabilities[dataType] = CapabilityState(isEnabled, overrideValue)
       }
 
       return capabilities

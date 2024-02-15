@@ -45,9 +45,17 @@ import java.util.concurrent.TimeUnit
 import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JTextField
+import javax.swing.JComponent
+import javax.swing.JLabel
+import kotlin.time.Duration.Companion.seconds
 
 @RunsInEdt
 class WearHealthServicesToolWindowTest {
+  companion object {
+    const val TEST_MAX_WAIT_TIME_SECONDS = 5L
+    const val TEST_POLLING_INTERVAL_MILLISECONDS = 100L
+  }
+
   @get:Rule
   val projectRule = AndroidProjectRule.inMemory()
 
@@ -58,7 +66,9 @@ class WearHealthServicesToolWindowTest {
     get() = TestUtils.resolveWorkspacePathUnchecked("tools/adt/idea/wear-whs/testData")
 
   private val deviceManager by lazy { FakeDeviceManager() }
-  private val stateManager by lazy { WearHealthServicesToolWindowStateManagerImpl(deviceManager) }
+  private val stateManager by lazy {
+    WearHealthServicesToolWindowStateManagerImpl(deviceManager, pollingIntervalMillis = TEST_POLLING_INTERVAL_MILLISECONDS)
+  }
   private val toolWindow by lazy {
     WearHealthServicesToolWindow(stateManager).apply {
       setSerialNumber("test")
@@ -141,21 +151,27 @@ class WearHealthServicesToolWindowTest {
   }
 
   @Test
-  fun `test override value doesn't get reformatted to float if it has f in it`() = runBlocking {
+  fun `test override value rejects invalid text`() = runBlocking {
     val fakeUi = FakeUi(toolWindow)
 
     deviceManager.activeExercise = true
 
     val textField = fakeUi.waitForDescendant<JTextField> { it.isVisible }
+
     textField.text = "50f"
+    assertThat(textField.text).isEmpty()
 
-    val applyButton = fakeUi.waitForDescendant<JButton> { it.text == "Apply" }
-    applyButton.doClick()
+    textField.text = "50"
+    assertThat(textField.text).isEqualTo("50")
 
-    delay(200) // TODO: Change to 2 times polling interval
+    textField.text = "50.0"
+    assertThat(textField.text).isEqualTo("50.0")
 
-    assertThat(textField.text).isNotEqualTo("50.0")
-    assertThat(textField.text).isEqualTo("50f")
+    textField.text = "50.0a"
+    assertThat(textField.text).isEqualTo("50.0")
+
+    textField.text = "test"
+    assertThat(textField.text).isEqualTo("50.0")
   }
 
   @Test
@@ -169,22 +185,35 @@ class WearHealthServicesToolWindowTest {
     assertThat(dropDownButton.action.childrenActions[2].childrenActions).hasSize(EVENT_TRIGGER_GROUPS[2].eventTriggers.size)
   }
 
+  @Test
+  fun `test panel disables checkboxes during an exercise`() = runBlocking<Unit> {
+    val fakeUi = FakeUi(toolWindow)
+
+    fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Heart rate") && it.isEnabled }
+    fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Steps") && it.isEnabled }
+
+    deviceManager.activeExercise = true
+
+    fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Heart rate") && !it.isEnabled }
+    fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Steps") && !it.isEnabled }
+  }
+
   private fun FakeUi.waitForCheckbox(text: String, selected: Boolean) = waitForDescendant<JCheckBox> {
     it.text.contains(text) && it.isSelected == selected
   }
 
   // The UI loads on asynchronous coroutine, we need to wait
   private inline fun <reified T> FakeUi.waitForDescendant(crossinline predicate: (T) -> Boolean = { true }): T {
-    waitForCondition(1, TimeUnit.SECONDS) {
+    waitForCondition(TEST_MAX_WAIT_TIME_SECONDS, TimeUnit.SECONDS) {
       root.findDescendant(predicate) != null
     }
     return root.findDescendant(predicate)!!
   }
 
-  private suspend fun <T> StateFlow<T>.waitForValue(value: T, timeout: Long = 1000) {
+  private suspend fun <T> StateFlow<T>.waitForValue(value: T, timeoutSeconds: Long = TEST_MAX_WAIT_TIME_SECONDS) {
     val received = mutableListOf<T>()
     try {
-      withTimeout(timeout) { takeWhile { it != value }.collect { received.add(it) } }
+      withTimeout(timeoutSeconds.seconds) { takeWhile { it != value }.collect { received.add(it) } }
     }
     catch (ex: TimeoutCancellationException) {
       Assert.fail("Timed out waiting for value $value. Received values so far $received")

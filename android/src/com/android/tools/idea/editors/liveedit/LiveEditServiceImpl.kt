@@ -71,6 +71,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
+import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -327,6 +328,10 @@ class LiveEditServiceImpl(val project: Project,
       }
 
       override fun contentRemoveQuery(event: ContentManagerEvent) {
+        val content = event.content
+        if (Content.TEMPORARY_REMOVED_KEY.get(content, false)) {
+          return
+        }
         val dataProvider = event.content.component as? DataProvider ?: return
         val serial = dataProvider.getData(SERIAL_NUMBER_KEY.name) as String?
         serial?.let { adapter.unregister(it) }
@@ -349,14 +354,7 @@ class LiveEditServiceImpl(val project: Project,
       // Ensure that we have the original, VirtualFile-backed version of the file, since sometimes
       // an event is generated with a non-physical version of a given file, which will cause some
       // Live Edit checks that assume a non-null VirtualFile to fail.
-      val psiFile = PsiManager.getInstance(project).findFile(this)?.originalFile
-
-      // Ignore scripts. This check must be done in a read action.
-      if (psiFile is KtFile && psiFile.isScript()) {
-        return@compute null
-      }
-
-      psiFile
+      PsiManager.getInstance(project).findFile(this)?.originalFile
     }
     if (psiFile != null) {
       block(psiFile)
@@ -375,13 +373,6 @@ class LiveEditServiceImpl(val project: Project,
 
     // Filter to only files from this project.
     val index = ProjectFileIndex.getInstance(project)
-    if (!index.isInProject(file)) {
-      return false
-    }
-
-    // All sort of files might be modified and written during save actions. This is an issue for
-    // manual mode where some metadata files get updated on save. To avoid that, we only Live Edit
-    // files that are currently opened by the editor.
-    return FileEditorManager.getInstance(project).isFileOpen(file)
+    return index.isInProject(file)
   }
 }

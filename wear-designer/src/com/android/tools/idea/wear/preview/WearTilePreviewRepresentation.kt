@@ -22,6 +22,7 @@ import com.android.tools.idea.preview.representation.CommonPreviewRepresentation
 import com.android.tools.idea.preview.views.CommonNlDesignSurfacePreviewView
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSupportedActions
+import com.android.tools.rendering.RenderAsyncActionExecutor
 import com.intellij.psi.PsiFile
 
 private val WEAR_TILE_SUPPORTED_ACTIONS = setOf(NlSupportedActions.TOGGLE_ISSUE_PANEL)
@@ -30,7 +31,7 @@ internal class WearTilePreviewRepresentation(
   adapterViewFqcn: String,
   psiFile: PsiFile,
   previewProvider: PreviewElementProvider<WearTilePreviewElement>,
-  previewElementModelAdapterDelegate: PreviewElementModelAdapter<WearTilePreviewElement, NlModel>,
+  previewElementModelAdapterDelegate: PreviewElementModelAdapter<WearTilePreviewElement, NlModel>
 ) :
   CommonPreviewRepresentation<WearTilePreviewElement>(
     adapterViewFqcn,
@@ -39,7 +40,8 @@ internal class WearTilePreviewRepresentation(
     previewElementModelAdapterDelegate,
     ::CommonNlDesignSurfacePreviewView,
     ::WearTilePreviewViewModel,
-    NlDesignSurface.Builder::configureDesignSurface
+    NlDesignSurface.Builder::configureDesignSurface,
+    renderingTopic = RenderAsyncActionExecutor.RenderingTopic.WEAR_TILE_PREVIEW,
   )
 
 private fun NlDesignSurface.Builder.configureDesignSurface() {

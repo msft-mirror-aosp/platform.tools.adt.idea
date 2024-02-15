@@ -25,6 +25,7 @@ import com.android.ddmlib.TimeoutException;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.analytics.CommonMetricsData;
 import com.android.tools.analytics.UsageTracker;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfigConverter;
 import com.android.tools.idea.run.profiler.CpuProfilerConfig;
 import com.android.tools.idea.stats.AnonymizerUtil;
@@ -34,9 +35,12 @@ import com.android.tools.profiler.proto.Energy;
 import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact;
 import com.android.tools.profilers.cpu.CpuProfilerStage;
+import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
+import com.android.tools.profilers.cpu.config.PerfettoNativeAllocationsConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
+import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.energy.EnergyDuration;
 import com.android.tools.profilers.memory.HprofSessionArtifact;
 import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact;
@@ -47,6 +51,10 @@ import com.android.tools.profilers.memory.adapters.instancefilters.ProjectClasse
 import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionItem;
 import com.android.tools.profilers.sessions.SessionsManager;
+import com.android.tools.profilers.tasks.ProfilerTaskType;
+import com.android.tools.profilers.tasks.TaskAttachmentPoint;
+import com.android.tools.profilers.tasks.TaskDataOrigin;
+import com.android.tools.profilers.tasks.TaskFinishedState;
 import com.google.common.collect.ImmutableMap;
 import com.google.wireless.android.sdk.stats.AdtUiBoxSelectionMetadata;
 import com.google.wireless.android.sdk.stats.AdtUiTrackGroupMetadata;
@@ -69,6 +77,9 @@ import com.google.wireless.android.sdk.stats.PowerProfilerCaptureMetadata;
 import com.google.wireless.android.sdk.stats.ProfilerSessionCreationMetaData;
 import com.google.wireless.android.sdk.stats.ProfilerSessionSelectionMetaData;
 import com.google.wireless.android.sdk.stats.RunWithProfilingMetadata;
+import com.google.wireless.android.sdk.stats.TaskEnteredMetadata;
+import com.google.wireless.android.sdk.stats.TaskFinishedMetadata;
+import com.google.wireless.android.sdk.stats.TaskMetadata;
 import com.google.wireless.android.sdk.stats.TraceProcessorDaemonManagerStats;
 import com.google.wireless.android.sdk.stats.TraceProcessorDaemonQueryStats;
 import com.google.wireless.android.sdk.stats.TransportFailureMetadata;
@@ -204,6 +215,49 @@ public final class StudioFeatureTracker implements FeatureTracker {
       .put(ActivityFragmentLeakInstanceFilter.class, MemoryInstanceFilterMetadata.FilterType.ACTIVITY_FRAGMENT_LEAKS)
       .put(ProjectClassesInstanceFilter.class, MemoryInstanceFilterMetadata.FilterType.PROJECT_CLASSES)
       .build();
+
+  private final ImmutableMap<ProfilerTaskType, TaskMetadata.ProfilerTaskType> PROFILER_TASK_TYPE_MAP =
+    ImmutableMap.of(
+      ProfilerTaskType.UNSPECIFIED, TaskMetadata.ProfilerTaskType.PROFILER_TASK_TYPE_UNSPECIFIED,
+      ProfilerTaskType.CALLSTACK_SAMPLE, TaskMetadata.ProfilerTaskType.CALLSTACK_SAMPLE,
+      ProfilerTaskType.SYSTEM_TRACE, TaskMetadata.ProfilerTaskType.SYSTEM_TRACE,
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_TRACE, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_METHOD_TRACE,
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_SAMPLE, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_METHOD_SAMPLE,
+      ProfilerTaskType.HEAP_DUMP, TaskMetadata.ProfilerTaskType.HEAP_DUMP,
+      ProfilerTaskType.NATIVE_ALLOCATIONS, TaskMetadata.ProfilerTaskType.NATIVE_ALLOCATIONS,
+      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+      ProfilerTaskType.LIVE_VIEW, TaskMetadata.ProfilerTaskType.LIVE_VIEW
+    );
+
+  private final ImmutableMap<Common.Process.ExposureLevel, TaskMetadata.ExposureLevel> PROCESS_EXPOSURE_LEVEL_MAP =
+    ImmutableMap.of(
+      Common.Process.ExposureLevel.UNKNOWN, TaskMetadata.ExposureLevel.UNKNOWN,
+      Common.Process.ExposureLevel.RELEASE, TaskMetadata.ExposureLevel.RELEASE,
+      Common.Process.ExposureLevel.PROFILEABLE, TaskMetadata.ExposureLevel.PROFILEABLE,
+      Common.Process.ExposureLevel.DEBUGGABLE, TaskMetadata.ExposureLevel.DEBUGGABLE
+    );
+
+  private final ImmutableMap<TaskDataOrigin, TaskMetadata.TaskDataOrigin> TASK_DATA_ORIGIN_MAP =
+    ImmutableMap.of(
+      TaskDataOrigin.UNSPECIFIED, TaskMetadata.TaskDataOrigin.TASK_DATA_ORIGIN_UNSPECIFIED,
+      TaskDataOrigin.NEW, TaskMetadata.TaskDataOrigin.NEW,
+      TaskDataOrigin.PAST_RECORDING, TaskMetadata.TaskDataOrigin.PAST_RECORDING,
+      TaskDataOrigin.IMPORTED, TaskMetadata.TaskDataOrigin.IMPORTED
+    );
+
+  private final ImmutableMap<TaskAttachmentPoint, TaskMetadata.TaskAttachmentPoint> TASK_ATTACHMENT_POINT_MAP =
+    ImmutableMap.of(
+      TaskAttachmentPoint.UNSPECIFIED, TaskMetadata.TaskAttachmentPoint.TASK_ATTACHMENT_POINT_UNSPECIFIED,
+      TaskAttachmentPoint.NEW_PROCESS, TaskMetadata.TaskAttachmentPoint.NEW_PROCESS,
+      TaskAttachmentPoint.EXISTING_PROCESS, TaskMetadata.TaskAttachmentPoint.EXISTING_PROCESS
+    );
+
+  private final ImmutableMap<TaskFinishedState, TaskFinishedMetadata.TaskFinishedState> TASK_FINISHED_STATE_MAP =
+    ImmutableMap.of(
+      TaskFinishedState.UNSPECIFIED, TaskFinishedMetadata.TaskFinishedState.TASK_FINISHED_STATE_UNSPECIFIED,
+      TaskFinishedState.COMPLETED, TaskFinishedMetadata.TaskFinishedState.COMPLETED,
+      TaskFinishedState.USER_CANCELLED, TaskFinishedMetadata.TaskFinishedState.USER_CANCELLED
+    );
 
   @NotNull
   private AndroidProfilerEvent.Stage myCurrStage = AndroidProfilerEvent.Stage.UNKNOWN_STAGE;
@@ -701,6 +755,85 @@ public final class StudioFeatureTracker implements FeatureTracker {
       .track();
   }
 
+  @Override
+  public void trackTaskSettingsOpened(boolean isTaskSettingsChanged) {
+    newTracker(AndroidProfilerEvent.Type.TASK_SETTINGS_OPENED).setIsTaskSettingsChanged(isTaskSettingsChanged).track();
+  }
+
+  private TaskMetadata.TaskConfig buildCustomTaskConfig(ProfilerTaskType taskType, @NotNull List<ProfilingConfiguration> taskConfigs) {
+    TaskMetadata.TaskConfig.Builder taskConfigBuilder = TaskMetadata.TaskConfig.newBuilder();
+
+    switch (taskType) {
+      case CALLSTACK_SAMPLE -> taskConfigs.stream()
+        .filter(SimpleperfConfiguration.class::isInstance)
+        .map(SimpleperfConfiguration.class::cast)
+        .findFirst()
+        .ifPresent(config -> taskConfigBuilder.setCallstackSampleTaskConfig(
+          TaskMetadata.CallstackSampleTaskConfig.newBuilder().setSampleIntervalUs(config.getProfilingSamplingIntervalUs()).build()));
+      case JAVA_KOTLIN_METHOD_TRACE -> taskConfigs.stream()
+        .filter(ArtInstrumentedConfiguration.class::isInstance)
+        .map(ArtInstrumentedConfiguration.class::cast)
+        .findFirst()
+        .ifPresent(config -> taskConfigBuilder.setJavaKotlinMethodTraceTaskConfig(
+          TaskMetadata.JavaKotlinMethodTraceTaskConfig.newBuilder().setBufferSizeMb(config.getProfilingBufferSizeInMb())));
+      case JAVA_KOTLIN_METHOD_SAMPLE -> taskConfigs.stream()
+        .filter(ArtSampledConfiguration.class::isInstance)
+        .map(ArtSampledConfiguration.class::cast)
+        .findFirst()
+        .ifPresent(config -> {
+          taskConfigBuilder.setJavaKotlinMethodSampleTaskConfig(
+            TaskMetadata.JavaKotlinMethodSampleTaskConfig.newBuilder().setSampleIntervalUs(config.getProfilingSamplingIntervalUs())
+              .setBufferSizeMb(config.getProfilingBufferSizeInMb()).build());
+        });
+      case NATIVE_ALLOCATIONS -> taskConfigs.stream()
+        .filter(PerfettoNativeAllocationsConfiguration.class::isInstance)
+        .map(PerfettoNativeAllocationsConfiguration.class::cast)
+        .findFirst()
+        .ifPresent(config -> taskConfigBuilder.setNativeAllocationsTaskConfig(
+          TaskMetadata.NativeAllocationsTaskConfig.newBuilder().setSampleIntervalBytes(config.getMemorySamplingIntervalBytes()).build()));
+      // Return null to indicate that there was no found task configuration.
+      default -> { return null; }
+    }
+
+    return taskConfigBuilder.build();
+  }
+
+  private TaskMetadata buildStatsTaskMetadata(com.android.tools.profilers.tasks.TaskMetadata taskMetadata) {
+    TaskMetadata.Builder taskMetadataBuilder = TaskMetadata.newBuilder().setTaskType(
+        PROFILER_TASK_TYPE_MAP.getOrDefault(taskMetadata.getTaskType(), TaskMetadata.ProfilerTaskType.PROFILER_TASK_TYPE_UNSPECIFIED))
+      .setTaskId(taskMetadata.getTaskId())
+      .setExposureLevel(PROCESS_EXPOSURE_LEVEL_MAP.getOrDefault(taskMetadata.getExposureLevel(), TaskMetadata.ExposureLevel.UNKNOWN))
+      .setTaskDataOrigin(
+        TASK_DATA_ORIGIN_MAP.getOrDefault(taskMetadata.getTaskDataOrigin(), TaskMetadata.TaskDataOrigin.TASK_DATA_ORIGIN_UNSPECIFIED))
+      .setTaskAttachmentPoint(TASK_ATTACHMENT_POINT_MAP.getOrDefault(taskMetadata.getTaskAttachmentPoint(),
+                                                                     TaskMetadata.TaskAttachmentPoint.TASK_ATTACHMENT_POINT_UNSPECIFIED));
+
+    // Only set/include the task configurations if the task was newly created/recorded.
+    if (taskMetadata.getTaskDataOrigin().equals(TaskDataOrigin.NEW)) {
+      TaskMetadata.TaskConfig taskConfig = buildCustomTaskConfig(taskMetadata.getTaskType(), taskMetadata.getTaskConfigs());
+      if (taskConfig != null) {
+        taskMetadataBuilder.setTaskConfig(taskConfig);
+      }
+    }
+
+    return taskMetadataBuilder.build();
+  }
+
+  @Override
+  public void trackTaskEntered(com.android.tools.profilers.tasks.@NotNull TaskMetadata taskMetadata) {
+    newTracker(AndroidProfilerEvent.Type.TASK_ENTERED).setTaskEnteredMetadata(TaskEnteredMetadata.newBuilder().setTaskData(
+      buildStatsTaskMetadata(taskMetadata)).build()).track();
+  }
+
+  @Override
+  public void trackTaskFinished(com.android.tools.profilers.tasks.@NotNull TaskMetadata taskMetadata,
+                                @NotNull TaskFinishedState taskFinishedState) {
+    newTracker(AndroidProfilerEvent.Type.TASK_FINISHED).setTaskFinishedMetadata(
+      TaskFinishedMetadata.newBuilder().setTaskData(buildStatsTaskMetadata(taskMetadata)).setTaskFinishedState(
+          TASK_FINISHED_STATE_MAP.getOrDefault(taskFinishedState, TaskFinishedMetadata.TaskFinishedState.TASK_FINISHED_STATE_UNSPECIFIED))
+        .build()).track();
+  }
+
   /**
    * Convenience method for creating a new tracker with all the minimum data supplied.
    */
@@ -743,6 +876,12 @@ public final class StudioFeatureTracker implements FeatureTracker {
     @Nullable private PowerProfilerCaptureMetadata myPowerProfilerCaptureMetadata;
 
     @Nullable private RunWithProfilingMetadata myRunWithProfilingMetadata;
+
+    private boolean isTaskSettingsChanged;
+
+    @Nullable private TaskEnteredMetadata myTaskEnteredMetadata;
+
+    @Nullable private TaskFinishedMetadata myTaskFinishedMetadata;
 
     private AndroidProfilerEvent.MemoryHeap myMemoryHeap = AndroidProfilerEvent.MemoryHeap.UNKNOWN_HEAP;
 
@@ -880,8 +1019,31 @@ public final class StudioFeatureTracker implements FeatureTracker {
       return this;
     }
 
+    @NotNull
+    private Tracker setIsTaskSettingsChanged(boolean taskSettingsChanged) {
+      isTaskSettingsChanged = taskSettingsChanged;
+      return this;
+    }
+
+    @NotNull
+    private Tracker setTaskEnteredMetadata(TaskEnteredMetadata taskEnteredMetadata) {
+      myTaskEnteredMetadata = taskEnteredMetadata;
+      return this;
+    }
+
+    @NotNull
+    private Tracker setTaskFinishedMetadata(TaskFinishedMetadata taskFinishedMetadata) {
+      myTaskFinishedMetadata = taskFinishedMetadata;
+      return this;
+    }
+
     public void track() {
-      AndroidProfilerEvent.Builder profilerEvent = AndroidProfilerEvent.newBuilder().setStage(myCurrStage).setType(myEventType);
+      AndroidProfilerEvent.Builder profilerEvent = AndroidProfilerEvent.newBuilder().setType(myEventType);
+
+      // In the Task-Based UX, the current stage is not useful to know and thus will not be set.
+      if (!StudioFlags.PROFILER_TASK_BASED_UX.get()) {
+        profilerEvent.setStage(myCurrStage);
+      }
 
       populateCpuCaptureMetadata(profilerEvent);
       populateFilterMetadata(profilerEvent);
@@ -946,6 +1108,15 @@ public final class StudioFeatureTracker implements FeatureTracker {
           break;
         case POWER_PROFILER_DATA_CAPTURED:
           profilerEvent.setPowerProfilerCaptureMetadata(myPowerProfilerCaptureMetadata);
+          break;
+        case TASK_SETTINGS_OPENED:
+          profilerEvent.setIsTaskSettingsChanged(isTaskSettingsChanged);
+          break;
+        case TASK_ENTERED:
+          profilerEvent.setTaskEnteredMetadata(myTaskEnteredMetadata);
+          break;
+        case TASK_FINISHED:
+          profilerEvent.setTaskFinishedMetadata(myTaskFinishedMetadata);
           break;
         default:
           break;

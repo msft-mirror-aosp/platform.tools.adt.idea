@@ -25,6 +25,7 @@ import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
 import com.android.tools.idea.compose.preview.TestComposePreviewView
+import com.android.tools.idea.compose.preview.waitForAllRefreshesToFinish
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.editors.build.ProjectStatus
@@ -288,7 +289,7 @@ class ParametrizedPreviewTest {
     Disposer.register(projectRule.fixture.testRootDisposable, preview)
     preview.onActivate()
 
-    preview.waitForAnyPendingRefresh()
+    waitForAllRefreshesToFinish(30.seconds)
     val uiCheckElement = elements.first() as ParametrizedComposePreviewElementInstance
     run {
       var refreshCompleted = false
@@ -299,7 +300,7 @@ class ParametrizedPreviewTest {
 
     assertInstanceOf<UiCheckModeFilter.Enabled>(preview.uiCheckFilterFlow.value)
 
-    assertThat(preview.availableGroupsFlow.value.map { it.displayName })
+    assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })
       .containsExactly("Screen sizes", "Font scales", "Light/Dark", "Colorblind filters")
       .inOrder()
     preview.filteredPreviewElementsInstancesFlowForTest().awaitStatus(

@@ -26,6 +26,7 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.memory.adapters.instancefilters.CaptureObjectInstanceFilter;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionsManager;
+import com.android.tools.profilers.tasks.TaskFinishedState;
 import com.android.utils.Pair;
 import com.google.common.truth.Truth;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
@@ -109,6 +110,8 @@ public final class FakeFeatureTracker implements FeatureTracker {
    * Count of power rails and battery counters found in a power profiler capture.
    */
   private PowerProfilerCaptureMetadata myPowerProfilerCaptureMetadata;
+
+  private boolean isTaskSettingChanged;
 
   @Override
   public void trackPreTransportDaemonStarts(@NotNull Common.Device transportDevice) {
@@ -561,4 +564,16 @@ public final class FakeFeatureTracker implements FeatureTracker {
   public PowerProfilerCaptureMetadata getPowerProfilerCaptureMetadata() {
     return myPowerProfilerCaptureMetadata;
   }
+
+  @Override
+  public void trackTaskSettingsOpened(boolean isSettingsChanged) {
+    isTaskSettingChanged = isSettingsChanged;
+  }
+
+  @Override
+  public void trackTaskEntered(@NotNull com.android.tools.profilers.tasks.TaskMetadata taskMetadata) { }
+
+  @Override
+  public void trackTaskFinished(@NotNull com.android.tools.profilers.tasks.TaskMetadata taskMetadata,
+                                @NotNull TaskFinishedState taskFinishedState) { }
 }

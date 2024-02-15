@@ -16,6 +16,8 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.testutils.delayUntilCondition
+import com.android.testutils.waitForCondition
+import com.android.tools.analytics.AnalyticsSettings
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
 import com.android.tools.idea.common.error.SharedIssuePanelProvider
 import com.android.tools.idea.common.model.NlModel
@@ -36,6 +38,8 @@ import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.getPreviewManager
+import com.android.tools.idea.preview.analytics.PreviewRefreshTracker
+import com.android.tools.idea.preview.analytics.PreviewRefreshTrackerForTest
 import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.modes.GRID_LAYOUT_MANAGER_OPTIONS
 import com.android.tools.idea.preview.modes.LIST_LAYOUT_MANAGER_OPTION
@@ -52,7 +56,9 @@ import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlDesignSurfacePositionableContentLayoutManager
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.idea.util.TestToolWindowManager
+import com.google.common.base.Preconditions.checkState
 import com.google.common.truth.Truth.assertThat
+import com.google.wireless.android.sdk.stats.PreviewRefreshEvent
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.ide.impl.HeadlessDataManager
@@ -71,8 +77,10 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.psi.PsiFile
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.assertInstanceOf
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndWait
 import java.nio.file.Path
@@ -81,7 +89,6 @@ import java.util.concurrent.CountDownLatch
 import javax.swing.JComponent
 import javax.swing.JPanel
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -164,47 +171,18 @@ class ComposePreviewRepresentationTest {
   }
 
   @Test
-  fun testPreviewInitialization() =
+  fun testPreviewInitialization() {
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
     runBlocking(workerThread) {
-      val composeTest = createComposeTest()
+      wrapper.init()
+      val preview = wrapper.createPreviewAndCompile()
 
-      val mainSurface = NlDesignSurface.builder(project, fixture.testRootDisposable).build()
-      val modelRenderedLatch = CountDownLatch(2)
-
-      mainSurface.addListener(
-        object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
-            val id = UUID.randomUUID().toString().substring(0, 5)
-            logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
-          }
-        }
-      )
-
-      val composeView = TestComposePreviewView(mainSurface)
-      val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
-          composeView
-        }
-      Disposer.register(fixture.testRootDisposable, preview)
-      withContext(Dispatchers.IO) {
-        logger.info("compile")
-        ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
-        logger.info("activate")
-        preview.onActivate()
-
-        modelRenderedLatch.await()
-        delayWhileRefreshingOrDumb(preview)
-      }
-
-      mainSurface.models.forEach {
+      wrapper.mainSurface.models.forEach {
         assertTrue(preview.navigationHandler.defaultNavigationMap.contains(it))
       }
 
-      assertThat(preview.availableGroupsFlow.value.map { it.displayName }).containsExactly("groupA")
+      assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })
+        .containsExactly("groupA")
 
       val status = preview.status()
       val debugStatus = preview.debugStatusForTesting()
@@ -217,52 +195,73 @@ class ComposePreviewRepresentationTest {
       )
       preview.onDeactivate()
     }
+  }
+
+  @Test
+  fun testPreviewRefreshMetricsAreTracked() {
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
+    runBlocking(workerThread) {
+      wrapper.init()
+      try {
+        AnalyticsSettings.optedIn = true
+        var refreshTrackerFailed = false
+        var successEventCount = 0
+        val refreshTracker = PreviewRefreshTrackerForTest {
+          if (
+            it.result != PreviewRefreshEvent.RefreshResult.SUCCESS ||
+              it.previewRendersList.isEmpty()
+          ) {
+            return@PreviewRefreshTrackerForTest
+          }
+          try {
+            assertTrue(it.hasInQueueTimeMillis())
+            assertTrue(it.hasRefreshTimeMillis())
+            assertTrue(it.hasType())
+            assertTrue(it.hasResult())
+            assertTrue(it.hasPreviewsCount())
+            assertTrue(it.hasPreviewsToRefresh())
+            assertTrue(it.previewRendersList.isNotEmpty())
+            assertTrue(
+              it.previewRendersList.all { render ->
+                render.hasResult()
+                render.hasRenderTimeMillis()
+                render.hasRenderQuality()
+                render.hasInflate()
+              }
+            )
+            successEventCount++
+          } catch (t: Throwable) {
+            refreshTrackerFailed = true
+          }
+        }
+        PreviewRefreshTracker.setInstanceForTest(wrapper.mainSurface, refreshTracker)
+        val preview = wrapper.createPreviewAndCompile()
+
+        waitForCondition(5.seconds) { successEventCount > 0 }
+        assertFalse(refreshTrackerFailed)
+        preview.onDeactivate()
+      } finally {
+        PreviewRefreshTracker.cleanAfterTesting(wrapper.mainSurface)
+        AnalyticsSettings.optedIn = false
+      }
+    }
+  }
 
   @Test
   fun testUiCheckMode() {
     StudioFlags.NELE_ATF_FOR_COMPOSE.override(true)
     StudioFlags.NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE.override(true)
 
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
     runBlocking(workerThread) {
-      val composeTest = createComposeTest()
-
-      val mainSurface = NlDesignSurface.builder(project, fixture.testRootDisposable).build()
-      val modelRenderedLatch = CountDownLatch(2)
-
-      mainSurface.addListener(
-        object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
-            val id = UUID.randomUUID().toString().substring(0, 5)
-            logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
-          }
-        }
-      )
+      wrapper.init()
       val originalScale = 0.6
-      mainSurface.setScale(originalScale)
-
-      val composeView = TestComposePreviewView(mainSurface)
-      val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
-          composeView
-        }
-      Disposer.register(fixture.testRootDisposable, preview)
-      withContext(Dispatchers.IO) {
-        logger.info("compile")
-        ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
-        logger.info("activate")
-        preview.onActivate()
-
-        modelRenderedLatch.await()
-
-        delayWhileRefreshingOrDumb(preview)
-      }
+      wrapper.mainSurface.setScale(originalScale)
+      val preview = wrapper.createPreviewAndCompile()
       assertInstanceOf<UiCheckModeFilter.Disabled>(preview.uiCheckFilterFlow.value)
 
-      val previewElements = mainSurface.models.mapNotNull { it.dataContext.previewElement() }
+      val previewElements =
+        wrapper.mainSurface.models.mapNotNull { it.dataContext.previewElement() }
       val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
 
       val contentManager = ProblemsView.getToolWindow(project)!!.contentManager
@@ -272,23 +271,18 @@ class ComposePreviewRepresentationTest {
       }
 
       // Start UI Check mode
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        preview.setMode(PreviewMode.UiCheck(uiCheckElement))
-        delayUntilCondition(250) { refresh }
-      }
+      wrapper.setModeAndWaitForRefresh(PreviewMode.UiCheck(uiCheckElement))
 
       assertInstanceOf<UiCheckModeFilter.Enabled>(preview.uiCheckFilterFlow.value)
       delayUntilCondition(250) {
         GRID_LAYOUT_MANAGER_OPTIONS.layoutManager ==
-          (mainSurface.sceneViewLayoutManager as? NlDesignSurfacePositionableContentLayoutManager)
+          (wrapper.mainSurface.sceneViewLayoutManager
+              as? NlDesignSurfacePositionableContentLayoutManager)
             ?.layoutManager
       }
 
       assertTrue(preview.atfChecksEnabled)
-      assertThat(preview.availableGroupsFlow.value.map { it.displayName })
+      assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })
         .containsExactly("Screen sizes", "Font scales", "Light/Dark", "Colorblind filters")
         .inOrder()
       preview.filteredPreviewElementsInstancesFlowForTest().awaitStatus(
@@ -376,30 +370,25 @@ class ComposePreviewRepresentationTest {
       )
 
       // Change the scale of the surface
-      mainSurface.setScale(originalScale + 0.5)
+      wrapper.mainSurface.setScale(originalScale + 0.5)
 
       // Check that the UI Check tab has been created
       assertEquals(2, contentManager.contents.size)
       assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        // Stop UI Check mode
-        preview.setMode(PreviewMode.Default())
-        delayUntilCondition(250) { refresh }
-      }
+      // Stop UI Check mode
+      wrapper.setModeAndWaitForRefresh(PreviewMode.Default())
 
       assertInstanceOf<UiCheckModeFilter.Disabled>(preview.uiCheckFilterFlow.value)
       delayUntilCondition(250) {
         LIST_LAYOUT_MANAGER_OPTION.layoutManager ==
-          (mainSurface.sceneViewLayoutManager as? NlDesignSurfacePositionableContentLayoutManager)
+          (wrapper.mainSurface.sceneViewLayoutManager
+              as? NlDesignSurfacePositionableContentLayoutManager)
             ?.layoutManager
       }
 
       // Check that the surface zooms to fit when exiting UI check mode.
-      assertEquals(1.0, mainSurface.scale, 0.001)
+      assertEquals(1.0, wrapper.mainSurface.scale, 0.001)
 
       preview.filteredPreviewElementsInstancesFlowForTest().awaitStatus(
         "Failed stop uiCheckMode",
@@ -429,18 +418,11 @@ class ComposePreviewRepresentationTest {
       assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       // Restart UI Check mode on the same preview
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        preview.setMode(PreviewMode.UiCheck(uiCheckElement))
-        delayUntilCondition(250) {
-          refresh &&
-            GRID_LAYOUT_MANAGER_OPTIONS.layoutManager ==
-              (mainSurface.sceneViewLayoutManager
-                  as? NlDesignSurfacePositionableContentLayoutManager)
-                ?.layoutManager
-        }
+      wrapper.setModeAndWaitForRefresh(PreviewMode.UiCheck(uiCheckElement)) {
+        GRID_LAYOUT_MANAGER_OPTIONS.layoutManager ==
+          (wrapper.mainSurface.sceneViewLayoutManager
+              as? NlDesignSurfacePositionableContentLayoutManager)
+            ?.layoutManager
       }
 
       // Check that the UI Check tab is being reused
@@ -495,21 +477,12 @@ class ComposePreviewRepresentationTest {
         assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
       }
 
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        // Stop UI Check mode
-        preview.setMode(PreviewMode.Default())
-        delayUntilCondition(250) {
-          refresh &&
-            LIST_LAYOUT_MANAGER_OPTION.layoutManager ==
-              (mainSurface.sceneViewLayoutManager
-                  as? NlDesignSurfacePositionableContentLayoutManager)
-                ?.layoutManager
-        }
+      wrapper.setModeAndWaitForRefresh(PreviewMode.Default()) {
+        LIST_LAYOUT_MANAGER_OPTION.layoutManager ==
+          (wrapper.mainSurface.sceneViewLayoutManager
+              as? NlDesignSurfacePositionableContentLayoutManager)
+            ?.layoutManager
       }
-
       preview.onDeactivate()
     }
   }
@@ -518,44 +491,15 @@ class ComposePreviewRepresentationTest {
   fun testUiCheckModeWithColorBlindCheckEnabled() {
     StudioFlags.NELE_ATF_FOR_COMPOSE.override(true)
     StudioFlags.NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE.override(true)
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
+
     runBlocking(workerThread) {
-      val composeTest = createComposeTest()
-
-      val mainSurface = NlDesignSurface.builder(project, fixture.testRootDisposable).build()
-      val modelRenderedLatch = CountDownLatch(2)
-
-      mainSurface.addListener(
-        object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
-            val id = UUID.randomUUID().toString().substring(0, 5)
-            logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
-          }
-        }
-      )
-
-      val composeView = TestComposePreviewView(mainSurface)
-      val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
-          composeView
-        }
-      Disposer.register(fixture.testRootDisposable, preview)
-      withContext(Dispatchers.IO) {
-        logger.info("compile")
-        ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
-        logger.info("activate")
-        preview.onActivate()
-
-        modelRenderedLatch.await()
-
-        delayWhileRefreshingOrDumb(preview)
-      }
+      wrapper.init()
+      val preview = wrapper.createPreviewAndCompile()
       assertInstanceOf<UiCheckModeFilter.Disabled>(preview.uiCheckFilterFlow.value)
 
-      val previewElements = mainSurface.models.mapNotNull { it.dataContext.previewElement() }
+      val previewElements =
+        wrapper.mainSurface.models.mapNotNull { it.dataContext.previewElement() }
       val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
 
       val contentManager = ProblemsView.getToolWindow(project)!!.contentManager
@@ -563,18 +507,11 @@ class ComposePreviewRepresentationTest {
       assertEquals(1, contentManager.contents.size)
 
       // Start UI Check mode
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        preview.setMode(PreviewMode.UiCheck(uiCheckElement))
-        delayUntilCondition(250) { refresh }
-      }
-
+      wrapper.setModeAndWaitForRefresh(PreviewMode.UiCheck(uiCheckElement))
       assertInstanceOf<UiCheckModeFilter.Enabled>(preview.uiCheckFilterFlow.value)
 
       assertTrue(preview.atfChecksEnabled)
-      assertThat(preview.availableGroupsFlow.value.map { it.displayName })
+      assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })
         .containsExactly("Screen sizes", "Font scales", "Light/Dark", "Colorblind filters")
         .inOrder()
       preview.filteredPreviewElementsInstancesFlowForTest().awaitStatus(
@@ -666,13 +603,7 @@ class ComposePreviewRepresentationTest {
       assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       // Stop UI Check mode
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        preview.setMode(PreviewMode.Default())
-        delayUntilCondition(250) { refresh }
-      }
+      wrapper.setModeAndWaitForRefresh(PreviewMode.Default())
       assertInstanceOf<UiCheckModeFilter.Disabled>(preview.uiCheckFilterFlow.value)
 
       preview.filteredPreviewElementsInstancesFlowForTest().awaitStatus(
@@ -703,177 +634,36 @@ class ComposePreviewRepresentationTest {
       assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
       // Restart UI Check mode on the same preview
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        preview.setMode(PreviewMode.UiCheck(uiCheckElement))
-        delayUntilCondition(250) { refresh }
-      }
+      wrapper.setModeAndWaitForRefresh(PreviewMode.UiCheck(uiCheckElement))
 
       // Check that the UI Check tab is being reused
       assertEquals(2, contentManager.contents.size)
       assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
 
-      run {
-        preview.waitForAnyPendingRefresh()
-        var refresh = false
-        composeView.refreshCompletedListeners.add { refresh = true }
-        preview.setMode(PreviewMode.Default())
-        delayUntilCondition(250) { refresh }
-      }
+      wrapper.setModeAndWaitForRefresh(PreviewMode.Default())
       preview.onDeactivate()
     }
   }
 
-  private fun createComposeTest() = runWriteActionAndWait {
-    fixture.addFileToProjectAndInvalidate(
-      "Test.kt",
-      // language=kotlin
-      """
-          import androidx.compose.ui.tooling.preview.Devices
-          import androidx.compose.ui.tooling.preview.Preview
-          import androidx.compose.runtime.Composable
-
-          @Composable
-          @Preview
-          fun Preview1() {
-          }
-
-          @Composable
-          @Preview(name = "preview2", apiLevel = 12, group = "groupA", showBackground = true)
-          fun Preview2() {
-          }
-        """
-        .trimIndent(),
-    )
+  @Test
+  fun testPreviewModeManagerShouldBeRegisteredInDataProvider() {
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
+    runBlocking(workerThread) {
+      wrapper.init()
+      wrapper.createPreviewAndCompile()
+      assertTrue(wrapper.getData(PreviewModeManager.KEY.name) is PreviewModeManager)
+    }
   }
 
   @Test
-  fun testPreviewModeManagerShouldBeRegisteredInDataProvider() =
+  fun testPreviewGroupManagerShouldBeRegisteredInDataProvider() {
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
     runBlocking(workerThread) {
-      val composeTest = runWriteActionAndWait {
-        fixture.addFileToProjectAndInvalidate(
-          "Test.kt",
-          // language=kotlin
-          """
-        import androidx.compose.ui.tooling.preview.Preview
-        import androidx.compose.runtime.Composable
-
-        @Composable
-        @Preview
-        fun Preview() {
-        }
-      """
-            .trimIndent(),
-        )
-      }
-
-      val mainSurface = NlDesignSurface.builder(project, fixture.testRootDisposable).build()
-      val modelRenderedLatch = CountDownLatch(2)
-
-      mainSurface.addListener(
-        object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
-            val id = UUID.randomUUID().toString().substring(0, 5)
-            logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
-          }
-        }
-      )
-
-      val composeView = TestComposePreviewView(mainSurface)
-      lateinit var dataProvider: DataProvider
-      val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) {
-          _,
-          _,
-          _,
-          provider,
-          _,
-          _ ->
-          dataProvider = provider
-          composeView
-        }
-      Disposer.register(fixture.testRootDisposable, preview)
-      withContext(Dispatchers.IO) {
-        logger.info("compile")
-        ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
-        logger.info("activate")
-        preview.onActivate()
-
-        modelRenderedLatch.await()
-        delayWhileRefreshingOrDumb(preview)
-      }
-
-      assertEquals(preview, dataProvider.getData(PreviewModeManager.KEY.name))
+      wrapper.init()
+      wrapper.createPreviewAndCompile()
+      assertTrue(wrapper.getData(PreviewGroupManager.KEY.name) is PreviewGroupManager)
     }
-
-  @Test
-  fun testPreviewGroupManagerShouldBeRegisteredInDataProvider() =
-    runBlocking(workerThread) {
-      val composeTest = runWriteActionAndWait {
-        fixture.addFileToProjectAndInvalidate(
-          "Test.kt",
-          // language=kotlin
-          """
-        import androidx.compose.ui.tooling.preview.Preview
-        import androidx.compose.runtime.Composable
-
-        @Composable
-        @Preview
-        fun Preview() {
-        }
-      """
-            .trimIndent(),
-        )
-      }
-
-      val mainSurface = NlDesignSurface.builder(project, fixture.testRootDisposable).build()
-      val modelRenderedLatch = CountDownLatch(2)
-
-      mainSurface.addListener(
-        object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
-            val id = UUID.randomUUID().toString().substring(0, 5)
-            logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
-          }
-        }
-      )
-
-      val composeView = TestComposePreviewView(mainSurface)
-      lateinit var dataProvider: DataProvider
-      val preview =
-        ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) {
-          _,
-          _,
-          _,
-          provider,
-          _,
-          _ ->
-          dataProvider = provider
-          composeView
-        }
-      Disposer.register(fixture.testRootDisposable, preview)
-      withContext(Dispatchers.IO) {
-        logger.info("compile")
-        ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
-        logger.info("activate")
-        preview.onActivate()
-
-        modelRenderedLatch.await()
-        delayWhileRefreshingOrDumb(preview)
-      }
-
-      assertEquals(preview, dataProvider.getData(PreviewGroupManager.KEY.name))
-    }
+  }
 
   @Test
   fun testActivationDoesNotCleanOverlayClassLoader() =
@@ -935,52 +725,30 @@ class ComposePreviewRepresentationTest {
     HeadlessDataManager.fallbackToProductionDataManager(projectRule.fixture.testRootDisposable)
 
     StudioFlags.NELE_ATF_FOR_COMPOSE.override(true)
+    val wrapper = ComposePreviewRepresentationTestContext(fixture, logger)
     runBlocking(workerThread) {
-      val composeTest = createComposeTest()
-      val virtualFile = composeTest.virtualFile
-      virtualFile.putUserData(FileEditorProvider.KEY, SourceCodeEditorProvider())
+      val testPsiFile = wrapper.createPreviewPsiFile()
+      testPsiFile.putUserData(FileEditorProvider.KEY, SourceCodeEditorProvider())
       val editor =
         withContext(uiThread) {
           val editors =
-            FileEditorManager.getInstance(project).openFile(composeTest.virtualFile, true, true)
+            FileEditorManager.getInstance(project).openFile(testPsiFile.virtualFile, true, true)
           (editors[0] as TextEditorWithMultiRepresentationPreview<*>)
         }
       delayUntilCondition(250) { editor.getPreviewManager<ComposePreviewManager>() != null }
+      wrapper.init(withContext(uiThread) { editor.getDesignSurface() as NlDesignSurface })
+
       val preview =
         editor.getPreviewManager<ComposePreviewManager>() as ComposePreviewRepresentation
-      val surface = withContext(uiThread) { editor.getDesignSurface()!! }
-
-      val modelRenderedLatch = CountDownLatch(2)
-      surface.addListener(
-        object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
-            val id = UUID.randomUUID().toString().substring(0, 5)
-            logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
-          }
-        }
-      )
-
-      Disposer.register(fixture.testRootDisposable, preview)
-      withContext(Dispatchers.IO) {
-        logger.info("compile")
-        ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
-        logger.info("activate")
-        preview.onActivate()
-
-        modelRenderedLatch.await()
-
-        delayWhileRefreshingOrDumb(preview)
-      }
+      wrapper.createPreviewAndCompile(preview)
 
       // Start UI Check mode
-      val previewElements = surface.models.mapNotNull { it.dataContext.previewElement() }
+      val previewElements =
+        wrapper.mainSurface.models.mapNotNull { it.dataContext.previewElement() }
       val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
+
       run {
-        preview.waitForAnyPendingRefresh()
+        waitForAllRefreshesToFinish(30.seconds)
         preview.setMode(PreviewMode.UiCheck(uiCheckElement))
         delayUntilCondition(250) { preview.uiCheckFilterFlow.value is UiCheckModeFilter.Enabled }
       }
@@ -1008,7 +776,7 @@ class ComposePreviewRepresentationTest {
 
       // Stop UI Check mode
       run {
-        preview.waitForAnyPendingRefresh()
+        waitForAllRefreshesToFinish(30.seconds)
         preview.setMode(PreviewMode.Default())
         delayUntilCondition(250) { preview.uiCheckFilterFlow.value is UiCheckModeFilter.Disabled }
       }
@@ -1032,14 +800,140 @@ class ComposePreviewRepresentationTest {
         assertFalse(actionEvent.presentation.isEnabled)
       }
 
-      preview.waitForAnyPendingRefresh()
+      waitForAllRefreshesToFinish(30.seconds)
       withContext(uiThread) { FileEditorManagerEx.getInstanceEx(project).closeAllFiles() }
     }
   }
 
-  private suspend fun delayWhileRefreshingOrDumb(preview: ComposePreviewRepresentation) {
-    delayUntilCondition(250) {
-      !(preview.status().isRefreshing || DumbService.getInstance(project).isDumb)
+  /**
+   * Wrapper class to perform operations and expose properties that are common to most tests in this
+   * test class.
+   */
+  private class ComposePreviewRepresentationTestContext(
+    private val fixture: CodeInsightTestFixture,
+    private val logger: Logger,
+  ) {
+
+    private lateinit var _mainSurface: NlDesignSurface
+    val mainSurface
+      get() = _mainSurface
+
+    private lateinit var previewPsiFile: PsiFile
+
+    private lateinit var preview: ComposePreviewRepresentation
+
+    private lateinit var composeView: TestComposePreviewView
+
+    private lateinit var dataProvider: DataProvider
+
+    private lateinit var modelRenderedLatch: CountDownLatch
+
+    fun init(surfaceOverride: NlDesignSurface? = null) {
+      if (!::previewPsiFile.isInitialized) {
+        createPreviewPsiFile()
+      }
+      _mainSurface =
+        surfaceOverride
+          ?: NlDesignSurface.builder(fixture.project, fixture.testRootDisposable).build()
+      modelRenderedLatch = CountDownLatch(2)
+
+      _mainSurface.addListener(
+        object : DesignSurfaceListener {
+          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
+            val id = UUID.randomUUID().toString().substring(0, 5)
+            logger.info("modelChanged ($id)")
+            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
+              logger.info("renderListener ($id)")
+              modelRenderedLatch.countDown()
+            }
+          }
+        }
+      )
+    }
+
+    suspend fun createPreviewAndCompile(
+      previewOverride: ComposePreviewRepresentation? = null
+    ): ComposePreviewRepresentation {
+      composeView = TestComposePreviewView(mainSurface)
+      preview =
+        previewOverride
+          ?: ComposePreviewRepresentation(previewPsiFile, PreferredVisibility.SPLIT) {
+            _,
+            _,
+            _,
+            provider,
+            _,
+            _ ->
+            dataProvider = provider
+            composeView
+          }
+      Disposer.register(fixture.testRootDisposable, preview)
+      withContext(workerThread) {
+        logger.info("compile")
+        ProjectSystemService.getInstance(fixture.project)
+          .projectSystem
+          .getBuildManager()
+          .compileProject()
+        logger.info("activate")
+        preview.onActivate()
+
+        modelRenderedLatch.await()
+        delayWhileRefreshingOrDumb(preview)
+      }
+      return preview
+    }
+
+    suspend fun setModeAndWaitForRefresh(
+      previewMode: PreviewMode,
+      // In addition to refresh, we can wait for another condition before returning.
+      additionalCondition: () -> Boolean = { true },
+    ) {
+      waitForAllRefreshesToFinish(30.seconds)
+      var refresh = false
+      composeView.refreshCompletedListeners.add { refresh = true }
+      preview.setMode(previewMode)
+      delayUntilCondition(250) { refresh && additionalCondition() }
+    }
+
+    fun createPreviewPsiFile(): PsiFile {
+      previewPsiFile = runWriteActionAndWait {
+        fixture.addFileToProjectAndInvalidate(
+          "Test.kt",
+          // language=kotlin
+          """
+            import androidx.compose.ui.tooling.preview.Devices
+            import androidx.compose.ui.tooling.preview.Preview
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            @Preview
+            fun Preview1() {
+            }
+
+            @Composable
+            @Preview(name = "preview2", apiLevel = 12, group = "groupA", showBackground = true)
+            fun Preview2() {
+            }
+          """
+            .trimIndent(),
+        )
+      }
+      return previewPsiFile
+    }
+
+    private suspend fun delayWhileRefreshingOrDumb(preview: ComposePreviewRepresentation) {
+      delayUntilCondition(250) {
+        !(preview.status().isRefreshing || DumbService.getInstance(fixture.project).isDumb)
+      }
+    }
+
+    fun getData(dataId: String): Any? {
+      checkState(
+        ::dataProvider.isInitialized,
+        "createPreviewAndCompile() must be called before getData() to make sure the DataProvider " +
+          "is initialized.",
+      )
+      return dataProvider.getData(dataId)
     }
   }
 }

@@ -834,18 +834,6 @@ public final class StudioFlags {
 
   //endregion
 
-  //region Database Inspector
-  private static final FlagGroup DATABASE_INSPECTOR = new FlagGroup(FLAGS, "database.inspector", "Database Inspector");
-  public static final Flag<Boolean> DATABASE_INSPECTOR_OPEN_FILES_ENABLED = Flag.create(
-    DATABASE_INSPECTOR,
-    "open.files.enabled",
-    "Enable support for opening SQLite files in Database Inspector",
-    "If enabled, the Database Inspector tool will be able to open SQLite files." +
-    "eg. SQLite files opened from the Device Explorer will open in the inspector.",
-    false
-  );
-  //endregion
-
   //region Layout Inspector
   private static final FlagGroup LAYOUT_INSPECTOR = new FlagGroup(FLAGS, "layout.inspector", "Layout Inspector");
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_USE_DEVBUILD_SKIA_SERVER = new BooleanFlag(
@@ -949,7 +937,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
-    false);
+    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = new StringFlag(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
@@ -1647,10 +1635,6 @@ public final class StudioFlags {
     Flag.create(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
                 "Deep links gRPC server address. Use a non-default value for testing purposes.",
                 "deeplinkassistant-pa.googleapis.com");
-  public static final Flag<String> DEEPLINKS_DAL_VALIDATION_API_KEY =
-    Flag.create(APP_LINKS_ASSISTANT, "deeplinks.dal.validation.api.key", "Deep links DAL validation API key",
-                "API key for deep links JSON validation.",
-                "AIzaSyBRdKst7FwGcmWf6PGL65zRRPLZl2DfSqA");
   public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
     Flag.create(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
                 "Improvements to the Create App Links functionalities.", false);
@@ -1745,7 +1729,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
                     "Enable sending inline code completion metrics to the AIDA CES service",
-                    "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.", false);
+                    "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.", true);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_FILE_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
@@ -1789,6 +1773,12 @@ public final class StudioFlags {
                     "When enabled, shows the 'AI Actions' item in the editor popup menu along with allowing individual actions to be enabled.",
                     ChannelDefault.of(false).withOverride(true, DEV));
 
+  public static final Flag<Boolean> STUDIOBOT_TRANSFORMS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.transforms.enabled",
+                    "Enable the transform actions.",
+                    "When enabled, the transform actions (document, comment, the custom transform action, etc.) are enabled.",
+                    ChannelDefault.of(false).withOverride(true, DEV, NIGHTLY, CANARY));
+
   public static final Flag<Boolean> STUDIOBOT_CUSTOM_TRANSFORM_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
                     "Enable the custom transform action in the editor.",
@@ -1826,7 +1816,7 @@ public final class StudioFlags {
     new FlagGroup(FLAGS, "google.login", "Google Login");
   public static final Flag<Boolean> ENABLE_SETTINGS_ACCOUNT_UI =
     Flag.create(GOOGLE_LOGIN, "enabled", "Enable new login settings UI",
-                "When enabled, a login settings page will replace the popup from the login action in the top right.", false);
+                "When enabled, a login settings page will replace the popup from the login action in the top right.", true);
   // endregion GOOGLE_LOGIN
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
