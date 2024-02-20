@@ -52,7 +52,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.wireless.android.sdk.stats.SigningWizardEvent;
 import com.intellij.ide.wizard.AbstractWizard;
 import com.intellij.ide.wizard.CommitStepException;
-import com.intellij.openapi.compiler.CompileScope;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.module.Module;
@@ -71,7 +70,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javax.swing.JComponent;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -80,51 +78,48 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackageWizardStep> {
-  public static final String BUNDLE = "bundle";
-  public static final String APK = "apk";
+  public enum TargetType {
+    APK("apk"),
+    BUNDLE("bundle"),
+    ;
+
+    TargetType(String name) {
+      this.name = name;
+    }
+
+    public String toString() {
+      return name;
+    }
+    private String name;
+  }
+  public static final TargetType BUNDLE = TargetType.BUNDLE;
+  public static final TargetType APK = TargetType.APK;
   @NotNull private final Project myProject;
-  private final boolean mySigned;
   // build variants and gradle signing info are valid only for Gradle projects
   private AndroidFacet myFacet;
   private PrivateKey myPrivateKey;
   private X509Certificate myCertificate;
-  private CompileScope myCompileScope;
   private String myApkPath;
-  @NotNull private String myTargetType = APK;
+  @NotNull private TargetType myTargetType = APK;
   private List<String> myBuildVariants;
   private GradleSigningInfo myGradleSigningInfo;
 
   public ExportSignedPackageWizard(@NotNull Project project,
                                    @NotNull List<AndroidFacet> facets,
-                                   boolean signed,
                                    Boolean showBundle) {
     super(AndroidBundle.message(showBundle ? "android.export.package.wizard.bundle.title" : "android.export.package.wizard.title"),
           project);
 
     myProject = project;
-    mySigned = signed;
     assert !facets.isEmpty();
     myFacet = facets.get(0);
+
     if (showBundle) {
       addStep(new ChooseBundleOrApkStep(this));
     }
-    boolean useGradleToSign = AndroidModel.isRequired(myFacet);
-
-    if (signed) {
-      addStep(new KeystoreStep(this, useGradleToSign, facets));
-    }
-
-    if (useGradleToSign) {
-      addStep(new GradleSignStep(this));
-    }
-    else {
-      addStep(new ApkStep(this));
-    }
+    addStep(new KeystoreStep(this, true, facets));
+    addStep(new GradleSignStep(this));
     init();
-  }
-
-  public boolean isSigned() {
-    return mySigned;
   }
 
   @Override
@@ -266,10 +261,6 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
     myCertificate = certificate;
   }
 
-  public void setCompileScope(@NotNull CompileScope compileScope) {
-    myCompileScope = compileScope;
-  }
-
   public void setApkPath(@NotNull String apkPath) {
     myApkPath = apkPath;
   }
@@ -279,11 +270,11 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
   }
 
   @NotNull
-  public String getTargetType() {
+  public TargetType getTargetType() {
     return myTargetType;
   }
 
-  public void setTargetType(@NotNull String targetType) {
+  public void setTargetType(@NotNull TargetType targetType) {
     myTargetType = targetType;
   }
 
@@ -295,7 +286,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
     return Logger.getInstance(ExportSignedPackageWizard.class);
   }
 
-  static private SigningWizardEvent.SigningTargetType toSigningTargetType(@NotNull String targetType) {
+  static private SigningWizardEvent.SigningTargetType toSigningTargetType(@NotNull TargetType targetType) {
     if (targetType.equals(BUNDLE)) {
       return SigningWizardEvent.SigningTargetType.TARGET_TYPE_BUNDLE;
     }
@@ -312,7 +303,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
                                           List<Module> modules,
                                           GradleSigningInfo signInfo,
                                           String apkPath,
-                                          String targetType,
+                                          TargetType targetType,
                                           Consumer<ListenableFuture<AssembleInvocationResult>> buildResultHandler) {
     assert project != null;
     @NotNull Module facetModule = facet.getModule();
@@ -366,7 +357,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
             .setMode(getBuildModeFromTarget(targetType))
             .build()))
     );
-    getLog().info("Export " + StringUtil.toUpperCase(targetType) + " command: " +
+    getLog().info("Export " + StringUtil.toUpperCase(targetType.toString()) + " command: " +
                   Joiner.on(',').join(gradleTasks) +
                   ", destination: " +
                   createProperty(PROPERTY_APK_LOCATION, apkPath));
@@ -391,7 +382,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
 
   @VisibleForTesting
   @Nullable
-  static BuildMode getBuildModeFromTarget(@NotNull String targetType) {
+  static BuildMode getBuildModeFromTarget(@NotNull TargetType targetType) {
     if (targetType.equals(APK)) {
       return BuildMode.ASSEMBLE;
     }
@@ -412,7 +403,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
   static List<String> getGradleTasks(@NotNull String gradleProjectPath,
                                      @NotNull GradleAndroidModel GradleAndroidModel,
                                      @NotNull List<String> buildVariants,
-                                     @NotNull String targetType) {
+                                     @NotNull TargetType targetType) {
     List<String> taskNames;
     if (GradleAndroidModel.getFeatures().isBuildOutputFileSupported()) {
       taskNames = getTaskNamesFromBuildInformation(GradleAndroidModel, buildVariants, targetType);
@@ -432,7 +423,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
   @NotNull
   private static List<String> getTaskNamesFromBuildInformation(@NotNull GradleAndroidModel GradleAndroidModel,
                                                                @NotNull List<String> buildVariants,
-                                                               @NotNull String targetType) {
+                                                               @NotNull TargetType targetType) {
     List<String> taskNames = Lists.newArrayListWithExpectedSize(buildVariants.size());
     Map<String, IdeVariantBuildInformation> buildInformationByVariantName =
       GradleAndroidModel.getAndroidProject().getVariantsBuildInformation().stream()
@@ -490,7 +481,7 @@ public class ExportSignedPackageWizard extends AbstractWizard<ExportSignedPackag
     return null;
   }
 
-  private static String getTaskName(IdeVariant v, String targetType) {
+  private static String getTaskName(IdeVariant v, TargetType targetType) {
     if (targetType.equals(BUNDLE)) {
       return v.getMainArtifact().getBuildInformation().getBundleTaskName();
     }

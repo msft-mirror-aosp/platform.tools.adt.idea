@@ -26,9 +26,11 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.PlatformCoreDataKeys.FILE_EDITOR
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.readAction
@@ -41,6 +43,7 @@ import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
+import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.psi.PsiFile
@@ -439,25 +442,30 @@ open class MultiRepresentationPreview(
     }
   }
 
-  private class RepresentationsSelector(val parent: MultiRepresentationPreview) :
+  private class RepresentationsSelector :
     DropDownAction(null, "Representations", StudioIcons.LayoutEditor.Palette.LIST_VIEW) {
     override fun update(e: AnActionEvent) {
       super.update(e)
       removeAll()
+      val previewEditor =
+        (e.getData(FILE_EDITOR) as? TextEditorWithPreview)?.previewEditor
+          as? MultiRepresentationPreview ?: return
 
       // We need just a single previewEditor here (any) to retrieve (read) the states and currently
       // selected state
-      synchronized(parent.representations) { parent.representations.keys }
-        .forEach { add(RepresentationOption(it, parent)) }
-      e.presentation.setText(parent.currentRepresentationName, false)
+      synchronized(previewEditor.representations) { previewEditor.representations.keys }
+        .forEach { add(RepresentationOption(it, previewEditor)) }
+      e.presentation.setText(previewEditor.currentRepresentationName, false)
     }
 
     override fun displayTextInToolbar() = true
+
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
   }
 
   private fun createActionGroup(): ActionGroup {
     val actionGroup = DefaultActionGroup()
-    val representationsSelector = RepresentationsSelector(this)
+    val representationsSelector = RepresentationsSelector()
     actionGroup.add(representationsSelector)
     return actionGroup
   }

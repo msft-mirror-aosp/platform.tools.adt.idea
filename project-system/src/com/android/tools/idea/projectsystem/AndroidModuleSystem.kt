@@ -404,7 +404,8 @@ enum class DependencyScopeType {
   MAIN,
   UNIT_TEST,
   ANDROID_TEST,
-  TEST_FIXTURES
+  TEST_FIXTURES,
+  SCREENSHOT_TEST,
 }
 
 /**
@@ -418,20 +419,21 @@ enum class ScopeType {
   ANDROID_TEST,
   UNIT_TEST,
   TEST_FIXTURES,
+  SCREENSHOT_TEST,
   ;
 
   /** Converts this [ScopeType] to a [Boolean], so it can be used with APIs that don't distinguish between test types. */
   val isForTest
     get() = when (this) {
       MAIN, TEST_FIXTURES -> false
-      ANDROID_TEST, UNIT_TEST -> true
+      ANDROID_TEST, UNIT_TEST, SCREENSHOT_TEST -> true
     }
 
   /** Returns true if this [ScopeType] can contain Android resources. */
   val canHaveAndroidResources
     get() = when (this) {
       TEST_FIXTURES, UNIT_TEST -> false
-      MAIN, ANDROID_TEST -> true
+      MAIN, ANDROID_TEST, SCREENSHOT_TEST -> true
     }
 }
 
@@ -467,6 +469,13 @@ fun Module.getUnitTestModule() : Module?  {
 
 fun Module.isUnitTestModule() : Boolean = getUnitTestModule() == this
 
+fun Module.getScreenshotTestModule() : Module?  {
+  val linkedGroup = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP) ?: return this
+  return linkedGroup.screenshotTest
+}
+
+fun Module.isScreenshotTestModule() : Boolean = getScreenshotTestModule() == this
+
 fun Module.getAndroidTestModule() : Module? {
   val linkedGroup = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP) ?: return this
   return linkedGroup.androidTest
@@ -483,7 +492,7 @@ fun Module.isTestFixturesModule() : Boolean = getTestFixturesModule() == this
 
 /**
  * Utility method to find out if a module is derived from an Android Gradle project. This will return true
- * if the given module is the module representing any of the Android source sets (main/unitTest/androidTest) or the
+ * if the given module is the module representing any of the Android source sets (main/unitTest/androidTest/screenshotTest) or the
  * holder module used as the parent of these source set modules.
  */
 fun Module.isLinkedAndroidModule() = getUserData(CommonAndroidUtil.LINKED_ANDROID_MODULE_GROUP) != null

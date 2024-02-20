@@ -19,10 +19,10 @@ import com.android.testutils.MockitoKt.whenever
 import com.android.tools.idea.help.AndroidWebHelpProvider
 import com.android.tools.idea.testing.IdeComponents
 import com.google.common.truth.Truth.assertThat
-import com.intellij.testFramework.PlatformTestCase
+import com.intellij.testFramework.HeavyPlatformTestCase
 import org.mockito.Mockito
 
-class ChooseBundleOrApkStepTest : PlatformTestCase() {
+class ChooseBundleOrApkStepTest : HeavyPlatformTestCase() {
   private lateinit var ideComponents: IdeComponents
 
   override fun setUp() {
@@ -44,11 +44,23 @@ class ChooseBundleOrApkStepTest : PlatformTestCase() {
     whenever(wizard.project).thenReturn(myProject)
 
     val settings = GenerateSignedApkSettings.getInstance(wizard.project)
-    settings.BUILD_TARGET_KEY = ExportSignedPackageWizard.APK
+    settings.BUILD_TARGET_KEY = ExportSignedPackageWizard.APK.toString()
     val chooseStep = ChooseBundleOrApkStep(wizard)
     assertTrue(chooseStep.myBundleButton.isEnabled)
     assertFalse(chooseStep.myBundleButton.isSelected)
     assertTrue(chooseStep.myApkButton.isSelected)
+  }
+
+  fun testBundleSelectedThroughSetting() {
+    val wizard = Mockito.mock(ExportSignedPackageWizard::class.java)
+    whenever(wizard.project).thenReturn(myProject)
+
+    val settings = GenerateSignedApkSettings.getInstance(wizard.project)
+    settings.BUILD_TARGET_KEY = ExportSignedPackageWizard.BUNDLE.toString()
+    val chooseStep = ChooseBundleOrApkStep(wizard)
+    assertTrue(chooseStep.myBundleButton.isEnabled)
+    assertTrue(chooseStep.myBundleButton.isSelected)
+    assertFalse(chooseStep.myApkButton.isSelected)
   }
 
   fun testGetHelpId() {

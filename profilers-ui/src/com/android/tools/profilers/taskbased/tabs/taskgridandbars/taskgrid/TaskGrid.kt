@@ -33,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.sessions.SessionItem
 import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxDimensions.TASK_WIDTH_DP
@@ -68,29 +67,26 @@ private fun TaskGridContainer(taskGridModel: TaskGridModel, taskGridContent: (Pr
 
 @Composable
 fun TaskGrid(taskGridModel: TaskGridModel,
-             selectedDevice: Common.Device,
-             selectedProcess: Common.Process,
-             isProfilingFromProcessStart: Boolean,
-             taskHandlers: Map<ProfilerTaskType, ProfilerTaskHandler>,
+             setIsProfilingFromProcessStart: (Boolean) -> Unit,
+             taskTypes: List<ProfilerTaskType>,
              profilers: StudioProfilers) {
   TaskGridContainer(taskGridModel) { selectedTask: ProfilerTaskType, lazyGridScope: LazyGridScope ->
     with(lazyGridScope) {
-      items(taskHandlers.entries.toList()) { (taskType, taskHandler) ->
+      items(taskTypes) { taskType ->
         val isTaskSupportedOnStartup = profilers.ideServices.isTaskSupportedOnStartup(taskType)
-        val isStartupTask = isProfilingFromProcessStart && isTaskSupportedOnStartup
-        val isTaskSupported = isStartupTask || taskHandler.supportsDeviceAndProcess(selectedDevice, selectedProcess)
-        // If the task is not supported/enabled, render it for the process-based task selection, but display it as disabled.
         taskType.let { task ->
           TaskGridItem(
             task = task,
             isSelectedTask = task == selectedTask,
             onTaskSelection = {
               taskGridModel.onTaskSelection(it)
-              if (isStartupTask) {
-                profilers.ideServices.enableStartupTask(it)
+
+              // Reset startup task dropdown selection to the 'now' option if a non-startup task is selected.
+              if (!isTaskSupportedOnStartup) {
+                setIsProfilingFromProcessStart(false)
               }
             },
-            isTaskEnabled = isTaskSupported
+            isTaskEnabled = true
           )
         }
       }

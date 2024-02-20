@@ -26,6 +26,8 @@ import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel
+import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel.ProfilerDeviceSelection
+import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel.ToolbarDeviceSelection
 import com.android.tools.profilers.tasks.taskhandlers.TaskModelTestUtils.createDevice
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +56,7 @@ class ProcessListModelTest {
       myTimer
     )
     myManager = myProfilers.sessionsManager
-    processListModel = ProcessListModel(myProfilers, MutableStateFlow(false)) {}
+    processListModel = ProcessListModel(myProfilers, MutableStateFlow(false), {}) {}
     ideProfilerServices.enableTaskBasedUx(true)
   }
 
@@ -62,6 +64,9 @@ class ProcessListModelTest {
   fun `online device with alive processes show in device process list`() {
     assertThat(processListModel.deviceToProcesses.value).isEmpty()
     val device = createDevice("FakeDevice", Common.Device.State.ONLINE)
+    // Select the device
+    processListModel.onDeviceSelection(device)
+
     addDeviceWithProcess(device, createProcess(20, "FakeProcess1", Common.Process.State.ALIVE, device.deviceId), myTransportService,
                          myTimer)
     addDeviceWithProcess(device, createProcess(40, "FakeProcess2", Common.Process.State.ALIVE, device.deviceId), myTransportService,
@@ -107,32 +112,6 @@ class ProcessListModelTest {
   }
 
   @Test
-  fun `disconnecting a device resets the device selection`() {
-    assertThat(processListModel.deviceToProcesses.value).isEmpty()
-
-    val toBeDisconnectedDevice = createDevice("FakeDevice", Common.Device.State.ONLINE)
-    addDeviceWithProcess(toBeDisconnectedDevice,
-                         createProcess(10, "FakeProcess1", Common.Process.State.ALIVE, toBeDisconnectedDevice.deviceId), myTransportService,
-                         myTimer)
-    addDeviceWithProcess(toBeDisconnectedDevice,
-                         createProcess(20, "FakeProcess2", Common.Process.State.ALIVE, toBeDisconnectedDevice.deviceId), myTransportService,
-                         myTimer)
-
-    // At this point there should be one online devices
-    assertThat(processListModel.deviceList.value.size).isEqualTo(1)
-    // FakeDevice should be the selected device
-    assertThat(processListModel.selectedDevice.value).isEqualTo(toBeDisconnectedDevice)
-
-    // Simulate disconnection of FakeDevice
-    updateDeviceState("FakeDevice", Common.Device.State.DISCONNECTED, myTransportService, myTimer)
-
-    // Because FakeDevice was disconnected, there should be no online device
-    assertThat(processListModel.deviceList.value).isEmpty()
-    // Because FakeDevice was the selected device, and it has been disconnected, the device selection should be reset
-    assertThat(processListModel.selectedDevice.value).isEqualTo(Common.Device.getDefaultInstance())
-  }
-
-  @Test
   fun `online device with dead processes do not show in device process list`() {
     assertThat(processListModel.deviceToProcesses.value).isEmpty()
     val device = createDevice("FakeDevice", Common.Device.State.ONLINE)
@@ -151,18 +130,21 @@ class ProcessListModelTest {
     addDeviceWithProcess(device2, createProcess(40, "FakeProcess2", Common.Process.State.ALIVE, device2.deviceId), myTransportService,
                          myTimer)
 
+    // Select the device
+    processListModel.onDeviceSelection(device1)
+
     // Make sure there are two entries in the device to process list mapping.
     assertThat(processListModel.deviceToProcesses.value.size).isEqualTo(2)
 
     // The device1 was the first device added and is thus already selected.
-    assertThat(processListModel.selectedDevice.value).isEqualTo(device1)
+    assertThat(processListModel.selectedDevice.value).isEqualTo(ProfilerDeviceSelection(device1.model, true, device1))
     // Make sure that the selected device processes are correct.
     assertThat(processListModel.getSelectedDeviceProcesses().size).isEqualTo(1)
     assertThat(processListModel.getSelectedDeviceProcesses().first().name).isEqualTo("FakeProcess1")
 
     // Select device2 and make sure that the selected device and corresponding processes are correct.
     processListModel.onDeviceSelection(device2)
-    assertThat(processListModel.selectedDevice.value).isEqualTo(device2)
+    assertThat(processListModel.selectedDevice.value).isEqualTo(ProfilerDeviceSelection(device2.model, true, device2))
     assertThat(processListModel.getSelectedDeviceProcesses().size).isEqualTo(1)
     assertThat(processListModel.getSelectedDeviceProcesses().first().name).isEqualTo("FakeProcess2")
   }
@@ -173,26 +155,30 @@ class ProcessListModelTest {
 
     val device = createDevice("FakeDevice", Common.Device.State.ONLINE)
 
+    // Select the device
+    processListModel.onDeviceSelection(device)
+
     val process1 = createProcess(20, "FakeProcess1", Common.Process.State.ALIVE, device.deviceId)
     addDeviceWithProcess(device, process1, myTransportService, myTimer)
-    // PREFERRED_PROCESS aspect should be fired via the call to set the preferred process.
-    myProfilers.setPreferredProcess("FakeDevice", "FakeProcess1", null)
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
 
-    assertThat(processListModel.getPreferredProcessName()).isEqualTo("FakeProcess1")
+    // PREFERRED_PROCESS_NAME aspect should be fired via the call to set the preferred process name.
+    myProfilers.preferredProcessName = "FakeProcess1"
+
+    assertThat(processListModel.preferredProcessName).isEqualTo("FakeProcess1")
 
     val process2 = createProcess(40, "FakeProcess2", Common.Process.State.ALIVE, device.deviceId)
     addDeviceWithProcess(device, process2, myTransportService, myTimer)
 
-    // PREFERRED_PROCESS aspect should be fired via the call to set the preferred process.
-    myProfilers.setPreferredProcess("FakeDevice", "FakeProcess2", null)
-    myProfilers.deviceProcessMap.keys.find { it == device }
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    // PREFERRED_PROCESS_NAME aspect should be fired via the call to set the preferred process name.
+    myProfilers.preferredProcessName = "FakeProcess2"
 
-    assertThat(processListModel.getPreferredProcessName()).isEqualTo("FakeProcess2")
+    myProfilers.deviceProcessMap.keys.find { it == device }
+
+    assertThat(processListModel.preferredProcessName).isEqualTo("FakeProcess2")
 
     assertThat(processListModel.deviceToProcesses.value).isNotEmpty()
     assertThat(processListModel.deviceToProcesses.value.size).isEqualTo(1)
+
     assertThat(processListModel.getSelectedDeviceProcesses().size).isEqualTo(2)
     // Make sure that despite being lexicographically greater than the "FakeProcess1", because it is the preferred process, "FakeProcess2"
     // is the first device process listed.
@@ -204,6 +190,8 @@ class ProcessListModelTest {
     assertThat(processListModel.deviceToProcesses.value).isEmpty()
 
     val device = createDevice("FakeDevice", Common.Device.State.ONLINE)
+    // Select the device
+    processListModel.onDeviceSelection(device)
 
     addDeviceWithProcess(device, createProcess(10, "FakeProcess1", Common.Process.State.ALIVE, device.deviceId), myTransportService,
                          myTimer)
@@ -218,14 +206,13 @@ class ProcessListModelTest {
     addDeviceWithProcess(device, createProcess(60, "FakeProcess2:Y", Common.Process.State.ALIVE, device.deviceId), myTransportService,
                          myTimer)
 
-    // PREFERRED_PROCESS aspect should be fired via the call to set the preferred process.
-    myProfilers.setPreferredProcess("FakeDevice", "FakeProcess2:X", null)
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    // PREFERRED_PROCESS_NAME aspect should be fired via the call to set the preferred process name.
+    myProfilers.preferredProcessName = "FakeProcess2:X"
     assertThat(processListModel.deviceToProcesses.value).isNotEmpty()
     assertThat(processListModel.deviceToProcesses.value.size).isEqualTo(1)
     assertThat(processListModel.getSelectedDeviceProcesses().size).isEqualTo(6)
 
-    assertThat(processListModel.getPreferredProcessName()).isEqualTo("FakeProcess2:X")
+    assertThat(processListModel.preferredProcessName).isEqualTo("FakeProcess2:X")
     var deviceProcessesSorted = processListModel.getSelectedDeviceProcesses()
     assertThat(deviceProcessesSorted[0].name).isEqualTo("FakeProcess2:X")
     assertThat(deviceProcessesSorted[1].name).isEqualTo("FakeProcess2")
@@ -234,13 +221,12 @@ class ProcessListModelTest {
     assertThat(deviceProcessesSorted[4].name).isEqualTo("FakeProcess1:X")
     assertThat(deviceProcessesSorted[5].name).isEqualTo("FakeProcess1:Y")
 
-    myProfilers.setPreferredProcess("FakeDevice", "FakeProcess1", null)
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    myProfilers.preferredProcessName = "FakeProcess1"
     assertThat(processListModel.deviceToProcesses.value).isNotEmpty()
     assertThat(processListModel.deviceToProcesses.value.size).isEqualTo(1)
     assertThat(processListModel.getSelectedDeviceProcesses().size).isEqualTo(6)
 
-    assertThat(processListModel.getPreferredProcessName()).isEqualTo("FakeProcess1")
+    assertThat(processListModel.preferredProcessName).isEqualTo("FakeProcess1")
     deviceProcessesSorted = processListModel.getSelectedDeviceProcesses()
     assertThat(deviceProcessesSorted[0].name).isEqualTo("FakeProcess1")
     assertThat(deviceProcessesSorted[1].name).isEqualTo("FakeProcess1:X")
@@ -256,6 +242,8 @@ class ProcessListModelTest {
     assertThat(processListModel.deviceToProcesses.value).isEmpty()
 
     val device = createDevice("FakeDevice", Common.Device.State.ONLINE)
+    // Select the device
+    processListModel.onDeviceSelection(device)
 
     addDeviceWithProcess(device, createProcess(10, "FakeProcess1", Common.Process.State.ALIVE, device.deviceId), myTransportService,
                          myTimer)
@@ -290,10 +278,8 @@ class ProcessListModelTest {
     assertThat(processListModel.deviceToProcesses.value).isEmpty()
 
     val device = createDevice("FakeDevice", Common.Device.State.ONLINE)
-    // Because the preferred process was set before the processes were updated, and no device selection has been made, no reordering
-    // will be done.
-    myProfilers.setPreferredProcess("FakeDevice", "FakeProcess3", null)
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    // Select the device
+    processListModel.onDeviceSelection(device)
 
     val process1 = createProcess(10, "FakeProcess1", Common.Process.State.ALIVE, device.deviceId)
     val process2 = createProcess(20, "FakeProcess2", Common.Process.State.ALIVE, device.deviceId)
@@ -304,13 +290,58 @@ class ProcessListModelTest {
     addDeviceWithProcess(device, process2, myTransportService, myTimer)
     addDeviceWithProcess(device, process3, myTransportService, myTimer)
 
-    assertThat(processListModel.getPreferredProcessName()).isEqualTo("FakeProcess3")
+    // Because the preferred process name will be set after the processes were added no reordering will be done.
+    assertThat(processListModel.getSelectedDeviceProcesses().first().name).isEqualTo("FakeProcess1")
+    // Now set preferred process name which should trigger a reordering of the processes.
+    myProfilers.preferredProcessName = "FakeProcess3"
+
+    assertThat(processListModel.preferredProcessName).isEqualTo("FakeProcess3")
     assertThat(processListModel.deviceToProcesses.value).isNotEmpty()
     assertThat(processListModel.deviceToProcesses.value.size).isEqualTo(1)
     assertThat(processListModel.getSelectedDeviceProcesses().size).isEqualTo(3)
     // Make sure that despite being lexicographically greater than the "FakeProcess1", because it is the preferred process, "FakeProcess3"
     // is the first device process listed.
     assertThat(processListModel.getSelectedDeviceProcesses().first().name).isEqualTo("FakeProcess3")
+  }
+
+  @Test
+  fun `set device using toolbar selected offline device`() {
+    processListModel.onDeviceSelection(ToolbarDeviceSelection("FakeDevice", false, ""))
+
+    // The toolbar selection (ToolbarDeviceSelection) should be converted to a profiler selection construct (ProfilerDeviceSelection) and
+    // set as the selected device. Furthermore, the selected device is offline (isRunning is false), so the isRunning field in the
+    // ProfilerDeviceSelection instance will also be false, and the Common.Device field will be a default instance.
+    assertThat(processListModel.selectedDevice.value).isEqualTo(
+      ProfilerDeviceSelection("FakeDevice", false, Common.Device.getDefaultInstance()))
+  }
+
+  @Test
+  fun `set device using toolbar selected online device, with no match in transport pipeline devices`() {
+    processListModel.onDeviceSelection(ToolbarDeviceSelection("FakeDevice", true, "123"))
+
+    // The toolbar selection (ToolbarDeviceSelection) should be converted to a profiler selection construct (ProfilerDeviceSelection) and
+    // set as the selected device. Furthermore, because the serial number is false, the Common.Device field of the ProfilerDeviceSelection
+    // will be a default instance, as there is no Common.Device fetched from transport pipeline to map the toolbar selection to (using the
+    // serial id). The device is running however, so isRunning should be set to true.
+    assertThat(processListModel.selectedDevice.value).isEqualTo(
+      ProfilerDeviceSelection("FakeDevice", true, Common.Device.getDefaultInstance()))
+  }
+
+  @Test
+  fun `set device using toolbar selected online device, with a match in transport pipeline devices`() {
+    assertThat(processListModel.deviceToProcesses.value).isEmpty()
+    val device = createDevice("FakeDevice", "serial-123", Common.Device.State.ONLINE)
+    val process = createProcess(10, "FakeProcess", Common.Process.State.ALIVE, device.deviceId)
+    addDeviceWithProcess(device, process, myTransportService, myTimer)
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    processListModel.onDeviceSelection(ToolbarDeviceSelection("FakeDevice", true, "serial-123"))
+
+    // The toolbar selection (ToolbarDeviceSelection) should be converted to a profiler selection construct (ProfilerDeviceSelection) and
+    // set as the selected device. Furthermore, because the serial number is non-empty, a match can be made with the online devices fetched
+    // from the transport pipeline (list of Common.Device instances).
+    assertThat(processListModel.selectedDevice.value).isEqualTo(
+      ProfilerDeviceSelection("FakeDevice", true, device))
   }
 
   companion object {

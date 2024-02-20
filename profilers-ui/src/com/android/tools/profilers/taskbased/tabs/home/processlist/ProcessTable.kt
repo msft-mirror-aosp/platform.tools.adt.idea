@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -45,6 +44,8 @@ import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxColors.
 import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxDimensions
 import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxDimensions.TABLE_ROW_HEIGHT_DP
 import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxDimensions.TABLE_ROW_HORIZONTAL_PADDING_DP
+import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxIcons
+import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.table.leftAlignedColumnText
 import com.android.tools.profilers.taskbased.common.table.rightAlignedColumnText
 import org.jetbrains.jewel.ui.Orientation
@@ -53,7 +54,8 @@ import org.jetbrains.jewel.ui.component.Divider
 @Composable
 private fun ProcessListRow(selectedProcess: Common.Process,
                            onProcessSelection: (Common.Process) -> Unit,
-                           process: Common.Process) {
+                           process: Common.Process,
+                           isPreferredProcess: Boolean) {
   val processName = process.name
   val pid = process.pid
 
@@ -80,10 +82,23 @@ private fun ProcessListRow(selectedProcess: Common.Process,
         })
       .testTag("ProcessListRow")
   ) {
-    leftAlignedColumnText(processName, rowScope = this)
-    rightAlignedColumnText(text = pid.toString(), colWidth = TaskBasedUxDimensions.PID_COL_WIDTH_DP)
-    rightAlignedColumnText(text = if (process.isProfileable()) "Profileable" else "Debuggable",
-                           colWidth = TaskBasedUxDimensions.MANIFEST_CONFIG_COL_WIDTH_DP)
+
+    val isRunning = process.state == Common.Process.State.ALIVE
+    val pidText = if (isRunning) pid.toString() else ""
+    val configurationText =
+      if (isRunning)
+        (if (process.isProfileable()) TaskBasedUxStrings.PROFILEABLE_PROCESS_TITLE else TaskBasedUxStrings.DEBUGGABLE_PROCESS_TITLE)
+      else TaskBasedUxStrings.DEAD_PROCESS_TITLE
+
+    if (isPreferredProcess) {
+      leftAlignedColumnText(processName, TaskBasedUxIcons.ANDROID_HEAD_ICON, rowScope = this)
+    }
+    else {
+      leftAlignedColumnText(processName, rowScope = this)
+    }
+
+    rightAlignedColumnText(text = pidText, colWidth = TaskBasedUxDimensions.PID_COL_WIDTH_DP)
+    rightAlignedColumnText(text = configurationText, colWidth = TaskBasedUxDimensions.MANIFEST_CONFIG_COL_WIDTH_DP)
   }
 }
 
@@ -108,6 +123,7 @@ private fun ProcessListHeader() {
 @Composable
 fun ProcessTable(processList: List<Common.Process>,
                  selectedProcess: Common.Process,
+                 preferredProcessName: String?,
                  onProcessSelection: (Common.Process) -> Unit) {
   val listState = rememberLazyListState()
 
@@ -120,7 +136,8 @@ fun ProcessTable(processList: List<Common.Process>,
         Divider(color = TABLE_SEPARATOR_COLOR, modifier = Modifier.fillMaxWidth(), thickness = 1.dp, orientation = Orientation.Horizontal)
       }
       items(items = processList) { process ->
-        ProcessListRow(selectedProcess = selectedProcess, onProcessSelection = onProcessSelection, process = process)
+        ProcessListRow(selectedProcess = selectedProcess, onProcessSelection = onProcessSelection, process = process,
+                       isPreferredProcess = (process.name == preferredProcessName))
       }
     }
 

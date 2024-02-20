@@ -39,6 +39,7 @@ import com.android.tools.idea.gradle.dsl.api.android.CompileOptionsModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
 import com.android.tools.idea.gradle.dsl.api.java.JavaModel;
+import com.android.tools.idea.gradle.model.IdeArtifactName;
 import com.android.tools.idea.gradle.model.IdeBaseArtifact;
 import com.android.tools.idea.gradle.model.IdeDependencies;
 import com.android.tools.idea.gradle.model.IdeJavaLibrary;
@@ -331,12 +332,12 @@ public class AndroidGradleJavaProjectModelModifier extends JavaProjectModelModif
   @Nullable
   private static ArtifactDependencySpec findNewExternalDependency(@NotNull Library library, @NotNull IdeVariant selectedVariant) {
     @Nullable ArtifactDependencySpec matchedLibrary = null;
-    IdeBaseArtifact artifact = selectedVariant.getUnitTestArtifact();
+    IdeBaseArtifact artifact = selectedVariant.getHostTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.UNIT_TEST).toList().get(0);
     if (artifact != null) {
       matchedLibrary = findMatchedLibrary(library, artifact);
     }
     if (matchedLibrary == null) {
-      artifact = selectedVariant.getAndroidTestArtifact();
+      artifact = selectedVariant.getDeviceTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.ANDROID_TEST).toList().get(0);
       if (artifact != null) {
         matchedLibrary = findMatchedLibrary(library, artifact);
       }
@@ -348,10 +349,13 @@ public class AndroidGradleJavaProjectModelModifier extends JavaProjectModelModif
       }
     }
     if (matchedLibrary == null) {
-      matchedLibrary = findMatchedLibrary(library, selectedVariant.getMainArtifact());
+      artifact = selectedVariant.getHostTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.SCREENSHOT_TEST).toList().get(0);
+      if (artifact != null) {
+        matchedLibrary = findMatchedLibrary(library, artifact);
+      }
     }
     if (matchedLibrary == null) {
-      return null;
+      matchedLibrary = findMatchedLibrary(library, selectedVariant.getMainArtifact());
     }
 
     return matchedLibrary;

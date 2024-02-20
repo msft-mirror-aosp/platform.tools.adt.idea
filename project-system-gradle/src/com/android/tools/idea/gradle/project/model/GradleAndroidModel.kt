@@ -24,6 +24,7 @@ import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidArtifact
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
+import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBasicVariant
 import com.android.tools.idea.gradle.model.IdeBuildTypeContainer
 import com.android.tools.idea.gradle.model.IdeClassField
@@ -40,6 +41,7 @@ import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.model.TestExecutionOption
 import com.android.tools.idea.model.TestOptions
+import com.android.tools.idea.projectsystem.TestComponentType
 import com.android.tools.lint.client.api.LintClient.Companion.getGradleDesugaring
 import com.android.tools.lint.detector.api.Desugaring
 import com.android.utils.usLocaleCapitalize
@@ -107,27 +109,27 @@ class GradleAndroidModel(
   fun getArtifactForAndroidTest(): IdeAndroidArtifact? {
     return when (androidProject.projectType) {
       IdeAndroidProjectType.PROJECT_TYPE_TEST -> selectedVariant.mainArtifact
-      else -> selectedVariant.androidTestArtifact
+      else -> selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
     }
   }
 
   fun getGradleConnectedTestTaskNameForSelectedVariant(): String {
-    return selectedVariantCore.androidTestArtifact?.testOptions?.instrumentedTestTaskName
+    return selectedVariantCore.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.testOptions?.instrumentedTestTaskName
            ?: "connected${selectedVariantName.usLocaleCapitalize()}AndroidTest" // fallback for v1 models
   }
 
-  val selectedAndroidTestCompileDependencies: IdeDependencies? get() = selectedVariant.androidTestArtifact?.compileClasspath
+  val selectedAndroidTestCompileDependencies: IdeDependencies? get() =
+    selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.compileClasspath
 
   val mainArtifact: IdeAndroidArtifact get() = selectedVariant.mainArtifact
   val defaultSourceProvider: IdeSourceProvider get() = androidProject.defaultSourceProvider.sourceProvider!!
   val activeSourceProviders: List<IdeSourceProvider> get() = data.activeSourceProviders
-  val unitTestSourceProviders: List<IdeSourceProvider> get() = data.unitTestSourceProviders
-  val androidTestSourceProviders: List<IdeSourceProvider> get() = data.androidTestSourceProviders
+  val hostTestSourceProviders: Map<TestComponentType, List<IdeSourceProvider>> get() = data.hostTestSourceProviders
+  val deviceTestSourceProviders: Map<TestComponentType, List<IdeSourceProvider>> get() = data.deviceTestSourceProviders
   val testFixturesSourceProviders: List<IdeSourceProvider> get() = data.testFixturesSourceProviders
-
   val allSourceProviders: List<IdeSourceProvider> get() = data.allSourceProviders
-  val allUnitTestSourceProviders: List<IdeSourceProvider> get() = data.allUnitTestSourceProviders
-  val allAndroidTestSourceProviders: List<IdeSourceProvider> get() = data.allAndroidTestSourceProviders
+  val allHostTestSourceProviders: Map<TestComponentType, List<IdeSourceProvider>> get() = data.allHostTestSourceProviders
+  val allDeviceTestSourceProviders: Map<TestComponentType, List<IdeSourceProvider>> get() = data.allDeviceSourceProviders
   val allTestFixturesSourceProviders: List<IdeSourceProvider> get() = data.allTestFixturesSourceProviders
 
   /**
@@ -244,7 +246,7 @@ class GradleAndroidModel(
   }
 
   override fun getTestOptions(): TestOptions {
-    val testArtifact = selectedVariant.androidTestArtifact
+    val testArtifact = selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
     val testOptions = testArtifact?.testOptions
     val executionOption: TestExecutionOption? =
       when (val execution = testOptions?.execution) {

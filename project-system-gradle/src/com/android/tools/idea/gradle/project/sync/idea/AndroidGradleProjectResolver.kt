@@ -373,17 +373,21 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
         moduleNode, gradleModule, variant.mainArtifact.name,
         null
       )
-      val unitTest: IdeBaseArtifactCore? = variant.unitTestArtifact
+      val unitTest: IdeBaseArtifactCore? = variant.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }
       if (unitTest != null) {
         createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, unitTest.name, prodModule)
       }
-      val androidTest: IdeBaseArtifactCore? = variant.androidTestArtifact
+      val androidTest: IdeBaseArtifactCore? = variant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
       if (androidTest != null) {
         createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, androidTest.name, prodModule)
       }
       val testFixtures: IdeBaseArtifactCore? = variant.testFixturesArtifact
       if (testFixtures != null) {
         createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, testFixtures.name, prodModule)
+      }
+      val screenshotTest: IdeBaseArtifactCore? = variant.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }
+      if (screenshotTest != null) {
+        createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, screenshotTest.name, prodModule)
       }
 
       // Setup testData nodes for testing sources used by Gradle test runners.
@@ -955,7 +959,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       if (sourceSetName.endsWith(androidTestSuffix)) {
         val variantName = sourceSetName.substring(0, sourceSetName.length - androidTestSuffix.length)
         val variant = androidModel.findVariantCoreByName(variantName)
-        val artifact: IdeBaseArtifactCore? = variant?.androidTestArtifact
+        val artifact: IdeBaseArtifactCore? = variant?.deviceTestArtifacts?.find { it.name == IdeArtifactName.ANDROID_TEST }
         return if (artifact == null) null else Pair.create(variant, moduleNode.findSourceSetDataForArtifact(artifact))
       }
 
@@ -973,9 +977,19 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       if (sourceSetName.endsWith(unitTestSuffix)) {
         val variantName = sourceSetName.substring(0, sourceSetName.length - unitTestSuffix.length)
         val variant = androidModel.findVariantCoreByName(variantName)
-        val artifact: IdeBaseArtifactCore? = variant?.unitTestArtifact
+        val artifact: IdeBaseArtifactCore? = variant?.hostTestArtifacts?.find { it.name == IdeArtifactName.UNIT_TEST }
         return if (artifact == null) null else Pair.create(variant, moduleNode.findSourceSetDataForArtifact(artifact))
       }
+
+      // Check if it's a screenshot test source set.
+      val screenshotTest = "ScreenshotTest"
+      if (sourceSetName.endsWith(screenshotTest)) {
+        val variantName = sourceSetName.substring(0, sourceSetName.length - screenshotTest.length)
+        val variant = androidModel.findVariantCoreByName(variantName)
+        val artifact = variant?.hostTestArtifacts?.find { it.name == IdeArtifactName.SCREENSHOT_TEST }
+        return if (artifact == null) null else Pair.create(variant, moduleNode.findSourceSetDataForArtifact(artifact))
+      }
+
       return null
     }
 

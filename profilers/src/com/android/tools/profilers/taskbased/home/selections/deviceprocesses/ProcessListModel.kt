@@ -16,6 +16,7 @@
 package com.android.tools.profilers.taskbased.home.selections.deviceprocesses
 
 import com.android.tools.adtui.model.AspectObserver
+import com.android.tools.idea.IdeInfo
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.ProfilerAspect
 import com.android.tools.profilers.StudioProfilers
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class ProcessListModel(
   val profilers: StudioProfilers,
   private val isProfilingFromProcessStart: StateFlow<Boolean>,
+  private val setIsProfilingFromProcessStart: (Boolean) -> Unit,
   private val resetTaskSelection: () -> Unit,
 ) : AspectObserver() {
   private val _deviceToProcesses = MutableStateFlow(mapOf<Common.Device, List<Common.Process>>())
@@ -34,20 +36,26 @@ class ProcessListModel(
 
   private val _deviceList = MutableStateFlow(listOf<Common.Device>())
   val deviceList = _deviceList.asStateFlow()
-  private val _selectedDevice = MutableStateFlow(Common.Device.getDefaultInstance())
+  private val _selectedDevice = MutableStateFlow<ProfilerDeviceSelection?>(null)
   val selectedDevice = _selectedDevice.asStateFlow()
   private val _selectedProcess = MutableStateFlow(Common.Process.getDefaultInstance())
   val selectedProcess = _selectedProcess.asStateFlow()
+  private val _selectedDevicesCount = MutableStateFlow(0)
+  val selectedDevicesCount = _selectedDevicesCount.asStateFlow()
+  private var _isPreferredProcessSelected = MutableStateFlow(false)
+  val isPreferredProcessSelected = _isPreferredProcessSelected.asStateFlow()
 
-  private var preferredProcessName: String? = null
+  @VisibleForTesting
+  val preferredProcessName get() = profilers.preferredProcessName
 
   init {
     profilers.addDependency(this)
       .onChange(ProfilerAspect.PROCESSES) { deviceToProcessesUpdated() }
-      .onChange(ProfilerAspect.PREFERRED_PROCESS) { preferredProcessUpdated() }
+      .onChange(ProfilerAspect.PREFERRED_PROCESS_NAME) { preferredProcessUpdated() }
   }
 
-  fun getSelectedDeviceProcesses() = _deviceToProcesses.value.getOrDefault(_selectedDevice.value, listOf())
+  fun getSelectedDeviceProcesses() = _deviceToProcesses.value.getOrDefault(
+    _selectedDevice.value?.device ?: Common.Device.getDefaultInstance(), listOf())
 
   private fun deviceToProcessesUpdated() {
     val newDeviceToProcesses = mutableMapOf<Common.Device, List<Common.Process>>()
@@ -68,13 +76,33 @@ class ProcessListModel(
     _deviceToProcesses.value = newDeviceToProcesses
     _deviceList.value = newDeviceToProcesses.keys.toList()
 
-    // If the selected device is no longer found in the new device list, reset the device selection.
-    if (!isSelectedDevicePresent()) {
+    checkForPreferredProcess()
+
+    // In the standalone/game-tool profiler, device selection is made via a dropdown in the profiler UI with only running devices listed.
+    // Therefore, if the device selected in the dropdown is disconnected, and thus no longer available in the dropdown, the selection of
+    // such device should be removed. This reset logic is not necessary in the case of the regular/non-standalone profiler as the selection
+    // is made and read via the main toolbar's device dropdown. This allows for the selection of offline devices, unlike the standalone
+    // profiler, making this reset logic unnecessary.
+    if (!isSelectedDeviceRunning() && IdeInfo.isGameTool()) {
       resetDeviceSelection()
     }
 
-    autoSelectDevice()
+    // Only the standalone profiler has the device selection-dropdown that can utilize auto-selection.
+    if (IdeInfo.isGameTool()) {
+      autoSelectDevice()
+    }
+
     reorderProcessList()
+  }
+
+  /**
+   * Checks for the presence of the preferred process, and resets the selection if preferred process is selected and no longer present.
+   */
+  private fun checkForPreferredProcess() {
+    val isPreferredProcessPresent = getSelectedDeviceProcesses().find { it.name == preferredProcessName } != null
+    if (!isPreferredProcessPresent && _isPreferredProcessSelected.value) {
+      resetProcessSelection()
+    }
   }
 
   /**
@@ -107,7 +135,6 @@ class ProcessListModel(
           else -> processNameA.compareTo(processNameB)
         }
       }.map { it.index }
-
     }
     // If there is no preferred process name, then we should not prioritize any processes, hence the empty list.
     else {
@@ -121,10 +148,18 @@ class ProcessListModel(
     reorderedProcessList.sortBy { it.name }
     // Add the preferred processes to the top of the new, reordered list.
     reorderedProcessList.addAll(0, preferredProcessesWithIndicesSorted.map { getSelectedDeviceProcesses()[it] })
+
+    // If the preferred process is not present, add it.
+    if (!preferredProcessName.isNullOrBlank() && preferredProcessesWithIndicesSorted.isEmpty()) {
+      val deadPreferredProcess = Common.Process.newBuilder().setName(preferredProcessName).setState(Common.Process.State.DEAD).build()
+      // The preferred process, dead or alive, should always be added to the top.
+      reorderedProcessList.add(0, deadPreferredProcess)
+    }
+
     // Create and set new mapping of devices to sorted processes.
     val newDeviceToProcesses = mutableMapOf<Common.Device, List<Common.Process>>()
     newDeviceToProcesses.putAll(_deviceToProcesses.value)
-    newDeviceToProcesses[_selectedDevice.value] = reorderedProcessList
+    newDeviceToProcesses[_selectedDevice.value!!.device] = reorderedProcessList
     _deviceToProcesses.value = newDeviceToProcesses
   }
 
@@ -138,14 +173,65 @@ class ProcessListModel(
     }
   }
 
+  /**
+   * Converts a Studio main toolbar device selection to a profiler-level device selection and registers it.
+   *
+   * There are three selection scenarios covered:
+   *
+   * 1. User selects a running device in the main toolbar, matching online device found in the transport pipeline:
+   *    - Profiler-level selection constructed with device name, marked as running, and Common.Device instance fetched from the pipeline.
+   *
+   * 2. User selects an online device in the main toolbar, but no matching online device found in the transport pipeline:
+   *    - Profiler-level selection with device name, marked as not running, and a default Common.Device instance.
+   *    - This is an intermediate selection state as online toolbar device means the device should be fetched soon by transport pipeline.
+   *
+   * 3. User selects an offline device in the main toolbar, and no matching online device found in the transport pipeline:
+   *    - Profiler-level selection with device name, marked as not running, and a default Common.Device instance.
+   */
+  fun onDeviceSelection(deviceSelection: ToolbarDeviceSelection) {
+    if (deviceSelection.isRunning) {
+      val device = deviceList.value.find { it.serial == deviceSelection.serial }
+
+      if (device == null) {
+        // Running device, but corresponding device from the pipeline not fetched yet.
+        doDeviceSelection(deviceSelection.name, true, Common.Device.getDefaultInstance())
+      } else {
+        // Running device with corresponding device from the pipeline found.
+        doDeviceSelection(deviceSelection.name, true, device)
+      }
+    } else {
+      // Offline devices have no mapped Common.Device, so use a default instance. Display device name to the user.
+      doDeviceSelection(deviceSelection.name, false, Common.Device.getDefaultInstance())
+    }
+  }
+
+  /**
+   * Performs selection of Common.Device selected from standalone profiler device dropdown.
+   */
   fun onDeviceSelection(newDevice: Common.Device) {
+    doDeviceSelection(newDevice.model, true, newDevice)
+  }
+
+  private fun doDeviceSelection(name: String, isRunning: Boolean, device: Common.Device) {
+    _selectedDevice.value = ProfilerDeviceSelection(name, isRunning, device)
+    setSelectedDevicesCount(1)
+    onDeviceChange()
+  }
+
+  /**
+   * Performs state changes necessary after user selects a new device such as resetting their currently selected process.
+   */
+  private fun onDeviceChange() {
     // Reset task selection unless this callback is triggered by a startup task. During a startup task, the device is auto-selected and
     // later a session would be created using the task selected before this callback's execution. Therefore, the task selection shouldn't
     // be reset here for a startup task.
     if (!isProfilingFromProcessStart.value) {
       resetTaskSelection()
     }
-    _selectedDevice.value = newDevice
+
+    // Reset process selection to avoid ghost process selection on device change.
+    resetProcessSelection()
+
     // Force reordering now that device is selected. This makes sure the process list is reordered correctly using the preferred process
     // in the case the preferred process was set before a device selection was made.
     reorderProcessList()
@@ -154,20 +240,60 @@ class ProcessListModel(
   fun onProcessSelection(newProcess: Common.Process) {
     resetTaskSelection()
     _selectedProcess.value = newProcess
+    _isPreferredProcessSelected.value = newProcess.name == preferredProcessName
+    if (!_isPreferredProcessSelected.value) {
+      setIsProfilingFromProcessStart(false)
+    }
   }
 
   private fun preferredProcessUpdated() {
-    preferredProcessName = profilers.preferredProcessName
     // Force update of process list ordering.
     reorderProcessList()
   }
 
+  fun setSelectedDevicesCount(selectedDevicesCount: Int) {
+    _selectedDevicesCount.value = selectedDevicesCount;
+  }
+
+  /**
+   * Allows to simulate preferred process selection and startup tasks from tests without having to create and select a process.
+   */
   @VisibleForTesting
-  fun getPreferredProcessName() = preferredProcessName
+  fun setIsPreferredProcessSelected(selected: Boolean) {
+    _isPreferredProcessSelected.value = selected
+  }
 
-  private fun isDeviceSelected() = _selectedDevice.value != Common.Device.getDefaultInstance()
+  fun resetDeviceSelection() { _selectedDevice.value = null }
 
-  private fun isSelectedDevicePresent() = _deviceList.value.firstOrNull { it.deviceId == _selectedDevice.value.deviceId } != null
+  fun resetProcessSelection() {
+    onProcessSelection(Common.Process.getDefaultInstance())
+  }
 
-  private fun resetDeviceSelection() { _selectedDevice.value = Common.Device.getDefaultInstance() }
+  private fun isDeviceSelected() = _selectedDevice.value != null
+
+  /**
+   * Returns whether the currently selected device is running or not.
+   *
+   * This can be determined by checking if the selected device is in the keys of the device to processes map returned by the transport
+   * pipeline. This map only contains running devices.
+   */
+  private fun isSelectedDeviceRunning() = _deviceList.value.firstOrNull {
+    _selectedDevice.value != null && it.deviceId == _selectedDevice.value!!.device.deviceId
+  } != null
+
+  data class ToolbarDeviceSelection(
+    val name: String,
+    val isRunning: Boolean,
+    // The 'serial' field is only set to a non-empty string if isRunning is true, otherwise it will be an empty string.
+    val serial: String
+  )
+
+  data class ProfilerDeviceSelection(
+    val name: String,
+    // It is possible for the device to be running but not be discovered by the transport pipeline yet.
+    val isRunning: Boolean,
+    // The 'device' field is only set to a non default value when isRunning is true and the corresponding device in the transport pipeline
+    // is found.
+    val device: Common.Device,
+  )
 }
