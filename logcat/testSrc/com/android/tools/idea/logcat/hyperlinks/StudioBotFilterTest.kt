@@ -3,9 +3,9 @@ package com.android.tools.idea.logcat.hyperlinks
 import com.android.tools.idea.logcat.message.LogcatMessage
 import com.android.tools.idea.logcat.testing.LogcatEditorRule
 import com.android.tools.idea.logcat.util.logcatMessage
-import com.android.tools.idea.studiobot.AiExcludeService
 import com.android.tools.idea.studiobot.ChatService
 import com.android.tools.idea.studiobot.StudioBot
+import com.android.tools.idea.studiobot.prompts.buildPrompt
 import com.android.tools.idea.testing.ApplicationServiceRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.filters.Filter.ResultItem
@@ -26,9 +26,6 @@ class StudioBotFilterTest {
   private val projectRule = ProjectRule()
   private val logcatEditorRule = LogcatEditorRule(projectRule)
 
-  private val mockAiExcludeService =
-    Mockito.spy(object : AiExcludeService.StubAiExcludeService() {})
-
   private val mockChatService = Mockito.spy(object : ChatService.StubChatService() {})
 
   private val mockStudioBot =
@@ -38,8 +35,6 @@ class StudioBotFilterTest {
       override fun isAvailable() = true
 
       override fun isContextAllowed() = contextAllowed
-
-      override fun aiExcludeService() = mockAiExcludeService
 
       override fun chat(project: Project) = mockChatService
     }
@@ -62,11 +57,11 @@ class StudioBotFilterTest {
   @Test
   fun applyFilter_detectsLink() {
     val filter = StudioBotFilter(editor)
-    val line = "before (Ask Gemini) after"
+    val line = "before (Ask Studio Bot) after"
 
     val result = filter.applyFilter(line, line.length) ?: fail()
 
-    assertThat(result.resultItems.map { it.getText(line) }).containsExactly("(Ask Gemini)")
+    assertThat(result.resultItems.map { it.getText(line) }).containsExactly("(Ask Studio Bot)")
   }
 
   @Test
@@ -80,16 +75,23 @@ class StudioBotFilterTest {
 
     result.firstHyperlinkInfo?.navigate(project)
 
-    val expectedQuestion =
-      """
+    val expectedPrompt =
+      buildPrompt(project) {
+        userMessage {
+          text(
+            """
       Explain: Exception
       at com.example(File.kt:1) with tag ExampleTag
       """
-        .trimIndent()
+              .trimIndent(),
+            emptyList(),
+          )
+        }
+      }
 
     // With the context sharing setting enabled, the AiExcludeService should be invoked
     // to validate a query to be sent directly to the model
-    verify(mockAiExcludeService).validateQuery(project, expectedQuestion, emptyList())
+    verify(mockChatService).sendChatQuery(expectedPrompt, StudioBot.RequestSource.LOGCAT)
   }
 
   @Test
@@ -118,7 +120,7 @@ class StudioBotFilterTest {
 }
 
 private fun LogcatMessage.formatMessage(): String =
-  message.toString().replace("Exception", "Exception  (Ask Gemini)")
+  message.toString().replace("Exception", "Exception  (Ask Studio Bot)")
 
 private fun ResultItem.getText(line: String) =
   line.substring(highlightStartOffset, highlightEndOffset)

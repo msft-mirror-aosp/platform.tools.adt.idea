@@ -17,15 +17,15 @@ package com.android.tools.idea.wear.preview
 
 import com.android.SdkConstants
 import com.android.annotations.concurrency.Slow
-import com.android.ide.common.resources.Locale
 import com.android.tools.idea.AndroidPsiUtils
-import com.android.tools.idea.annotations.NodeInfo
-import com.android.tools.idea.annotations.UAnnotationSubtreeInfo
-import com.android.tools.idea.annotations.findAllAnnotationsInGraph
+import com.android.tools.idea.preview.annotations.NodeInfo
+import com.android.tools.idea.preview.annotations.UAnnotationSubtreeInfo
+import com.android.tools.idea.preview.annotations.findAllAnnotationsInGraph
 import com.android.tools.idea.preview.FilePreviewElementFinder
 import com.android.tools.idea.preview.findPreviewDefaultValues
 import com.android.tools.idea.preview.qualifiedName
 import com.android.tools.idea.preview.toSmartPsiPointer
+import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.smartReadAction
@@ -105,9 +105,9 @@ private fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(
       annotation.findAttributeValue("fontScale")?.evaluate() as? Float
         ?: defaultValues["fontScale"]?.toFloatOrNull()
 
-    WearTilePreviewConfiguration.forValues(
+    PreviewConfiguration.cleanAndGet(
       device = device,
-      locale = locale?.let { Locale.create(it) },
+      locale = locale,
       fontScale = fontScale,
     )
   }

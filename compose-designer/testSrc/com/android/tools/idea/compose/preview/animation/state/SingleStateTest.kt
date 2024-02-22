@@ -23,11 +23,12 @@ import com.android.tools.idea.compose.preview.animation.TestUtils
 import com.android.tools.idea.compose.preview.animation.TestUtils.assertBigger
 import com.android.tools.idea.compose.preview.animation.TestUtils.findComboBox
 import com.android.tools.idea.compose.preview.animation.TestUtils.findToolbar
-import com.android.tools.idea.compose.preview.animation.timeline.ElementState
+import com.android.tools.idea.preview.animation.timeline.ElementState
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.ApplicationManager
 import java.awt.Dimension
 import javax.swing.JPanel
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Rule
@@ -54,7 +55,7 @@ class SingleStateTest {
       AnimationCard(
           TestUtils.testPreviewState(),
           Mockito.mock(DesignSurface::class.java),
-          ElementState("Title"),
+          MutableStateFlow(ElementState("Title")),
           state.extraActions,
           NoopComposeAnimationTracker,
         )

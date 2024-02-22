@@ -17,8 +17,6 @@ package com.android.tools.idea.common.surface
 
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.common.analytics.DesignerAnalyticsManager
-import com.android.tools.idea.common.surface.DesignSurfaceZoomController.Companion.MAX_SCALE
-import com.android.tools.idea.common.surface.DesignSurfaceZoomController.Companion.MIN_SCALE
 import com.android.tools.idea.testing.AndroidProjectRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -201,10 +199,13 @@ class DesignSurfaceZoomControllerTest {
           }
         }
       }
-    return DesignSurfaceZoomController(
-      designerAnalyticsManager = designerAnalyticsManager,
-      selectionModel = null,
-      getFocusedSceneView = { null },
-    )
+    return object :
+      DesignSurfaceZoomController(
+        designerAnalyticsManager = designerAnalyticsManager,
+        selectionModel = null,
+        scenesOwner = null,
+      ) {
+      override fun getFitScale() = 1.0
+    }
   }
 }

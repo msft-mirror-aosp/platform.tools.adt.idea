@@ -294,7 +294,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> NELE_XML_TO_COMPOSE = new BooleanFlag(
     NELE, "xml.to.compose", "Enable XML to Compose conversion",
-    "Enable an action that converts XML layouts to Compose using the Gemini backend",
+    "Enable an action that converts XML layouts to Compose using the Studio Bot backend",
     false);
   //endregion
 
@@ -318,12 +318,6 @@ public final class StudioFlags {
     RUNDEBUG, "console.output.enabled", "Show logcat process output in Run/Debug console window",
     "When running or debugging an Android process, output the logcat output of the process in the console window.",
     false);
-
-  public static final Flag<Boolean> RUNDEBUG_ANDROID_BUILD_BUNDLE_ENABLED = Flag.create(
-    RUNDEBUG, "android.bundle.build.enabled", "Enable the Build Bundle action",
-    "If enabled, the \"Build Bundle(s)\" menu item is enabled. " +
-    "Changing the value of this flag requires restarting Android Studio.",
-    true);
 
   public static final Flag<Boolean> GENERATE_BASELINE_PROFILE_GUTTER_ICON = Flag.create(
     RUNDEBUG,
@@ -640,6 +634,7 @@ public final class StudioFlags {
   );
   //endregion
 
+  //region Project System
   //region Gradle Project System
   private static final FlagGroup GRADLE_IDE = new FlagGroup(FLAGS, "gradle.ide", "Gradle Project System");
 
@@ -832,6 +827,16 @@ public final class StudioFlags {
     true
   );
 
+  //endregion
+  //region Apk Project System
+  private static final FlagGroup APK_IDE = new FlagGroup(FLAGS, "apk.ide", "APK Project System");
+
+  public static final Flag<Boolean> ENABLE_APK_PROJECT_SYSTEM =
+    new BooleanFlag(APK_IDE, "enable.apk.project.system", "Use a dedicated APK project system for debugging or profiling APKs",
+                    "If enabled, use the in-development APK project system for project-related services.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
+  //endregion
   //endregion
 
   //region Layout Inspector
@@ -1376,11 +1381,6 @@ public final class StudioFlags {
     "If enabled, a preview for annotated glance app widget composable functions is displayed",
     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> GLANCE_TILE_PREVIEW = new BooleanFlag(
-    WEAR_SURFACES, "glance.preview.tile.enabled", "Enable Glance Tile preview",
-    "If enabled, a preview for annotated glance tile composable functions is displayed",
-    false);
-
   public static final Flag<Boolean> WEAR_TILE_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
     "If enabled, a preview for functions annotated with @Preview and returning TilePreviewData is displayed",
@@ -1724,9 +1724,9 @@ public final class StudioFlags {
   // endregion PRIVACY_SANDBOX_SDK
 
   // region STUDIO_BOT
-  private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Gemini");
+  private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Studio Bot");
   public static final Flag<Boolean> STUDIOBOT_ENABLED =
-    Flag.create(STUDIOBOT, "enabled", "Enable Gemini", "Enable Gemini Tool Window", true);
+    Flag.create(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",

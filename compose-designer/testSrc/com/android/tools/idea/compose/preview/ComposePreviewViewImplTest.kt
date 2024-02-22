@@ -27,6 +27,7 @@ import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
 import com.android.tools.idea.compose.preview.scene.ComposeScreenViewProvider
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.editors.build.ProjectBuildStatusManager
 import com.android.tools.idea.editors.build.ProjectStatus
@@ -132,7 +133,7 @@ class ComposePreviewViewImplTest {
 
   @Before
   fun setUp() =
-    ApplicationManager.getApplication().invokeAndWait {
+    runBlocking(uiThread) {
       // Setup a fake manifest so rendering works correctly
       val manifest =
         fixture.addFileToProjectAndInvalidate(

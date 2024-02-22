@@ -27,9 +27,9 @@ import com.android.tools.idea.compose.preview.animation.TestUtils.findToolbar
 import com.android.tools.idea.compose.preview.animation.managers.AnimationManager
 import com.android.tools.idea.compose.preview.animation.managers.UnsupportedAnimationManager
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
-import com.android.tools.idea.rendering.classloading.NopClassLocator
 import com.android.tools.idea.rendering.classloading.PreviewAnimationClockMethodTransform
-import com.android.tools.idea.rendering.classloading.loaders.AsmTransformingLoader
+import com.android.tools.rendering.classloading.NopClassLocator
+import com.android.tools.rendering.classloading.loaders.AsmTransformingLoader
 import com.android.tools.rendering.classloading.loaders.ClassLoaderLoader
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.rendering.classloading.toClassTransform
@@ -698,9 +698,7 @@ class ComposePreviewAnimationManagerTest(private val clockType: ClockType) : Ins
     } catch (ignored: NullPointerException) {}
   }
 
-  private fun AnimationPreview.tabCount(): Int = runBlocking {
-    withContext(uiThread) { animations.size }
-  }
+  private fun AnimationPreview.tabCount(): Int = runBlocking(uiThread) { animations.size }
 
   private fun AnimationPreview.getAnimationTitleAt(index: Int): String =
     TestUtils.findAllCards(this.component)[index].findLabel().text
@@ -711,7 +709,6 @@ class ComposePreviewAnimationManagerTest(private val clockType: ClockType) : Ins
       .filter { it.name == "Loading Animations Panel" }
       .getIfSingle()
 
-  private fun AnimationPreview.animationPreviewCardsCount(): Int = runBlocking {
-    withContext(uiThread) { coordinationTab.cards.size }
-  }
+  private fun AnimationPreview.animationPreviewCardsCount(): Int =
+    runBlocking(uiThread) { coordinationTab.cards.size }
 }

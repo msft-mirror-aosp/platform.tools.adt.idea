@@ -222,6 +222,7 @@ studio_plugin(
             "//tools/adt/idea/preview-elements:intellij.android.preview-elements",
             "//tools/adt/idea/profilers-android:intellij.android.profilersAndroid",
             "//tools/adt/idea/profilers-android/gradle:intellij.android.profilersAndroid.gradle",
+            "//tools/adt/idea/project-system-apk:intellij.android.projectSystem.apk",
             "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd",
             "//tools/adt/idea/project-system-gradle-repository-search:intellij.android.projectSystem.gradle.repositorySearch",
             "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade",
@@ -639,12 +640,12 @@ studio_plugin(
 
 studio_plugin(
     name = "com.android.tools.studiobot",
-    directory = "gemini",
+    directory = "studio-bot",
     libs = [
         "//tools/vendor/google/ml/sml-core:aida_grpc",
         "//tools/vendor/google/ml/sml-core:aida_proto",
         "//tools/vendor/google/ml/sml-core:aida_protobuf",
-        "//tools/vendor/google/ml/sml-core:gemini_plugin_proto",
+        "//tools/vendor/google/ml/sml-core:studio_bot_proto",
         "//prebuilts/tools/common/m2:commonmark-0.20.0",
     ],
     modules = {

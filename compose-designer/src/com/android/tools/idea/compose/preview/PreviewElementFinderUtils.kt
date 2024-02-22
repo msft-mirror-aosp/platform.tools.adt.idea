@@ -19,15 +19,15 @@ import com.android.annotations.concurrency.Slow
 import com.android.tools.compose.COMPOSABLE_ANNOTATION_FQ_NAME
 import com.android.tools.compose.COMPOSE_PREVIEW_ANNOTATION_FQN
 import com.android.tools.compose.COMPOSE_PREVIEW_ANNOTATION_NAME
-import com.android.tools.idea.annotations.NodeInfo
-import com.android.tools.idea.annotations.UAnnotationSubtreeInfo
-import com.android.tools.idea.annotations.findAllAnnotationsInGraph
-import com.android.tools.idea.annotations.getContainingUMethodAnnotatedWith
-import com.android.tools.idea.annotations.getUAnnotations
-import com.android.tools.idea.annotations.isAnnotatedWith
 import com.android.tools.idea.compose.preview.analytics.MultiPreviewNode
 import com.android.tools.idea.compose.preview.analytics.MultiPreviewNodeImpl
 import com.android.tools.idea.compose.preview.analytics.MultiPreviewNodeInfo
+import com.android.tools.idea.preview.annotations.NodeInfo
+import com.android.tools.idea.preview.annotations.UAnnotationSubtreeInfo
+import com.android.tools.idea.preview.annotations.findAllAnnotationsInGraph
+import com.android.tools.idea.preview.annotations.getContainingUMethodAnnotatedWith
+import com.android.tools.idea.preview.annotations.getUAnnotations
+import com.android.tools.idea.preview.annotations.isAnnotatedWith
 import com.android.tools.idea.preview.findPreviewDefaultValues
 import com.android.tools.idea.preview.qualifiedName
 import com.android.tools.idea.preview.toSmartPsiPointer
@@ -63,7 +63,7 @@ private val NON_MULTIPREVIEW_PREFIXES = listOf("android.", "kotlin.", "kotlinx."
  */
 @Slow
 private fun UAnnotation.couldBeMultiPreviewAnnotation(): Boolean {
-  return runReadAction { (this.tryResolve() as? PsiClass)?.qualifiedName }
+  return runReadAction { this.qualifiedName }
     ?.let { fqcn ->
       if (fqcn.startsWith("androidx.")) fqcn.contains(".preview.")
       else NON_MULTIPREVIEW_PREFIXES.none { fqcn.startsWith(it) }
@@ -211,12 +211,9 @@ private fun UElement.directPreviewChildrenCount() =
  * Returns true when [annotation] is @Preview, or when it is a potential MultiPreview annotation.
  */
 @Slow
-private fun shouldTraverse(annotation: UAnnotation): Boolean {
-  if (!annotation.isPsiValid) return false
-  val annotationClassFqcn = runReadAction { (annotation.tryResolve() as? PsiClass)?.qualifiedName }
-  return annotation.isPreviewAnnotation() ||
-    (annotation.couldBeMultiPreviewAnnotation() && annotationClassFqcn != null)
-}
+private fun shouldTraverse(annotation: UAnnotation): Boolean =
+  annotation.isPsiValid &&
+    (annotation.isPreviewAnnotation() || annotation.couldBeMultiPreviewAnnotation())
 
 private fun buildParentAnnotationInfo(parent: NodeInfo<UAnnotationSubtreeInfo>?): String? {
   val parentAnnotation = parent?.element as? UAnnotation ?: return null

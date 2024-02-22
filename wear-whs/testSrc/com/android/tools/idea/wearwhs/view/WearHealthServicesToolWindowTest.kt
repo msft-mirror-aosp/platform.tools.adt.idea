@@ -37,6 +37,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.awt.Dimension
@@ -45,8 +46,6 @@ import java.util.concurrent.TimeUnit
 import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JTextField
-import javax.swing.JComponent
-import javax.swing.JLabel
 import kotlin.time.Duration.Companion.seconds
 
 @RunsInEdt
@@ -81,6 +80,7 @@ class WearHealthServicesToolWindowTest {
     Disposer.register(projectRule.testRootDisposable, toolWindow)
   }
 
+  @Ignore("b/326061638")
   @Test
   fun `test panel screenshot matches expectation for current platform`() = runBlocking {
     val fakeUi = FakeUi(toolWindow)
@@ -108,7 +108,7 @@ class WearHealthServicesToolWindowTest {
 
     stateManager.forceUpdateState()
 
-    stateManager.setPreset(Preset.CUSTOM)
+    stateManager.preset.value = Preset.CUSTOM
     stateManager.setCapabilityEnabled(deviceManager.capabilities[0], true)
     stateManager.setCapabilityEnabled(deviceManager.capabilities[1], false)
     stateManager.setCapabilityEnabled(deviceManager.capabilities[2], false)
@@ -144,7 +144,7 @@ class WearHealthServicesToolWindowTest {
     val applyButton = fakeUi.waitForDescendant<JButton> { it.text == "Apply" }
     applyButton.doClick()
 
-    delay(200) // TODO: Change to 2 times polling interval
+    delay(2 * TEST_POLLING_INTERVAL_MILLISECONDS)
 
     assertThat(textField.text).isNotEqualTo("50.0")
     assertThat(textField.text).isEqualTo("50")
@@ -196,6 +196,34 @@ class WearHealthServicesToolWindowTest {
 
     fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Heart rate") && !it.isEnabled }
     fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Steps") && !it.isEnabled }
+  }
+
+  @Test
+  fun `test star is only visible when changes are pending`(): Unit = runBlocking {
+    val fakeUi = FakeUi(toolWindow)
+
+    // TODO: Remove this apply when ag/26161198 is merged
+    val applyButton = fakeUi.waitForDescendant<JButton> { it.text == "Apply" }
+    applyButton.doClick()
+
+    val hrCheckBox = fakeUi.waitForDescendant<JCheckBox> { it.text == "Heart rate" }
+    hrCheckBox.doClick()
+
+    fakeUi.waitForDescendant<JCheckBox> { it.text == "Heart rate*" }
+
+    applyButton.doClick()
+
+    fakeUi.waitForDescendant<JCheckBox> { it.text == "Heart rate" }
+
+    deviceManager.activeExercise = true
+    val textField = fakeUi.waitForDescendant<JTextField> { it.isVisible }
+    textField.text = "50"
+
+    fakeUi.waitForDescendant<JCheckBox> { it.text == "Heart rate*" }
+
+    applyButton.doClick()
+
+    fakeUi.waitForDescendant<JCheckBox> { it.text == "Heart rate" }
   }
 
   private fun FakeUi.waitForCheckbox(text: String, selected: Boolean) = waitForDescendant<JCheckBox> {

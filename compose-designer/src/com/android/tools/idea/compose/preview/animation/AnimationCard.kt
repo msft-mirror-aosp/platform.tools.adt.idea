@@ -17,10 +17,11 @@ package com.android.tools.idea.compose.preview.animation
 
 import com.android.tools.adtui.TabularLayout
 import com.android.tools.idea.compose.preview.animation.actions.FreezeAction
-import com.android.tools.idea.compose.preview.animation.timeline.ElementState
 import com.android.tools.idea.compose.preview.message
-import com.android.tools.idea.compose.preview.util.createToolbarWithNavigation
+import com.android.tools.idea.preview.animation.AnimationPreviewState
 import com.android.tools.idea.preview.animation.InspectorLayout
+import com.android.tools.idea.preview.animation.timeline.ElementState
+import com.android.tools.idea.preview.util.createToolbarWithNavigation
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.ui.AnActionButton
@@ -36,11 +37,12 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.border.MatteBorder
 import kotlin.math.max
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class AnimationCard(
   previewState: AnimationPreviewState,
   rootComponent: JComponent,
-  override val state: ElementState,
+  override val state: MutableStateFlow<ElementState>,
   extraActions: List<AnAction> = emptyList(),
   private val tracker: ComposeAnimationTracker,
 ) : JPanel(TabularLayout("*", "30px,40px")), Card {
@@ -80,7 +82,7 @@ class AnimationCard(
 
   override fun getCurrentHeight() =
     // Card has a minimum height of TIMELINE_LINE_ROW_HEIGHT.
-    if (state.expanded) max(expandedSize, InspectorLayout.TIMELINE_LINE_ROW_HEIGHT)
+    if (state.value.expanded) max(expandedSize, InspectorLayout.TIMELINE_LINE_ROW_HEIGHT)
     else InspectorLayout.TIMELINE_LINE_ROW_HEIGHT
 
   private var durationLabel: Component? = null
@@ -99,9 +101,13 @@ class AnimationCard(
 
   init {
     val expandButton =
-      createToolbarWithNavigation(rootComponent, "ExpandCollapseAnimationCard", ExpandAction())
+      createToolbarWithNavigation(
+        rootComponent,
+        "ExpandCollapseAnimationCard",
+        listOf(ExpandAction()),
+      )
     firstRow.add(expandButton.component, TabularLayout.Constraint(0, 0))
-    firstRow.add(JBLabel(state.title ?: "_"), TabularLayout.Constraint(0, 1))
+    firstRow.add(JBLabel(state.value.title ?: "_"), TabularLayout.Constraint(0, 1))
 
     val secondRowToolbar =
       createToolbarWithNavigation(
@@ -127,8 +133,8 @@ class AnimationCard(
     AnActionButton(message("animation.inspector.action.expand"), UIUtil.getTreeCollapsedIcon()) {
 
     override fun actionPerformed(e: AnActionEvent) {
-      state.expanded = !state.expanded
-      if (state.expanded) {
+      state.value = state.value.copy(expanded = !state.value.expanded)
+      if (state.value.expanded) {
         tracker.expandAnimationCard()
       } else {
         tracker.collapseAnimationCard()
@@ -139,7 +145,7 @@ class AnimationCard(
       super.updateButton(e)
       e.presentation.isEnabled = true
       e.presentation.apply {
-        if (state.expanded) {
+        if (state.value.expanded) {
           icon = UIUtil.getTreeExpandedIcon()
           text = message("animation.inspector.action.collapse")
         } else {

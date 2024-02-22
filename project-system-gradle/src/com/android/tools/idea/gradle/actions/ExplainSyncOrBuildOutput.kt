@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.project.build.events.AndroidSyncIssueEventR
 import com.android.tools.idea.studiobot.AiExcludeService
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.StudioBotBundle
+import com.android.tools.idea.studiobot.prompts.buildPrompt
 import com.intellij.build.ExecutionNode
 import com.intellij.build.FileNavigatable
 import com.intellij.build.events.EventResult
@@ -45,8 +46,8 @@ import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.getBuildScriptSettingsP
 import org.jetbrains.kotlin.idea.util.projectStructure.module
 import javax.swing.tree.TreePath
 
-private val ASK_STUDIO_BOT_UNTIL_EOL = Regex(">> Ask Gemini:[^\n]*")
-private const val ASK_STUDIO_BOT_LINK_TEXT = "<a href=\"explain.issue\">>> Ask Gemini</a>"
+private val ASK_STUDIO_BOT_UNTIL_EOL = Regex(">> Ask Studio Bot:[^\n]*")
+private const val ASK_STUDIO_BOT_LINK_TEXT = "<a href=\"explain.issue\">>> Ask Studio Bot</a>"
 
 class ExplainSyncOrBuildOutput : DumbAwareAction(
   StudioBotBundle.message("studiobot.ask.text"), StudioBotBundle.message("studiobot.ask.text"),
@@ -174,10 +175,12 @@ class ExplainSyncOrBuildOutput : DumbAwareAction(
 
       // This is how the query will appear in the chat timeline
       val displayText = "Explain build error: $errorName"
-      val validatedQuery = aiExcludeService
-        .validateQuery(project, query, filesUsedAsContext)
-        .getOrThrow()
-      studioBot.chat(project).sendChatQuery(validatedQuery, source, displayText = displayText)
+      val prompt = buildPrompt(project) {
+        userMessage {
+          text(query, filesUsed = filesUsedAsContext)
+        }
+      }
+      studioBot.chat(project).sendChatQuery(prompt, source, displayText = displayText)
     }
   }
 

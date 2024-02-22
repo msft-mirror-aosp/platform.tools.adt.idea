@@ -17,10 +17,12 @@ package com.android.tools.idea.compose.preview.animation.timeline
 
 import com.android.tools.adtui.TabularLayout
 import com.android.tools.idea.compose.preview.animation.DispatchToTargetAdapter
-import com.android.tools.idea.compose.preview.animation.TimelinePanel
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.preview.animation.InspectorColors
 import com.android.tools.idea.preview.animation.InspectorLayout
+import com.android.tools.idea.preview.animation.TimelinePanel
+import com.android.tools.idea.preview.animation.timeline.PositionProxy
+import com.android.tools.idea.preview.animation.timeline.TimelineElement
 import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
@@ -41,14 +43,10 @@ private const val LEARN_MORE_LINK =
   "https://developer.android.com/jetpack/compose/tooling#animations"
 
 /** Label displayed in [TimelinePanel] for unsupported components. */
-class UnsupportedLabel(
-  parent: JComponent,
-  state: ElementState,
-  private val rowMinY: Int,
-  positionProxy: PositionProxy,
-) :
+class UnsupportedLabel(parent: JComponent, private val rowMinY: Int, positionProxy: PositionProxy) :
   TimelineElement(
-    state,
+    0,
+    null,
     positionProxy.minimumXPosition(),
     positionProxy.maximumXPosition(),
     positionProxy,

@@ -1,0 +1,160 @@
+/*
+ * Copyright (C) 2022 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tools.idea.preview.animation.timeline
+
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.preview.animation.TooltipInfo
+import com.android.tools.idea.res.clamp
+import com.intellij.openapi.Disposable
+import com.intellij.util.ui.JBUI
+import java.awt.Graphics2D
+import java.awt.Point
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+/** Proxy to slider positions. */
+interface PositionProxy {
+  fun xPositionForValue(value: Int): Int
+
+  fun valueForXPosition(value: Int): Int
+
+  fun minimumXPosition(): Int
+
+  fun maximumXPosition(): Int
+
+  fun maximumValue(): Int
+
+  fun minimumValue(): Int
+}
+
+/** Status of [TimelineElement] in timeline. */
+enum class TimelineElementStatus {
+  Inactive,
+  Hovered,
+  Dragged
+}
+
+/** Group of [TimelineElement] for timeline. Group elements are moved and frozen together. */
+open class ParentTimelineElement(
+  valueOffset: Int,
+  frozenValue: Int?,
+  private val children: List<TimelineElement>,
+  positionProxy: PositionProxy,
+) :
+  TimelineElement(
+    valueOffset = valueOffset,
+    frozenValue,
+    minX = children.minOfOrNull { it.minX } ?: 0,
+    maxX = children.maxOfOrNull { it.maxX } ?: 0,
+    positionProxy = positionProxy,
+  ) {
+
+  private val scope = AndroidCoroutineScope(this)
+
+  init {
+    scope.launch {
+      offsetPx.collect { newOffset ->
+        children.forEach { child -> child._offsetPx.value = newOffset }
+      }
+    }
+  }
+
+  override var height = children.sumOf { it.height }
+
+  override fun contains(x: Int, y: Int) = children.any { it.contains(x, y) }
+
+  override fun paint(g: Graphics2D) {
+    children.forEach { it.paint(g) }
+  }
+
+  override fun moveComponents(actualDeltaPx: Int) {
+    children.forEach { it.moveComponents(actualDeltaPx) }
+  }
+
+  override fun getTooltip(point: Point): TooltipInfo? {
+    return children.firstNotNullOfOrNull { it.getTooltip(point) }
+  }
+
+  override fun reset() {
+    super.reset()
+    children.forEach { it.reset() }
+  }
+
+  override var status: TimelineElementStatus = TimelineElementStatus.Inactive
+    set(value) {
+      field = value
+      children.forEach { it.status = value }
+    }
+}
+
+/** Drawable element for timeline. Each element could be moved and frozen. */
+abstract class TimelineElement(
+  valueOffset: Int,
+  val frozenValue: Int?,
+  val minX: Int,
+  val maxX: Int,
+  protected val positionProxy: PositionProxy,
+) : Disposable {
+
+  val _offsetPx = MutableStateFlow(0)
+  val offsetPx = _offsetPx.asStateFlow()
+  abstract var height: Int
+
+  fun heightScaled(): Int = JBUI.scale(height)
+
+  open fun getTooltip(point: Point): TooltipInfo? = null
+
+  open var status: TimelineElementStatus = TimelineElementStatus.Inactive
+
+  init {
+    _offsetPx.value =
+      if (valueOffset > 0)
+        positionProxy.xPositionForValue(positionProxy.minimumValue() + valueOffset) -
+          positionProxy.minimumXPosition()
+      else
+        -positionProxy.xPositionForValue(positionProxy.minimumValue() - valueOffset) +
+          positionProxy.minimumXPosition()
+  }
+
+  abstract fun contains(x: Int, y: Int): Boolean
+
+  abstract fun paint(g: Graphics2D)
+
+  fun move(deltaPx: Int) {
+    val previousOffsetPx = offsetPx.value
+    _offsetPx.value =
+      clamp(
+        previousOffsetPx + deltaPx,
+        positionProxy.minimumXPosition() - maxX,
+        positionProxy.maximumXPosition() - minX,
+      )
+
+    moveComponents(actualDeltaPx = offsetPx.value - previousOffsetPx)
+  }
+
+  open fun moveComponents(actualDeltaPx: Int) {}
+
+  open fun reset() {
+    _offsetPx.value = 0
+  }
+
+  fun contains(point: Point): Boolean {
+    return contains(point.x, point.y)
+  }
+
+  override fun dispose() {}
+}

@@ -16,16 +16,18 @@
 package com.android.tools.idea.compose.preview.animation
 
 import com.android.tools.adtui.TabularLayout
-import com.android.tools.idea.compose.preview.animation.timeline.ElementState
 import com.android.tools.idea.preview.animation.InspectorLayout
+import com.android.tools.idea.preview.animation.timeline.ElementState
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import javax.swing.JPanel
 import javax.swing.border.MatteBorder
+import kotlinx.coroutines.flow.StateFlow
 
 /** [Card] containing only animation label. */
-class LabelCard(override val state: ElementState) : Card, JPanel(TabularLayout("*", "30px")) {
+class LabelCard(override val state: StateFlow<ElementState>) :
+  Card, JPanel(TabularLayout("*", "30px")) {
 
   // ⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽⎽
   // ⎹    transitionName                          ⎹ ⬅ component
@@ -34,7 +36,7 @@ class LabelCard(override val state: ElementState) : Card, JPanel(TabularLayout("
   private val firstRow =
     JPanel(TabularLayout("30px,*,Fit", "30px")).apply {
       border = JBUI.Borders.emptyRight(8)
-      add(JBLabel(state.title ?: "_"), TabularLayout.Constraint(0, 1))
+      add(JBLabel(state.value.title ?: "_"), TabularLayout.Constraint(0, 1))
     }
 
   override val component: JPanel = this
