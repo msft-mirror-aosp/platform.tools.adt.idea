@@ -105,6 +105,8 @@ class SafeMode : ApplicationLoadListener {
 
   companion object {
     private val LOG = Logger.getInstance(SafeMode::class.java)
+    private val ENABLED = false
+
     private fun getFiles(root: String, filter: String): Array<File?> {
       val files = File(root).listFiles { file: File -> file.isFile() && file.getName().contains(filter) }
       return files ?: arrayOfNulls(0)
@@ -114,6 +116,9 @@ class SafeMode : ApplicationLoadListener {
       private get() = "android.studio.safe.mode." + ApplicationInfo.getInstance().build + ".sentinel"
 
     private fun safeModeDisabled(): Boolean {
+      if (!ENABLED) {
+        return true
+      }
       if (System.getProperty("disable.safe.mode") != null) {
         return true
       }
