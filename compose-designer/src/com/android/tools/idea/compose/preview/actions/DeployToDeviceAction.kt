@@ -43,7 +43,7 @@ internal class DeployToDeviceAction :
 
   override fun actionPerformed(e: AnActionEvent) {
     e.dataContext.previewElement()?.let {
-      val psiElement = it.previewElementDefinitionPsi?.element
+      val psiElement = it.previewElementDefinition?.element
       val project = psiElement?.project ?: return@actionPerformed
       val module = psiElement.module ?: return@actionPerformed
 
@@ -54,7 +54,7 @@ internal class DeployToDeviceAction :
   override fun update(e: AnActionEvent) {
     super.update(e)
     val isTestFile =
-      e.dataContext.previewElement()?.previewBodyPsi?.let {
+      e.dataContext.previewElement()?.previewBody?.let {
         SlowOperations.allowSlowOperations(
           ThrowableComputable { isTestFile(it.project, it.virtualFile) }
         )
@@ -76,7 +76,7 @@ internal class DeployToDeviceAction :
   private fun runPreviewConfiguration(
     project: Project,
     module: Module,
-    previewElement: ComposePreviewElement,
+    previewElement: ComposePreviewElement<*>,
   ) {
     val factory =
       runConfigurationType<ComposePreviewRunConfigurationType>().configurationFactories[0]
@@ -113,5 +113,5 @@ internal class DeployToDeviceAction :
  * If the [ComposePreviewElement] is a [ParametrizedComposePreviewElementInstance], returns the
  * provider class FQN and the target value index.
  */
-private fun ComposePreviewElement.previewProviderClassAndIndex() =
+private fun ComposePreviewElement<*>.previewProviderClassAndIndex() =
   if (this is ParametrizedComposePreviewElementInstance) Pair(providerClassFqn, index) else null

@@ -15,9 +15,6 @@
  */
 package com.android.tools.preview
 
-import com.intellij.psi.PsiElement
-import com.intellij.psi.SmartPsiElementPointer
-
 enum class DisplayPositioning {
   TOP, // Previews with this priority will be displayed at the top
   NORMAL
@@ -45,8 +42,14 @@ data class PreviewDisplaySettings(
   val displayPositioning: DisplayPositioning = DisplayPositioning.NORMAL
 )
 
-/** Definition of a preview element */
-interface PreviewElement : PreviewNode {
+/**
+ * Definition of a preview element. [T] represents a generic type specifying the location of the
+ * code. For example, in Studio it is specified as [SmartPsiElementPointer]<[PsiElement]> since
+ * Studio heavily relies on Psi file structure. Out-of-studio we currently don't use it and
+ * therefore the specification there is [Unit]. In the future, if we want to support referencing
+ * previews out-of-studio it could be a data class with a file url and a line number properties.
+ */
+interface PreviewElement<T> : PreviewNode {
 
   /**
    * Indicates if preview element has animation that could be inspected via [AnimationInspectorAction]
@@ -57,15 +60,16 @@ interface PreviewElement : PreviewNode {
   val displaySettings: PreviewDisplaySettings
 
   /**
-   * [SmartPsiElementPointer] to the preview element definition. This means the code that indicates
-   * that [previewBodyPsi] should be previewed. This might be the [previewBodyPsi] itself or an
+   * Location of the preview element definition or null if unknown. This means the code that
+   * indicates that [previewBody] should be previewed. This might be the [previewBody] itself or an
    * annotation (annotating the composable method, that won't necessarily be a '@Preview' when
    * Multipreview is enabled).
    */
-  val previewElementDefinitionPsi: SmartPsiElementPointer<PsiElement>?
+  val previewElementDefinition: T?
 
   /**
-   * [SmartPsiElementPointer] to the preview body. This is the code that will be run during preview
+   * Location of the preview body or null if unknown. This is the code that will be run during
+   * preview.
    */
-  val previewBodyPsi: SmartPsiElementPointer<PsiElement>?
+  val previewBody: T?
 }

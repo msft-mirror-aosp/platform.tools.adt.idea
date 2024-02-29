@@ -34,8 +34,8 @@ private fun wearTilePreviewElement(
 ) =
   WearTilePreviewElement(
     displaySettings = displaySettings,
-    previewElementDefinitionPsi = previewElementDefinitionPsi,
-    previewBodyPsi = previewBodyPsi,
+    previewElementDefinition = previewElementDefinitionPsi,
+    previewBody = previewBodyPsi,
     methodFqn = methodFqn,
     configuration = PreviewConfiguration.cleanAndGet(device = "id:wearos_small_round")
   )
@@ -60,7 +60,7 @@ class WearTilePreviewElementModelAdapterTest {
 
     val adapter = WearTilePreviewElementModelAdapter<TestModel>()
 
-    Assert.assertTrue(adapter.calcAffinity(pe1, pe1) < adapter.calcAffinity(pe1, pe2))
+    Assert.assertTrue(adapter.calcAffinity(pe1, pe1) == adapter.calcAffinity(pe1, pe2))
     Assert.assertTrue(adapter.calcAffinity(pe1, pe2) < adapter.calcAffinity(pe1, pe3))
     Assert.assertTrue(adapter.calcAffinity(pe1, pe3) < adapter.calcAffinity(pe1, null))
     Assert.assertTrue(adapter.calcAffinity(pe1, null) < adapter.calcAffinity(pe1, pe4))
@@ -99,8 +99,8 @@ class WearTilePreviewElementModelAdapterTest {
         .toXml(
           WearTilePreviewElement(
             displaySettings = simplestDisplaySettings(),
-            previewElementDefinitionPsi = null,
-            previewBodyPsi = null,
+            previewElementDefinition = null,
+            previewBody = null,
             methodFqn = "foo",
             configuration = PreviewConfiguration.cleanAndGet(device = "id:wearos_small_round")
           )

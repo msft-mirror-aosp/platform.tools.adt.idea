@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.flags.junit.FlagRule
 import com.android.testutils.delayUntilCondition
+import com.android.testutils.retryUntilPassing
 import com.android.testutils.waitForCondition
 import com.android.tools.analytics.AnalyticsSettings
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
@@ -28,7 +30,6 @@ import com.android.tools.idea.compose.ComposeProjectRule
 import com.android.tools.idea.compose.UiCheckModeFilter
 import com.android.tools.idea.compose.preview.actions.ReRunUiCheckModeAction
 import com.android.tools.idea.compose.preview.actions.UiCheckReopenTabAction
-import com.android.tools.idea.compose.preview.gallery.ComposeGalleryMode
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
@@ -37,23 +38,26 @@ import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.preview.actions.getPreviewManager
 import com.android.tools.idea.preview.analytics.PreviewRefreshTracker
 import com.android.tools.idea.preview.analytics.PreviewRefreshTrackerForTest
+import com.android.tools.idea.preview.flow.PreviewFlowManager
+import com.android.tools.idea.preview.gallery.GalleryMode
 import com.android.tools.idea.preview.groups.PreviewGroupManager
-import com.android.tools.idea.preview.modes.GRID_LAYOUT_MANAGER_OPTIONS
-import com.android.tools.idea.preview.modes.LIST_LAYOUT_MANAGER_OPTION
+import com.android.tools.idea.preview.modes.GRID_NO_GROUP_LAYOUT_OPTION
+import com.android.tools.idea.preview.modes.LIST_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.TestProjectSystem
+import com.android.tools.idea.run.configuration.execution.findElementByText
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.SourceCodeEditorProvider
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.surface.NlDesignSurfacePositionableContentLayoutManager
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.idea.util.TestToolWindowManager
 import com.google.common.base.Preconditions.checkState
@@ -66,6 +70,7 @@ import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.runWriteActionAndWait
+import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
@@ -113,7 +118,7 @@ internal class TestComposePreviewView(override val mainSurface: NlDesignSurface)
   override val isMessageBeingDisplayed: Boolean = false
   override var hasContent: Boolean = true
   override var hasRendered: Boolean = true
-  override var galleryMode: ComposeGalleryMode? = null
+  override var galleryMode: GalleryMode? = null
 
   val refreshCompletedListeners: MutableList<() -> Unit> = mutableListOf()
 
@@ -136,6 +141,9 @@ class ComposePreviewRepresentationTest {
   private val logger = Logger.getInstance(ComposePreviewRepresentationTest::class.java)
 
   @get:Rule val projectRule = ComposeProjectRule()
+
+  @get:Rule val flagRule = FlagRule(StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT, 30)
+
   private val project
     get() = projectRule.project
 
@@ -168,6 +176,7 @@ class ComposePreviewRepresentationTest {
   fun tearDown() {
     StudioFlags.NELE_ATF_FOR_COMPOSE.clearOverride()
     StudioFlags.NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE.clearOverride()
+    EssentialsMode.setEnabled(false, project)
   }
 
   @Test
@@ -260,9 +269,7 @@ class ComposePreviewRepresentationTest {
 
     assertInstanceOf<UiCheckModeFilter.Enabled>(preview.uiCheckFilterFlow.value)
     delayUntilCondition(250) {
-      GRID_LAYOUT_MANAGER_OPTIONS.layoutManager ==
-        (mainSurface.sceneViewLayoutManager as? NlDesignSurfacePositionableContentLayoutManager)
-          ?.layoutManager
+      GRID_NO_GROUP_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
     assertTrue(preview.atfChecksEnabled)
@@ -365,9 +372,7 @@ class ComposePreviewRepresentationTest {
 
     assertInstanceOf<UiCheckModeFilter.Disabled>(preview.uiCheckFilterFlow.value)
     delayUntilCondition(250) {
-      LIST_LAYOUT_MANAGER_OPTION.layoutManager ==
-        (mainSurface.sceneViewLayoutManager as? NlDesignSurfacePositionableContentLayoutManager)
-          ?.layoutManager
+      LIST_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
     // Check that the surface zooms to fit when exiting UI check mode.
@@ -402,9 +407,7 @@ class ComposePreviewRepresentationTest {
 
     // Restart UI Check mode on the same preview
     setModeAndWaitForRefresh(PreviewMode.UiCheck(uiCheckElement)) {
-      GRID_LAYOUT_MANAGER_OPTIONS.layoutManager ==
-        (mainSurface.sceneViewLayoutManager as? NlDesignSurfacePositionableContentLayoutManager)
-          ?.layoutManager
+      GRID_NO_GROUP_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
     // Check that the UI Check tab is being reused
@@ -463,9 +466,7 @@ class ComposePreviewRepresentationTest {
     }
 
     setModeAndWaitForRefresh(PreviewMode.Default()) {
-      LIST_LAYOUT_MANAGER_OPTION.layoutManager ==
-        (mainSurface.sceneViewLayoutManager as? NlDesignSurfacePositionableContentLayoutManager)
-          ?.layoutManager
+      LIST_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
   }
 
@@ -622,18 +623,12 @@ class ComposePreviewRepresentationTest {
   }
 
   @Test
-  fun testPreviewModeManagerShouldBeRegisteredInDataProvider() =
-    runComposePreviewRepresentationTest {
-      createPreviewAndCompile()
-      assertTrue(getData(PreviewModeManager.KEY.name) is PreviewModeManager)
-    }
-
-  @Test
-  fun testPreviewGroupManagerShouldBeRegisteredInDataProvider() =
-    runComposePreviewRepresentationTest {
-      createPreviewAndCompile()
-      assertTrue(getData(PreviewGroupManager.KEY.name) is PreviewGroupManager)
-    }
+  fun testPreviewManagersShouldBeRegisteredInDataProvider() = runComposePreviewRepresentationTest {
+    createPreviewAndCompile()
+    assertTrue(getData(PreviewModeManager.KEY.name) is PreviewModeManager)
+    assertTrue(getData(PreviewGroupManager.KEY.name) is PreviewGroupManager)
+    assertTrue(getData(PreviewFlowManager.KEY.name) is PreviewFlowManager<*>)
+  }
 
   @Test
   fun testActivationDoesNotCleanOverlayClassLoader() =
@@ -696,7 +691,24 @@ class ComposePreviewRepresentationTest {
 
     StudioFlags.NELE_ATF_FOR_COMPOSE.override(true)
 
-    val testPsiFile = createPreviewPsiFile()
+    val testPsiFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "Test.kt",
+        // language=kotlin
+        """
+            import androidx.compose.ui.tooling.preview.Devices
+            import androidx.compose.ui.tooling.preview.Preview
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            @Preview
+            @Preview(name = "preview2", apiLevel = 12, group = "groupA", showBackground = true)
+            fun Preview() {
+            }
+          """
+          .trimIndent(),
+      )
+    }
     testPsiFile.putUserData(FileEditorProvider.KEY, SourceCodeEditorProvider())
 
     val editor =
@@ -720,7 +732,7 @@ class ComposePreviewRepresentationTest {
 
       // Start UI Check mode
       val previewElements = mainSurface.models.mapNotNull { it.dataContext.previewElement() }
-      val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
+      val uiCheckElement = previewElements[1]
 
       run {
         waitForAllRefreshesToFinish(30.seconds)
@@ -767,7 +779,10 @@ class ComposePreviewRepresentationTest {
       withContext(uiThread) {
         rerunAction.actionPerformed(TestActionEvent.createTestEvent(dataContext))
       }
-      delayUntilCondition(250) { preview.uiCheckFilterFlow.value is UiCheckModeFilter.Enabled }
+      delayUntilCondition(250) {
+        (preview.uiCheckFilterFlow.value as? UiCheckModeFilter.Enabled)?.basePreviewInstance ==
+          uiCheckElement
+      }
 
       // Check that the rerun action is disabled
       run {
@@ -777,10 +792,72 @@ class ComposePreviewRepresentationTest {
         assertFalse(actionEvent.presentation.isEnabled)
       }
 
+      // Stop UI Check mode
+      run {
+        waitForAllRefreshesToFinish(30.seconds)
+        preview.setMode(PreviewMode.Default())
+        delayUntilCondition(250) { preview.uiCheckFilterFlow.value is UiCheckModeFilter.Disabled }
+      }
+
+      // Check that the rerun action is enabled
+      run {
+        val actionEvent = withContext(uiThread) { TestActionEvent.createTestEvent(dataContext) }
+        rerunAction.update(actionEvent)
+        assertTrue(actionEvent.presentation.isEnabledAndVisible)
+      }
+
+      // Delete the preview annotation that is linked with the UI check
+      runWriteCommandAction(project) {
+        testPsiFile
+          .findElementByText(
+            "@Preview(name = \"preview2\", apiLevel = 12, group = \"groupA\", showBackground = true)"
+          )
+          .delete()
+      }
+
+      // Check that the rerun action is hidden
+      run {
+        val actionEvent = withContext(uiThread) { TestActionEvent.createTestEvent(dataContext) }
+        rerunAction.update(actionEvent)
+        assertFalse(actionEvent.presentation.isVisible)
+      }
+
       waitForAllRefreshesToFinish(30.seconds)
       withContext(uiThread) { FileEditorManagerEx.getInstanceEx(project).closeAllFiles() }
     }
   }
+
+  @Test
+  fun testInteractivePreviewManagerFpsLimitIsInitializedWhenEssentialsModeIsDisabled() =
+    runComposePreviewRepresentationTest {
+      val preview = createPreviewAndCompile()
+
+      assertEquals(30, preview.interactiveManager.fpsLimit)
+    }
+
+  @Test
+  fun testInteractivePreviewManagerFpsLimitIsInitializedWhenEssentialsModeIsEnabled() =
+    runComposePreviewRepresentationTest {
+      EssentialsMode.setEnabled(true, project)
+
+      val preview = createPreviewAndCompile()
+
+      assertEquals(10, preview.interactiveManager.fpsLimit)
+    }
+
+  @Test
+  fun testInteractivePreviewManagerFpsLimitIsUpdatedWhenEssentialsModeChanges() =
+    runComposePreviewRepresentationTest {
+      val preview = createPreviewAndCompile()
+
+      assertEquals(30, preview.interactiveManager.fpsLimit)
+
+      EssentialsMode.setEnabled(true, project)
+      retryUntilPassing(5.seconds) { assertEquals(10, preview.interactiveManager.fpsLimit) }
+
+      EssentialsMode.setEnabled(false, project)
+      retryUntilPassing(5.seconds) { assertEquals(30, preview.interactiveManager.fpsLimit) }
+    }
 
   private fun runComposePreviewRepresentationTest(
     previewPsiFile: PsiFile = createPreviewPsiFile(),

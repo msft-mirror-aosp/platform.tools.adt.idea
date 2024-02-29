@@ -15,16 +15,21 @@
  */
 package com.android.tools.idea.glance.preview
 
+import com.android.tools.preview.ConfigurablePreviewElement
 import com.android.tools.preview.MethodPreviewElement
+import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 
 /** Information required to display the preview of a Glance UI element. */
-class GlancePreviewElement(
+data class GlancePreviewElement<T>(
   override val displaySettings: PreviewDisplaySettings,
-  override val previewElementDefinitionPsi: SmartPsiElementPointer<PsiElement>?,
-  override val previewBodyPsi: SmartPsiElementPointer<PsiElement>?,
+  override val previewElementDefinition: T?,
+  override val previewBody: T?,
   override val methodFqn: String,
+  override val configuration: PreviewConfiguration,
   override val hasAnimations: Boolean = false,
-) : MethodPreviewElement
+) : MethodPreviewElement<T>, ConfigurablePreviewElement<T>
+
+typealias PsiGlancePreviewElement = GlancePreviewElement<SmartPsiElementPointer<PsiElement>>

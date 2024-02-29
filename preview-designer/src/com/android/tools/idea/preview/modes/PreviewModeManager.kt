@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.preview.modes
 
+import com.android.tools.idea.common.layout.SurfaceLayoutOption
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.Colors
 import com.android.tools.preview.PreviewElement
@@ -65,16 +66,16 @@ sealed class PreviewMode {
   /** Background color. */
   open val backgroundColor: Color = Colors.DEFAULT_BACKGROUND_COLOR
 
-  open val layoutOption: SurfaceLayoutManagerOption = LIST_LAYOUT_MANAGER_OPTION
+  open val layoutOption: SurfaceLayoutOption = LIST_LAYOUT_OPTION
 
-  open val selected: PreviewElement? = null
+  open val selected: PreviewElement<*>? = null
 
   /**
    * Returns a [PreviewMode] with the same content as the current one, but with a different layout
    * option if that is allowed by the mode. Modes that want to react to layout changes have to
    * override this.
    */
-  open fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
+  open fun deriveWithLayout(layoutOption: SurfaceLayoutOption): PreviewMode {
     return this
   }
 
@@ -92,28 +93,27 @@ sealed class PreviewMode {
     return Objects.hashCode(backgroundColor, layoutOption, selected)
   }
 
-  class Default(
-    override val layoutOption: SurfaceLayoutManagerOption = LIST_LAYOUT_MANAGER_OPTION
-  ) : RestorePreviewMode() {
-    override fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
+  class Default(override val layoutOption: SurfaceLayoutOption = LIST_LAYOUT_OPTION) :
+    RestorePreviewMode() {
+    override fun deriveWithLayout(layoutOption: SurfaceLayoutOption): PreviewMode {
       return Default(layoutOption)
     }
   }
 
-  sealed class Focus<T : PreviewElement>(override val selected: T) : PreviewMode()
+  sealed class Focus<T : PreviewElement<*>>(override val selected: T) : PreviewMode()
 
   /** Represents a mode that can be restored when clicking on "Stop" when inside a mode. */
   sealed class RestorePreviewMode : PreviewMode()
 
   class UiCheck(
-    val baseElement: PreviewElement,
-    override val layoutOption: SurfaceLayoutManagerOption = GRID_LAYOUT_MANAGER_OPTIONS,
+    val baseElement: PreviewElement<*>,
+    override val layoutOption: SurfaceLayoutOption = GRID_NO_GROUP_LAYOUT_OPTION,
     val atfChecksEnabled: Boolean = StudioFlags.NELE_ATF_FOR_COMPOSE.get(),
     val visualLintingEnabled: Boolean = StudioFlags.NELE_COMPOSE_VISUAL_LINT_RUN.get(),
   ) : PreviewMode() {
     override val backgroundColor: Color = Colors.ACTIVE_BACKGROUND_COLOR
 
-    override fun deriveWithLayout(layoutOption: SurfaceLayoutManagerOption): PreviewMode {
+    override fun deriveWithLayout(layoutOption: SurfaceLayoutOption): PreviewMode {
       return UiCheck(baseElement, layoutOption, atfChecksEnabled, visualLintingEnabled)
     }
 
@@ -126,8 +126,8 @@ sealed class PreviewMode {
     }
   }
 
-  class Gallery(override val selected: PreviewElement?) : RestorePreviewMode() {
-    override val layoutOption: SurfaceLayoutManagerOption = PREVIEW_LAYOUT_GALLERY_OPTION
+  class Gallery(override val selected: PreviewElement<*>?) : RestorePreviewMode() {
+    override val layoutOption: SurfaceLayoutOption = GALLERY_LAYOUT_OPTION
 
     /**
      * If list of previews is updated while [PreviewMode.Gallery] is selected - [selected] element
@@ -136,8 +136,8 @@ sealed class PreviewMode {
      * update. So we are doing our best guess to select new element.
      */
     fun newMode(
-      newElements: Collection<PreviewElement>,
-      previousElements: Set<PreviewElement>,
+      newElements: Collection<PreviewElement<*>>,
+      previousElements: Set<PreviewElement<*>>,
     ): Gallery {
       // Try to match which element was selected before
       // If selectedKey was removed select first key. If it was only updated (i.e. if a
@@ -161,11 +161,13 @@ sealed class PreviewMode {
     }
   }
 
-  class Interactive(selected: PreviewElement) : Focus<PreviewElement>(selected) {
+  class Interactive(selected: PreviewElement<*>) : Focus<PreviewElement<*>>(selected) {
     override val backgroundColor: Color = Colors.ACTIVE_BACKGROUND_COLOR
+    override val layoutOption = GRID_NO_GROUP_LAYOUT_OPTION
   }
 
-  class AnimationInspection(selected: PreviewElement) : Focus<PreviewElement>(selected) {
+  class AnimationInspection(selected: PreviewElement<*>) : Focus<PreviewElement<*>>(selected) {
     override val backgroundColor: Color = Colors.ACTIVE_BACKGROUND_COLOR
+    override val layoutOption = GRID_NO_GROUP_LAYOUT_OPTION
   }
 }

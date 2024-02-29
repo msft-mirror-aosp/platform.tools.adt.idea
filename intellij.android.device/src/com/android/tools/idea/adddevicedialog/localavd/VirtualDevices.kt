@@ -68,8 +68,8 @@ internal object VirtualDevices {
         "hw.lcd.height" to "2400",
         "hw.lcd.width" to "1080",
         "hw.mainKeys" to "no",
-        "hw.ramSize" to "2048",
-        "hw.sdCard" to "yes",
+        "hw.ramSize" to device.simulatedRam.valueIn(StorageCapacity.Unit.MB).toString(),
+        "hw.sdCard" to if (device.expandedStorage == None) "no" else "yes",
         "hw.sensors.orientation" to "yes",
         "hw.sensors.proximity" to "yes",
         "hw.trackBall" to "no",
@@ -78,7 +78,7 @@ internal object VirtualDevices {
         "showDeviceFrame" to "yes",
         "skin.dynamic" to "yes",
         "skin.path" to skin.toString(),
-        "vm.heapSize" to "256",
+        "vm.heapSize" to device.vmHeapSize.valueIn(StorageCapacity.Unit.MB).toString(),
       )
 
     properties.putAll(device.defaultBoot.properties)
@@ -94,7 +94,7 @@ internal object VirtualDevices {
       /* systemImageDescription= */ SystemImageDescription(image),
       /* orientation= */ device.orientation,
       /* isCircular= */ false,
-      /* sdCard= */ device.expandedStorage.toString(),
+      /* sdCard= */ device.expandedStorage.toString().ifEmpty { null },
       /* skinFolder= */ skin,
       /* hardwareProperties= */ properties,
       /* userSettings= */ null,

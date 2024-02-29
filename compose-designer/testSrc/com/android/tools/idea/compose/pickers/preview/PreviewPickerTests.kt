@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.pickers.preview
 
 import com.android.sdklib.devices.Device
 import com.android.tools.idea.compose.ComposeProjectRule
+import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.pickers.base.model.PsiPropertiesModel
 import com.android.tools.idea.compose.pickers.base.property.PsiPropertyItem
 import com.android.tools.idea.compose.pickers.base.tracking.ComposePickerTracker
@@ -29,7 +30,6 @@ import com.android.tools.idea.compose.preview.COMPOSABLE_ANNOTATION_FQN
 import com.android.tools.idea.compose.preview.PREVIEW_TOOLING_PACKAGE
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.testing.Sdks
-import com.android.tools.preview.ComposePreviewElement
 import com.android.tools.preview.config.ReferencePhoneConfig
 import com.android.tools.property.panel.api.PropertiesModel
 import com.android.tools.property.panel.api.PropertiesModelListener
@@ -49,8 +49,8 @@ import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 
-private fun ComposePreviewElement.annotationText(): String =
-  ReadAction.compute<String, Throwable> { previewElementDefinitionPsi?.element?.text ?: "" }
+private fun PsiComposePreviewElement.annotationText(): String =
+  ReadAction.compute<String, Throwable> { previewElementDefinition?.element?.text ?: "" }
 
 class PreviewPickerTests {
 
@@ -109,7 +109,7 @@ class PreviewPickerTests {
           PreviewPickerPropertiesModel.fromPreviewElement(
             project,
             module,
-            noParametersPreview.previewElementDefinitionPsi,
+            noParametersPreview.previewElementDefinition,
             NoOpTracker,
           )
         assertNotNull(parsed.properties["", "name"])
@@ -120,7 +120,7 @@ class PreviewPickerTests {
           PreviewPickerPropertiesModel.fromPreviewElement(
             project,
             module,
-            namedPreview.previewElementDefinitionPsi,
+            namedPreview.previewElementDefinition,
             NoOpTracker,
           )
         assertEquals("named", parsed.properties["", "name"].value)
@@ -130,7 +130,7 @@ class PreviewPickerTests {
           PreviewPickerPropertiesModel.fromPreviewElement(
             project,
             module,
-            namedPreviewFromConst.previewElementDefinitionPsi,
+            namedPreviewFromConst.previewElementDefinition,
             NoOpTracker,
           )
         assertEquals("Name from Const", parsed.properties["", "name"].value)
@@ -485,7 +485,7 @@ class PreviewPickerTests {
         PreviewPickerPropertiesModel.fromPreviewElement(
           project,
           module,
-          noParametersPreview.previewElementDefinitionPsi,
+          noParametersPreview.previewElementDefinition,
           NoOpTracker,
         )
       }
@@ -555,7 +555,7 @@ class PreviewPickerTests {
       PreviewPickerPropertiesModel.fromPreviewElement(
         project,
         module,
-        preview.previewElementDefinitionPsi,
+        preview.previewElementDefinition,
         tracker,
       )
     }

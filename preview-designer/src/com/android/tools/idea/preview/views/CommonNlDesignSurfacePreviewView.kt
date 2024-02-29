@@ -22,6 +22,7 @@ import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.editor.ActionsToolbar
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.preview.gallery.GalleryModeProperty
 import com.android.tools.idea.preview.mvvm.PreviewRepresentationView
 import com.android.tools.idea.preview.mvvm.PreviewView
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
@@ -40,9 +41,11 @@ class CommonNlDesignSurfacePreviewView(
   parentDisposable: Disposable,
 ) : PreviewView, PreviewRepresentationView {
 
-  override val surface = surfaceBuilder.build()
+  override val mainSurface = surfaceBuilder.build()
 
-  private val actionsToolbar = ActionsToolbar(parentDisposable, surface)
+  private val actionsToolbar = ActionsToolbar(parentDisposable, mainSurface)
+
+  private val galleryModeProperty: GalleryModeProperty
 
   private val editorPanel =
     JPanel(BorderLayout()).apply {
@@ -58,19 +61,21 @@ class CommonNlDesignSurfacePreviewView(
       overlayPanel.apply {
         layout = OverlayLayout(this)
 
-        add(surface)
+        add(mainSurface)
       }
 
       add(overlayPanel, BorderLayout.CENTER)
+
+      galleryModeProperty = GalleryModeProperty(overlayPanel, mainSurface)
     }
 
   private val workbench: WorkBench<DesignSurface<*>> =
     object :
         WorkBench<DesignSurface<*>>(project, "Main Preview", null, parentDisposable), DataProvider {
         override fun getData(dataId: String): Any? =
-          if (DESIGN_SURFACE.`is`(dataId)) surface else null
+          if (DESIGN_SURFACE.`is`(dataId)) mainSurface else null
       }
-      .apply { init(editorPanel, surface, listOf(), false) }
+      .apply { init(editorPanel, mainSurface, listOf(), false) }
 
   @UiThread
   override fun showErrorMessage(
@@ -100,4 +105,6 @@ class CommonNlDesignSurfacePreviewView(
 
   override val component: JComponent
     get() = workbench
+
+  override var galleryMode by galleryModeProperty
 }

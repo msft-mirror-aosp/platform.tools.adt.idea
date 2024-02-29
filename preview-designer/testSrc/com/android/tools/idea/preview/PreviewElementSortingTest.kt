@@ -20,6 +20,8 @@ import com.android.tools.preview.ParametrizedComposePreviewElementInstance
 import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
 import com.android.tools.preview.SingleComposePreviewElementInstance
+import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPsiElementPointer
 import kotlin.test.assertEquals
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -32,7 +34,7 @@ class PreviewElementSortingTest {
   @Test
   fun testPreviewSortingOneSingleInstance() {
     val singlePreviewElementInstance =
-      SingleComposePreviewElementInstance(
+      SingleComposePreviewElementInstance<SmartPsiElementPointer<PsiElement>>(
         methodFqn = "ComposableName",
         displaySettings =
           PreviewDisplaySettings(
@@ -42,8 +44,8 @@ class PreviewElementSortingTest {
             showBackground = false,
             backgroundColor = null,
           ),
-        previewElementDefinitionPsi = null,
-        previewBodyPsi = null,
+        previewElementDefinition = null,
+        previewBody = null,
         configuration = PreviewConfiguration.cleanAndGet(),
       )
 
@@ -59,7 +61,7 @@ class PreviewElementSortingTest {
     val expectedPreviews =
       (0..3).map {
         ParametrizedComposePreviewElementInstance(
-          SingleComposePreviewElementInstance(
+          SingleComposePreviewElementInstance<SmartPsiElementPointer<PsiElement>>(
             methodFqn = "ComposableName",
             displaySettings =
               PreviewDisplaySettings(
@@ -69,8 +71,8 @@ class PreviewElementSortingTest {
                 showBackground = false,
                 backgroundColor = null,
               ),
-            previewElementDefinitionPsi = null,
-            previewBodyPsi = null,
+            previewElementDefinition = null,
+            previewBody = null,
             configuration = PreviewConfiguration.cleanAndGet(),
           ),
           "param-$it",
@@ -95,7 +97,7 @@ class PreviewElementSortingTest {
       (0..3)
         .map {
           ParametrizedComposePreviewElementInstance(
-            SingleComposePreviewElementInstance(
+            SingleComposePreviewElementInstance<SmartPsiElementPointer<PsiElement>>(
               methodFqn = "ComposableName",
               displaySettings =
                 PreviewDisplaySettings(
@@ -105,8 +107,8 @@ class PreviewElementSortingTest {
                   showBackground = false,
                   backgroundColor = null,
                 ),
-              previewElementDefinitionPsi = null,
-              previewBodyPsi = null,
+              previewElementDefinition = null,
+              previewBody = null,
               configuration = PreviewConfiguration.cleanAndGet(),
             ),
             "param-$it",
@@ -121,7 +123,7 @@ class PreviewElementSortingTest {
       (0..6)
         .map {
           ParametrizedComposePreviewElementInstance(
-            SingleComposePreviewElementInstance(
+            SingleComposePreviewElementInstance<SmartPsiElementPointer<PsiElement>>(
               methodFqn = "ComposableName",
               displaySettings =
                 PreviewDisplaySettings(
@@ -131,8 +133,8 @@ class PreviewElementSortingTest {
                   showBackground = false,
                   backgroundColor = null,
                 ),
-              previewElementDefinitionPsi = null,
-              previewBodyPsi = null,
+              previewElementDefinition = null,
+              previewBody = null,
               configuration = PreviewConfiguration.cleanAndGet(),
             ),
             "colorblind-$it",
@@ -157,7 +159,7 @@ class PreviewElementSortingTest {
       (0..3)
         .map {
           ParametrizedComposePreviewElementInstance(
-            SingleComposePreviewElementInstance(
+            SingleComposePreviewElementInstance<SmartPsiElementPointer<PsiElement>>(
               methodFqn = "ComposableName",
               displaySettings =
                 PreviewDisplaySettings(
@@ -167,8 +169,8 @@ class PreviewElementSortingTest {
                   showBackground = false,
                   backgroundColor = null,
                 ),
-              previewElementDefinitionPsi = null,
-              previewBodyPsi = null,
+              previewElementDefinition = null,
+              previewBody = null,
               configuration = PreviewConfiguration.cleanAndGet(),
             ),
             "param-$it",
@@ -183,7 +185,7 @@ class PreviewElementSortingTest {
       (0..6)
         .map {
           ParametrizedComposePreviewElementInstance(
-            SingleComposePreviewElementInstance(
+            SingleComposePreviewElementInstance<SmartPsiElementPointer<PsiElement>>(
               methodFqn = "ComposableName",
               displaySettings =
                 PreviewDisplaySettings(
@@ -193,8 +195,8 @@ class PreviewElementSortingTest {
                   showBackground = false,
                   backgroundColor = null,
                 ),
-              previewElementDefinitionPsi = null,
-              previewBodyPsi = null,
+              previewElementDefinition = null,
+              previewBody = null,
               configuration = PreviewConfiguration.cleanAndGet(),
             ),
             "colorblind-$it",

@@ -38,10 +38,10 @@ class ComposePreviewElementConstructionTest {
 
   @Test
   fun testPreviewAnnotationToPreviewElement_backgroundColor() {
-    val annotatedMethod = object : AnnotatedMethod {
+    val annotatedMethod = object : AnnotatedMethod<Unit> {
       override val name = "Method"
       override val qualifiedName = "com.test.Method"
-      override val psiPointer = null
+      override val methodBody = null
       override val parameterAnnotations = emptyList<Pair<String, AnnotationAttributesProvider>>()
     }
     val encodedBackgroundColors = listOf<Any?>(123456, 123456L, "123456", 123456.0f, null)

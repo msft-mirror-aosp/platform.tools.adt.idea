@@ -28,6 +28,8 @@ import com.android.tools.editor.PanZoomListener
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.error.IssueListener
 import com.android.tools.idea.common.error.IssuePanelService
+import com.android.tools.idea.common.layout.SceneViewAlignment
+import com.android.tools.idea.common.layout.SurfaceLayoutOption
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.DesignSurfaceIssueListenerImpl
@@ -39,7 +41,6 @@ import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager
 import com.android.tools.idea.uibuilder.graphics.NlConstants
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.surface.NlDesignSurfacePositionableContentLayoutManager
 import com.android.tools.idea.uibuilder.surface.NlScreenViewProvider
 import com.android.tools.idea.uibuilder.surface.NlSupportedActions
 import com.android.tools.idea.uibuilder.surface.layout.GridSurfaceLayoutManager
@@ -118,14 +119,17 @@ class VisualizationForm(
   private var myEditor: FileEditor? = null
   private var myCurrentConfigurationSet: ConfigurationSet
   private var myCurrentModelsProvider: VisualizationModelsProvider
-  private val myLayoutManager: NlDesignSurfacePositionableContentLayoutManager
-  private val myGridSurfaceLayoutManager =
-    GridSurfaceLayoutManager(
-      NlConstants.DEFAULT_SCREEN_OFFSET_X,
-      NlConstants.DEFAULT_SCREEN_OFFSET_Y,
-      GRID_HORIZONTAL_SCREEN_DELTA,
-      VERTICAL_SCREEN_DELTA,
-      false,
+  private val myLayoutOption =
+    SurfaceLayoutOption(
+      "Layout",
+      GridSurfaceLayoutManager(
+        NlConstants.DEFAULT_SCREEN_OFFSET_X,
+        NlConstants.DEFAULT_SCREEN_OFFSET_Y,
+        GRID_HORIZONTAL_SCREEN_DELTA,
+        VERTICAL_SCREEN_DELTA,
+        false,
+      ),
+      SceneViewAlignment.LEFT,
     )
   private val myUpdateQueue: MergingUpdateQueue
 
@@ -155,7 +159,6 @@ class VisualizationForm(
     myCurrentConfigurationSet =
       VisualizationToolSettings.getInstance().globalState.lastSelectedConfigurationSet
     myCurrentModelsProvider = myCurrentConfigurationSet.createModelsProvider(this)
-    val surfaceLayoutManager = myGridSurfaceLayoutManager
     val config = LayoutScannerEnabled()
     // Custom issue panel integration used.
     config.isIntegrateWithDefaultIssuePanel = false
@@ -180,7 +183,7 @@ class VisualizationForm(
         .setInteractionHandlerProvider { surface: DesignSurface<*> ->
           VisualizationInteractionHandler(surface) { myCurrentModelsProvider }
         }
-        .setLayoutManager(surfaceLayoutManager)
+        .setLayoutOption(myLayoutOption)
         .setMaxScale(4.0)
         .setSupportedActions(VISUALIZATION_SUPPORTED_ACTIONS)
         .setDelegateDataProvider {
@@ -191,7 +194,7 @@ class VisualizationForm(
           }
         }
         .build()
-    surface.setSceneViewAlignment(DesignSurface.SceneViewAlignment.LEFT)
+    surface.setSceneViewAlignment(SceneViewAlignment.LEFT)
     surface.addPanZoomListener(this)
     issueListener = DesignSurfaceIssueListenerImpl(surface).apply { surface.addIssueListener(this) }
     updateScreenMode()
@@ -199,8 +202,6 @@ class VisualizationForm(
     myWorkBench = WorkBench(project, "Visualization", null, this)
     myWorkBench.setLoadingText("Loading...")
     myWorkBench.setToolContext(surface)
-    myLayoutManager =
-      surface.sceneViewLayoutManager as NlDesignSurfacePositionableContentLayoutManager
     myActionToolbarPanel = createToolbarPanel()
     myRoot.add(myActionToolbarPanel, BorderLayout.NORTH)
     myRoot.add(myWorkBench, BorderLayout.CENTER)
@@ -655,10 +656,7 @@ class VisualizationForm(
       VisualizationToolSettings.getInstance().globalState.lastSelectedConfigurationSet =
         newConfigurationSet
       myCurrentModelsProvider = newConfigurationSet.createModelsProvider(this)
-      myLayoutManager.setLayoutManager(
-        myGridSurfaceLayoutManager,
-        DesignSurface.SceneViewAlignment.LEFT,
-      )
+      surface.layoutManagerSwitcher?.currentLayout?.value = myLayoutOption
       refresh()
     }
   }

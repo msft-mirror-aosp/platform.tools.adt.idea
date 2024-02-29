@@ -16,41 +16,49 @@
 package com.android.tools.idea.compose.preview.actions
 
 import com.android.tools.idea.common.editor.SplitEditor
-import com.android.tools.idea.common.error.DESIGNER_COMMON_ISSUE_PANEL
-import com.android.tools.idea.common.error.DesignToolsIssueProvider
+import com.android.tools.idea.common.surface.getDesignSurface
 import com.android.tools.idea.compose.preview.ComposePreviewManager
-import com.android.tools.idea.compose.preview.uicheck.TAB_VIRTUAL_FILE
+import com.android.tools.idea.compose.preview.uicheck.TAB_PREVIEW_DEFINITION
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.preview.actions.getPreviewManager
+import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.modes.PreviewMode
+import com.android.tools.preview.ComposePreviewElementInstance
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.fileEditor.FileEditorManager
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 private const val DISABLED_TEXT = "UI Check is already running in the background."
 private const val ENABLED_TEXT = "Restart UI Check and background linting for this composable."
 
+/** This action restarts a terminated UI Check mode from the corresponding Problems window tab. */
 class ReRunUiCheckModeAction : AnAction() {
 
   override fun update(e: AnActionEvent) {
     val project = e.project
-    val file =
+    val uiCheckInstancePreviewDef =
       project?.let {
         ProblemsView.getToolWindow(it)
           ?.contentManager
           ?.selectedContent
-          ?.getUserData(TAB_VIRTUAL_FILE)
+          ?.getUserData(TAB_PREVIEW_DEFINITION)
       }
-    if (file == null) {
+
+    if (
+      uiCheckInstancePreviewDef == null ||
+        runReadAction { uiCheckInstancePreviewDef.element == null }
+    ) {
       e.presentation.isVisible = false
       return
     }
-    val editors = FileEditorManager.getInstance(project).getAllEditors(file)
+    val editors =
+      FileEditorManager.getInstance(project).getAllEditors(uiCheckInstancePreviewDef.virtualFile)
     val isUiCheckRunning =
       editors
         .mapNotNull { it.getPreviewManager<ComposePreviewManager>() }
@@ -62,15 +70,18 @@ class ReRunUiCheckModeAction : AnAction() {
 
   override fun actionPerformed(e: AnActionEvent) {
     val project = e.project ?: return
-    val instanceId =
-      (e.getData(DESIGNER_COMMON_ISSUE_PANEL)?.issueProvider as? DesignToolsIssueProvider)
-        ?.instanceId ?: return
-    val file =
+
+    // Gets the preview pointer associated with this UI Check
+    val uiCheckInstancePreviewDef =
       ProblemsView.getToolWindow(project)
         ?.contentManager
         ?.selectedContent
-        ?.getUserData(TAB_VIRTUAL_FILE) ?: return
-    val editors = FileEditorManager.getInstance(project).openFile(file, true, true)
+        ?.getUserData(TAB_PREVIEW_DEFINITION) ?: return
+
+    // Selects or reopens the file containing the preview
+    val editors =
+      FileEditorManager.getInstance(project)
+        .openFile(uiCheckInstancePreviewDef.virtualFile, true, true)
     val relevantEditor =
       editors.filterIsInstance<SplitEditor<*>>().firstOrNull {
         it.getPreviewManager<ComposePreviewManager>() != null
@@ -78,14 +89,27 @@ class ReRunUiCheckModeAction : AnAction() {
     if (relevantEditor.isTextMode()) {
       relevantEditor.selectSplitMode(false)
     }
-    val manager = relevantEditor.getPreviewManager<ComposePreviewManager>() ?: return
-    AndroidCoroutineScope(manager).launch {
-      manager.allPreviewElementsInFileFlow.collectLatest { flow ->
-        flow
-          .asCollection()
-          .firstOrNull { it.instanceId == instanceId }
-          ?.let { manager.setMode(PreviewMode.UiCheck(it)) }
-      }
+
+    val composeManager = relevantEditor.getPreviewManager<ComposePreviewManager>() ?: return
+    val flowManager =
+      relevantEditor.getDesignSurface()?.getData(PreviewFlowManager.KEY.name)
+        as? PreviewFlowManager<*> ?: return
+    AndroidCoroutineScope(composeManager).launch {
+      // Waits for the correct preview to be recreated, and starts UI Check on it
+      val previewElements =
+        flowManager.allPreviewElementsFlow.firstOrNull { flow ->
+          flow.asCollection().any {
+            (it as? ComposePreviewElementInstance)?.previewElementDefinition ==
+              uiCheckInstancePreviewDef
+          }
+        }
+      previewElements
+        ?.asCollection()
+        ?.firstOrNull {
+          (it as? ComposePreviewElementInstance)?.previewElementDefinition ==
+            uiCheckInstancePreviewDef
+        }
+        ?.let { composeManager.setMode(PreviewMode.UiCheck(it)) }
     }
   }
 

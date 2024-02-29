@@ -42,6 +42,8 @@ internal constructor(
   internal val expandedStorage: ExpandedStorage,
   internal val cpuCoreCount: Int?,
   internal val graphicAcceleration: GpuMode,
+  internal val simulatedRam: StorageCapacity,
+  internal val vmHeapSize: StorageCapacity,
 )
 
 internal data class Custom internal constructor(internal val value: StorageCapacity) :
@@ -58,6 +60,10 @@ internal data class ExistingImage internal constructor(private val value: Path) 
   }
 
   override fun toString() = value.toString()
+}
+
+internal object None : ExpandedStorage() {
+  override fun toString() = ""
 }
 
 internal sealed class ExpandedStorage

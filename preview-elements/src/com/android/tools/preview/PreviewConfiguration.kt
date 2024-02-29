@@ -15,6 +15,7 @@
  */
 package com.android.tools.preview
 
+import com.android.annotations.TestOnly
 import com.android.ide.common.resources.Locale
 import com.android.resources.Density
 import com.android.sdklib.AndroidDpCoordinate
@@ -25,7 +26,6 @@ import com.android.tools.configurations.Wallpaper
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.preview.config.findOrParseFromDefinition
 import com.android.tools.sdk.CompatibilityRenderTarget
-import org.jetbrains.annotations.TestOnly
 import java.awt.Dimension
 import java.awt.image.BufferedImage
 import java.util.function.Consumer
@@ -43,7 +43,7 @@ private const val NO_WALLPAPER_SELECTED = -1
 /** Empty device spec when the user has not specified any. */
 private const val NO_DEVICE_SPEC = ""
 
-interface ConfigurablePreviewElement: PreviewElement {
+interface ConfigurablePreviewElement<T>: PreviewElement<T> {
   /** Preview element configuration that affects how LayoutLib resolves the resources */
   val configuration: PreviewConfiguration
 }
@@ -101,7 +101,7 @@ internal constructor(
 }
 
 /** Applies the [ConfigurablePreviewElement] settings to the given [renderConfiguration]. */
-fun ConfigurablePreviewElement.applyTo(renderConfiguration: Configuration, defaultDeviceProvider: (Configuration) -> Device? = { null }) {
+fun ConfigurablePreviewElement<*>.applyTo(renderConfiguration: Configuration, defaultDeviceProvider: (Configuration) -> Device? = { null }) {
   configuration.applyTo(
     renderConfiguration,
     { it.settings.highestApiTarget },
@@ -116,7 +116,7 @@ fun ConfigurablePreviewElement.applyTo(renderConfiguration: Configuration, defau
  * dimensions as a [Pair] as long as the device frame is disabled (i.e. `showDecorations` is false).
  */
 @AndroidDpCoordinate
-private fun ConfigurablePreviewElement.getCustomDeviceSize(): Dimension? =
+private fun ConfigurablePreviewElement<*>.getCustomDeviceSize(): Dimension? =
   if (!displaySettings.showDecoration && configuration.width != -1 && configuration.height != -1) {
     Dimension(configuration.width, configuration.height)
   } else null
@@ -208,7 +208,7 @@ fun PreviewConfiguration.applyConfigurationForTest(
 }
 
 @TestOnly
-fun ConfigurablePreviewElement.applyConfigurationForTest(
+fun ConfigurablePreviewElement<*>.applyConfigurationForTest(
   renderConfiguration: Configuration,
   highestApiTarget: (Configuration) -> IAndroidTarget?,
   devicesProvider: (Configuration) -> Collection<Device>,

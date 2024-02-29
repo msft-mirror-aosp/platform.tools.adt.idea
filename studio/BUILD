@@ -189,7 +189,6 @@ studio_plugin(
             "//tools/adt/idea/app-inspection/inspectors/database:app-inspection.inspectors.database",
             "//tools/adt/idea/debuggers:intellij.android.debuggers",
             "//tools/adt/idea/deploy:intellij.android.deploy",
-            "//tools/adt/idea/device-file-explorer-toolwindow:intellij.android.device-file-explorer-toolwindow",
             "//tools/adt/idea/device-explorer:intellij.android.device-explorer",
             "//tools/adt/idea/device-explorer-files:intellij.android.device-explorer-files",
             "//tools/adt/idea/device-explorer-monitor:intellij.android.device-explorer-monitor",
@@ -474,7 +473,7 @@ studio_plugin(
 studio_plugin(
     name = "androidx.compose.plugins.idea",
     directory = "android-compose-ide-plugin",
-    libs = ["//tools/adt/idea/compose-ide-plugin:compiler-hosted"],
+    libs = ["//tools/adt/idea/compose-ide-plugin:compose-compiler"],
     modules = {"android-compose-ide-plugin.jar": ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"]},
     visibility = ["//visibility:public"],
     deps = [

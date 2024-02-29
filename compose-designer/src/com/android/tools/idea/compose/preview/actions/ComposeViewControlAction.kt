@@ -18,6 +18,7 @@ package com.android.tools.idea.compose.preview.actions
 import com.android.tools.adtui.actions.ZoomActualAction
 import com.android.tools.adtui.actions.ZoomInAction
 import com.android.tools.adtui.actions.ZoomOutAction
+import com.android.tools.idea.common.layout.SurfaceLayoutOption
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.isPreviewFilterEnabled
 import com.android.tools.idea.compose.preview.isPreviewRefreshing
@@ -25,17 +26,13 @@ import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.SwitchSurfaceLayoutManagerAction
 import com.android.tools.idea.preview.actions.ViewControlAction
-import com.android.tools.idea.preview.analytics.PreviewCanvasTracker
-import com.android.tools.idea.preview.modes.PreviewModeManager
-import com.android.tools.idea.preview.modes.SurfaceLayoutManagerOption
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 
 class ComposeViewControlAction(
-  layoutManagers: List<SurfaceLayoutManagerOption>,
+  layoutOptions: List<SurfaceLayoutOption>,
   isSurfaceLayoutActionEnabled: (AnActionEvent) -> Boolean = { true },
-  updateMode: (SurfaceLayoutManagerOption, PreviewModeManager) -> Unit,
   additionalActionProvider: AnAction? = null,
 ) :
   ViewControlAction(
@@ -52,16 +49,10 @@ class ComposeViewControlAction(
       addSeparator()
     }
     add(
-      SwitchSurfaceLayoutManagerAction(layoutManagers, isSurfaceLayoutActionEnabled) {
-          selectedOption,
-          previewManager ->
-          PreviewCanvasTracker.getInstance().logSwitchLayout(selectedOption.layoutManager)
-          updateMode(selectedOption, previewManager)
-        }
-        .apply {
-          isPopup = false
-          templatePresentation.isMultiChoice = false
-        }
+      SwitchSurfaceLayoutManagerAction(layoutOptions, isSurfaceLayoutActionEnabled).apply {
+        isPopup = false
+        templatePresentation.isMultiChoice = false
+      }
     )
     if (StudioFlags.COMPOSE_ZOOM_CONTROLS_DROPDOWN.get()) {
       addSeparator()

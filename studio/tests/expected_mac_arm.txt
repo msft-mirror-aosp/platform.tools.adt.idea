@@ -666,7 +666,7 @@ Android Studio Preview.app/Contents/plugins/Kotlin/lib/kotlinc.scripting-compile
 Android Studio Preview.app/Contents/plugins/Kotlin/lib/kotlinx-collections-immutable.jar
 Android Studio Preview.app/Contents/plugins/android-apk/lib/android-apk.jar
 Android Studio Preview.app/Contents/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.jar
-Android Studio Preview.app/Contents/plugins/android-compose-ide-plugin/lib/compiler-hosted.jar
+Android Studio Preview.app/Contents/plugins/android-compose-ide-plugin/lib/compose-compiler.jar
 Android Studio Preview.app/Contents/plugins/android-ndk/lib/android-ndk.jar
 Android Studio Preview.app/Contents/plugins/android-ndk/lib/org.eclipse.cdt.core_6.8.1.201907021957.jar
 Android Studio Preview.app/Contents/plugins/android-ndk/lib/org.eclipse.equinox.common_3.10.500.v20190815-1535.jar
@@ -2113,6 +2113,12 @@ Android Studio Preview.app/Contents/plugins/android/resources/app-inspection/sql
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_1024/back.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_1024/fore.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_1024/layout
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_landscape/back.png
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_landscape/layout
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_large_portrait/back.png
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_large_portrait/layout
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_ultrawide_cutout/back.png
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_ultrawide_cutout/layout
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/device-art.xml
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/galaxy_nexus/land_back.webp
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/galaxy_nexus/land_fore.webp
@@ -2716,6 +2722,7 @@ Android Studio Preview.app/Contents/plugins/directaccess/resources/reverse_daemo
 Android Studio Preview.app/Contents/plugins/editorconfig/lib/editorconfig.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/firebase-testing.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/gmd-code-completion.jar
+Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-cloudbilling-v1-rev20240119-2.0.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-monitoring-v3-rev20230806-2.0.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 Android Studio Preview.app/Contents/plugins/firebase-testing/lib/google-api-services-testing-v1-revsnapshot-1.25.0.jar

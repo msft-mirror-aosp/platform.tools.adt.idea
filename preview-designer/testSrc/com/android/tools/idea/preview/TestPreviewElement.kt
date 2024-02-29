@@ -26,7 +26,7 @@ internal class TestPreviewElement(
   showBackground: Boolean = false,
   backgroundColor: String? = null,
   displayPositioning: DisplayPositioning = DisplayPositioning.NORMAL,
-) : PreviewElement {
+) : PreviewElement<Unit> {
   override val hasAnimations = false
 
   override val displaySettings =
@@ -38,6 +38,6 @@ internal class TestPreviewElement(
       backgroundColor,
       displayPositioning,
     )
-  override val previewElementDefinitionPsi = null
-  override val previewBodyPsi = null
+  override val previewElementDefinition = null
+  override val previewBody = null
 }

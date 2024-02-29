@@ -168,20 +168,20 @@ class DeviceUiSettingsControllerTest {
     waitForCondition(10.seconds) { agent.screenDensity == 672 }
   }
 
-  private fun createUiSettingsController(): DeviceUiSettingsController =
-    DeviceUiSettingsController(createDeviceController(device), project, model)
-
-  private fun createDeviceController(device: FakeDevice): DeviceController {
+  private fun createUiSettingsController(): DeviceUiSettingsController {
     val view = createDeviceView(device)
     view.setBounds(0, 0, 600, 800)
-    waitForFrame(view)
-    return view.deviceController!!
+    waitForCondition(10.seconds) { view.isConnected }
+    return DeviceUiSettingsController(view.deviceController!!, view.deviceClient.deviceConfig, project, model)
   }
 
   private fun createDeviceView(device: FakeDevice): DeviceView {
     val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
-    return DeviceView(deviceClient, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, project)
+    val view = DeviceView(deviceClient, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, project)
+    view.size = Dimension(600, 800)
+    waitForFrame(view)
+    return view
   }
 
   private fun DeviceUiSettingsController.initAndWait() = runBlocking {

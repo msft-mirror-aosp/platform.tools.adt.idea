@@ -24,15 +24,17 @@ import com.android.tools.idea.studiobot.prompts.MalformedPromptException
 import com.android.tools.idea.studiobot.prompts.SafePrompt
 import com.android.tools.idea.studiobot.prompts.buildPrompt
 import com.android.tools.idea.studiobot.prompts.impl.SafePromptImpl
+import com.google.common.truth.Truth.assertThat
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileTypes.PlainTextLanguage
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.replaceService
+import kotlin.test.assertFailsWith
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import org.mockito.Mockito.spy
 
 @RunWith(JUnit4::class)
 class SafePromptBuilderTest : BasePlatformTestCase() {
@@ -48,139 +50,271 @@ class SafePromptBuilderTest : BasePlatformTestCase() {
 
   @Test
   fun buildPrompt_completePrompt() {
-    val prompt = buildPrompt(project) {
-      systemMessage {
-        text("You are Studio Bot, an AI assistant for Android Studio.", emptyList())
+    val prompt =
+      buildPrompt(project) {
+        systemMessage {
+          text("You are Studio Bot, an AI assistant for Android Studio.", emptyList())
+        }
+        userMessage { text("Hello Studio Bot!", emptyList()) }
+        modelMessage { text("Hello! How are you?", emptyList()) }
+        userMessage { text("I am doing well, how about you?", emptyList()) }
       }
-      userMessage {
-        text("Hello Studio Bot!", emptyList())
-      }
-      modelMessage {
-        text("Hello! How are you?", emptyList())
-      }
-      userMessage {
-        text("I am doing well, how about you?", emptyList())
-      }
-    }
-    assertEquals(
-      SafePromptImpl(
-        listOf(
-          SafePrompt.SystemMessage(
-            listOf(
-              SafePrompt.Message.TextChunk("You are Studio Bot, an AI assistant for Android Studio.", emptyList())
-            )
-          ),
-          SafePrompt.UserMessage(
-            listOf(
-              SafePrompt.Message.TextChunk("Hello Studio Bot!", emptyList())
-            )
-          ),
-          SafePrompt.ModelMessage(
-            listOf(
-              SafePrompt.Message.TextChunk("Hello! How are you?", emptyList())
-            )
-          ),
-          SafePrompt.UserMessage(
-            listOf(
-              SafePrompt.Message.TextChunk("I am doing well, how about you?", emptyList())
-            )
+    assertThat(prompt)
+      .isEqualTo(
+        SafePromptImpl(
+          listOf(
+            SafePrompt.SystemMessage(
+              listOf(
+                SafePrompt.Message.TextChunk(
+                  "You are Studio Bot, an AI assistant for Android Studio.",
+                  emptyList(),
+                )
+              )
+            ),
+            SafePrompt.UserMessage(
+              listOf(SafePrompt.Message.TextChunk("Hello Studio Bot!", emptyList()))
+            ),
+            SafePrompt.ModelMessage(
+              listOf(SafePrompt.Message.TextChunk("Hello! How are you?", emptyList()))
+            ),
+            SafePrompt.UserMessage(
+              listOf(SafePrompt.Message.TextChunk("I am doing well, how about you?", emptyList()))
+            ),
           )
         )
-      ),
-      prompt
-    )
+      )
   }
 
   @Test
   fun buildPrompt_promptWithCode() {
-    val prompt = buildPrompt(project) {
-      userMessage {
-        text("Write some Kotlin code.", emptyList())
+    val prompt =
+      buildPrompt(project) {
+        userMessage { text("Write some Kotlin code.", emptyList()) }
+        modelMessage {
+          code(
+            """
+            fun f(): Int {
+              return 5
+            }
+            """
+              .trimIndent(),
+            KotlinLanguage.INSTANCE,
+            emptyList(),
+          )
+        }
+        userMessage {
+          text("Does this Java code do the same thing?", emptyList())
+          code(
+            """
+            int f() {
+              return 5;
+            }
+            """
+              .trimIndent(),
+            JavaLanguage.INSTANCE,
+            emptyList(),
+          )
+        }
       }
-      modelMessage {
-        code(
-          """
-          fun f(): Int {
-            return 5
-          }
-        """.trimIndent(),
-          KotlinLanguage.INSTANCE,
-          emptyList()
-        )
-      }
-      userMessage {
-        text("Does this Java code do the same thing?", emptyList())
-        code(
-          """
-          int f() {
-            return 5;
-          }
-        """.trimIndent(),
-          JavaLanguage.INSTANCE,
-          emptyList()
-        )
-      }
-    }
-    assertEquals(
-      SafePromptImpl(
-        listOf(
-          SafePrompt.UserMessage(
-            listOf(
-              SafePrompt.Message.TextChunk(
-                "Write some Kotlin code.",
-                emptyList()
-              )
-            )
-          ),
-          SafePrompt.ModelMessage(
-            listOf(
-              SafePrompt.Message.CodeChunk(
-                """
+    assertThat(prompt)
+      .isEqualTo(
+        SafePromptImpl(
+          listOf(
+            SafePrompt.UserMessage(
+              listOf(SafePrompt.Message.TextChunk("Write some Kotlin code.", emptyList()))
+            ),
+            SafePrompt.ModelMessage(
+              listOf(
+                SafePrompt.Message.CodeChunk(
+                  """
                   fun f(): Int {
                     return 5
                   }
-                """.trimIndent(),
-                KotlinLanguage.INSTANCE,
-                emptyList()
+                  """
+                    .trimIndent(),
+                  KotlinLanguage.INSTANCE,
+                  emptyList(),
+                )
               )
-            )
-          ),
-          SafePrompt.UserMessage(
-            listOf(
-              SafePrompt.Message.TextChunk(
-                "Does this Java code do the same thing?", emptyList()
-              ),
-              SafePrompt.Message.CodeChunk(
-                """
+            ),
+            SafePrompt.UserMessage(
+              listOf(
+                SafePrompt.Message.TextChunk("Does this Java code do the same thing?", emptyList()),
+                SafePrompt.Message.CodeChunk(
+                  """
                   int f() {
                     return 5;
                   }
-                """.trimIndent(),
-                JavaLanguage.INSTANCE,
-                emptyList()
+                  """
+                    .trimIndent(),
+                  JavaLanguage.INSTANCE,
+                  emptyList(),
+                ),
+              )
+            ),
+          )
+        )
+      )
+  }
+
+  @Test
+  fun buildPrompt_fileContents_psiFile() {
+    val contents = "These are the contents of the file!"
+    val path = "my/great/file.txt"
+    val psiFile = myFixture.addFileToProject(path, contents)
+    val virtualFile = psiFile.virtualFile
+    val filesUsed = listOf(virtualFile)
+
+    val prompt = buildPrompt(project) { userMessage { fileContents(psiFile) } }
+
+    assertThat(prompt)
+      .isEqualTo(
+        SafePromptImpl(
+          listOf(
+            SafePrompt.UserMessage(
+              listOf(
+                SafePrompt.Message.TextChunk(
+                  "The contents of the file \"/src/$path\" are:",
+                  filesUsed,
+                ),
+                SafePrompt.Message.CodeChunk(contents, PlainTextLanguage.INSTANCE, filesUsed),
               )
             )
           )
         )
-      ),
-      prompt
-    )
+      )
+  }
+
+  @Test
+  fun buildPrompt_fileContents_virtualFile() {
+    val contents = "These are the contents of the file!"
+    val path = "my/great/file.txt"
+    val virtualFile = myFixture.addFileToProject(path, contents).virtualFile
+    val filesUsed = listOf(virtualFile)
+
+    val prompt = buildPrompt(project) { userMessage { fileContents(virtualFile) } }
+
+    assertThat(prompt)
+      .isEqualTo(
+        SafePromptImpl(
+          listOf(
+            SafePrompt.UserMessage(
+              listOf(
+                SafePrompt.Message.TextChunk(
+                  "The contents of the file \"/src/$path\" are:",
+                  filesUsed,
+                ),
+                SafePrompt.Message.CodeChunk(contents, PlainTextLanguage.INSTANCE, filesUsed),
+              )
+            )
+          )
+        )
+      )
+  }
+
+  @Test
+  fun buildPrompt_openFileContents_selection() {
+    val contents = "These are the contents of the file!"
+    val path = "my/great/file.txt"
+    val selectionStart = 3
+    val selectionEnd = 12
+    val virtualFile = myFixture.addFileToProject(path, contents).virtualFile
+    val filesUsed = listOf(virtualFile)
+    ApplicationManager.getApplication().invokeAndWait {
+      myFixture.openFileInEditor(virtualFile)
+      myFixture.editor.selectionModel.setSelection(selectionStart, selectionEnd)
+    }
+
+    val prompt =
+      buildPrompt(project) { userMessage { withReadAction { openFileContents(myFixture.editor) } } }
+
+    assertThat(prompt)
+      .isEqualTo(
+        SafePromptImpl(
+          listOf(
+            SafePrompt.UserMessage(
+              listOf(
+                SafePrompt.Message.TextChunk("The file \"/src/$path\" is open.", filesUsed),
+                SafePrompt.Message.TextChunk(
+                  "The contents before the selected text are:",
+                  filesUsed,
+                ),
+                SafePrompt.Message.CodeChunk(
+                  contents.take(selectionStart),
+                  PlainTextLanguage.INSTANCE,
+                  filesUsed,
+                ),
+                SafePrompt.Message.TextChunk("The selected text is:", filesUsed),
+                SafePrompt.Message.CodeChunk(
+                  contents.subSequence(selectionStart, selectionEnd).toString(),
+                  PlainTextLanguage.INSTANCE,
+                  filesUsed,
+                ),
+                SafePrompt.Message.TextChunk(
+                  "The contents after the selected text are:",
+                  filesUsed,
+                ),
+                SafePrompt.Message.CodeChunk(
+                  contents.drop(selectionEnd),
+                  PlainTextLanguage.INSTANCE,
+                  filesUsed,
+                ),
+              )
+            )
+          )
+        )
+      )
+  }
+
+  @Test
+  fun buildPrompt_openFileContents_noSelection() {
+    val contents = "These are the contents of the file!"
+    val path = "my/great/file.txt"
+    val caretOffset = 5
+    val virtualFile = myFixture.addFileToProject(path, contents).virtualFile
+    val filesUsed = listOf(virtualFile)
+    ApplicationManager.getApplication().invokeAndWait {
+      myFixture.openFileInEditor(virtualFile)
+      myFixture.editor.caretModel.moveToOffset(caretOffset)
+    }
+
+    val prompt =
+      buildPrompt(project) { userMessage { withReadAction { openFileContents(myFixture.editor) } } }
+
+    assertThat(prompt)
+      .isEqualTo(
+        SafePromptImpl(
+          listOf(
+            SafePrompt.UserMessage(
+              listOf(
+                SafePrompt.Message.TextChunk("The file \"/src/$path\" is open.", filesUsed),
+                SafePrompt.Message.TextChunk("The contents before the caret are:", filesUsed),
+                SafePrompt.Message.CodeChunk(
+                  contents.take(caretOffset),
+                  PlainTextLanguage.INSTANCE,
+                  filesUsed,
+                ),
+                SafePrompt.Message.TextChunk("The contents after the caret are:", filesUsed),
+                SafePrompt.Message.CodeChunk(
+                  contents.drop(caretOffset),
+                  PlainTextLanguage.INSTANCE,
+                  filesUsed,
+                ),
+              )
+            )
+          )
+        )
+      )
   }
 
   @Test
   fun buildPrompt_noMessagesThrowsError() {
-    assertThrows(
-      MalformedPromptException::class.java
-    ) {
-      buildPrompt(project) { }
-    }
+    assertFailsWith<MalformedPromptException> { buildPrompt(project) {} }
   }
 
   @Test
   fun buildPrompt_wrongLastMessageThrowsError() {
-    assertThrows(
-      MalformedPromptException::class.java
-    ) {
+    assertFailsWith<MalformedPromptException> {
       buildPrompt(project) {
         systemMessage { text("preamble", emptyList()) }
         userMessage { text("user", emptyList()) }
@@ -192,9 +326,7 @@ class SafePromptBuilderTest : BasePlatformTestCase() {
 
   @Test
   fun buildPrompt_wrongSystemMessageThrowsError() {
-    assertThrows(
-      MalformedPromptException::class.java
-    ) {
+    assertFailsWith<MalformedPromptException> {
       buildPrompt(project) {
         userMessage { text("user", emptyList()) }
         modelMessage { text("model", emptyList()) }
@@ -207,9 +339,7 @@ class SafePromptBuilderTest : BasePlatformTestCase() {
 
   @Test
   fun buildPrompt_twoSystemMessagesThrowsError() {
-    assertThrows(
-      MalformedPromptException::class.java
-    ) {
+    assertFailsWith<MalformedPromptException> {
       buildPrompt(project) {
         // Only one system message is allowed
         systemMessage { text("preamble", emptyList()) }
@@ -234,9 +364,7 @@ class SafePromptBuilderTest : BasePlatformTestCase() {
     }
 
     whenever(mockAiExcludeService.isFileExcluded(project, file)).thenReturn(true)
-    assertThrows(
-      AiExcludeException::class.java
-    ) {
+    assertFailsWith<AiExcludeException> {
       buildPrompt(project) {
         systemMessage { text("preamble", emptyList()) }
         userMessage { text("user", emptyList()) }
@@ -245,9 +373,7 @@ class SafePromptBuilderTest : BasePlatformTestCase() {
       }
     }
 
-    assertThrows(
-      AiExcludeException::class.java
-    ) {
+    assertFailsWith<AiExcludeException> {
       buildPrompt(project) {
         systemMessage { text("preamble", emptyList()) }
         userMessage { text("user", emptyList()) }

@@ -189,12 +189,6 @@ internal class EmulatorToolWindowPanel(
     displayPanels[primaryDisplayPanel.displayId] = primaryDisplayPanel
     val emulatorView = primaryDisplayPanel.displayView
     primaryDisplayView = emulatorView
-    mainToolbar.targetComponent = emulatorView
-    secondaryToolbar.targetComponent = emulatorView
-    emulatorView.addPropertyChangeListener(DISPLAY_MODE_PROPERTY) {
-      mainToolbar.updateActionsImmediately()
-      secondaryToolbar.updateActionsImmediately()
-    }
     installFileDropHandler(this, id.serialNumber, emulatorView, project)
     KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", focusOwnerListener)
     emulatorView.addDisplayConfigurationListener(displayConfigurator)
@@ -220,6 +214,13 @@ internal class EmulatorToolWindowPanel(
         // Corrupted multi-display state. Start with a single display.
         centerPanel.addToCenter(primaryDisplayPanel)
       }
+    }
+
+    mainToolbar.targetComponent = emulatorView
+    secondaryToolbar.targetComponent = emulatorView
+    emulatorView.addPropertyChangeListener(DISPLAY_MODE_PROPERTY) {
+      mainToolbar.updateActionsImmediately()
+      secondaryToolbar.updateActionsImmediately()
     }
 
     val uiState = savedUiState as EmulatorUiState? ?: EmulatorUiState()
@@ -282,6 +283,10 @@ internal class EmulatorToolWindowPanel(
     clipboardSynchronizer = null
     lastUiState = uiState
     return uiState
+  }
+
+  fun updateMainToolbar() {
+    mainToolbar.updateActionsImmediately()
   }
 
   override fun getData(dataId: String): Any? {

@@ -474,20 +474,6 @@
     <option name="resources" path="ActionManager" hit="Moves classes and their associated resources to another module" />
     <option name="their" path="ActionManager" hit="Moves classes and their associated resources to another module" />
     <option name="to" path="ActionManager" hit="Moves classes and their associated resources to another module" />
-    <option name="card" path="ActionManager" hit="Navigate to SD card folder" />
-    <option name="folder" path="ActionManager" hit="Navigate to SD card folder" />
-    <option name="navigate" path="ActionManager" hit="Navigate to SD card folder" />
-    <option name="sd" path="ActionManager" hit="Navigate to SD card folder" />
-    <option name="to" path="ActionManager" hit="Navigate to SD card folder" />
-    <option name="database" path="ActionManager" hit="Navigate to database folder" />
-    <option name="folder" path="ActionManager" hit="Navigate to database folder" />
-    <option name="navigate" path="ActionManager" hit="Navigate to database folder" />
-    <option name="to" path="ActionManager" hit="Navigate to database folder" />
-    <option name="folder" path="ActionManager" hit="Navigate to shared preferences folder" />
-    <option name="navigate" path="ActionManager" hit="Navigate to shared preferences folder" />
-    <option name="preferences" path="ActionManager" hit="Navigate to shared preferences folder" />
-    <option name="shared" path="ActionManager" hit="Navigate to shared preferences folder" />
-    <option name="to" path="ActionManager" hit="Navigate to shared preferences folder" />
     <option name="module" path="ActionManager" hit="New Module…" />
     <option name="new" path="ActionManager" hit="New Module…" />
     <option name="new" path="ActionManager" hit="New Project" />
@@ -524,10 +510,6 @@
     <option name="past" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
     <option name="results" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
     <option name="s" path="ActionManager" hit="Open Build Analyzer on a past build's results" />
-    <option name="device" path="ActionManager" hit="Open Device Explorer help" />
-    <option name="explorer" path="ActionManager" hit="Open Device Explorer help" />
-    <option name="help" path="ActionManager" hit="Open Device Explorer help" />
-    <option name="open" path="ActionManager" hit="Open Device Explorer help" />
     <option name="editor" path="ActionManager" hit="Open Translations Editor" />
     <option name="open" path="ActionManager" hit="Open Translations Editor" />
     <option name="translations" path="ActionManager" hit="Open Translations Editor" />
@@ -1552,8 +1534,6 @@
     <option name="sync" hit="Configure all Gradle tasks during Gradle Sync (this can make Gradle Sync slower)" />
     <option name="tasks" hit="Configure all Gradle tasks during Gradle Sync (this can make Gradle Sync slower)" />
     <option name="this" hit="Configure all Gradle tasks during Gradle Sync (this can make Gradle Sync slower)" />
-    <option name="default" hit="Default profile" />
-    <option name="profile" hit="Default profile" />
     <option name="application" hit="Derive runtime classpaths for libraries from application modules" />
     <option name="classpaths" hit="Derive runtime classpaths for libraries from application modules" />
     <option name="derive" hit="Derive runtime classpaths for libraries from application modules" />
@@ -1581,13 +1561,6 @@
     <option name="only" hit="Optimize build for target device API level only" />
     <option name="optimize" hit="Optimize build for target device API level only" />
     <option name="target" hit="Optimize build for target device API level only" />
-    <option name="location" hit="Specified location" />
-    <option name="specified" hit="Specified location" />
-    <option name="gradle" hit="Trace Gradle import with profile:" />
-    <option name="import" hit="Trace Gradle import with profile:" />
-    <option name="profile" hit="Trace Gradle import with profile:" />
-    <option name="trace" hit="Trace Gradle import with profile:" />
-    <option name="with" hit="Trace Gradle import with profile:" />
   </configurable>
   <configurable id="experimental" configurable_name="Experimental">
     <option name="enable" hit="Enable @Preview picker" />

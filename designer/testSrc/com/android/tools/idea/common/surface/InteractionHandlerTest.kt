@@ -17,6 +17,7 @@ package com.android.tools.idea.common.surface
 
 import com.android.tools.idea.common.editor.ActionManager
 import com.android.tools.idea.common.fixtures.MouseEventBuilder
+import com.android.tools.idea.common.layout.LayoutManagerSwitcher
 import com.android.tools.idea.common.model.DnDTransferItem
 import com.android.tools.idea.common.model.ItemTransferable
 import com.android.tools.idea.common.model.NlComponent
@@ -132,6 +133,9 @@ private class Surface(
     Function { TestActionHandler(it) },
     ZoomControlsPolicy.AUTO_HIDE,
   ) {
+
+  override fun getLayoutManagerSwitcher(): LayoutManagerSwitcher? = null
+
   override fun getSelectionAsTransferable(): ItemTransferable {
     return ItemTransferable(DnDTransferItem(0, ImmutableList.of()))
   }

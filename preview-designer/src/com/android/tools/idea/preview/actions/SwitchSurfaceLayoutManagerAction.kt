@@ -18,12 +18,17 @@ package com.android.tools.idea.preview.actions
 import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.actions.ActionButtonWithToolTipDescription
+import com.android.tools.idea.common.layout.SurfaceLayoutOption
+import com.android.tools.idea.concurrency.asCollection
+import com.android.tools.idea.preview.analytics.PreviewCanvasTracker
+import com.android.tools.idea.preview.flow.PreviewFlowManager
+import com.android.tools.idea.preview.modes.GALLERY_LAYOUT_OPTION
+import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
-import com.android.tools.idea.preview.modes.SurfaceLayoutManagerOption
-import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.util.IconLoader
@@ -32,9 +37,8 @@ import com.intellij.util.ui.JBUI
 
 /** [DropDownAction] that allows switching the layout manager in the surface. */
 class SwitchSurfaceLayoutManagerAction(
-  layoutManagers: List<SurfaceLayoutManagerOption>,
+  layoutManagers: List<SurfaceLayoutOption>,
   private val isActionEnabled: (AnActionEvent) -> Boolean = { true },
-  private val updateMode: (SurfaceLayoutManagerOption, PreviewModeManager) -> Unit,
 ) : DropDownAction("Switch Layout", "Changes the layout of the preview elements.", null) {
 
   /**
@@ -47,25 +51,48 @@ class SwitchSurfaceLayoutManagerAction(
   private val enabledIcon = copyIcon(AllIcons.Debugger.RestoreLayout, null, true)
   private val disabledIcon = IconLoader.getDisabledIcon(AllIcons.Debugger.RestoreLayout)
 
-  inner class SetSurfaceLayoutManagerAction(private val option: SurfaceLayoutManagerOption) :
+  inner class SetSurfaceLayoutManagerAction(private val option: SurfaceLayoutOption) :
     ToggleAction(option.displayName) {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun setSelected(e: AnActionEvent, state: Boolean) {
       if (state) {
-        val previewManager = e.getData(PreviewModeManager.KEY) ?: return
-        updateMode(option, previewManager)
+        updateMode(e.dataContext)
       }
     }
 
     override fun isSelected(e: AnActionEvent): Boolean {
-      return (e.getData(DESIGN_SURFACE)?.sceneViewLayoutManager as? LayoutManagerSwitcher)
-        ?.isLayoutManagerSelected(option.layoutManager) ?: false
+      return e.getData(DESIGN_SURFACE)?.layoutManagerSwitcher?.currentLayout?.value == option
     }
 
     override fun update(e: AnActionEvent) {
       super.update(e)
       e.presentation.isEnabled = isActionEnabled(e)
+    }
+
+    private fun updateMode(dataContext: DataContext) {
+      PreviewCanvasTracker.getInstance().logSwitchLayout(option.layoutManager)
+      val manager = dataContext.findPreviewManager(PreviewModeManager.KEY) ?: return
+
+      if (option == GALLERY_LAYOUT_OPTION) {
+        // If turning on Gallery layout option - it should be set in preview.
+        // TODO (b/292057010) If group filtering is enabled - first element in this group
+        // should be selected.
+        val element =
+          dataContext
+            .findPreviewManager(PreviewFlowManager.KEY)
+            ?.allPreviewElementsFlow
+            ?.value
+            ?.asCollection()
+            ?.firstOrNull()
+        manager.setMode(PreviewMode.Gallery(element))
+      } else if (manager.mode.value is PreviewMode.Gallery) {
+        // When switching from Gallery mode to Default layout mode - need to set back
+        // Default preview mode.
+        manager.setMode(PreviewMode.Default(option))
+      } else {
+        manager.setMode(manager.mode.value.deriveWithLayout(option))
+      }
     }
   }
 

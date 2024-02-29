@@ -26,7 +26,6 @@ import com.android.tools.idea.wearwhs.WearWhsBundle.message
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.ui.VerticalFlowLayout
@@ -59,8 +58,10 @@ import javax.swing.text.AbstractDocument
 import javax.swing.text.AttributeSet
 import javax.swing.text.DocumentFilter
 
+private const val MAX_OVERRIDE_VALUE_LENGTH = 50
 private const val PADDING = 15
-private val floatPattern = Regex("([0-9]*[.])?[0-9]*")
+// Allows only one leading zero
+private val floatPattern = Regex("^(0|0?[1-9]\\d*)?(\\.[0-9]*)?\$")
 
 private val horizontalBorders = Borders.empty(0, PADDING)
 
@@ -91,8 +92,6 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       }
     }
   }
-
-  private fun getLogger() = Logger.getInstance(this::class.java)
 
   private fun createWhsVersionNotSupportedPanel(): JPanel =
     JPanel().apply {
@@ -128,6 +127,9 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       stateManager.preset.onEach {
         capabilitiesComboBox.selectedItem = it
       }.launchIn(uiScope)
+      stateManager.ongoingExercise.onEach {
+        capabilitiesComboBox.isEnabled = !it
+      }.launchIn(uiScope)
       val eventTriggersDropDownButton = CommonDropDownButton(
         CommonAction("", AllIcons.Actions.More).apply {
           toolTipText = message("wear.whs.panel.trigger.events")
@@ -151,7 +153,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       }, BorderLayout.WEST)
       add(JLabel(message("wear.whs.panel.test.data.inactive")).apply {
         icon = StudioIcons.Common.INFO
-        stateManager.getOngoingExercise().onEach {
+        stateManager.ongoingExercise.onEach {
           if (it) {
             this.text = message("wear.whs.panel.test.data.active")
             this.toolTipText = message("wear.whs.panel.press.apply.for.overrides")
@@ -164,9 +166,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       }, BorderLayout.EAST)
     }
     val content = JBScrollPane().apply {
-      stateManager.getCapabilitiesList().onEach { capabilities ->
-        setViewportView(createCenterPanel(capabilities))
-      }.launchIn(uiScope)
+      setViewportView(createCenterPanel(stateManager.capabilitiesList))
     }
     val footer = JPanel(FlowLayout(FlowLayout.TRAILING)).apply {
       border = horizontalBorders
@@ -229,7 +229,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
     val elementsToDisableDuringExercise = mutableListOf<JComponent>()
     // List of elements that should be visible only if there's an active exercise
     val elementsToDisplayDuringExercise = mutableListOf<JComponent>()
-    stateManager.getOngoingExercise().onEach {
+    stateManager.ongoingExercise.onEach {
       elementsToDisableDuringExercise.forEach { element ->
         element.isEnabled = !it
       }
@@ -283,7 +283,7 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
             add(JTextField().also { textField ->
               (textField.document as AbstractDocument).documentFilter = object : DocumentFilter() {
                 fun validate(string: String): Boolean {
-                  if (!floatPattern.matches(string)) {
+                  if (!floatPattern.matches(string) || string.length > MAX_OVERRIDE_VALUE_LENGTH) {
                     return false
                   }
                   workerScope.launch {

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -35,6 +36,10 @@ class NShotXmlToComposeConverterTest {
 
   private val studioBot =
     object : StudioBot.StubStudioBot() {
+      var contextAllowed = true
+
+      override fun isContextAllowed() = contextAllowed
+
       override fun model() =
         object : LlmService.StubLlmService() {
           override suspend fun sendQuery(
@@ -51,6 +56,11 @@ class NShotXmlToComposeConverterTest {
   private val projectRule = AndroidProjectRule.inMemory()
 
   @get:Rule val rule = RuleChain(projectRule, applicationServiceRule)
+
+  @Before
+  fun setUp() {
+    studioBot.contextAllowed = true
+  }
 
   @Test
   fun testNShotConversion() {
@@ -156,10 +166,47 @@ class NShotXmlToComposeConverterTest {
   }
 
   @Test
+  fun testDataTypesWithCustomViews() {
+    val nShotXmlToComposeConverter =
+      NShotXmlToComposeConverter.Builder(projectRule.project).useCustomView(true).build()
+    val query = nShotXmlToComposeConverter.getPrompt(simpleXmlLayout())
+    assertTrue(
+      query.messages
+        .flatMap { it.chunks }
+        .any { it.text.contains("Wrap any Custom Views in an AndroidView composable.") }
+    )
+  }
+
+  @Test
+  fun testDataTypesWithoutCustomViews() {
+    val nShotXmlToComposeConverter = NShotXmlToComposeConverter.Builder(projectRule.project).build()
+    val query = nShotXmlToComposeConverter.getPrompt(simpleXmlLayout())
+    // If not querying about a Custom View, we shouldn't include an additional prompt about it in
+    // the query.
+    assertTrue(
+      query.messages
+        .flatMap { it.chunks }
+        .none { it.text.contains("Wrap any Custom Views in an AndroidView composable") }
+    )
+  }
+
+  @Test
   fun testStudioBotResponse() {
     val nShotXmlToComposeConverter = NShotXmlToComposeConverter.Builder(projectRule.project).build()
     val response = runBlocking { nShotXmlToComposeConverter.convertToCompose(simpleXmlLayout()) }
     assertEquals(simpleKotlinCode(), response)
+  }
+
+  @Test
+  fun testResponseIfContextIsNotEnabled() {
+    studioBot.contextAllowed = false
+    val nShotXmlToComposeConverter = NShotXmlToComposeConverter.Builder(projectRule.project).build()
+    val response = runBlocking { nShotXmlToComposeConverter.convertToCompose(simpleXmlLayout()) }
+    assertEquals(
+      "Please follow the Studio Bot onboarding and enable context sharing if you want to use " +
+        "this feature.",
+      response,
+    )
   }
 
   // language=kotlin

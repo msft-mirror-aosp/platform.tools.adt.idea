@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.compose.preview.util
 
-import com.android.tools.preview.PreviewElement
+import com.android.tools.idea.preview.PsiPreviewElement
 import com.intellij.openapi.application.runReadAction
 import com.intellij.psi.PsiFile
 
@@ -23,7 +23,5 @@ import com.intellij.psi.PsiFile
  * [PsiFile] containing this PreviewElement. null if there is no source file, like in synthetic
  * preview elements.
  */
-val PreviewElement.containingFile: PsiFile?
-  get() = runReadAction {
-    previewBodyPsi?.containingFile ?: previewElementDefinitionPsi?.containingFile
-  }
+val PsiPreviewElement.containingFile: PsiFile?
+  get() = runReadAction { previewBody?.containingFile ?: previewElementDefinition?.containingFile }

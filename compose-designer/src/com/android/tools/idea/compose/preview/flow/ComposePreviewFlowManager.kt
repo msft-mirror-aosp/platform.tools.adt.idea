@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.preview.flow
 
 import com.android.tools.idea.compose.ComposePreviewElementsModel
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.UiCheckModeFilter
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.util.isFastPreviewAvailable
@@ -32,8 +33,8 @@ import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
 import com.android.tools.idea.editors.build.outOfDateKtFiles
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_INVALIDATE_ON_RESOURCE_CHANGE
 import com.android.tools.idea.modes.essentials.EssentialsMode
+import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.groups.PreviewGroup
-import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
@@ -68,17 +69,18 @@ import org.jetbrains.kotlin.idea.base.util.module
  * Class responsible for handling all the [StateFlow]s related to Compose Previews, e.g. managing
  * the render process and setting the current mode.
  */
-internal class ComposePreviewFlowManager : PreviewGroupManager {
+internal class ComposePreviewFlowManager : PreviewFlowManager<PsiComposePreviewElementInstance> {
 
   private val log = Logger.getInstance(ComposePreviewFlowManager::class.java)
 
   /**
-   * Flow containing all the [ComposePreviewElement]s available in the current file. This flow is
-   * only updated when this Compose Preview representation is active.
+   * Flow containing all the [ComposePreviewElementInstance]s available in the current file. This
+   * flow is only updated when this Compose Preview representation is active.
    */
-  val allPreviewElementsInFileFlow:
-    MutableStateFlow<FlowableCollection<ComposePreviewElementInstance>> =
-    MutableStateFlow(FlowableCollection.Uninitialized)
+  override val allPreviewElementsFlow =
+    MutableStateFlow<FlowableCollection<PsiComposePreviewElementInstance>>(
+      FlowableCollection.Uninitialized
+    )
 
   override val availableGroupsFlow: MutableStateFlow<Set<PreviewGroup.Named>> =
     MutableStateFlow(emptySet())
@@ -102,19 +104,20 @@ internal class ComposePreviewFlowManager : PreviewGroupManager {
 
   /**
    * Flow containing all the [ComposePreviewElementInstance]s available in the current file to be
-   * rendered. These are all the previews in [allPreviewElementsInFileFlow] filtered using
-   * [filterFlow]. This flow is only updated when this Compose Preview representation is active.
+   * rendered. These are all the previews in [allPreviewElementsFlow] filtered using [filterFlow].
+   * This flow is only updated when this Compose Preview representation is active.
    */
-  val filteredPreviewElementsInstancesFlow:
-    MutableStateFlow<FlowableCollection<ComposePreviewElementInstance>> =
-    MutableStateFlow(FlowableCollection.Uninitialized)
+  override val filteredPreviewElementsFlow =
+    MutableStateFlow<FlowableCollection<PsiComposePreviewElementInstance>>(
+      FlowableCollection.Uninitialized
+    )
 
   /**
    * Flow containing all the [ComposePreviewElementInstance]s that have completed rendering. These
-   * are all the [filteredPreviewElementsInstancesFlow] that have rendered.
+   * are all the [filteredPreviewElementsFlow] that have rendered.
    */
   private val renderedPreviewElementsInstancesFlow:
-    MutableStateFlow<FlowableCollection<ComposePreviewElementInstance>> =
+    MutableStateFlow<FlowableCollection<PsiComposePreviewElementInstance>> =
     MutableStateFlow(FlowableCollection.Uninitialized)
 
   /**
@@ -147,10 +150,10 @@ internal class ComposePreviewFlowManager : PreviewGroupManager {
    * Filter that can be applied to select a single instance. Setting this filter will trigger a
    * refresh.
    */
-  fun setSingleFilter(newValue: ComposePreviewElementInstance?) {
+  override fun setSingleFilter(previewElement: PsiComposePreviewElementInstance?) {
     filterFlow.value =
-      if (newValue != null) {
-        ComposePreviewElementsModel.Filter.Single(newValue)
+      if (previewElement != null) {
+        ComposePreviewElementsModel.Filter.Single(previewElement)
       } else {
         ComposePreviewElementsModel.Filter.Disabled
       }
@@ -175,14 +178,13 @@ internal class ComposePreviewFlowManager : PreviewGroupManager {
   /**
    * Updates the value of [renderedPreviewElementsInstancesFlow] with the given list of previews.
    */
-  fun updateRenderedPreviews(previewElements: List<ComposePreviewElementInstance>) {
+  fun updateRenderedPreviews(previewElements: List<PsiComposePreviewElementInstance>) {
     renderedPreviewElementsInstancesFlow.value = FlowableCollection.Present(previewElements)
   }
 
   /** Returns how many previews are available to be rendered in the current file. */
   fun previewsCount() =
-    (filteredPreviewElementsInstancesFlow.value as? FlowableCollection.Present<*>)?.collection?.size
-      ?: 0
+    (filteredPreviewElementsFlow.value as? FlowableCollection.Present<*>)?.collection?.size ?: 0
 
   /** Initializes the flows that will listen to different events and will call [requestRefresh]. */
   @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -213,8 +215,8 @@ internal class ComposePreviewFlowManager : PreviewGroupManager {
             }
           )
           .collectLatest {
-            val previousElements = allPreviewElementsInFileFlow.value
-            allPreviewElementsInFileFlow.value = it
+            val previousElements = allPreviewElementsFlow.value
+            allPreviewElementsFlow.value = it
             (previewModeManager.mode.value as? PreviewMode.Gallery)?.let { oldMode ->
               oldMode
                 .newMode(it.asCollection().toSet(), previousElements.asCollection().toSet())
@@ -226,12 +228,12 @@ internal class ComposePreviewFlowManager : PreviewGroupManager {
       launch(workerThread) {
         val filteredPreviewsFlow =
           ComposePreviewElementsModel.filteredPreviewElementsFlow(
-            allPreviewElementsInFileFlow,
+            allPreviewElementsFlow,
             filterFlow,
           )
 
         // Flow for Preview changes
-        combine(allPreviewElementsInFileFlow, filteredPreviewsFlow, uiCheckFilterFlow) {
+        combine(allPreviewElementsFlow, filteredPreviewsFlow, uiCheckFilterFlow) {
             allAvailablePreviews,
             filteredPreviews,
             uiCheckFilter ->
@@ -252,12 +254,12 @@ internal class ComposePreviewFlowManager : PreviewGroupManager {
             availableGroupsFlow.value = uiCheckFilter.filterGroups(allGroups)
             uiCheckFilter.filterPreviewInstances(filteredPreviews)
           }
-          .collectLatest { filteredPreviewElementsInstancesFlow.value = it }
+          .collectLatest { filteredPreviewElementsFlow.value = it }
       }
 
       // Trigger refreshes on available previews changes
       launch(workerThread) {
-        filteredPreviewElementsInstancesFlow
+        filteredPreviewElementsFlow
           .filter {
             return@filter when (it) {
               is FlowableCollection.Uninitialized -> false

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.adddevicedialog.localavd
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.Composable
@@ -22,6 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.internal.avd.AvdCamera
@@ -30,16 +33,22 @@ import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.sdklib.internal.avd.EmulatedProperties
 import com.android.sdklib.internal.avd.GpuMode
 import com.android.tools.idea.avdmanager.skincombobox.Skin
-import java.nio.file.FileSystem
-import java.nio.file.FileSystems
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.fileChooser.FileChooser
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.project.Project
+import java.awt.Component
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.math.max
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.toImmutableList
+import org.jetbrains.jewel.bridge.LocalComponent
+import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.GroupHeader
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
@@ -52,7 +61,6 @@ internal fun AdditionalSettingsPanel(
   state: AdditionalSettingsPanelState,
   onDeviceChange: (VirtualDevice) -> Unit,
   onImportButtonClick: () -> Unit,
-  fileSystem: FileSystem = FileSystems.getDefault(),
 ) {
   Row {
     Text("Device skin")
@@ -63,7 +71,7 @@ internal fun AdditionalSettingsPanel(
   CameraGroup(device, onDeviceChange)
   NetworkGroup(device, onDeviceChange)
   StartupGroup(device, onDeviceChange)
-  StorageGroup(device, state.storageGroupState, onDeviceChange, fileSystem)
+  StorageGroup(device, state.storageGroupState, onDeviceChange)
   EmulatedPerformanceGroup(device, onDeviceChange)
 }
 
@@ -169,7 +177,6 @@ private fun StorageGroup(
   device: VirtualDevice,
   storageGroupState: StorageGroupState,
   onDeviceChange: (VirtualDevice) -> Unit,
-  fileSystem: FileSystem,
 ) {
   GroupHeader("Storage")
 
@@ -185,17 +192,13 @@ private fun StorageGroup(
   Row {
     Text("Expanded storage")
 
-    val customRadioButtonSelected = storageGroupState.selectedRadioButton == RadioButton.CUSTOM
-
-    val existingImageRadioButtonSelected =
-      storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE
-
     val existingImageFieldState = storageGroupState.existingImageFieldState
+    val fileSystem = LocalFileSystem.current
 
     Column {
       RadioButtonRow(
-        "Custom",
-        customRadioButtonSelected,
+        RadioButton.CUSTOM,
+        storageGroupState.selectedRadioButton,
         onClick = {
           storageGroupState.selectedRadioButton = RadioButton.CUSTOM
 
@@ -206,17 +209,26 @@ private fun StorageGroup(
       )
 
       RadioButtonRow(
-        "Existing image",
-        existingImageRadioButtonSelected,
+        RadioButton.EXISTING_IMAGE,
+        storageGroupState.selectedRadioButton,
         onClick = {
           storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE
 
           if (existingImageFieldState.valid) {
-            val image: Path = fileSystem.getPath(existingImageFieldState.value)
+            val image = fileSystem.getPath(existingImageFieldState.value)
             onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
           }
         },
         Modifier.testTag("ExistingImageRadioButton"),
+      )
+
+      RadioButtonRow(
+        RadioButton.NONE,
+        storageGroupState.selectedRadioButton,
+        onClick = {
+          storageGroupState.selectedRadioButton = RadioButton.NONE
+          onDeviceChange(device.copy(expandedStorage = None))
+        },
       )
     }
 
@@ -228,35 +240,98 @@ private fun StorageGroup(
             storageGroupState.custom = it
             onDeviceChange(device.copy(expandedStorage = Custom(it.withMaxUnit())))
           },
-          customRadioButtonSelected,
+          storageGroupState.selectedRadioButton == RadioButton.CUSTOM,
         )
       }
 
-      if (existingImageRadioButtonSelected && !existingImageFieldState.valid) {
-        Text("The specified image must be a valid file")
-      }
+      ExistingImageField(
+        existingImageFieldState,
+        storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE,
+        onStateChange = {
+          storageGroupState.existingImageFieldState = it
 
-      TextField(
-        existingImageFieldState.value,
-        onValueChange = {
-          val image: Path = fileSystem.getPath(it)
-          val valid = Files.isRegularFile(image)
-
-          storageGroupState.existingImageFieldState = ExistingImageFieldState(it, valid)
-
-          if (valid) {
+          if (it.valid) {
+            val image = fileSystem.getPath(it.value)
             onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
           }
 
           // TODO Else image is not valid. Disable the Add button.
         },
-        Modifier.testTag("ExistingImageTextField"),
-        existingImageRadioButtonSelected,
       )
-
-      // TODO Add the file dialog button
     }
   }
+}
+
+@Composable
+private fun <E : Enum<E>> RadioButtonRow(
+  value: Enum<E>,
+  selectedValue: Enum<E>,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  RadioButtonRow(value.toString(), selectedValue == value, onClick, modifier)
+}
+
+@Composable
+private fun ExistingImageField(
+  state: ExistingImageFieldState,
+  enabled: Boolean,
+  onStateChange: (ExistingImageFieldState) -> Unit,
+) {
+  if (enabled && !state.valid) {
+    Text("The specified image must be a valid file")
+  }
+
+  val fileSystem = LocalFileSystem.current
+  @OptIn(ExperimentalJewelApi::class) val component = LocalComponent.current
+  val project = LocalProject.current
+
+  TextField(
+    state.value,
+    onValueChange = {
+      onStateChange(ExistingImageFieldState(it, Files.isRegularFile(fileSystem.getPath(it))))
+    },
+    Modifier.testTag("ExistingImageField"),
+    enabled,
+    trailingIcon = {
+      Icon(
+        "general/openDisk.svg",
+        null,
+        AllIcons::class.java,
+        Modifier.clickable(
+            enabled,
+            onClick = {
+              val image = chooseFile(component, project)
+
+              if (image != null) {
+                onStateChange(ExistingImageFieldState(image.toString(), true))
+              }
+            },
+          )
+          .pointerHoverIcon(PointerIcon.Default),
+      )
+    },
+  )
+}
+
+private fun chooseFile(parent: Component, project: Project?): Path? {
+  // TODO chooseFile logs an error because it does slow things on the EDT
+  val virtualFile =
+    FileChooser.chooseFile(
+      FileChooserDescriptorFactory.createSingleFileDescriptor(),
+      parent,
+      project,
+      null,
+    )
+
+  if (virtualFile == null) {
+    return null
+  }
+
+  val path = virtualFile.toNioPath()
+  assert(Files.isRegularFile(path))
+
+  return path
 }
 
 @Composable
@@ -305,6 +380,24 @@ private fun EmulatedPerformanceGroup(
       onSelectedItemChange = { onDeviceChange(device.copy(graphicAcceleration = it)) },
     )
   }
+
+  Row {
+    Text("Simulated RAM")
+
+    StorageCapacityField(
+      device.simulatedRam,
+      onValueChange = { onDeviceChange(device.copy(simulatedRam = it)) },
+    )
+  }
+
+  Row {
+    Text("VM heap size")
+
+    StorageCapacityField(
+      device.vmHeapSize,
+      onValueChange = { onDeviceChange(device.copy(vmHeapSize = it)) },
+    )
+  }
 }
 
 // TODO The third item depends on the system image
@@ -333,14 +426,22 @@ internal class StorageGroupState internal constructor(device: VirtualDevice) {
 }
 
 internal enum class RadioButton {
-  CUSTOM,
-  EXISTING_IMAGE;
+  CUSTOM {
+    override fun toString() = "Custom"
+  },
+  EXISTING_IMAGE {
+    override fun toString() = "Existing image"
+  },
+  NONE {
+    override fun toString() = "None"
+  };
 
   internal companion object {
     internal fun valueOf(storage: ExpandedStorage) =
       when (storage) {
         is Custom -> CUSTOM
         is ExistingImage -> EXISTING_IMAGE
+        is None -> NONE
       }
   }
 }

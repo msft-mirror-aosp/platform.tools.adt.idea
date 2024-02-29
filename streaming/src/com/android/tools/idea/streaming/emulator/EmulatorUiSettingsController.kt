@@ -18,13 +18,17 @@ package com.android.tools.idea.streaming.emulator
 import com.android.adblib.DeviceSelector
 import com.android.adblib.ShellCommandOutputElement
 import com.android.adblib.shellAsLines
+import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.res.AppLanguageInfo
 import com.android.tools.idea.res.AppLanguageService
+import com.android.tools.idea.stats.AnonymizerUtil
 import com.android.tools.idea.streaming.uisettings.data.AppLanguage
+import com.android.tools.idea.streaming.uisettings.stats.UiSettingsStats
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsController
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsModel
+import com.google.wireless.android.sdk.stats.DeviceInfo
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.flow.filterIsInstance
@@ -77,6 +81,22 @@ internal const val POPULATE_LANGUAGE_COMMAND =
   "echo $APP_LANGUAGE_DIVIDER; " +
   "cmd locale get-app-locales %s; "  // Parameter: applicationId
 
+internal const val FACTORY_RESET_COMMAND =
+  "cmd uimode night no; " +
+  "cmd locale set-app-locales %s --locales null; " +
+  "settings delete secure $ENABLED_ACCESSIBILITY_SERVICES; " +
+  "settings delete secure $ACCESSIBILITY_BUTTON_TARGETS; " +
+  "settings put system font_scale 1; " +
+  "wm density %d; "  // Parameters: applicationId, density
+
+private fun EmulatorConfiguration.toDeviceInfo(serialNumber: String): DeviceInfo {
+  return DeviceInfo.newBuilder()
+    .setDeviceType(DeviceInfo.DeviceType.LOCAL_EMULATOR)
+    .setAnonymizedSerialNumber(AnonymizerUtil.anonymizeUtf8(serialNumber))
+    .setBuildApiLevelFull(AndroidVersion(api, null).apiStringWithExtension)
+    .build()
+}
+
 /**
  * A controller for the UI settings for an Emulator,
  * that populates the model and reacts to changes to the model initiated by the UI.
@@ -85,10 +105,13 @@ internal class EmulatorUiSettingsController(
   private val project: Project,
   private val deviceSerialNumber: String,
   model: UiSettingsModel,
+  emulatorConfig: EmulatorConfiguration,
   parentDisposable: Disposable,
-) : UiSettingsController(model) {
+) : UiSettingsController(model, UiSettingsStats(emulatorConfig.toDeviceInfo(deviceSerialNumber))) {
   private val scope = AndroidCoroutineScope(parentDisposable)
   private val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.US))
+  private var readApplicationId = ""
+  private var readPhysicalDensity = 160
 
   override suspend fun populateModel() {
     val context = CommandContext(project)
@@ -144,6 +167,7 @@ internal class EmulatorUiSettingsController(
     val physicalDensity = readDensity(iterator, PHYSICAL_DENSITY_PATTERN) ?: 160
     val overrideDensity = readDensity(iterator, OVERRIDE_DENSITY_PATTERN) ?: physicalDensity
     model.screenDensity.setFromController(overrideDensity)
+    readPhysicalDensity = physicalDensity
   }
 
   private fun processAppLanguage(iterator: ListIterator<String>, info: Map<String, AppLanguageInfo>) {
@@ -157,6 +181,7 @@ internal class EmulatorUiSettingsController(
     val localeTag = match.groupValues[2].split(",").firstOrNull() ?: ""
     val localeConfig = info[applicationId]?.localeConfig ?: return
     addLanguage(applicationId, localeConfig, localeTag)
+    readApplicationId = applicationId
   }
 
   private fun processForegroundProcess(iterator: ListIterator<String>, context: CommandContext) {
@@ -220,6 +245,13 @@ internal class EmulatorUiSettingsController(
 
   override fun setScreenDensity(density: Int) {
     scope.launch { executeShellCommand("wm density %d".format(density)) }
+  }
+
+  override fun reset() {
+    scope.launch {
+      executeShellCommand(FACTORY_RESET_COMMAND.format(readApplicationId, readPhysicalDensity))
+      populateModel()
+    }
   }
 
   private suspend fun changeSecureSetting(settingsName: String, serviceName: String, on: Boolean) {

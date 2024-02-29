@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.gradle.datasource
 
 import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.testutils.delayUntilCondition
+import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.UiCheckModeFilter
 import com.android.tools.idea.compose.gradle.DEFAULT_KOTLIN_VERSION
 import com.android.tools.idea.compose.gradle.renderer.renderPreviewElementForResult
@@ -41,7 +42,6 @@ import com.android.tools.idea.testing.withKotlin
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
-import com.android.tools.preview.ComposePreviewElement
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.android.tools.preview.FAKE_PREVIEW_PARAMETER_PROVIDER_METHOD
 import com.android.tools.preview.ParametrizedComposePreviewElementInstance
@@ -290,7 +290,7 @@ class ParametrizedPreviewTest {
     preview.onActivate()
 
     waitForAllRefreshesToFinish(30.seconds)
-    val uiCheckElement = elements.first() as ParametrizedComposePreviewElementInstance
+    val uiCheckElement = elements.first() as ParametrizedComposePreviewElementInstance<*>
     run {
       var refreshCompleted = false
       composeView.refreshCompletedListeners.add { refreshCompleted = true }
@@ -310,7 +310,7 @@ class ParametrizedPreviewTest {
       val stringValue =
         it
           .asCollection()
-          .filterIsInstance<ParametrizedComposePreviewElementInstance>()
+          .filterIsInstance<ParametrizedComposePreviewElementInstance<*>>()
           .map {
             "${it.methodFqn} provider=${it.providerClassFqn} index=${it.index} max=${it.maxIndex}"
           }
@@ -346,9 +346,10 @@ class ParametrizedPreviewTest {
     }
   }
 
-  private suspend fun PreviewElementProvider<ComposePreviewElement>.resolve() =
+  private suspend fun PreviewElementProvider<PsiComposePreviewElement>.resolve() =
     this.previewElements().flatMap { it.resolve() }.toList()
 
-  private fun getEnumerationNumberFromPreviewName(elements: List<ComposePreviewElementInstance>) =
-    elements.map { it.displaySettings.name.removeSuffix(")").substringAfterLast(' ') }
+  private fun getEnumerationNumberFromPreviewName(
+    elements: List<ComposePreviewElementInstance<*>>
+  ) = elements.map { it.displaySettings.name.removeSuffix(")").substringAfterLast(' ') }
 }

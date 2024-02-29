@@ -21,6 +21,7 @@ import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.editor.ToolbarActionGroups
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.actions.ComposeFilterShowHistoryAction
 import com.android.tools.idea.compose.preview.actions.ComposeFilterTextAction
 import com.android.tools.idea.compose.preview.actions.ComposeNotificationGroup
@@ -29,19 +30,19 @@ import com.android.tools.idea.compose.preview.actions.ComposeViewSingleWordFilte
 import com.android.tools.idea.compose.preview.actions.ShowDebugBoundaries
 import com.android.tools.idea.compose.preview.actions.StopUiCheckPreviewAction
 import com.android.tools.idea.compose.preview.actions.UiCheckDropDownAction
-import com.android.tools.idea.compose.preview.actions.visibleOnlyInComposeDefaultPreview
 import com.android.tools.idea.compose.preview.actions.visibleOnlyInUiCheck
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
-import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.editors.sourcecode.isKotlinFileType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.GroupSwitchAction
 import com.android.tools.idea.preview.actions.StopAnimationInspectorAction
 import com.android.tools.idea.preview.actions.StopInteractivePreviewAction
 import com.android.tools.idea.preview.actions.findPreviewManager
+import com.android.tools.idea.preview.actions.visibleOnlyInDefaultPreview
 import com.android.tools.idea.preview.actions.visibleOnlyInStaticPreview
-import com.android.tools.idea.preview.modes.PREVIEW_LAYOUT_GALLERY_OPTION
-import com.android.tools.idea.preview.modes.PreviewMode
+import com.android.tools.idea.preview.modes.GALLERY_LAYOUT_OPTION
+import com.android.tools.idea.preview.modes.GRID_NO_GROUP_LAYOUT_OPTION
+import com.android.tools.idea.preview.modes.LIST_NO_GROUP_LAYOUT_OPTION
 import com.android.tools.idea.preview.representation.CommonRepresentationEditorFileType
 import com.android.tools.idea.preview.representation.InMemoryLayoutVirtualFile
 import com.android.tools.idea.projectsystem.getModuleSystem
@@ -50,8 +51,6 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisi
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility.HIDDEN
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility.SPLIT
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationProvider
-import com.android.tools.idea.uibuilder.surface.LayoutManagerSwitcher
-import com.android.tools.preview.ComposePreviewElementInstance
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -94,33 +93,13 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
               it.dataContext.findPreviewManager(COMPOSE_PREVIEW_MANAGER)?.isFilterEnabled != true
             },
           )
-          .visibleOnlyInComposeDefaultPreview(),
+          .visibleOnlyInDefaultPreview(),
         ComposeViewControlAction(
-            layoutManagers = PREVIEW_LAYOUT_MANAGER_OPTIONS,
+            layoutOptions = PREVIEW_LAYOUT_OPTIONS,
             isSurfaceLayoutActionEnabled = {
               !isPreviewRefreshing(it.dataContext) &&
                 // If Essentials Mode is enabled, it should not be possible to switch layout.
                 !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
-            },
-            updateMode = { selectedOption, manager ->
-              if (selectedOption == PREVIEW_LAYOUT_GALLERY_OPTION) {
-                // If turning on Gallery layout option - it should be set in preview.
-                // TODO (b/292057010) If group filtering is enabled - first element in this group
-                // should be selected.
-                val element =
-                  (manager as? ComposePreviewManager)
-                    ?.allPreviewElementsInFileFlow
-                    ?.value
-                    ?.asCollection()
-                    ?.firstOrNull()
-                manager.setMode(PreviewMode.Gallery(element))
-              } else if (manager.mode.value is PreviewMode.Gallery) {
-                // When switching from Gallery mode to Default layout mode - need to set back
-                // Default preview mode.
-                manager.setMode(PreviewMode.Default(selectedOption))
-              } else {
-                manager.setMode(manager.mode.value.deriveWithLayout(selectedOption))
-              }
             },
             additionalActionProvider = ColorBlindModeAction(),
           )
@@ -128,14 +107,11 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
         Separator.getInstance().visibleOnlyInUiCheck(),
         UiCheckDropDownAction().visibleOnlyInUiCheck(),
         ComposeViewControlAction(
-            layoutManagers = BASE_LAYOUT_MANAGER_OPTIONS,
+            layoutOptions = listOf(LIST_NO_GROUP_LAYOUT_OPTION, GRID_NO_GROUP_LAYOUT_OPTION),
             isSurfaceLayoutActionEnabled = {
               !isPreviewRefreshing(it.dataContext) &&
                 // If Essentials Mode is enabled, it should not be possible to switch layout.
                 !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
-            },
-            updateMode = { selectedOption, manager ->
-              manager.setMode(manager.mode.value.deriveWithLayout(selectedOption))
             },
           )
           .visibleOnlyInUiCheck(),
@@ -150,13 +126,9 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
       if (isEssentialsModeSelected != ComposePreviewEssentialsModeManager.isEssentialsModeEnabled) {
         isEssentialsModeSelected = ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
         if (isEssentialsModeSelected) {
-          val layoutSwitcher =
-            (e.getData(DESIGN_SURFACE)?.sceneViewLayoutManager as? LayoutManagerSwitcher)
+          val layoutSwitcher = e.getData(DESIGN_SURFACE)?.layoutManagerSwitcher
           ApplicationManager.getApplication().invokeLater {
-            layoutSwitcher?.setLayoutManager(
-              PREVIEW_LAYOUT_GALLERY_OPTION.layoutManager,
-              PREVIEW_LAYOUT_GALLERY_OPTION.sceneViewAlignment,
-            )
+            layoutSwitcher?.currentLayout?.value = GALLERY_LAYOUT_OPTION
           }
         }
       }
@@ -227,8 +199,8 @@ class ComposePreviewRepresentationProvider(
 
 private const val PREFIX = "ComposePreview"
 internal val COMPOSE_PREVIEW_MANAGER = DataKey.create<ComposePreviewManager>("$PREFIX.Manager")
-internal val COMPOSE_PREVIEW_ELEMENT_INSTANCE =
-  DataKey.create<ComposePreviewElementInstance>("$PREFIX.PreviewElement")
+internal val PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE =
+  DataKey.create<PsiComposePreviewElementInstance>("$PREFIX.PreviewElement")
 
 @TestOnly fun getComposePreviewManagerKeyForTests() = COMPOSE_PREVIEW_MANAGER
 

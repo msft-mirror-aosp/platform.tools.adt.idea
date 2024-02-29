@@ -99,7 +99,7 @@ iml_module(
         "//tools/adt/idea/app-inspection/api:app-inspection.api[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin[test]",
         "//tools/adt/idea/intellij.android.compose-common[module, test]",
-        "//tools/adt/idea/device-file-explorer-toolwindow:intellij.android.device-file-explorer-toolwindow[module, test]",
+        "//tools/adt/idea/device-explorer-files:intellij.android.device-explorer-files[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator[module, test]",
         "//tools/adt/idea/android-npw:intellij.android.newProjectWizard[module, test]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
@@ -288,7 +288,7 @@ maven_repository(
         "@maven//:com.google.firebase.firebase-common_12.0.1",
         "@maven//:com.google.guava.guava_28.2-jre",
         "@maven//:com.google.jimfs.jimfs_1.1",
-        "@maven//:com.google.prefab.cli_2.0.0",
+        "@maven//:com.google.prefab.cli_2.1.0",
         "@maven//:com.google.protobuf.protobuf-bom_3.17.2",
         "@maven//:com.linkedin.testbutler.test-butler-app_1.3.1",
         "@maven//:com.squareup.okio.okio-jvm_3.0.0",
@@ -3519,6 +3519,36 @@ java_test(
     data = COMMON_DATA,
     jvm_flags = [
         "-Dtest.suite.class=com.android.tools.idea.tests.gui.instantapp.InstantAppDynamicModuleOnDemandTest",
+    ],
+    tags = [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "DynamicModuleInstallTimeTest",
+    size = "large",
+    data = COMMON_DATA,
+    jvm_flags = [
+        "-Dtest.suite.class=com.android.tools.idea.tests.gui.instantapp.DynamicModuleInstallTimeTest",
+    ],
+    tags = [
+        "no_windows",
+        "qa_fast",
+    ],
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "EnableInstantAppTest",
+    size = "large",
+    data = COMMON_DATA,
+    jvm_flags = [
+        "-Dtest.suite.class=com.android.tools.idea.tests.gui.instantapp.EnableInstantAppTest",
     ],
     tags = [
         "no_windows",

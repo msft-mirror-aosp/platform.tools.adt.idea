@@ -18,6 +18,7 @@ package com.android.tools.idea.common.surface
 import com.android.AndroidXConstants.CONSTRAINT_LAYOUT
 import com.android.SdkConstants.RELATIVE_LAYOUT
 import com.android.tools.idea.common.fixtures.ModelBuilder
+import com.android.tools.idea.common.layout.LayoutManagerSwitcher
 import com.android.tools.idea.common.model.DnDTransferItem
 import com.android.tools.idea.common.model.ItemTransferable
 import com.android.tools.idea.common.model.NlComponent
@@ -426,6 +427,9 @@ class TestDesignSurface(
     java.util.function.Function { TestActionHandler(it) },
     ZoomControlsPolicy.VISIBLE,
   ) {
+
+  override fun getLayoutManagerSwitcher(): LayoutManagerSwitcher? = null
+
   override fun getSelectionAsTransferable(): ItemTransferable {
     return ItemTransferable(DnDTransferItem(0, ImmutableList.of()))
   }

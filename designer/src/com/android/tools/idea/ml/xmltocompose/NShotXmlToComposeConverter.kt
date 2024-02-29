@@ -41,7 +41,13 @@ private const val displayDependenciesPrompt =
   "After the Kotlin code, display all the dependencies that are required to be added to" +
     " build.gradle.kts for this code to compile."
 
+private const val customViewPrompt = "Wrap any Custom Views in an AndroidView composable."
+
 private const val errorToGenerateComposeCode = "A valid compose code could not be generated."
+
+private const val contextSharingNeedsToBeEnabled =
+  "Please follow the Studio Bot onboarding and " +
+    "enable context sharing if you want to use this feature."
 
 /**
  * The [NShotXmlToComposeConverter] uses the n-shot prompt technique when querying Studio Bot. The
@@ -57,10 +63,12 @@ private constructor(private val project: Project, private val nShots: List<Strin
   override suspend fun convertToCompose(xml: String): String {
     val prompt = getPrompt(xml)
     val studioBot = StudioBot.getInstance()
+    // The user must complete the Studio Bot onboarding and enable context sharing, otherwise we
+    // can't use the sendQuery API.
+    if (!studioBot.isContextAllowed()) {
+      return contextSharingNeedsToBeEnabled
+    }
     try {
-      // Note: you must complete the Studio Bot onboarding and enable context sharing,
-      // otherwise the following call will fail.
-      // TODO(b/322759144): Guard against context sharing.
       val response =
         studioBot.model().sendQuery(prompt, StudioBot.RequestSource.DESIGN_TOOLS).toList()
       return response.parseCode()
@@ -83,6 +91,9 @@ private constructor(private val project: Project, private val nShots: List<Strin
 
     /** If set to true, [viewModelPrompt] will be included in the query. */
     private var _useViewModel = false
+
+    /** If set to true, [customViewPrompt] will be included in the query. */
+    private var _useCustomView = false
 
     /** If set to true, [displayDependenciesPrompt] will be included in the query. */
     private var _displayDependencies = false
@@ -117,6 +128,11 @@ private constructor(private val project: Project, private val nShots: List<Strin
       return this
     }
 
+    fun useCustomView(useCustomView: Boolean): Builder {
+      _useCustomView = useCustomView
+      return this
+    }
+
     fun displayDependencies(displayDependencies: Boolean): Builder {
       _displayDependencies = displayDependencies
       return this
@@ -128,6 +144,9 @@ private constructor(private val project: Project, private val nShots: List<Strin
     }
 
     fun build(): NShotXmlToComposeConverter {
+      if (_useCustomView) {
+        nShots.add(customViewPrompt)
+      }
       if (_useViewModel) {
         nShots.add(viewModelPrompt)
         generateDataTypePrompts()

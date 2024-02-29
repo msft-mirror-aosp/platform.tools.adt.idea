@@ -88,13 +88,11 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test state manager has the correct list of capabilities`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
+    assertThat(stateManager.capabilitiesList).isEqualTo(capabilities)
   }
 
   @Test
   fun `test state manager has the correct list of capabilities enabled when preset is selected`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.preset.value = Preset.STANDARD
 
     stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(true)
@@ -104,7 +102,11 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test state manager reports to the subscribers when all capabilities preset is selected`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
+    stateManager.preset.value = Preset.STANDARD
+
+    stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[1]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[2]).map { it.capabilityState.enabled }.waitForValue(false)
 
     stateManager.preset.value = Preset.ALL
 
@@ -115,16 +117,12 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test getCapabilityEnabled has the correct value`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.setCapabilityEnabled(capabilities[0], false)
     stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(false)
   }
 
   @Test
   fun `test getOverrideValue has the correct value`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.setOverrideValue(capabilities[1], 3f)
 
     stateManager.getState(capabilities[1]).map { it.capabilityState.overrideValue }.waitForValue(3f)
@@ -133,8 +131,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test reset sets the preset to all, removes overrides and invokes device manager`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.preset.value = Preset.STANDARD
 
     stateManager.setOverrideValue(capabilities[1], 3f)
@@ -153,8 +149,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test applyChanges sends synced and status updates`(): Unit = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.setCapabilityEnabled(capabilities[0], false)
     stateManager.setCapabilityEnabled(capabilities[1], true)
     stateManager.setOverrideValue(capabilities[1], 3f)
@@ -172,10 +166,11 @@ class WearHealthServicesToolWindowStateManagerTest {
     stateManager.getState(capabilities[1]).map { it.synced }.waitForValue(true)
     stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(true)
 
-    assertThat(deviceManager.loadCurrentCapabilityStates()).containsExactly(
-      capabilities[0].dataType, CapabilityState(false, null),
-      capabilities[1].dataType, CapabilityState(true, 3f),
-      capabilities[2].dataType, CapabilityState(true, null)
+    assertThat(deviceManager.loadCurrentCapabilityStates()).containsEntry(
+      capabilities[0].dataType, CapabilityState(false, null)
+    )
+    assertThat(deviceManager.loadCurrentCapabilityStates()).containsEntry(
+      capabilities[1].dataType, CapabilityState(true, 3f)
     )
 
     assertThat(loggedEvents).hasSize(2)
@@ -187,8 +182,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test applyChanges sends error status update`(): Unit = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     deviceManager.failState = true
     stateManager.setCapabilityEnabled(capabilities[0], false)
 
@@ -205,8 +198,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test applyChanges sends idle status update when retry succeeds`(): Unit = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.setCapabilityEnabled(capabilities[0], false)
 
     deviceManager.failState = true
@@ -222,8 +213,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test stateManager periodically updates the values from the device`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.applyChanges()
 
     stateManager.getStatus().waitForValue(WhsStateManagerStatus.Idle)
@@ -237,8 +226,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test stateManager periodically updates the override values from the device`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(capabilities)
-
     stateManager.applyChanges()
 
     stateManager.getStatus().waitForValue(WhsStateManagerStatus.Idle)
@@ -254,11 +241,11 @@ class WearHealthServicesToolWindowStateManagerTest {
 
   @Test
   fun `test stateManager periodically updates the exercise status from the device`() = runBlocking {
-    stateManager.getOngoingExercise().waitForValue(false)
+    stateManager.ongoingExercise.waitForValue(false)
     deviceManager.activeExercise = true
 
     // Verify that the value is updated
-    stateManager.getOngoingExercise().waitForValue(true)
+    stateManager.ongoingExercise.waitForValue(true)
   }
 
   private suspend fun <T> Flow<T>.waitForValue(value: T, timeoutSeconds: Long = TEST_MAX_WAIT_TIME_SECONDS) {

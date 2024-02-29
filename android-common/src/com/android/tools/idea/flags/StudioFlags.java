@@ -17,7 +17,6 @@ package com.android.tools.idea.flags;
 
 import static com.android.tools.idea.IdeChannel.Channel.CANARY;
 import static com.android.tools.idea.IdeChannel.Channel.DEV;
-import static com.android.tools.idea.IdeChannel.Channel.NIGHTLY;
 
 import com.android.flags.BooleanFlag;
 import com.android.flags.Flag;
@@ -554,12 +553,12 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> RISC_V = Flag.create(
+  public static final Flag<Boolean> RISC_V = new BooleanFlag(
     RUNDEBUG,
     "riscv.support",
     "Support for RISC V",
     "Allow support for RISC V architecture and targeted architecture selection.",
-    true
+    ChannelDefault.enabledUpTo(CANARY)
   );
 
   //endregion
@@ -1365,7 +1364,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR = new BooleanFlag(
     COMPOSE, "compose.preview.keep.image.on.error", "Keeps the last valid image after a render error",
     "If enabled, when an error happens, the surface will keep the last valid image",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Boolean> COMPOSE_INVALIDATE_ON_RESOURCE_CHANGE = new BooleanFlag(
     COMPOSE, "compose.preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
@@ -1803,6 +1802,12 @@ public final class StudioFlags {
                     "Use retrieval augmentation facts to attach context to queries.",
                     "When enabled, project context is attached to queries using facts, instead of prepending them directly to the query string.",
                     ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_USE_COMPOSE_TOOLWINDOW_UI =
+    new BooleanFlag(STUDIOBOT, "chat.use.compose.for.ui",
+                    "Use the Compose for Desktop/Jewel-based UI for the Chat toolwindow.",
+                    "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
+                    false);
 
   // endregion STUDIO_BOT
 

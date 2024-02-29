@@ -598,8 +598,8 @@ private fun UFile.method(name: String): UMethod? =
 
 private class WearTilePreviewElementSubject(
   metadata: FailureMetadata?,
-  actual: WearTilePreviewElement?,
-) : Subject<WearTilePreviewElementSubject, WearTilePreviewElement?>(metadata, actual) {
+  actual: PsiWearTilePreviewElement?,
+) : Subject<WearTilePreviewElementSubject, PsiWearTilePreviewElement?>(metadata, actual) {
 
   fun hasDisplaySettings(settings: PreviewDisplaySettings) {
     assertThat(actual()?.displaySettings).isEqualTo(settings)
@@ -611,21 +611,21 @@ private class WearTilePreviewElementSubject(
 
   fun previewBodyHasTextRange(textRange: TextRange) {
     ReadAction.run<Throwable> {
-      val previewBodyTextRange = actual()?.previewBodyPsi?.psiRange?.let { TextRange.create(it) }
+      val previewBodyTextRange = actual()?.previewBody?.psiRange?.let { TextRange.create(it) }
       assertThat(previewBodyTextRange).isEqualTo(textRange)
     }
   }
 
   fun hasAnnotationDefinition(definition: String) {
     ReadAction.run<Throwable> {
-      assertThat(actual()?.previewElementDefinitionPsi?.element?.text).isEqualTo(definition)
+      assertThat(actual()?.previewElementDefinition?.element?.text).isEqualTo(definition)
     }
   }
 
   companion object {
     private fun factory() = ::WearTilePreviewElementSubject
 
-    fun assertThat(previewElement: WearTilePreviewElement): WearTilePreviewElementSubject =
+    fun assertThat(previewElement: PsiWearTilePreviewElement): WearTilePreviewElementSubject =
       Truth.assertAbout(factory()).that(previewElement)
   }
 }

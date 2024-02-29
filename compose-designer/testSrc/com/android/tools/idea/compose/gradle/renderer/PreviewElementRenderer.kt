@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.gradle.renderer
 
 import com.android.ide.common.rendering.api.ViewInfo
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.ComposeAdapterLightVirtualFile
 import com.android.tools.idea.preview.rendering.createRenderTaskFuture
 import com.android.tools.preview.ComposePreviewElementInstance
@@ -36,7 +37,7 @@ import org.jetbrains.android.facet.AndroidFacet
  */
 fun createRenderTaskFuture(
   facet: AndroidFacet,
-  previewElement: ComposePreviewElementInstance,
+  previewElement: PsiComposePreviewElementInstance,
   privateClassLoader: Boolean = false,
   useLayoutScanner: Boolean = false,
   classesToPreload: Collection<String> = emptyList(),
@@ -49,7 +50,7 @@ fun createRenderTaskFuture(
         "singlePreviewElement.xml",
         previewElement.toPreviewXml().buildString(),
       ) {
-        previewElement.previewElementDefinitionPsi?.virtualFile
+        previewElement.previewElementDefinition?.virtualFile
       },
     privateClassLoader = privateClassLoader,
     useLayoutScanner = useLayoutScanner,
@@ -66,7 +67,7 @@ fun createRenderTaskFuture(
  */
 fun renderPreviewElementForResult(
   facet: AndroidFacet,
-  previewElement: ComposePreviewElementInstance,
+  previewElement: PsiComposePreviewElementInstance,
   privateClassLoader: Boolean = false,
   useLayoutScanner: Boolean = false,
   customViewInfoParser: ((Any) -> List<ViewInfo>)? = null,
@@ -108,7 +109,7 @@ fun renderPreviewElementForResult(
  */
 fun renderPreviewElement(
   facet: AndroidFacet,
-  previewElement: ComposePreviewElementInstance,
+  previewElement: PsiComposePreviewElementInstance,
 ): CompletableFuture<BufferedImage?> {
   return renderPreviewElementForResult(facet, previewElement).thenApply { it?.renderedImage?.copy }
 }

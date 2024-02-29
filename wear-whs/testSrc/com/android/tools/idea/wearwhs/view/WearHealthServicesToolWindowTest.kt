@@ -23,9 +23,10 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.wearwhs.EVENT_TRIGGER_GROUPS
-import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
+import com.android.tools.idea.wearwhs.WhsDataType
 import com.android.tools.idea.wearwhs.communication.FakeDeviceManager
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
@@ -37,7 +38,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.awt.Dimension
@@ -80,10 +80,15 @@ class WearHealthServicesToolWindowTest {
     Disposer.register(projectRule.testRootDisposable, toolWindow)
   }
 
-  @Ignore("b/326061638")
   @Test
   fun `test panel screenshot matches expectation for current platform`() = runBlocking {
     val fakeUi = FakeUi(toolWindow)
+
+    deviceManager.setCapabilities(mapOf(
+      WhsDataType.HEART_RATE_BPM to true,
+      WhsDataType.LOCATION to true,
+      WhsDataType.STEPS to true
+    ))
 
     fakeUi.waitForCheckbox("Heart rate", true)
     fakeUi.waitForCheckbox("Location", true)
@@ -101,9 +106,6 @@ class WearHealthServicesToolWindowTest {
 
   @Test
   fun `test panel screenshot matches expectation with modified state manager values`() = runBlocking {
-    stateManager.getCapabilitiesList().waitForValue(deviceManager.capabilities)
-    stateManager.getCapabilitiesList().waitForValue(WHS_CAPABILITIES)
-
     deviceManager.activeExercise = true
 
     stateManager.forceUpdateState()
@@ -151,27 +153,64 @@ class WearHealthServicesToolWindowTest {
   }
 
   @Test
-  fun `test override value rejects invalid text`() = runBlocking {
+  fun `test override value allows numbers and decimals and rejects invalid text`() = runBlocking {
     val fakeUi = FakeUi(toolWindow)
 
     deviceManager.activeExercise = true
 
     val textField = fakeUi.waitForDescendant<JTextField> { it.isVisible }
 
-    textField.text = "50f"
-    assertThat(textField.text).isEmpty()
-
+    // ALLOW: Numbers
     textField.text = "50"
     assertThat(textField.text).isEqualTo("50")
 
+    // ALLOW: Decimal number
     textField.text = "50.0"
     assertThat(textField.text).isEqualTo("50.0")
 
-    textField.text = "50.0a"
-    assertThat(textField.text).isEqualTo("50.0")
+    // ALLOW: Decimal number
+    textField.text = "50.00123"
+    assertThat(textField.text).isEqualTo("50.00123")
 
+    // ALLOW: Decimal with leading zero
+    textField.text = "0.5"
+    assertThat(textField.text).isEqualTo("0.5")
+
+    // ALLOW: Decimal without leading zero
+    textField.text = ".5"
+    assertThat(textField.text).isEqualTo(".5")
+
+    // ALLOW: One leading zero
+    textField.text = "01"
+    assertThat(textField.text).isEqualTo("01")
+
+    // ALLOW: Dot after number
+    textField.text = "50."
+    assertThat(textField.text).isEqualTo("50.")
+
+    // ALLOW: Empty
+    textField.text = ""
+    assertThat(textField.text).isEmpty()
+
+    // DISALLOW: Number with letters
+    textField.text = "50f"
+    assertThat(textField.text).isEmpty()
+
+    // DISALLOW: Decimal number with letters
+    textField.text = "50.0a"
+    assertThat(textField.text).isEmpty()
+
+    // DISALLOW: Letters
     textField.text = "test"
-    assertThat(textField.text).isEqualTo("50.0")
+    assertThat(textField.text).isEmpty()
+
+    // DISALLOW: >50 characters
+    textField.text = "012345678901234567890123456789012345678901234567890123456789"
+    assertThat(textField.text).isEmpty()
+
+    // DISALLOW: Too many leading zeros
+    textField.text = "005"
+    assertThat(textField.text).isEmpty()
   }
 
   @Test
@@ -186,14 +225,16 @@ class WearHealthServicesToolWindowTest {
   }
 
   @Test
-  fun `test panel disables checkboxes during an exercise`() = runBlocking<Unit> {
+  fun `test panel disables checkboxes and dropdown during an exercise`() = runBlocking<Unit> {
     val fakeUi = FakeUi(toolWindow)
 
+    fakeUi.waitForDescendant<ComboBox<Preset>> { it.isEnabled }
     fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Heart rate") && it.isEnabled }
     fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Steps") && it.isEnabled }
 
     deviceManager.activeExercise = true
 
+    fakeUi.waitForDescendant<ComboBox<Preset>> { !it.isEnabled }
     fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Heart rate") && !it.isEnabled }
     fakeUi.waitForDescendant<JCheckBox> { it.text.contains("Steps") && !it.isEnabled }
   }

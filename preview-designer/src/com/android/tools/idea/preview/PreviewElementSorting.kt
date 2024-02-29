@@ -18,8 +18,11 @@ package com.android.tools.idea.preview
 import com.android.tools.preview.PreviewElement
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
+import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPsiElementPointer
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
+typealias PsiPreviewElement = PreviewElement<SmartPsiElementPointer<PsiElement>>
 /**
  * Returns the source offset within the file of the [PreviewElement]. We try to read the position of
  * the method but fallback to the position of the annotation if the method body is not valid
@@ -28,34 +31,35 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
  *
  * This property needs a [ReadAction] to be read.
  */
-private val PreviewElement?.sourceOffset: Int
-  get() = this?.previewElementDefinitionPsi?.element?.startOffset ?: -1
+private val PsiPreviewElement?.sourceOffset: Int
+  get() = this?.previewElementDefinition?.element?.startOffset ?: -1
 
-private val sourceOffsetComparator = compareBy<PreviewElement> { it.sourceOffset }
+private val sourceOffsetComparator = compareBy<PsiPreviewElement> { it.sourceOffset }
 private val displayPriorityComparator =
-  compareBy<PreviewElement> { it.displaySettings.displayPositioning }
+  compareBy<PsiPreviewElement> { it.displaySettings.displayPositioning }
 
 /**
  * Sorts Previews by descending group name as we want to show ungrouped Previews first. Ungrouped
  * Previews will be grouped as if they have "" as group name.
  */
 private val previewGroupsComparator =
-  compareByDescending<PreviewElement> { it.displaySettings.group ?: "" }
-private val lexicographicalNameComparator = compareBy<PreviewElement> { it.displaySettings.name }
+  compareByDescending<PreviewElement<*>> { it.displaySettings.group ?: "" }
+private val lexicographicalNameComparator = compareBy<PreviewElement<*>> { it.displaySettings.name }
 
 /**
  * Sorts the [PreviewElement]s by [DisplayPositioning] (top first) and then by source code line
  * number, smaller first. Previews belonging to groups will be sorted by their group name, ungrouped
  * Previews will appear at the beginning of the list. When Multipreview is enabled, different
- * Previews may have the same [PreviewElement.previewElementDefinitionPsi] value, and those will be
+ * Previews may have the same [PreviewElement.previewElementDefinition] value, and those will be
  * ordered lexicographically between them, as the actual Previews may be defined in different files
  * and/or in a not structured way, so it is not possible to order them based on code source offsets.
  */
-fun <T : PreviewElement> Collection<T>.sortByDisplayAndSourcePosition(): List<T> = runReadAction {
-  sortedWith(
-    displayPriorityComparator
-      .thenComparing(sourceOffsetComparator)
-      .thenComparing(previewGroupsComparator)
-      .thenComparing(lexicographicalNameComparator)
-  )
-}
+fun <T : PsiPreviewElement> Collection<T>.sortByDisplayAndSourcePosition(): List<T> =
+  runReadAction {
+    sortedWith(
+      displayPriorityComparator
+        .thenComparing(sourceOffsetComparator)
+        .thenComparing(previewGroupsComparator)
+        .thenComparing(lexicographicalNameComparator)
+    )
+  }

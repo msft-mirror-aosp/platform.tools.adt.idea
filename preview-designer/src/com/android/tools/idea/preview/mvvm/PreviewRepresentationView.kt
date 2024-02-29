@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.preview.mvvm
 
+import com.android.tools.idea.preview.gallery.GalleryMode
+import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import javax.swing.JComponent
 
@@ -24,7 +26,17 @@ import javax.swing.JComponent
  * is to bypass the [PreviewViewModel] and use the [PreviewView] directly.
  */
 interface PreviewRepresentationView {
+  /**
+   * Returns the [JComponent] containing this [PreviewRepresentationView] that can be used to embed
+   * its other panels.
+   */
   val component: JComponent
 
-  val surface: NlDesignSurface
+  val mainSurface: NlDesignSurface
+
+  /**
+   * Set if Gallery Mode is enabled, null if mode is disabled. In Gallery Mode only one preview at a
+   * time is rendered. It is always on for Essentials Mode.
+   */
+  var galleryMode: GalleryMode?
 }

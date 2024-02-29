@@ -19,6 +19,7 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.findComponentForAction
 import com.android.tools.idea.streaming.emulator.EmulatorUiSettingsController
+import com.android.tools.idea.streaming.emulator.isReadyForAdbCommands
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsModel
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsPanel
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -39,6 +40,10 @@ internal class EmulatorUiSettingsAction : AbstractEmulatorAction(configFilter = 
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
+  override fun isEnabled(event: AnActionEvent): Boolean {
+    return super.isEnabled(event) && isReadyForAdbCommands(event)
+  }
+
   override fun actionPerformed(event: AnActionEvent) {
     val emulatorView = getEmulatorView(event) ?: return
     val component = event.findComponentForAction(this) as? JComponent ?: emulatorView
@@ -46,13 +51,21 @@ internal class EmulatorUiSettingsAction : AbstractEmulatorAction(configFilter = 
     val serialNumber = getEmulatorController(event)?.emulatorId?.serialNumber ?: return
     val config = getEmulatorConfig(event) ?: return
     val model = UiSettingsModel(config.displaySize, config.density)
-    val controller = EmulatorUiSettingsController(project, serialNumber, model, emulatorView)
+    val controller = EmulatorUiSettingsController(project, serialNumber, model, config, emulatorView)
     AndroidCoroutineScope(emulatorView).launch {
       controller.populateModel()
       EventQueue.invokeLater {
-        val balloon = UiSettingsPanel(model).createPicker(component, emulatorView)
+        val balloon = UiSettingsPanel(model, showResetButton = true).createPicker(component, emulatorView)
         balloon.show(RelativePoint.getCenterOf(component), Balloon.Position.above)
       }
     }
+  }
+
+  private fun isReadyForAdbCommands(event: AnActionEvent): Boolean {
+    getEmulatorView(event) ?: return false
+    getEmulatorConfig(event) ?: return false
+    val project = event.project ?: return false
+    val controller = getEmulatorController(event) ?: return false
+    return isReadyForAdbCommands(project, controller.emulatorId.serialNumber)
   }
 }

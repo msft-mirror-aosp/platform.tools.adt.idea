@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.tools.idea.common.error.Issue
+import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.pickers.preview.utils.addNewValueArgument
 import com.android.tools.idea.compose.preview.util.containingFile
 import com.android.tools.idea.compose.preview.util.previewElement
@@ -26,7 +27,6 @@ import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintErrorType
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintSuppressTask
-import com.android.tools.preview.ComposePreviewElement
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
@@ -58,7 +58,7 @@ class ComposeVisualLintIssueProvider(parentDisposable: Disposable) :
 
     issue.customizeIsSuppressed {
       val suppressedTypes = runReadAction {
-        previewElement.previewElementDefinitionPsi?.let { pointer ->
+        previewElement.previewElementDefinition?.let { pointer ->
           val annotationEntry = (pointer.element as? KtAnnotationEntry) ?: return@let emptyList()
           val composableFunction =
             annotationEntry.parentOfType<KtFunction>() ?: return@let emptyList()
@@ -98,7 +98,7 @@ class ComposeVisualLintIssueProvider(parentDisposable: Disposable) :
 class ComposeVisualLintSuppressTask(
   private val facet: AndroidFacet,
   private val project: Project,
-  private val previewElement: ComposePreviewElement,
+  private val previewElement: PsiComposePreviewElement,
   private val issueType: VisualLintErrorType,
 ) : VisualLintSuppressTask {
 
@@ -110,7 +110,7 @@ class ComposeVisualLintSuppressTask(
       issueType.toSuppressActionDescription(),
       null,
       {
-        previewElement.previewElementDefinitionPsi?.let { pointer ->
+        previewElement.previewElementDefinition?.let { pointer ->
           val annotationEntry = (pointer.element as? KtAnnotationEntry) ?: return@let
           val composableFunction = annotationEntry.parentOfType<KtFunction>() ?: return@let
           var suppress =
@@ -134,7 +134,7 @@ class ComposeVisualLintSuppressTask(
   }
 
   override fun isValid(): Boolean {
-    return previewElement.previewElementDefinitionPsi?.let { runReadAction { it.element?.isValid } }
+    return previewElement.previewElementDefinition?.let { runReadAction { it.element?.isValid } }
       ?: false
   }
 }

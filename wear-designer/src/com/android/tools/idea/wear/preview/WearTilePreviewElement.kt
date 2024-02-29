@@ -23,11 +23,14 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 
 /** Preview elements implementation for a wear tile. */
-open class WearTilePreviewElement(
+data class WearTilePreviewElement<T>(
   override val displaySettings: PreviewDisplaySettings,
-  override val previewElementDefinitionPsi: SmartPsiElementPointer<PsiElement>?,
-  override val previewBodyPsi: SmartPsiElementPointer<PsiElement>?,
+  override val previewElementDefinition: T?,
+  override val previewBody: T?,
   override val methodFqn: String,
   override val configuration: PreviewConfiguration,
   override val hasAnimations: Boolean = false
-) : MethodPreviewElement, ConfigurablePreviewElement
+) : MethodPreviewElement<T>, ConfigurablePreviewElement<T>
+
+
+typealias PsiWearTilePreviewElement = WearTilePreviewElement<SmartPsiElementPointer<PsiElement>>

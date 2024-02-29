@@ -47,6 +47,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.util.indexing.FileBasedIndex
 import net.jcip.annotations.GuardedBy
 import net.jcip.annotations.ThreadSafe
 import org.jetbrains.android.facet.AndroidFacet
@@ -63,10 +64,6 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
     @JvmStatic
     fun getInstance(facet: AndroidFacet): LayoutBindingModuleCache = facet.mainModule.service()
   }
-
-  // Since this service is only ever constructed using a facet (and its corresponding module), it's
-  // reasonable to assume there will always be a facet available.
-  private val facet = requireNotNull(AndroidFacet.getInstance(module))
 
   private val lock = Any()
 
@@ -103,7 +100,9 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
   init {
     fun syncModeWithDependencies() {
       dataBindingMode = determineDataBindingMode(module)
-      viewBindingEnabled = facet.isViewBindingEnabled()
+      AndroidFacet.getInstance(module)?.let { facet ->
+        viewBindingEnabled = facet.isViewBindingEnabled()
+      }
     }
 
     module.project.messageBus
@@ -135,6 +134,8 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
    */
   val lightBrClass: LightBrClass?
     get() {
+      val facet = AndroidFacet.getInstance(module) ?: return null
+
       synchronized(lock) {
         if (_lightBrClass == null) {
           val qualifiedName = DataBindingUtil.getBrQualifiedName(facet) ?: return null
@@ -157,7 +158,9 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
    */
   val lightDataBindingComponentClass: LightDataBindingComponentClass?
     get() {
-      if (facet.configuration.isLibraryProject) return null
+      val facet =
+        AndroidFacet.getInstance(module)?.takeUnless { it.configuration.isLibraryProject }
+          ?: return null
 
       synchronized(lock) {
         if (_lightDataBindingComponentClass == null) {
@@ -177,14 +180,21 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
    */
   val bindingLayoutGroups: Collection<BindingLayoutGroup>
     get() {
+      val facet = AndroidFacet.getInstance(module) ?: return emptySet()
+
       // This method is designed to occur only within a read action, so we know that dumb mode
       // won't change on us in the middle of it.
       ApplicationManager.getApplication().assertReadAccessAllowed()
 
       // If we're called at a time before indexes are ready, BindingLayout.tryCreate below would
       // fail with an exception. To prevent this, we abort early with what we have.
+      // As of 2023.3, indexes can sometimes be accessed in dumb mode if some DumbModeAccessType is
+      // set. Allow execution to continue in those cases as well.
       val project = module.project
-      if (DumbService.isDumb(project)) {
+      if (
+        DumbService.isDumb(project) &&
+          FileBasedIndex.getInstance().currentDumbModeAccessType == null
+      ) {
         // TODO(b/322209412): Remove this error and instead throw an exception, after it's verified
         // that end users are no longer running into this log line.
         thisLogger()
@@ -242,6 +252,8 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
    * @param group A group that you can get by calling [bindingLayoutGroups]
    */
   fun getLightBindingClasses(group: BindingLayoutGroup): List<LightBindingClass> {
+    val facet = AndroidFacet.getInstance(module) ?: return emptyList()
+
     synchronized(lock) {
       var bindingClasses = group.getUserData(LIGHT_BINDING_CLASSES_KEY)
       if (bindingClasses == null) {

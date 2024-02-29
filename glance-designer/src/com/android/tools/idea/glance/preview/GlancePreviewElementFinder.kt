@@ -19,10 +19,15 @@ import com.android.tools.idea.AndroidPsiUtils
 import com.android.tools.idea.preview.FilePreviewElementFinder
 import com.android.tools.idea.preview.annotations.findAnnotatedMethodsValues
 import com.android.tools.idea.preview.annotations.hasAnnotation
+import com.android.tools.idea.preview.findPreviewDefaultValues
 import com.android.tools.idea.preview.toSmartPsiPointer
+import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
+import com.android.tools.preview.config.PARAMETER_HEIGHT_DP
+import com.android.tools.preview.config.PARAMETER_WIDTH_DP
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.uast.UAnnotation
@@ -59,7 +64,7 @@ private fun UAnnotation.isGlancePreview(surfaceName: String) =
 private fun toGlancePreviewElements(
   methods: List<UMethod>,
   surfaceName: String,
-): Sequence<GlancePreviewElement> =
+): Sequence<PsiGlancePreviewElement> =
   methods
     .flatMap { method ->
       val uClass = method.uastParent as UClass
@@ -68,11 +73,19 @@ private fun toGlancePreviewElements(
         .filter { it.isGlancePreview(surfaceName) }
         .map {
           val displaySettings = PreviewDisplaySettings(method.name, null, false, false, null)
+          val defaultValues = runReadAction { it.findPreviewDefaultValues() }
+          val widthDp =
+            it.findAttributeValue(PARAMETER_WIDTH_DP)?.evaluate() as? Int
+              ?: defaultValues[PARAMETER_WIDTH_DP]?.toIntOrNull()
+          val heightDp =
+            it.findAttributeValue(PARAMETER_HEIGHT_DP)?.evaluate() as? Int
+              ?: defaultValues[PARAMETER_HEIGHT_DP]?.toIntOrNull()
           GlancePreviewElement(
             displaySettings,
             it.toSmartPsiPointer(),
             method.uastBody.toSmartPsiPointer(),
             methodFqn,
+            PreviewConfiguration.cleanAndGet(width = widthDp, height = heightDp),
           )
         }
     }
@@ -80,12 +93,12 @@ private fun toGlancePreviewElements(
 
 /** Common class to find Glance preview elements for [surfaceName] surface. */
 open class GlancePreviewElementFinder(private val surfaceName: String) :
-  FilePreviewElementFinder<GlancePreviewElement> {
+  FilePreviewElementFinder<PsiGlancePreviewElement> {
   private val glanceSurfaceUAnnotationFilter: (UAnnotation?) -> Boolean = {
     surfaceFilter(it, surfaceName)
   }
 
-  private val methodsToElements: (List<UMethod>) -> Sequence<GlancePreviewElement> = {
+  private val methodsToElements: (List<UMethod>) -> Sequence<PsiGlancePreviewElement> = {
     toGlancePreviewElements(it, surfaceName)
   }
 
