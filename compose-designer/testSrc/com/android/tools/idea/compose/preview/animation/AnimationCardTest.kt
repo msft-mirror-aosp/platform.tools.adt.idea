@@ -32,7 +32,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -65,11 +64,11 @@ class AnimationCardTest {
           layoutAndDispatchEvents()
         }
       }
-    var stateChanges = -1
+    var stateChanges = 0
     val job = launch { card.state.collect { stateChanges++ } }
 
     // collector above will collect once even without any user action
-    delayUntilCondition(200) { stateChanges == 0 }
+    delayUntilCondition(200) { stateChanges == 1 }
 
     withContext(uiThread) {
       // Expand/collapse button.
@@ -81,7 +80,8 @@ class AnimationCardTest {
         ui.updateToolbars()
         ui.layoutAndDispatchEvents()
         // Expand/collapse button clicked
-        assertEquals(1, stateChanges)
+        delayUntilCondition(200) { stateChanges == 2 }
+        assertEquals(2, stateChanges)
       }
       // Transition name label.
       (card.components[0] as JComponent).components[1].also {
@@ -106,11 +106,13 @@ class AnimationCardTest {
         ui.clickOn(freezeButton)
         ui.updateToolbars()
         // Freeze button clicked
-        assertEquals(2, stateChanges)
+        delayUntilCondition(200) { stateChanges == 3 }
+        assertEquals(3, stateChanges)
         freezeButton = findFreezeButton(card)
         ui.clickOn(freezeButton)
         // Freeze button clicked
-        assertEquals(3, stateChanges)
+        delayUntilCondition(200) { stateChanges == 4 }
+        assertEquals(4, stateChanges)
       }
       // Double click to open in new tab. Use label position just to make sure we are not clicking
       // on any button.
@@ -123,38 +125,6 @@ class AnimationCardTest {
       job.cancel()
     }
   }
-
-  @Test
-  fun `create animation card if coordination is not available`(): Unit =
-    runBlocking(uiThread) {
-      val card =
-        AnimationCard(
-            TestUtils.testPreviewState(false),
-            Mockito.mock(DesignSurface::class.java),
-            MutableStateFlow(ElementState("Title")),
-            emptyList(),
-            NoopComposeAnimationTracker,
-          )
-          .apply {
-            setDuration(111)
-            setSize(300, 300)
-          }
-      val ui =
-        FakeUi(card).apply {
-          updateToolbars()
-          layout()
-        }
-
-      // Lock button is not available.
-      findFreezeButton(card).also {
-        // Button is here and visible.
-        assertTrue(it.isVisible)
-        assertFalse(it.isEnabled)
-        TestUtils.assertBigger(minimumSize, it.size)
-      }
-      // Uncomment to preview ui.
-      // ui.render()
-    }
 
   private fun findFreezeButton(parent: Component): Component {
     return parent.findToolbar("AnimationCard").components[0]

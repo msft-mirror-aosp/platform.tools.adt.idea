@@ -17,15 +17,16 @@ package com.android.tools.idea.common.surface;
 
 import static com.android.tools.adtui.PannableKt.PANNABLE_KEY;
 import static com.android.tools.adtui.ZoomableKt.ZOOMABLE_KEY;
-import static com.android.tools.idea.actions.DesignerDataKeys.DESIGN_SURFACE;
 import static com.android.tools.idea.actions.DesignerDataKeys.CONFIGURATIONS;
+import static com.android.tools.idea.actions.DesignerDataKeys.DESIGN_SURFACE;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.annotations.concurrency.GuardedBy;
 import com.android.annotations.concurrency.UiThread;
-import com.android.tools.adtui.ZoomController;
+import com.android.sdklib.AndroidCoordinate;
 import com.android.tools.adtui.actions.ZoomType;
 import com.android.tools.adtui.common.SwingCoordinate;
+import com.android.tools.configurations.Configuration;
 import com.android.tools.editor.PanZoomListener;
 import com.android.tools.idea.common.analytics.DesignerAnalyticsManager;
 import com.android.tools.idea.common.editor.ActionManager;
@@ -34,7 +35,6 @@ import com.android.tools.idea.common.error.IssueModel;
 import com.android.tools.idea.common.error.LintIssueProvider;
 import com.android.tools.idea.common.layout.SceneViewAlignment;
 import com.android.tools.idea.common.lint.LintAnnotationsModel;
-import com.android.sdklib.AndroidCoordinate;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.DefaultSelectionModel;
 import com.android.tools.idea.common.model.ItemTransferable;
@@ -52,7 +52,6 @@ import com.android.tools.idea.common.surface.layout.NonScrollableDesignSurfaceVi
 import com.android.tools.idea.common.surface.layout.ScrollableDesignSurfaceViewport;
 import com.android.tools.idea.common.type.DefaultDesignerFileType;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
-import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.ui.designer.EditorDesignSurface;
 import com.android.tools.idea.common.layout.LayoutManagerSwitcher;
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent;
@@ -130,10 +129,9 @@ import org.jetbrains.annotations.TestOnly;
 
 /**
  * A generic design surface for use in a graphical editor.
- * FIXME(b/291572358): [DesignSurface] shouldn't extend [ZoomController] as there is [DesignSurfaceZoomController] already
  */
 public abstract class DesignSurface<T extends SceneManager> extends EditorDesignSurface
-  implements Disposable, InteractableScenesSurface, ZoomController, ZoomableViewport, ScaleListener {
+  implements Disposable, InteractableScenesSurface, ZoomableViewport, ScaleListener {
 
   /**
    * Determines the visibility of the zoom controls in this surface.
@@ -145,13 +143,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     HIDDEN,
     /** The zoom controls will only be visible when the mouse is over the surface. */
     AUTO_HIDE
-  }
-
-  @NotNull
-  @Override
-  public ZoomController getZoomable() {
-    // FIXME(b/291572358): replace this with [myZoomController] once the logic has been replaced with [DesignSurfaceZoomController]
-    return this;
   }
 
   /**
@@ -175,7 +166,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   private final Project myProject;
 
-  @SurfaceScale private double myScale = 1;
   /**
    * The scale level when magnification started. This is used as a standard when the new scale level is evaluated.
    */
@@ -239,8 +229,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    */
   @NotNull
   private final DesignerAnalyticsManager myAnalyticsManager;
-
-  @SurfaceScale protected final double myMaxFitIntoScale;
 
   /**
    * When surface is opened at first time, it zoom-to-fit the content to make the previews fit the initial window size.
@@ -435,9 +423,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     else {
       myOnHoverListener = event -> {};
     }
-
-    // Sets the maximum zoom level allowed for ZoomType#FIT.
-    myMaxFitIntoScale = maxFitIntoZoomLevel / getScreenScalingFactor();
   }
 
   /**
@@ -462,9 +447,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   }
 
   @SurfaceScreenScalingFactor
-  @Override
   public double getScreenScalingFactor() {
-    return 1d;
+    return getZoomController().getScreenScalingFactor();
   }
 
   @NotNull
@@ -880,9 +864,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    * @see #zoom(ZoomType, int, int)
    */
   @UiThread
-  @Override
   final public boolean zoom(@NotNull ZoomType type) {
-    return zoom(type, -1, -1);
+    return getZoomController().zoom(type);
   }
 
   @Nullable
@@ -933,65 +916,22 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     myGuiInputHandler.setPanning(isPanning);
   }
 
-  @Override
   @UiThread
   public boolean zoom(@NotNull ZoomType type, @SwingCoordinate int x, @SwingCoordinate int y) {
-    // track user triggered change
-    getAnalyticsManager().trackZoom(type);
-    SceneView view = getFocusedSceneView();
-    if (type == ZoomType.IN && (x < 0 || y < 0)
-        && view != null && !getSelectionModel().isEmpty()) {
-      Scene scene = getScene();
-      if (scene != null) {
-        SceneComponent component = scene.getSceneComponent(getSelectionModel().getPrimary());
-        if (component != null) {
-          x = Coordinates.getSwingXDip(view, component.getCenterX());
-          y = Coordinates.getSwingYDip(view, component.getCenterY());
-        }
-      }
-    }
-    boolean scaled;
-    switch (type) {
-      case IN: {
-        @SurfaceZoomLevel double currentScale = myScale * getScreenScalingFactor();
-        int current = (int)(Math.round(currentScale * 100));
-        @SurfaceScale double scale = (ZoomType.zoomIn(current) / 100.0) / getScreenScalingFactor();
-        scaled = setScale(scale, x, y);
-        break;
-      }
-      case OUT: {
-        @SurfaceZoomLevel double currentScale = myScale * getScreenScalingFactor();
-        int current = (int)(currentScale * 100);
-        @SurfaceScale double scale = (ZoomType.zoomOut(current) / 100.0) / getScreenScalingFactor();
-        scaled = setScale(scale, x, y);
-        break;
-      }
-      case ACTUAL:
-        scaled = setScale(1d / getScreenScalingFactor());
-        break;
-      case FIT:
-        scaled = setScale(getFitScale());
-        break;
-      default:
-        throw new UnsupportedOperationException("Not yet implemented: " + type);
-    }
-
-    return scaled;
+    return getZoomController().zoom(type, x, y);
   }
 
   @SwingCoordinate
   protected abstract Dimension getScrollToVisibleOffset();
 
   @UiThread
-  @Override
   final public boolean zoomToFit() {
-    return zoom(ZoomType.FIT, -1, -1);
+    return getZoomController().zoomToFit();
   }
 
-  @Override
   @SurfaceScale
   public double getScale() {
-    return myScale;
+    return getZoomController().getScale();
   }
 
   @Override
@@ -1004,27 +944,12 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     return true;
   }
 
-  @Override
   public boolean canZoomIn() {
-    double currentScale = getScale();
-    double maxScale = getMaxScale();
-    return currentScale < maxScale && !isScaleSame(currentScale, maxScale);
+    return getZoomController().canZoomIn();
   }
 
-  @Override
   public boolean canZoomOut() {
-    double minScale = getMinScale();
-    double currentScale = getScale();
-    return minScale < currentScale && !isScaleSame(minScale, currentScale);
-  }
-
-  @Override
-  public abstract boolean canZoomToFit();
-
-  @Override
-  public boolean canZoomToActual() {
-    double currentScale = getScale();
-    return (currentScale > 1 && canZoomOut()) || (currentScale < 1 && canZoomIn());
+    return getZoomController().canZoomOut();
   }
 
   public Map<SceneView, Rectangle> findSceneViewRectangles() {
@@ -1051,7 +976,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     Dimension availableSpace = getExtentSize();
     Rectangle sceneViewRectangle =
       mySceneViewPanel.findMeasuredSceneViewRectangle(sceneView,
-                                                      getPositionableContent(),
                                                       availableSpace);
     if (sceneViewRectangle != null) {
       Point topLeftCorner = new Point(sceneViewRectangle.x + rectangle.x,
@@ -1165,23 +1089,14 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    * @param x     The X coordinate to center the scale to (in the Viewport's view coordinate system)
    * @param y     The Y coordinate to center the scale to (in the Viewport's view coordinate system)
    * @return True if the scaling was changed, false if this was a noop.
-   * FIXME(b/291572358): this code would be removed and replaced with myZoomController.setScale(scale, x, y)
    */
   @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
   public boolean setScale(@SurfaceScale double scale, @SwingCoordinate int x, @SwingCoordinate int y) {
-    @SurfaceScale final double newScale = getBoundedScale(scale);
-    if (isScaleSame(myScale, newScale)) {
-      return false;
-    }
+    return getZoomController().setScale(scale, x, y);
+  }
 
-    double previousScale = myScale;
-    myScale = newScale;
-    onScaleChange(new ScaleChange(
-      previousScale,
-      myScale,
-      new Point(x ,y))
-    );
-    return true;
+  public boolean setScale(@SurfaceScale double scale){
+    return getZoomController().setScale(scale);
   }
 
   @Override
@@ -1214,7 +1129,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       return;
     }
     SurfaceState state = DesignSurfaceSettings.getInstance(model.getProject()).getSurfaceState();
-    state.saveFileScale(myProject, model.getVirtualFile(), myScale);
+    state.saveFileScale(myProject, model.getVirtualFile(), getZoomController().getScale());
   }
 
   /**
@@ -1228,7 +1143,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     SurfaceState state = DesignSurfaceSettings.getInstance(model.getProject()).getSurfaceState();
     Double previousScale = state.loadFileScale(myProject, model.getVirtualFile());
     if (previousScale != null) {
-      setScale(previousScale);
+      getZoomController().setScale(previousScale);
       return true;
     }
     else {
@@ -1241,7 +1156,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    */
   @SurfaceScale
   protected double getMinScale() {
-    return 0;
+    return getZoomController().getMinScale();
   }
 
   /**
@@ -1249,7 +1164,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    */
   @SurfaceScale
   protected double getMaxScale() {
-    return 1;
+    return getZoomController().getMaxScale();
   }
 
   private void notifyScaleChanged(double previousScale, double newScale) {
@@ -1499,14 +1414,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     return getLayoutType().isEditable();
   }
 
-  /**
-   * Returns all the {@link PositionableContent} in this surface.
-   */
-  @NotNull
-  protected Collection<PositionableContent> getPositionableContent() {
-    return mySceneViewPanel.getPositionableContent();
-  }
-
   private final Set<ProgressIndicator> myProgressIndicators = new HashSet<>();
 
   @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
@@ -1745,8 +1652,11 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   @Override
   public Object getData(@NotNull @NonNls String dataId) {
-    if (DESIGN_SURFACE.is(dataId) || ZOOMABLE_KEY.is(dataId) || PANNABLE_KEY.is(dataId) || GuiInputHandler.CURSOR_RECEIVER.is(dataId)) {
+    if (DESIGN_SURFACE.is(dataId) || PANNABLE_KEY.is(dataId) || GuiInputHandler.CURSOR_RECEIVER.is(dataId)) {
       return this;
+    }
+    if (ZOOMABLE_KEY.is(dataId)){
+      return getZoomController();
     }
     if (CONFIGURATIONS.is(dataId)) {
       return getConfigurations();

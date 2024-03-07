@@ -17,6 +17,8 @@ package com.android.tools.idea.compose.preview
 
 import com.android.ide.common.rendering.api.Bridge
 import com.android.tools.analytics.UsageTracker
+import com.android.tools.compose.COMPOSABLE_ANNOTATION_FQ_NAME
+import com.android.tools.compose.COMPOSABLE_ANNOTATION_NAME
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
 import com.android.tools.idea.common.model.AccessibilityModelUpdater
@@ -26,7 +28,6 @@ import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.common.surface.updateSceneViewVisibilities
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.UiCheckModeFilter
-import com.android.tools.idea.compose.buildlisteners.PreviewBuildListenersManager
 import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
 import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.compose.preview.fast.FastPreviewSurface
@@ -59,11 +60,13 @@ import com.android.tools.idea.modes.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.Colors
 import com.android.tools.idea.preview.DefaultRenderQualityManager
 import com.android.tools.idea.preview.NavigatingInteractionHandler
+import com.android.tools.idea.preview.PreviewBuildListenersManager
 import com.android.tools.idea.preview.PreviewRefreshManager
 import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
+import com.android.tools.idea.preview.annotations.findAnnotatedMethodsValues
 import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.gallery.CommonGalleryEssentialsModeManager
 import com.android.tools.idea.preview.gallery.GalleryMode
@@ -283,10 +286,11 @@ class ComposePreviewRepresentation(
 
   private val previewBuildListenersManager =
     PreviewBuildListenersManager(
-      { psiFilePointer },
+      isFastPreviewSupported = true,
+      ComposePreviewEssentialsModeManager::isEssentialsModeEnabled,
       ::invalidate,
       ::requestRefresh,
-      { requestVisibilityAndNotificationsUpdate() },
+      ::requestVisibilityAndNotificationsUpdate,
     )
 
   private val refreshManager = PreviewRefreshManager.getInstance(RenderingTopic.COMPOSE_PREVIEW)
@@ -526,13 +530,16 @@ class ComposePreviewRepresentation(
     ActivityTracker.getInstance().inc()
   }
 
-  private suspend fun startUiCheckPreview(instance: PsiComposePreviewElementInstance) {
+  private suspend fun startUiCheckPreview(
+    instance: PsiComposePreviewElementInstance,
+    isWearPreview: Boolean,
+  ) {
     log.debug(
       "Starting UI check. ATF checks enabled: $atfChecksEnabled, Visual Linting enabled: $visualLintingEnabled"
     )
     val startTime = System.currentTimeMillis()
     qualityManager.pause()
-    uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance)
+    uiCheckFilterFlow.value = UiCheckModeFilter.Enabled(instance, isWearPreview)
     withContext(uiThread) {
       emptyUiCheckPanel.apply {
         isVisible = true
@@ -540,7 +547,7 @@ class ComposePreviewRepresentation(
         // including the zoom toolbar.
         surface.layeredPane.add(this, JLayeredPane.DRAG_LAYER, 0)
       }
-      createUiCheckTab(instance)
+      createUiCheckTab(instance, isWearPreview)
       ProblemsViewToolWindowUtils.selectTab(project, instance.instanceId)
     }
     val completableDeferred =
@@ -559,8 +566,8 @@ class ComposePreviewRepresentation(
     completableDeferred.join()
   }
 
-  fun createUiCheckTab(instance: ComposePreviewElementInstance<*>) {
-    val uiCheckIssuePanel = UiCheckPanelProvider(instance, project).getPanel()
+  fun createUiCheckTab(instance: ComposePreviewElementInstance<*>, isWearPreview: Boolean) {
+    val uiCheckIssuePanel = UiCheckPanelProvider(instance, isWearPreview, project).getPanel()
     uiCheckIssuePanel.issueProvider.registerUpdateListener(postIssueUpdateListenerForUiCheck)
     uiCheckIssuePanel.issueProvider.activate()
     uiCheckIssuePanel.addIssueSelectionListener(surface.issueListener, surface)
@@ -740,6 +747,8 @@ class ComposePreviewRepresentation(
       )
       .also { Disposer.register(this@ComposePreviewRepresentation, it) }
 
+  private val hasPreviewsCachedValue = AtomicBoolean(false)
+
   init {
     launch {
       // Keep track of the last mode that was set to ensure it is correctly disposed
@@ -796,8 +805,16 @@ class ComposePreviewRepresentation(
     // want that to happen if the animation inspection was open at the beginning of the build. This
     // ensures the animations panel is showed again after the build completes
     val shouldRefreshAfterBuildFailed = { mode.value is PreviewMode.AnimationInspection }
-    previewBuildListenersManager.setupPreviewBuildListeners(this, shouldRefreshAfterBuildFailed) {
+    previewBuildListenersManager.setupPreviewBuildListeners(
+      disposable = this,
+      psiFilePointer,
+      shouldRefreshAfterBuildFailed,
+    ) {
       composeWorkBench.updateProgress(message("panel.building"))
+      // When building, invalidate the Animation Preview, since the animations are now obsolete and
+      // new ones will be subscribed once build is complete and refresh is triggered.
+      ComposePreviewAnimationManager.invalidate(psiFilePointer)
+      requestVisibilityAndNotificationsUpdate()
     }
   }
 
@@ -1365,6 +1382,33 @@ class ComposePreviewRepresentation(
     }
   }
 
+  override fun hasPreviewsCached() = hasPreviewsCachedValue.get()
+
+  /**
+   * Iterate over the Composables of this file and returns true as soon as we find one with a
+   * `@Preview` or MultiPreview annotations. This function also updates the value of
+   * [hasPreviewsCachedValue] accordingly.
+   */
+  override suspend fun hasPreviews(): Boolean {
+    val vFile = previewedFile?.virtualFile ?: return false
+    findAnnotatedMethodsValues(
+        project,
+        vFile,
+        COMPOSABLE_ANNOTATION_FQ_NAME,
+        COMPOSABLE_ANNOTATION_NAME,
+      ) { methods ->
+        methods.asSequence()
+      }
+      .forEach { composableMethod ->
+        if (composableMethod.hasPreviewElements()) {
+          hasPreviewsCachedValue.set(true)
+          return@hasPreviews true
+        }
+      }
+    hasPreviewsCachedValue.set(false)
+    return false
+  }
+
   /**
    * Whether the scene manager should use a private ClassLoader. Currently, that's done for
    * interactive preview and animation inspector, where it's crucial not to share the state (which
@@ -1482,7 +1526,11 @@ class ComposePreviewRepresentation(
         startInteractivePreview(mode.selected as ComposePreviewElementInstance)
       }
       is PreviewMode.UiCheck -> {
-        startUiCheckPreview(mode.baseElement as PsiComposePreviewElementInstance)
+        val uiCheckInstance = mode.baseInstance
+        startUiCheckPreview(
+          uiCheckInstance.baseElement as PsiComposePreviewElementInstance,
+          uiCheckInstance.isWearPreview,
+        )
       }
       is PreviewMode.AnimationInspection -> {
         ComposePreviewAnimationManager.onAnimationInspectorOpened()

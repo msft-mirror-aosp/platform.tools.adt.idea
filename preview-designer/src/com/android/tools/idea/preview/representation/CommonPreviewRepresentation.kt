@@ -32,6 +32,7 @@ import com.android.tools.idea.preview.CommonPreviewRefreshRequest
 import com.android.tools.idea.preview.DelegatingPreviewElementModelAdapter
 import com.android.tools.idea.preview.MemoizedPreviewElementProvider
 import com.android.tools.idea.preview.NavigatingInteractionHandler
+import com.android.tools.idea.preview.PreviewBuildListenersManager
 import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.PreviewElementModelAdapter
 import com.android.tools.idea.preview.PreviewElementProvider
@@ -40,6 +41,7 @@ import com.android.tools.idea.preview.PsiPreviewElement
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.flow.CommonPreviewFlowManager
 import com.android.tools.idea.preview.flow.PreviewFlowManager
+import com.android.tools.idea.preview.gallery.CommonGalleryEssentialsModeManager
 import com.android.tools.idea.preview.gallery.GalleryMode
 import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.interactive.InteractivePreviewManager
@@ -95,6 +97,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
 private val modelUpdater: NlModel.NlModelUpdaterInterface = DefaultModelUpdater()
@@ -121,6 +124,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
     ) -> CommonPreviewViewModel,
   configureDesignSurface: NlDesignSurface.Builder.() -> Unit,
   renderingTopic: RenderingTopic,
+  isEssentialsModeEnabled: () -> Boolean,
   useCustomInflater: Boolean = true,
 ) :
   PreviewRepresentation,
@@ -135,24 +139,14 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
 
   private val projectBuildStatusManager = ProjectBuildStatusManager.create(this, psiFile)
 
+  @TestOnly internal fun getProjectBuildStatusForTest() = projectBuildStatusManager.status
+
   private val lifecycleManager =
     PreviewLifecycleManager(
       project,
       parentScope = this,
-      onInitActivate = {
-        initializeFlows()
-        onInit()
-        if (mode.value is PreviewMode.Interactive) {
-          interactiveManager.resume()
-        }
-      },
-      onResumeActivate = {
-        initializeFlows()
-        surface.activate()
-        if (mode.value is PreviewMode.Interactive) {
-          interactiveManager.resume()
-        }
-      },
+      onInitActivate = { activate(isResuming = false) },
+      onResumeActivate = { activate(isResuming = true) },
       onDeactivate = {
         LOG.debug("onDeactivate")
         if (mode.value is PreviewMode.Interactive) {
@@ -212,6 +206,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
   /** Whether the preview needs a full refresh or not. */
   private val invalidated = AtomicBoolean(true)
 
+  @TestOnly internal fun isInvalidatedForTest() = invalidated.get()
+
   private val refreshManager = PreviewRefreshManager.getInstance(renderingTopic)
 
   @VisibleForTesting
@@ -225,6 +221,18 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
     ) {
       surface.sceneManagers.any { it.renderResult.isErrorResult(adapterViewFqcn) }
     }
+
+  private val previewBuildListenersManager =
+    PreviewBuildListenersManager(
+      isFastPreviewSupported = false,
+      isEssentialsModeEnabled,
+      ::invalidate,
+      ::requestRefresh,
+    )
+
+  @TestOnly
+  internal fun hasBuildListenerSetupFinishedForTest() =
+    previewBuildListenersManager.buildListenerSetupFinished
 
   private val previewFreshnessTracker =
     CodeOutOfDateTracker.create(module, this) { requestRefresh() }
@@ -255,6 +263,58 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
         }
     }
 
+  private val previewModeManager = CommonPreviewModeManager()
+
+  private val fpsLimitFlow =
+    essentialsModeFlow(project, this).fpsLimitFlow(this, standardFpsLimit = 30)
+
+  @VisibleForTesting
+  val interactiveManager =
+    InteractivePreviewManager(
+        surface,
+        fpsLimitFlow.value,
+        { surface.sceneManagers },
+        { InteractivePreviewUsageTracker.getInstance(surface) },
+        delegateInteractionHandler,
+      )
+      .also { Disposer.register(this@CommonPreviewRepresentation, it) }
+
+  private val galleryEssentialsModeManager =
+    CommonGalleryEssentialsModeManager(
+        project = psiFile.project,
+        lifecycleManager = lifecycleManager,
+        previewFlowManager = previewFlowManager,
+        previewModeManager = previewModeManager,
+        isEssentialsModeEnabled = isEssentialsModeEnabled,
+        onUpdatedFromStudioEssentialsMode = {},
+        onUpdatedFromPreviewEssentialsMode = {},
+        requestRefresh = ::requestRefresh,
+      )
+      .also { Disposer.register(this@CommonPreviewRepresentation, it) }
+
+  override val component: JComponent
+    get() = previewView.component
+
+  override val preferredInitialVisibility: PreferredVisibility? = null
+
+  override val mode = previewModeManager.mode
+
+  override fun dispose() {
+    if (mode.value is PreviewMode.Interactive) {
+      interactiveManager.stop()
+    }
+  }
+
+  override fun onActivate() = lifecycleManager.activate()
+
+  override fun onDeactivate() = lifecycleManager.deactivate()
+
+  override fun restorePrevious() = previewModeManager.restorePrevious()
+
+  override fun setMode(mode: PreviewMode) {
+    previewModeManager.setMode(mode)
+  }
+
   private fun onInit() {
     LOG.debug("onInit")
     if (Disposer.isDisposed(this)) {
@@ -264,6 +324,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
     requireNotNull(psiFile) { "PsiFile was disposed before the preview initialization completed." }
 
     setupBuildListener(project, previewViewModel, this)
+    previewBuildListenersManager.setupPreviewBuildListeners(disposable = this, psiFilePointer)
 
     project.runWhenSmartAndSyncedOnEdt(this, { onEnterSmartMode() })
   }
@@ -441,11 +502,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
     invalidated.set(true)
   }
 
-  override val component: JComponent
-    get() = previewView.component
-
-  override val preferredInitialVisibility: PreferredVisibility? = null
-
   private fun onAfterRender() {
     previewViewModel.afterPreviewsRefreshed()
   }
@@ -459,15 +515,19 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
       isUsePrivateClassLoader = mode.value is PreviewMode.Interactive
     }
 
-  override fun dispose() {
+  private fun activate(isResuming: Boolean) {
+    initializeFlows()
+    if (isResuming) {
+      surface.activate()
+    } else {
+      onInit()
+    }
+
+    galleryEssentialsModeManager.activate()
     if (mode.value is PreviewMode.Interactive) {
-      interactiveManager.stop()
+      interactiveManager.resume()
     }
   }
-
-  override fun onActivate() = lifecycleManager.activate()
-
-  override fun onDeactivate() = lifecycleManager.deactivate()
 
   private fun CoroutineScope.initializeFlows() {
     with(this@initializeFlows) {
@@ -510,30 +570,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
       // might not have been built, but it's worth to try.
       else -> requestRefresh()
     }
-  }
-
-  private val previewModeManager = CommonPreviewModeManager()
-
-  private val fpsLimitFlow =
-    essentialsModeFlow(project, this).fpsLimitFlow(this, standardFpsLimit = 30)
-
-  @VisibleForTesting
-  val interactiveManager =
-    InteractivePreviewManager(
-        surface,
-        fpsLimitFlow.value,
-        { surface.sceneManagers },
-        { InteractivePreviewUsageTracker.getInstance(surface) },
-        delegateInteractionHandler,
-      )
-      .also { Disposer.register(this@CommonPreviewRepresentation, it) }
-
-  override val mode = previewModeManager.mode
-
-  override fun restorePrevious() = previewModeManager.restorePrevious()
-
-  override fun setMode(mode: PreviewMode) {
-    previewModeManager.setMode(mode)
   }
 
   private suspend fun onExit(mode: PreviewMode) {

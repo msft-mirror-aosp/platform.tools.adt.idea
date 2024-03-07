@@ -99,19 +99,17 @@ class BottomPanel(
       tracker.resetTimeline()
     }
 
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
     override fun updateButton(e: AnActionEvent) {
       super.updateButton(e)
-      if (e.presentation.isEnabled != previewState.isCoordinationAvailable()) {
-        e.presentation.isEnabled = previewState.isCoordinationAvailable()
-        e.presentation.text =
-          when {
-            previewState.isCoordinationAvailable() && previewState.isCoordinationPanelOpened() ->
-              message("animation.inspector.action.reset.timeline")
-            previewState.isCoordinationAvailable() && !previewState.isCoordinationPanelOpened() ->
-              message("animation.inspector.action.reset.single.animation")
-            else -> message("animation.inspector.coordination.unavailable.reset.timeline")
-          }
-      }
+      e.presentation.isEnabled = true
+      e.presentation.text =
+        if (previewState.isCoordinationPanelOpened()) {
+          message("animation.inspector.action.reset.timeline")
+        } else {
+          message("animation.inspector.action.reset.single.animation")
+        }
     }
   }
 }

@@ -22,13 +22,14 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.layout.findAllScanlines
 import com.android.tools.idea.common.surface.layout.findLargerScanline
 import com.android.tools.idea.common.surface.layout.findSmallerScanline
+import com.android.tools.idea.common.surface.organization.SceneViewHeader
 import com.android.tools.idea.common.surface.organization.createOrganizationHeaders
 import com.android.tools.idea.common.surface.organization.paintLines
-import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
 import com.android.tools.idea.uibuilder.scene.hasValidImage
 import com.android.tools.idea.uibuilder.surface.NlDesignSurfacePositionableContentLayoutManager
-import com.android.tools.idea.uibuilder.surface.layout.GroupedSurfaceLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContentLayoutManager
 import com.android.tools.idea.uibuilder.surface.layout.getScaledContentSize
@@ -40,6 +41,7 @@ import java.awt.Point
 import java.awt.Rectangle
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlinx.coroutines.launch
 
 /**
  * A [JPanel] responsible for displaying [SceneView]s provided by the [sceneViewProvider].
@@ -101,6 +103,25 @@ internal class SceneViewPanel(
 
   val groups = mutableMapOf<String, MutableList<JComponent>>()
 
+  private val scope = AndroidCoroutineScope(disposable)
+
+  init {
+    (layoutManager as? NlDesignSurfacePositionableContentLayoutManager)?.let {
+      scope.launch(uiThread) {
+        it.currentLayout.collect { layoutOption ->
+          if (layoutOption.organizationEnabled) {
+            // TODO(b/289994157) Add headers if layout supports it
+          } else {
+            // Remove existing groups.
+            val headers = components.filterIsInstance<SceneViewHeader>()
+            headers.forEach { remove(it) }
+            groups.clear()
+          }
+        }
+      }
+    }
+  }
+
   @UiThread
   private fun revalidateSceneViews() {
     // Check if the SceneViews are still valid
@@ -157,13 +178,12 @@ internal class SceneViewPanel(
     }
   }
 
-  /** @return true if Organization feature is enabled and layout supports groups. */
+  /** @return true if layout supports organization. */
   private fun organizationIsEnabled() =
-    StudioFlags.COMPOSE_PREVIEW_GROUP_LAYOUT.get() &&
-      ((layout as? NlDesignSurfacePositionableContentLayoutManager)
-        ?.currentLayout
-        ?.value
-        ?.layoutManager is GroupedSurfaceLayoutManager)
+    (layout as? NlDesignSurfacePositionableContentLayoutManager)
+      ?.currentLayout
+      ?.value
+      ?.organizationEnabled == true
 
   override fun doLayout() {
     revalidateSceneViews()
@@ -219,8 +239,7 @@ internal class SceneViewPanel(
             if (renderErrorPanel) sceneViewPeerPanel.sceneViewCenterPanel.preferredSize.height
             else size.height
         // This finds the maximum allowed area for the screen views to paint into. See more details
-        // in the
-        // ScanlineUtils.kt documentation.
+        // in the ScanlineUtils.kt documentation.
         @SwingCoordinate
         var minX = findSmallerScanline(verticalRightScanLines, positionable.x, viewportBounds.x)
         @SwingCoordinate
@@ -230,17 +249,13 @@ internal class SceneViewPanel(
         var maxY = findLargerScanline(horizontalTopScanLines, bottom, viewportBottom)
 
         // Now, (minX, minY) (maxX, maxY) describes the box that a PositionableContent could paint
-        // into without painting
-        // on top of another PositionableContent render. We use this box to paint the components
-        // that are outside of the
-        // rendering area.
+        // into without painting on top of another PositionableContent render. We use this box to
+        // paint the components that are outside of the rendering area.
         // However, now we need to avoid there "out of bounds" components from being on top of each
-        // other.
-        // To do that, we simply find the middle point, except on the corners of the surface. For
-        // example, the
-        // first PositionableContent on the left, does not have any other PositionableContent that
-        // could paint on its left side so we
-        // do not need to find the middle point in those cases.
+        // other. To do that, we simply find the middle point, except on the corners of the surface.
+        // For example, the first PositionableContent on the left, does not have any other
+        // PositionableContent that could paint on its left side so we do not need to find the
+        // middle point in those cases.
         minX = if (minX > viewportBounds.x) (minX + positionable.x) / 2 else viewportBounds.x
         maxX = if (maxX < viewportRight) (maxX + right) / 2 else viewportRight
         minY = if (minY > viewportBounds.y) (minY + positionable.y) / 2 else viewportBounds.y
@@ -290,13 +305,9 @@ internal class SceneViewPanel(
 
   /**
    * Find the predicted rectangle of the [sceneView] when layout manager re-layout the content with
-   * the given [content] and [availableSize].
+   * the given [availableSize].
    */
-  fun findMeasuredSceneViewRectangle(
-    sceneView: SceneView,
-    content: Collection<PositionableContent>,
-    availableSize: Dimension,
-  ): Rectangle? {
+  fun findMeasuredSceneViewRectangle(sceneView: SceneView, availableSize: Dimension): Rectangle? {
     val panel =
       components.filterIsInstance<SceneViewPeerPanel>().firstOrNull { sceneView == it.sceneView }
         ?: return null
@@ -304,7 +315,7 @@ internal class SceneViewPanel(
     val layoutManager = layout as PositionableContentLayoutManager ?: return null
     val positions =
       layoutManager.getMeasuredPositionableContentPosition(
-        content,
+        positionableContent,
         availableSize.width,
         availableSize.height,
       )

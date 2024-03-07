@@ -57,7 +57,7 @@ class EmulatorUiSettingsControllerTest {
   private val usages: List<LoggedUsage>
     get() = usageRule.usages
 
-  private val model: UiSettingsModel by lazy { UiSettingsModel(Dimension(1344, 2992), DEFAULT_DENSITY) } // Pixel 8 Pro
+  private val model: UiSettingsModel by lazy { UiSettingsModel(Dimension(1344, 2992), DEFAULT_DENSITY, 33) } // Pixel 8 Pro
   private val controller: EmulatorUiSettingsController by lazy { createController() }
 
   @Before
@@ -86,15 +86,15 @@ class EmulatorUiSettingsControllerTest {
   @Test
   fun testReadDefaultValueWhenAttachingAfterInit() {
     controller.initAndWait()
-    val listeners = UiControllerListenerValidator(model, customValues = true)
-    listeners.checkValues(expectedChanges = 1, expectedCustomValues = false)
+    val listeners = UiControllerListenerValidator(model, customValues = true, settable = false)
+    listeners.checkValues(expectedChanges = 1, expectedCustomValues = false, expectedSettable = true)
   }
 
   @Test
   fun testReadDefaultValueWhenAttachingBeforeInit() {
-    val listeners = UiControllerListenerValidator(model, customValues = true)
+    val listeners = UiControllerListenerValidator(model, customValues = true, settable = false)
     controller.initAndWait()
-    listeners.checkValues(expectedChanges = 2, expectedCustomValues = false)
+    listeners.checkValues(expectedChanges = 2, expectedCustomValues = false, expectedSettable = true)
   }
 
   @Test
@@ -111,8 +111,8 @@ class EmulatorUiSettingsControllerTest {
       overrideDensity = CUSTOM_DENSITY
     )
     controller.initAndWait()
-    val listeners = UiControllerListenerValidator(model, customValues = false)
-    listeners.checkValues(expectedChanges = 1, expectedCustomValues = true)
+    val listeners = UiControllerListenerValidator(model, customValues = false, settable = false)
+    listeners.checkValues(expectedChanges = 1, expectedCustomValues = true, expectedSettable = true)
   }
 
   @Test
@@ -291,7 +291,7 @@ class EmulatorUiSettingsControllerTest {
       val event = usages[index].studioEvent
       assertThat(event.kind).isEqualTo(EventKind.UI_DEVICE_SETTINGS_EVENT)
       assertThat(event.deviceInfo.deviceType).isEqualTo(DeviceType.LOCAL_EMULATOR)
-      assertThat(event.deviceInfo.buildApiLevelFull).isEqualTo("34")
+      assertThat(event.deviceInfo.buildApiLevelFull).isEqualTo("33")
       assertThat(event.uiDeviceSettingsEvent.operation).isEqualTo(expected)
     }
     assertThat(usages).hasSize(operations.size)

@@ -208,15 +208,6 @@ public final class StudioFlags {
     Flag.create(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android", false);
   //endregion
 
-  //region ML
-  private static final FlagGroup ML = new FlagGroup(FLAGS, "ml", "ML");
-  public static final Flag<Boolean> ML_MODEL_BINDING = Flag.create(
-    ML, "modelbinding", "Enable ML model binding",
-    "When enabled, TFLite model file will be recognized and indexed. Please invalidates file caches after enabling " +
-    "(File -> Invalidate Caches...) in order to reindex model files.",
-    true);
-  //endregion
-
   //region Design Tools
   private static final FlagGroup DESIGN_TOOLS = new FlagGroup(FLAGS, "design.tools", "Design Tools");
 
@@ -270,6 +261,11 @@ public final class StudioFlags {
     NELE, "compose.ui.check.mode", "Enable UI Check mode for Compose preview",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
     true);
+
+  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
+    NELE, "compose.ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
+    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
+    false);
 
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
     NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
@@ -452,13 +448,13 @@ public final class StudioFlags {
     "Note: Changing the value of this flag requires restarting Android Studio.",
     true);
 
-  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_MANAGER = Flag.create(
+  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_MANAGER = new BooleanFlag(
     RUNDEBUG,
     "adblib.migration.ddmlib.idevicemanager",
     "Use adblib to track devices (IDevice)",
     "Use adblib instead of ddmlib to track and implement `IDevice` instances. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    true);
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_USAGE_TRACKER = Flag.create(
     RUNDEBUG,
@@ -1370,6 +1366,11 @@ public final class StudioFlags {
     COMPOSE, "compose.preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
     "Invalidates the preview is there is a resource change",
     true);
+
+  public static final Flag<Boolean> COMPOSE_GENERATE_SAMPLE_DATA = new BooleanFlag(
+    COMPOSE, "generate.sample.data", "Enable sample data generation for Compose",
+    "Enable a Studio Bot context-menu action that generates sample data for a given Composable function",
+    false);
   //endregion
 
   // region Wear surfaces
@@ -1511,6 +1512,15 @@ public final class StudioFlags {
       "Enable FTL DirectAccess",
       true);
 
+  // TODO (b/328524309): Remove the flag once monthly quota are enabled.
+  public static final Flag<Boolean> DIRECT_ACCESS_MONTHLY_QUOTA =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.monthly.quota",
+      "Direct Access",
+      "Enable FTL DirectAccess",
+      false);
+
   public static final Flag<Boolean> DIRECT_ACCESS_SETTINGS_PAGE =
     Flag.create(
       FIREBASE_TEST_LAB,
@@ -1647,6 +1657,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> IMPACT_TRACKING =
     Flag.create(APP_LINKS_ASSISTANT, "app.links.assistant.impact.tracking", "App Links Assistant impact tracking",
                 "Impact tracking for the App Links Assistant", false);
+  public static final Flag<Boolean> WEB_CHECKS =
+    Flag.create(APP_LINKS_ASSISTANT, "app.links.assistant.web.checks", "App Links Assistant web checks",
+                "Web checks (i.e. domain-side validation) for the App Links Assistant", true);
   // endregion App Links Assistant
 
   // region GOOGLE_PLAY_SDK_INDEX
@@ -1730,7 +1743,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
                     "When enabled, inline code completion suggestions will be shown.",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",

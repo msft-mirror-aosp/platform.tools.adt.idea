@@ -54,24 +54,12 @@ class EnableInstantAppTest {
    */
   @Test
   fun createProjectAndEnableAIA(){
-    WizardUtils.createNewProject(guiTest, FormFactor.MOBILE, "Empty Activity")
+    val instantAppSupportUtil = InstantAppSupportUtils()
+
+    instantAppSupportUtil.createEmptyActivityAndEnableInstantApp(guiTest)
     guiTest.waitForAllBackgroundTasksToBeCompleted()
-    val ideFrame = guiTest.ideFrame()
 
-    guiTest.ideFrame()
-      .editor
-      .open("app/src/main/AndroidManifest.xml",EditorFixture.Tab.EDITOR)
-      .moveBetween("tools\"",">")
-      .enterText("\n")
-      .enterText("""xmlns:dist="http://schemas.android.com/apk/distribution"""")
-      .moveBetween("","<application")
-      .enterText("""<dist:module dist:instant="true" />""" + "\n")
-
-    ideFrame.requestProjectSync()
-    guiTest.waitForAllBackgroundTasksToBeCompleted()
-    Truth.assertThat(guiTest.ideFrame().invokeProjectMake(Wait.seconds(500))
-                       .isBuildSuccessful).isTrue()
-
-
+    Truth.assertThat(instantAppSupportUtil.buildProject(guiTest.ideFrame()))
+      .isTrue()
   }
 }

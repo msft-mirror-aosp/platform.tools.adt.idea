@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.rendering.classloading
 
-import com.intellij.testFramework.UsefulTestCase
+import org.junit.Assert.assertThrows
+import com.android.tools.rendering.classloading.RequestExecutorTransform
 import org.junit.Test
 import java.io.StringWriter
 import java.lang.RuntimeException
@@ -29,7 +30,7 @@ class RequestExecutorTransformTest {
 
   @Test
   fun testTransform() {
-    UsefulTestCase.assertThrows(RuntimeException::class.java) {
+    assertThrows(RuntimeException::class.java) {
       RequestExecutor.execute<String>(null, null, null)
     }
 

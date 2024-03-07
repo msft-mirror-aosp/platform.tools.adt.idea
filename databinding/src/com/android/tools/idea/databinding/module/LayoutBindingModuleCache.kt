@@ -44,6 +44,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.ModificationTracker
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -56,7 +57,7 @@ private val LIGHT_BINDING_CLASSES_KEY =
   Key.create<List<LightBindingClass>>("LIGHT_BINDING_CLASSES_KEY")
 
 @ThreadSafe
-class LayoutBindingModuleCache(private val module: Module) : Disposable {
+class LayoutBindingModuleCache(val module: Module) : Disposable {
   companion object {
     // We are using facet.mainModule as a temporary workaround. This is needed because main,
     // unitTest and androidTest modules all access the same resources (all the resources). Ideally,
@@ -218,6 +219,7 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
 
     override fun compute(): CachedValueProvider.Result<Set<BindingLayoutGroup>> {
       val moduleResources = StudioResourceRepositoryManager.getModuleResources(facet)
+      val modificationTracker = ModificationTracker { moduleResources.modificationCount }
       val layoutResources =
         moduleResources.getResources(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT)
       val bindingLayoutGroups =
@@ -232,7 +234,7 @@ class LayoutBindingModuleCache(private val module: Module) : Disposable {
       // so we must incorporate both into the modification count (see b/283753328).
       return CachedValueProvider.Result(
         bindingLayoutGroups,
-        moduleResources,
+        modificationTracker,
         BindingXmlIndexModificationTracker.getInstance(project),
       )
     }

@@ -22,6 +22,7 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
 import com.android.annotations.concurrency.UiThread;
 import com.android.sdklib.AndroidDpCoordinate;
+import com.android.tools.adtui.ZoomController;
 import com.android.tools.adtui.common.SwingCoordinate;
 import com.android.tools.idea.actions.LayoutPreviewHandler;
 import com.android.tools.idea.actions.LayoutPreviewHandlerKt;
@@ -49,10 +50,8 @@ import com.android.tools.idea.common.surface.LayoutScannerControl;
 import com.android.tools.idea.common.surface.LayoutScannerEnabled;
 import com.android.tools.idea.common.surface.ScaleChange;
 import com.android.tools.idea.common.surface.SceneView;
-import com.android.tools.idea.common.surface.ScenesOwner;
 import com.android.tools.idea.common.surface.SurfaceInteractable;
 import com.android.tools.idea.common.surface.SurfaceScale;
-import com.android.tools.idea.common.surface.SurfaceScreenScalingFactor;
 import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport;
 import com.android.tools.idea.common.surface.layout.DesignSurfaceViewportScroller;
 import com.android.tools.idea.common.surface.layout.ReferencePointScroller;
@@ -79,6 +78,7 @@ import com.android.tools.idea.uibuilder.surface.layout.GroupedListSurfaceLayoutM
 import com.android.tools.idea.common.layout.LayoutManagerSwitcher;
 import com.android.tools.idea.uibuilder.surface.layout.ListLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent;
+import com.android.tools.idea.uibuilder.surface.layout.SingleDirectionLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.SurfaceLayoutManager;
 import com.android.tools.idea.common.layout.SurfaceLayoutOption;
 import com.android.tools.idea.uibuilder.visual.VisualizationToolWindowFactory;
@@ -138,6 +138,12 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
    * See {@link Builder#setDelegateDataProvider(DataProvider)}
    */
   @Nullable private final DataProvider myDelegateDataProvider;
+
+  @NotNull
+  @Override
+  public ZoomController getZoomController() {
+    return myZoomController;
+  }
 
   public static class Builder {
     private final Project myProject;
@@ -412,9 +418,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
    */
   private final BiFunction<NlDesignSurface, NlModel, LayoutlibSceneManager> mySceneManagerProvider;
 
-  @SurfaceScale private final double myMinScale;
-  @SurfaceScale private final double myMaxScale;
-
   // To scroll to correct viewport position when its size is changed.
   @Nullable private DesignSurfaceViewportScroller myViewportScroller = null;
 
@@ -462,8 +465,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     mySupportedActionsProvider = supportedActionsProvider;
     myShouldRenderErrorsPanel = shouldRenderErrorsPanel;
     myVisualLintIssueProvider = issueProviderFactory.apply(this);
-    myMinScale = minScale;
-    myMaxScale = maxScale;
 
     getViewport().addChangeListener(e -> {
       DesignSurfaceViewportScroller scroller = myViewportScroller;
@@ -482,10 +483,13 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
       this::getPositionableContent,
       getAnalyticsManager(),
       getSelectionModel(),
-      (ScenesOwner) this,
+      this,
       maxFitIntoZoomLevel
     );
     myZoomController.setOnScaleListener(this);
+    myZoomController.setMaxScale(maxScale);
+    myZoomController.setMinScale(minScale);
+    myZoomController.setScreenScalingFactor(JBUIScale.sysScale(this));
   }
 
   /**
@@ -679,12 +683,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   @Override
   public void show(@NotNull AccessoryPanel.Type type, boolean show) {
     showInspectorAccessoryPanel(show);
-  }
-
-  @Override
-  @SurfaceScreenScalingFactor
-  public double getScreenScalingFactor() {
-    return JBUIScale.sysScale(this);
   }
 
   @NotNull
@@ -909,38 +907,25 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   @Override
   @SurfaceScale
   protected double getMinScale() {
-    return myMinScale;
+    return myZoomController.getMinScale();
   }
 
   @Override
   @SurfaceScale
   protected double getMaxScale() {
-    return myMaxScale;
+    return myZoomController.getMaxScale();
   }
 
-  @Override
   public boolean canZoomToFit() {
-    @SurfaceScale double currentScale = getScale();
-    @SurfaceScale double zoomToFitScale = getFitScale();
-    return (currentScale > zoomToFitScale && canZoomOut()) || (currentScale < zoomToFitScale && canZoomIn());
+    return myZoomController.canZoomToFit();
   }
 
-  @Override
-  public boolean canZoomToActual() {
-    @SurfaceScale double currentScale = getScale();
-    @SurfaceScale double scaleOfActual = 1d / getScreenScalingFactor();
-    return (currentScale > scaleOfActual && canZoomOut()) || (currentScale < scaleOfActual && canZoomIn());
-  }
-
-  @Override
-  public double getFitScale() {
-    Dimension extent = getExtentSize();
-    Collection<PositionableContent> positionableContents = getPositionableContent();
-    // If there is no content, use 100% as zoom-to-fit level.
-    double scale = positionableContents.isEmpty() ? 1.0 :
-                   getSceneViewLayoutManager().getFitIntoScale(getPositionableContent(), extent);
-
-    return Math.min(scale, myMaxFitIntoScale);
+  /**
+   * Returns all the {@link PositionableContent} in this surface.
+   */
+  @NotNull
+  protected Collection<PositionableContent> getPositionableContent() {
+    return mySceneViewPanel.getPositionableContent();
   }
 
   @Override
@@ -948,15 +933,9 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     return (LayoutManagerSwitcher) mySceneViewPanel.getLayout();
   }
 
-  // FIXME(b/291572358): this code would be removed and replaced with myZoomController.setScale(scale, x, y)
   @Override
   public boolean setScale(double scale, int x, int y) {
-    double previousScale = getScale();
-    boolean changed = super.setScale(scale, x, y);
-    if (changed) {
-      onScaleChanged(previousScale, x, y);
-    }
-    return changed;
+    return myZoomController.setScale(scale, x, y);
   }
 
   @Override
@@ -992,7 +971,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
           new Dimension(port.getViewSize()), new Point(scrollPosition),
           new Point(x, y), previousScale, getScale(), findSceneViewRectangles(),
           (SceneView sceneView) -> mySceneViewPanel.findMeasuredSceneViewRectangle(sceneView,
-                                                                                   getPositionableContent(),
                                                                                    getExtentSize()));
       }
     }
@@ -1052,7 +1030,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     rectangle.setRect(rectangle.x * scaleChangeNeeded, rectangle.y * scaleChangeNeeded,
                       rectangle.width * scaleChangeNeeded, rectangle.height * scaleChangeNeeded);
 
-    if (setScale(boundedNewScale)) {
+    if (myZoomController.setScale(boundedNewScale)) {
       myViewportScroller = port -> scrollToCenter(sceneView, rectangle);
     }
     else {

@@ -17,11 +17,8 @@ package com.android.tools.idea.studiobot.prompts
 
 import com.android.tools.idea.studiobot.prompts.impl.SafePromptBuilderImpl
 import com.intellij.lang.Language
-import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiFile
-import com.intellij.util.concurrency.annotations.RequiresReadLock
 
 /**
  * Use this builder to construct prompts for Studio Bot APIs by specifying a series of messages.
@@ -43,12 +40,12 @@ import com.intellij.util.concurrency.annotations.RequiresReadLock
  * responded with.
  *
  * The last user message is what the model is supposed to respond to for this prompt/turn of
- * conversation.
+ * conversation. But this builder doesn't enforce this as a requirement to allow for partially
+ * constructed prompts that are later updated before being sent to the model.
  *
  * Prompts are subject the following constraints; a [MalformedPromptException] will be thrown if any
  * aren't followed:
  * * Prompts must contain at least one message.
- * * The last message must be a user message.
  * * There can be at most one system message, and it must be the first message.
  *
  * Use [SafePromptBuilder.MessageBuilder.text] to add plaintext to a message, and
@@ -56,7 +53,7 @@ import com.intellij.util.concurrency.annotations.RequiresReadLock
  *
  * Example usage:
  * ```
- * buildPrompt {
+ * buildPrompt(project) {
  *    systemMessage {
  *      text("You are Studio Bot", filesUsed = emptyList())
  *    }
@@ -80,6 +77,15 @@ inline fun buildPrompt(project: Project, builderAction: SafePromptBuilder.() -> 
   return SafePromptBuilderImpl(project).apply(builderAction).build()
 }
 
+/** Appends messages to an existing prompt built using [buildPrompt]. */
+inline fun appendToPrompt(project: Project, prompt: SafePrompt, builderAction: SafePromptBuilder.() -> Unit): SafePrompt {
+  return SafePromptBuilderImpl(project)
+    .addAll(prompt)
+    .apply(builderAction)
+    .build()
+}
+
+
 /** Utility for constructing prompts for Studio Bot. */
 interface SafePromptBuilder {
   val messages: List<SafePrompt.Message>
@@ -95,36 +101,8 @@ interface SafePromptBuilder {
     fun code(code: String, language: Language?, filesUsed: Collection<VirtualFile>)
   }
 
-  /**
-   * This interface contains some convenience methods for adding higher-level context to user
-   * messages. You should not view the low-level formatting of these messages as authoritative in
-   * any way, they are simply _one_ way to do it. If you care about your prompts performing
-   * optimally, you should build and evaluate for your use case, potentially using the lower-level
-   * APIs in [MessageBuilder] directly instead.
-   */
   interface UserMessageBuilder : MessageBuilder {
-    /**
-     * Adds information about [file], including its contents. See the disclaimer on
-     * [UserMessageBuilder] before using this method.
-     */
-    fun fileContents(file: VirtualFile)
-
-    /**
-     * Adds information about [file], including its contents. See the disclaimer on
-     * [UserMessageBuilder] before using this method.
-     */
-    fun fileContents(file: PsiFile)
-
-    /** Starts a read action allowing further query elements that require read access. */
-    fun withReadAction(block: ReadActionUserMessageBuilder.() -> Unit)
-  }
-
-  interface ReadActionUserMessageBuilder : UserMessageBuilder {
-    /**
-     * Adds the contents from the file currently open in [editor] to the query. See the disclaimer
-     * on [UserMessageBuilder] before using this method.
-     */
-    @RequiresReadLock fun openFileContents(editor: Editor)
+    val project: Project
   }
 
   fun systemMessage(builderAction: MessageBuilder.() -> Unit)
