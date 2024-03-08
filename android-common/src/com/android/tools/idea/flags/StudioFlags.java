@@ -1784,7 +1784,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "chat.context.enabled",
                     "Enable sending context with chat queries.",
                     "When enabled, chat queries will attach context (e.g. project structure, currently open file) from the project.",
-                    ChannelDefault.enabledUpTo(DEV));
+                    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_EDITOR_AI_ACTIONS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.actions.enabled",
@@ -1802,7 +1802,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
                     "Enable the custom transform action in the editor.",
                     "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
-                    ChannelDefault.enabledUpTo(DEV));
+                    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_EXPERIMENTAL_SLASH_COMMANDS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.experimental.slash.commands.enabled",
