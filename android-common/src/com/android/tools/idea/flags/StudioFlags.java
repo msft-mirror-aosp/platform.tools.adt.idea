@@ -1822,6 +1822,12 @@ public final class StudioFlags {
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
                     false);
 
+  public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
+                    "Suggest missing dependencies when inserting/pasting code snippets",
+                    "When enabled, a dependency suggestion dialog will appear when inserting/pasting code snippets that might require missing dependencies.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
