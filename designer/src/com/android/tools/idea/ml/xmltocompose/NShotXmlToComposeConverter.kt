@@ -70,7 +70,7 @@ private constructor(private val project: Project, private val nShots: List<Strin
     }
     try {
       val response =
-        studioBot.model().sendQuery(prompt, StudioBot.RequestSource.DESIGN_TOOLS).toList()
+        studioBot.model(project).sendQuery(prompt, StudioBot.RequestSource.DESIGN_TOOLS).toList()
       return response.parseCode()
     } catch (t: Throwable) {
       logger.error("Error while trying to send query", t)
