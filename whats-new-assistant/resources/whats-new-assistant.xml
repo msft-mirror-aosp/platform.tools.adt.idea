@@ -75,24 +75,6 @@
           </action>
         </stepElement>
       </step>
-      <step label="Build a Generative AI app using the Gemini API template">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>
-            You can now use Android Studio to build an app that implements Generative AI using the
-            <a href="http://ai.google.dev/tutorials/android_quickstart?utm_source=android&utm_medium=referral">Google AI SDK</a>.
-            The Gemini API template in Android Studio lets you incorporate AI-powered features, such
-            as those that rely on text generation and image recognition, in your app to delight your
-            users.
-            </p>
-            <br><br>
-            <a href="https://d.android.com/r/studio-ui/ide/gemini-template">Learn more</a>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
       <footerStep label="">
         <stepElement>
           <section>
