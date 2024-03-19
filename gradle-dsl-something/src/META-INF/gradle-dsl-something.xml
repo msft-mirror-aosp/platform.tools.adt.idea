@@ -1,0 +1,12 @@
+<idea-plugin>
+  <extensions defaultExtensionNs="com.intellij">
+    <fileType name="Something (Gradle Declarative)"
+              implementationClass="com.android.tools.idea.gradle.something.SomethingFileType"
+              fieldName="INSTANCE"
+              language="Something"
+              extensions="something"/>
+    <lang.parserDefinition language="Something"
+                           implementationClass="com.android.tools.idea.gradle.something.SomethingParserDefinition"/>
+    <lang.syntaxHighlighter language="Something" implementationClass="com.android.tools.idea.gradle.something.SomethingHighlighter"/>
+  </extensions>
+</idea-plugin>

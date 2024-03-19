@@ -78,7 +78,6 @@ import com.android.tools.idea.uibuilder.surface.layout.GroupedListSurfaceLayoutM
 import com.android.tools.idea.common.layout.LayoutManagerSwitcher;
 import com.android.tools.idea.uibuilder.surface.layout.ListLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent;
-import com.android.tools.idea.uibuilder.surface.layout.SingleDirectionLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.SurfaceLayoutManager;
 import com.android.tools.idea.common.layout.SurfaceLayoutOption;
 import com.android.tools.idea.uibuilder.visual.VisualizationToolWindowFactory;
@@ -185,7 +184,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     @Nullable private ScreenViewProvider myScreenViewProvider = null;
     private boolean mySetDefaultScreenViewProvider = false;
 
-    private double myMaxFitIntoZoomLevel = Double.MAX_VALUE;
+    private double myMaxZoomToFitLevel = Double.MAX_VALUE;
 
     private Function<DesignSurface<LayoutlibSceneManager>, VisualLintIssueProvider> myVisualLintIssueProviderFactory =
       NlDesignSurface::viewVisualLintIssueProviderFactory;
@@ -361,8 +360,8 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     }
 
     @NotNull
-    public Builder setMaxFitIntoZoomLevel(double maxFitIntoZoomLevel) {
-      myMaxFitIntoZoomLevel = maxFitIntoZoomLevel;
+    public Builder setMaxZoomToFitLevel(double maxZoomToFitLevel) {
+      myMaxZoomToFitLevel = maxZoomToFitLevel;
       return this;
     }
 
@@ -396,7 +395,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
         myZoomControlsPolicy,
         mySupportedActionsProvider,
         myShouldRenderErrorsPanel,
-        myMaxFitIntoZoomLevel,
+        myMaxZoomToFitLevel,
         myVisualLintIssueProviderFactory);
 
       if (myScreenViewProvider != null) {
@@ -451,14 +450,14 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
                           ZoomControlsPolicy zoomControlsPolicy,
                           @NotNull Supplier<ImmutableSet<NlSupportedActions>> supportedActionsProvider,
                           boolean shouldRenderErrorsPanel,
-                          double maxFitIntoZoomLevel,
+                          double maxZoomToFitLevel,
                           @NotNull Function<DesignSurface<LayoutlibSceneManager>, VisualLintIssueProvider> issueProviderFactory) {
     super(project, parentDisposable, actionManagerProvider, interactableProvider, interactionHandlerProvider,
           (surface) -> new NlDesignSurfacePositionableContentLayoutManager((NlDesignSurface)surface, parentDisposable, defaultLayoutOption),
           actionHandlerProvider,
           selectionModel,
-          zoomControlsPolicy,
-          maxFitIntoZoomLevel);
+          zoomControlsPolicy
+    );
     myAnalyticsManager = new NlAnalyticsManager(this);
     myAccessoryPanel.setSurface(this);
     mySceneManagerProvider = sceneManagerProvider;
@@ -484,7 +483,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
       getAnalyticsManager(),
       getSelectionModel(),
       this,
-      maxFitIntoZoomLevel
+      maxZoomToFitLevel
     );
     myZoomController.setOnScaleListener(this);
     myZoomController.setMaxScale(maxScale);
@@ -926,6 +925,10 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   @NotNull
   protected Collection<PositionableContent> getPositionableContent() {
     return mySceneViewPanel.getPositionableContent();
+  }
+
+  public Map<SceneView, Rectangle> findSceneViewRectangles() {
+    return mySceneViewPanel.findSceneViewRectangles();
   }
 
   @Override

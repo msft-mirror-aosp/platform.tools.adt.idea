@@ -45,21 +45,16 @@ class LayoutBindingPackageFinder(project: Project) : PsiElementFinder() {
   private val packageCache: CachedValue<Map<String, PsiPackage>> =
     CachedValuesManager.getManager(project).createCachedValue {
       val bindingFacetsProvider = LayoutBindingEnabledFacetsProvider.getInstance(project)
+      val packageFactory = LayoutBindingPackageFactory.getInstance(project)
       val packages =
         bindingFacetsProvider
           .getAllBindingEnabledFacets()
           .flatMap { facet ->
-            val bindingModuleCache = LayoutBindingModuleCache.getInstance(facet)
-            val groups = bindingModuleCache.bindingLayoutGroups
-            val lightClasses =
-              groups.mapNotNull { group ->
-                bindingModuleCache.getLightBindingClasses(group).firstOrNull()
-              }
-            lightClasses.map { lightClass ->
-              val packageName = lightClass.qualifiedName.substringBeforeLast('.')
-              LayoutBindingPackageFactory.getInstance(project)
-                .getOrCreatePsiPackage(facet, packageName)
-            }
+            LayoutBindingModuleCache.getInstance(facet)
+              .getLightBindingClasses()
+              .map { lightClass -> lightClass.qualifiedName.substringBeforeLast('.') }
+              .toSet()
+              .map { packageName -> packageFactory.getOrCreatePsiPackage(facet, packageName) }
           }
           .associateBy { psiPackage -> psiPackage.qualifiedName }
 

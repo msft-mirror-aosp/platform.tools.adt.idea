@@ -248,37 +248,19 @@ class AndroidTestResultsTableViewTest {
     table.addTestCase(device2, AndroidTestCase("testid2", "method2", "class1", "package1", logcat="logcatE"))
     table.addTestCase(device2, AndroidTestCase("testid3", "method1", "class2", "package1", logcat="logcatF"))
 
-    assertThat(table.getTableViewForTesting().getItem(0).getLogcat(device1)).isEqualTo("logcatA\nlogcatB\nlogcatC")
-    assertThat(table.getTableViewForTesting().getItem(1).getLogcat(device1)).isEqualTo("logcatA\nlogcatB")
+    assertThat(table.getTableViewForTesting().getItem(0).getLogcat(device1)).isEqualTo("")
+    assertThat(table.getTableViewForTesting().getItem(1).getLogcat(device1)).isEqualTo("")
     assertThat(table.getTableViewForTesting().getItem(2).getLogcat(device1)).isEqualTo("logcatA")
     assertThat(table.getTableViewForTesting().getItem(3).getLogcat(device1)).isEqualTo("logcatB")
-    assertThat(table.getTableViewForTesting().getItem(4).getLogcat(device1)).isEqualTo("logcatC")
+    assertThat(table.getTableViewForTesting().getItem(4).getLogcat(device1)).isEqualTo("")
     assertThat(table.getTableViewForTesting().getItem(5).getLogcat(device1)).isEqualTo("logcatC")
 
-    assertThat(table.getTableViewForTesting().getItem(0).getLogcat(device2)).isEqualTo("logcatD\nlogcatE\nlogcatF")
-    assertThat(table.getTableViewForTesting().getItem(1).getLogcat(device2)).isEqualTo("logcatD\nlogcatE")
+    assertThat(table.getTableViewForTesting().getItem(0).getLogcat(device2)).isEqualTo("")
+    assertThat(table.getTableViewForTesting().getItem(1).getLogcat(device2)).isEqualTo("")
     assertThat(table.getTableViewForTesting().getItem(2).getLogcat(device2)).isEqualTo("logcatD")
     assertThat(table.getTableViewForTesting().getItem(3).getLogcat(device2)).isEqualTo("logcatE")
-    assertThat(table.getTableViewForTesting().getItem(4).getLogcat(device2)).isEqualTo("logcatF")
+    assertThat(table.getTableViewForTesting().getItem(4).getLogcat(device2)).isEqualTo("")
     assertThat(table.getTableViewForTesting().getItem(5).getLogcat(device2)).isEqualTo("logcatF")
-  }
-
-  @Ignore("b/319145240")
-  @Test
-  fun add1000TestCases() {
-    val table = AndroidTestResultsTableView(
-      mockListener, mockJavaPsiFacade, mockModule, mockTestArtifactSearchScopes, mockLogger, mockAndroidTestResultsUserPreferencesManager)
-    val device1 = device("deviceId1", "deviceName1")
-    val device2 = device("deviceId2", "deviceName2")
-    table.addDevice(device1)
-    table.addDevice(device2)
-    val start = System.currentTimeMillis()
-    for (i in 1..1000) {
-      table.addTestCase(device1, AndroidTestCase("testid$i", "method$i", "class$i", "package$i", logcat="logcat$i"))
-      table.addTestCase(device2, AndroidTestCase("testid$i", "method$i", "class$i", "package$i", logcat="logcat$i"))
-    }
-    val end = System.currentTimeMillis()
-    println("${(end-start)/1000}s") // current value: 64 s
   }
 
   @Test

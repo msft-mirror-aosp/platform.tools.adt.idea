@@ -17,7 +17,9 @@ package com.android.tools.idea.profilers
 
 import com.android.ddmlib.IDevice
 import com.android.tools.adtui.model.AspectObserver
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.model.StudioAndroidModuleInfo
+import com.android.tools.idea.run.AndroidRunConfiguration
 import com.android.tools.idea.run.deployment.DeviceAndSnapshotComboBoxTargetProvider
 import com.android.tools.idea.transport.TransportService
 import com.android.tools.idea.transport.TransportServiceProxy.Companion.getDeviceManufacturer
@@ -38,6 +40,7 @@ import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.args.TaskArgs
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandler
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
+import com.intellij.execution.RunManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -135,7 +138,8 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     val devices = DeviceAndSnapshotComboBoxTargetProvider.getInstance().getDeployTarget(project).getAndroidDevices(project)
     try {
       val selections = devices.map {
-        ToolbarDeviceSelection(it.name, it.isRunning, if (it.isRunning) it.launchedDevice.get().serialNumber else "")
+        ToolbarDeviceSelection(it.name, it.version.featureLevel, it.isRunning,
+                               if (it.isRunning) it.launchedDevice.get().serialNumber else "")
       }
       return selections
     }
@@ -333,13 +337,22 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     }
 
     private fun getPreferredProcessName(project: Project): String? {
-      for (module in ModuleManager.getInstance(project).modules) {
-        val moduleName = getModuleName(module)
-        if (moduleName != null) {
-          return moduleName
-        }
+      if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
+        // There can only be up to one Android app module per selected configuration as the call to getModules can only return up to one
+        // module per AndroidRunConfiguration.
+        return (RunManager.getInstance(project).selectedConfiguration?.configuration as? AndroidRunConfiguration)?.modules?.map {
+          StudioAndroidModuleInfo.getInstance(it)
+        }?.map { it?.packageName }?.firstOrNull()
       }
-      return null
+      else {
+        for (module in ModuleManager.getInstance(project).modules) {
+          val moduleName = getModuleName(module)
+          if (moduleName != null) {
+            return moduleName
+          }
+        }
+        return null
+      }
     }
 
     private fun getModuleName(module: Module): String? {

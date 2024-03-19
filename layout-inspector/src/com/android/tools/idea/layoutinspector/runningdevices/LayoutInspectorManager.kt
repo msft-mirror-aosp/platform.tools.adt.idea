@@ -26,7 +26,6 @@ import com.android.tools.idea.layoutinspector.settings.LayoutInspectorConfigurab
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.streaming.RUNNING_DEVICES_TOOL_WINDOW_ID
 import com.android.tools.idea.streaming.core.AbstractDisplayView
-import com.android.tools.idea.streaming.core.DEVICE_ID_KEY
 import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
 import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.core.STREAMING_CONTENT_PANEL_KEY
@@ -40,7 +39,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import com.intellij.ui.EditorNotificationPanel.Status
-import com.intellij.ui.content.Content
 import com.intellij.ui.scale.JBUIScale
 import javax.swing.JComponent
 
@@ -187,13 +185,35 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
     RunningDevicesStateObserver.getInstance(project)
       .addListener(
         object : RunningDevicesStateObserver.Listener {
-          override fun onSelectedTabChanged(deviceId: DeviceId?) {
+          override fun onVisibleTabsChanged(visibleTabs: List<DeviceId>) {
+            val visibleTabsWithLayoutInspector =
+              visibleTabs.filter {
+                // Keep only tabs that have layout inspector enabled on them.
+                tabsWithLayoutInspector.contains(it)
+              }
+
+            if (visibleTabsWithLayoutInspector.size > 1) {
+              // If there is more than one visible tab with Layout Inspector, remove Layout
+              // Inspector from all tabs except for the current selected tab.
+              // This can happen if multiple tabs have Layout Inspector enabled and the user splits
+              // them into separate tool windows.
+              // We don't want multiple selected tabs with Layout Inspector enabled because we
+              // support running only one instance of Layout Inspector at a time.
+              tabsWithLayoutInspector = selectedTab?.deviceId?.let { setOf(it) } ?: emptySet()
+              return
+            }
+
+            val newSelectedTab = visibleTabsWithLayoutInspector.firstOrNull()
+
+            if (newSelectedTab == selectedTab?.deviceId) {
+              // The new selected tab is the same as the currently selected tab.
+              return
+            }
+
             selectedTab =
-              if (deviceId != null && tabsWithLayoutInspector.contains(deviceId)) {
-                // Layout Inspector was enabled for this tab.
-                createTabState(deviceId)
+              if (newSelectedTab != null) {
+                createTabState(newSelectedTab)
               } else {
-                // Layout Inspector was not enabled for this tab.
                 null
               }
           }
@@ -207,47 +227,15 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
             // So if an emulator is disconnected with Layout Inspector turned on and later
             // restarted, Layout Inspector will be on again.
           }
-
-          override fun onToolWindowHidden() {
-            clearSelectedTab()
-          }
-
-          override fun onToolWindowShown(selectedDeviceId: DeviceId?) {
-            restoreSelectedTab(selectedDeviceId)
-          }
         }
       )
   }
 
-  private var shouldRestoreToolWindowState: Boolean = false
-
-  /** Restore the state of the selected tab if it was manually cleared */
-  private fun restoreSelectedTab(selectedDeviceId: DeviceId?) {
-    if (!shouldRestoreToolWindowState) {
-      return
-    }
-
-    shouldRestoreToolWindowState = false
-    if (selectedDeviceId != null) {
-      selectedTab = createTabState(selectedDeviceId)
-    }
-  }
-
-  /** Clear the selected tab */
-  private fun clearSelectedTab() {
-    if (selectedTab == null) {
-      return
-    }
-
-    shouldRestoreToolWindowState = true
-    selectedTab = null
-  }
-
   private fun createTabState(deviceId: DeviceId): SelectedTabState {
     ApplicationManager.getApplication().assertIsDispatchThread()
-    val runningDevicesContentManager = project.getRunningDevicesContentManager()
+
     val selectedTabContent =
-      runningDevicesContentManager?.contents?.find { it.deviceId == deviceId }
+      RunningDevicesStateObserver.getInstance(project).getTabContent(deviceId)
     val selectedTabDataProvider = selectedTabContent?.component as? DataProvider
 
     val streamingContentPanel =
@@ -279,17 +267,27 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
   override fun enableLayoutInspector(deviceId: DeviceId, enable: Boolean) {
     ApplicationManager.getApplication().assertIsDispatchThread()
 
-    val toolWindow =
-      ToolWindowManager.getInstance(project).getToolWindow(RUNNING_DEVICES_TOOL_WINDOW_ID)
-        as? ToolWindowEx
-    toolWindow?.let {
-      val width = it.component.width
-      // Resize the tool window width, to be equal to DEFAULT_WINDOW_WIDTH
-      // stretchWidth resizes relatively to the current width of the tool window.
-      it.stretchWidth(JBUIScale.scale(DEFAULT_WINDOW_WIDTH) - width)
-    }
-
     if (enable) {
+      val toolWindow =
+        ToolWindowManager.getInstance(project).getToolWindow(RUNNING_DEVICES_TOOL_WINDOW_ID)
+          as? ToolWindowEx
+      toolWindow?.let {
+        val width = it.component.width
+        // Resize the tool window width, to be equal to DEFAULT_WINDOW_WIDTH
+        // stretchWidth resizes relatively to the current width of the tool window.
+        it.stretchWidth(JBUIScale.scale(DEFAULT_WINDOW_WIDTH) - width)
+      }
+
+      selectedTab?.let {
+        // We are enabling Layout Inspector on a new tab, but there is already a tab with Layout
+        // Inspector enabled.
+        // Layout Inspector does not support concurrent sessions, so we disable it in the previous
+        // tab, before enabling in the new tab.
+        // This can happen if Running Devices is running in split mode and multiple tabs are
+        // visible at the same time.
+        tabsWithLayoutInspector -= it.deviceId
+      }
+
       if (tabsWithLayoutInspector.contains(deviceId)) {
         // do nothing if Layout Inspector is already enabled
         return
@@ -312,12 +310,11 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 
   override fun isEnabled(deviceId: DeviceId): Boolean {
     ApplicationManager.getApplication().assertIsDispatchThread()
-    return tabsWithLayoutInspector.contains(deviceId)
+    return selectedTab?.deviceId == deviceId
   }
 
   override fun isSupported(deviceId: DeviceId): Boolean {
-    val contentManager = project.getRunningDevicesContentManager()
-    return contentManager?.contents?.find { it.deviceId == deviceId } != null
+    return RunningDevicesStateObserver.getInstance(project).hasDevice(deviceId)
   }
 
   override fun dispose() {
@@ -374,8 +371,3 @@ private class LayoutInspectorManagerImpl(private val project: Project) : LayoutI
 private fun Project.getLayoutInspector(): LayoutInspector {
   return LayoutInspectorProjectService.getInstance(this).getLayoutInspector()
 }
-
-private val Content.deviceId: DeviceId?
-  get() {
-    return (component as? DataProvider)?.getData(DEVICE_ID_KEY.name) as? DeviceId ?: return null
-  }

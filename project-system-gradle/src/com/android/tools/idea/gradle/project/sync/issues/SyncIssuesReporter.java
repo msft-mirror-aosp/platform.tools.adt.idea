@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.sync.issues;
 import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.getGradleBuildFile;
 
 import com.android.tools.idea.gradle.model.IdeSyncIssue;
+import com.android.tools.idea.gradle.project.build.output.ExplainBuildErrorFilterKt;
 import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessages;
 import com.android.tools.idea.project.messages.SyncMessage;
 import com.android.tools.idea.studiobot.StudioBot;
@@ -44,6 +45,9 @@ import org.jetbrains.annotations.SystemIndependent;
 public class SyncIssuesReporter {
   @NotNull private final Map<Integer, BaseSyncIssuesReporter> myStrategies = new HashMap<>(12);
   @NotNull private final BaseSyncIssuesReporter myDefaultMessageFactory;
+
+  public static String consoleLinkUnderlinedText = ">> " + StudioBotBundle.message("studiobot.ask.text");
+  public static String consoleLinkWithSeparatorText = consoleLinkUnderlinedText + " ";
 
   @NotNull
   public static SyncIssuesReporter getInstance() {
@@ -143,8 +147,9 @@ public class SyncIssuesReporter {
     Runnable reportTask = () -> {
       SyncIssueUsageReporter.Companion.getInstance(finalProject).reportToUsageTracker(rootProjectPath);
     };
-    if (ApplicationManager.getApplication().isUnitTestMode())
+    if (ApplicationManager.getApplication().isUnitTestMode()) {
       reportTask.run();
+    }
     else {
       ApplicationManager.getApplication().invokeLater(reportTask);
     }
@@ -155,12 +160,14 @@ public class SyncIssuesReporter {
       final var message = syncMessage.getText();
       syncMessage.add(new SyncIssueNotificationHyperlink(
         "explain.issue",
-        StudioBotBundle.message("studiobot.ask.text"),
+        consoleLinkUnderlinedText,
         AndroidStudioEvent.GradleSyncQuickFix.UNKNOWN_GRADLE_SYNC_QUICK_FIX
       ) {
         @Override
         protected void execute(@NotNull Project project) {
-          studioBot.chat(project).stageChatQuery("Explain gradle sync issue:" + message, StudioBot.RequestSource.SYNC);
+          ExplainBuildErrorFilterKt.sendChatQueryIfContextAllowed(studioBot, project,
+                                                                  "Explain gradle sync issue: " + message,
+                                                                  StudioBot.RequestSource.SYNC);
         }
       });
     }

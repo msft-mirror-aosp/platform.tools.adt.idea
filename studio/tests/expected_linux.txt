@@ -441,7 +441,7 @@ android-studio/lib/ant/lib/libraries.properties
 android-studio/lib/ant/src.zip
 android-studio/lib/app.jar
 android-studio/lib/bouncy-castle.jar
-android-studio/lib/build-marker-AI-233.14475.28.2331.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-233.14475.28.2332.__BUILD_NUMBER__
 android-studio/lib/byte-buddy-agent.jar
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/error-prone-annotations.jar
@@ -2063,7 +2063,7 @@ android-studio/plugins/android/lib/sdk-common.jar
 android-studio/plugins/android/lib/sdk-tools.jar
 android-studio/plugins/android/lib/sdklib.jar
 android-studio/plugins/android/lib/shared.jar
-android-studio/plugins/android/lib/skiko-awt-0.7.85.4.jar
+android-studio/plugins/android/lib/skiko-awt-0.7.85.5.jar
 android-studio/plugins/android/lib/skiko-awt-runtime-linux-x64-0.7.85.4.jar
 android-studio/plugins/android/lib/skiko-awt-runtime-macos-arm64-0.7.85.4.jar
 android-studio/plugins/android/lib/skiko-awt-runtime-macos-x64-0.7.85.4.jar
@@ -2383,7 +2383,6 @@ android-studio/plugins/android/resources/installer/x86_64/installer
 android-studio/plugins/android/resources/native/libimage_converter.so
 android-studio/plugins/android/resources/native/libjni_object_tagger.so
 android-studio/plugins/android/resources/perfa.jar
-android-studio/plugins/android/resources/perfa_okhttp.dex
 android-studio/plugins/android/resources/perfetto/arm64-v8a/libperfetto.so
 android-studio/plugins/android/resources/perfetto/arm64-v8a/perfetto
 android-studio/plugins/android/resources/perfetto/arm64-v8a/traced

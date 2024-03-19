@@ -738,6 +738,9 @@ def _android_studio_os(ctx, platform, out):
 
     # for plugin in platform_plugins:
     for plugin, this_plugin_files in plugin_files.items():
+        # TODO(b/329416516): Rework "excluding" performanceTesting plugin
+        if plugin == "performanceTesting":
+            continue
         this_plugin_files = _stamp_plugin(ctx, platform, platform_files, this_plugin_files, overwrite_plugin_version = False)
         all_files.update({platform_prefix + k: v for k, v in this_plugin_files.items()})
 
@@ -766,7 +769,7 @@ def _android_studio_os(ctx, platform, out):
     so_jars = {"%s%s%s" % (platform_prefix, platform.base_path, jar): f for (jar, f) in ctx.attr.searchable_options.searchable_options}
 
     licenses = []
-    for p in ctx.attr.plugins + ctx.attr.platform.extra_plugins:
+    for p in ctx.attr.plugins:
         pkey = p[PluginInfo].directory
         this_plugin_files = platform.get(p[PluginInfo].plugin_files)
 
@@ -1051,12 +1054,12 @@ _intellij_plugin_import = rule(
     implementation = _intellij_plugin_import_impl,
 )
 
-def intellij_plugin_import(name, files_root_dir, target_dir, exports, **kwargs):
+def intellij_plugin_import(name, files, strip_prefix, target_dir, exports, **kwargs):
     """This macro is for prebuilt IntelliJ plugins that are not already part of intellij-sdk."""
     _intellij_plugin_import(
         name = name,
-        files = native.glob([files_root_dir + "/**"]),
-        strip_prefix = native.package_name() + "/" + files_root_dir + "/",
+        files = files,
+        strip_prefix = strip_prefix,
         target_dir = target_dir,
         exports = exports,
         compress = is_release(),
@@ -1116,7 +1119,6 @@ def _intellij_platform_impl(ctx):
                 ),
             ),
         ],
-        extra_plugins = ctx.attr.extra_plugins,
         platform_info = struct(
             mac_bundle_name = ctx.attr.mac_bundle_name,
         ),
@@ -1127,7 +1129,6 @@ _intellij_platform = rule(
         "major_version": attr.string(),
         "minor_version": attr.string(),
         "exports": attr.label_list(providers = [JavaInfo]),
-        "extra_plugins": attr.label_list(providers = [PluginInfo]),
         "data": attr.label_list(allow_files = True),
         "studio_data": attr.label(),
         "compress": attr.bool(),
@@ -1152,7 +1153,6 @@ def intellij_platform(
         name,
         src,
         spec,
-        extra_plugins,
         **kwargs):
     jvm_import(
         name = name + "_jars",
@@ -1169,7 +1169,6 @@ def intellij_platform(
         major_version = spec.major_version,
         minor_version = spec.minor_version,
         exports = [":" + name + "_jars"],
-        extra_plugins = extra_plugins,
         compress = is_release(),
         mac_bundle_name = spec.mac_bundle_name,
         studio_data = name + ".data",

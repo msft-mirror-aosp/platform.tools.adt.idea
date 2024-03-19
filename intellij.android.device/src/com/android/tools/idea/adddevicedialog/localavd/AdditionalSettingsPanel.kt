@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.testTag
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.internal.avd.AvdCamera
@@ -32,8 +33,11 @@ import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.sdklib.internal.avd.EmulatedProperties
 import com.android.sdklib.internal.avd.GpuMode
+import com.android.tools.idea.adddevicedialog.LocalFileSystem
+import com.android.tools.idea.adddevicedialog.LocalProject
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import com.intellij.icons.AllIcons
+import com.intellij.icons.ExpUiIcons
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
@@ -77,9 +81,8 @@ internal fun AdditionalSettingsPanel(
 
 @Composable
 private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
-  GroupHeader("Camera")
-
-  Row {
+  GroupLayout {
+    GroupHeader("Camera")
     Text("Front")
 
     Dropdown(
@@ -87,9 +90,8 @@ private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -
       FRONT_CAMERAS,
       onSelectedItemChange = { onDeviceChange(device.copy(frontCamera = it)) },
     )
-  }
 
-  Row {
+    InfoOutlineIcon(Modifier.layoutId(Icon))
     Text("Rear")
 
     Dropdown(
@@ -97,6 +99,8 @@ private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -
       REAR_CAMERAS,
       onSelectedItemChange = { onDeviceChange(device.copy(rearCamera = it)) },
     )
+
+    InfoOutlineIcon(Modifier.layoutId(Icon))
   }
 }
 
@@ -107,9 +111,8 @@ private val REAR_CAMERAS = AvdCamera.values().asIterable().toImmutableList()
 
 @Composable
 private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
-  GroupHeader("Network")
-
-  Row {
+  GroupLayout {
+    GroupHeader("Network")
     Text("Speed")
 
     Dropdown(
@@ -117,9 +120,8 @@ private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
       SPEEDS,
       onSelectedItemChange = { onDeviceChange(device.copy(speed = it)) },
     )
-  }
 
-  Row {
+    InfoOutlineIcon(Modifier.layoutId(Icon))
     Text("Latency")
 
     Dropdown(
@@ -127,6 +129,8 @@ private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
       LATENCIES,
       onSelectedItemChange = { onDeviceChange(device.copy(latency = it)) },
     )
+
+    InfoOutlineIcon(Modifier.layoutId(Icon))
   }
 }
 
@@ -135,9 +139,8 @@ private val LATENCIES = AvdNetworkLatency.values().asIterable().toImmutableList(
 
 @Composable
 private fun StartupGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
-  GroupHeader("Startup")
-
-  Row {
+  GroupLayout {
+    GroupHeader("Startup")
     Text("Orientation")
 
     Dropdown(
@@ -154,9 +157,7 @@ private fun StartupGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
     ) {
       Text(device.orientation.shortDisplayValue)
     }
-  }
 
-  Row {
     Text("Default boot")
 
     Dropdown(
@@ -164,6 +165,8 @@ private fun StartupGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
       BOOTS,
       onSelectedItemChange = { onDeviceChange(device.copy(defaultBoot = it)) },
     )
+
+    InfoOutlineIcon(Modifier.layoutId(Icon))
   }
 }
 
@@ -466,4 +469,9 @@ internal constructor(internal val value: String, internal val valid: Boolean) {
         ExistingImageFieldState("", false)
       }
   }
+}
+
+@Composable
+private fun InfoOutlineIcon(modifier: Modifier = Modifier) {
+  Icon("expui/status/infoOutline.svg", null, ExpUiIcons::class.java, modifier)
 }

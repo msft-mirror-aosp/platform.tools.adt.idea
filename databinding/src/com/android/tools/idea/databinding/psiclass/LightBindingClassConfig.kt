@@ -25,6 +25,9 @@ import com.android.tools.idea.databinding.index.ViewIdData
 import com.android.tools.idea.databinding.module.LayoutBindingModuleCache
 import com.android.tools.idea.databinding.util.findVariableTag
 import com.android.tools.idea.databinding.util.getViewBindingClassName
+import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.Project
 import com.intellij.psi.xml.XmlTag
 import org.jetbrains.android.facet.AndroidFacet
 
@@ -83,11 +86,21 @@ interface LightBindingClassConfig {
   fun settersShouldBeAbstract(): Boolean
 }
 
-private fun BindingLayoutGroup.getAggregatedVariables(): List<Pair<VariableData, XmlTag>> {
+private fun BindingLayoutGroup.getAggregatedVariables(
+  project: Project
+): List<Pair<VariableData, XmlTag>> {
   val aggregatedVariables = mutableListOf<Pair<VariableData, XmlTag>>()
   val alreadySeen = mutableSetOf<String>()
   for (layout in layouts) {
-    val xmlFile = layout.toXmlFile() ?: continue
+    val xmlFile = layout.toXmlFile()
+    if (xmlFile == null) {
+      thisLogger()
+        .error(
+          "getAggregatedVariables: Binding layout should always be backed by an xml file. " +
+            "Dumb mode: ${DumbService.isDumb(project)}. Layout file: ${layout.file.name}"
+        )
+      continue
+    }
     val layoutData = layout.data
     for (variable in layoutData.variables) {
       val variableTag = xmlFile.findVariableTag(variable.name)
@@ -141,14 +154,32 @@ data class BindingClassConfig(
     }
 
   override val variableTags: List<Pair<VariableData, XmlTag>>
-    get() = group.getAggregatedVariables()
+    get() = group.getAggregatedVariables(facet.module.project)
 
   override val scopedViewIds: Map<BindingLayout, Collection<ViewIdData>>
     get() {
       val viewIds = mutableMapOf<BindingLayout, Collection<ViewIdData>>()
       for (layout in group.layouts) {
-        val xmlFile = layout.toXmlFile() ?: continue
-        val xmlData = BindingXmlIndex.getDataForFile(xmlFile) ?: continue
+        val xmlFile = layout.toXmlFile()
+        if (xmlFile == null) {
+          thisLogger()
+            .error(
+              "scopedViewIds: Binding layout should always be backed by an xml file. " +
+                "Dumb mode: ${DumbService.isDumb(facet.module.project)}. " +
+                "Qualified name: $qualifiedName. Layout file: ${layout.file.name}"
+            )
+          continue
+        }
+        val xmlData = BindingXmlIndex.getDataForFile(xmlFile)
+        if (xmlData == null) {
+          thisLogger()
+            .error(
+              "scopedViewIds: Every binding layout should have indexed data. " +
+                "Dumb mode: ${DumbService.isDumb(facet.module.project)}. " +
+                "Qualified name: $qualifiedName. Layout file: ${layout.file.name}"
+            )
+          continue
+        }
         viewIds[layout] = xmlData.viewIds
       }
       return viewIds
@@ -188,7 +219,7 @@ data class BindingImplClassConfig(
   override val rootType = targetLayout.data.rootTag
 
   override val variableTags: List<Pair<VariableData, XmlTag>>
-    get() = group.getAggregatedVariables()
+    get() = group.getAggregatedVariables(facet.module.project)
 
   override val scopedViewIds: Map<BindingLayout, Collection<ViewIdData>>
     get() = mapOf() // Only provided by base "Binding" class.

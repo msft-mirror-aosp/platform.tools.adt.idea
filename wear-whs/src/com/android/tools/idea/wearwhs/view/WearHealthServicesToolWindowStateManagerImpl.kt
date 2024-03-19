@@ -101,7 +101,12 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
     }
     try {
       _ongoingExercise.value = deviceManager.loadActiveExercise()
-      val currentStates = deviceManager.loadCurrentCapabilityStates()
+      val currentStates = deviceManager.loadCurrentCapabilityStates().toMutableMap()
+      val allCapabilities = deviceManager.getCapabilities().map { it.dataType }.toSet()
+      val missingCapabilities = allCapabilities.minus(currentStates.keys.toSet())
+      missingCapabilities.forEach {
+        currentStates[it] = CapabilityState(true, null)
+      }
       currentStates.forEach { (dataType, state) ->
         // Update values only if they're synced through and got changed in the background
         capabilityToState[dataType.toCapability()]?.let { stateFlow ->
@@ -147,13 +152,15 @@ internal class WearHealthServicesToolWindowStateManagerImpl(
 
   override suspend fun setCapabilityEnabled(capability: WhsCapability, enabled: Boolean) {
     val stateFlow = capabilityToState[capability] ?: throw IllegalArgumentException()
-    val newState = stateFlow.value.copy(capabilityState = CapabilityState(enabled, stateFlow.value.capabilityState.overrideValue), synced = false)
+    val pendingUserChange = enabled != stateFlow.value.capabilityState.enabled
+    val newState = stateFlow.value.copy(capabilityState = CapabilityState(enabled, stateFlow.value.capabilityState.overrideValue), synced = !pendingUserChange)
     stateFlow.emit(newState)
   }
 
   override suspend fun setOverrideValue(capability: WhsCapability, value: Float?) {
     val stateFlow = capabilityToState[capability] ?: throw IllegalArgumentException()
-    val newState = stateFlow.value.copy(capabilityState = CapabilityState(stateFlow.value.capabilityState.enabled, value), synced = false)
+    val pendingUserChange = value != stateFlow.value.capabilityState.overrideValue
+    val newState = stateFlow.value.copy(capabilityState = CapabilityState(stateFlow.value.capabilityState.enabled, value), synced = !pendingUserChange)
     stateFlow.emit(newState)
   }
 

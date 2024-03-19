@@ -22,13 +22,15 @@ import com.android.tools.adtui.TabularLayout
 import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.idea.compose.preview.animation.managers.AnimatedVisibilityAnimationManager
 import com.android.tools.idea.compose.preview.animation.managers.ComposeAnimationManager
-import com.android.tools.idea.compose.preview.animation.managers.SupportedAnimationManager
-import com.android.tools.idea.compose.preview.animation.managers.UnsupportedAnimationManager
+import com.android.tools.idea.compose.preview.animation.managers.ComposeSupportedAnimationManager
+import com.android.tools.idea.compose.preview.animation.managers.ComposeUnsupportedAnimationManager
 import com.android.tools.idea.compose.preview.animation.timeline.TransitionCurve
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
-import com.android.tools.idea.preview.animation.AnimationPreviewState
+import com.android.tools.idea.preview.animation.AllTabPanel
+import com.android.tools.idea.preview.animation.AnimationTabs
+import com.android.tools.idea.preview.animation.BottomPanel
 import com.android.tools.idea.preview.animation.DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
 import com.android.tools.idea.preview.animation.InspectorLayout
 import com.android.tools.idea.preview.animation.PlaybackControls
@@ -91,14 +93,6 @@ class AnimationPreview(
 
   val component = TooltipLayeredPane(animationPreviewPanel)
 
-  private val previewState =
-    object : AnimationPreviewState {
-      override fun isCoordinationPanelOpened(): Boolean = selectedAnimation.value == null
-
-      override val currentTime
-        get() = timeline.value
-    }
-
   /**
    * Tabs panel where each tab represents a single animation being inspected. First tab is a
    * coordination tab. All tabs share the same [Timeline], but have their own playback toolbar and
@@ -108,7 +102,7 @@ class AnimationPreview(
   val tabbedPane = AnimationTabs(project, this).apply { addListener(TabChangeListener()) }
 
   /** Selected single animation. */
-  private var selectedAnimation: MutableStateFlow<SupportedAnimationManager?> =
+  private var selectedAnimation: MutableStateFlow<ComposeSupportedAnimationManager?> =
     MutableStateFlow(null)
 
   private inner class TabChangeListener : TabsListener {
@@ -119,7 +113,9 @@ class AnimationPreview(
       // If single supported animation tab is selected.
       // We assume here only supported animations could be opened.
       selectedAnimation.value =
-        animations.findIsInstanceAnd<SupportedAnimationManager> { it.tabComponent == component }
+        animations.findIsInstanceAnd<ComposeSupportedAnimationManager> {
+          it.tabComponent == component
+        }
       if (component is AllTabPanel) { // If coordination tab is selected.
         coordinationTab.addTimeline(timeline)
       }
@@ -153,12 +149,12 @@ class AnimationPreview(
   private val playbackControls = PlaybackControls(clockControl, tracker, rootComponent, this)
 
   private val bottomPanel =
-    BottomPanel(previewState, rootComponent, tracker).apply {
+    BottomPanel(rootComponent, tracker).apply {
       timeline.addChangeListener { scope.launch(uiThread) { clockTimeMs = timeline.value } }
       addResetListener {
         timeline.sliderUI.elements.forEach { it.reset() }
-        if (previewState.isCoordinationPanelOpened()) {
-          animations.filterIsInstance<SupportedAnimationManager>().forEach {
+        if (selectedAnimation.value == null) {
+          animations.filterIsInstance<ComposeSupportedAnimationManager>().forEach {
             it.elementState.value = it.elementState.value.copy(valueOffset = 0)
           }
         } else {
@@ -180,7 +176,7 @@ class AnimationPreview(
 
   private var maxDurationPerIteration = MutableStateFlow(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS)
 
-  /** Update list of [TimelineElement] for selected [SupportedAnimationManager]s. */
+  /** Update list of [TimelineElement] for selected [ComposeSupportedAnimationManager]s. */
   private suspend fun updateTimelineElements() {
     var minY = InspectorLayout.timelineHeaderHeightScaled()
     // Call once to update all sizes as all curves / lines required it.
@@ -215,7 +211,7 @@ class AnimationPreview(
             tab.createTimelineElement(timeline, minY, timeline.sliderUI.positionProxy).apply {
               Disposer.register(this@AnimationPreview, this)
               minY += heightScaled()
-              if (tab is SupportedAnimationManager) {
+              if (tab is ComposeSupportedAnimationManager) {
                 tab.card.expandedSize = TransitionCurve.expectedHeight(tab.currentTransition)
                 tab.card.setDuration(tab.currentTransition.duration)
                 AndroidCoroutineScope(this).launch {
@@ -258,7 +254,7 @@ class AnimationPreview(
       val clockTimeMs = newValue.toLong()
       sceneManagerProvider()?.executeInRenderSessionAsync(longTimeout) {
         setClockTimes(
-          animations.associate {
+          animations.filterIsInstance<ComposeSupportedAnimationManager>().associate {
             val newTime =
               (if (it.elementState.value.frozen) it.elementState.value.frozenValue.toLong()
               else clockTimeMs) - it.elementState.value.valueOffset
@@ -269,7 +265,9 @@ class AnimationPreview(
 
       // Load all properties.
       // Make a copy of the list to prevent ConcurrentModificationException
-      (if (makeCopy) animations.toList() else animations).forEach { it.loadProperties() }
+      (if (makeCopy) animations.toList() else animations)
+        .filterIsInstance<ComposeSupportedAnimationManager>()
+        .forEach { it.loadProperties() }
       renderAnimation()
     }
   }
@@ -351,9 +349,9 @@ class AnimationPreview(
   }
 
   /**
-   * Creates an [SupportedAnimationManager] corresponding to the given [animation] and add it to the
-   * [animations] map. Note: this method does not add the tab to [tabbedPane]. For that, [addTab]
-   * should be used.
+   * Creates an [ComposeSupportedAnimationManager] corresponding to the given [animation] and add it
+   * to the [animations] map. Note: this method does not add the tab to [tabbedPane]. For that,
+   * [addTab] should be used.
    */
   @UiThread
   private fun createTab(animation: ComposeAnimation): ComposeAnimationManager =
@@ -365,7 +363,7 @@ class AnimationPreview(
           tracker,
           animationClock!!,
           maxDurationPerIteration,
-          previewState,
+          timeline,
           sceneManagerProvider(),
           tabbedPane,
           rootComponent,
@@ -378,13 +376,13 @@ class AnimationPreview(
       ComposeAnimationType.ANIMATE_X_AS_STATE,
       ComposeAnimationType.ANIMATED_CONTENT,
       ComposeAnimationType.INFINITE_TRANSITION ->
-        SupportedAnimationManager(
+        ComposeSupportedAnimationManager(
           animation,
           tabNames.createName(animation),
           tracker,
           animationClock!!,
           maxDurationPerIteration,
-          previewState,
+          timeline,
           sceneManagerProvider(),
           tabbedPane,
           rootComponent,
@@ -399,7 +397,7 @@ class AnimationPreview(
       ComposeAnimationType.DECAY_ANIMATION,
       ComposeAnimationType.TARGET_BASED_ANIMATION,
       ComposeAnimationType.UNSUPPORTED ->
-        UnsupportedAnimationManager(animation, tabNames.createName(animation))
+        ComposeUnsupportedAnimationManager(animation, tabNames.createName(animation))
     }
 
   /** Adds an [ComposeAnimationManager] card to [coordinationTab]. */
@@ -434,7 +432,7 @@ class AnimationPreview(
           .find { it.animation == animation }
           ?.let { tab ->
             coordinationTab.removeCard(tab.card)
-            if (tab is SupportedAnimationManager)
+            if (tab is ComposeSupportedAnimationManager)
               tabbedPane.tabs
                 .find { it.component == tab.tabComponent }
                 ?.let { tabbedPane.removeTab(it) }
@@ -511,8 +509,7 @@ class AnimationPreview(
    * listing all the animations and their corresponding range as well. The timeline should respond
    * to mouse commands, allowing users to jump to specific points, scrub it, etc.
    */
-  private inner class Timeline :
-    TimelinePanel(Tooltip(animationPreviewPanel, component), previewState, tracker) {
+  private inner class Timeline : TimelinePanel(Tooltip(animationPreviewPanel, component), tracker) {
     var cachedVal = -1
 
     init {

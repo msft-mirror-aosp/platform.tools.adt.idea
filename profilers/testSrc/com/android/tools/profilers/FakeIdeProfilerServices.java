@@ -131,7 +131,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   /**
    * Whether the task-based UX should be visible.
    */
-  private boolean myTaskBasedUxEnabled = false;
+  private boolean myTaskBasedUxEnabled = true;
 
   /**
    * Whether we should be load tracebox.
@@ -417,11 +417,6 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public void enableStartupTask(@NotNull ProfilerTaskType taskType) {
-    // No-op.
-  }
-
-  @Override
-  public void disableStartupTasks() {
     // No-op.
   }
 

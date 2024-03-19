@@ -25,7 +25,7 @@ import com.intellij.openapi.vfs.VirtualFile
  * Each part of the prompt must declare which files from the user's project, if any, it uses.
  *
  * No files may be used if the context sharing setting is disabled: check it with
- * StudioBot.isContextAllowed()
+ * StudioBot.isContextAllowed(project)
  *
  * Additionally, Each file must be allowed by aiexclude. Check files using
  * AiExcludeService.isFileExcluded. If a file is not allowed, an AiExcludeException will be thrown.
@@ -73,18 +73,11 @@ import com.intellij.openapi.vfs.VirtualFile
  * }
  * ```
  */
-inline fun buildPrompt(project: Project, builderAction: SafePromptBuilder.() -> Unit): SafePrompt {
-  return SafePromptBuilderImpl(project).apply(builderAction).build()
+inline fun buildPrompt(project: Project, existingPrompt: SafePrompt? = null, builderAction: SafePromptBuilder.() -> Unit): SafePrompt {
+  val builder = SafePromptBuilderImpl(project)
+  existingPrompt?.let { builder.addAll(existingPrompt) }
+  return builder.apply(builderAction).build()
 }
-
-/** Appends messages to an existing prompt built using [buildPrompt]. */
-inline fun appendToPrompt(project: Project, prompt: SafePrompt, builderAction: SafePromptBuilder.() -> Unit): SafePrompt {
-  return SafePromptBuilderImpl(project)
-    .addAll(prompt)
-    .apply(builderAction)
-    .build()
-}
-
 
 /** Utility for constructing prompts for Studio Bot. */
 interface SafePromptBuilder {

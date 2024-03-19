@@ -96,6 +96,7 @@ iml_module(
         "//tools/adt/idea/server-flags:intellij.android.server-flags[module]",
         "//tools/adt/idea/project-system-gradle:libandroid-core-proto",
         "//tools/base/sdk-common/gradle:studio.android.sdktools.sdk-common.gradle[module]",
+        "//tools/adt/idea/.idea/libraries:agp-version",
     ],
 )
 
@@ -184,6 +185,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-proto[test]",
         "//tools/adt/idea/deploy:intellij.android.deploy[module, test]",
         "//tools/adt/idea/android-lint:intellij.android.lint[module, test]",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator.testutils[module, test]",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module, test]",
         "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd[module, test]",
@@ -203,6 +205,7 @@ iml_module(
         "//tools/adt/idea/render-resources:intellij.android.render-resources[module, test]",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-toml",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-properties[test]",
+        "//tools/adt/idea/.idea/libraries:agp-version[test]",
     ],
 )
 

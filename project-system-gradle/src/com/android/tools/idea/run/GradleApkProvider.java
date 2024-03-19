@@ -204,16 +204,17 @@ public final class GradleApkProvider implements ApkProvider {
 
       switch (outputKind) {
         case Default:
-          // Collect the base (or single) APK file, then collect the dependent dynamic features for dynamic
-          // apps (assuming the androidModel is the base split).
+          // Collect the base (or single) APK file.
           //
           // Note: For instant apps, "getApk" currently returns a ZIP to be provisioned on the device instead of
           //       a .apk file, the "collectDependentFeaturesApks" is a no-op for instant apps.
           List<ApkFileUnit> apkFileList = new ArrayList<>();
-          apkFileList.add(new ApkFileUnit(androidModel.getModuleName(),
-                                          getApk(variant.getName(), variant.getMainArtifact(), deviceAbis, deviceVersion,
-                                                 myFacet
-                                          )));
+          apkFileList.add(
+            new ApkFileUnit(
+              androidModel.getModuleName(), getApk(variant.getName(), variant.getMainArtifact(), deviceAbis, deviceVersion, myFacet)
+            )
+          );
+
           apkFileList.addAll(collectDependentFeaturesApks(androidModel, deviceAbis, deviceVersion));
           if (variant.getMainArtifact().getPrivacySandboxSdkInfo() != null) {
             if (deviceSupportsPrivacySandbox) {
@@ -228,9 +229,10 @@ public final class GradleApkProvider implements ApkProvider {
                   deviceAbis));
               // Add the additional split containing the use-sdk-library manifest element
               apkFileList.addAll(getSplitApksForPrivacySandbox(androidModel.getModuleName(),
-                                                            variant.getMainArtifact().getPrivacySandboxSdkInfo()
-                                                              .getAdditionalApkSplitFile()));
-            } else {
+                                                               variant.getMainArtifact().getPrivacySandboxSdkInfo()
+                                                                 .getAdditionalApkSplitFile()));
+            }
+            else {
               // Legacy Privacy Sandbox APKs need to be installed together and with
               // the base APK.
               apkFileList.addAll(
@@ -243,7 +245,8 @@ public final class GradleApkProvider implements ApkProvider {
           }
 
           @Nullable GenericBuiltArtifacts builtArtifacts = getGenericBuiltArtifacts(variant.getMainArtifact(), myFacet);
-          apkList.add(new ApkInfo(apkFileList, pkgName, getBaselineProfiles(builtArtifacts), getMinSdkVersionForDexing(builtArtifacts)));
+          apkList.add(
+            new ApkInfo(apkFileList, pkgName, getBaselineProfiles(builtArtifacts), getMinSdkVersionForDexing(builtArtifacts)));
           break;
 
         case AppBundleOutputModel:
@@ -297,8 +300,7 @@ public final class GradleApkProvider implements ApkProvider {
         IdeAndroidArtifact testArtifactInfo =
           androidModel
             .getSelectedVariant().
-            getDeviceTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.ANDROID_TEST)
-            .toList().get(0);
+            getDeviceTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.ANDROID_TEST).findFirst().orElse(null);
         if (testArtifactInfo != null) {
           File testApk =
             getApk(androidModel.getSelectedVariant().getName(), getAndroidTestArtifact(androidModel.getSelectedVariant()), deviceAbis,
@@ -533,7 +535,7 @@ public final class GradleApkProvider implements ApkProvider {
   @NotNull
   public static IdeAndroidArtifact getAndroidTestArtifact(@NotNull IdeVariant variant) throws ApkProvisionException {
     IdeAndroidArtifact androidTestArtifact =
-      variant.getDeviceTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.ANDROID_TEST).toList().get(0);
+      variant.getDeviceTestArtifacts().stream().filter(it -> it.getName() == IdeArtifactName.ANDROID_TEST).findFirst().orElse(null);
     if (androidTestArtifact == null) {
       throw new ApkProvisionException(String.format("AndroidTest artifact is not configured in %s variant.", variant.getDisplayName()));
     }

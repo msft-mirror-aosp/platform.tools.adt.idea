@@ -41,6 +41,7 @@ import com.android.tools.profilers.customevent.CustomEventProfilerStage;
 import com.android.tools.profilers.energy.EnergyProfilerStage;
 import com.android.tools.profilers.memory.MainMemoryProfilerStage;
 import com.android.tools.profilers.taskbased.home.TaskHomeTabModel;
+import com.android.tools.profilers.taskbased.home.TaskHomeTabModel.ProfilingProcessStartingPoint;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.cpu.SystemTraceTaskHandler;
 import com.google.common.collect.ImmutableList;
@@ -68,6 +69,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testSleepBeforeAppLaunched() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     //Validate we start in the null stage.
     assertThat(myProfilers.getStageClass()).isSameAs(NullMonitorStage.class);
 
@@ -100,6 +103,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testProfilerStageChange() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     //Validate we start in the null stage.
     assertThat(myProfilers.getStageClass()).isSameAs(NullMonitorStage.class);
 
@@ -123,6 +128,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testLateConnectionOfPreferredProcess() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     final String PREFERRED_PROCESS = "Preferred";
     myProfilers.setPreferredProcess(null, PREFERRED_PROCESS, null);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
@@ -152,6 +159,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testSetPreferredProcessDoesNotProfileEarlierProcess() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     final String PREFERRED_PROCESS = "Preferred";
     myProfilers.setPreferredProcess(null, PREFERRED_PROCESS, p -> p.getStartTimestampNs() > 5);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
@@ -218,6 +227,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testDebuggableProcessPresentedAsDebuggable() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     myProfilers.setPreferredProcess(null, FAKE_PROCESS.getName(), null);
 
     Common.Device device = FAKE_DEVICE;
@@ -270,6 +281,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testConnectionError() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE)
       .toBuilder().setModel("FakeDevice").build();
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
@@ -294,6 +307,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testAlreadyConnected() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -307,6 +322,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testTimeResetOnConnectedDevice() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     int nowInSeconds = 42;
     myTimer.setCurrentTimeNs(TimeUnit.SECONDS.toNanos(nowInSeconds));
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
@@ -377,6 +394,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testAgentUnattachableAfterMaxRetries() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     ((BeginSession)myTransportService.getRegisteredCommand(Commands.Command.CommandType.BEGIN_SESSION))
       .setAgentStatus(AgentData.Status.UNSPECIFIED);
     myProfilers.getSessionsManager().endCurrentSession();
@@ -402,6 +421,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testAgentStatusRetryCachedForSession() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     ((BeginSession)myTransportService.getRegisteredCommand(Commands.Command.CommandType.BEGIN_SESSION))
       .setAgentStatus(AgentData.Status.UNSPECIFIED);
     myProfilers.getSessionsManager().endCurrentSession();
@@ -449,6 +470,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testAgentAspectFiring() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     AgentStatusAspectObserver observer = new AgentStatusAspectObserver();
     myProfilers.addDependency(observer).onChange(ProfilerAspect.AGENT, observer::AgentStatusChanged);
 
@@ -496,6 +519,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testAgentAspectNotFiredWhenSettingSameDeviceProcess() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -524,6 +549,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testRestartedPreferredProcessNotSelected() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
 
     Common.Device device =
@@ -583,6 +610,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void shouldNotSelectPreferredAfterUserSelectsOtherProcess() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
 
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE)
@@ -613,6 +642,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void shouldOpenMemoryProfileStageIfStartupProfilingStarted() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -643,6 +674,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void shouldOpenCpuProfileStageIfStartupProfilingStarted() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
 
@@ -675,6 +708,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testProcessStateChangesShouldNotTriggerStageChange() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -705,6 +740,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void timelineShouldBeStreamingWhenProcessIsSelected() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -717,6 +754,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void timelineShouldStopStreamingWhenRangeIsSelected() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -738,6 +777,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void onlineDeviceShouldNotOverrideSelectedOfflineDevice() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -763,6 +804,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void preferredDeviceShouldNotOverrideSelectedDevice() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     myProfilers.setPreferredProcess("Manufacturer Model", "ProcessName", null);
 
     // A device with a process that can be profiled
@@ -803,6 +846,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void preferredDeviceHasPriority() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     myProfilers.setPreferredProcess("Manufacturer Model", "PreferredProcess", null);
 
     // A device with a process that can be profiled
@@ -858,6 +903,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void keepSelectedDeviceAfterDisconnectingAllDevices() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device1 = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process1 = createProcess(device1.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     myTransportService.addDevice(device1);
@@ -899,6 +946,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testProfileOneProcessAtATime() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device1 = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process1 = createProcess(device1.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     Common.Process process2 = createProcess(device1.getDeviceId(), 21, "FakeProcess2", Common.Process.State.ALIVE);
@@ -1011,6 +1060,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testProfilingStops() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE)
       .toBuilder().setModel("FakeDevice").build();
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
@@ -1039,6 +1090,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testNullDeviceKeepsPreviousSession() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device1 = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice1", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device1.getDeviceId(), 20, "FakeProcess", Common.Process.State.ALIVE);
     Common.Device device2 = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice2", Common.Device.State.ONLINE);
@@ -1064,6 +1117,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testUnsupportedDeviceShowsNullStage() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     String deviceName = "UnsupportedDevice";
     String unsupportedReason = "Unsupported device";
     Common.Device device = Common.Device.newBuilder()
@@ -1133,6 +1188,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testBeginAndEndSessionOnProcessChange() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     assertThat(myProfilers.getSession()).isEqualTo(Common.Session.getDefaultInstance());
 
     // Adds a device without processes. Session should be null.
@@ -1169,6 +1226,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testBeginAndEndSessionOnDeviceChange() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     assertThat(myProfilers.getSession()).isEqualTo(Common.Session.getDefaultInstance());
 
     // Adds a device with process. Session should start immediately
@@ -1198,6 +1257,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testSessionDoesNotAutoStartOnSameProcess() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     assertThat(myProfilers.getSession()).isEqualTo(Common.Session.getDefaultInstance());
 
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
@@ -1293,6 +1354,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testNewSessionResetsStage() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     assertThat(myProfilers.getSession()).isEqualTo(Common.Session.getDefaultInstance());
 
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
@@ -1400,6 +1463,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testGetDirectStageReturnsEnergyOnlyForPostOSession() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     // When energy flag is enabled and the session is pre-O, GetDirectStages does not return Energy stage.
     myIdeProfilerServices.enableEnergyProfiler(true);
     Common.Session sessionPreO = Common.Session.newBuilder()
@@ -1499,6 +1564,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testSelectedAppNameFromSession() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Device device = createDevice(AndroidVersion.VersionCodes.BASE, "FakeDevice", Common.Device.State.ONLINE);
     Common.Process process = createProcess(device.getDeviceId(), 20, "FakeProcess (phone)", Common.Process.State.ALIVE);
     myTransportService.addDevice(device);
@@ -1535,6 +1602,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testSessionViewRangeCaches() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Session finishedSession = Common.Session.newBuilder()
       .setSessionId(1).setStartTimestamp(FakeTimer.ONE_SECOND_IN_NS)
       .setEndTimestamp(FakeTimer.ONE_SECOND_IN_NS * 2).build();
@@ -1598,6 +1667,8 @@ public final class StudioProfilersTest {
 
   @Test
   public void testMultipleUpdateTicksShouldNotChangeSession() {
+    myIdeProfilerServices.enableTaskBasedUx(false);
+
     Common.Session finishedSession = Common.Session.newBuilder()
       .setSessionId(1).setStartTimestamp(FakeTimer.ONE_SECOND_IN_NS)
       .setEndTimestamp(FakeTimer.ONE_SECOND_IN_NS * 2).build();
@@ -1717,7 +1788,7 @@ public final class StudioProfilersTest {
     // task feature, setting a selected task handler (and supplying its corresponding task handler), and providing a preferred device.
     myIdeProfilerServices.enableTaskBasedUx(true);
     myProfilers.getTaskHomeTabModel().setSelectionStateOnTaskEnter(
-      new TaskHomeTabModel.SelectionStateOnTaskEnter(true, ProfilerTaskType.SYSTEM_TRACE));
+      new TaskHomeTabModel.SelectionStateOnTaskEnter(ProfilingProcessStartingPoint.PROCESS_START, ProfilerTaskType.SYSTEM_TRACE));
     myProfilers.addTaskHandler(ProfilerTaskType.SYSTEM_TRACE, new SystemTraceTaskHandler(myProfilers.getSessionsManager(), false));
     Common.Device device = FAKE_DEVICE;
     myTransportService.addDevice(device);

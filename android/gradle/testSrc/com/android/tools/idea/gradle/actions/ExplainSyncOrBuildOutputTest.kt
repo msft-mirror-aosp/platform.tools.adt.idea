@@ -76,7 +76,7 @@ class ExplainSyncOrBuildOutputTest {
 
     override fun isAvailable() = available
 
-    override fun isContextAllowed() = contextAllowed
+    override fun isContextAllowed(project: Project) = contextAllowed
 
     private val _chatService = spy(object : ChatService.StubChatService() {})
 
@@ -357,7 +357,7 @@ class ExplainSyncOrBuildOutputTest {
 
     // An AiExcludeService that excludes all files
     val aiExcludeService = object : AiExcludeService.StubAiExcludeService() {
-      override fun isFileExcluded(project: Project, file: VirtualFile) = true
+      override fun getFileExclusionStatus(project: Project, file: VirtualFile) = ExclusionStatus.EXCLUDED
     }
 
     val result = getErrorFileLocationContext(navigatable, project, aiExcludeService)

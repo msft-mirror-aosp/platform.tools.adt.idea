@@ -2077,7 +2077,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/sdk-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/sdk-tools.jar
 Android Studio Preview.app/Contents/plugins/android/lib/sdklib.jar
 Android Studio Preview.app/Contents/plugins/android/lib/shared.jar
-Android Studio Preview.app/Contents/plugins/android/lib/skiko-awt-0.7.85.4.jar
+Android Studio Preview.app/Contents/plugins/android/lib/skiko-awt-0.7.85.5.jar
 Android Studio Preview.app/Contents/plugins/android/lib/skiko-awt-runtime-linux-x64-0.7.85.4.jar
 Android Studio Preview.app/Contents/plugins/android/lib/skiko-awt-runtime-macos-arm64-0.7.85.4.jar
 Android Studio Preview.app/Contents/plugins/android/lib/skiko-awt-runtime-macos-x64-0.7.85.4.jar
@@ -2397,7 +2397,6 @@ Android Studio Preview.app/Contents/plugins/android/resources/installer/x86_64/i
 Android Studio Preview.app/Contents/plugins/android/resources/native/libimage_converter.dylib
 Android Studio Preview.app/Contents/plugins/android/resources/native/libjni_object_tagger.dylib
 Android Studio Preview.app/Contents/plugins/android/resources/perfa.jar
-Android Studio Preview.app/Contents/plugins/android/resources/perfa_okhttp.dex
 Android Studio Preview.app/Contents/plugins/android/resources/perfetto/arm64-v8a/libperfetto.so
 Android Studio Preview.app/Contents/plugins/android/resources/perfetto/arm64-v8a/perfetto
 Android Studio Preview.app/Contents/plugins/android/resources/perfetto/arm64-v8a/traced

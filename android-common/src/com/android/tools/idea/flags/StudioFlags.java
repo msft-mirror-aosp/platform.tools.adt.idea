@@ -202,7 +202,7 @@ public final class StudioFlags {
     true);
 
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = Flag.create(PROFILER, "task.based.ux", "Task-based UX",
-    "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)", false);
+    "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)", true);
 
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     Flag.create(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android", false);
@@ -265,7 +265,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
     NELE, "compose.ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
-    false);
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
     NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
@@ -937,7 +937,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
     DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
     "Allow drag and drop of device tabs",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = new StringFlag(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
@@ -959,6 +959,10 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "auto.reset", "The agent should reset all changed UI settings on disconnect",
     "Enables the reset logic in the device agent for the UI settings picker",
     true);
+  public static final Flag<Boolean> DEVICE_MIRRORING_REMOTE_TEMPLATES_IN_PLUS = new BooleanFlag(
+    DEVICE_MIRRORING, "remote.templates.in.plus", "Show remote device templates in plus action",
+    "Show and allow starting remote device from their templates through the plus action",
+    false);
   //endregion
 
   // region Device Definition Download Service
@@ -1146,12 +1150,6 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> UTP_TEST_RESULT_SUPPORT = Flag.create(
-    TESTING, "utp.instrumentation.tests", "Allow importing UTP test results.",
-    "If enabled, you can import UTP test results and display them in test result panel.",
-    true
-  );
-
   public static final Flag<Boolean> ENABLE_SCREENSHOT_TESTING = Flag.create(
     TESTING, "screenshot.testing", "Run screenshot tests",
     "If enabled, a screenshotTest source set will be added for running screenshot tests",
@@ -1266,13 +1264,6 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> COMPOSE_SPRING_PICKER = new BooleanFlag(
-    COMPOSE, "preview.spring.picker",
-    "Enable the SpringSpec picker",
-    "If enabled, a picker will be available in SpringSpec calls on the Editor gutter",
-    false
-  );
-
   public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = new BooleanFlag(
     COMPOSE, "view.inspector",
     "Show the switch of view inspection tool in Compose",
@@ -1317,6 +1308,10 @@ public final class StudioFlags {
     COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
     "If enabled, multiple previews associated with composable will be grouped. Please invalidates file caches after " +
     "enabling or disabling (File -> Invalidate Caches...)", false);
+
+  public static final Flag<Boolean> PREVIEW_DYNAMIC_ZOOM_TO_FIT = new BooleanFlag(
+    COMPOSE, "preview.dynamic.zoom.to.fit", "Enable dynamic Zoom to Fit in preview",
+    "If enabled, Zoom to Fit action will take into account the number of previews.", false);
 
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = new BooleanFlag(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
@@ -1517,8 +1512,8 @@ public final class StudioFlags {
     Flag.create(
       FIREBASE_TEST_LAB,
       "direct.access.monthly.quota",
-      "Direct Access",
-      "Enable FTL DirectAccess",
+      "Direct Access Monthly Quota",
+      "Enable FTL DirectAccess Monthly Quota",
       false);
 
   public static final Flag<Boolean> DIRECT_ACCESS_SETTINGS_PAGE =
@@ -1553,6 +1548,15 @@ public final class StudioFlags {
       "FTL Direct Access Monitoring endpoint",
       "The URL for FTL Direct Access to monitor quota usage and limit.",
       "monitoring.googleapis.com"
+    );
+
+  public static final Flag<String> DIRECT_ACCESS_MONITORING_METRICS_DIRECTORY =
+    Flag.create(
+      FIREBASE_TEST_LAB,
+      "direct.access.monitoring.metrics.directory",
+      "FTL Direct Access Metrics Directory",
+      "The directory for FTL Direct Access monthly usage metrics.",
+      "device_streaming"
     );
   // endregion Firebase Test Lab
 
@@ -1821,6 +1825,37 @@ public final class StudioFlags {
                     "Use the Compose for Desktop/Jewel-based UI for the Chat toolwindow.",
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
                     false);
+
+  public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
+                    "Suggest missing dependencies when inserting/pasting code snippets",
+                    "When enabled, a dependency suggestion dialog will appear when inserting/pasting code snippets that might require missing dependencies.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
+    new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
+                    "Use ML model to suggest commit messages",
+                    "Enables the \"Suggest Commit Message\" button in the Commit tool window",
+                    false);
+
+  // rate limits are controlled by server flags
+  public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =
+    new IntFlag(STUDIOBOT, "completions.per.hour",
+                    "AI completion requests per hour",
+                    "AI completion requests per hour",
+                    36000);
+
+  public static final Flag<Integer> STUDIOBOT_CONVERSATIONS_PER_HOUR =
+    new IntFlag(STUDIOBOT, "conversations.per.hour",
+                "AI conversations per hour",
+                "AI conversations per hour",
+                60);
+
+  public static final Flag<Integer> STUDIOBOT_GENERATIONS_PER_HOUR =
+    new IntFlag(STUDIOBOT, "generations.per.hour",
+                "AI generation requests per hour",
+                "AI generation requests per hour",
+                3600);
 
   // endregion STUDIO_BOT
 

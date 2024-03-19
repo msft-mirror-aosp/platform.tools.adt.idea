@@ -144,12 +144,16 @@ class LayoutInspectorManagerTest {
       displayViewRule.disposable,
     )
 
-    RunningDevicesStateObserver.getInstance(displayViewRule.project).update(true)
+    RunningDevicesStateObserver.getInstance(displayViewRule.project)
+      .update(enabled = true, newContentManager = fakeToolWindowManager.toolWindow.contentManager)
+
+    fakeToolWindowManager.toolWindow.show()
   }
 
   @After
   fun tearDown() {
-    RunningDevicesStateObserver.getInstance(displayViewRule.project).update(false)
+    RunningDevicesStateObserver.getInstance(displayViewRule.project)
+      .update(enabled = false, newContentManager = fakeToolWindowManager.toolWindow.contentManager)
   }
 
   @Test
@@ -168,7 +172,7 @@ class LayoutInspectorManagerTest {
 
   @Test
   @RunsInEdt
-  fun testHideToolWindow() = withEmbeddedLayoutInspector {
+  fun testHideToolWindowRemovesUi() = withEmbeddedLayoutInspector {
     val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
 
     fakeToolWindowManager.addContent(tab1)
@@ -187,11 +191,13 @@ class LayoutInspectorManagerTest {
     fakeToolWindowManager.toolWindow.hide()
     waitForCondition(2, TimeUnit.SECONDS) { !fakeToolWindowManager.toolWindow.isVisible }
 
+    // Make sure that the UI is removed when the tool window is hidden.
     verifyUiRemoved(tab1)
 
     fakeToolWindowManager.toolWindow.show()
     waitForCondition(2, TimeUnit.SECONDS) { fakeToolWindowManager.toolWindow.isVisible }
 
+    // The UI should be re-inject from scratch when the tool window is visible again.
     verifyUiInjected(tab1)
   }
 
@@ -588,6 +594,40 @@ class LayoutInspectorManagerTest {
 
     assertThat(fakeForegroundProcessDetection.startInvokeCounter).isEqualTo(4)
     assertThat(fakeForegroundProcessDetection.stopInvokeCounter).isEqualTo(4)
+  }
+
+  @Test
+  @RunsInEdt
+  fun testEnableLiAcrossTabsFromMultipleContentManagers() {
+    val secondContentManager = FakeContentManager()
+    Disposer.register(displayViewRule.disposable, secondContentManager)
+
+    RunningDevicesStateObserver.getInstance(displayViewRule.project)
+      .update(enabled = true, newContentManager = secondContentManager)
+
+    val layoutInspectorManager = LayoutInspectorManager.getInstance(displayViewRule.project)
+
+    fakeToolWindowManager.addContent(tab1)
+
+    val fakeComponent = FakeRunningDevicesComponent(tab2)
+    val fakeContent = FakeContent(displayViewRule.disposable, secondContentManager, fakeComponent)
+    secondContentManager.addContent(fakeContent)
+    secondContentManager.setSelectedContent(fakeContent)
+
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    fakeToolWindowManager.setSelectedContent(tab1)
+
+    layoutInspectorManager.enableLayoutInspector(tab1.deviceId, true)
+
+    verifyUiInjected(tab1)
+
+    layoutInspectorManager.enableLayoutInspector(tab2.deviceId, true)
+
+    verifyUiRemoved(tab1)
+    verifyUiInjected(tab2)
+
+    RunningDevicesStateObserver.getInstance(displayViewRule.project)
+      .update(enabled = false, newContentManager = secondContentManager)
   }
 }
 

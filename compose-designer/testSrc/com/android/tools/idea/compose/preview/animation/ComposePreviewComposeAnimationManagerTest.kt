@@ -23,10 +23,13 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.compose.preview.animation.TestUtils.createComposeAnimation
 import com.android.tools.idea.compose.preview.animation.TestUtils.findComboBox
 import com.android.tools.idea.compose.preview.animation.TestUtils.findLabel
-import com.android.tools.idea.compose.preview.animation.TestUtils.findToolbar
 import com.android.tools.idea.compose.preview.animation.managers.ComposeAnimationManager
-import com.android.tools.idea.compose.preview.animation.managers.UnsupportedAnimationManager
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.preview.animation.AnimationCard
+import com.android.tools.idea.preview.animation.LabelCard
+import com.android.tools.idea.preview.animation.TestUtils.findAllCards
+import com.android.tools.idea.preview.animation.TestUtils.findToolbar
+import com.android.tools.idea.preview.animation.UnsupportedAnimationManager
 import com.android.tools.idea.rendering.classloading.PreviewAnimationClockMethodTransform
 import com.android.tools.rendering.classloading.NopClassLocator
 import com.android.tools.rendering.classloading.loaders.AsmTransformingLoader
@@ -500,7 +503,7 @@ class ComposePreviewComposeAnimationManagerTest(private val clockType: ClockType
       animations.forEach { ComposePreviewAnimationManager.onAnimationSubscribed(clock, it).join() }
 
       withContext(uiThread) {
-        val cards = TestUtils.findAllCards(inspector.component)
+        val cards = findAllCards(inspector.component)
         val timeline = TestUtils.findTimeline(inspector.component)
         // 11 cards and 11 TimelineElements are added to coordination panel.
         assertEquals(11, cards.size)
@@ -704,7 +707,7 @@ class ComposePreviewComposeAnimationManagerTest(private val clockType: ClockType
   private fun AnimationPreview.tabCount(): Int = runBlocking(uiThread) { animations.size }
 
   private fun AnimationPreview.getAnimationTitleAt(index: Int): String =
-    TestUtils.findAllCards(this.component)[index].findLabel().text
+    findAllCards(this.component)[index].findLabel().text
 
   private fun AnimationPreview.noAnimationsPanel() =
     TreeWalker(this.component)

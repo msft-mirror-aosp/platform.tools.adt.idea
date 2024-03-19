@@ -27,13 +27,11 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.WearHealthServicesEvent
 import com.intellij.openapi.util.Disposer
 import junit.framework.TestCase.assertEquals
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assert
 import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Ignore
@@ -116,6 +114,37 @@ class WearHealthServicesToolWindowStateManagerTest {
   }
 
   @Test
+  fun `test state manager initialises all capabilities to synced, enabled and no override`() = runBlocking {
+    stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[1]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[1]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[2]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[0]).map { it.capabilityState.overrideValue }.waitForValue(null)
+    stateManager.getState(capabilities[1]).map { it.capabilityState.overrideValue }.waitForValue(null)
+    stateManager.getState(capabilities[2]).map { it.capabilityState.overrideValue }.waitForValue(null)
+  }
+
+  @Test
+  fun `test state manager sets capabilities that are not returned by device manager to default state`() = runBlocking {
+    stateManager.setCapabilityEnabled(capabilities[0], false)
+    stateManager.setOverrideValue(capabilities[0], 3f)
+
+    stateManager.applyChanges()
+
+    stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(false)
+    stateManager.getState(capabilities[0]).map { it.capabilityState.overrideValue }.waitForValue(3f)
+
+    deviceManager.clearContentProvider()
+
+    stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[0]).map { it.capabilityState.overrideValue }.waitForValue(null)
+  }
+
+  @Test
   fun `test getCapabilityEnabled has the correct value`() = runBlocking {
     stateManager.setCapabilityEnabled(capabilities[0], false)
     stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(false)
@@ -139,16 +168,23 @@ class WearHealthServicesToolWindowStateManagerTest {
 
     stateManager.reset()
 
-    stateManager.preset.value = Preset.ALL
+    stateManager.preset.waitForValue(Preset.ALL)
     stateManager.getState(capabilities[2]).map { it.capabilityState.enabled }.waitForValue(true)
     stateManager.getState(capabilities[1]).map { it.capabilityState.overrideValue }.waitForValue(null)
-    stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(false)
+    stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(true)
 
     assertEquals(1, deviceManager.clearContentProviderInvocations)
   }
 
   @Test
   fun `test applyChanges sends synced and status updates`(): Unit = runBlocking {
+    stateManager.getState(capabilities[0]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[1]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[2]).map { it.capabilityState.enabled }.waitForValue(true)
+    stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[1]).map { it.synced }.waitForValue(true)
+    stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(true)
+
     stateManager.setCapabilityEnabled(capabilities[0], false)
     stateManager.setCapabilityEnabled(capabilities[1], true)
     stateManager.setOverrideValue(capabilities[1], 3f)
@@ -156,7 +192,7 @@ class WearHealthServicesToolWindowStateManagerTest {
 
     stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(false)
     stateManager.getState(capabilities[1]).map { it.synced }.waitForValue(false)
-    stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(false)
+    stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(true)
 
     stateManager.applyChanges()
 
@@ -249,13 +285,7 @@ class WearHealthServicesToolWindowStateManagerTest {
   }
 
   private suspend fun <T> Flow<T>.waitForValue(value: T, timeoutSeconds: Long = TEST_MAX_WAIT_TIME_SECONDS) {
-    val received = mutableListOf<T>()
-    try {
-      withTimeout(timeoutSeconds.seconds) { takeWhile { it != value }.collect { received.add(it) } }
-    }
-    catch (ex: TimeoutCancellationException) {
-      Assert.fail("Timed out waiting for value $value. Received values so far $received")
-    }
+    withTimeout(timeoutSeconds.seconds) { takeWhile { it != value }.collect { } }
   }
 
   @Test

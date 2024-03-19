@@ -17,11 +17,11 @@ package com.android.tools.idea.compose.preview.animation.managers
 
 import androidx.compose.animation.tooling.ComposeAnimation
 import com.android.tools.idea.compose.preview.animation.AnimationClock
-import com.android.tools.idea.compose.preview.animation.AnimationTabs
 import com.android.tools.idea.compose.preview.animation.ComposeAnimationTracker
 import com.android.tools.idea.compose.preview.animation.getAnimatedVisibilityState
-import com.android.tools.idea.preview.animation.AnimationPreviewState
+import com.android.tools.idea.preview.animation.AnimationTabs
 import com.android.tools.idea.preview.animation.PlaybackControls
+import com.android.tools.idea.preview.animation.TimelinePanel
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.executeInRenderSession
 import javax.swing.JComponent
@@ -34,7 +34,7 @@ class AnimatedVisibilityAnimationManager(
   tracker: ComposeAnimationTracker,
   private val animationClock: AnimationClock,
   maxDurationPerIteration: StateFlow<Long>,
-  previewState: AnimationPreviewState,
+  timelinePanel: TimelinePanel,
   private val sceneManager: LayoutlibSceneManager?,
   tabbedPane: AnimationTabs,
   rootComponent: JComponent,
@@ -43,13 +43,13 @@ class AnimatedVisibilityAnimationManager(
   updateTimelineElementsCallback: suspend () -> Unit,
   scope: CoroutineScope,
 ) :
-  SupportedAnimationManager(
+  ComposeSupportedAnimationManager(
     animation,
     tabTitle,
     tracker,
     animationClock,
     maxDurationPerIteration,
-    previewState,
+    timelinePanel,
     sceneManager,
     tabbedPane,
     rootComponent,

@@ -43,10 +43,10 @@ interface StudioBot {
   fun isAvailable(): Boolean = false
 
   /**
-   * Returns whether the user has opted into sharing context from their project in
+   * Returns whether the user has opted into sharing context from [project] in
    * Studio Bot queries.
    */
-  fun isContextAllowed(): Boolean = false
+  fun isContextAllowed(project: Project): Boolean = false
 
   fun aiExcludeService(): AiExcludeService
 
@@ -61,7 +61,7 @@ interface StudioBot {
    * This service is used to send and receive text responses with a model directly, without going through
    * the chat UI.
    */
-  fun model(): LlmService
+  fun model(project: Project): LlmService
 
   /**
    * Used for gathering metrics, like how many queries come from each part of Android Studio.
@@ -80,10 +80,10 @@ interface StudioBot {
   open class StubStudioBot: StudioBot {
     override val MAX_QUERY_CHARS = Int.MAX_VALUE
     override fun isAvailable(): Boolean = false
-    override fun isContextAllowed(): Boolean = false
+    override fun isContextAllowed(project: Project): Boolean = false
     override fun aiExcludeService(): AiExcludeService = AiExcludeService.StubAiExcludeService()
     override fun chat(project: Project): ChatService = ChatService.StubChatService()
-    override fun model(): LlmService = LlmService.StubLlmService()
+    override fun model(project: Project): LlmService = LlmService.StubLlmService()
   }
 
   companion object {
