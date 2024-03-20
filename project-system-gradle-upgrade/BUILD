@@ -38,7 +38,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk[test]",
+        "@intellij//:intellij-sdk[test]",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module, test]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
         "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade[module]",
@@ -48,7 +49,7 @@ iml_module(
         "//tools/adt/idea/observable:intellij.android.observable[module, test]",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module, test]",
         "//tools/adt/idea/android-common:intellij.android.common[module, test]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils[module]",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
@@ -80,9 +81,10 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module]",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
+        "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module]",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module]",
@@ -91,9 +93,9 @@ iml_module(
         "//tools/base/common:studio.android.sdktools.common[module]",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module]",
         "//tools/analytics-library/tracker:analytics-tracker[module]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-properties",
+        "@intellij//:com.intellij.properties",
         "//tools/adt/idea/analytics[module]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "@intellij//:org.jetbrains.kotlin",
     ],
 )
 

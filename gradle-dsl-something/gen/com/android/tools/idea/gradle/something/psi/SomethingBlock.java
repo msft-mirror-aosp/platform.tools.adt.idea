@@ -21,15 +21,18 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface SomethingBlock extends PsiElement {
+public interface SomethingBlock extends SomethingEntry {
+
+  @Nullable
+  SomethingIdentifier getIdentifier();
 
   @NotNull
-  List<SomethingEntry> getEntryList();
+  List<SomethingEntry> getEntries();
 
   @Nullable
   SomethingFactory getFactory();
 
   @Nullable
-  SomethingIdentifier getIdentifier();
+  PsiElement getBlockEntriesStart();
 
 }

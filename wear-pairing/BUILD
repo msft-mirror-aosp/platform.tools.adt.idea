@@ -9,7 +9,8 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/wizard-model:intellij.android.wizard.model[module]",
         "//tools/adt/idea/observable:intellij.android.observable[module]",
         "//tools/base/ddmlib:studio.android.sdktools.ddmlib[module]",
@@ -23,7 +24,7 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork[module]",
         "//tools/analytics-library/tracker:analytics-tracker[module]",
         "//tools/adt/idea/wizard:intellij.android.wizard[module]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "@intellij//:org.jetbrains.kotlin",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
     ],
 )
@@ -38,7 +39,8 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk[test]",
+        "@intellij//:intellij-sdk[test]",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/wear-pairing:intellij.android.wear-pairing[module, test]",
         "//tools/adt/idea/observable:intellij.android.observable[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",

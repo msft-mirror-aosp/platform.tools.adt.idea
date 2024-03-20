@@ -21,7 +21,7 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface SomethingFactory extends PsiElement {
+public interface SomethingFactory extends SomethingEntry {
 
   @Nullable
   SomethingFactory getFactory();
@@ -30,6 +30,6 @@ public interface SomethingFactory extends PsiElement {
   SomethingIdentifier getIdentifier();
 
   @Nullable
-  SomethingRvalue getRvalue();
+  SomethingValue getValue();
 
 }

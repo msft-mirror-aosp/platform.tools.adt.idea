@@ -34,7 +34,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertFalse
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import kotlin.time.Duration.Companion.seconds
@@ -59,7 +58,6 @@ private val capabilities = listOf(WhsCapability(
   isStandardCapability = false,
 ))
 
-@Ignore("b/326042906")
 class WearHealthServicesToolWindowStateManagerTest {
   companion object {
     const val TEST_MAX_WAIT_TIME_SECONDS = 5L
@@ -75,13 +73,16 @@ class WearHealthServicesToolWindowStateManagerTest {
   private val stateManager by lazy {
     WearHealthServicesToolWindowStateManagerImpl(deviceManager, logger, TEST_POLLING_INTERVAL_MILLISECONDS).also {
       it.serialNumber = "test"
+      it.runPeriodicUpdates = true
     }
   }
 
   @Before
-  fun setUp() {
+  fun setUp() = runBlocking {
     loggedEvents.clear()
     Disposer.register(projectRule.testRootDisposable, stateManager)
+    // Wait until the state manager is idle
+    stateManager.status.waitForValue(WhsStateManagerStatus.Idle)
   }
 
   @Test
@@ -196,16 +197,16 @@ class WearHealthServicesToolWindowStateManagerTest {
 
     stateManager.applyChanges()
 
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.Idle)
+    stateManager.status.waitForValue(WhsStateManagerStatus.Idle)
 
     stateManager.getState(capabilities[0]).map { it.synced }.waitForValue(true)
     stateManager.getState(capabilities[1]).map { it.synced }.waitForValue(true)
     stateManager.getState(capabilities[2]).map { it.synced }.waitForValue(true)
 
-    assertThat(deviceManager.loadCurrentCapabilityStates()).containsEntry(
+    assertThat(deviceManager.loadCurrentCapabilityStates().getOrThrow()).containsEntry(
       capabilities[0].dataType, CapabilityState(false, null)
     )
-    assertThat(deviceManager.loadCurrentCapabilityStates()).containsEntry(
+    assertThat(deviceManager.loadCurrentCapabilityStates().getOrThrow()).containsEntry(
       capabilities[1].dataType, CapabilityState(true, 3f)
     )
 
@@ -223,7 +224,7 @@ class WearHealthServicesToolWindowStateManagerTest {
 
     stateManager.applyChanges()
 
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.ConnectionLost)
+    stateManager.status.waitForValue(WhsStateManagerStatus.ConnectionLost)
 
     assertThat(loggedEvents).hasSize(2)
     assertThat(loggedEvents[0].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
@@ -239,19 +240,17 @@ class WearHealthServicesToolWindowStateManagerTest {
     deviceManager.failState = true
 
     stateManager.applyChanges()
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.ConnectionLost)
+    stateManager.status.waitForValue(WhsStateManagerStatus.ConnectionLost)
 
     deviceManager.failState = false
 
     stateManager.applyChanges()
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.Idle)
+    stateManager.status.waitForValue(WhsStateManagerStatus.Idle)
   }
 
   @Test
   fun `test stateManager periodically updates the values from the device`() = runBlocking {
     stateManager.applyChanges()
-
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.Idle)
 
     // Disable value on-device
     deviceManager.setCapabilities(mapOf(capabilities[0].dataType to false))
@@ -264,7 +263,7 @@ class WearHealthServicesToolWindowStateManagerTest {
   fun `test stateManager periodically updates the override values from the device`() = runBlocking {
     stateManager.applyChanges()
 
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.Idle)
+    stateManager.status.waitForValue(WhsStateManagerStatus.Idle)
 
     // Enable sensor and override value on device
     deviceManager.setCapabilities(mapOf(capabilities[0].dataType to true))
@@ -282,6 +281,20 @@ class WearHealthServicesToolWindowStateManagerTest {
 
     // Verify that the value is updated
     stateManager.ongoingExercise.waitForValue(true)
+  }
+
+  @Test
+  fun `test periodic updates do not run if the tool window is not visible`() = runBlocking {
+    stateManager.runPeriodicUpdates = false
+
+    stateManager.status.waitForValue(WhsStateManagerStatus.Idle)
+
+    deviceManager.activeExercise = true
+
+    stateManager.forceUpdateState()
+
+    // Verify that the value is not updated
+    stateManager.ongoingExercise.waitForValue(false)
   }
 
   private suspend fun <T> Flow<T>.waitForValue(value: T, timeoutSeconds: Long = TEST_MAX_WAIT_TIME_SECONDS) {
@@ -311,6 +324,6 @@ class WearHealthServicesToolWindowStateManagerTest {
 
     stateManager.triggerEvent(EventTrigger("key", "label"))
 
-    stateManager.getStatus().waitForValue(WhsStateManagerStatus.ConnectionLost)
+    stateManager.status.waitForValue(WhsStateManagerStatus.ConnectionLost)
   }
 }

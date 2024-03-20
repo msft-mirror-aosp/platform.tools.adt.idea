@@ -71,28 +71,19 @@ public class SomethingParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // (factory | identifier) OP_LBRACE block_entry* OP_RBRACE
+  // block_head OP_LBRACE block_entry* OP_RBRACE
   public static boolean block(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "block")) return false;
     if (!nextTokenIs(b, TOKEN)) return false;
     boolean r, p;
     Marker m = enter_section_(b, l, _NONE_, BLOCK, null);
-    r = block_0(b, l + 1);
+    r = block_head(b, l + 1);
     r = r && consumeToken(b, OP_LBRACE);
     p = r; // pin = 2
     r = r && report_error_(b, block_2(b, l + 1));
     r = p && consumeToken(b, OP_RBRACE) && r;
     exit_section_(b, l, m, r, p, null);
     return r || p;
-  }
-
-  // factory | identifier
-  private static boolean block_0(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "block_0")) return false;
-    boolean r;
-    r = factory(b, l + 1);
-    if (!r) r = identifier(b, l + 1);
-    return r;
   }
 
   // block_entry*
@@ -129,6 +120,17 @@ public class SomethingParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // factory | identifier
+  static boolean block_head(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "block_head")) return false;
+    if (!nextTokenIs(b, TOKEN)) return false;
+    boolean r;
+    r = factory(b, l + 1);
+    if (!r) r = identifier(b, l + 1);
+    return r;
+  }
+
+  /* ********************************************************** */
   // entry*
   static boolean entries(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "entries")) return false;
@@ -142,10 +144,10 @@ public class SomethingParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // !<<eof>> !(OP_RBRACE|OP_RPAREN) (assignment | block | factory)
-  public static boolean entry(PsiBuilder b, int l) {
+  static boolean entry(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "entry")) return false;
     boolean r, p;
-    Marker m = enter_section_(b, l, _NONE_, ENTRY, "<entry>");
+    Marker m = enter_section_(b, l, _NONE_);
     r = entry_0(b, l + 1);
     p = r; // pin = 1
     r = r && report_error_(b, entry_1(b, l + 1));
@@ -252,28 +254,33 @@ public class SomethingParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // identifier
-  public static boolean lvalue(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "lvalue")) return false;
-    if (!nextTokenIs(b, TOKEN)) return false;
+  // string | number | boolean
+  public static boolean literal(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "literal")) return false;
     boolean r;
-    Marker m = enter_section_(b);
-    r = identifier(b, l + 1);
-    exit_section_(b, m, LVALUE, r);
+    Marker m = enter_section_(b, l, _NONE_, LITERAL, "<literal>");
+    r = consumeToken(b, STRING);
+    if (!r) r = consumeToken(b, NUMBER);
+    if (!r) r = consumeToken(b, BOOLEAN);
+    exit_section_(b, l, m, r, false, null);
     return r;
   }
 
   /* ********************************************************** */
-  // factory | property | string | number | boolean
+  // identifier
+  static boolean lvalue(PsiBuilder b, int l) {
+    return identifier(b, l + 1);
+  }
+
+  /* ********************************************************** */
+  // factory | property | literal
   public static boolean rvalue(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "rvalue")) return false;
     boolean r;
-    Marker m = enter_section_(b, l, _NONE_, RVALUE, "<rvalue>");
+    Marker m = enter_section_(b, l, _NONE_, VALUE, "<rvalue>");
     r = factory(b, l + 1);
     if (!r) r = property(b, l + 1, -1);
-    if (!r) r = consumeToken(b, STRING);
-    if (!r) r = consumeToken(b, NUMBER);
-    if (!r) r = consumeToken(b, BOOLEAN);
+    if (!r) r = literal(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
   }

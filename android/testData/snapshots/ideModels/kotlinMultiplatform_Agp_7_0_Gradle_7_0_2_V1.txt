@@ -1146,8 +1146,10 @@ MODULE                        : kotlinMultiPlatform.app
     - basicVariant:               : debug
         applicationId                 : com.example.android.kotlin
         testApplicationId             : com.example.android.kotlin.test
+        buildType                     : debug
     - basicVariant:               : release
         applicationId                 : com.example.android.kotlin
+        buildType                     : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-32/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -1809,7 +1811,9 @@ MODULE                        : kotlinMultiPlatform.module2
         AndroidResourcesEnabled       : true
     - basicVariant:               : debug
         testApplicationId             : com.example.test.multiproject.module2.test
+        buildType                     : debug
     - basicVariant:               : release
+        buildType                     : release
     BootClassPath                 : <ANDROID_SDK>/platforms/android-32/android.jar
     ViewBindingOptions
         Enabled                       : false
@@ -2190,7 +2194,7 @@ MODULE                        : kotlinMultiPlatform.module2
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KGP_VERSION>
+            versionString                 : 1.9.20
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
@@ -2238,11 +2242,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     autoAdvanceLanguageVersion    : true
                     enableSignatureClashChecks    : true
                     explicitApi                   : disable
-                    - fragmentRefines             : androidDebug:commonMain
-                    - fragmentRefines             : androidMain:commonMain
-                    - fragments                   : androidDebug
-                    - fragments                   : androidMain
-                    - fragments                   : commonMain
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2314,8 +2313,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     autoAdvanceLanguageVersion    : true
                     enableSignatureClashChecks    : true
                     explicitApi                   : disable
-                    - fragments                   : androidInstrumentedTestDebug
-                    - fragments                   : androidInstrumentedTest
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2388,11 +2385,6 @@ MODULE                        : kotlinMultiPlatform.module2
                     autoAdvanceLanguageVersion    : true
                     enableSignatureClashChecks    : true
                     explicitApi                   : disable
-                    - fragmentRefines             : androidUnitTestDebug:commonTest
-                    - fragmentRefines             : androidUnitTest:commonTest
-                    - fragments                   : androidUnitTestDebug
-                    - fragments                   : androidUnitTest
-                    - fragments                   : commonTest
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar

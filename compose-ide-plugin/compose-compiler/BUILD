@@ -14,7 +14,8 @@ kotlin_library(
     resources = ["@compose-compiler-sources//:resources"],
     visibility = ["//visibility:public"],
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "@intellij//:com.intellij.java",
+        "@intellij//:intellij-sdk",
+        "@intellij//:org.jetbrains.kotlin",
     ],
 )

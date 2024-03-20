@@ -41,9 +41,6 @@ def list_sdk_jars(sdk):
     product_info = read_product_info(sdk, platform)
     (launch_config,) = product_info["launch"]
     jars = ["/lib/" + jar for jar in launch_config["bootClassPathJarNames"]]
-    # Java plugin sdk are included as part of the platform as there are references to it.
-    idea_home = sdk + HOME_PATHS[platform]
-    jars += ["/plugins/java/lib/" + jar for jar in os.listdir(idea_home + "/plugins/java/lib/") if jar.endswith(".jar")]
     sets[platform] = set(jars)
 
   sets[ALL] = sets[WIN] & sets[MAC] & sets[MAC_ARM] & sets[LINUX]
@@ -58,6 +55,22 @@ def list_sdk_jars(sdk):
 
   return sdk_jars
 
+def _read_zip_entry(zip_path, entry):
+  with zipfile.ZipFile(zip_path) as zip:
+    if entry not in zip.namelist():
+      return None
+    data = zip.read(entry)
+  return data.decode("utf-8")
+  
+def _read_plugin_id(path):
+  for jar in os.listdir(path + "/lib"):
+    if jar.endswith(".jar"):
+      entry = _read_zip_entry(path + "/lib/" + jar, "META-INF/plugin.xml")
+      if entry:
+        xml = ET.fromstring(entry)
+        for id in xml.findall("id"):
+          return id.text
+  sys.exit("Failed to find plugin id")
 
 def list_plugin_jars(sdk):
   all = {}
@@ -65,12 +78,10 @@ def list_plugin_jars(sdk):
     idea_home = sdk + HOME_PATHS[platform]
     all[platform] = {}
     for plugin in os.listdir(idea_home + "/plugins"):
-      if plugin == "java":
-        # The plugin java is added as part of the platform
-        continue
+      plugin_id = _read_plugin_id(idea_home + "/plugins/" + plugin)
       path = "/plugins/" + plugin + "/lib/"
       jars = [path + jar for jar in os.listdir(idea_home + path) if jar.endswith(".jar")]
-      all[platform][plugin] = set(jars)
+      all[platform][plugin_id] = set(jars)
 
   plugins = sorted(set(all[MAC].keys()) | set(all[WIN].keys()) | set(all[LINUX].keys()))
   plugin_jars = {}
@@ -131,7 +142,7 @@ def write_spec_file(workspace, sdk_rel, version, sdk_jars, plugin_jars, mac_bund
         if jars:
           file.write("        \"" + plugin + "\": [\n")
           for jar in jars:
-            file.write("            \"" + os.path.basename(jar) + "\",\n")
+            file.write("            \"" + jar[1:] + "\",\n")
           file.write("        ],\n")
       file.write("    },\n")
 

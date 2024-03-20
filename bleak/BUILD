@@ -7,5 +7,8 @@ iml_module(
     iml_files = ["intellij.android.bleak.iml"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = ["//prebuilts/studio/intellij-sdk:studio-sdk"],
+    deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
+    ],
 )

@@ -10,7 +10,8 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose[module]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/base/sdklib:studio.android.sdktools.sdklib[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
         "//tools/adt/idea/android:intellij.android.core[module]",

@@ -50,9 +50,10 @@ iml_module(
     runtime_deps = ["//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk[test]",
+        "@intellij//:intellij-sdk[test]",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle[test]",
+        "@intellij//:com.intellij.gradle[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/.idea/libraries:emulator-proto[test]",
         "//tools/adt/idea/android:intellij.android.core[module, test]",
@@ -81,7 +82,6 @@ iml_module(
         "//tools/adt/idea/deploy:intellij.android.deploy[module, test]",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module, test]",
         "//tools/adt/idea/.idea/libraries:layoutlib[test]",
-        "//tools/adt/idea/android-uitests:native_artifacts",
         "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector[module, test]",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module, test]",
         "//tools/adt/idea/android-transport:intellij.android.transport[module, test]",
@@ -97,7 +97,7 @@ iml_module(
         "//tools/adt/idea/android-plugin:intellij.android.plugin[module, test]",
         "//tools/adt/idea/studio[module, test]",
         "//tools/adt/idea/app-inspection/api:app-inspection.api[module, test]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin[test]",
+        "@intellij//:org.jetbrains.kotlin[test]",
         "//tools/adt/idea/intellij.android.compose-common[module, test]",
         "//tools/adt/idea/device-explorer-files:intellij.android.device-explorer-files[module, test]",
         "//tools/adt/idea/android-navigator:intellij.android.navigator[module, test]",
@@ -111,11 +111,6 @@ iml_module(
         "//tools/adt/idea/bleak-config:intellij.android.bleak-config[module, test]",
         "//tools/adt/idea/.idea/libraries:agp-version[test]",
     ],
-)
-
-alias(
-    name = "native_artifacts",
-    actual = "//tools/adt/idea/android-uitests/native/testing:layout_inspector_test_support",
 )
 
 # TODO (b/191383051): Trim artifacts down to what is actually used.
@@ -609,19 +604,20 @@ java_test(
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )
 
-java_test(
-    name = "BasicLayoutInspectorUITest",
-    size = "large",
-    data = COMMON_DATA + ["//prebuilts/studio/layoutlib/data:framework_res.jar"] + glob(["testData/LayoutTest/**"]),
-    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.layoutinspector.BasicLayoutInspectorUITest"],
-    tags = COMMON_TAGS + ["manual"],
-    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
-    runtime_deps = [
-        ":intellij.android.guiTests_testlib",
-        "//tools/adt/idea/android-uitests/native/testing:liblayout_inspector_test_support.so",
-        "//tools/base/dynamic-layout-inspector/skia:skia-grpc-server",
-    ],
-)
+# Disabled for now: b/329646345
+# java_test(
+#     name = "BasicLayoutInspectorUITest",
+#     size = "large",
+#     data = COMMON_DATA + ["//prebuilts/studio/layoutlib/data:framework_res.jar"] + glob(["testData/LayoutTest/**"]),
+#     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.layoutinspector.BasicLayoutInspectorUITest"],
+#     tags = COMMON_TAGS + ["manual"],
+#     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+#     runtime_deps = [
+#         ":intellij.android.guiTests_testlib",
+#         "//tools/adt/idea/android-uitests/native/testing:liblayout_inspector_test_support.so",
+#         "//tools/base/dynamic-layout-inspector/skia:skia-grpc-server",
+#     ],
+# )
 
 java_test(
     name = "ResolveXmlReferencesTest",
@@ -1946,6 +1942,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.editing.RefactoringFlowTest"],
     tags = COMMON_TAGS + [
+        "no_mac",
         "no_windows",
         "qa_smoke",
     ],
@@ -2165,6 +2162,7 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.cpp.QuickFixForJniTest"],
     tags = COMMON_TAGS + [
+        "no_mac",
         "no_windows",
         "qa_smoke",
     ],
@@ -2910,6 +2908,7 @@ java_test(
     data = COMMON_DATA,
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.cpp.AddCppToModuleActionTest"],
     tags = COMMON_TAGS + [
+        "no_mac",
         "no_windows",
         "qa_smoke",
     ],

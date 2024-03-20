@@ -31,15 +31,10 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
-import kotlinx.coroutines.TimeoutCancellationException
+import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
-import org.junit.Assert
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import java.awt.Dimension
@@ -49,10 +44,8 @@ import javax.swing.JButton
 import javax.swing.JCheckBox
 import javax.swing.JLabel
 import javax.swing.JTextField
-import kotlin.time.Duration.Companion.seconds
 
 @RunsInEdt
-@Ignore("b/326061638")
 class WearHealthServicesToolWindowTest {
   companion object {
     const val TEST_MAX_WAIT_TIME_SECONDS = 5L
@@ -70,10 +63,14 @@ class WearHealthServicesToolWindowTest {
 
   private val deviceManager by lazy { FakeDeviceManager() }
   private val stateManager by lazy {
-    WearHealthServicesToolWindowStateManagerImpl(deviceManager, pollingIntervalMillis = TEST_POLLING_INTERVAL_MILLISECONDS)
+    WearHealthServicesToolWindowStateManagerImpl(deviceManager, pollingIntervalMillis = TEST_POLLING_INTERVAL_MILLISECONDS).apply {
+      runPeriodicUpdates = true
+    }
   }
   private val toolWindow by lazy {
-    WearHealthServicesToolWindow(stateManager).apply {
+    WearHealthServicesToolWindow(stateManager,
+                                 ToolWindowHeadlessManagerImpl.MockToolWindow(projectRule.project),
+                                 projectRule.project).apply {
       setSerialNumber("test")
     }
   }
@@ -313,15 +310,5 @@ class WearHealthServicesToolWindowTest {
       root.findDescendant(predicate) != null
     }
     return root.findDescendant(predicate)!!
-  }
-
-  private suspend fun <T> StateFlow<T>.waitForValue(value: T, timeoutSeconds: Long = TEST_MAX_WAIT_TIME_SECONDS) {
-    val received = mutableListOf<T>()
-    try {
-      withTimeout(timeoutSeconds.seconds) { takeWhile { it != value }.collect { received.add(it) } }
-    }
-    catch (ex: TimeoutCancellationException) {
-      Assert.fail("Timed out waiting for value $value. Received values so far $received")
-    }
   }
 }

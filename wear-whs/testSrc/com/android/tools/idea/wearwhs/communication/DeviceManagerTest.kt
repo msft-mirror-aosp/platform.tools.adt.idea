@@ -63,96 +63,68 @@ class DeviceManagerTest {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.clearContentProvider()
-      }
-    }
+    assertFailure(deviceManager.clearContentProvider())
     assertThat(adbSession.deviceServices.shellV2Requests).isEmpty()
   }
 
   @Test
-  fun `test setCapabilities throws connection lost exception when adb session is closed`() {
+  fun `test setCapabilities throws connection lost exception when adb session is closed`() = runBlocking {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
     adbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.setCapabilities(mapOf(WhsDataType.STEPS to true))
-      }
-    }
+    assertFailure(deviceManager.setCapabilities(mapOf(WhsDataType.STEPS to true)))
   }
 
   @Test
-  fun `test overrideValues throws connection lost exception when adb session is closed`() {
+  fun `test overrideValues throws connection lost exception when adb session is closed`() = runBlocking {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
     adbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.overrideValues(mapOf(WhsDataType.STEPS to 50))
-      }
-    }
+    assertFailure(deviceManager.overrideValues(mapOf(WhsDataType.STEPS to 50)))
   }
 
   @Test
-  fun `test loadActiveExercise throws connection lost exception when adb session is closed`() {
+  fun `test loadActiveExercise throws connection lost exception when adb session is closed`() = runBlocking {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
     adbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.loadActiveExercise()
-      }
-    }
+    assertFailure(deviceManager.loadActiveExercise())
   }
 
   @Test
-  fun `test triggerEvent throws connection lost exception when adb session is closed`() {
+  fun `test triggerEvent throws connection lost exception when adb session is closed`() = runBlocking {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
     adbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.triggerEvent(EventTrigger("whs.TEST", "test"))
-      }
-    }
+    assertFailure(deviceManager.triggerEvent(EventTrigger("whs.TEST", "test")))
   }
 
   @Test
-  fun `test loadCurrentCapabilityStates throws connection lost exception when adb session is closed`() {
+  fun `test loadCurrentCapabilityStates throws connection lost exception when adb session is closed`() = runBlocking {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
     adbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.loadCurrentCapabilityStates()
-      }
-    }
+    assertFailure(deviceManager.loadCurrentCapabilityStates())
   }
 
   @Test
-  fun `test isWhsVersionSupported throws connection lost exception when adb session is closed`() {
+  fun `test isWhsVersionSupported throws connection lost exception when adb session is closed`() = runBlocking {
     val deviceManager = ContentProviderDeviceManager(adbSessionProvider)
     deviceManager.setSerialNumber(serialNumber)
 
     adbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.isWhsVersionSupported()
-      }
-    }
+    assertFailure(deviceManager.isWhsVersionSupported())
   }
 
   @Test
@@ -518,7 +490,7 @@ class DeviceManagerTest {
 
     var isSupported = false
     val job = launch {
-      isSupported = deviceManager.isWhsVersionSupported()
+      isSupported = deviceManager.isWhsVersionSupported().getOrThrow()
     }
 
     job.join()
@@ -571,7 +543,7 @@ class DeviceManagerTest {
 
     var isSupported = false
     val job = launch {
-      isSupported = deviceManager.loadActiveExercise()
+      isSupported = deviceManager.loadActiveExercise().getOrThrow()
     }
     job.join()
 
@@ -622,7 +594,7 @@ class DeviceManagerTest {
 
     var parsedCapabilities = WHS_CAPABILITIES.associate { it.dataType to CapabilityState(false, null) }
     val job = launch {
-      parsedCapabilities = deviceManager.loadCurrentCapabilityStates()
+      parsedCapabilities = deviceManager.loadCurrentCapabilityStates().getOrThrow()
     }
     job.join()
 
@@ -731,15 +703,11 @@ class DeviceManagerTest {
     currentAdbSession = FakeAdbSession()
     currentAdbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.clearContentProvider()
-      }
-    }
+    assertFailure(deviceManager.clearContentProvider())
   }
 
   @Test
-  fun `device manager throws exception if the adbSession is closed and the new one is not created`() = runBlocking<Unit> {
+  fun `device manager returns failure if the adbSession is closed and the new one is not created`() = runBlocking<Unit> {
     val currentAdbSession = adbSession
     val deviceManager = ContentProviderDeviceManager({ currentAdbSession })
     deviceManager.setSerialNumber(serialNumber)
@@ -752,11 +720,7 @@ class DeviceManagerTest {
     // Close the current adb session
     currentAdbSession.close()
 
-    assertThrows(ConnectionLostException::class.java) {
-      runBlocking {
-        deviceManager.clearContentProvider()
-      }
-    }
+    assertFailure(deviceManager.clearContentProvider())
   }
 
   @Test
@@ -783,5 +747,9 @@ class DeviceManagerTest {
                                                "content delete --uri $WHS_CONTENT_PROVIDER_URI",
                                                deviceManager,
                                                newAdbSession)
+  }
+
+  private fun <T> assertFailure(result: Result<T>) {
+    assertThat(result.isFailure).isTrue()
   }
 }

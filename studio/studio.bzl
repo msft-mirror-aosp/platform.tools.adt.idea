@@ -210,6 +210,12 @@ def _depset_subtract(depset1, depset2):
     dict1 = {e1: None for e1 in depset1.to_list()}
     return [e2 for e2 in depset2.to_list() if e2 not in dict1]
 
+def _label_str(label):
+    if label.workspace_name:
+        return str(label)
+    else:
+        return "//%s:%s" % (label.package, label.name)
+
 def _studio_plugin_impl(ctx):
     plugin_dir = "plugins/" + ctx.attr.directory
     module_deps = _module_deps(ctx, ctx.attr.jars, ctx.attr.modules)
@@ -237,11 +243,12 @@ def _studio_plugin_impl(ctx):
                      [depset(ctx.attr.deps)],
     )
 
-    missing = [str(s.label) for s in _depset_subtract(have, need)]
+    missing = [s.label for s in _depset_subtract(have, need)]
     if missing:
-        fail("Plugin '" + ctx.attr.name + "' has some compile-time dependencies which are not on the " +
-             "runtime classpath in release builds. You may need to edit the plugin definition at " +
-             str(ctx.label) + " to include the following dependencies: " + ", ".join(missing))
+        error = "\n".join(["\"%s\"," % _label_str(l) for l in missing])
+        fail("Plugin '" + ctx.attr.name + "' has compile-time dependencies which are not on the " +
+             "runtime classpath in release builds.\nYou may need to edit the plugin definition at " +
+             str(ctx.label) + " to include the following dependencies:\n" + error)
     return [
         PluginInfo(
             directory = ctx.attr.directory,
@@ -801,11 +808,17 @@ script_template = """\
     #!/bin/bash
     args=$@
     options=
-    if [ "$1" == "--debug" ]; then
-      options={vmoptions}
-      args=${{@:2}}
-    fi
     tmp_dir=$(mktemp -d -t android-studio-XXXXXXXXXX)
+    if [ "$1" == "--debug" ]; then
+        options="$tmp_dir/.debug.vmoptions"
+	echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005" > "$options"
+        args=${{@:2}}
+    elif [[ "$1" == "--wrapper_script_flag=--debug="* ]]; then
+        debug_option="$1"
+        options="$tmp_dir/.debug.vmoptions"
+	echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${{debug_option##--wrapper_script_flag=--debug=}}" > "$options"
+	args=${{@:2}}
+    fi
     unzip -q "{zip_file}" -d "$tmp_dir"
     if [ -z "$options" ]; then
         {command} $args
@@ -832,8 +845,6 @@ def _android_studio_impl(ctx):
     _produce_update_message_html(ctx)
 
     host_platform = platform_by_name[ctx.attr.host_platform_name]
-    vmoptions = ctx.actions.declare_file("%s-debug.vmoption" % ctx.label.name)
-    ctx.actions.write(vmoptions, "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005")
 
     script = ctx.actions.declare_file("%s-run" % ctx.label.name)
     script_content = script_template.format(
@@ -844,10 +855,9 @@ def _android_studio_impl(ctx):
             MAC_ARM: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC_ARM) + "\"",
             WIN: "$tmp_dir/android-studio/bin/studio64",
         }[host_platform],
-        vmoptions = vmoptions.short_path,
     )
     ctx.actions.write(script, script_content, is_executable = True)
-    runfiles = ctx.runfiles(files = [outputs[host_platform], vmoptions])
+    runfiles = ctx.runfiles(files = [outputs[host_platform]])
 
     # Leave everything that is not the main zips as implicit outputs
     return DefaultInfo(
@@ -1172,7 +1182,7 @@ def intellij_platform(
         compress = is_release(),
         mac_bundle_name = spec.mac_bundle_name,
         studio_data = name + ".data",
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
         # Local linux sandbox does not support spaces in names, so we exclude some files
         # Otherwise we get: "link or target filename contains space"
         data = select({
@@ -1226,7 +1236,7 @@ def intellij_platform(
             "//tools/base/bazel:darwin_arm64": [src + "/darwin_aarch64/android-studio/Contents/lib/resources.jar"],
             "//conditions:default": [src + "/linux/android-studio/lib/resources.jar"],
         }),
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
     # Expose build.txt from the prebuilt SDK
@@ -1238,7 +1248,7 @@ def intellij_platform(
             "//tools/base/bazel:darwin_arm64": [src + "/darwin_aarch64/android-studio/Contents/Resources/build.txt"],
             "//conditions:default": [src + "/linux/android-studio/build.txt"],
         }),
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
     # Expose product-info.json.
@@ -1250,7 +1260,7 @@ def intellij_platform(
             "//tools/base/bazel:darwin_arm64": [src + "/darwin_aarch64/android-studio/Contents/Resources/product-info.json"],
             "//conditions:default": [src + "/linux/android-studio/product-info.json"],
         }),
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
     # Expose the default VM options file.
@@ -1262,7 +1272,7 @@ def intellij_platform(
             "//tools/base/bazel:darwin_arm64": [src + "/darwin_aarch64/android-studio/Contents/bin/studio.vmoptions"],
             "//conditions:default": [src + "/linux/android-studio/bin/studio64.vmoptions"],
         }),
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
     # TODO: merge this into the intellij_platform rule.
@@ -1270,7 +1280,7 @@ def intellij_platform(
         name = name + "-full-linux",
         dir = "prebuilts/studio/intellij-sdk/" + src + "/linux/android-studio",
         files = native.glob([src + "/linux/android-studio/**"]),
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
     studio_data(
@@ -1293,13 +1303,13 @@ def intellij_platform(
         _intellij_plugin_import(
             name = name + "-plugin-%s" % plugin,
             exports = [":" + jars_target_name],
-            visibility = ["//visibility:public"],
+            visibility = ["@intellij//:__subpackages__"],
         )
 
     jvm_import(
         name = name + "-updater",
         jars = [src + "/updater-full.jar"],
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
     # Expose the IntelliJ test framework separately, for consumption by tests only.
@@ -1311,19 +1321,19 @@ def intellij_platform(
             "//tools/base/bazel:darwin_arm64": [src + "/darwin_aarch64/android-studio/Contents/lib/testFramework.jar"],
             "//conditions:default": [src + "/linux/android-studio/lib/testFramework.jar"],
         }),
-        visibility = ["//visibility:public"],
+        visibility = ["@intellij//:__subpackages__"],
     )
 
 def _gen_plugin_jars_import_target(name, src, spec, plugin, jars):
     """Generates a jvm_import target for the specified plugin."""
     add_windows = spec.plugin_jars_windows[plugin] if plugin in spec.plugin_jars_windows else []
-    jars_windows = [src + "/windows/android-studio/plugins/" + plugin + "/lib/" + jar for jar in jars + add_windows]
+    jars_windows = [src + "/windows/android-studio/" + jar for jar in jars + add_windows]
     add_darwin = spec.plugin_jars_darwin[plugin] if plugin in spec.plugin_jars_darwin else []
-    jars_darwin = [src + "/darwin/android-studio/Contents/plugins/" + plugin + "/lib/" + jar for jar in jars + add_darwin]
+    jars_darwin = [src + "/darwin/android-studio/Contents/" + jar for jar in jars + add_darwin]
     add_darwin_aarch64 = spec.plugin_jars_darwin_aarch64[plugin] if plugin in spec.plugin_jars_darwin_aarch64 else []
-    jars_darwin_aarch64 = [src + "/darwin_aarch64/android-studio/Contents/plugins/" + plugin + "/lib/" + jar for jar in jars + add_darwin_aarch64]
+    jars_darwin_aarch64 = [src + "/darwin_aarch64/android-studio/Contents/" + jar for jar in jars + add_darwin_aarch64]
     add_linux = spec.plugin_jars_linux[plugin] if plugin in spec.plugin_jars_linux else []
-    jars_linux = [src + "/linux/android-studio/plugins/" + plugin + "/lib/" + jar for jar in jars + add_linux]
+    jars_linux = [src + "/linux/android-studio/" + jar for jar in jars + add_linux]
 
     jvm_import(
         name = name,

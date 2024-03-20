@@ -26,9 +26,10 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "@intellij//:org.jetbrains.kotlin",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/adt/idea/android:intellij.android.core[module]",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module]",
@@ -77,11 +78,7 @@ iml_module(
         "//tools/adt/idea/artwork:device-art-resources",
         "//tools/adt/idea/layout-inspector/testData",
         "//tools/base/build-system:gradle-distrib",
-    ] + select({
-        "windows": [":skiaparser-test.dll"],
-        "mac": [":libskiaparser-test.dylib"],
-        "//conditions:default": [":libskiaparser-test.so"],
-    }),
+    ],
     test_jvm_flags = ["-Djava.library.path=tools/adt/idea/layout-inspector"],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],
@@ -89,11 +86,12 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test[test]",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-gradle",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
+        "@intellij//:com.intellij.gradle",
+        "@intellij//:org.jetbrains.kotlin",
         "//tools/base/common:studio.android.sdktools.common[module, test]",
         "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api[module, test]",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common[module, test]",
@@ -124,7 +122,6 @@ iml_module(
         "//tools/adt/idea/app-inspection/api:app-inspection.api[module, test]",
         "//tools/adt/idea/app-inspection/ide:app-inspection.ide[module, test]",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api[module, test]",
-        "//tools/adt/idea/layout-inspector:skiaparser_test_support",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
         "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
         "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
@@ -139,56 +136,6 @@ iml_module(
     ],
 )
 
-cc_library(
-    name = "skiaparser_test_support",
-    srcs = ["testSrc/native/skia_parser_test_java_jni.cc"],
-    linkstatic = 1,
-    deps = [
-        "//prebuilts/studio/jdk:jni_headers",
-        "//tools/base/dynamic-layout-inspector/skia:skia-lib",
-        "//tools/base/dynamic-layout-inspector/skia/proto:layout_inspector_skia_cc_proto",
-        "@freetype_repo//:freetype",
-        "@libpng_repo//:libpng",
-    ],
-    alwayslink = 1,
-)
-
-cc_binary(
-    name = "libskiaparser-test.dylib",
-    linkshared = 1,
-    tags = [
-        "no_linux",
-        "no_windows",
-    ],
-    deps = [
-        ":skiaparser_test_support",
-    ],
-)
-
-cc_binary(
-    name = "libskiaparser-test.so",
-    linkshared = 1,
-    tags = [
-        "no_mac",
-        "no_windows",
-    ],
-    deps = [
-        ":skiaparser_test_support",
-    ],
-)
-
-cc_binary(
-    name = "skiaparser-test.dll",
-    linkshared = 1,
-    tags = [
-        "no_linux",
-        "no_mac",
-    ],
-    deps = [
-        ":skiaparser_test_support",
-    ],
-)
-
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.layout-inspector.integration",
@@ -200,9 +147,10 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "//tools/adt/idea/as-driver:as-driver.utils[module, test]",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-junit",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-Kotlin",
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:JUnit",
+        "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/base/testutils:studio.android.sdktools.testutils[module]",
         "//tools/base/common:studio.android.sdktools.common[module, test]",
     ],
@@ -265,7 +213,8 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module]",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api[module]",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",

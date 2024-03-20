@@ -9,7 +9,8 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk",
+        "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/render-resources:intellij.android.render-resources[module]",
         "//tools/adt/idea/rendering:intellij.android.rendering[module]",
         "//tools/base/common:studio.android.sdktools.common[module]",
@@ -27,7 +28,8 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/studio/intellij-sdk:studio-sdk[test]",
+        "@intellij//:intellij-sdk[test]",
+        "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/preview-elements:intellij.android.preview-elements[module, test]",

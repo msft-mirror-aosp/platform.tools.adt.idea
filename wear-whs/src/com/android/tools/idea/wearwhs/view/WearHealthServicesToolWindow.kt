@@ -26,9 +26,13 @@ import com.android.tools.idea.wearwhs.WearWhsBundle.message
 import com.android.tools.idea.wearwhs.WhsCapability
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.SimpleToolWindowPanel
 import com.intellij.openapi.ui.VerticalFlowLayout
+import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.layout.selected
 import com.intellij.util.ui.JBUI
@@ -60,16 +64,29 @@ import javax.swing.text.DocumentFilter
 
 private const val MAX_OVERRIDE_VALUE_LENGTH = 50
 private const val PADDING = 15
+
 // Allows only one leading zero
 private val floatPattern = Regex("^(0|0?[1-9]\\d*)?(\\.[0-9]*)?\$")
 
 private val horizontalBorders = Borders.empty(0, PADDING)
 
-internal class WearHealthServicesToolWindow(private val stateManager: WearHealthServicesToolWindowStateManager) : SimpleToolWindowPanel(
-  true, true), Disposable {
+internal class WearHealthServicesToolWindow(private val stateManager: WearHealthServicesToolWindowStateManager,
+                                            private val toolWindow: ToolWindow,
+                                            project: Project) : SimpleToolWindowPanel(
+  true, true), Disposable, ToolWindowManagerListener {
   private val uiScope: CoroutineScope = AndroidCoroutineScope(this, uiThread)
   private val workerScope: CoroutineScope = AndroidCoroutineScope(this, workerThread)
   private var isErrorState = false
+
+  override fun stateChanged(toolWindowManager: ToolWindowManager) {
+    stateManager.runPeriodicUpdates = toolWindow.isVisible
+  }
+
+  init {
+    project.messageBus
+      .connect(this)
+      .subscribe(ToolWindowManagerListener.TOPIC, this)
+  }
 
   fun setSerialNumber(serialNumber: String) {
     if (serialNumber != stateManager.serialNumber || isErrorState) {
@@ -172,25 +189,18 @@ internal class WearHealthServicesToolWindow(private val stateManager: WearHealth
       border = horizontalBorders
       // Display current state e.g. we encountered an error or if there's work in progress
       add(JLabel().apply {
-        stateManager.getStatus().onEach {
-          when (it) {
-            is WhsStateManagerStatus.Ready -> {
-              text = ""
-            }
+        stateManager.status.onEach {
+          text = when (it) {
+            is WhsStateManagerStatus.Syncing ->
+              message("wear.whs.panel.capabilities.syncing")
 
-            is WhsStateManagerStatus.Syncing -> {
-              text = message("wear.whs.panel.capabilities.syncing")
-            }
+            is WhsStateManagerStatus.Timeout ->
+              message("wear.whs.panel.connection.timeout")
 
-            is WhsStateManagerStatus.ConnectionLost -> {
-              text = message("wear.whs.panel.connection.lost")
-            }
+            is WhsStateManagerStatus.ConnectionLost ->
+              message("wear.whs.panel.connection.lost")
 
-            is WhsStateManagerStatus.Idle -> {
-              text = ""
-            }
-
-            else -> {}
+            else -> ""
           }
         }.launchIn(uiScope)
       })
