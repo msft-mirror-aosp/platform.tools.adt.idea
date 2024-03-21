@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.actions
 
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.build.events.AndroidSyncIssueEventResult
+import com.android.tools.idea.gradle.project.sync.issues.SyncIssuesReporter.consoleLinkUnderlinedText
 import com.android.tools.idea.studiobot.AiExcludeService
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.StudioBotBundle
@@ -38,19 +39,20 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.readText
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.tree.TreeUtil
-import org.jetbrains.annotations.VisibleForTesting
 import icons.StudioIcons
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.getBuildScriptPsiFile
 import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.getBuildScriptSettingsPsiFile
 import org.jetbrains.kotlin.idea.util.projectStructure.module
 import javax.swing.tree.TreePath
 
-private val ASK_STUDIO_BOT_UNTIL_EOL = Regex(">> Ask Studio Bot:[^\n]*")
-private const val ASK_STUDIO_BOT_LINK_TEXT = "<a href=\"explain.issue\">>> Ask Studio Bot</a>"
+// These are used to trim an extra error description and links from the user message.
+private val ASK_STUDIO_BOT_LINK_TEXT = "<a href=\"explain.issue\">${consoleLinkUnderlinedText}</a>"
+private val ASK_STUDIO_BOT_UNTIL_EOL = Regex("${consoleLinkUnderlinedText}[^\n]*")
 
 class ExplainSyncOrBuildOutput : DumbAwareAction(
-  StudioBotBundle.message("studiobot.ask.text"), StudioBotBundle.message("studiobot.ask.text"),
+  StudioBotBundle.message("studiobot.ask.text"), StudioBotBundle.message("studiobot.ask.description"),
   StudioIcons.StudioBot.ASK
 ) {
 
@@ -93,7 +95,7 @@ class ExplainSyncOrBuildOutput : DumbAwareAction(
     val errorName = node.name
 
     val studioBot = StudioBot.getInstance()
-    if (!studioBot.isContextAllowed()) {
+    if (!studioBot.isContextAllowed(project)) {
       // If context isn't enabled, all we do is paste a simple query into the query bar
       // using the error description.
       val shortDescription = getErrorShortDescription(node.result) ?: errorName
@@ -286,8 +288,8 @@ $fileTextWithErrorArrow
         else -> null
       }
         ?.trimMessagesWithLongStacktrace()
-        ?.replace(ASK_STUDIO_BOT_UNTIL_EOL, "")
         ?.replace(ASK_STUDIO_BOT_LINK_TEXT, "")
+        ?.replace(ASK_STUDIO_BOT_UNTIL_EOL, "")
     }
 
     private fun getSelectedNodes(myTree: Tree): List<ExecutionNode> {

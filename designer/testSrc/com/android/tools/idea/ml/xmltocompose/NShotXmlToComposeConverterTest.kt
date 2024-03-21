@@ -22,6 +22,7 @@ import com.android.tools.idea.studiobot.prompts.buildPrompt
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.ApplicationServiceRule
 import com.intellij.lang.xml.XMLLanguage
+import com.intellij.openapi.project.Project
 import com.intellij.testFramework.RuleChain
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -38,9 +39,9 @@ class NShotXmlToComposeConverterTest {
     object : StudioBot.StubStudioBot() {
       var contextAllowed = true
 
-      override fun isContextAllowed() = contextAllowed
+      override fun isContextAllowed(project: Project) = contextAllowed
 
-      override fun model() =
+      override fun model(project: Project) =
         object : LlmService.StubLlmService() {
           override suspend fun sendQuery(
             prompt: SafePrompt,

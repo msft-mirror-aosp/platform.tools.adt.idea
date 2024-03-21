@@ -1822,6 +1822,31 @@ public final class StudioFlags {
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
                     false);
 
+  // rate limits are controlled by server flags
+  public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =
+    new IntFlag(STUDIOBOT, "completions.per.hour",
+                    "AI completion requests per hour",
+                    "AI completion requests per hour",
+                    36000);
+
+  public static final Flag<Integer> STUDIOBOT_CONVERSATIONS_PER_HOUR =
+    new IntFlag(STUDIOBOT, "conversations.per.hour",
+                "AI conversations per hour",
+                "AI conversations per hour",
+                60);
+
+  public static final Flag<Integer> STUDIOBOT_GENERATIONS_PER_HOUR =
+    new IntFlag(STUDIOBOT, "generations.per.hour",
+                "AI generation requests per hour",
+                "AI generation requests per hour",
+                3600);
+
+  public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
+                    "Suggest missing dependencies when inserting/pasting code snippets",
+                    "When enabled, a dependency suggestion dialog will appear when inserting/pasting code snippets that might require missing dependencies.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
