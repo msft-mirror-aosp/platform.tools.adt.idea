@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.preview.animation
+package com.android.tools.idea.templates
 
-import javax.swing.JPanel
+import com.intellij.DynamicBundle
+import com.intellij.openapi.util.NlsContexts
+import org.jetbrains.annotations.PropertyKey
 
-/** Card displayed in [AllTabPanel]. Each animation represented by one [Card]. */
-interface Card {
-  /** [Card] component what should be added to the layout. */
-  val component: JPanel
+private const val BUNDLE_NAME = "messages.TemplatesBundle"
 
-  /** Height of the component. */
-  fun getCurrentHeight(): Int
+class TemplatesBundle private constructor() {
+  companion object {
+    private val ourBundle = DynamicBundle(TemplatesBundle::class.java, BUNDLE_NAME)
 
-  val title: String
-
-  /** The size of the [Card] after it expands. */
-  var expandedSize: Int
-
-  /** Set duration of the animation. */
-  fun setDuration(durationMillis: Int)
+    @NlsContexts.Label
+    @JvmStatic
+    fun message(@PropertyKey(resourceBundle = BUNDLE_NAME) key: String, vararg params: Any?): String {
+      return ourBundle.getMessage(key, *params)
+    }
+  }
 }
