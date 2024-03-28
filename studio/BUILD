@@ -1048,7 +1048,6 @@ iml_module(
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-cidr-clangFormat-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-cidr-debugger-plugin",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-completionMlRanking",
-        "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-completionMlRankingModels",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-configurationScript",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-copyright",
         "//prebuilts/studio/intellij-sdk:studio-sdk-plugin-dev",
