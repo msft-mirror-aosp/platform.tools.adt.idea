@@ -33,9 +33,8 @@ class SomethingParserTest : ParsingTestCase("no_data_path_needed", "something", 
               SomethingIdentifierImpl(IDENTIFIER)
                 PsiElement(SomethingTokenType.token)('foo')
               PsiElement(SomethingTokenType.=)('=')
-              SomethingValueImpl(VALUE)
-                SomethingLiteralImpl(LITERAL)
-                  PsiElement(SomethingTokenType.number)('3')
+              SomethingLiteralImpl(LITERAL)
+                PsiElement(SomethingTokenType.number)('3')
         """.trimIndent()
     )
   }
@@ -72,7 +71,7 @@ class SomethingParserTest : ParsingTestCase("no_data_path_needed", "something", 
               SomethingIdentifierImpl(IDENTIFIER)
                 PsiElement(SomethingTokenType.token)('foo')
               PsiElement(SomethingTokenType.()('(')
-              SomethingValueImpl(VALUE)
+              SomethingArgumentsListImpl(ARGUMENTS_LIST)
                 SomethingLiteralImpl(LITERAL)
                   PsiElement(SomethingTokenType.string)('"abc/def"')
               PsiElement(SomethingTokenType.))(')')
@@ -95,13 +94,56 @@ class SomethingParserTest : ParsingTestCase("no_data_path_needed", "something", 
                 SomethingIdentifierImpl(IDENTIFIER)
                   PsiElement(SomethingTokenType.token)('create')
                 PsiElement(SomethingTokenType.()('(')
-                SomethingValueImpl(VALUE)
+                SomethingArgumentsListImpl(ARGUMENTS_LIST)
                   SomethingLiteralImpl(LITERAL)
                     PsiElement(SomethingTokenType.string)('"foo"')
                 PsiElement(SomethingTokenType.))(')')
               PsiElement(SomethingTokenType.{)('{')
               PsiElement(SomethingTokenType.})('}')
         """.trimIndent()
+      )
+  }
+
+  fun testStringHasOnlyOneLine() {
+    assertThat(
+      """
+          foo = "some\nstring
+          bar = 3
+        """.toParseTreeText())
+      .isEqualTo(
+        """
+          FILE
+            SomethingAssignmentImpl(ASSIGNMENT)
+              SomethingIdentifierImpl(IDENTIFIER)
+                PsiElement(SomethingTokenType.token)('foo')
+              PsiElement(SomethingTokenType.=)('=')
+              SomethingLiteralImpl(LITERAL)
+                PsiElement(SomethingTokenType.string)('"some\nstring')
+            SomethingAssignmentImpl(ASSIGNMENT)
+              SomethingIdentifierImpl(IDENTIFIER)
+                PsiElement(SomethingTokenType.token)('bar')
+              PsiElement(SomethingTokenType.=)('=')
+              SomethingLiteralImpl(LITERAL)
+                PsiElement(SomethingTokenType.number)('3')
+          """.trimIndent()
+      )
+  }
+
+  fun testStringHandleEscapeQuotes() {
+    assertThat(
+      """
+          foo = "some\"string\""
+        """.toParseTreeText())
+      .isEqualTo(
+        """
+          FILE
+            SomethingAssignmentImpl(ASSIGNMENT)
+              SomethingIdentifierImpl(IDENTIFIER)
+                PsiElement(SomethingTokenType.token)('foo')
+              PsiElement(SomethingTokenType.=)('=')
+              SomethingLiteralImpl(LITERAL)
+                PsiElement(SomethingTokenType.string)('"some\"string\""')
+          """.trimIndent()
       )
   }
 

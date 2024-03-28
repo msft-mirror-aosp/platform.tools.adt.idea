@@ -16,20 +16,17 @@
 package com.android.tools.idea.actions;
 
 import com.android.annotations.concurrency.Slow;
-import com.android.tools.idea.flags.StudioFlags;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
+import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationInfo;
-import com.intellij.openapi.application.ex.ApplicationInfoEx;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.io.URLUtil;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -47,8 +44,6 @@ import org.jetbrains.annotations.Nullable;
 public class SendFeedbackAction extends AnAction implements DumbAware {
   private static final Logger LOG = Logger.getInstance(SendFeedbackAction.class);
 
-  private static final String UNKNOWN_VERSION = "Unknown";
-
   @Override
   public void actionPerformed(@NotNull AnActionEvent e) {
     submit(e.getProject());
@@ -64,39 +59,15 @@ public class SendFeedbackAction extends AnAction implements DumbAware {
       public void run(@NotNull com.intellij.openapi.progress.ProgressIndicator indicator) {
         indicator.setText("Collecting feedback information");
         indicator.setIndeterminate(true);
-        ApplicationInfoEx applicationInfo = ApplicationInfoEx.getInstanceEx();
-        String feedbackUrl = StudioFlags.ENABLE_NEW_COLLECT_LOGS_DIALOG.get()
-                             ? getNewFeedbackUrl()
-                             : applicationInfo.getFeedbackUrl();
-
-        String version = getVersion(applicationInfo);
-        feedbackUrl = feedbackUrl.replace("$STUDIO_VERSION", version);
-
-        String description = getDescription(project);
-        com.intellij.ide.actions.SendFeedbackAction.submit(project, feedbackUrl, description + extraDescriptionDetails);
+        String feedbackUrlTemplate = getFeedbackUrlTemplate();
+        String version = ApplicationInfo.getInstance().getStrictVersion();
+        String description = getDescription(project) + extraDescriptionDetails;
+        String feedbackUrl = feedbackUrlTemplate
+          .replace("$STUDIO_VERSION", URLUtil.encodeURIComponent(version))
+          .replace("$DESCR", URLUtil.encodeURIComponent(description));
+        BrowserUtil.browse(feedbackUrl, project);
       }
     }.setCancelText("Cancel").queue();
-  }
-
-  private static String getVersion(ApplicationInfoEx applicationInfo) {
-    String major = applicationInfo.getMajorVersion();
-    if (major == null) {
-      return UNKNOWN_VERSION;
-    }
-    String minor = applicationInfo.getMinorVersion();
-    if (minor == null) {
-      return UNKNOWN_VERSION;
-    }
-    String micro = applicationInfo.getMicroVersion();
-    if (micro == null) {
-      return UNKNOWN_VERSION;
-    }
-    String patch = applicationInfo.getPatchVersion();
-    if (patch == null) {
-      return UNKNOWN_VERSION;
-    }
-
-    return String.join(".", major, minor, micro, patch);
   }
 
   @Slow
@@ -105,15 +76,9 @@ public class SendFeedbackAction extends AnAction implements DumbAware {
     // that any exceptions along the way do not actually break the feedback sending flow (we're already reporting a bug,
     // so let's not make that process prone to exceptions)
     return safeCall(() -> {
-      StringBuilder sb = new StringBuilder(SendFeedbackActionJavaShim.INSTANCE.getDescription(null));
-      // Add Android Studio custom information we want to see prepopulated in the bug reports
-      sb.append("\n\n");
+      var sb = new StringBuilder();
       sb.append(String.format("AS: %1$s\n", ApplicationInfo.getInstance().getFullVersion()));
-      sb.append(String.format("Kotlin plugin: %1$s\n", safeCall(SendFeedbackAction::getKotlinPluginDetails)));
-
-      for (SendFeedbackDescriptionProvider provider : SendFeedbackDescriptionProvider.getProviders()) {
-        provider.getDescription(project).forEach(str -> sb.append(str + "\n"));
-      }
+      sb.append(StringUtil.trimLeading(SendFeedbackActionJavaShim.INSTANCE.getDescription(project)));
       return sb.toString();
     });
   }
@@ -126,15 +91,6 @@ public class SendFeedbackAction extends AnAction implements DumbAware {
       LOG.info("Unable to prepopulate additional version information - proceeding with sending feedback anyway. ", e);
       return "(unable to retrieve additional version information)";
     }
-  }
-
-  private static String getKotlinPluginDetails() {
-    PluginId kotlinPluginId = PluginId.findId("org.jetbrains.kotlin");
-    IdeaPluginDescriptor kotlinPlugin = PluginManagerCore.getPlugin(kotlinPluginId);
-    if (kotlinPlugin != null) {
-      return kotlinPlugin.getVersion();
-    }
-    return "(kotlin plugin not found)";
   }
 
   @Override
@@ -150,7 +106,7 @@ public class SendFeedbackAction extends AnAction implements DumbAware {
     return ActionUpdateThread.BGT;
   }
 
-  private static String getNewFeedbackUrl() {
+  private static String getFeedbackUrlTemplate() {
     String instructions = """
       ####################################################
 
@@ -193,7 +149,7 @@ public class SendFeedbackAction extends AnAction implements DumbAware {
            "&description=" +
            "%60%60%60%0A" +
            URLUtil.encodeURIComponent(instructions) + "%0A" +
-           "Build%3A%20" + buildNumber + "%2C%20" + strDate +
+           "Build%3A%20" + buildNumber + "%2C%20" + strDate + "%0A" +
            "$DESCR" +
            "%60%60%60";
   }

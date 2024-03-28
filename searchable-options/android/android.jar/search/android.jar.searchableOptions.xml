@@ -1,6 +1,5 @@
 <options>
   <configurable id="preferences.keymap" configurable_name="Keymap">
-    <option name="" path="ActionManager" hit="" />
     <option name="agp" path="ActionManager" hit="AGP Upgrade Assistant..." />
     <option name="assistant" path="ActionManager" hit="AGP Upgrade Assistant..." />
     <option name="upgrade" path="ActionManager" hit="AGP Upgrade Assistant..." />
@@ -554,6 +553,11 @@
     <option name="palm" path="ActionManager" hit="Palm" />
     <option name="logcat" path="ActionManager" hit="Pause Logcat" />
     <option name="pause" path="ActionManager" hit="Pause Logcat" />
+    <option name="logcat" path="ActionManager" hit="Pause/Resume the Logcat panel" />
+    <option name="panel" path="ActionManager" hit="Pause/Resume the Logcat panel" />
+    <option name="pause" path="ActionManager" hit="Pause/Resume the Logcat panel" />
+    <option name="resume" path="ActionManager" hit="Pause/Resume the Logcat panel" />
+    <option name="the" path="ActionManager" hit="Pause/Resume the Logcat panel" />
     <option name="phone" path="ActionManager" hit="Phone" />
     <option name="power" path="ActionManager" hit="Power" />
     <option name="+" path="ActionManager" hit="Power + Volume Up (Power Menu)" />
@@ -675,14 +679,6 @@
     <option name="replaces" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
     <option name="style" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
     <option name="where" path="ActionManager" hit="Replaces attributes by Android style reference where possible" />
-    <option name="180" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="device" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="duration" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="for" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="maximum" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="minutes" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="reserve" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
-    <option name="the" path="ActionManager" hit="Reserve device for the maximum 180 minutes duration" />
     <option name="data" path="ActionManager" hit="Reset Data Sharing User Identifier" />
     <option name="identifier" path="ActionManager" hit="Reset Data Sharing User Identifier" />
     <option name="reset" path="ActionManager" hit="Reset Data Sharing User Identifier" />
@@ -1646,6 +1642,36 @@
     <option name="label" hit="Label" />
     <option name="memory" hit="Memory Settings" />
     <option name="settings" hit="Memory Settings" />
+  </configurable>
+  <configurable id="preferences.sourceCode.Something (Gradle Declarative Build DSL)" configurable_name="Something (Gradle Declarative Build DSL)">
+    <option name="continuation" path="Tabs and Indents" hit="Continuation indent:" />
+    <option name="indent" path="Tabs and Indents" hit="Continuation indent:" />
+    <option name="disable" hit="Disable" />
+    <option name="indent" path="Tabs and Indents" hit="Indent:" />
+    <option name="empty" path="Tabs and Indents" hit="Keep indents on empty lines" />
+    <option name="indents" path="Tabs and Indents" hit="Keep indents on empty lines" />
+    <option name="keep" path="Tabs and Indents" hit="Keep indents on empty lines" />
+    <option name="lines" path="Tabs and Indents" hit="Keep indents on empty lines" />
+    <option name="on" path="Tabs and Indents" hit="Keep indents on empty lines" />
+    <option name="loading" hit="Loading..." />
+    <option name="scheme" hit="Scheme:" />
+    <option name="from" hit="Set from..." />
+    <option name="set" hit="Set from..." />
+    <option name="smart" path="Tabs and Indents" hit="Smart tabs" />
+    <option name="tabs" path="Tabs and Indents" hit="Smart tabs" />
+    <option name="build" hit="Something (Gradle Declarative Build DSL)" />
+    <option name="declarative" hit="Something (Gradle Declarative Build DSL)" />
+    <option name="dsl" hit="Something (Gradle Declarative Build DSL)" />
+    <option name="gradle" hit="Something (Gradle Declarative Build DSL)" />
+    <option name="something" hit="Something (Gradle Declarative Build DSL)" />
+    <option name="size" path="Tabs and Indents" hit="Tab size:" />
+    <option name="tab" path="Tabs and Indents" hit="Tab size:" />
+    <option name="and" path="Tabs and Indents" hit="Tabs and Indents" />
+    <option name="indents" path="Tabs and Indents" hit="Tabs and Indents" />
+    <option name="tabs" path="Tabs and Indents" hit="Tabs and Indents" />
+    <option name="character" path="Tabs and Indents" hit="Use tab character" />
+    <option name="tab" path="Tabs and Indents" hit="Use tab character" />
+    <option name="use" path="Tabs and Indents" hit="Use tab character" />
   </configurable>
   <configurable id="experimental" configurable_name="Experimental">
     <option name="" hit=" Note: These settings are for features that are considered experimental." />

@@ -21,7 +21,7 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface SomethingLiteral extends SomethingElement {
+public interface SomethingLiteral extends SomethingValue {
 
   @Nullable
   PsiElement getBoolean();
@@ -31,5 +31,8 @@ public interface SomethingLiteral extends SomethingElement {
 
   @Nullable
   PsiElement getString();
+
+  @Nullable
+  Object getValue();
 
 }

@@ -16,6 +16,8 @@
 package com.android.tools.idea.gradle.dsl.parser.something
 
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext
+import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT
+import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.METHOD
 import com.android.tools.idea.gradle.dsl.parser.GradleDslWriter
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
@@ -27,13 +29,15 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement
 import com.android.tools.idea.gradle.dsl.parser.findLastPsiElementIn
+import com.android.tools.idea.gradle.dsl.parser.maybeTrimForParent
+import com.android.tools.idea.gradle.something.psi.SomethingArgumentsList
 import com.android.tools.idea.gradle.something.psi.SomethingAssignment
 import com.android.tools.idea.gradle.something.psi.SomethingBlock
+import com.android.tools.idea.gradle.something.psi.SomethingFactory
 import com.android.tools.idea.gradle.something.psi.SomethingFile
 import com.android.tools.idea.gradle.something.psi.SomethingPsiFactory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
-import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.findParentOfType
 
 class SomethingDslWriter(private val context: BuildModelContext) : GradleDslWriter, SomethingDslNameConverter {
@@ -42,14 +46,27 @@ class SomethingDslWriter(private val context: BuildModelContext) : GradleDslWrit
   override fun moveDslElement(element: GradleDslElement): PsiElement? = null
   override fun createDslElement(element: GradleDslElement): PsiElement? {
     if (element.isAlreadyCreated()) element.psiElement?.let { return it }
+    if (element.isNewEmptyBlockElement()) {
+      return null // Avoid creation of an empty block statement.
+    }
+
     val parentPsiElement = element.parent?.create() ?: return null
+
     val project = parentPsiElement.project
     val factory = SomethingPsiFactory(project)
-    val name = element.name
+    val name = getNameTrimmedForParent(element)
 
-    val psiElement = when (element){
-      is GradleDslLiteral -> factory.createAssignment(name, "\"placeholder\"")
+    val psiElement = when (element) {
+      is GradleDslLiteral ->
+        if (parentPsiElement is SomethingArgumentsList)
+          factory.createLiteral(element.value)
+        else if (element.externalSyntax == ASSIGNMENT)
+          factory.createAssignment(name, "\"placeholder\"")
+        else
+          factory.createOneParameterFactory(name, "\"placeholder\"")
+
       is GradleDslElementList, is GradleDslBlockElement -> factory.createBlock(name)
+      is GradleDslMethodCall -> factory.createFactory(name)
       else -> null
     }
     psiElement ?: return null
@@ -68,9 +85,24 @@ class SomethingDslWriter(private val context: BuildModelContext) : GradleDslWrit
     return element.psiElement
   }
 
+  private fun getNameTrimmedForParent(element: GradleDslElement): String {
+    val defaultName = element.name // use this when other mechanisms fail
+    val externalNameInfo = maybeTrimForParent(element, this)
+    return externalNameInfo.externalNameParts.getOrElse(0){
+      // fallback to external naming mechanism for blocks
+      val parent = element.parent
+      if (parent is GradlePropertiesDslElement) {
+        val name = element.nameElement.fullNameParts().lastOrNull() ?: defaultName
+        externalNameForPropertiesParent(name, parent)
+      }
+      else defaultName
+    }
+  }
+
   private fun getAnchor(parent: PsiElement, anchorDsl: GradleDslElement?): PsiElement? {
     var anchor = anchorDsl?.let { findLastPsiElementIn(it) }
     if (anchor == null && parent is SomethingBlock) return parent.blockEntriesStart
+    if (anchor == null && parent is SomethingArgumentsList) return parent.firstChild
     while (anchor != null && anchor.parent != parent) {
       anchor = anchor.parent
     }
@@ -78,13 +110,23 @@ class SomethingDslWriter(private val context: BuildModelContext) : GradleDslWrit
   }
 
   override fun deleteDslElement(element: GradleDslElement) {
-    element.delete()
+    element.psiElement?.delete()
   }
 
-  override fun createDslMethodCall(methodCall: GradleDslMethodCall): PsiElement? = null
-  override fun applyDslMethodCall(methodCall: GradleDslMethodCall): Unit = Unit
+  override fun createDslMethodCall(methodCall: GradleDslMethodCall): PsiElement {
+    val call = createDslElement(methodCall)
+    methodCall.argumentsElement.psiElement = (call as SomethingFactory).argumentsList
+    methodCall.arguments.firstOrNull()?.create()
+    return call
+  }
+  override fun applyDslMethodCall(methodCall: GradleDslMethodCall) {
+    maybeUpdateName(methodCall)
+    methodCall.argumentsElement.applyChanges()
+  }
+
   override fun createDslExpressionList(expressionList: GradleDslExpressionList): PsiElement? = createDslElement(expressionList)
   override fun applyDslExpressionList(expressionList: GradleDslExpressionList): Unit = maybeUpdateName(expressionList)
+
   override fun applyDslExpressionMap(expressionMap: GradleDslExpressionMap): Unit = maybeUpdateName(expressionMap)
   override fun applyDslPropertiesElement(element: GradlePropertiesDslElement): Unit = maybeUpdateName(element)
 
@@ -96,8 +138,12 @@ class SomethingDslWriter(private val context: BuildModelContext) : GradleDslWrit
     val psiElement = literal.psiElement ?: return
     maybeUpdateName(literal)
     val newElement = literal.unsavedValue ?: return
-
-    val element = psiElement.replace(newElement)
+    val element =
+      when(psiElement){
+        is SomethingAssignment -> psiElement.value?.firstChild?.replace(newElement) ?: return
+        is SomethingFactory -> psiElement.argumentsList?.arguments?.firstOrNull()?.replace(newElement) ?: return
+        else -> psiElement.replace(newElement)
+      }
     literal.setExpression(element)
     literal.reset()
     literal.commit()

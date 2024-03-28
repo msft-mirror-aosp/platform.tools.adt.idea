@@ -23,6 +23,10 @@ import com.intellij.psi.PsiNamedElement;
 
 public class SomethingVisitor extends PsiElementVisitor {
 
+  public void visitArgumentsList(@NotNull SomethingArgumentsList o) {
+    visitElement(o);
+  }
+
   public void visitAssignment(@NotNull SomethingAssignment o) {
     visitEntry(o);
   }
@@ -37,6 +41,7 @@ public class SomethingVisitor extends PsiElementVisitor {
 
   public void visitFactory(@NotNull SomethingFactory o) {
     visitEntry(o);
+    // visitValue(o);
   }
 
   public void visitIdentifier(@NotNull SomethingIdentifier o) {
@@ -44,22 +49,22 @@ public class SomethingVisitor extends PsiElementVisitor {
   }
 
   public void visitLiteral(@NotNull SomethingLiteral o) {
-    visitElement(o);
+    visitValue(o);
   }
 
   public void visitProperty(@NotNull SomethingProperty o) {
-    visitElement(o);
+    visitValue(o);
   }
 
   public void visitQualified(@NotNull SomethingQualified o) {
     visitProperty(o);
   }
 
-  public void visitValue(@NotNull SomethingValue o) {
+  public void visitEntry(@NotNull SomethingEntry o) {
     visitElement(o);
   }
 
-  public void visitEntry(@NotNull SomethingEntry o) {
+  public void visitValue(@NotNull SomethingValue o) {
     visitElement(o);
   }
 

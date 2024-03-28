@@ -35,6 +35,7 @@ import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import java.io.File;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
 
@@ -256,26 +257,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = new BooleanFlag(
     NELE, "atf.for.compose", "Enable ATF checks for Compose",
     "Allow running accessibility checks for Compose using ATF.",
-    true);
-
-  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_MODE = new BooleanFlag(
-    NELE, "compose.ui.check.mode", "Enable UI Check mode for Compose preview",
-    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
-    true);
-
-  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
-    NELE, "compose.ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
-    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
-    ChannelDefault.enabledUpTo(CANARY));
-
-  public static final Flag<Boolean> NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
-    NELE, "compose.ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
-    "Enable colorblind Check mode in UI Check Mode for Compose preview",
-    true);
-
-  public static final Flag<Boolean> NELE_COMPOSE_VISUAL_LINT_RUN = new BooleanFlag(
-    NELE, "compose.visual.lint.run", "Enable visual lint for Compose Preview",
-    "Enable so that visual lint runs on previews in the Compose Preview.",
     true);
 
   public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = new BooleanFlag(
@@ -659,8 +640,16 @@ public final class StudioFlags {
     GRADLE_IDE, "development.offline.repos", "Enable development offline repositories",
     "Uses the development offline repositories " +
     "(which can come from STUDIO_CUSTOM_REPO or from a local build of AGP when running studio from IDEA) " +
-    "in the new project templates and for determining which versions of AGP are avaliable for the upgrade assistant.",
+    "in the new project templates and for determining which versions of AGP are available for the upgrade assistant.\n" +
+    "Note: repositories set in gradle.ide.development.offline.repo.location are always respected, even if this flag is disabled.",
     StudioPathManager.isRunningFromSources());
+
+  public static final Flag<String> DEVELOPMENT_OFFLINE_REPO_LOCATION = new StringFlag(
+    GRADLE_IDE, "development.offline.repo.location", "Development offline repository location",
+    "Set a location for additional injected development maven repositories to use for projects.\n" +
+    "Multiple repositories can be separated by the path separator char " + File.pathSeparator,
+    ""
+  );
 
   public static final Flag<Boolean> INJECT_EXTRA_GRADLE_REPOSITORIES_WITH_INIT_SCRIPT = new BooleanFlag(
     GRADLE_IDE, "inject.repos.with.init.script",
@@ -1107,6 +1096,17 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> EVALUATE_BINDING_CONFIG_AT_CONSTRUCTION = new BooleanFlag(
+    EDITOR, "evaluate.binding.config.at.construction",
+    "Enable evaluating binding class config when it is constructed.",
+    "If enabled, binding class config is evaluated when it is constructed, rather than lazily when it is requested.",
+    true
+  );
+
+  //endregion
+
+  //region Essentials Mode
+
   public static final FlagGroup ESSENTIALS_MODE = new FlagGroup(FLAGS, "essentialsmode", "Essentials Mode");
 
 
@@ -1367,6 +1367,31 @@ public final class StudioFlags {
     COMPOSE, "generate.sample.data", "Enable sample data generation for Compose",
     "Enable a Studio Bot context-menu action that generates sample data for a given Composable function",
     false);
+
+  public static final Flag<Boolean> COMPOSE_UI_CHECK_MODE = new BooleanFlag(
+    COMPOSE, "ui.check.mode", "Enable UI Check mode for Compose preview",
+    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
+    true);
+
+  public static final Flag<Boolean> COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
+    COMPOSE, "ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
+    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
+    ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
+    COMPOSE, "ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
+    "Enable colorblind Check mode in UI Check Mode for Compose preview",
+    true);
+
+  public static final Flag<Boolean> COMPOSE_VISUAL_LINT_RUN = new BooleanFlag(
+    COMPOSE, "visual.lint.run", "Enable visual lint for Compose Preview",
+    "Enable so that visual lint runs on previews in the Compose Preview.",
+    true);
+
+  public static final Flag<Boolean> COMPOSE_UI_CHECK_AI_QUICK_FIX = new BooleanFlag(
+    COMPOSE, "ui.check.mode.ai.quickfix", "Enable AI-powered quick fix action for UI Check",
+    "Enable an AI-powered quick fix action for UI Check issues.",
+    false);
   //endregion
 
   // region Wear surfaces
@@ -1390,7 +1415,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SYNTHETIC_HAL_PANEL = new BooleanFlag(
     WEAR_HEALTH_SERVICES, "synthetic.hal.panel.enabled", "Enable synthetic HAL panel",
     "If enabled, a button to display panel for modifying emulator sensors will appear",
-    false
+    ChannelDefault.enabledUpTo(CANARY)
   );
   // endregion
 
@@ -1684,11 +1709,6 @@ public final class StudioFlags {
 
   // region NEW_COLLECT_LOGS_DIALOG
   private static final FlagGroup NEW_COLLECT_LOGS_DIALOG = new FlagGroup(FLAGS, "new.collect.logs", "New Collect Logs Dialog");
-  public static final Flag<Boolean> ENABLE_NEW_COLLECT_LOGS_DIALOG = new BooleanFlag(
-    NEW_COLLECT_LOGS_DIALOG, "enable.new.collect.logs.dialog", "Enable new collect logs dialog",
-    "Enable the collect logs dialog",
-    true
-  );
   // endregion NEW_COLLECT_LOGS_DIALOG
 
   // region TargetSDKVersion Upgrade Assistant
@@ -1696,8 +1716,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART = new BooleanFlag(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
-  public static final Flag<Boolean> TSDKVUA_FILTERS_REDOABLE = new BooleanFlag(TSDKVUA, "filters.redoable", "Enable button to rerun a filter and display results", "Enable button to rerun a filter an display results", true);
-  public static final Flag<Boolean> TSDKVUA_API_34 = new BooleanFlag(TSDKVUA, "api34", "Enable support for API 34", "Enable support for API 34", true);
+  public static final Flag<Boolean> TSDKVUA_API_35 = new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR

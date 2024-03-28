@@ -424,13 +424,11 @@ public class DeviceDefinitionPreview extends JPanel implements DeviceDefinitionL
       infoSegmentY += stringHeight * 2;
       g2d.drawString("This device resizes to:", infoSegmentX, infoSegmentY);
       infoSegmentY += stringHeight;
-      g2d.drawString("Phone (1080 x 2340 @ 420dpi)", infoSegmentX, infoSegmentY);
+      g2d.drawString("Phone (1080 x 2400 @ 420dpi)", infoSegmentX, infoSegmentY);
       infoSegmentY += stringHeight;
       g2d.drawString("Foldable (2208 x 1840 @ 420dpi)", infoSegmentX, infoSegmentY);
       infoSegmentY += stringHeight;
       g2d.drawString("Tablet (1920 x 1200 @ 240dpi)", infoSegmentX, infoSegmentY);
-      infoSegmentY += stringHeight;
-      g2d.drawString("Desktop (1920 x 1080 @ 160dpi)", infoSegmentX, infoSegmentY);
     }
   }
 

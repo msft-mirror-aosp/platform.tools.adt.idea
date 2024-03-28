@@ -136,6 +136,7 @@ iml_module(
         "//tools/base/environment-services:studio.intellij.android.environment-services[module]",
         "//tools/adt/idea/.idea/libraries:libadb-server-proto",
         "//tools/adt/idea/safemode:intellij.android.safemode[module]",
+        "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile[module]",
     ],
 )
 
@@ -295,6 +296,7 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib[module, test]",
         "//tools/adt/idea/preview-elements:intellij.android.preview-elements[module, test]",
         "//tools/base/environment-services:studio.intellij.android.environment-services[module, test]",
+        "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile[module, test]",
     ],
 )
 
@@ -424,8 +426,8 @@ filegroup(
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
         "//tools/vendor/google/firebase/src/proto:firebase_java_proto",
-        "//tools/vendor/google/ml/sml-core/aida:aida_artifacts",
-        "//tools/vendor/google/ml/sml-ij-ce/atlas:atlas_artifacts",
+        "//tools/vendor/google/ml/aiplugin/core/aida:aida_artifacts",
+        "//tools/vendor/google/ml/aiplugin/ij-platform/atlas:atlas_artifacts",
         "//tools/vendor/google/url-assistant/src/proto:urlassistant_proto",
     ] + select({
         "//tools/base/bazel:windows": [],

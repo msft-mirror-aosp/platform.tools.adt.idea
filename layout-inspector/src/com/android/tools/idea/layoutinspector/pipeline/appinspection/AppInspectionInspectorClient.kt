@@ -186,9 +186,12 @@ class AppInspectionInspectorClient(
 
         logEvent(DynamicLayoutInspectorEventType.ATTACH_SUCCESS)
 
-        debugViewAttributesChanged = DebugViewAttributes.getInstance().set(model.project, process)
+        debugViewAttributesChanged = DebugViewAttributes.set(model.project, process.device)
         if (debugViewAttributesChanged && !isInstantlyAutoConnected) {
-          showActivityRestartedInBanner(model.project, notificationModel, process)
+          // Show the banner only if debugViewAttributes has changed and if the process was not
+          // started from a fresh app deployment (in this case the Activity is restarted as soon as
+          // it starts, so there is no need to notify the user).
+          showActivityRestartedInBanner(notificationModel)
         }
 
         val completableDeferred = CompletableDeferred<Unit>()
@@ -287,10 +290,6 @@ class AppInspectionInspectorClient(
   override suspend fun doDisconnect() =
     withContext(AndroidDispatchers.workerThread) {
       try {
-        val debugViewAttributes = DebugViewAttributes.getInstance()
-        if (debugViewAttributesChanged && !debugViewAttributes.usePerDeviceSettings()) {
-          debugViewAttributes.clear(model.project, process)
-        }
         viewInspector?.disconnect()
         composeInspector?.disconnect()
         // TODO: skiaParser#shutdown is a blocking function. Should be ported to coroutines

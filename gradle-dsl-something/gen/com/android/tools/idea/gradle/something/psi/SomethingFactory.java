@@ -21,15 +21,12 @@ import java.util.List;
 import org.jetbrains.annotations.*;
 import com.intellij.psi.PsiElement;
 
-public interface SomethingFactory extends SomethingEntry {
+public interface SomethingFactory extends SomethingEntry, SomethingValue {
 
   @Nullable
-  SomethingFactory getFactory();
+  SomethingArgumentsList getArgumentsList();
 
   @NotNull
   SomethingIdentifier getIdentifier();
-
-  @Nullable
-  SomethingValue getValue();
 
 }

@@ -39,34 +39,43 @@
 
     line_comment = "regexp://.*"
     number = "regexp:\d+"
-    string = "regexp:\"[^\"]*\""
+    string = "regexp:\"([^\"\r\n\\]|\\[^\r\n])*\"?"
     boolean = "regexp:(true|false)"
     null = "null"
     token = "regexp:[a-z][a-zA-Z0-9]*"
   ]
 
   implements("assignment|block|factory")=[
-      "com.android.tools.idea.gradle.something.psi.SomethingEntry"
-   ]
+     "com.android.tools.idea.gradle.something.psi.SomethingEntry"
+  ]
   implements("identifier")=[
-        "com.intellij.psi.PsiNamedElement"
-        "com.android.tools.idea.gradle.something.psi.SomethingElement"
-      ]
+     "com.intellij.psi.PsiNamedElement"
+     "com.android.tools.idea.gradle.something.psi.SomethingElement"
+  ]
+  implements("factory|property|literal")=[
+     "com.android.tools.idea.gradle.something.psi.SomethingValue"
+  ]
 }
 
 entries ::= entry*
 private entry ::= !<<eof>> !(OP_RBRACE|OP_RPAREN) (assignment | block | factory) {pin=1 recoverWhile=entry_recover}
 private entry_recover ::= !(token|OP_RBRACE|OP_RPAREN)
-assignment ::= lvalue OP_EQ rvalue {pin=2}
+assignment ::= lvalue OP_EQ rvalue {
+   pin=2
+   methods=[
+      getValue
+   ]
+}
 private lvalue ::= identifier
 identifier ::= token {
    methods=[
      getName
+     setName
    ]
    mixin="com.android.tools.idea.gradle.something.psi.SomethingIdentifierMixin"
 }
-literal ::= string | number | boolean
-rvalue ::= factory | property | literal {elementType = value}
+literal ::= string | number | boolean {methods=[getValue]}
+private rvalue ::= factory | property | literal
 property ::= qualified | bare {methods=[getField getReceiver]}
 qualified ::= property OP_DOT identifier {extends=property pin=2}
 bare ::= identifier {extends=property}
@@ -84,5 +93,8 @@ block ::= block_head OP_LBRACE block_entry* OP_RBRACE {
 }
 private block_head ::= (factory | identifier)
 private block_entry ::= !'}' entry
-factory ::= identifier OP_LPAREN (factory | rvalue) OP_RPAREN {pin=2}
-fake value::=
+factory ::= identifier OP_LPAREN argumentsList OP_RPAREN {pin=2}
+// this might become a true list eventually, but the current specification only allows for single-argument factories.
+argumentsList ::= rvalue? {
+   methods=[getArguments factory="" literal="" property=""]
+}

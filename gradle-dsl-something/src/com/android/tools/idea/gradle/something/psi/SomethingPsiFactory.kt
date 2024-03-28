@@ -21,10 +21,9 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiParserFacade
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.util.containers.toArray
 
 class SomethingPsiFactory(private val project: Project) {
-  private fun createFile(text: CharSequence): SomethingFile =
+  fun createFile(text: CharSequence): SomethingFile =
     PsiFileFactory.getInstance(project)
       .createFileFromText(
         "placeholder.something",
@@ -40,6 +39,14 @@ class SomethingPsiFactory(private val project: Project) {
   private inline fun <reified T : PsiElement> PsiElement.descendantOfType(): T? =
     PsiTreeUtil.findChildOfType(this, T::class.java, false)
 
+  fun createLiteral(value: Any?): SomethingLiteral =
+    when(value){
+      is String -> createStringLiteral(value)
+      is Int -> createIntLiteral(value)
+      is Boolean -> createBooleanLiteral(value)
+      else -> error("Failed to create Something literal with type ${value?.javaClass ?: "null"}")
+    }
+
   fun createStringLiteral(value: String): SomethingLiteral =
     createFromText("placeholder = \"$value\"") ?: error("Failed to create Something string from $value")
 
@@ -54,6 +61,9 @@ class SomethingPsiFactory(private val project: Project) {
   private fun createToken(token: String): PsiElement =
     PsiParserFacade.getInstance(project).createWhiteSpaceFromText(token)
 
+  fun createIdentifier(value: String): SomethingIdentifier =
+    createFromText("$value()") ?: error("Failed to create Something Identifier with name $value")
+
   fun createBlock(value: String): SomethingBlock =
     createFromText("$value {\n}") ?: error("Failed to create Something Block with name $value")
 
@@ -61,7 +71,13 @@ class SomethingPsiFactory(private val project: Project) {
     createFromText("$key = $value") ?: error("Failed to create SomethingAssignment `$key = $value`")
 
   fun createFactory(identifier: String): SomethingFactory {
-    return createFromText("$identifier()") ?: error("Failed to create createFactory `$identifier( )`")
+    val factory = createFromText<SomethingFactory>("$identifier(\"placeholder\")")
+    factory?.argumentsList?.arguments?.firstOrNull()?.let { it.delete() }
+    return factory ?: error("Failed to create createFactory `$identifier( )`")
   }
 
+  fun createOneParameterFactory(identifier: String, parameter: Any?): SomethingFactory {
+    val factory = createFromText<SomethingFactory>("$identifier($parameter)")
+    return factory ?: error("Failed to create createFactory `$identifier($parameter)`")
+  }
 }

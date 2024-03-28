@@ -37,11 +37,11 @@ sealed class SqliteDatabaseId {
       val name = path.substringAfterLast("/")
 
       /**
-       * Converts the path of the database from user/0 to the global user User 0 path looks like
+       * Converts the path of the database from user/0 to the global user "User 0" path looks like
        * this: /data/user/0/com.example.package/databases/db-file Global user path looks like this:
        * /data/data/com.example.package/databases/db-file
        *
-       * This won't work if the file is stored in another user's memory space, but multi user is not
+       * This won't work if the file is stored in another user's memory space, but multi-user is not
        * supported across studio: b/163315855
        */
       val systemUserPath =
@@ -97,6 +97,9 @@ data class SqliteTable(
   val rowIdName: RowIdName?,
   val isView: Boolean,
 )
+
+/** Representation of the Sqlite query result */
+data class SqliteQueryResult(val rows: List<SqliteRow>)
 
 /** Representation of the Sqlite table row */
 data class SqliteRow(val values: List<SqliteColumnValue>)
@@ -156,7 +159,7 @@ val SqliteStatement.isQueryStatement
       statementType == SqliteStatementType.EXPLAIN ||
       statementType == SqliteStatementType.PRAGMA_QUERY
 
-/** The type of a [SqliteStatement]. */
+/** The type of [SqliteStatement]. */
 enum class SqliteStatementType {
   SELECT,
   DELETE,
@@ -171,7 +174,7 @@ enum class SqliteStatementType {
 enum class RowIdName(val stringName: String) {
   ROWID("rowid"),
   OID("oid"),
-  _ROWID_("_rowid_")
+  @Suppress("EnumEntryName") _ROWID_("_rowid_")
 }
 
 /**

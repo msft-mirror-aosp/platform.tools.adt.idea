@@ -46,20 +46,14 @@ public class SomethingFactoryImpl extends ASTWrapperPsiElement implements Someth
 
   @Override
   @Nullable
-  public SomethingFactory getFactory() {
-    return findChildByClass(SomethingFactory.class);
+  public SomethingArgumentsList getArgumentsList() {
+    return findChildByClass(SomethingArgumentsList.class);
   }
 
   @Override
   @NotNull
   public SomethingIdentifier getIdentifier() {
     return findNotNullChildByClass(SomethingIdentifier.class);
-  }
-
-  @Override
-  @Nullable
-  public SomethingValue getValue() {
-    return findChildByClass(SomethingValue.class);
   }
 
 }

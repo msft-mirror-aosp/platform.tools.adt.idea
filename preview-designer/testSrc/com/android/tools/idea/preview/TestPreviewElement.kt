@@ -20,19 +20,21 @@ import com.android.tools.preview.DisplayPositioning
 import com.android.tools.preview.MethodPreviewElement
 import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
+import com.android.tools.preview.PreviewElementInstance
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 
 internal class TestBasePreviewElement<T>(
   displayName: String = "",
+  override val methodFqn: String = "TestMethod",
   groupName: String? = null,
   showDecorations: Boolean = false,
   showBackground: Boolean = false,
   backgroundColor: String? = null,
   displayPositioning: DisplayPositioning = DisplayPositioning.NORMAL,
-) : MethodPreviewElement<T>, ConfigurablePreviewElement<T> {
-  override val methodFqn: String = "TestMethod"
-  override val configuration = PreviewConfiguration.cleanAndGet()
+  override val instanceId: String = methodFqn,
+  override val configuration: PreviewConfiguration = PreviewConfiguration.cleanAndGet(),
+) : MethodPreviewElement<T>, ConfigurablePreviewElement<T>, PreviewElementInstance<T> {
   override val hasAnimations = false
   override val displaySettings =
     PreviewDisplaySettings(
@@ -45,6 +47,22 @@ internal class TestBasePreviewElement<T>(
     )
   override val previewElementDefinition = null
   override val previewBody = null
+
+  override fun createDerivedInstance(
+    displaySettings: PreviewDisplaySettings,
+    config: PreviewConfiguration,
+  ) =
+    TestBasePreviewElement<T>(
+      displayName = displaySettings.name,
+      methodFqn = methodFqn,
+      groupName = displaySettings.group,
+      showDecorations = displaySettings.showDecoration,
+      showBackground = displaySettings.showBackground,
+      backgroundColor = displaySettings.backgroundColor,
+      displayPositioning = displaySettings.displayPositioning,
+      instanceId = instanceId,
+      configuration = config,
+    )
 }
 
 internal typealias PsiTestPreviewElement =

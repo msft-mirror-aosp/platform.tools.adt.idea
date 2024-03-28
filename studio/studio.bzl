@@ -819,11 +819,22 @@ script_template = """\
 	echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${{debug_option##--wrapper_script_flag=--debug=}}" > "$options"
 	args=${{@:2}}
     fi
+
     unzip -q "{zip_file}" -d "$tmp_dir"
+    mkdir -p "{config_base_dir}/.config"
+    mkdir -p "{config_base_dir}/.plugins"
+    mkdir -p "{config_base_dir}/.system"
+    mkdir -p "{config_base_dir}/.log"
+    echo "idea.config.path={config_base_dir}/.config" >> "$tmp_dir/.properties"
+    echo "idea.plugins.path={config_base_dir}/.plugins" >> "$tmp_dir/.properties"
+    echo "idea.system.path={config_base_dir}/.system" >> "$tmp_dir/.properties"
+    echo "idea.log.path={config_base_dir}/.log" >> "$tmp_dir/.properties"
+    properties="$tmp_dir/.properties"
+
     if [ -z "$options" ]; then
-        {command} $args
+        STUDIO_PROPERTIES="$properties" {command} $args
     else
-        STUDIO_VM_OPTIONS="$options" {command} $args
+        STUDIO_VM_OPTIONS="$options" STUDIO_PROPERTIES="$properties" {command} $args
     fi
 """
 
@@ -849,6 +860,7 @@ def _android_studio_impl(ctx):
     script = ctx.actions.declare_file("%s-run" % ctx.label.name)
     script_content = script_template.format(
         zip_file = outputs[host_platform].short_path,
+        config_base_dir = ctx.attr.config_base_dir,
         command = {
             LINUX: "$tmp_dir/android-studio/bin/studio.sh",
             MAC: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC) + "\"",
@@ -868,6 +880,7 @@ def _android_studio_impl(ctx):
 
 _android_studio = rule(
     attrs = {
+        "config_base_dir": attr.string(),
         "host_platform_name": attr.string(),
         "codesign_entitlements": attr.label(allow_single_file = True),
         "compress": attr.bool(),
@@ -991,9 +1004,11 @@ _android_studio = rule(
 # before patch 12. In such a case, the release_number would be 3.
 def android_studio(
         name,
+        config_base_dir = "~/.studio_dev",
         **kwargs):
     _android_studio(
         name = name,
+        config_base_dir = config_base_dir,
         compress = is_release(),
         host_platform_name = select({
             "@platforms//os:linux": LINUX.name,
@@ -1007,15 +1022,19 @@ def android_studio(
 
 def _intellij_plugin_import_impl(ctx):
     files = {}
+    plugin_dir = "plugins/" + ctx.attr.target_dir
 
     # Note: platform plugins will have no files because they are already in intellij-sdk.
     if ctx.attr.files:
-        plugin_dir = "plugins/" + ctx.attr.target_dir
         for f in ctx.files.files:
             if not f.short_path.startswith(ctx.attr.strip_prefix):
                 fail("File " + f.short_path + " does not start with prefix " + ctx.attr.strip_prefix)
             relpath = f.short_path[len(ctx.attr.strip_prefix):]
             files[plugin_dir + "/" + relpath] = f
+    plugin_files_linux = _studio_plugin_os(ctx, LINUX, [], plugin_dir) | files
+    plugin_files_mac = _studio_plugin_os(ctx, MAC, [], plugin_dir) | files
+    plugin_files_mac_arm = _studio_plugin_os(ctx, MAC_ARM, [], plugin_dir) | files
+    plugin_files_win = _studio_plugin_os(ctx, WIN, [], plugin_dir) | files
 
     java_info = java_common.merge([export[JavaInfo] for export in ctx.attr.exports])
     jars = java_info.runtime_output_jars
@@ -1032,10 +1051,10 @@ def _intellij_plugin_import_impl(ctx):
             lib_deps = depset(ctx.attr.exports),
             licenses = depset(),
             plugin_files = struct(
-                linux = files,
-                mac = files,
-                mac_arm = files,
-                win = files,
+                linux = plugin_files_linux,
+                mac = plugin_files_mac,
+                mac_arm = plugin_files_mac_arm,
+                win = plugin_files_win,
             ),
             overwrite_plugin_version = False,
         ),
@@ -1050,6 +1069,8 @@ _intellij_plugin_import = rule(
         "files": attr.label_list(allow_files = True),
         "strip_prefix": attr.string(),
         "target_dir": attr.string(),
+        "resources": attr.label_list(allow_files = True),
+        "resources_dirs": attr.string_list(),
         "exports": attr.label_list(providers = [JavaInfo], mandatory = True),
         "compress": attr.bool(),
         "_check_plugin": attr.label(
@@ -1064,13 +1085,16 @@ _intellij_plugin_import = rule(
     implementation = _intellij_plugin_import_impl,
 )
 
-def intellij_plugin_import(name, files, strip_prefix, target_dir, exports, **kwargs):
+def intellij_plugin_import(name, target_dir, exports, files = [], strip_prefix = "", resources = {}, **kwargs):
     """This macro is for prebuilt IntelliJ plugins that are not already part of intellij-sdk."""
+    resources_dirs, resources_list = _dict_to_lists(resources)
     _intellij_plugin_import(
         name = name,
         files = files,
         strip_prefix = strip_prefix,
         target_dir = target_dir,
+        resources = resources_list,
+        resources_dirs = resources_dirs,
         exports = exports,
         compress = is_release(),
         **kwargs
@@ -1205,24 +1229,22 @@ def intellij_platform(
         }),
     )
 
-    resource_jars = {
-        "mac": src + "/darwin/android-studio/Contents/lib/resources.jar",
-        "mac_arm": src + "/darwin_aarch64/android-studio/Contents/lib/resources.jar",
-        "linux": src + "/linux/android-studio/lib/resources.jar",
-        "windows": src + "/windows/android-studio/lib/resources.jar",
+    ide_paths = {
+        "darwin": src + "/darwin/android-studio",
+        "darwin_aarch64": src + "/darwin_aarch64/android-studio",
+        "linux": src + "/linux/android-studio",
+        "windows": src + "/windows/android-studio",
     }
+
     native.py_test(
-        name = name + "_version_test",
-        srcs = ["//tools/adt/idea/studio:sdk_version_test.py"],
-        main = "sdk_version_test.py",
+        name = name + "_spec_test",
+        srcs = ["//tools/adt/idea/studio:intellij_test.py"],
+        main = "intellij_test.py",
         tags = ["no_test_windows", "no_test_mac"],
-        data = resource_jars.values(),
+        data = native.glob([src + "/**/lib/*.jar", "**/product-info.json"]),
         env = {
-            "expected_major_version": spec.major_version,
-            "expected_minor_version": spec.minor_version,
-            "intellij_resource_jars": ",".join(
-                [k + "=" + "$(execpath :" + v + ")" for k, v in resource_jars.items()],
-            ),
+            "spec": json.encode(spec),
+            "intellij_paths": ",".join([k + "=" + native.package_name() + "/" + v for k, v in ide_paths.items()]),
         },
         deps = ["//tools/adt/idea/studio:intellij"],
     )

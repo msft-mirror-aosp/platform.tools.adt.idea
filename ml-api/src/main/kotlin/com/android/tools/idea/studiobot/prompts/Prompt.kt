@@ -15,8 +15,11 @@
  */
 package com.android.tools.idea.studiobot.prompts
 
+import com.android.tools.idea.studiobot.MimeType
 import com.intellij.lang.Language
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import java.util.Base64
 
 /**
  * A well-formed prompt that can be understood by the models used by Studio Bot,
@@ -24,16 +27,22 @@ import com.intellij.openapi.vfs.VirtualFile
  * See [buildPrompt] for information on the format and how to construct a prompt.
  */
 interface Prompt {
+  val project: Project
   val messages: List<Message>
 
   sealed class Message(open val chunks: List<Chunk>) {
-    sealed class Chunk(open val text: String, open val filesUsed: Collection<VirtualFile>)
+    sealed class Chunk(open val filesUsed: Collection<VirtualFile>)
 
-    data class TextChunk(override val text: String, override val filesUsed: Collection<VirtualFile>)
-      : Chunk(text, filesUsed)
+    data class TextChunk(val text: String, override val filesUsed: Collection<VirtualFile>)
+      : Chunk(filesUsed)
 
-    data class CodeChunk(override val text: String, val language: Language?, override val filesUsed: Collection<VirtualFile>)
-      : Chunk(text, filesUsed)
+    data class CodeChunk(val text: String, val language: Language?, override val filesUsed: Collection<VirtualFile>)
+      : Chunk(filesUsed)
+
+    class BlobChunk(data: ByteArray, val mimeType: MimeType, override val filesUsed: Collection<VirtualFile>)
+      : Chunk(filesUsed) {
+        val base64Data: ByteArray = Base64.getEncoder().encode(data)
+      }
   }
 
   data class SystemMessage(override val chunks: List<Chunk>) : Message(chunks)

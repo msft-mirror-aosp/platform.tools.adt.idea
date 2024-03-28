@@ -16,13 +16,15 @@
 package com.android.tools.idea.compose.preview.animation.timeline
 
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.idea.compose.preview.animation.AnimatedProperty
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
-import com.android.tools.idea.compose.preview.animation.Transition
+import com.android.tools.idea.preview.animation.AnimatedProperty
+import com.android.tools.idea.preview.animation.AnimationUnit
 import com.android.tools.idea.preview.animation.InspectorLayout
 import com.android.tools.idea.preview.animation.TestUtils
 import com.android.tools.idea.preview.animation.TestUtils.scanForTooltips
 import com.android.tools.idea.preview.animation.TooltipInfo
+import com.android.tools.idea.preview.animation.Transition
+import com.android.tools.idea.preview.animation.timeline.TransitionCurve
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
@@ -74,8 +76,8 @@ class TransitionCurveTest {
 
     transitionCurveOne.timelineUnits =
       listOf(
-        ComposeUnit.TimelineUnit("Property One", ComposeUnit.IntSize(0, 0)),
-        ComposeUnit.TimelineUnit("Property Two", ComposeUnit.IntSize(5, 5)),
+        AnimationUnit.TimelineUnit("Property One", ComposeUnit.IntSize(0, 0)),
+        AnimationUnit.TimelineUnit("Property Two", ComposeUnit.IntSize(5, 5)),
       )
 
     slider.sliderUI.elements = listOf(transitionCurveOne, transitionCurveTwo)
@@ -137,7 +139,7 @@ class TransitionCurveTest {
         )
         .apply { Disposer.register(projectRule.testRootDisposable, this) }
     transitionCurve.timelineUnits =
-      listOf(null, null, ComposeUnit.TimelineUnit("Property", ComposeUnit.IntSize(5, 5)))
+      listOf(null, null, AnimationUnit.TimelineUnit("Property", ComposeUnit.IntSize(5, 5)))
     slider.sliderUI.elements = listOf(transitionCurve)
     // Timeline has tooltips.
     ui.render() // paint() method within render() should be called to update BoxedLabel positions.
@@ -166,7 +168,7 @@ class TransitionCurveTest {
         )
         .apply { Disposer.register(projectRule.testRootDisposable, this) }
     transitionCurve.timelineUnits =
-      listOf(ComposeUnit.TimelineUnit("Property Two", ComposeUnit.IntSize(5, 5)))
+      listOf(AnimationUnit.TimelineUnit("Property Two", ComposeUnit.IntSize(5, 5)))
     slider.sliderUI.elements = listOf(transitionCurve)
     // Timeline has tooltips.
     ui.render() // paint() method within render() should be called to update BoxedLabel positions.
@@ -199,9 +201,9 @@ class TransitionCurveTest {
         .apply { Disposer.register(projectRule.testRootDisposable, this) }
     transitionCurve.timelineUnits =
       listOf(
-        ComposeUnit.TimelineUnit("Property One", ComposeUnit.IntSize(0, 0)),
-        ComposeUnit.TimelineUnit("Property Two", ComposeUnit.IntSize(0, 0)),
-        ComposeUnit.TimelineUnit("Property Three", ComposeUnit.IntSize(5, 5)),
+        AnimationUnit.TimelineUnit("Property One", ComposeUnit.IntSize(0, 0)),
+        AnimationUnit.TimelineUnit("Property Two", ComposeUnit.IntSize(0, 0)),
+        AnimationUnit.TimelineUnit("Property Three", ComposeUnit.IntSize(5, 5)),
       )
     slider.sliderUI.elements = listOf(transitionCurve, transitionCurve)
     // Timeline has tooltips.

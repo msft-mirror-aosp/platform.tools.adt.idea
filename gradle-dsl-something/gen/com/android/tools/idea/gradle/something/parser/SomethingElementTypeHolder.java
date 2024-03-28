@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.something.psi.impl.*;
 
 public interface SomethingElementTypeHolder {
 
+  IElementType ARGUMENTS_LIST = new SomethingElementType("ARGUMENTS_LIST");
   IElementType ASSIGNMENT = new SomethingElementType("ASSIGNMENT");
   IElementType BARE = new SomethingElementType("BARE");
   IElementType BLOCK = new SomethingElementType("BLOCK");
@@ -33,7 +34,6 @@ public interface SomethingElementTypeHolder {
   IElementType LITERAL = new SomethingElementType("LITERAL");
   IElementType PROPERTY = new SomethingElementType("PROPERTY");
   IElementType QUALIFIED = new SomethingElementType("QUALIFIED");
-  IElementType VALUE = new SomethingElementType("VALUE");
 
   IElementType BOOLEAN = new SomethingTokenType("boolean");
   IElementType LINE_COMMENT = new SomethingTokenType("line_comment");
@@ -51,7 +51,10 @@ public interface SomethingElementTypeHolder {
   class Factory {
     public static PsiElement createElement(ASTNode node) {
       IElementType type = node.getElementType();
-      if (type == ASSIGNMENT) {
+      if (type == ARGUMENTS_LIST) {
+        return new SomethingArgumentsListImpl(node);
+      }
+      else if (type == ASSIGNMENT) {
         return new SomethingAssignmentImpl(node);
       }
       else if (type == BARE) {
@@ -71,9 +74,6 @@ public interface SomethingElementTypeHolder {
       }
       else if (type == QUALIFIED) {
         return new SomethingQualifiedImpl(node);
-      }
-      else if (type == VALUE) {
-        return new SomethingValueImpl(node);
       }
       throw new AssertionError("Unknown element type: " + type);
     }

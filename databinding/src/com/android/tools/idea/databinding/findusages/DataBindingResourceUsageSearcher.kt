@@ -54,11 +54,10 @@ class DataBindingResourceUsageSearcher : CustomUsageSearcher() {
         ResourceType.LAYOUT -> {
           // When searching for usages of a layout resource, we want to add any uses of the
           // generated DataBinding class.
-          val layoutGroup =
-            bindingModuleCache.bindingLayoutGroups.firstOrNull {
-              it.mainLayout.resource.name == element.resourceReference.name
-            } ?: return@runReadAction
-          val lightBindingClasses = bindingModuleCache.getLightBindingClasses(layoutGroup)
+          val lightBindingClasses =
+            bindingModuleCache.getLightBindingClasses { layoutGroup ->
+              layoutGroup.mainLayout.resource.name == element.resourceReference.name
+            }
           lightBindingClasses.forEach {
             ReferencesSearch.search(it, options.searchScope).all { reference ->
               processor.process(UsageInfo2UsageAdapter(UsageInfo(reference)))

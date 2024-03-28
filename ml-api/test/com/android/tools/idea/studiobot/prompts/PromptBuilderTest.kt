@@ -19,6 +19,7 @@ import com.android.testutils.MockitoKt.mock
 import com.android.testutils.MockitoKt.whenever
 import com.android.tools.idea.studiobot.AiExcludeException
 import com.android.tools.idea.studiobot.AiExcludeService
+import com.android.tools.idea.studiobot.MimeType
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.prompts.impl.PromptImpl
 import com.google.common.truth.Truth.assertThat
@@ -30,6 +31,8 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.assertFailsWith
 
 @RunWith(JUnit4::class)
@@ -58,6 +61,7 @@ class PromptBuilderTest : BasePlatformTestCase() {
     assertThat(prompt)
       .isEqualTo(
         PromptImpl(
+          project,
           listOf(
             Prompt.SystemMessage(
               listOf(
@@ -76,9 +80,34 @@ class PromptBuilderTest : BasePlatformTestCase() {
             Prompt.UserMessage(
               listOf(Prompt.Message.TextChunk("I am doing well, how about you?", emptyList()))
             ),
-          )
-        )
+          ),
+        ),
       )
+  }
+
+  @OptIn(ExperimentalEncodingApi::class)
+  @Test
+  fun buildPrompt_withBlob() {
+    val data = ByteArray(10)
+    val base64data = Base64.encodeToByteArray(data)
+    val prompt =
+      buildPrompt(project) {
+        userMessage {
+          text("What is in this image?", emptyList())
+          blob(data, MimeType.JPEG, emptyList())
+        }
+      }
+    assertThat(prompt.messages.size).isEqualTo(1)
+    val chunks = prompt.messages.single().chunks
+    assertThat(chunks.size).isEqualTo(2)
+    assertThat(chunks[0]).isEqualTo(
+      Prompt.Message.TextChunk(
+        "What is in this image?",
+        emptyList()
+      )
+    )
+    assertThat(chunks[1]).isInstanceOf(Prompt.Message.BlobChunk::class.java)
+    assertThat((chunks[1] as Prompt.Message.BlobChunk).base64Data).isEqualTo(base64data)
   }
 
   @Test
@@ -115,6 +144,7 @@ class PromptBuilderTest : BasePlatformTestCase() {
     assertThat(prompt)
       .isEqualTo(
         PromptImpl(
+          project,
           listOf(
             Prompt.UserMessage(
               listOf(Prompt.Message.TextChunk("Write some Kotlin code.", emptyList()))
@@ -148,7 +178,7 @@ class PromptBuilderTest : BasePlatformTestCase() {
                 ),
               )
             ),
-          )
+          ),
         )
       )
   }
@@ -231,6 +261,7 @@ class PromptBuilderTest : BasePlatformTestCase() {
     assertThat(prompt)
       .isEqualTo(
         PromptImpl(
+          project,
           listOf(
             Prompt.SystemMessage(
               listOf(Prompt.Message.TextChunk("You are Studio Bot", emptyList()))
@@ -244,9 +275,8 @@ class PromptBuilderTest : BasePlatformTestCase() {
             Prompt.UserMessage(
               listOf(Prompt.Message.TextChunk("I am doing well, how about you?", emptyList()))
             ),
-          )
+          ),
         )
       )
-
   }
 }

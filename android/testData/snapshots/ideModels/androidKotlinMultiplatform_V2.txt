@@ -18,10 +18,6 @@ MODULE                        : Kotlin_Multiplatform
     *isInherited                  : true
     ORDER_ENTRY                   : <Module source>
     BUILD_TASKS
-        TEST_COMPILE_MODE             : All
-        TEST_COMPILE_MODE             : Android tests
-        TEST_COMPILE_MODE             : Unit tests
-        TEST_COMPILE_MODE             : None
 LIBRARY_TABLE
     - library                     : com.google.auto.value:auto-value-annotations:1.6.3 (IdeJavaLibraryImpl)
         artifact                      : <M2>/com/google/auto/value/auto-value-annotations/1.6.3/auto-value-annotations-1.6.3.jar
@@ -792,6 +788,7 @@ MODULE                        : Kotlin_Multiplatform
                         _internal-unified-test-platform-core    : <empty>
                         _internal-unified-test-platform-launcher          : <empty>
                         allSourceSetsCompileDependenciesMetadata          : <empty>
+                        allTestSourceSetsCompileDependenciesMetadata      : <empty>
                         androidApiElements            : <empty>
                         - androidApiElements-published          : <ROOT>/kmpFirstLib/build/outputs/aar/kmpFirstLib.aar [-]
                         androidApis                   : <empty>
@@ -826,6 +823,7 @@ MODULE                        : Kotlin_Multiplatform
                         androidMainIntransitiveDependenciesMetadata       : <empty>
                         androidMainResolvableDependenciesMetadata         : <empty>
                         androidMainRuntimeOnly        : <empty>
+                        androidResourcesElements-published      : <empty>
                         androidRuntimeClasspath       : <empty>
                         androidRuntimeElements        : <empty>
                         - androidRuntimeElements-published      : <ROOT>/kmpFirstLib/build/outputs/aar/kmpFirstLib.aar [-]
@@ -918,6 +916,7 @@ MODULE                        : Kotlin_Multiplatform
                     - taskArtifacts               : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
                     configurationArtifacts
                         allSourceSetsCompileDependenciesMetadata          : <empty>
+                        allTestSourceSetsCompileDependenciesMetadata      : <empty>
                         - archives                    : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
                         - archives                    : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-metadata.jar [-]
                         commonMainApi                 : <empty>
@@ -1019,6 +1018,7 @@ MODULE                        : Kotlin_Multiplatform
                     - taskArtifacts               : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
                     configurationArtifacts
                         allSourceSetsCompileDependenciesMetadata          : <empty>
+                        allTestSourceSetsCompileDependenciesMetadata      : <empty>
                         androidApiElements            : <empty>
                         - androidApiElements-published          : <ROOT>/kmpSecondLib/build/outputs/aar/kmpSecondLib.aar [-]
                         androidApis                   : <empty>
@@ -1037,6 +1037,7 @@ MODULE                        : Kotlin_Multiplatform
                         androidMainIntransitiveDependenciesMetadata       : <empty>
                         androidMainResolvableDependenciesMetadata         : <empty>
                         androidMainRuntimeOnly        : <empty>
+                        androidResourcesElements-published      : <empty>
                         androidRuntimeClasspath       : <empty>
                         androidRuntimeElements        : <empty>
                         - androidRuntimeElements-published      : <ROOT>/kmpSecondLib/build/outputs/aar/kmpSecondLib.aar [-]
@@ -3111,7 +3112,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                 - dependency                  : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                 - dependency                  : org.jetbrains:annotations:13.0
             commonMain
-                - dependency                  : org.jetbrains.kotlin:kotlin-stdlib:commonMain:2.0.0-Beta4
+                - dependency                  : org.jetbrains.kotlin:kotlin-stdlib:commonMain:2.0.0-Beta5
             commonTest
                 - dependency                  : :kmpSecondLib::kmpSecondLib/commonMain
                 - dependency                  : :kmpSecondLib::kmpSecondLib/jvmMain

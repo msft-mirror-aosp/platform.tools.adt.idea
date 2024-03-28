@@ -16,6 +16,7 @@
 package com.android.tools.idea.studiobot.prompts.impl
 
 import com.android.tools.idea.studiobot.AiExcludeException
+import com.android.tools.idea.studiobot.MimeType
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.prompts.Prompt
 import com.android.tools.idea.studiobot.prompts.PromptBuilder
@@ -26,7 +27,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.annotations.VisibleForTesting
 
 @VisibleForTesting
-data class PromptImpl(override val messages: List<Prompt.Message>) : Prompt
+data class PromptImpl(
+  override val project: Project,
+  override val messages: List<Prompt.Message>,
+) : Prompt
 
 class PromptBuilderImpl(private val project: Project) : PromptBuilder {
   override val messages = mutableListOf<Prompt.Message>()
@@ -44,6 +48,10 @@ class PromptBuilderImpl(private val project: Project) : PromptBuilder {
     /** Adds [code] as a formatted code block in the message, with optional [language] specified. */
     override fun code(code: String, language: Language?, filesUsed: Collection<VirtualFile>) {
       myChunks.add(Prompt.Message.CodeChunk(code, language, filesUsed))
+    }
+
+    override fun blob(data: ByteArray, mimeType: MimeType, filesUsed: Collection<VirtualFile>) {
+      myChunks.add(Prompt.Message.BlobChunk(data, mimeType, filesUsed))
     }
 
     fun build() = makeMessage(myChunks)
@@ -96,6 +104,6 @@ class PromptBuilderImpl(private val project: Project) : PromptBuilder {
     if (excludedFiles.isNotEmpty()) {
       throw AiExcludeException(excludedFiles)
     }
-    return PromptImpl(messages)
+    return PromptImpl(project, messages)
   }
 }

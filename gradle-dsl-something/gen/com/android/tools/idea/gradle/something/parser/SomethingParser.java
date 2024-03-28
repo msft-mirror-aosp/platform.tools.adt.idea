@@ -56,6 +56,16 @@ public class SomethingParser implements PsiParser, LightPsiParser {
   };
 
   /* ********************************************************** */
+  // rvalue?
+  public static boolean argumentsList(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "argumentsList")) return false;
+    Marker m = enter_section_(b, l, _NONE_, ARGUMENTS_LIST, "<arguments list>");
+    rvalue(b, l + 1);
+    exit_section_(b, l, m, true, false, null);
+    return true;
+  }
+
+  /* ********************************************************** */
   // lvalue OP_EQ rvalue
   public static boolean assignment(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "assignment")) return false;
@@ -217,7 +227,7 @@ public class SomethingParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
-  // identifier OP_LPAREN (factory | rvalue) OP_RPAREN
+  // identifier OP_LPAREN argumentsList OP_RPAREN
   public static boolean factory(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "factory")) return false;
     if (!nextTokenIs(b, TOKEN)) return false;
@@ -226,19 +236,10 @@ public class SomethingParser implements PsiParser, LightPsiParser {
     r = identifier(b, l + 1);
     r = r && consumeToken(b, OP_LPAREN);
     p = r; // pin = 2
-    r = r && report_error_(b, factory_2(b, l + 1));
+    r = r && report_error_(b, argumentsList(b, l + 1));
     r = p && consumeToken(b, OP_RPAREN) && r;
     exit_section_(b, l, m, r, p, null);
     return r || p;
-  }
-
-  // factory | rvalue
-  private static boolean factory_2(PsiBuilder b, int l) {
-    if (!recursion_guard_(b, l, "factory_2")) return false;
-    boolean r;
-    r = factory(b, l + 1);
-    if (!r) r = rvalue(b, l + 1);
-    return r;
   }
 
   /* ********************************************************** */
@@ -274,14 +275,12 @@ public class SomethingParser implements PsiParser, LightPsiParser {
 
   /* ********************************************************** */
   // factory | property | literal
-  public static boolean rvalue(PsiBuilder b, int l) {
+  static boolean rvalue(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "rvalue")) return false;
     boolean r;
-    Marker m = enter_section_(b, l, _NONE_, VALUE, "<rvalue>");
     r = factory(b, l + 1);
     if (!r) r = property(b, l + 1, -1);
     if (!r) r = literal(b, l + 1);
-    exit_section_(b, l, m, r, false, null);
     return r;
   }
 

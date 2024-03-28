@@ -20,27 +20,28 @@ import androidx.compose.animation.tooling.ComposeAnimationType
 import androidx.compose.animation.tooling.TransitionInfo
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.TabularLayout
-import com.android.tools.idea.compose.preview.animation.AnimatedProperty
 import com.android.tools.idea.compose.preview.animation.AnimationClock
 import com.android.tools.idea.compose.preview.animation.ComposeAnimationTracker
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
-import com.android.tools.idea.compose.preview.animation.Transition
 import com.android.tools.idea.compose.preview.animation.getAnimatedProperties
 import com.android.tools.idea.compose.preview.animation.setClockTime
 import com.android.tools.idea.compose.preview.animation.state.AnimationState.Companion.createState
-import com.android.tools.idea.compose.preview.animation.timeline.TransitionCurve
 import com.android.tools.idea.compose.preview.animation.updateAnimatedVisibilityState
 import com.android.tools.idea.compose.preview.animation.updateFromAndToStates
+import com.android.tools.idea.preview.animation.AnimatedProperty
 import com.android.tools.idea.preview.animation.AnimationCard
 import com.android.tools.idea.preview.animation.AnimationTabs
+import com.android.tools.idea.preview.animation.AnimationUnit
 import com.android.tools.idea.preview.animation.PlaybackControls
 import com.android.tools.idea.preview.animation.SupportedAnimationManager
 import com.android.tools.idea.preview.animation.TimelinePanel
+import com.android.tools.idea.preview.animation.Transition
 import com.android.tools.idea.preview.animation.actions.FreezeAction
 import com.android.tools.idea.preview.animation.timeline.ElementState
 import com.android.tools.idea.preview.animation.timeline.PositionProxy
 import com.android.tools.idea.preview.animation.timeline.TimelineElement
 import com.android.tools.idea.preview.animation.timeline.TimelineLine
+import com.android.tools.idea.preview.animation.timeline.TransitionCurve
 import com.android.tools.idea.preview.util.createToolbarWithNavigation
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.executeInRenderSession
@@ -70,13 +71,13 @@ private val LOG = Logger.getInstance(SupportedAnimationManager::class.java)
 private const val DEFAULT_CURVE_POINTS_NUMBER = 200
 
 open class ComposeSupportedAnimationManager(
-  override val animation: ComposeAnimation,
-  override val tabTitle: String,
+  final override val animation: ComposeAnimation,
+  final override val tabTitle: String,
   private val tracker: ComposeAnimationTracker,
-  private val animationClock: AnimationClock,
+  protected val animationClock: AnimationClock,
   private val maxDurationPerIteration: StateFlow<Long>,
   private val timelinePanel: TimelinePanel,
-  private val sceneManager: LayoutlibSceneManager?,
+  protected val sceneManager: LayoutlibSceneManager?,
   private val tabbedPane: AnimationTabs,
   private val rootComponent: JComponent,
   playbackControls: PlaybackControls,
@@ -88,12 +89,12 @@ open class ComposeSupportedAnimationManager(
   private val scope = parentScope.createChildScope(tabTitle)
 
   /** Callback when [selectedProperties] has been changed. */
-  var selectedPropertiesCallback: (List<ComposeUnit.TimelineUnit>) -> Unit = {}
+  var selectedPropertiesCallback: (List<AnimationUnit.TimelineUnit>) -> Unit = {}
   /**
    * Currently selected properties in the timeline. Updated everytime the slider has moved or the
    * state of animation has changed. Could be empty if transition is not loaded or not supported.
    */
-  var selectedProperties = listOf<ComposeUnit.TimelineUnit>()
+  var selectedProperties = listOf<AnimationUnit.TimelineUnit>()
     private set(value) {
       field = value
       selectedPropertiesCallback(value)
@@ -117,7 +118,7 @@ open class ComposeSupportedAnimationManager(
   val stateComboBox = animation.createState(tracker, animation.findCallback())
 
   /** State of animation, shared between single animation tab and coordination panel. */
-  override val elementState = MutableStateFlow(ElementState())
+  final override val elementState = MutableStateFlow(ElementState())
 
   /** [AnimationCard] for coordination panel. */
   override val card: AnimationCard =
@@ -350,7 +351,7 @@ open class ComposeSupportedAnimationManager(
         try {
           selectedProperties =
             getAnimatedProperties(animation).map {
-              ComposeUnit.TimelineUnit(it.label, ComposeUnit.parse(it))
+              AnimationUnit.TimelineUnit(it.label, ComposeUnit.parse(it))
             }
         } catch (e: Exception) {
           LOG.warn("Failed to get the Compose Animation properties", e)

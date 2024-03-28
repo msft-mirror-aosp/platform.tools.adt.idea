@@ -15,7 +15,10 @@
  */
 package com.android.tools.idea.ml.xmltocompose
 
-import com.android.tools.idea.studiobot.LlmService
+import com.android.tools.idea.studiobot.Content
+import com.android.tools.idea.studiobot.GenerationConfig
+import com.android.tools.idea.studiobot.ModelType
+import com.android.tools.idea.studiobot.StubModel
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.prompts.Prompt
 import com.android.tools.idea.studiobot.prompts.buildPrompt
@@ -41,13 +44,13 @@ class NShotXmlToComposeConverterTest {
 
       override fun isContextAllowed(project: Project) = contextAllowed
 
-      override fun model(project: Project) =
-        object : LlmService.StubLlmService() {
-          override suspend fun sendQuery(
-            prompt: Prompt,
-            source: StudioBot.RequestSource,
-          ): Flow<String> {
-            return flowOf("CITATIONS: Some citations here", "```kotlin\n${simpleKotlinCode()}\n```")
+      override fun model(project: Project, modelType: ModelType) =
+        object : StubModel() {
+          override fun generateContent(prompt: Prompt, config: GenerationConfig): Flow<Content> {
+            return flowOf(
+              Content("Here is your code"),
+              Content("```kotlin\n${simpleKotlinCode()}\n```"),
+            )
           }
         }
     }
@@ -100,7 +103,10 @@ class NShotXmlToComposeConverterTest {
       query.messages
         .flatMap { it.chunks }
         .any {
-          it.text.contains("Create a subclass of androidx.lifecycle.ViewModel to store the states.")
+          it is Prompt.Message.TextChunk &&
+            it.text.contains(
+              "Create a subclass of androidx.lifecycle.ViewModel to store the states."
+            )
         }
     )
   }
@@ -116,7 +122,7 @@ class NShotXmlToComposeConverterTest {
     val chunks = query.messages.flatMap { it.chunks }
     assertTrue(
       chunks.any {
-        it.text.contains(
+        it.containsText(
           "The ViewModel must store data using objects of type androidx.lifecycle.LiveData. " +
             "The Composable methods will use states derived from the data stored in the ViewModel."
         )
@@ -124,12 +130,12 @@ class NShotXmlToComposeConverterTest {
     )
     assertTrue(
       chunks.any {
-        it.text.contains("Do not use androidx.compose.runtime.MutableState in the ViewModel.")
+        it.containsText("Do not use androidx.compose.runtime.MutableState in the ViewModel.")
       }
     )
     assertTrue(
       chunks.any {
-        it.text.contains("Do not use kotlinx.coroutines.flow.StateFlow in the ViewModel.")
+        it.containsText("Do not use kotlinx.coroutines.flow.StateFlow in the ViewModel.")
       }
     )
   }
@@ -146,7 +152,7 @@ class NShotXmlToComposeConverterTest {
     assertTrue(
       query.messages
         .flatMap { it.chunks }
-        .none { it.text.contains("The ViewModel must store data using objects of type") }
+        .none { it.containsText("The ViewModel must store data using objects of type") }
     )
   }
 
@@ -162,7 +168,7 @@ class NShotXmlToComposeConverterTest {
     assertTrue(
       query.messages
         .flatMap { it.chunks }
-        .none { it.text.contains("The ViewModel must store data using objects of type") }
+        .none { it.containsText("The ViewModel must store data using objects of type") }
     )
   }
 
@@ -174,7 +180,7 @@ class NShotXmlToComposeConverterTest {
     assertTrue(
       query.messages
         .flatMap { it.chunks }
-        .any { it.text.contains("Wrap any Custom Views in an AndroidView composable.") }
+        .any { it.containsText("Wrap any Custom Views in an AndroidView composable.") }
     )
   }
 
@@ -187,7 +193,7 @@ class NShotXmlToComposeConverterTest {
     assertTrue(
       query.messages
         .flatMap { it.chunks }
-        .none { it.text.contains("Wrap any Custom Views in an AndroidView composable") }
+        .none { it.containsText("Wrap any Custom Views in an AndroidView composable") }
     )
   }
 
@@ -211,6 +217,9 @@ class NShotXmlToComposeConverterTest {
       response.generatedCode,
     )
   }
+
+  private fun Prompt.Message.Chunk.containsText(text: String) =
+    this is Prompt.Message.TextChunk && this.text.contains(text)
 
   // language=kotlin
   private fun simpleKotlinCode() =

@@ -45,7 +45,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.PsiClass
 import com.intellij.util.PathUtil
-import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.dom.manifest.UsesFeature
 import org.jetbrains.android.facet.AndroidFacet
@@ -92,7 +91,7 @@ class AndroidRunConfigurations {
       // Don't create Wear Apps Configurations, as the user can launch Wear Surfaces from the gutter
       return
     }
-    ApplicationManager.getApplication().invokeAndWait { addAndroidRunConfiguration(facet) }
+    addAndroidRunConfiguration(facet)
   }
 
   @Slow

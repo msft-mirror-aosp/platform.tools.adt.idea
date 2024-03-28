@@ -15,15 +15,20 @@
  */
 package com.android.tools.idea.gradle.something.parser
 
+import com.android.tools.idea.gradle.something.psi.SomethingArgumentsList
+import com.android.tools.idea.gradle.something.psi.SomethingAssignment
 import com.android.tools.idea.gradle.something.psi.SomethingBare
 import com.android.tools.idea.gradle.something.psi.SomethingBlock
 import com.android.tools.idea.gradle.something.psi.SomethingFactory
 import com.android.tools.idea.gradle.something.psi.SomethingIdentifier
+import com.android.tools.idea.gradle.something.psi.SomethingLiteral
 import com.android.tools.idea.gradle.something.psi.SomethingProperty
 import com.android.tools.idea.gradle.something.psi.SomethingQualified
+import com.android.tools.idea.gradle.something.psi.SomethingValue
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.childLeafs
+import com.intellij.psi.util.childrenOfType
 
 class PsiImplUtil {
   companion object {
@@ -51,8 +56,28 @@ class PsiImplUtil {
     }
 
     @JvmStatic
-    fun getBlockEntriesStart(block: SomethingBlock): PsiElement? {
-      return block.childLeafs.find { it.text == "{" }
+    fun getValue(assignment: SomethingAssignment): SomethingValue? {
+      return assignment.children.firstNotNullOfOrNull { child -> (child as? SomethingValue).takeIf { it != null } }
     }
+
+    @JvmStatic
+    fun getBlockEntriesStart(block: SomethingBlock): PsiElement? {
+      return block.childLeafs().find { it.text == "{" }
+    }
+
+    @JvmStatic
+    fun getArguments(list: SomethingArgumentsList): List<SomethingValue> {
+      return list.childrenOfType<SomethingValue>().toList()
+    }
+
+    @JvmStatic
+    fun getValue(literal: SomethingLiteral): Any? = when {
+      literal.boolean != null -> literal.boolean?.text == "true"
+      literal.string != null -> literal.string?.text?.unquote()
+      literal.number != null -> literal.number?.text?.toIntOrNull()
+      else -> null
+    }
+    private fun String.unquote() = this.removePrefix("\"").removeSuffixIfPresent("\"")
+    private fun String.removeSuffixIfPresent(suffix: String) = if (this.endsWith(suffix)) this.dropLast(suffix.length) else this
   }
 }

@@ -56,7 +56,6 @@ import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.appinspection.test.mockMinimumArtifactCoordinate
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
 import com.android.tools.idea.layoutinspector.MODERN_DEVICE
@@ -71,7 +70,6 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMonitor
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
-import com.android.tools.idea.layoutinspector.pipeline.adb.executeShellCommand
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.INCOMPATIBLE_LIBRARY_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.PROGUARDED_LIBRARY_MESSAGE_KEY
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.VERSION_MISSING_MESSAGE_KEY
@@ -83,11 +81,8 @@ import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.android.tools.idea.metrics.MetricsTrackerRule
-import com.android.tools.idea.project.AndroidRunConfigurations
 import com.android.tools.idea.protobuf.ByteString
-import com.android.tools.idea.run.AndroidRunConfiguration
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.testing.addManifest
 import com.android.tools.idea.testing.ui.flatten
 import com.android.tools.idea.util.ListenerCollection
 import com.google.common.truth.Truth.assertThat
@@ -96,8 +91,6 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorCode
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorErrorInfo.AttachErrorState
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType
-import com.intellij.execution.RunManager
-import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.testFramework.runInEdtAndWait
@@ -552,133 +545,41 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testViewDebugAttributesApplicationPackageSetAndReset() =
-    runWithFlagState(false) {
-      inspectorRule.attachDevice(MODERN_DEVICE)
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
+  fun testPerDeviceViewDebugAttributesSetAndNotReset() {
+    inspectorRule.attachDevice(MODERN_DEVICE)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
 
-      // Imitate that the adb server was killed.
-      // We expect the ViewDebugAttributes to be cleared anyway since a new adb bridge should be
-      // created.
-      inspectorRule.adbService.killServer()
+    // Imitate that the adb server was killed.
+    // We expect the ViewDebugAttributes to be cleared anyway since a new adb bridge should be
+    // created.
+    inspectorRule.adbService.killServer()
 
-      // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
-      // way to wait for the disconnect to
-      // happen on a background thread
-      inspectorRule.launcher.disconnectActiveClient()
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
-      // No other attributes were modified
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(2)
-    }
+    // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
+    // way to wait for the disconnect to
+    // happen on a background thread
+    inspectorRule.launcher.disconnectActiveClient()
+    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
+    // No other attributes were modified
+    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(1)
+  }
 
   @Test
-  fun testViewDebugAttributesApplicationUntouchedIfAlreadySet() =
-    runWithFlagState(false) {
-      inspectorRule.adbProperties.debugViewAttributesApplicationPackage = MODERN_PROCESS.name
+  fun testPerDeviceViewDebugAttributesUntouchedIfAlreadySet() {
+    inspectorRule.adbProperties.debugViewAttributes = "1"
 
-      inspectorRule.attachDevice(MODERN_DEVICE)
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
+    inspectorRule.attachDevice(MODERN_DEVICE)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
+    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
 
-      // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
-      // way to wait for the disconnect to
-      // happen on a background thread
-      inspectorRule.launcher.disconnectActiveClient()
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
-    }
-
-  @Test
-  fun testViewDebugAttributesApplicationPackageOverriddenAndReset() =
-    runWithFlagState(false) {
-      inspectorRule.attachDevice(MODERN_PROCESS.device)
-      inspectorRule.adbRule.bridge.executeShellCommand(
-        MODERN_PROCESS.device,
-        "settings put global debug_view_attributes_application_package com.example.another-app",
-      )
-
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo("com.example.another-app")
-
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
-
-      inspectorRule.launcher.disconnectActiveClient()
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
-    }
-
-  @Test
-  fun testViewDebugAttributesApplicationPackageNotOverriddenIfMatching() =
-    runWithFlagState(false) {
-      inspectorRule.attachDevice(MODERN_PROCESS.device)
-      inspectorRule.adbRule.bridge.executeShellCommand(
-        MODERN_PROCESS.device,
-        "settings put global debug_view_attributes_application_package ${MODERN_PROCESS.name}",
-      )
-
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(1)
-
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(1)
-
-      inspectorRule.launcher.disconnectActiveClient()
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage)
-        .isEqualTo(MODERN_PROCESS.name)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(1)
-    }
-
-  @Test
-  fun testPerDeviceViewDebugAttributesSetAndNotReset() =
-    runWithFlagState(true) {
-      inspectorRule.attachDevice(MODERN_DEVICE)
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
-      assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-
-      // Imitate that the adb server was killed.
-      // We expect the ViewDebugAttributes to be cleared anyway since a new adb bridge should be
-      // created.
-      inspectorRule.adbService.killServer()
-
-      // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
-      // way to wait for the disconnect to
-      // happen on a background thread
-      inspectorRule.launcher.disconnectActiveClient()
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
-      assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-      // No other attributes were modified
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(1)
-    }
-
-  @Test
-  fun testPerDeviceViewDebugAttributesUntouchedIfAlreadySet() =
-    runWithFlagState(true) {
-      inspectorRule.adbProperties.debugViewAttributes = "1"
-
-      inspectorRule.attachDevice(MODERN_DEVICE)
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
-      assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-
-      // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
-      // way to wait for the disconnect to
-      // happen on a background thread
-      inspectorRule.launcher.disconnectActiveClient()
-      assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
-      assertThat(inspectorRule.adbProperties.debugViewAttributesApplicationPackage).isNull()
-      assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-    }
+    // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
+    // way to wait for the disconnect to
+    // happen on a background thread
+    inspectorRule.launcher.disconnectActiveClient()
+    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
+    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
+  }
 
   @Test
   fun inspectorSendsStopFetchCommand() = runBlocking {
@@ -1027,46 +928,15 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun testActivityRestartBannerShown() {
-    setUpRunConfiguration()
     preferredProcess = null
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
-    verifyActivityRestartBanner(runConfigActionExpected = true)
-  }
-
-  @Test
-  fun testNoActivityRestartBannerShownIfOptedOut() {
-    setUpRunConfiguration()
-    preferredProcess = null
-    inspectorRule.attachDevice(MODERN_PROCESS.device)
-    val banner = InspectorBanner(projectRule.testRootDisposable, inspectorRule.notificationModel)
-    PropertiesComponent.getInstance().setValue(KEY_HIDE_ACTIVITY_RESTART_BANNER, true)
-    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    inspectorRule.processes.selectedProcess = MODERN_PROCESS
-    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
-
-    assertThat(banner.isVisible).isFalse()
-  }
-
-  @Test
-  fun testOptOutOfActivityRestartBanner() {
-    setUpRunConfiguration()
-    preferredProcess = null
-    inspectorRule.attachDevice(MODERN_PROCESS.device)
-    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    inspectorRule.processes.selectedProcess = MODERN_PROCESS
-    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
-
-    val notification1 = inspectorRule.notificationModel.notifications.single()
-    notification1.actions[1].invoke(notification1)
-    assertThat(PropertiesComponent.getInstance().getBoolean(KEY_HIDE_ACTIVITY_RESTART_BANNER))
-      .isTrue()
+    verifyActivityRestartBanner()
   }
 
   @Test
   fun testNoActivityRestartBannerShownDuringAutoConnect() {
-    setUpRunConfiguration()
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     val banner = InspectorBanner(projectRule.testRootDisposable, inspectorRule.notificationModel)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
@@ -1075,38 +945,34 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testNoActivityRestartBannerShownWhenDebugAttributesAreAlreadySet() =
-    runWithFlagState(false) {
-      inspectorRule.adbProperties.debugViewAttributesApplicationPackage = MODERN_PROCESS.name
-      setUpRunConfiguration()
-      preferredProcess = null
-      inspectorRule.attachDevice(MODERN_PROCESS.device)
-      val banner = InspectorBanner(projectRule.testRootDisposable, inspectorRule.notificationModel)
-      inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-      inspectorRule.processes.selectedProcess = MODERN_PROCESS
-      invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+  fun testNoActivityRestartBannerShownWhenDebugAttributesAreAlreadySet() {
+    inspectorRule.adbProperties.debugViewAttributes = "1"
+    preferredProcess = null
+    inspectorRule.attachDevice(MODERN_PROCESS.device)
+    val banner = InspectorBanner(projectRule.testRootDisposable, inspectorRule.notificationModel)
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    inspectorRule.processes.selectedProcess = MODERN_PROCESS
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
 
-      assertThat(banner.isVisible).isFalse()
-    }
+    assertThat(banner.isVisible).isFalse()
+  }
 
   @Test
   fun testActivityRestartBannerShownIfRunConfigAreAlreadySetButAttributeIsMissing() {
-    setUpRunConfiguration(enableInspectionWithoutRestart = true)
     preferredProcess = null
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
-    verifyActivityRestartBanner(runConfigActionExpected = false)
+    verifyActivityRestartBanner()
   }
 
   @Test
   fun testActivityRestartBannerShownFromOtherAppProcess() {
-    setUpRunConfiguration()
     preferredProcess = null
     inspectorRule.attachDevice(OTHER_MODERN_PROCESS.device)
     inspectorRule.processNotifier.fireConnected(OTHER_MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = OTHER_MODERN_PROCESS
-    verifyActivityRestartBanner(runConfigActionExpected = false)
+    verifyActivityRestartBanner()
   }
 
   @Test
@@ -1181,39 +1047,13 @@ class AppInspectionInspectorClientTest {
     assertThat(node.recompositions.skips).isEqualTo(0)
   }
 
-  private fun setUpRunConfiguration(enableInspectionWithoutRestart: Boolean = false) {
-    addManifest(projectRule.fixture)
-    AndroidRunConfigurations.instance.createRunConfigurations(projectRule.project)
-    if (enableInspectionWithoutRestart) {
-      val runManager = RunManager.getInstance(inspectorRule.project)
-      val config =
-        runManager.allConfigurationsList.filterIsInstance<AndroidRunConfiguration>().firstOrNull {
-          it.name == "app"
-        }
-      config!!.INSPECTION_WITHOUT_ACTIVITY_RESTART = true
-    }
-  }
-
-  private fun verifyActivityRestartBanner(runConfigActionExpected: Boolean) {
+  private fun verifyActivityRestartBanner() {
     invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
     val notification = inspectorRule.notificationModel.notifications.single()
     assertThat(notification.message)
       .isEqualTo(
-        "The activity was restarted. This can be avoided by selecting " +
-          "\"Enable view attribute inspection\" in the developer options on the device or " +
-          "by enabling \"Connect without restarting activity\" in the run configuration options."
+        "The Activity was restarted in order to enable view attributes inspection. This won't happen again until the setting is disabled from Developer Options."
       )
-
-    if (runConfigActionExpected) {
-      assertThat(notification.actions.size).isEqualTo(3)
-      assertThat(notification.actions[0].name).isEqualTo("Open Run Configuration")
-      assertThat(notification.actions[1].name).isEqualTo("Don't Show Again")
-      assertThat(notification.actions[2].name).isEqualTo("Dismiss")
-    } else {
-      assertThat(notification.actions.size).isEqualTo(2)
-      assertThat(notification.actions[0].name).isEqualTo("Don't Show Again")
-      assertThat(notification.actions[1].name).isEqualTo("Dismiss")
-    }
   }
 }
 
@@ -1639,17 +1479,6 @@ class AppInspectionInspectorClientWithFailingClientTest {
     inspectorRule.disconnect()
     usageTrackerRule.testTracker.usages.clear()
   }
-}
-
-private fun runWithFlagState(desiredFlagState: Boolean, task: () -> Unit) {
-  val flag = StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED
-  val flagPreviousState = flag.get()
-  flag.override(desiredFlagState)
-
-  task()
-
-  // restore flag state
-  flag.override(flagPreviousState)
 }
 
 private val failingApiServices =

@@ -16,6 +16,7 @@
 package com.android.tools.idea.studiobot.prompts
 
 import com.android.tools.idea.studiobot.prompts.impl.PromptBuilderImpl
+import com.android.tools.idea.studiobot.MimeType
 import com.intellij.lang.Language
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -106,6 +107,14 @@ interface PromptBuilder {
      * @see com.android.tools.idea.studiobot.AiExcludeService
      */
     fun code(code: String, language: Language?, filesUsed: Collection<VirtualFile>)
+
+    /**
+     * Adds data of a given type, for multi-modal models.
+     *
+     * @param mimeType The type of the data.
+     * @param data The raw data bytes.
+     */
+    fun blob(data: ByteArray, mimeType: MimeType, filesUsed: Collection<VirtualFile>)
   }
 
   interface UserMessageBuilder : MessageBuilder {

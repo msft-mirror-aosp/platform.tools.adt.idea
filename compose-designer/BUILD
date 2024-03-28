@@ -43,6 +43,8 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering[module]",
         "//tools/adt/idea/preview-elements:intellij.android.preview-elements[module]",
         "//tools/base/environment-services:studio.intellij.android.environment-services[module]",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api[module]",
+        "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile[module]",
     ],
 )
 
@@ -173,6 +175,7 @@ iml_module(
         "//tools/adt/idea/preview-elements:intellij.android.preview-elements[module, test]",
         "//tools/analytics-library/shared:analytics-shared[module, test]",
         "//tools/adt/idea/preview-designer:intellij.android.preview-designer.tests[module, test]",
+        "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile[module, test]",
     ],
 )
 

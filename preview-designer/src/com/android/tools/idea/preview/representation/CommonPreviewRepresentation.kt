@@ -21,6 +21,7 @@ import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
+import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.concurrency.launchWithProgress
 import com.android.tools.idea.concurrency.smartModeFlow
@@ -37,7 +38,7 @@ import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.PreviewElementModelAdapter
 import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.PreviewRefreshManager
-import com.android.tools.idea.preview.PsiPreviewElement
+import com.android.tools.idea.preview.PsiPreviewElementInstance
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.flow.CommonPreviewFlowManager
 import com.android.tools.idea.preview.flow.PreviewFlowManager
@@ -94,6 +95,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -101,13 +103,13 @@ import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
 private val modelUpdater: NlModel.NlModelUpdaterInterface = DefaultModelUpdater()
-val PREVIEW_ELEMENT_INSTANCE = DataKey.create<PsiPreviewElement>("PreviewElement")
+val PREVIEW_ELEMENT_INSTANCE = DataKey.create<PsiPreviewElementInstance>("PreviewElement")
 
 /** A generic [PreviewElement] [PreviewRepresentation]. */
-open class CommonPreviewRepresentation<T : PsiPreviewElement>(
+open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   adapterViewFqcn: String,
   psiFile: PsiFile,
-  previewProvider: PreviewElementProvider<T>,
+  previewProviderConstructor: (SmartPsiElementPointer<PsiFile>) -> PreviewElementProvider<T>,
   previewElementModelAdapterDelegate: PreviewElementModelAdapter<T, NlModel>,
   viewConstructor:
     (
@@ -237,14 +239,16 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
   private val previewFreshnessTracker =
     CodeOutOfDateTracker.create(module, this) { requestRefresh() }
 
-  private val previewFlowManager =
-    CommonPreviewFlowManager(
-      filePreviewElementProvider =
-        MemoizedPreviewElementProvider(previewProvider, previewFreshnessTracker),
-      requestRefresh = ::requestRefresh,
-    )
+  private var renderedElementsFlow =
+    MutableStateFlow<FlowableCollection<T>>(FlowableCollection.Uninitialized)
 
-  private var renderedElements: List<T> = emptyList()
+  private val previewFlowManager = CommonPreviewFlowManager(renderedElementsFlow)
+
+  private val previewElementProvider =
+    MemoizedPreviewElementProvider(
+      previewProviderConstructor(psiFilePointer),
+      previewFreshnessTracker,
+    )
 
   private val previewElementModelAdapter =
     object : DelegatingPreviewElementModelAdapter<T, NlModel>(previewElementModelAdapterDelegate) {
@@ -369,7 +373,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
     if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
 
     if (showingPreviewElements.size >= filePreviewElements.size) {
-      renderedElements = filePreviewElements
+      renderedElementsFlow.value = FlowableCollection.Present(filePreviewElements)
     } else {
       // Some preview elements did not result in model creations. This could be because of failed
       // PreviewElements instantiation.
@@ -404,14 +408,12 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
 
       try {
         refreshProgressIndicator.text = message("refresh.progress.indicator.finding.previews")
-        withContext(workerThread) { previewFlowManager.updateFlows() }
         val filePreviewElements =
           previewFlowManager.filteredPreviewElementsFlow.value
             .asCollection()
             .sortByDisplayAndSourcePosition()
 
-        val needsFullRefresh =
-          invalidated.getAndSet(false) || renderedElements != filePreviewElements
+        val needsFullRefresh = invalidated.getAndSet(false)
         invalidateIfCancelled.set(needsFullRefresh)
 
         previewViewModel.setHasPreviews(filePreviewElements.isNotEmpty())
@@ -532,7 +534,18 @@ open class CommonPreviewRepresentation<T : PsiPreviewElement>(
   private fun CoroutineScope.initializeFlows() {
     with(this@initializeFlows) {
       // Initialize flows
-      launch(workerThread) { previewFlowManager.updateFlows() }
+      previewFlowManager.run {
+        initializeFlows(
+          previewModeManager = previewModeManager,
+          psiFilePointer = psiFilePointer,
+          invalidate = ::invalidate,
+          requestRefresh = ::requestRefresh,
+          restorePreviousMode = ::restorePrevious,
+          previewElementProvider = previewElementProvider,
+        ) {
+          it
+        }
+      }
 
       // Launch all the listeners that are bound to the current activation.
       launch(workerThread) {

@@ -18,7 +18,7 @@ package com.android.tools.idea.compose.gradle.datasource
 import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.compose.PsiComposePreviewElement
-import com.android.tools.idea.compose.UiCheckModeFilter
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.gradle.DEFAULT_KOTLIN_VERSION
 import com.android.tools.idea.compose.gradle.renderer.renderPreviewElementForResult
 import com.android.tools.idea.compose.preview.AnnotationFilePreviewElementFinder
@@ -35,6 +35,7 @@ import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.StaticPreviewProvider
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.UiCheckInstance
+import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
 import com.android.tools.idea.rendering.StudioRenderService
 import com.android.tools.idea.rendering.createNoSecurityRenderService
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
@@ -108,7 +109,7 @@ class ParametrizedPreviewTest {
   @After
   fun tearDown() {
     StudioRenderService.setForTesting(projectRule.project, null)
-    StudioFlags.NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE.clearOverride()
+    StudioFlags.COMPOSE_UI_CHECK_COLORBLIND_MODE.clearOverride()
   }
 
   /** Checks the rendering of the default `@Preview` in the Compose template. */
@@ -260,7 +261,7 @@ class ParametrizedPreviewTest {
 
   @Test
   fun testUiCheckForParametrizedPreview(): Unit = runBlocking {
-    StudioFlags.NELE_COMPOSE_UI_CHECK_COLORBLIND_MODE.override(true)
+    StudioFlags.COMPOSE_UI_CHECK_COLORBLIND_MODE.override(true)
 
     val project = projectRule.project
 
@@ -299,7 +300,9 @@ class ParametrizedPreviewTest {
       delayUntilCondition(250) { refreshCompleted }
     }
 
-    assertInstanceOf<UiCheckModeFilter.Enabled>(preview.uiCheckFilterFlow.value)
+    assertInstanceOf<UiCheckModeFilter.Enabled<PsiComposePreviewElementInstance>>(
+      preview.uiCheckFilterFlow.value
+    )
 
     assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })
       .containsExactly("Screen sizes", "Font scales", "Light/Dark", "Colorblind filters")

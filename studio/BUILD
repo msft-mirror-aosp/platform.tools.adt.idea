@@ -252,6 +252,7 @@ studio_plugin(
             "//tools/base/environment-services:studio.intellij.android.environment-services",
             "//tools/base/kotlin-multiplatform-models:studio.android.kotlin-multiplatform-models",
             "//tools/adt/idea/safemode:intellij.android.safemode",
+            "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -527,6 +528,7 @@ studio_plugin(
     libs = [
         "//tools/base/adb-proxy:adb_proxy_proto",
         "//tools/vendor/google/directaccess-client:directaccess_client_proto",
+        "//prebuilts/tools/common/m2:google-api-services",
     ],
     modules = {
         "directaccess.jar": [
@@ -540,7 +542,6 @@ studio_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
-        ":com.google.gct.testing",
         ":com.google.services.firebase",
         ":org.jetbrains.android",
         "@intellij//:com.intellij.java",
@@ -658,16 +659,16 @@ studio_plugin(
     name = "com.android.tools.studiobot",
     directory = "studio-bot",
     libs = [
-        "//tools/vendor/google/ml/sml-core:aida_grpc",
-        "//tools/vendor/google/ml/sml-core:aida_proto",
-        "//tools/vendor/google/ml/sml-core:aida_protobuf",
-        "//tools/vendor/google/ml/sml-core:studio_bot_proto",
+        "//tools/vendor/google/ml/aiplugin/core:aida_grpc",
+        "//tools/vendor/google/ml/aiplugin/core:aida_proto",
+        "//tools/vendor/google/ml/aiplugin/core:aida_protobuf",
+        "//tools/vendor/google/ml/aiplugin/core:studio_bot_proto",
         "//prebuilts/tools/common/m2:commonmark-0.20.0",
     ],
     modules = {
-        "sml.jar": [
-            "//tools/vendor/google/ml/sml-core:ml.sml-core",
-            "//tools/vendor/google/ml/sml-android:ml.sml-android",
+        "aiplugin.jar": [
+            "//tools/vendor/google/ml/aiplugin/core:aiplugin.core",
+            "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
         ],
     },
     visibility = ["//visibility:public"],
@@ -819,6 +820,60 @@ py_test(
     tags = ["no_windows"],  # b/233968084
 )
 
+filegroup(
+    name = "update_sdk_files",
+    srcs = [
+        "intellij.py",
+        "mkspec.py",
+        "update_sdk.py",
+    ],
+)
+
+py_test(
+    name = "test_update_sdk",
+    srcs = [
+        "tests/test_update_sdk.py",
+        "tests/test_utils.py",
+    ],
+    # Executing the script standalone, pass as data not as unit test library.
+    data = [":update_sdk_files"],
+    env = {
+        "update_sdk_files": "$(locations :update_sdk_files)",
+    },
+    tags = [
+        "no_mac",
+        "no_windows",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "mkspec_files",
+    srcs = [
+        "intellij.py",
+        "mkspec.py",
+    ],
+)
+
+# Additional spec tests for downloaded IDEs
+py_test(
+    name = "test_mkspec",
+    srcs = [
+        "tests/test_mkspec.py",
+        "tests/test_utils.py",
+    ],
+    # Executing the script standalone, pass as data not as unit test library.
+    data = [":mkspec_files"],
+    env = {
+        "mkspec_files": "$(locations :mkspec_files)",
+    },
+    tags = [
+        "no_mac",
+        "no_windows",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 py_library(
     name = "utils",
     srcs = ["utils.py"],
@@ -841,7 +896,10 @@ py_binary(
 
 py_binary(
     name = "check_plugin",
-    srcs = ["check_plugin.py"],
+    srcs = [
+        "check_plugin.py",
+        "intellij.py",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -947,7 +1005,7 @@ iml_module(
         "//tools/vendor/google/url-assistant[module]",
         "//tools/vendor/google/targetsdkversion-upgrade-assistant[module]",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion[module]",
-        "//tools/vendor/google/ml/sml-android:ml.sml-android[module]",
+        "//tools/vendor/google/ml/aiplugin/android:aiplugin.android[module]",
         "//tools/adt/idea/studio:studio-sdk-all-plugins[module]",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
@@ -1045,7 +1103,7 @@ iml_studio_test(
 )
 
 exports_files(
-    ["sdk_version_test.py"],
+    ["intellij_test.py"],
     visibility = ["//visibility:public"],
 )
 
@@ -1086,7 +1144,7 @@ iml_module(
         "@intellij//:com.intellij.plugins.netbeanskeymap",
         "@intellij//:com.intellij.plugins.visualstudiokeymap",
         "@intellij//:com.intellij.properties",
-        "@intellij//:com.intellij.rml.dfa.ide",
+        "@intellij//:com.intellij.rml.dfa",
         "@intellij//:com.intellij.tasks",
         "@intellij//:com.intellij.turboComplete",
         "@intellij//:com.jetbrains.performancePlugin",

@@ -18,19 +18,18 @@ package com.android.tools.idea.layoutinspector.pipeline.appinspection
 import com.android.annotations.concurrency.Slow
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
-import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
-import com.android.tools.idea.concurrency.AndroidExecutors
-import com.android.tools.idea.layoutinspector.pipeline.adb.AbortAdbCommandRunnable
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
+import com.android.tools.idea.layoutinspector.model.NotificationModel
+import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
 import com.android.tools.idea.layoutinspector.pipeline.adb.AdbUtils
 import com.android.tools.idea.layoutinspector.pipeline.adb.executeShellCommand
-import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.project.AndroidNotification
 import com.google.common.html.HtmlEscapers
+import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import org.jetbrains.annotations.TestOnly
-import org.jetbrains.annotations.VisibleForTesting
+import com.intellij.ui.EditorNotificationPanel
 
 /**
  * Command that will be run on the device through adb shell. Used to put, delete and get the
@@ -53,9 +52,6 @@ private sealed class Command(val setting: String) {
 }
 
 private const val PER_DEVICE_SETTING = "debug_view_attributes"
-private const val PER_APP_SETTING = "debug_view_attributes_application_package"
-private val shouldUsePerDeviceSetting
-  get() = LayoutInspectorSettings.getInstance().autoConnectEnabled
 
 /**
  * Helper class that handles setting debug settings on the device via ADB.
@@ -69,34 +65,7 @@ private val shouldUsePerDeviceSetting
  * limited capacity, it can only show images and the bounds of the root views, which on its own is
  * not very useful.
  */
-class DebugViewAttributes
-@VisibleForTesting
-constructor(val usePerDeviceSettings: () -> Boolean = { shouldUsePerDeviceSetting }) {
-
-  companion object {
-    private var instance: DebugViewAttributes? = null
-
-    fun getInstance(): DebugViewAttributes {
-      if (instance == null) {
-        instance = DebugViewAttributes()
-      }
-
-      return instance!!
-    }
-
-    @TestOnly
-    fun reset() {
-      instance = null
-    }
-  }
-
-  /** The type of debug_view_attributes to be used */
-  private val setting: String
-    get() {
-      return if (usePerDeviceSettings()) PER_DEVICE_SETTING else PER_APP_SETTING
-    }
-
-  private var abortDeleteRunnable: AbortAdbCommandRunnable? = null
+object DebugViewAttributes {
 
   /**
    * Enable debug view attributes for the current process.
@@ -106,41 +75,21 @@ constructor(val usePerDeviceSettings: () -> Boolean = { shouldUsePerDeviceSettin
    * @return true if the global attributes were changed.
    */
   @Slow
-  fun set(project: Project, process: ProcessDescriptor): Boolean {
-    // flag was already set - no need to set twice
-    if (abortDeleteRunnable != null) return false
-
+  fun set(project: Project, device: DeviceDescriptor): Boolean {
     var errorMessage: String
     var settingsUpdated = false
 
-    val putValue = if (usePerDeviceSettings()) "1" else process.packageName
-    val putCommand = Command.Put(setting, putValue)
+    val putCommand = Command.Put(PER_DEVICE_SETTING, "1")
 
     try {
       val adb = AdbUtils.getAdbFuture(project).get() ?: return false
-      if (!shouldSetFlag(adb, process.device, process.name)) {
+      if (!shouldSetFlag(adb, device)) {
         return false
       }
-      errorMessage = executePut(adb, process.device, putCommand)
+      errorMessage = executePut(adb, device, putCommand)
 
       if (errorMessage.isEmpty()) {
         settingsUpdated = true
-
-        // Later, we'll try to clear the setting via `clear`, but we also register additional logic
-        // to trigger automatically
-        // (a trap command) if the user forcefully closes the connection under us (e.g. closing the
-        // emulator or
-        // pulling their USB cable).
-        abortDeleteRunnable =
-          AbortAdbCommandRunnable(
-              adb,
-              process.device,
-              // This works by spawning a subshell which hangs forever (waiting for a read that
-              // never gets satisfied)
-              // but triggers the delete request when that shell is forcefully exited.
-              "sh -c 'trap \"${Command.Delete(setting).get()}\" EXIT; read'",
-            )
-            .also { AndroidExecutors.getInstance().workerThreadExecutor.execute(it) }
       }
     } catch (ex: Exception) {
       Logger.getInstance(DebugViewAttributes::class.java).warn(ex)
@@ -164,73 +113,12 @@ constructor(val usePerDeviceSettings: () -> Boolean = { shouldUsePerDeviceSettin
     return settingsUpdated
   }
 
-  /**
-   * Disable debug view attributes for the process passed as argument, if they were previously set
-   * using this class.
-   */
-  @Slow
-  fun clear(project: Project, process: ProcessDescriptor) {
-    doClear(project, process.device, process.name)
+  private fun shouldSetFlag(adb: AndroidDebugBridge, device: DeviceDescriptor): Boolean {
+    return !isPerDeviceSettingOn(adb, device)
   }
 
   /**
-   * Disable debug view attributes for the device passed as argument, if they were previously set
-   * using this class.
-   */
-  @Slow
-  fun clear(project: Project, device: DeviceDescriptor) {
-    doClear(project, device, null)
-  }
-
-  private fun doClear(project: Project, device: DeviceDescriptor, processName: String?) {
-    // the flag was not set using this class, we should not turn it off
-    if (abortDeleteRunnable == null) return
-
-    try {
-      val adb = AdbUtils.getAdbFuture(project).get() ?: return
-      if (shouldExecuteDelete(adb, device, processName)) {
-        executeDelete(adb, device)
-      }
-    } catch (_: Exception) {} finally {
-      abortDeleteRunnable?.stop()
-      abortDeleteRunnable = null
-    }
-  }
-
-  private fun shouldSetFlag(
-    adb: AndroidDebugBridge,
-    device: DeviceDescriptor,
-    processName: String,
-  ): Boolean {
-    // never turn on the setting if the per-device setting is on.
-    if (isPerDeviceSettingOn(adb, device)) {
-      return false
-    }
-
-    if (!usePerDeviceSettings()) {
-      // don't turn on the per-app setting, if it's already on.
-      if (isPerAppSettingOn(adb, device, processName)) {
-        return false
-      }
-    }
-
-    return true
-  }
-
-  private fun shouldExecuteDelete(
-    adb: AndroidDebugBridge,
-    device: DeviceDescriptor,
-    processName: String?,
-  ): Boolean {
-    return if (usePerDeviceSettings()) {
-      isPerDeviceSettingOn(adb, device)
-    } else {
-      isPerAppSettingOn(adb, device, processName!!)
-    }
-  }
-
-  /**
-   * Turns on the [setting] flag.
+   * Turns on the flag.
    *
    * @return empty string in case of success, or error message otherwise.
    */
@@ -242,25 +130,30 @@ constructor(val usePerDeviceSettings: () -> Boolean = { shouldUsePerDeviceSettin
     return adb.executeShellCommand(device, putCommand.get())
   }
 
-  private fun executeDelete(adb: AndroidDebugBridge, device: DeviceDescriptor) {
-    adb.executeShellCommand(device, Command.Delete(setting).get())
-  }
-
-  private fun isPerAppSettingOn(
-    adb: AndroidDebugBridge,
-    device: DeviceDescriptor,
-    processName: String,
-  ): Boolean {
-    // A return value of process.name means: the debug_view_attributes are already turned on for
-    // this process.
-    val app = adb.executeShellCommand(device, Command.Get(PER_APP_SETTING).get())
-    return app == processName
-  }
-
   private fun isPerDeviceSettingOn(adb: AndroidDebugBridge, device: DeviceDescriptor): Boolean {
     // A return value of "null" or "0" means: "debug_view_attributes" is not currently turned on for
     // all processes on the device.
     return adb.executeShellCommand(device, Command.Get(PER_DEVICE_SETTING).get()) !in
       listOf("null", "0")
   }
+}
+
+private const val ACTIVITY_RESTART_KEY = "activity.restart"
+// TODO(b/330406958): update documentation
+private const val DEBUG_VIEW_ATTRIBUTES_DOCUMENTATION_URL =
+  "https://d.android.com/r/studio-ui/layout-inspector-activity-restart"
+
+/** Show a banner explaining why the activity was restarted after setting debug view attributes. */
+fun showActivityRestartedInBanner(notificationModel: NotificationModel) {
+  val learnMoreAction =
+    StatusNotificationAction(LayoutInspectorBundle.message("learn.more")) {
+      BrowserUtil.browse(DEBUG_VIEW_ATTRIBUTES_DOCUMENTATION_URL)
+    }
+
+  notificationModel.addNotification(
+    id = ACTIVITY_RESTART_KEY,
+    text = LayoutInspectorBundle.message(ACTIVITY_RESTART_KEY),
+    status = EditorNotificationPanel.Status.Info,
+    actions = listOf(learnMoreAction, notificationModel.dismissAction),
+  )
 }

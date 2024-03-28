@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.elements;
 
+import com.android.tools.idea.gradle.dsl.model.GradleBlockModelMap;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind;
@@ -380,12 +381,11 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   @NotNull
-  private static final ImmutableMap<String,PropertiesElementDescription> NO_CHILD_PROPERTIES_ELEMENTS = ImmutableMap.of();
+  private static final ImmutableMap<String,PropertiesElementDescription<?>> NO_CHILD_PROPERTIES_ELEMENTS = ImmutableMap.of();
 
   public static final class EmptyGradlePropertiesDslElementSchema extends GradlePropertiesDslElementSchema {
-    @NotNull
     @Override
-    protected ImmutableMap<String, PropertiesElementDescription> getAllBlockElementDescriptions() {
+    protected ImmutableMap<String, PropertiesElementDescription<?>> getAllBlockElementDescriptions(GradleDslNameConverter.Kind kind) {
       return NO_CHILD_PROPERTIES_ELEMENTS;
     }
 
@@ -407,9 +407,11 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
    *
    * @return a map of external names to descriptions of the corresponding properties element.
    */
-  @NotNull
-  protected ImmutableMap<String, PropertiesElementDescription> getChildPropertiesElementsDescriptionMap(GradleDslNameConverter.Kind kind) {
-    return NO_CHILD_PROPERTIES_ELEMENTS;
+  @SuppressWarnings("rawtypes")
+  public @NotNull ImmutableMap<String, PropertiesElementDescription<?>> getChildPropertiesElementsDescriptionMap(
+    GradleDslNameConverter.Kind kind
+  ) {
+    return GradleBlockModelMap.getElementMap(this.getClass(), kind);
   }
 
   /**
