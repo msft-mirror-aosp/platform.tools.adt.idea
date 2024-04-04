@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.something.psi.SomethingLiteral
 import com.android.tools.idea.gradle.something.psi.SomethingProperty
 import com.android.tools.idea.gradle.something.psi.SomethingQualified
 import com.android.tools.idea.gradle.something.psi.SomethingValue
+import com.android.tools.idea.gradle.something.psi.unescape
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.childLeafs
@@ -73,11 +74,22 @@ class PsiImplUtil {
     @JvmStatic
     fun getValue(literal: SomethingLiteral): Any? = when {
       literal.boolean != null -> literal.boolean?.text == "true"
-      literal.string != null -> literal.string?.text?.unquote()
-      literal.number != null -> literal.number?.text?.toIntOrNull()
+      literal.string != null -> literal.string?.text?.unquote()?.unescape()
+      literal.number != null -> literal.number?.text?.toIntegerOrNull()
       else -> null
     }
     private fun String.unquote() = this.removePrefix("\"").removeSuffixIfPresent("\"")
     private fun String.removeSuffixIfPresent(suffix: String) = if (this.endsWith(suffix)) this.dropLast(suffix.length) else this
+    private fun String.toIntegerOrNull(): Any? {
+      if (isEmpty()) return null
+      val longIndicator = last().lowercaseChar() == 'l'
+      if (longIndicator) return dropLast(1).replace("_", "").toLongOrNull()
+      return when (val answer = replace("_", "").toLongOrNull()) {
+        null -> null
+        in Int.MIN_VALUE..Int.MAX_VALUE -> answer.toInt()
+        else -> answer
+      }
+
+    }
   }
 }

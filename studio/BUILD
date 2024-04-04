@@ -656,13 +656,13 @@ studio_plugin(
 )
 
 studio_plugin(
-    name = "com.android.tools.studiobot",
-    directory = "studio-bot",
+    name = "com.google.tools.intellij.aiplugin",
+    directory = "gemini",
     libs = [
         "//tools/vendor/google/ml/aiplugin/core:aida_grpc",
         "//tools/vendor/google/ml/aiplugin/core:aida_proto",
         "//tools/vendor/google/ml/aiplugin/core:aida_protobuf",
-        "//tools/vendor/google/ml/aiplugin/core:studio_bot_proto",
+        "//tools/vendor/google/ml/aiplugin/core:gemini_plugin_proto",
         "//prebuilts/tools/common/m2:commonmark-0.20.0",
     ],
     modules = {
@@ -728,13 +728,13 @@ android_studio(
     platform = "@intellij//:intellij-sdk",
     plugins = [
         ":org.jetbrains.android",
-        ":com.android.tools.studiobot",
         ":com.android.tools.apk",
         ":com.android.tools.ndk",
         ":com.android.tools.design",
         ":androidx.compose.plugins.idea",
         ":com.google.services.git4insights",
         ":com.google.services.firebase",
+        ":com.google.tools.intellij.aiplugin",
         ":com.google.gct.directaccess",
         ":com.google.gct.testing",
         ":com.google.gct",

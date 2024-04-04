@@ -271,7 +271,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> NELE_XML_TO_COMPOSE = new BooleanFlag(
     NELE, "xml.to.compose", "Enable XML to Compose conversion",
-    "Enable an action that converts XML layouts to Compose using the Studio Bot backend",
+    "Enable an action that converts XML layouts to Compose using the Gemini backend",
     false);
   //endregion
 
@@ -738,6 +738,14 @@ public final class StudioFlags {
     new BooleanFlag(GRADLE_IDE, "declarative.plugin.studio.support", "Studio support for AGP declarative plugin",
                 "Enable support for gradle.build.toml in PSD and Assistants", false);
 
+  public static final Flag<Boolean> GRADLE_DECLARATIVE_SOMETHING_IDE_SUPPORT = new BooleanFlag(
+    GRADLE_IDE,
+    "gradle.declarative.ide.support",
+    "Studio support for Gradle declarative files",
+    "Enable support for gradle.build.something in Android Studio",
+    false
+  );
+
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = new BooleanFlag(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
 
@@ -1187,6 +1195,35 @@ public final class StudioFlags {
     true);
   //endregion
 
+  // region Preview Common
+  private static final FlagGroup PREVIEW_COMMON = new FlagGroup(FLAGS, "preview", "Preview");
+
+  public static final Flag<Boolean> PREVIEW_RENDER_QUALITY = new BooleanFlag(
+    PREVIEW_COMMON, "render.quality", "Enable the usage of a render quality management mechanism for Preview tools",
+    "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position",
+    true);
+
+  public static final Flag<Long> PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = new LongFlag(
+    PREVIEW_COMMON, "render.quality.debounce.time", "Render quality debounce time",
+    "Milliseconds to wait before adjusting the quality of Previews, after a scroll or zoom change happens",
+    100L);
+
+  public static final Flag<Integer> PREVIEW_RENDER_QUALITY_VISIBILITY_THRESHOLD = new IntFlag(
+    PREVIEW_COMMON, "render.quality.visibility.threshold", "Render quality zoom visibility threshold",
+    "When the zoom level is lower than this value, all previews will be rendered at low quality",
+    20);
+
+  public static final Flag<Boolean> PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME = new BooleanFlag(
+    PREVIEW_COMMON, "render.quality.notify.time", "Notify refresh time for render quality refreshes",
+    "If enabled, the time taken in render quality refreshes will be notified each time",
+    false);
+
+  public static final Flag<Boolean> PREVIEW_KEEP_IMAGE_ON_ERROR = new BooleanFlag(
+    PREVIEW_COMMON, "keep.image.on.error", "Keeps the last valid image after a render error",
+    "If enabled, when an error happens, the surface will keep the last valid image",
+    true);
+  //endregion
+
   //region Compose
   private static final FlagGroup COMPOSE = new FlagGroup(FLAGS, "compose", "Compose");
 
@@ -1312,7 +1349,9 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> PREVIEW_DYNAMIC_ZOOM_TO_FIT = new BooleanFlag(
     COMPOSE, "preview.dynamic.zoom.to.fit", "Enable dynamic Zoom to Fit in preview",
-    "If enabled, Zoom to Fit action will take into account the number of previews.", false);
+    "If enabled, Zoom to Fit action will take into account the number of previews and minimum size for each preview. " +
+    "Not applicable in organization layout.",
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = new BooleanFlag(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
@@ -1333,31 +1372,6 @@ public final class StudioFlags {
     "If enabled, Previews will be selectable, and some interactions will only be enabled for selected Previews",
     true);
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY = new BooleanFlag(
-    COMPOSE, "compose.preview.render.quality", "Enable the usage of a render quality management mechanism for Compose Preview",
-    "If enabled, different Previews will be rendered with different qualities according to zoom level, layout and scroll position",
-    true);
-
-  public static final Flag<Long> COMPOSE_PREVIEW_RENDER_QUALITY_DEBOUNCE_TIME = new LongFlag(
-    COMPOSE, "compose.preview.render.quality.debounce.time", "Render quality debounce time",
-    "Milliseconds to wait before adjusting the quality of Previews, after a scroll or zoom change happens",
-    100L);
-
-  public static final Flag<Integer> COMPOSE_PREVIEW_RENDER_QUALITY_VISIBILITY_THRESHOLD = new IntFlag(
-    COMPOSE, "compose.preview.render.quality.visibility.threshold", "Render quality zoom visibility threshold",
-    "When the zoom level is lower than this value, all previews will be rendered at low quality",
-    20);
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME = new BooleanFlag(
-    COMPOSE, "compose.preview.render.quality.notify.time", "Notify refresh time for render quality refreshes",
-    "If enabled, the time taken in render quality refreshes will be notified each time",
-    false);
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_KEEP_IMAGE_ON_ERROR = new BooleanFlag(
-    COMPOSE, "compose.preview.keep.image.on.error", "Keeps the last valid image after a render error",
-    "If enabled, when an error happens, the surface will keep the last valid image",
-    true);
-
   public static final Flag<Boolean> COMPOSE_INVALIDATE_ON_RESOURCE_CHANGE = new BooleanFlag(
     COMPOSE, "compose.preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
     "Invalidates the preview is there is a resource change",
@@ -1365,7 +1379,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> COMPOSE_GENERATE_SAMPLE_DATA = new BooleanFlag(
     COMPOSE, "generate.sample.data", "Enable sample data generation for Compose",
-    "Enable a Studio Bot context-menu action that generates sample data for a given Composable function",
+    "Enable a Gemini context-menu action that generates sample data for a given Composable function",
     false);
 
   public static final Flag<Boolean> COMPOSE_UI_CHECK_MODE = new BooleanFlag(
@@ -1415,7 +1429,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SYNTHETIC_HAL_PANEL = new BooleanFlag(
     WEAR_HEALTH_SERVICES, "synthetic.hal.panel.enabled", "Enable synthetic HAL panel",
     "If enabled, a button to display panel for modifying emulator sensors will appear",
-    ChannelDefault.enabledUpTo(CANARY)
+    false
   );
   // endregion
 
@@ -1766,14 +1780,9 @@ public final class StudioFlags {
   // endregion PRIVACY_SANDBOX_SDK
 
   // region STUDIO_BOT
-  private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Studio Bot");
+  private static final FlagGroup STUDIOBOT = new FlagGroup(FLAGS, "studiobot", "Gemini");
   public static final Flag<Boolean> STUDIOBOT_ENABLED =
-    new BooleanFlag(STUDIOBOT, "enabled", "Enable Studio Bot", "Enable Studio Bot Tool Window", true);
-
-  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_ENABLED =
-    new BooleanFlag(STUDIOBOT, "inline.code.completion.enabled", "Enable inline code completion",
-                    "When enabled, inline code completion suggestions will be shown.",
-                    true);
+    new BooleanFlag(STUDIOBOT, "enabled", "Enable Gemini", "Enable Gemini Tool Window", true);
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_CES_TELEMETRY_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.ces.telemetry.enabled",
@@ -1862,6 +1871,24 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
                     "Use ML model to suggest commit messages",
                     "Enables the \"Suggest Commit Message\" button in the Commit tool window",
+                    false);
+
+  public static final Flag<Boolean> README_GENERATION =
+    new BooleanFlag(STUDIOBOT, "readme.generation",
+                    "Use ML model to create a README",
+                    "Enables the \"Generate README\" button in the Project tool window",
+                    false);
+
+  public static final Flag<Boolean> ANALYZE_THREAD_SAFETY =
+    new BooleanFlag(STUDIOBOT, "analyze.thread.safety",
+                    "Use ML model analyze thread safety of selected files",
+                    "Enables the \"Analyze Thread Safety\" button in the Project tool window",
+                    false);
+
+  public static final Flag<Boolean> STUDIOBOT_ATTACHMENTS =
+    new BooleanFlag(STUDIOBOT, "attachments",
+                    "Enable action to add attachments",
+                    "When enabled, enables the actions to manage attachments",
                     false);
 
   // rate limits are controlled by server flags

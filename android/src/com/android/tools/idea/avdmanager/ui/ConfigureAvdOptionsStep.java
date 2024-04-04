@@ -47,6 +47,7 @@ import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.idea.avdmanager.AvdManagerConnection;
 import com.android.tools.idea.avdmanager.AvdNameVerifier;
 import com.android.tools.idea.avdmanager.EmulatorAdvFeatures;
+import com.android.tools.idea.avdmanager.SkinUtils;
 import com.android.tools.idea.avdmanager.SystemImageDescription;
 import com.android.tools.idea.avdmanager.skincombobox.SkinCollector;
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBox;
@@ -59,7 +60,6 @@ import com.android.tools.idea.observable.SettableValue;
 import com.android.tools.idea.observable.core.ObjectProperty;
 import com.android.tools.idea.observable.core.ObservableBool;
 import com.android.tools.idea.observable.core.ObservableOptional;
-import com.android.tools.idea.observable.core.OptionalProperty;
 import com.android.tools.idea.observable.expressions.string.StringExpression;
 import com.android.tools.idea.observable.ui.EnabledProperty;
 import com.android.tools.idea.observable.ui.SelectedItemProperty;
@@ -87,7 +87,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.CollectionComboBoxModel;
@@ -366,7 +365,11 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       return;
     }
 
-    Path systemImageLocation = model.systemImage().getValue().getSystemImage().getLocation();
+    SystemImageDescription sysImgDesc = model.systemImage().getValueOrNull();
+    if (sysImgDesc == null) {
+      return;
+    }
+    Path systemImageLocation = sysImgDesc.getSystemImage().getLocation();
     PathFileWrapper buildPropFile = new PathFileWrapper(systemImageLocation.resolve(FN_BUILD_PROP));
     if (!buildPropFile.exists()) {
       return;
@@ -635,7 +638,8 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
 
   private boolean shouldEnableDeviceFrameCheckbox() {
     // Enable the checkbox iff the AVD has the custom skin to use when the checkbox is turned on.
-    return !FileUtil.filesEqual(getModel().getAvdDeviceData().customSkinFile().getValueOr(AvdWizardUtils.NO_SKIN), AvdWizardUtils.NO_SKIN);
+    var skin = getModel().getAvdDeviceData().customSkinFile().get();
+    return skin.isPresent() && !skin.orElseThrow().equals(SkinUtils.noSkin());
   }
 
   @VisibleForTesting
@@ -680,15 +684,15 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     deviceProperties.add(getModel().systemImage());
     myListeners.listenAll(deviceProperties).with(() -> {
       AvdOptionsModel model = getModel();
-      OptionalProperty<File> customSkinFileProperty = model.getAvdDeviceData().customSkinFile();
+      var customSkinFileProperty = model.getAvdDeviceData().customSkinFile();
 
       ObservableOptional<SystemImageDescription> systemImageProperty = model.systemImage();
-      Optional<File> optionalCustomSkinFile = customSkinFileProperty.get();
+      var optionalCustomSkinFile = customSkinFileProperty.get();
 
       if (systemImageProperty.get().isPresent() && optionalCustomSkinFile.isPresent()) {
-        File skin = AvdWizardUtils.pathToUpdatedSkins(customSkinFileProperty.getValue().toPath(), systemImageProperty.getValue());
+        var skin = AvdWizardUtils.pathToUpdatedSkins(customSkinFileProperty.getValue(), systemImageProperty.getValue()).toPath();
         customSkinFileProperty.setValue(skin);
-        myDeviceFrameCheckbox.setSelected(!FileUtil.filesEqual(skin, AvdWizardUtils.NO_SKIN));
+        myDeviceFrameCheckbox.setSelected(!skin.equals(SkinUtils.noSkin()));
       }
 
       boolean checkBoxEnabled = shouldEnableDeviceFrameCheckbox();
@@ -738,7 +742,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       }
       mySystemImageName.setIcon(icon);
 
-      String descriptionLabel = image.getName() + " " + image.getAbiType();
+      String descriptionLabel = image.getName() + " " + image.getPrimaryAbiType();
       if (!androidVersion.isBaseExtension() && androidVersion.getExtensionLevel() != null) {
         descriptionLabel += " (Extension Level " + androidVersion.getExtensionLevel() + ")";
       }
@@ -779,6 +783,12 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
   @Nullable
   Icon getSystemImageIcon() {
     return mySystemImageName == null ? null : mySystemImageName.getIcon();
+  }
+
+  @VisibleForTesting
+  @NotNull
+  Component getAdvancedOptionsButton() {
+    return myShowAdvancedSettingsButton;
   }
 
   @NotNull
@@ -1033,11 +1043,15 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     if (StudioFlags.RISC_V.get()) {
       myBindings.bindTwoWay(new SelectedItemProperty<>(myPreferredAbi), getModel().preferredAbi());
     }
+    myBindings.bind(new EnabledProperty(myShowAdvancedSettingsButton), getModel().systemImage().isPresent());
   }
 
   // TODO: jameskaye Add unit tests for these validators. (b.android.com/230192)
   private void addValidators() {
-    myValidatorPanel.registerValidator(getModel().getAvdDeviceData().ramStorage(), new Validator<>() {
+    var model = getModel();
+    var device = model.getAvdDeviceData();
+
+    myValidatorPanel.registerValidator(device.ramStorage(), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull Storage ram) {
@@ -1047,7 +1061,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       }
     });
 
-    myValidatorPanel.registerValidator(getModel().vmHeapStorage(), new Validator<>() {
+    myValidatorPanel.registerValidator(model.vmHeapStorage(), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull Storage heap) {
@@ -1057,7 +1071,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       }
     });
 
-    myValidatorPanel.registerValidator(getModel().internalStorage(), new Validator<>() {
+    myValidatorPanel.registerValidator(model.internalStorage(), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull Storage internalMem) {
@@ -1072,7 +1086,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     });
 
     // If we're using an external SD card, make sure it exists
-    myValidatorPanel.registerValidator(getModel().externalSdCardLocation(), new Validator<>() {
+    myValidatorPanel.registerValidator(model.externalSdCardLocation(), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull String path) {
@@ -1080,10 +1094,10 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
                ? new Result(Severity.ERROR, "The specified SD image file must be a valid image file")
                : Result.OK;
       }
-    }, getModel().useExternalSdCard());
+    }, model.useExternalSdCard());
 
     // If we are using an internal SD card, make sure it has enough memory.
-    myValidatorPanel.registerValidator(getModel().sdCardStorage(), new Validator<>() {
+    myValidatorPanel.registerValidator(model.sdCardStorage(), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull Optional<Storage> value) {
@@ -1108,11 +1122,18 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       }
     });
 
-    myValidatorPanel.registerValidator(getModel().getAvdDeviceData().customSkinFile(), new CustomSkinValidator());
+    var selectedSkinLargeEnough = device.compatibleSkinSize();
+    var enableDeviceFrame = model.hasDeviceFrame();
 
-    myOriginalName = getModel().avdDisplayName().get();
+    var validator = new CustomSkinValidator.Builder()
+      .setSelectedSkinLargeEnough(selectedSkinLargeEnough)
+      .setEnableDeviceFrame(enableDeviceFrame)
+      .build();
 
-    myValidatorPanel.registerValidator(getModel().avdDisplayName(), new Validator<>() {
+    myValidatorPanel.registerValidator(device.customSkinFile(), validator, selectedSkinLargeEnough, enableDeviceFrame);
+    myOriginalName = model.avdDisplayName().get();
+
+    myValidatorPanel.registerValidator(model.avdDisplayName(), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull String value) {
@@ -1137,7 +1158,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       }
     });
 
-    myValidatorPanel.registerValidator(getModel().device().isPresent().and(getModel().systemImage().isPresent()), new Validator<>() {
+    myValidatorPanel.registerValidator(model.device().isPresent().and(model.systemImage().isPresent()), new Validator<>() {
       @NotNull
       @Override
       public Result validate(@NotNull Boolean deviceAndImageArePresent) {
@@ -1160,19 +1181,16 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
         return Result.OK;
       }
     });
-
-    myValidatorPanel.registerTest(getModel().getAvdDeviceData().compatibleSkinSize(),
-                                  Validator.Severity.WARNING, "The selected skin is not large enough to view the entire screen.");
   }
 
   @Override
   protected void onProceeding() {
     AvdOptionsModel model = getModel();
 
-    SettableValue<Optional<File>> customSkinDefinitionProperty = model.getAvdDeviceData().customSkinFile();
+    var customSkinDefinitionProperty = model.getAvdDeviceData().customSkinFile();
     SettableValue<Optional<File>> customSkinDefinitionBackupProperty = model.backupSkinFile();
 
-    Path customSkinDefinition = customSkinDefinitionProperty.get().map(File::toPath).orElse(null);
+    var customSkinDefinition = customSkinDefinitionProperty.get().orElse(null);
     Path customSkinDefinitionBackup = customSkinDefinitionBackupProperty.get().map(File::toPath).orElse(null);
 
     CustomSkinDefinitionResolver resolver = new CustomSkinDefinitionResolver(FileSystems.getDefault(),
@@ -1180,7 +1198,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
                                                                              customSkinDefinition,
                                                                              customSkinDefinitionBackup);
 
-    customSkinDefinitionProperty.set(resolver.getCustomSkinDefinition().map(Path::toFile));
+    customSkinDefinitionProperty.set(resolver.getCustomSkinDefinition());
     customSkinDefinitionBackupProperty.set(resolver.getCustomSkinDefinitionBackup().map(Path::toFile));
 
     if (getSelectedApiLevel() < 16 || model.hostGpuMode().getValueOrNull() == GpuMode.OFF) {
@@ -1311,12 +1329,6 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     myDeviceDetails.setText(result);
   }
 
-  private String getSelectedApiString() {
-    assert getModel().systemImage().get().isPresent();
-    AndroidVersion version = getModel().systemImage().getValue().getVersion();
-    return version.getApiString();
-  }
-
   private void registerAdvancedOptionsVisibility() {
     var advancedOptionsComponents =
       Lists.<JComponent>newArrayList(myStoragePanel, myCameraPanel, myNetworkPanel, myQemu2Panel, myKeyboardPanel, myCustomSkinPanel,
@@ -1363,7 +1375,7 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
 
   private boolean supportsMultipleCpuCores() {
     assert getModel().systemImage().get().isPresent();
-    Abi abi = Abi.getEnum(getModel().systemImage().getValue().getAbiType());
+    Abi abi = Abi.getEnum(getModel().systemImage().getValue().getPrimaryAbiType());
     return abi != null && abi.supportsMultipleCpuCores();
   }
 
@@ -1382,8 +1394,8 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
     myOrientationToggle.setSelectedElement(IsDevicePresent ? device.getDefaultState().getOrientation() : ScreenOrientation.PORTRAIT);
 
     toggleOrientationPanel();
-    File customSkin = getModel().getAvdDeviceData().customSkinFile().getValueOrNull();
-    File backupSkin = getModel().backupSkinFile().getValueOrNull();
+    var customSkin = getModel().getAvdDeviceData().customSkinFile().get().orElse(null);
+    var backupSkin = getModel().backupSkinFile().get().map(File::toPath).orElse(null);
     // If there is a backup skin but no normal skin, the "use device frame" checkbox should be unchecked.
     if (backupSkin != null && customSkin == null) {
       getModel().hasDeviceFrame().set(false);
@@ -1404,8 +1416,8 @@ public class ConfigureAvdOptionsStep extends ModelWizardStep<AvdOptionsModel> {
       if (backupSkin != null) {
         customSkin = backupSkin;
       }
-      else {
-        customSkin = hardwareSkin;
+      else if (hardwareSkin != null) {
+        customSkin = hardwareSkin.toPath();
       }
     }
 

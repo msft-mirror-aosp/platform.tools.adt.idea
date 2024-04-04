@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -189,88 +190,93 @@ private fun StorageGroup(
   storageGroupState: StorageGroupState,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
-  GroupHeader("Storage")
+  GroupHeader("Storage", Modifier.padding(bottom = Padding.MEDIUM))
 
-  Row {
-    Text("Internal storage")
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    Text("Internal storage", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
     StorageCapacityField(
       device.internalStorage,
       onValueChange = { onDeviceChange(device.copy(internalStorage = it)) },
+      Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+    )
+
+    InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+  }
+
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    Text("Expanded storage", Modifier.padding(end = Padding.MEDIUM))
+    InfoOutlineIcon()
+  }
+
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    RadioButtonRow(
+      RadioButton.CUSTOM,
+      storageGroupState.selectedRadioButton,
+      onClick = {
+        storageGroupState.selectedRadioButton = RadioButton.CUSTOM
+
+        val custom = storageGroupState.custom.withMaxUnit()
+        onDeviceChange(device.copy(expandedStorage = Custom(custom)))
+      },
+      Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("CustomRadioButton"),
+    )
+
+    StorageCapacityField(
+      storageGroupState.custom,
+      onValueChange = {
+        storageGroupState.custom = it
+        onDeviceChange(device.copy(expandedStorage = Custom(it.withMaxUnit())))
+      },
+      Modifier.alignByBaseline(),
+      storageGroupState.selectedRadioButton == RadioButton.CUSTOM,
     )
   }
 
-  Row {
-    Text("Expanded storage")
-
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
     val existingImageFieldState = storageGroupState.existingImageFieldState
     val fileSystem = LocalFileSystem.current
 
-    Column {
-      RadioButtonRow(
-        RadioButton.CUSTOM,
-        storageGroupState.selectedRadioButton,
-        onClick = {
-          storageGroupState.selectedRadioButton = RadioButton.CUSTOM
+    RadioButtonRow(
+      RadioButton.EXISTING_IMAGE,
+      storageGroupState.selectedRadioButton,
+      onClick = {
+        storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE
 
-          val custom = storageGroupState.custom.withMaxUnit()
-          onDeviceChange(device.copy(expandedStorage = Custom(custom)))
-        },
-        Modifier.testTag("CustomRadioButton"),
-      )
+        if (existingImageFieldState.valid) {
+          val image = fileSystem.getPath(existingImageFieldState.value)
+          onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
+        }
+      },
+      Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("ExistingImageRadioButton"),
+    )
 
-      RadioButtonRow(
-        RadioButton.EXISTING_IMAGE,
-        storageGroupState.selectedRadioButton,
-        onClick = {
-          storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE
+    ExistingImageField(
+      existingImageFieldState,
+      storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE,
+      onStateChange = {
+        storageGroupState.existingImageFieldState = it
 
-          if (existingImageFieldState.valid) {
-            val image = fileSystem.getPath(existingImageFieldState.value)
-            onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
-          }
-        },
-        Modifier.testTag("ExistingImageRadioButton"),
-      )
+        if (it.valid) {
+          val image = fileSystem.getPath(it.value)
+          onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
+        }
 
-      RadioButtonRow(
-        RadioButton.NONE,
-        storageGroupState.selectedRadioButton,
-        onClick = {
-          storageGroupState.selectedRadioButton = RadioButton.NONE
-          onDeviceChange(device.copy(expandedStorage = None))
-        },
-      )
-    }
-
-    Column {
-      Row {
-        StorageCapacityField(
-          storageGroupState.custom,
-          onValueChange = {
-            storageGroupState.custom = it
-            onDeviceChange(device.copy(expandedStorage = Custom(it.withMaxUnit())))
-          },
-          storageGroupState.selectedRadioButton == RadioButton.CUSTOM,
-        )
-      }
-
-      ExistingImageField(
-        existingImageFieldState,
-        storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE,
-        onStateChange = {
-          storageGroupState.existingImageFieldState = it
-
-          if (it.valid) {
-            val image = fileSystem.getPath(it.value)
-            onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
-          }
-
-          // TODO Else image is not valid. Disable the Add button.
-        },
-      )
-    }
+        // TODO Else image is not valid. Disable the Add button.
+      },
+      Modifier.alignByBaseline(),
+    )
   }
+
+  RadioButtonRow(
+    RadioButton.NONE,
+    storageGroupState.selectedRadioButton,
+    onClick = {
+      storageGroupState.selectedRadioButton = RadioButton.NONE
+      onDeviceChange(device.copy(expandedStorage = None))
+    },
+    Modifier.padding(bottom = Padding.LARGE),
+  )
 }
 
 @Composable
@@ -288,41 +294,44 @@ private fun ExistingImageField(
   state: ExistingImageFieldState,
   enabled: Boolean,
   onStateChange: (ExistingImageFieldState) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-  if (enabled && !state.valid) {
-    Text("The specified image must be a valid file")
+  Column(modifier) {
+    if (enabled && !state.valid) {
+      Text("The specified image must be a valid file")
+    }
+
+    val fileSystem = LocalFileSystem.current
+    @OptIn(ExperimentalJewelApi::class) val component = LocalComponent.current
+    val project = LocalProject.current
+
+    TextField(
+      state.value,
+      onValueChange = {
+        onStateChange(ExistingImageFieldState(it, Files.isRegularFile(fileSystem.getPath(it))))
+      },
+      Modifier.testTag("ExistingImageField"),
+      enabled,
+      trailingIcon = {
+        Icon(
+          "general/openDisk.svg",
+          null,
+          AllIcons::class.java,
+          Modifier.clickable(
+              enabled,
+              onClick = {
+                val image = chooseFile(component, project)
+
+                if (image != null) {
+                  onStateChange(ExistingImageFieldState(image.toString(), true))
+                }
+              },
+            )
+            .pointerHoverIcon(PointerIcon.Default),
+        )
+      },
+    )
   }
-
-  val fileSystem = LocalFileSystem.current
-  @OptIn(ExperimentalJewelApi::class) val component = LocalComponent.current
-  val project = LocalProject.current
-
-  TextField(
-    state.value,
-    onValueChange = {
-      onStateChange(ExistingImageFieldState(it, Files.isRegularFile(fileSystem.getPath(it))))
-    },
-    Modifier.testTag("ExistingImageField"),
-    enabled,
-    trailingIcon = {
-      Icon(
-        "general/openDisk.svg",
-        null,
-        AllIcons::class.java,
-        Modifier.clickable(
-            enabled,
-            onClick = {
-              val image = chooseFile(component, project)
-
-              if (image != null) {
-                onStateChange(ExistingImageFieldState(image.toString(), true))
-              }
-            },
-          )
-          .pointerHoverIcon(PointerIcon.Default),
-      )
-    },
-  )
 }
 
 private fun chooseFile(parent: Component, project: Project?): Path? {
@@ -350,23 +359,29 @@ private fun EmulatedPerformanceGroup(
   device: VirtualDevice,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
-  GroupHeader("Emulated Performance")
+  GroupHeader("Emulated Performance", Modifier.padding(bottom = Padding.MEDIUM))
 
-  CheckboxRow(
-    "Enable multithreading",
-    device.cpuCoreCount != null,
-    onCheckedChange = {
-      val count = if (it) EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES else null
-      onDeviceChange(device.copy(cpuCoreCount = count))
-    },
-  )
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    CheckboxRow(
+      "Enable multithreading",
+      device.cpuCoreCount != null,
+      onCheckedChange = {
+        val count = if (it) EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES else null
+        onDeviceChange(device.copy(cpuCoreCount = count))
+      },
+      Modifier.padding(end = Padding.MEDIUM),
+    )
 
-  Row {
-    Text("CPU cores")
+    InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+  }
+
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    Text("CPU cores", Modifier.alignByBaseline().padding(end = Padding.SMALL))
     val cpuCoreCount = device.cpuCoreCount ?: 1
 
     Dropdown(
-      enabled = device.cpuCoreCount != null,
+      Modifier.alignByBaseline(),
+      device.cpuCoreCount != null,
       menuContent = {
         for (count in 1..max(1, Runtime.getRuntime().availableProcessors() / 2)) {
           selectableItem(
@@ -382,32 +397,39 @@ private fun EmulatedPerformanceGroup(
     }
   }
 
-  Row {
-    Text("Graphic acceleration")
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    Text("Graphic acceleration", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
     Dropdown(
       device.graphicAcceleration,
       GRAPHIC_ACCELERATION_ITEMS,
       onSelectedItemChange = { onDeviceChange(device.copy(graphicAcceleration = it)) },
+      Modifier.alignByBaseline(),
     )
   }
 
-  Row {
-    Text("Simulated RAM")
+  Row(Modifier.padding(bottom = Padding.MEDIUM)) {
+    Text("Simulated RAM", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
     StorageCapacityField(
       device.simulatedRam,
       onValueChange = { onDeviceChange(device.copy(simulatedRam = it)) },
+      Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
     )
+
+    InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
   }
 
   Row {
-    Text("VM heap size")
+    Text("VM heap size", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
     StorageCapacityField(
       device.vmHeapSize,
       onValueChange = { onDeviceChange(device.copy(vmHeapSize = it)) },
+      Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
     )
+
+    InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
   }
 }
 

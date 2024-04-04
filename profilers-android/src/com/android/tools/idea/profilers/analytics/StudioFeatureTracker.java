@@ -230,8 +230,7 @@ public final class StudioFeatureTracker implements FeatureTracker {
       ProfilerTaskType.UNSPECIFIED, TaskMetadata.ProfilerTaskType.PROFILER_TASK_TYPE_UNSPECIFIED,
       ProfilerTaskType.CALLSTACK_SAMPLE, TaskMetadata.ProfilerTaskType.CALLSTACK_SAMPLE,
       ProfilerTaskType.SYSTEM_TRACE, TaskMetadata.ProfilerTaskType.SYSTEM_TRACE,
-      ProfilerTaskType.JAVA_KOTLIN_METHOD_TRACE, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_METHOD_TRACE,
-      ProfilerTaskType.JAVA_KOTLIN_METHOD_SAMPLE, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_METHOD_SAMPLE,
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING,
       ProfilerTaskType.HEAP_DUMP, TaskMetadata.ProfilerTaskType.HEAP_DUMP,
       ProfilerTaskType.NATIVE_ALLOCATIONS, TaskMetadata.ProfilerTaskType.NATIVE_ALLOCATIONS,
       ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, TaskMetadata.ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
@@ -777,39 +776,30 @@ public final class StudioFeatureTracker implements FeatureTracker {
     newTracker(AndroidProfilerEvent.Type.TASK_SETTINGS_OPENED).setIsTaskSettingsChanged(isTaskSettingsChanged).track();
   }
 
-  private TaskMetadata.TaskConfig buildCustomTaskConfig(ProfilerTaskType taskType, @NotNull List<ProfilingConfiguration> taskConfigs) {
+  private TaskMetadata.TaskConfig buildCustomTaskConfig(@NotNull ProfilingConfiguration taskConfig) {
     TaskMetadata.TaskConfig.Builder taskConfigBuilder = TaskMetadata.TaskConfig.newBuilder();
 
-    switch (taskType) {
-      case CALLSTACK_SAMPLE -> taskConfigs.stream()
-        .filter(SimpleperfConfiguration.class::isInstance)
-        .map(SimpleperfConfiguration.class::cast)
-        .findFirst()
-        .ifPresent(config -> taskConfigBuilder.setCallstackSampleTaskConfig(
-          TaskMetadata.CallstackSampleTaskConfig.newBuilder().setSampleIntervalUs(config.getProfilingSamplingIntervalUs()).build()));
-      case JAVA_KOTLIN_METHOD_TRACE -> taskConfigs.stream()
-        .filter(ArtInstrumentedConfiguration.class::isInstance)
-        .map(ArtInstrumentedConfiguration.class::cast)
-        .findFirst()
-        .ifPresent(config -> taskConfigBuilder.setJavaKotlinMethodTraceTaskConfig(
-          TaskMetadata.JavaKotlinMethodTraceTaskConfig.newBuilder().setBufferSizeMb(config.getProfilingBufferSizeInMb())));
-      case JAVA_KOTLIN_METHOD_SAMPLE -> taskConfigs.stream()
-        .filter(ArtSampledConfiguration.class::isInstance)
-        .map(ArtSampledConfiguration.class::cast)
-        .findFirst()
-        .ifPresent(config -> {
-          taskConfigBuilder.setJavaKotlinMethodSampleTaskConfig(
-            TaskMetadata.JavaKotlinMethodSampleTaskConfig.newBuilder().setSampleIntervalUs(config.getProfilingSamplingIntervalUs())
-              .setBufferSizeMb(config.getProfilingBufferSizeInMb()).build());
-        });
-      case NATIVE_ALLOCATIONS -> taskConfigs.stream()
-        .filter(PerfettoNativeAllocationsConfiguration.class::isInstance)
-        .map(PerfettoNativeAllocationsConfiguration.class::cast)
-        .findFirst()
-        .ifPresent(config -> taskConfigBuilder.setNativeAllocationsTaskConfig(
-          TaskMetadata.NativeAllocationsTaskConfig.newBuilder().setSampleIntervalBytes(config.getMemorySamplingIntervalBytes()).build()));
-      // Return null to indicate that there was no found task configuration.
-      default -> { return null; }
+    if (taskConfig instanceof SimpleperfConfiguration) {
+      int profilingSamplingIntervalUs = ((SimpleperfConfiguration)taskConfig).getProfilingSamplingIntervalUs();
+      taskConfigBuilder.setCallstackSampleTaskConfig(
+        TaskMetadata.CallstackSampleTaskConfig.newBuilder().setSampleIntervalUs(profilingSamplingIntervalUs).build());
+    }
+    else if (taskConfig instanceof ArtSampledConfiguration) {
+      int profilingSamplingIntervalUs = ((ArtSampledConfiguration)taskConfig).getProfilingSamplingIntervalUs();
+      int profilingBufferSizeInMb = ((ArtSampledConfiguration)taskConfig).getProfilingBufferSizeInMb();
+      taskConfigBuilder.setJavaKotlinMethodSampleTaskConfig(
+        TaskMetadata.JavaKotlinMethodSampleTaskConfig.newBuilder().setSampleIntervalUs(profilingSamplingIntervalUs)
+          .setBufferSizeMb(profilingBufferSizeInMb).build());
+    }
+    else if (taskConfig instanceof ArtInstrumentedConfiguration) {
+      int profilingBufferSizeInMb = ((ArtInstrumentedConfiguration)taskConfig).getProfilingBufferSizeInMb();
+      taskConfigBuilder.setJavaKotlinMethodTraceTaskConfig(
+        TaskMetadata.JavaKotlinMethodTraceTaskConfig.newBuilder().setBufferSizeMb(profilingBufferSizeInMb).build());
+    }
+    else if (taskConfig instanceof PerfettoNativeAllocationsConfiguration) {
+      int memorySamplingIntervalBytes = ((PerfettoNativeAllocationsConfiguration)taskConfig).getMemorySamplingIntervalBytes();
+      taskConfigBuilder.setNativeAllocationsTaskConfig(
+        TaskMetadata.NativeAllocationsTaskConfig.newBuilder().setSampleIntervalBytes(memorySamplingIntervalBytes).build());
     }
 
     return taskConfigBuilder.build();
@@ -825,12 +815,11 @@ public final class StudioFeatureTracker implements FeatureTracker {
       .setTaskAttachmentPoint(TASK_ATTACHMENT_POINT_MAP.getOrDefault(taskMetadata.getTaskAttachmentPoint(),
                                                                      TaskMetadata.TaskAttachmentPoint.TASK_ATTACHMENT_POINT_UNSPECIFIED));
 
-    // Only set/include the task configurations if the task was newly created/recorded.
-    if (taskMetadata.getTaskDataOrigin().equals(TaskDataOrigin.NEW)) {
-      TaskMetadata.TaskConfig taskConfig = buildCustomTaskConfig(taskMetadata.getTaskType(), taskMetadata.getTaskConfigs());
-      if (taskConfig != null) {
-        taskMetadataBuilder.setTaskConfig(taskConfig);
-      }
+    // Not all tasks have a task configuration. For those that do, however, it will be indicated by a non-null task config value and be set
+    // in the TaskMetadata.
+    if (taskMetadata.getTaskConfig() != null) {
+      TaskMetadata.TaskConfig taskConfig = buildCustomTaskConfig(taskMetadata.getTaskConfig());
+      taskMetadataBuilder.setTaskConfig(taskConfig);
     }
 
     return taskMetadataBuilder.build();
@@ -874,31 +863,45 @@ public final class StudioFeatureTracker implements FeatureTracker {
     newTracker(AndroidProfilerEvent.Type.TASK_FAILED).setTaskFailedMetadata(taskMetadataBuilder.build()).track();
   }
 
-  private TaskFailedMetadata.TaskProcessingFailedMetadata buildStatsTaskProcessingFailedMetadata(TaskProcessingFailedMetadata metadata) {
-    return TaskFailedMetadata.TaskProcessingFailedMetadata.newBuilder()
-      .setCpuCaptureMetadata(CpuCaptureParser.getCpuCaptureMetadata(metadata.getCpuCaptureMetadata())).build();
+  TaskFailedMetadata.TaskProcessingFailedMetadata buildStatsTaskProcessingFailedMetadata(TaskProcessingFailedMetadata metadata) {
+    TaskFailedMetadata.TaskProcessingFailedMetadata.Builder result = TaskFailedMetadata.TaskProcessingFailedMetadata.newBuilder();
+    if (metadata.getCpuCaptureMetadata() != null) {
+      result.setCpuCaptureMetadata(CpuCaptureParser.getCpuCaptureMetadata(metadata.getCpuCaptureMetadata()));
+    }
+    return result.build();
   }
 
-  private TaskFailedMetadata.TaskStopFailedMetadata buildStatsTaskStopFailedMetadata(TaskStopFailedMetadata metadata) {
-    return TaskFailedMetadata.TaskStopFailedMetadata.newBuilder()
-      .setCpuCaptureMetadata(CpuCaptureParser.getCpuCaptureMetadata(metadata.getCpuCaptureMetadata()))
-      .setTraceStopStatus(Companion.getTaskFailedTraceStopStatus(metadata.getTraceStopStatus()))
-      .setTrackStatus(Companion.getTaskFailedAllocationTrackStatus(metadata.getAllocationTrackStatus()))
-      .build();
+  TaskFailedMetadata.TaskStopFailedMetadata buildStatsTaskStopFailedMetadata(TaskStopFailedMetadata metadata) {
+    TaskFailedMetadata.TaskStopFailedMetadata.Builder result = TaskFailedMetadata.TaskStopFailedMetadata.newBuilder();
+    if (metadata.getCpuCaptureMetadata() != null) {
+      result.setCpuCaptureMetadata(CpuCaptureParser.getCpuCaptureMetadata(metadata.getCpuCaptureMetadata()));
+    }
+    else if (metadata.getTraceStopStatus() != null) {
+      result.setTraceStopStatus(Companion.getTaskFailedTraceStopStatus(metadata.getTraceStopStatus()));
+    }
+    else if (metadata.getAllocationTrackStatus() != null) {
+      result.setTrackStatus(Companion.getTaskFailedAllocationTrackStatus(metadata.getAllocationTrackStatus()));
+    }
+    return result.build();
   }
 
-  private TaskFailedMetadata.TaskStartFailedMetadata buildStatsTaskStartFailedMetadata(TaskStartFailedMetadata metadata) {
-    return TaskFailedMetadata.TaskStartFailedMetadata.newBuilder()
-      .setTraceStartStatus(Companion.getTaskFailedTraceStartStatus(metadata.getTraceStartStatus()))
-      .setTrackStatus(Companion.getTaskFailedAllocationTrackStatus(metadata.getAllocationTrackStatus()))
-      .setHeapDumpStartStatus(Companion.getTaskFailedHeapDumpStatus(metadata.getHeapDumpStatus()))
-      .build();
+  TaskFailedMetadata.TaskStartFailedMetadata buildStatsTaskStartFailedMetadata(TaskStartFailedMetadata metadata) {
+    TaskFailedMetadata.TaskStartFailedMetadata.Builder result = TaskFailedMetadata.TaskStartFailedMetadata.newBuilder();
+    if (metadata.getTraceStartStatus() != null) {
+      result.setTraceStartStatus(Companion.getTaskFailedTraceStartStatus(metadata.getTraceStartStatus()));
+    }
+    else if (metadata.getAllocationTrackStatus() != null) {
+      result.setTrackStatus(Companion.getTaskFailedAllocationTrackStatus(metadata.getAllocationTrackStatus()));
+    }
+    else if (metadata.getHeapDumpStatus() != null) {
+      result.setHeapDumpStartStatus(Companion.getTaskFailedHeapDumpStatus(metadata.getHeapDumpStatus()));
+    }
+    return result.build();
   }
 
   private TaskFailedMetadata.Builder getTaskFailedMetadata(com.android.tools.profilers.tasks.@NotNull TaskMetadata taskMetadata,
                                                            FailingPoint failingPoint) {
-    return TaskFailedMetadata.newBuilder()
-      .setTaskData(buildStatsTaskMetadata(taskMetadata))
+    return TaskFailedMetadata.newBuilder().setTaskData(buildStatsTaskMetadata(taskMetadata))
       .setFailingPoint(Objects.requireNonNull(TASK_FAILED_STATE_MAP.getOrDefault(failingPoint, FailingPoint.FAILING_POINT_UNSPECIFIED)));
   }
 

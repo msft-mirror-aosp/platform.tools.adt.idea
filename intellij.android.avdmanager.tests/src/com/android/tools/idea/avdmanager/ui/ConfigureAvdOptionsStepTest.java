@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.emulator.snapshot.SnapshotOuterClass;
@@ -42,6 +43,7 @@ import com.android.sdklib.repository.meta.DetailsTypes;
 import com.android.sdklib.repository.targets.SystemImageManager;
 import com.android.testutils.NoErrorsOrWarningsLogger;
 import com.android.testutils.file.InMemoryFileSystems;
+import com.android.tools.idea.avdmanager.SystemImageDescription;
 import com.android.tools.idea.avdmanager.skincombobox.Skin;
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBox;
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBoxModel;
@@ -99,6 +101,7 @@ public final class ConfigureAvdOptionsStepTest {
   private AvdInfo myPreviewAvdInfo;
   private AvdInfo myZuluAvdInfo;
   private AvdInfo myExtensionsAvdInfo;
+  private AvdInfo myNoSystemImageAvdInfo;
 
   @Before
   public void setUp() {
@@ -112,7 +115,7 @@ public final class ConfigureAvdOptionsStepTest {
     DetailsTypes.SysImgDetailsType detailsQ =
       AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType();
     detailsQ.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
-    detailsQ.setAbi("x86");
+    detailsQ.getAbis().add("x86");
     detailsQ.setApiLevel(29);
     pkgQ.setTypeDetails((TypeDetails)detailsQ);
     InMemoryFileSystems.recordExistingFile(pkgQ.getLocation().resolve(SystemImageManager.SYS_IMG_NAME));
@@ -123,7 +126,7 @@ public final class ConfigureAvdOptionsStepTest {
     DetailsTypes.SysImgDetailsType detailsMarshmallow =
       AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType();
     detailsMarshmallow.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
-    detailsMarshmallow.setAbi("x86");
+    detailsMarshmallow.getAbis().add("x86");
     detailsMarshmallow.setApiLevel(23);
     pkgMarshmallow.setTypeDetails((TypeDetails)detailsMarshmallow);
     InMemoryFileSystems.recordExistingFile(pkgMarshmallow.getLocation().resolve(SystemImageManager.SYS_IMG_NAME));
@@ -134,7 +137,7 @@ public final class ConfigureAvdOptionsStepTest {
     DetailsTypes.SysImgDetailsType detailsPreview =
       AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType();
     detailsPreview.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
-    detailsPreview.setAbi("x86");
+    detailsPreview.getAbis().add("x86");
     detailsPreview.setApiLevel(99);
     detailsPreview.setCodename("Z"); // Setting a code name is the key!
     pkgPreview.setTypeDetails((TypeDetails)detailsPreview);
@@ -147,7 +150,7 @@ public final class ConfigureAvdOptionsStepTest {
     DetailsTypes.SysImgDetailsType detailsZulu =
       AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType();
     detailsZulu.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
-    detailsZulu.setAbi("x86");
+    detailsZulu.getAbis().add("x86");
     detailsZulu.setApiLevel(99);
     pkgZulu.setTypeDetails((TypeDetails)detailsZulu);
     InMemoryFileSystems.recordExistingFile(pkgZulu.getLocation().resolve(SystemImageManager.SYS_IMG_NAME));
@@ -158,7 +161,7 @@ public final class ConfigureAvdOptionsStepTest {
     DetailsTypes.SysImgDetailsType detailsExtensions =
       AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType();
     detailsExtensions.getTags().add(IdDisplay.create("google_apis", "Google APIs"));
-    detailsExtensions.setAbi("x86");
+    detailsExtensions.getAbis().add("x86");
     detailsExtensions.setApiLevel(32);
     detailsExtensions.setExtensionLevel(3);
     detailsExtensions.setBaseExtension(false);
@@ -196,6 +199,7 @@ public final class ConfigureAvdOptionsStepTest {
     myPreviewAvdInfo = new AvdInfo("name", ini, folder, NPreviewImage, myPropertiesMap);
     myZuluAvdInfo = new AvdInfo("name", ini, folder, ZuluImage, myPropertiesMap);
     myExtensionsAvdInfo = new AvdInfo("name", ini, folder, extensionsImage, myPropertiesMap);
+    myNoSystemImageAvdInfo = new AvdInfo("No Sysimg", ini, folder, null, myPropertiesMap, AvdInfo.AvdStatus.ERROR_IMAGE_MISSING);
 
     BatchInvoker.setOverrideStrategy(BatchInvoker.INVOKE_IMMEDIATELY_STRATEGY);
   }
@@ -392,6 +396,31 @@ public final class ConfigureAvdOptionsStepTest {
     Disposer.register(myRule.getTestRootDisposable(), optionsStep);
     optionsStep.updateSystemImageData();
     assertEquals("Android 12L x86 (Extension Level 3)", optionsStep.getSystemImageDetailsText());
+  }
+
+
+  @Test
+  public void nullSystemImage() {
+    AvdOptionsModel optionsModel = new AvdOptionsModel(myNoSystemImageAvdInfo);
+
+    var optionsStep = new ConfigureAvdOptionsStep(myRule.getProject(), optionsModel, newSkinComboBox());
+    optionsModel.device().setNullableValue(myFoldable);
+    Disposer.register(myRule.getTestRootDisposable(), new ModelWizard.Builder(optionsStep).build());
+    Disposer.register(myRule.getTestRootDisposable(), optionsStep);
+
+    optionsStep.updateSystemImageData();
+    Icon icon = optionsStep.getSystemImageIcon();
+    assertNull(icon);
+
+    assertThat(optionsStep.canGoForward().get()).isFalse();
+    assertThat(optionsStep.getAdvancedOptionsButton().isEnabled()).isFalse();
+    optionsModel.systemImage().setValue(new SystemImageDescription(mySnapshotSystemImage));
+    optionsStep.updateSystemImageData();
+
+    icon = optionsStep.getSystemImageIcon();
+    assertNotNull(icon);
+    assertThat(optionsStep.getAdvancedOptionsButton().isEnabled()).isTrue();
+    assertThat(optionsStep.canGoForward().get()).isTrue();
   }
 
   @Test

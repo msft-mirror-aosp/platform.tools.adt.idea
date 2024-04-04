@@ -9,7 +9,7 @@ IntelliJ's progress is a tool for controlling long-running operations. This may 
 cancelled when e.g. a dialog or the whole project is closed.
 * Running a long operation on the UI thread (with the write lock held), while still pumping AWT messages from time to time.
 
-Start by reading the [official docs](https://www.jetbrains.org/intellij/sdk/docs/basics/architectural_overview/general_threading_rules.html#background-processes-and-processcanceledexception)
+Start by reading the [official docs](https://plugins.jetbrains.com/docs/intellij/general-threading-rules.html)
 on the subject, see below for more in-depth details.
 
 ## Progress Indicator
@@ -19,7 +19,7 @@ the task and whoever started it to exchange information. A task should generally
 caller to pick the right indicator and run tasks using it.
 
 The task should call `checkCancelled()` from time to time, which will throw a
-[`ProcessCancelledException`](../../../../idea/platform/util/src/com/intellij/openapi/progress/ProcessCanceledException.java) if the task
+[`ProcessCanceledException`](../../../../idea/platform/util/src/com/intellij/openapi/progress/ProcessCanceledException.java) if the task
 has indeed been cancelled. `ProcessCanceledException` is not considered a crash by the IDE, so you don't have to catch it and should avoid
 wrapping it in `RuntimeException`, `ExecutionException` or `UncheckedExecutionException`. If you do catch it, finish what you're doing
 quickly and avoid running for a long time after your task has been cancelled.

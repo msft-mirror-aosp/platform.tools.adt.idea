@@ -39,19 +39,31 @@ class SomethingPsiFactory(private val project: Project) {
   private inline fun <reified T : PsiElement> PsiElement.descendantOfType(): T? =
     PsiTreeUtil.findChildOfType(this, T::class.java, false)
 
+  fun createLiteralFromText(value: String): SomethingLiteral =
+    createFromText("placeholder = $value") ?: error("Failed to create Something literal from text \"$value\"")
+
   fun createLiteral(value: Any?): SomethingLiteral =
-    when(value){
+    when(value) {
       is String -> createStringLiteral(value)
       is Int -> createIntLiteral(value)
+      is Long -> createLongLiteral(value)
       is Boolean -> createBooleanLiteral(value)
       else -> error("Failed to create Something literal with type ${value?.javaClass ?: "null"}")
     }
 
   fun createStringLiteral(value: String): SomethingLiteral =
-    createFromText("placeholder = \"$value\"") ?: error("Failed to create Something string from $value")
+    createFromText("placeholder = \"${value.escape()}\"") ?: error("Failed to create Something string from $value")
 
   fun createIntLiteral(value: Int): SomethingLiteral =
     createFromText("placeholder = $value") ?: error("Failed to create Something Int from $value")
+
+  fun createLongLiteral(value: Long): SomethingLiteral {
+    val text = when (value) {
+      in Int.MIN_VALUE..Int.MAX_VALUE -> "${value}L"
+      else -> "$value"
+    }
+    return createFromText("placeholder = $text") ?: error("Failed to create Something Long from $value")
+  }
 
   fun createBooleanLiteral(value: Boolean): SomethingLiteral =
     createFromText("placeholder = $value") ?: error("Failed to create Something Boolean from $value")

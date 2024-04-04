@@ -45,6 +45,7 @@ class PromptBuilderTest : BasePlatformTestCase() {
     ApplicationManager.getApplication()
       .replaceService(StudioBot::class.java, mockStudioBot, testRootDisposable)
     whenever(mockStudioBot.aiExcludeService()).thenReturn(mockAiExcludeService)
+    whenever(mockStudioBot.isContextAllowed(project)).thenReturn(true)
   }
 
   @Test
@@ -52,27 +53,26 @@ class PromptBuilderTest : BasePlatformTestCase() {
     val prompt =
       buildPrompt(project) {
         systemMessage {
-          text("You are Studio Bot, an AI assistant for Android Studio.", emptyList())
+          text("You are Gemini, an AI assistant for Android Studio.", emptyList())
         }
-        userMessage { text("Hello Studio Bot!", emptyList()) }
+        userMessage { text("Hello Gemini!", emptyList()) }
         modelMessage { text("Hello! How are you?", emptyList()) }
         userMessage { text("I am doing well, how about you?", emptyList()) }
       }
     assertThat(prompt)
       .isEqualTo(
         PromptImpl(
-          project,
           listOf(
             Prompt.SystemMessage(
               listOf(
                 Prompt.Message.TextChunk(
-                  "You are Studio Bot, an AI assistant for Android Studio.",
+                  "You are Gemini, an AI assistant for Android Studio.",
                   emptyList(),
                 )
               )
             ),
             Prompt.UserMessage(
-              listOf(Prompt.Message.TextChunk("Hello Studio Bot!", emptyList()))
+              listOf(Prompt.Message.TextChunk("Hello Gemini!", emptyList()))
             ),
             Prompt.ModelMessage(
               listOf(Prompt.Message.TextChunk("Hello! How are you?", emptyList()))
@@ -144,7 +144,6 @@ class PromptBuilderTest : BasePlatformTestCase() {
     assertThat(prompt)
       .isEqualTo(
         PromptImpl(
-          project,
           listOf(
             Prompt.UserMessage(
               listOf(Prompt.Message.TextChunk("Write some Kotlin code.", emptyList()))
@@ -251,8 +250,8 @@ class PromptBuilderTest : BasePlatformTestCase() {
   fun buildPrompt_withLastPrompt_addsToPrompt() {
     val basePrompt =
       buildPrompt(project) {
-        systemMessage { text("You are Studio Bot", emptyList()) }
-        userMessage { text("Hello Studio Bot!", emptyList()) }
+        systemMessage { text("You are Gemini", emptyList()) }
+        userMessage { text("Hello Gemini!", emptyList()) }
         modelMessage { text("Hello! How are you?", emptyList()) }
       }
     val prompt = buildPrompt(project, basePrompt) {
@@ -261,13 +260,12 @@ class PromptBuilderTest : BasePlatformTestCase() {
     assertThat(prompt)
       .isEqualTo(
         PromptImpl(
-          project,
           listOf(
             Prompt.SystemMessage(
-              listOf(Prompt.Message.TextChunk("You are Studio Bot", emptyList()))
+              listOf(Prompt.Message.TextChunk("You are Gemini", emptyList()))
             ),
             Prompt.UserMessage(
-              listOf(Prompt.Message.TextChunk("Hello Studio Bot!", emptyList()))
+              listOf(Prompt.Message.TextChunk("Hello Gemini!", emptyList()))
             ),
             Prompt.ModelMessage(
               listOf(Prompt.Message.TextChunk("Hello! How are you?", emptyList()))
@@ -278,5 +276,29 @@ class PromptBuilderTest : BasePlatformTestCase() {
           ),
         )
       )
+  }
+
+  @Test
+  fun buildPrompt_enforcesContextSharingSettingIfFilesUsed() {
+    whenever(mockStudioBot.isContextAllowed(project)).thenReturn(false)
+    val file = myFixture.addFileToProject("MyFile.kt", "").virtualFile
+    try {
+      buildPrompt(project) { userMessage { text("Hello", listOf(file)) } }
+      fail("Expected an IllegalStateException")
+    } catch (e: IllegalStateException) {
+      assertThat(e.message)
+        .isEqualTo(
+          "User has not enabled context sharing. This setting must be checked before building a prompt that used any files as context."
+        )
+    }
+    whenever(mockStudioBot.isContextAllowed(project)).thenReturn(true)
+  }
+
+  @Test
+  fun buildPrompt_filesOkWhenContextAllowed() {
+    whenever(mockStudioBot.isContextAllowed(project)).thenReturn(true)
+    val file = myFixture.addFileToProject("MyFile.kt", "").virtualFile
+    buildPrompt(project) { userMessage { text("Hello", listOf(file)) } }
+    whenever(mockStudioBot.isContextAllowed(project)).thenReturn(false)
   }
 }

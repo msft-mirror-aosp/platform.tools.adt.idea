@@ -176,14 +176,15 @@ public class SystemImageList extends JPanel implements ListSelectionListener {
   private static boolean isBetter(@NotNull SystemImageDescription image, @Nullable SystemImageDescription bestSoFar) {
     return bestSoFar == null || 0 < ComparisonChain.start()
       .compareTrueFirst(image.isRemote(), bestSoFar.isRemote())
-      .compare(abiRank(image), abiRank(bestSoFar))
+      .compareTrueFirst(image.getVersion().isPreview(), bestSoFar.getVersion().isPreview())
       .compare(image.getVersion(), bestSoFar.getVersion())
       .compareFalseFirst(image.hasGoogleApis(), bestSoFar.hasGoogleApis())
+      .compare(abiRank(image), abiRank(bestSoFar))
       .result();
   }
 
   private static int abiRank(@NotNull SystemImageDescription image) {
-    Abi abi = Abi.getEnum(image.getAbiType());
+    Abi abi = Abi.getEnum(image.getPrimaryAbiType());
     if (abi != null && DEFAULT_ABI_SORT_ORDER.containsKey(abi)) {
       return DEFAULT_ABI_SORT_ORDER.get(abi);
     }

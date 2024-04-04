@@ -340,16 +340,20 @@
     <facetType implementation="com.android.tools.idea.apk.ApkFacetType"/>
     <fileTemplateGroup implementation="org.jetbrains.android.AndroidFileTemplateProvider"/>
     <completion.contributor language="JAVA"
-                            id="AndroidJavaCompletionContributor"
-                            implementationClass="org.jetbrains.android.AndroidJavaCompletionContributor"
+                            id="JavaAndroidDeprecationPresentationCompletionContributor"
+                            implementationClass="org.jetbrains.android.completion.AndroidDeprecationPresentationCompletionContributor"
                             order="first"/>
     <completion.contributor language="kotlin"
-                            id="ResourceCompletionContributor"
-                            implementationClass="com.android.tools.idea.res.completion.ResourceCompletionContributor"
-                            order="first" />
+                            id="KotlinAndroidDeprecationPresentationCompletionContributor"
+                            implementationClass="org.jetbrains.android.completion.AndroidDeprecationPresentationCompletionContributor"
+                            order="first"/>
+    <completion.contributor language="kotlin"
+                            id="KotlinResourceCompletionContributor"
+                            implementationClass="com.android.tools.idea.res.completion.KotlinResourceCompletionContributor"
+                            order="first, before KotlinCompletionContributor" />
     <completion.contributor language="JAVA"
-                            id="ResourceCompletionContributor"
-                            implementationClass="com.android.tools.idea.res.completion.ResourceCompletionContributor"
+                            id="JavaResourceCompletionContributor"
+                            implementationClass="com.android.tools.idea.res.completion.JavaResourceCompletionContributor"
                             order="first" />
     <completion.contributor language="JAVA"
                             implementationClass="org.jetbrains.android.inspections.ResourceTypeCompletionContributor"
@@ -359,16 +363,16 @@
                             implementationClass="com.android.tools.idea.run.AndroidActivityAliasCompletionContributor"
                             order="first"/>
     <completion.contributor language="kotlin"
-                            implementationClass="org.jetbrains.android.AndroidNonTransitiveRClassKotlinCompletionContributor"
+                            implementationClass="org.jetbrains.android.completion.AndroidNonTransitiveRClassKotlinCompletionContributor"
                             order="first, after KotlinCompletionContributor"/>
     <completion.contributor language="kotlin"
                             implementationClass="com.android.tools.idea.lang.typedef.KotlinTypeDefCompletionContributor"
                             order="first, before KotlinCompletionContributor"/>
     <completion.contributor language="JAVA"
                             implementationClass="com.android.tools.idea.lang.typedef.JavaTypeDefCompletionContributor"
-                            order="first, before AndroidJavaCompletionContributor"/>
+                            order="first, before AndroidJavaPrivateResourceCompletionContributor"/>
     <completion.contributor language="JAVA"
-                            implementationClass="org.jetbrains.android.AndroidNonTransitiveRClassJavaCompletionContributor"
+                            implementationClass="org.jetbrains.android.completion.AndroidNonTransitiveRClassJavaCompletionContributor"
                             order="last, before javaLegacy"/>
 
     <renamePsiElementProcessor implementation="org.jetbrains.android.refactoring.renaming.ResourceReferenceRenameProcessor" order="first"/>

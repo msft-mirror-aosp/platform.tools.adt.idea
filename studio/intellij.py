@@ -1,11 +1,12 @@
 """A module containing a representation of an intellij IDE installation."""
 
-import zipfile
+from dataclasses import dataclass, field
 import json
-import xml.etree.ElementTree as ET
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
+import zipfile
 
 LINUX = "linux"
 WIN = "windows"
@@ -13,44 +14,48 @@ MAC = "darwin"
 MAC_ARM = "darwin_aarch64"
 
 _idea_home = {
-  LINUX: "",
-  WIN: "",
-  MAC: "/Contents",
-  MAC_ARM: "/Contents",
+    LINUX: "",
+    WIN: "",
+    MAC: "/Contents",
+    MAC_ARM: "/Contents",
 }
 
 _idea_resources = {
-  LINUX: "",
-  WIN: "",
-  MAC: "/Contents/Resources",
-  MAC_ARM: "/Contents/Resources",
+    LINUX: "",
+    WIN: "",
+    MAC: "/Contents/Resources",
+    MAC_ARM: "/Contents/Resources",
 }
 
-# TODO(b/265207847) Use dataclasses to remove boilerplate methods
-class IntelliJ:
 
-  def __init__(self, major, minor, platform_jars = [], plugin_jars = {}):
-    self.major = major
-    self.minor = minor
-    self.platform_jars = platform_jars
-    self.plugin_jars = plugin_jars
+@dataclass(frozen=True)
+class IntelliJ:
+  major: str
+  minor: str
+  platform: str = ""
+  platform_jars: set[str] = field(default_factory=lambda: set())
+  plugin_jars: dict[str, set[str]] = field(default_factory=lambda: dict())
 
   def version(self):
     return self.major, self.minor
 
-  def create(platform, path):
-    product_info = read_product_info(path + _idea_resources[platform] + "/product-info.json")
+  def create(platform: str, path: str):
+    product_info = read_product_info(
+        path + _idea_resources[platform] + "/product-info.json"
+    )
     prefix = _read_platform_prefix(product_info)
     major, minor = read_version(path + _idea_home[platform] + "/lib", prefix)
     jars = read_platform_jars(product_info)
     plugin_jars = _read_plugin_jars(path + _idea_home[platform])
-    return IntelliJ(major, minor, jars, plugin_jars)
+    return IntelliJ(major, minor, platform_jars=jars, plugin_jars=plugin_jars)
+
 
 def read_product_info(path):
   with open(path) as f:
     return json.load(f)
 
-def read_version(lib_dir, prefix):
+
+def read_version(lib_dir: str, prefix: str) -> (str, str):
   contents = None
   for resources_jar in os.listdir(lib_dir):
     if resources_jar.endswith(".jar"):
@@ -67,11 +72,13 @@ def read_version(lib_dir, prefix):
   minor = m.group(2)
   return major, minor
 
+
 def read_platform_jars(product_info):
   # Extract the runtime classpath from product-info.json.
   launch_config = product_info["launch"][0]
   jars = ["/lib/" + jar for jar in launch_config["bootClassPathJarNames"]]
   return set(jars)
+
 
 def _read_platform_prefix(product_info):
   launch_config = product_info["launch"][0]
@@ -79,7 +86,9 @@ def _read_platform_prefix(product_info):
     m = re.search("-Didea.platform.prefix=(.*)", define)
     if m:
       return m.group(1)
-  sys.exit("Failed to find platform prefix")
+  # IJ ultimate has a platform prefix if "", so it's not added here. If not found assume it's empty.
+  return ""
+
 
 def _read_zip_entry(zip_path, entry):
   with zipfile.ZipFile(zip_path) as zip:
@@ -88,29 +97,50 @@ def _read_zip_entry(zip_path, entry):
     data = zip.read(entry)
   return data.decode("utf-8")
 
+
 def _read_plugin_id(path):
   files = []
   for jar in os.listdir(path + "/lib"):
     if jar.endswith(".jar"):
       files.append(os.path.join(path + "/lib", jar))
   xml = load_plugin_xml(files, [])
-  for id in xml.findall("id"):
-    return id.text
 
-  sys.exit("Failed to find plugin id in " + path)
+  # The id of a plugin is defined as the id tag and if missing, the name tag.
+  ids = xml.findall("id")
+  if len(ids) > 1:
+    sys.exit("Too many plugin ids found in plugin: " + path)
+  if len(ids) == 1:
+    return ids[0].text
+  names = xml.findall("name")
+  if len(names) > 1:
+    sys.exit("Too many plugin names found (for plugin without id): " + path)
+  if len(names) == 1:
+    return names[0].text
+  sys.exit("Cannot find plugin id or name tag for plugin: " + path)
+
 
 def _read_plugin_jars(idea_home):
   plugins = {}
-  for plugin in os.listdir(idea_home + "/plugins"):
+  plugin_names = (
+      os.listdir(idea_home + "/plugins")
+      if os.path.exists(idea_home + "/plugins")
+      else []
+  )
+  for plugin in plugin_names:
     plugin_path = idea_home + "/plugins/" + plugin
     if not os.path.isdir(plugin_path):
       continue
     plugin_id = _read_plugin_id(plugin_path)
     path = "/plugins/" + plugin + "/lib/"
-    jars = [path + jar for jar in os.listdir(idea_home + path) if jar.endswith(".jar")]
+    jars = [
+        path + jar
+        for jar in os.listdir(idea_home + path)
+        if jar.endswith(".jar")
+    ]
     plugins[plugin_id] = set(jars)
 
   return plugins
+
 
 def _load_include(include, external_xmls, cwd, index):
   href = include.get("href")
@@ -126,7 +156,10 @@ def _load_include(include, external_xmls, cwd, index):
       print("only xpointers of the form xpointer(xpath) are supported")
       sys.exit(1)
     xpath = m.group(1)
-  is_optional = any(child.tag == "{http://www.w3.org/2001/XInclude}fallback" for child in include)
+  is_optional = any(
+      child.tag == "{http://www.w3.org/2001/XInclude}fallback"
+      for child in include
+  )
 
   rel = href
   if rel not in index:
@@ -134,7 +167,7 @@ def _load_include(include, external_xmls, cwd, index):
 
   if rel in external_xmls or is_optional:
     return [], None
-  new_cwd = rel[0:rel.rindex("/")] if "/" in rel else ""
+  new_cwd = rel[0 : rel.rindex("/")] if "/" in rel else ""
 
   if rel not in index:
     print("Cannot find file to include %s" % href)
@@ -164,10 +197,13 @@ def _load_include(include, external_xmls, cwd, index):
 
 
 def _resolve_includes(elem, external_xmls, cwd, index):
-  """ Resolves xincludes in the given xml element. By replacing xinclude tags like
+  """Resolves xincludes in the given xml element.
+
+  By replacing xinclude tags like
 
   <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
-    <xi:include href="/META-INF/android-plugin.xml" xpointer="xpointer(/idea-plugin/*)"/>
+    <xi:include href="/META-INF/android-plugin.xml"
+    xpointer="xpointer(/idea-plugin/*)"/>
     ...
 
   with the xml pointed by href and the xpath given in xpointer.
@@ -186,7 +222,7 @@ def _resolve_includes(elem, external_xmls, cwd, index):
         for node in nodes[:-1]:
           elem.insert(i, node)
           i = i + 1
-        node = nodes[len(nodes)-1]
+        node = nodes[len(nodes) - 1]
         if e.tail:
           node.tail = (node.tail or "") + e.tail
         elem[i] = node
@@ -212,7 +248,9 @@ def load_plugin_xml(files, external_xmls):
 
   if len(xmls) != 1:
     msg = "\n".join(xmls.keys())
-    print("Plugin should have exactly one plugin.xml file (found %d)" % len(xmls))
+    print(
+        "Plugin should have exactly one plugin.xml file (found %d)" % len(xmls)
+    )
     print(msg)
     sys.exit(1)
 

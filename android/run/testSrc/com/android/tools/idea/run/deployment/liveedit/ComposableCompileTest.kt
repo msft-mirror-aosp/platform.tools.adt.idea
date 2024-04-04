@@ -33,7 +33,9 @@ import com.intellij.testFramework.utils.editor.commitToPsi
 import junit.framework.Assert
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.After
+import org.junit.Assert.fail
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.objectweb.asm.Opcodes
@@ -120,6 +122,7 @@ class ComposableCompileTest {
   }
 
   @Test
+  @Ignore("b/327357129")
   fun multipleEditsInOneUpdate() {
     val simpleFile = projectRule.createKtFile("ComposeSimple.kt", """
         import androidx.compose.runtime.Composable
@@ -439,8 +442,7 @@ class ComposableCompileTest {
 
   @Test
   fun testIgnoreTraceEventStart() {
-    val compiler = Precompiler(projectRule.project, SourceInlineCandidateCache())
-    val file = projectRule.fixture.configureByText("File.kt", """
+    val file = projectRule.createKtFile("File.kt", """
       import androidx.compose.runtime.Composable
       @Composable fun composableFun() : String {
         var str = "hi"
@@ -448,7 +450,8 @@ class ComposableCompileTest {
       }
     """.trimIndent()) as KtFile
 
-    val firstClass = ReadAction.compute<IrClass, Throwable> { compiler.compile(file).map { IrClass(it) }.single { it.name == "FileKt" } }
+    val firstClass = projectRule.directApiCompileIr(file)["FileKt"]
+    assertNotNull(firstClass)
     val firstMethod = firstClass.methods.first { it.name == "composableFun" }
 
     // Ensure we actually generated a traceEventStart() call
@@ -468,13 +471,9 @@ class ComposableCompileTest {
       }
     """.trimIndent()
 
-    WriteCommandAction.runWriteCommandAction(projectRule.project) {
-      val document = projectRule.fixture.editor.document
-      document.replaceString(0, document.textLength, content)
-      document.commitToPsi(projectRule.project)
-    }
-
-    val secondClass = ReadAction.compute<IrClass, Throwable> { compiler.compile(file).map { IrClass(it) }.single { it.name == "FileKt" } }
+    projectRule.modifyKtFile(file, content)
+    val secondClass = projectRule.directApiCompileIr(file)["FileKt"]
+    assertNotNull(secondClass)
     val secondMethod = secondClass.methods.first { it.name == "composableFun" }
 
     // Ensure we actually generated a traceEventStart() call

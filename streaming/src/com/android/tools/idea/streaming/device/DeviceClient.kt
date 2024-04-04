@@ -92,6 +92,7 @@ internal const val AGENT_VIDEO_ENCODER_INITIALIZATION_ERROR = 31
 internal const val AGENT_VIDEO_ENCODER_CONFIGURATION_ERROR = 32
 internal const val AGENT_WEAK_VIDEO_ENCODER = 33
 internal const val AGENT_REPEATED_VIDEO_ENCODER_ERRORS = 34
+internal const val AGENT_VIDEO_ENCODER_START_ERROR = 35
 internal const val AGENT_VIRTUAL_DISPLAY_CREATION_ERROR = 50
 internal const val AGENT_INPUT_SURFACE_CREATION_ERROR = 51
 internal const val AGENT_SERVICE_NOT_FOUND = 52
@@ -687,10 +688,7 @@ internal class DeviceClient(
     }
 
     fun setMaxVideoResolution(requester: Any, maxOutputSize: Dimension) {
-      if (requestedVideoResolutions.put(requester, maxOutputSize) == null) {
-        requestedVideoResolutions.remove(requester)
-      }
-      else {
+      if (requestedVideoResolutions.replace(requester, maxOutputSize) != null) {
         sendUpdatedVideoSize()
       }
     }

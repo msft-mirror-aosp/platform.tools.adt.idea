@@ -22,7 +22,7 @@ import com.android.tools.idea.sqlite.model.ExportDialogParams
 import com.android.tools.idea.sqlite.model.ExportDialogParams.ExportDatabaseDialogParams
 import com.android.tools.idea.sqlite.model.ExportDialogParams.ExportTableDialogParams
 import com.android.tools.idea.sqlite.model.SqliteColumn
-import com.android.tools.idea.sqlite.model.SqliteDatabaseId
+import com.android.tools.idea.sqlite.model.SqliteDatabaseId.LiveSqliteDatabaseId
 import com.android.tools.idea.sqlite.model.SqliteSchema
 import com.android.tools.idea.sqlite.model.SqliteTable
 import com.google.wireless.android.sdk.stats.AppInspectionEvent.DatabaseInspectorEvent.ExportDialogOpenedEvent.Origin
@@ -64,7 +64,14 @@ import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 
+private val LIVE_DB_ICON = StudioIcons.DatabaseInspector.DATABASE
+private val LIVE_DB_CLOSED_ICON = StudioIcons.DatabaseInspector.DATABASE_UNAVAILABLE
+// TODO(b/332320281): Replace with a proper icon
+private val LIVE_DB_FORCED_ICON = StudioIcons.DeviceExplorer.DATABASE_FOLDER
+private val FILE_DB_ICON = StudioIcons.DatabaseInspector.DATABASE_OFFLINE
+
 class LeftPanelView(private val mainView: DatabaseInspectorViewImpl) {
+  private var isForceOpen = false
   private val rootPanel = JPanel(BorderLayout())
   private val tree = Tree()
 
@@ -98,7 +105,6 @@ class LeftPanelView(private val mainView: DatabaseInspectorViewImpl) {
     } else {
       keepConnectionsOpenButton.icon = StudioIcons.DatabaseInspector.ALLOW_DATABASES_TO_CLOSE
     }
-
     keepConnectionsOpenButton.disabledIcon =
       IconLoader.getDisabledIcon(keepConnectionsOpenButton.icon)
   }
@@ -138,7 +144,7 @@ class LeftPanelView(private val mainView: DatabaseInspectorViewImpl) {
 
     refreshSchemaButton.isEnabled = true
     runSqlButton.isEnabled = true
-    keepConnectionsOpenButton.isEnabled = hasLiveDatabases()
+    keepConnectionsOpenButton.isEnabled = hasLiveDatabases() && !isForceOpen
   }
 
   // TODO(b/149920358) handle error by recreating the view.
@@ -451,13 +457,17 @@ class LeftPanelView(private val mainView: DatabaseInspectorViewImpl) {
       .children()
       .asSequence()
       .map { (it as DefaultMutableTreeNode).userObject as ViewDatabase }
-      .filter { it.databaseId is SqliteDatabaseId.LiveSqliteDatabaseId }
+      .filter { it.databaseId is LiveSqliteDatabaseId }
       .toList()
       .isNotEmpty()
   }
 
   fun setRefreshButtonState(state: Boolean) {
     refreshSchemaButton.isEnabled = state
+  }
+
+  fun setForceOpen(forceOpen: Boolean) {
+    this.isForceOpen = forceOpen
   }
 
   private class SchemaTreeCellRenderer : ColoredTreeCellRenderer() {
@@ -477,19 +487,22 @@ class LeftPanelView(private val mainView: DatabaseInspectorViewImpl) {
       if (value is DefaultMutableTreeNode) {
         when (val userObject = value.userObject) {
           is ViewDatabase -> {
-            append(userObject.databaseId.name)
+            val databaseId = userObject.databaseId
+            append(databaseId.name)
             if (userObject.isOpen) {
-              icon =
-                if (userObject.databaseId is SqliteDatabaseId.LiveSqliteDatabaseId) {
-                  StudioIcons.DatabaseInspector.DATABASE
-                } else {
-                  StudioIcons.DatabaseInspector.DATABASE_OFFLINE
+              when {
+                databaseId !is LiveSqliteDatabaseId -> icon = FILE_DB_ICON
+                databaseId.isForced -> {
+                  icon = LIVE_DB_FORCED_ICON
+                  append(" (non-native)", colorTextAttributes)
                 }
+                else -> icon = LIVE_DB_ICON
+              }
             } else {
               append(" (closed)", colorTextAttributes)
-              icon = StudioIcons.DatabaseInspector.DATABASE_UNAVAILABLE
+              icon = LIVE_DB_CLOSED_ICON
             }
-            toolTipText = userObject.databaseId.path
+            toolTipText = databaseId.path
           }
           is SqliteTable -> {
             icon =
