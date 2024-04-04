@@ -204,7 +204,7 @@ class NShotXmlToComposeConverterTest {
     val nShotXmlToComposeConverter = NShotXmlToComposeConverter.Builder(projectRule.project).build()
     val response = runBlocking { nShotXmlToComposeConverter.convertToCompose(simpleXmlLayout()) }
     assertEquals(
-      "Please follow the Studio Bot onboarding and enable context sharing if you want to use " +
+      "Please follow the Gemini onboarding and enable context sharing if you want to use " +
         "this feature.",
       response,
     )
