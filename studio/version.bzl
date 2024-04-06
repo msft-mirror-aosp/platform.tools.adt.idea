@@ -2,6 +2,6 @@
 visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//tools/vendor/google/aswb"])
 
 STUDIO_CODENAME = "Jellyfish"
-STUDIO_VERSION = "RC"
-STUDIO_MICRO_PATCH = "1.17"
-STUDIO_RELEASE_NUMBER = 2
+STUDIO_VERSION = "Stable"
+STUDIO_MICRO_PATCH = "1.18"
+STUDIO_RELEASE_NUMBER = 1
