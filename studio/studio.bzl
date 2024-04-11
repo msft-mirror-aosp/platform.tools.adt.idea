@@ -1,11 +1,11 @@
-load("//tools/base/bazel:bazel.bzl", "ImlModuleInfo", "iml_test")
-load("//tools/base/bazel:merge_archives.bzl", "run_singlejar")
-load("//tools/base/bazel:functions.bzl", "create_option_file")
-load("//tools/base/bazel:utils.bzl", "dir_archive", "is_release")
-load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
-load("//tools/base/bazel:expand_template.bzl", "expand_template_ex")
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "AppIconInfo", "replace_app_icon")
+load("//tools/base/bazel:bazel.bzl", "ImlModuleInfo", "iml_test")
+load("//tools/base/bazel:expand_template.bzl", "expand_template_ex")
+load("//tools/base/bazel:functions.bzl", "create_option_file")
+load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
+load("//tools/base/bazel:merge_archives.bzl", "run_singlejar")
+load("//tools/base/bazel:utils.bzl", "dir_archive", "is_release")
 
 PluginInfo = provider(
     doc = "Info for IntelliJ plugins, including those built by the studio_plugin rule",
@@ -806,38 +806,77 @@ def _android_studio_os(ctx, platform, out):
 
     attrs = _get_external_attributes(all_files)
     _lnzipper(ctx, out.basename, all_files.items(), out, attrs = attrs, keep_symlink = platform == MAC_ARM)
+    return all_files
+
+def _experimental_runner(ctx, name, target_to_file, out):
+    files = []
+    expected = []
+    for target, src in target_to_file.items():
+        dst = ctx.actions.declare_file(name + "/" + target)
+        files.append(dst)
+        expected.append(target)
+        ctx.actions.run_shell(
+            inputs = [src],
+            outputs = [dst],
+            command = "cp -f \"$1\" \"$2\"",
+            arguments = [src.path, dst.path],
+            mnemonic = "CopyFile",
+            progress_message = "Copying files",
+            use_default_shell_env = True,
+        )
+
+    file_list = ctx.actions.declare_file(name + "/files.lst")
+    ctx.actions.write(file_list, "\n".join(expected))
+    files.append(file_list)
+
+    # Creating runfiles would work, but we have files with spaces, and to avoid having all the needed
+    # files as ouputs of the list, we set them as sources of the final script.
+    ctx.actions.run_shell(
+        inputs = [ctx.file._studio_launcher] + files,
+        outputs = [out],
+        command = "cp -f \"$1\" \"$2\"",
+        arguments = [ctx.file._studio_launcher.path, out.path],
+        mnemonic = "CopyFile",
+        progress_message = "Copying files",
+        use_default_shell_env = True,
+    )
 
 script_template = """\
     #!/bin/bash
-    args=$@
     options=
     tmp_dir=$(mktemp -d -t android-studio-XXXXXXXXXX)
     if [ "$1" == "--debug" ]; then
         options="$tmp_dir/.debug.vmoptions"
 	echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005" > "$options"
-        args=${{@:2}}
+	shift
     elif [[ "$1" == "--wrapper_script_flag=--debug="* ]]; then
         debug_option="$1"
         options="$tmp_dir/.debug.vmoptions"
 	echo "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=${{debug_option##--wrapper_script_flag=--debug=}}" > "$options"
-	args=${{@:2}}
+	shift
+    fi
+
+    config_base_dir="$HOME/.studio_dev"
+    if [[ "$1" == "--config_base_dir="* ]]; then
+	config_base_dir="${{1##--config_base_dir=}}"
+	shift
     fi
 
     unzip -q "{zip_file}" -d "$tmp_dir"
-    mkdir -p "{config_base_dir}/.config"
-    mkdir -p "{config_base_dir}/.plugins"
-    mkdir -p "{config_base_dir}/.system"
-    mkdir -p "{config_base_dir}/.log"
-    echo "idea.config.path={config_base_dir}/.config" >> "$tmp_dir/.properties"
-    echo "idea.plugins.path={config_base_dir}/.plugins" >> "$tmp_dir/.properties"
-    echo "idea.system.path={config_base_dir}/.system" >> "$tmp_dir/.properties"
-    echo "idea.log.path={config_base_dir}/.log" >> "$tmp_dir/.properties"
+    mkdir -p "$config_base_dir/.config"
+    mkdir -p "$config_base_dir/.plugins"
+    mkdir -p "$config_base_dir/.system"
+    mkdir -p "$config_base_dir/.log"
+    echo "idea.config.path=$config_base_dir/.config" >> "$tmp_dir/.properties"
+    echo "idea.plugins.path=$config_base_dir/.plugins" >> "$tmp_dir/.properties"
+    echo "idea.system.path=$config_base_dir/.system" >> "$tmp_dir/.properties"
+    echo "idea.log.path=$config_base_dir/.log" >> "$tmp_dir/.properties"
     properties="$tmp_dir/.properties"
 
     if [ -z "$options" ]; then
         STUDIO_PROPERTIES="$properties" {command} $args
     else
-        STUDIO_VM_OPTIONS="$options" STUDIO_PROPERTIES="$properties" {command} $args
+        STUDIO_VM_OPTIONS="$options" STUDIO_PROPERTIES="$properties" {command} $@
     fi
 """
 
@@ -853,40 +892,53 @@ def _android_studio_impl(ctx):
         MAC_ARM: ctx.outputs.mac_arm,
         WIN: ctx.outputs.win,
     }
+    all_files = {}
     for (platform, output) in outputs.items():
-        _android_studio_os(ctx, platform, output)
+        all_files[platform] = _android_studio_os(ctx, platform, output)
 
     _produce_update_message_html(ctx)
 
     host_platform = platform_by_name[ctx.attr.host_platform_name]
+    if ctx.attr.experimental_runner:
+        script = ctx.actions.declare_file("%s/%s.py" % (ctx.attr.name, ctx.attr.name))
+        _experimental_runner(
+            ctx,
+            ctx.attr.name,
+            all_files[host_platform],
+            script,
+        )
+        default_files = depset([script, ctx.outputs.manifest, ctx.outputs.update_message])
+        default_runfiles = None
+    else:
+        script = ctx.actions.declare_file("%s-run" % ctx.label.name)
+        script_content = script_template.format(
+            zip_file = outputs[host_platform].short_path,
+            command = {
+                LINUX: "$tmp_dir/android-studio/bin/studio.sh",
+                MAC: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC) + "\"",
+                MAC_ARM: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC_ARM) + "\"",
+                WIN: "$tmp_dir/android-studio/bin/studio64",
+            }[host_platform],
+        )
+        ctx.actions.write(script, script_content, is_executable = True)
+        runfiles = ctx.runfiles(files = [outputs[host_platform]])
 
-    script = ctx.actions.declare_file("%s-run" % ctx.label.name)
-    script_content = script_template.format(
-        zip_file = outputs[host_platform].short_path,
-        config_base_dir = ctx.attr.config_base_dir,
-        command = {
-            LINUX: "$tmp_dir/android-studio/bin/studio.sh",
-            MAC: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC) + "\"",
-            MAC_ARM: "open \"$tmp_dir/" + _android_studio_prefix(ctx, MAC_ARM) + "\"",
-            WIN: "$tmp_dir/android-studio/bin/studio64",
-        }[host_platform],
-    )
-    ctx.actions.write(script, script_content, is_executable = True)
-    runfiles = ctx.runfiles(files = [outputs[host_platform]])
+        default_files = depset([ctx.outputs.linux, ctx.outputs.mac, ctx.outputs.mac_arm, ctx.outputs.win, ctx.outputs.manifest, ctx.outputs.update_message])
+        default_runfiles = runfiles
 
     # Leave everything that is not the main zips as implicit outputs
     return DefaultInfo(
         executable = script,
-        files = depset([ctx.outputs.linux, ctx.outputs.mac, ctx.outputs.mac_arm, ctx.outputs.win, ctx.outputs.manifest, ctx.outputs.update_message]),
-        runfiles = runfiles,
+        files = default_files,
+        runfiles = default_runfiles,
     )
 
 _android_studio = rule(
     attrs = {
-        "config_base_dir": attr.string(),
         "host_platform_name": attr.string(),
         "codesign_entitlements": attr.label(allow_single_file = True),
         "compress": attr.bool(),
+        "experimental_runner": attr.bool(default = False),
         "files_linux": attr.label_keyed_string_dict(allow_files = True, default = {}),
         "files_mac": attr.label_keyed_string_dict(allow_files = True, default = {}),
         "files_mac_arm": attr.label_keyed_string_dict(allow_files = True, default = {}),
@@ -946,6 +998,10 @@ _android_studio = rule(
             default = Label("//tools/adt/idea/studio/rules:update_resources_jar"),
             cfg = "exec",
             executable = True,
+        ),
+        "_studio_launcher": attr.label(
+            allow_single_file = True,
+            default = Label("//tools/adt/idea/studio:studio.py"),
         ),
     },
     outputs = {
@@ -1007,11 +1063,9 @@ _android_studio = rule(
 # before patch 12. In such a case, the release_number would be 3.
 def android_studio(
         name,
-        config_base_dir = "~/.studio_dev",
         **kwargs):
     _android_studio(
         name = name,
-        config_base_dir = config_base_dir,
         compress = is_release(),
         host_platform_name = select({
             "@platforms//os:linux": LINUX.name,

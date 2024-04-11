@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.adddevicedialog.localavd
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import kotlinx.collections.immutable.ImmutableCollection
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -26,6 +28,18 @@ internal fun DevicePanel(
   images: ImmutableCollection<SystemImage>,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
-  Text("Name")
-  TextField(device.name, { onDeviceChange(device.copy(name = it)) })
+  Text("Name", Modifier.padding(bottom = Padding.SMALL))
+
+  TextField(
+    device.name,
+    onValueChange = { onDeviceChange(device.copy(name = it)) },
+    Modifier.padding(bottom = Padding.MEDIUM_LARGE),
+  )
+
+  Text("Select System Image", Modifier.padding(bottom = Padding.SMALL_MEDIUM))
+
+  Text(
+    "Available system images are displayed based on the service and ABI configuration",
+    Modifier.padding(bottom = Padding.SMALL_MEDIUM),
+  )
 }

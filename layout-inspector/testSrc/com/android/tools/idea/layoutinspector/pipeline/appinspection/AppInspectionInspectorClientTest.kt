@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.appinspection
 
+import com.android.adblib.DeviceSelector
 import com.android.fakeadbserver.DeviceState
 import com.android.repository.Revision
 import com.android.repository.api.LocalPackage
@@ -546,40 +547,17 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testPerDeviceViewDebugAttributesSetAndNotReset() {
-    inspectorRule.attachDevice(MODERN_DEVICE)
-    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-
-    // Imitate that the adb server was killed.
-    // We expect the ViewDebugAttributes to be cleared anyway since a new adb bridge should be
-    // created.
-    inspectorRule.adbService.killServer()
-
-    // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
-    // way to wait for the disconnect to
-    // happen on a background thread
-    inspectorRule.launcher.disconnectActiveClient()
-    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-    // No other attributes were modified
-    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(1)
-  }
-
-  @Test
   fun testPerDeviceViewDebugAttributesUntouchedIfAlreadySet() {
-    inspectorRule.adbProperties.debugViewAttributes = "1"
+    setUpAdbForDebugViewAttributes(
+      MODERN_PROCESS.device.serial,
+      debugViewAttributesPreviouslyEnabled = true,
+    )
 
     inspectorRule.attachDevice(MODERN_DEVICE)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
-    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
-
-    // Disconnect directly instead of calling fireDisconnected - otherwise, we don't have an easy
-    // way to wait for the disconnect to
-    // happen on a background thread
-    inspectorRule.launcher.disconnectActiveClient()
-    assertThat(inspectorRule.adbProperties.debugViewAttributesChangesCount).isEqualTo(0)
-    assertThat(inspectorRule.adbProperties.debugViewAttributes).isEqualTo("1")
+    assertThat(inspectionRule.adbSession.deviceServices.shellV2Requests.size).isEqualTo(1)
+    assertThat(inspectionRule.adbSession.deviceServices.shellV2Requests.poll().command)
+      .isEqualTo("settings get global debug_view_attributes")
   }
 
   @Test
@@ -596,6 +574,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun inspectorFiresErrorOnErrorEvent() = runBlocking {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     val startFetchError = "Failed to start fetching or whatever"
 
     inspectionRule.viewInspector.listenWhen({ it.hasStartFetchCommand() }) {
@@ -620,6 +600,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun composeClientShowsMessageIfOlderComposeUiLibrary() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     inspectionRule.composeInspector.createResponseStatus =
       AppInspection.CreateInspectorResponse.Status.VERSION_INCOMPATIBLE
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
@@ -637,6 +619,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun composeClientShowsMessageIfProguardedComposeUiLibrary() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     inspectionRule.composeInspector.createResponseStatus =
       AppInspection.CreateInspectorResponse.Status.APP_PROGUARDED
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
@@ -649,6 +633,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun composeClientShowsMessageIfLibraryVersionNotFound() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     inspectionRule.composeInspector.createResponseStatus =
       AppInspection.CreateInspectorResponse.Status.VERSION_MISSING
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
@@ -896,6 +882,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun errorShownOnConnectException() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     inspectorClientSettings.inLiveMode = true
     inspectionRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
       com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol.Response
@@ -912,6 +900,8 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun errorShownOnRefreshException() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     inspectorClientSettings.inLiveMode = false
     inspectionRule.viewInspector.interceptWhen({ it.hasStartFetchCommand() }) {
       com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol.Response
@@ -929,25 +919,22 @@ class AppInspectionInspectorClientTest {
 
   @Test
   fun testActivityRestartBannerShown() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     preferredProcess = null
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
     verifyActivityRestartBanner()
-  }
-
-  @Test
-  fun testNoActivityRestartBannerShownDuringAutoConnect() {
-    inspectorRule.attachDevice(MODERN_PROCESS.device)
-    val banner = InspectorBanner(projectRule.testRootDisposable, inspectorRule.notificationModel)
-    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
-    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
-    assertThat(banner.isVisible).isFalse()
   }
 
   @Test
   fun testNoActivityRestartBannerShownWhenDebugAttributesAreAlreadySet() {
-    inspectorRule.adbProperties.debugViewAttributes = "1"
+    setUpAdbForDebugViewAttributes(
+      MODERN_PROCESS.device.serial,
+      debugViewAttributesPreviouslyEnabled = true,
+    )
+
     preferredProcess = null
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     val banner = InspectorBanner(projectRule.testRootDisposable, inspectorRule.notificationModel)
@@ -959,21 +946,14 @@ class AppInspectionInspectorClientTest {
   }
 
   @Test
-  fun testActivityRestartBannerShownIfRunConfigAreAlreadySetButAttributeIsMissing() {
+  fun testFailureToSetDebugViewAttributesShowsBanner() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial, shouldFail = true)
+
     preferredProcess = null
     inspectorRule.attachDevice(MODERN_PROCESS.device)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     inspectorRule.processes.selectedProcess = MODERN_PROCESS
-    verifyActivityRestartBanner()
-  }
-
-  @Test
-  fun testActivityRestartBannerShownFromOtherAppProcess() {
-    preferredProcess = null
-    inspectorRule.attachDevice(OTHER_MODERN_PROCESS.device)
-    inspectorRule.processNotifier.fireConnected(OTHER_MODERN_PROCESS)
-    inspectorRule.processes.selectedProcess = OTHER_MODERN_PROCESS
-    verifyActivityRestartBanner()
+    verifyFailToEnableDebugViewAttributesBanner()
   }
 
   @Test
@@ -1056,8 +1036,37 @@ class AppInspectionInspectorClientTest {
         "The Activity was restarted in order to enable view attributes inspection. This won't happen again until the setting is disabled from Developer Options."
       )
   }
+
+  private fun verifyFailToEnableDebugViewAttributesBanner() {
+    invokeAndWaitIfNeeded { UIUtil.dispatchAllInvocationEvents() }
+    val notification = inspectorRule.notificationModel.notifications.single()
+    assertThat(notification.message)
+      .isEqualTo(
+        "Failed to enable view attribute inspection. Compose inspection capabilities will be restricted until enabled."
+      )
+  }
+
+  private fun setUpAdbForDebugViewAttributes(
+    deviceSerialNumber: String,
+    debugViewAttributesPreviouslyEnabled: Boolean = false,
+    shouldFail: Boolean = false,
+  ) {
+    val deviceSelector = DeviceSelector.fromSerialNumber(deviceSerialNumber)
+    inspectionRule.adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings get global debug_view_attributes",
+      stdout = if (debugViewAttributesPreviouslyEnabled) "1" else "0",
+    )
+    inspectionRule.adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings put global debug_view_attributes 1",
+      stdout = "",
+      stderr = if (shouldFail) "error" else "",
+    )
+  }
 }
 
+// TODO: Move to separate file or integrate with main test class
 class AppInspectionInspectorClientWithUnsupportedApi29 {
   private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
   private val inspectionRule = AppInspectionInspectorRule(projectRule)
@@ -1274,6 +1283,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
   }
 }
 
+// TODO: Move to separate file or integrate with main test class
 class AppInspectionInspectorClientWithFailingClientTest {
   private val usageTrackerRule = MetricsTrackerRule()
   private val projectRule: AndroidProjectRule = AndroidProjectRule.onDisk()
@@ -1330,6 +1340,8 @@ class AppInspectionInspectorClientWithFailingClientTest {
 
   @Test
   fun errorShownOnStartRequest() {
+    setUpAdbForDebugViewAttributes(MODERN_PROCESS.device.serial)
+
     throwOnState = AttachErrorState.START_REQUEST_SENT
     inspectorRule.attachDevice(MODERN_DEVICE)
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
@@ -1487,6 +1499,25 @@ class AppInspectionInspectorClientWithFailingClientTest {
       .isEqualTo(expected)
     inspectorRule.disconnect()
     usageTrackerRule.testTracker.usages.clear()
+  }
+
+  private fun setUpAdbForDebugViewAttributes(
+    deviceSerialNumber: String,
+    debugViewAttributesPreviouslyEnabled: Boolean = false,
+    shouldFail: Boolean = false,
+  ) {
+    val deviceSelector = DeviceSelector.fromSerialNumber(deviceSerialNumber)
+    inspectionRule.adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings get global debug_view_attributes",
+      stdout = if (debugViewAttributesPreviouslyEnabled) "1" else "0",
+    )
+    inspectionRule.adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings put global debug_view_attributes 1",
+      stdout = "",
+      stderr = if (shouldFail) "error" else "",
+    )
   }
 }
 

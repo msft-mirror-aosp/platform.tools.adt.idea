@@ -27,8 +27,7 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.common.surface.updateSceneViewVisibilities
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
-import com.android.tools.idea.compose.preview.animation.ComposePreviewAnimationManager
-import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
+import com.android.tools.idea.compose.preview.animation.ComposeAnimationInspectorManager
 import com.android.tools.idea.compose.preview.flow.ComposePreviewFlowManager
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
@@ -63,6 +62,7 @@ import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.annotations.findAnnotatedMethodsValues
+import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
 import com.android.tools.idea.preview.fast.CommonFastPreviewSurface
 import com.android.tools.idea.preview.fast.FastPreviewSurface
 import com.android.tools.idea.preview.flow.PreviewFlowManager
@@ -78,6 +78,7 @@ import com.android.tools.idea.preview.modes.CommonPreviewModeManager
 import com.android.tools.idea.preview.modes.GALLERY_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
+import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.preview.sortByDisplayAndSourcePosition
 import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
@@ -170,13 +171,17 @@ private val accessibilityModelUpdater: NlModel.NlModelUpdaterInterface = Accessi
  *
  * @param project the [Project] used by the current view.
  * @param composePreviewManager [ComposePreviewManager] of the Preview.
+ * @param previewFlowManager the [PreviewFlowManager] that manages flows of
+ *   [ComposePreviewElementInstance]
  * @param previewElement the [ComposePreviewElementInstance] associated to this model
+ * @param fastPreviewSurface the [FastPreviewSurface] of the preview
  */
 private class PreviewElementDataContext(
   private val project: Project,
   private val composePreviewManager: ComposePreviewManager,
   private val previewFlowManager: PreviewFlowManager<out ComposePreviewElementInstance<*>>,
   private val previewElement: ComposePreviewElementInstance<*>,
+  private val fastPreviewSurface: FastPreviewSurface,
 ) : DataContext {
   override fun getData(dataId: String): Any? =
     when (dataId) {
@@ -187,6 +192,8 @@ private class PreviewElementDataContext(
       PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name,
       PREVIEW_ELEMENT_INSTANCE.name -> previewElement
       CommonDataKeys.PROJECT.name -> project
+      PREVIEW_VIEW_MODEL_STATUS.name -> composePreviewManager.status()
+      FastPreviewSurface.KEY.name -> fastPreviewSurface
       else -> null
     }
 }
@@ -280,7 +287,7 @@ class ComposePreviewRepresentation(
   private val previewBuildListenersManager =
     PreviewBuildListenersManager(
       isFastPreviewSupported = true,
-      ComposePreviewEssentialsModeManager::isEssentialsModeEnabled,
+      PreviewEssentialsModeManager::isEssentialsModeEnabled,
       ::invalidate,
       ::requestRefresh,
       ::requestVisibilityAndNotificationsUpdate,
@@ -478,6 +485,7 @@ class ComposePreviewRepresentation(
           this@ComposePreviewRepresentation,
           composePreviewFlowManager,
           previewElement,
+          this@ComposePreviewRepresentation,
         )
 
       override fun toXml(previewElement: PsiComposePreviewElementInstance) =
@@ -591,7 +599,7 @@ class ComposePreviewRepresentation(
       when {
         status().hasErrors || project.needsBuild -> null
         mode.value is PreviewMode.AnimationInspection ->
-          ComposePreviewAnimationManager.currentInspector?.component
+          ComposeAnimationInspectorManager.currentInspector?.component
         else -> null
       }
   }
@@ -615,6 +623,8 @@ class ComposePreviewRepresentation(
       PreviewFlowManager.KEY.name -> composePreviewFlowManager
       PlatformCoreDataKeys.BGT_DATA_PROVIDER.name -> DataProvider { slowId -> getSlowData(slowId) }
       CommonDataKeys.PROJECT.name -> project
+      PREVIEW_VIEW_MODEL_STATUS.name -> status()
+      FastPreviewSurface.KEY.name -> this@ComposePreviewRepresentation
       else -> null
     }
   }
@@ -630,6 +640,13 @@ class ComposePreviewRepresentation(
 
   private val delegateInteractionHandler = DelegateInteractionHandler()
   private val sceneComponentProvider = ComposeSceneComponentProvider()
+
+  /**
+   * Cached previous [ComposePreviewManager.Status] used to trigger notifications if there's been a
+   * change.
+   */
+  private val previousStatusRef: AtomicReference<ComposePreviewManager.Status?> =
+    AtomicReference(null)
 
   private val composeWorkBench: ComposePreviewView =
     UIUtil.invokeAndWaitIfNeeded(
@@ -714,7 +731,7 @@ class ComposePreviewRepresentation(
         lifecycleManager = lifecycleManager,
         previewFlowManager = composePreviewFlowManager,
         previewModeManager = previewModeManager,
-        isEssentialsModeEnabled = ComposePreviewEssentialsModeManager::isEssentialsModeEnabled,
+        isEssentialsModeEnabled = PreviewEssentialsModeManager::isEssentialsModeEnabled,
         onUpdatedFromStudioEssentialsMode = {
           logComposePreviewLiteModeEvent(
             ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType
@@ -800,7 +817,7 @@ class ComposePreviewRepresentation(
       composeWorkBench.updateProgress(message("panel.building"))
       // When building, invalidate the Animation Preview, since the animations are now obsolete and
       // new ones will be subscribed once build is complete and refresh is triggered.
-      ComposePreviewAnimationManager.invalidate(psiFilePointer)
+      ComposeAnimationInspectorManager.invalidate(psiFilePointer)
       requestVisibilityAndNotificationsUpdate()
     }
   }
@@ -931,13 +948,6 @@ class ComposePreviewRepresentation(
   private fun hasSyntaxErrors(): Boolean =
     WolfTheProblemSolver.getInstance(project).isProblemFile(psiFilePointer.virtualFile)
 
-  /**
-   * Cached previous [ComposePreviewManager.Status] used to trigger notifications if there's been a
-   * change.
-   */
-  private val previousStatusRef: AtomicReference<ComposePreviewManager.Status?> =
-    AtomicReference(null)
-
   override fun status(): ComposePreviewManager.Status {
     val projectBuildStatus = projectBuildStatusManager.status
     val isRefreshing =
@@ -1040,9 +1050,7 @@ class ComposePreviewRepresentation(
           .setComposePreviewLiteModeEvent(
             ComposePreviewLiteModeEvent.newBuilder()
               .setType(eventType)
-              .setIsComposePreviewLiteMode(
-                ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
-              )
+              .setIsComposePreviewLiteMode(PreviewEssentialsModeManager.isEssentialsModeEnabled)
           )
       )
     }
@@ -1486,12 +1494,12 @@ class ComposePreviewRepresentation(
         )
       }
       is PreviewMode.AnimationInspection -> {
-        ComposePreviewAnimationManager.onAnimationInspectorOpened()
+        ComposeAnimationInspectorManager.onAnimationInspectorOpened()
         sceneComponentProvider.enabled = false
 
         withContext(uiThread) {
           // Open the animation inspection panel
-          ComposePreviewAnimationManager.createAnimationInspectorPanel(
+          ComposeAnimationInspectorManager.createAnimationInspectorPanel(
             surface,
             this@ComposePreviewRepresentation,
             psiFilePointer,
@@ -1531,7 +1539,7 @@ class ComposePreviewRepresentation(
         requestVisibilityAndNotificationsUpdate()
         withContext(uiThread) {
           // Close the animation inspection panel
-          ComposePreviewAnimationManager.closeCurrentInspector()
+          ComposeAnimationInspectorManager.closeCurrentInspector()
         }
         // Swap the components back
         updateAnimationPanelVisibility()

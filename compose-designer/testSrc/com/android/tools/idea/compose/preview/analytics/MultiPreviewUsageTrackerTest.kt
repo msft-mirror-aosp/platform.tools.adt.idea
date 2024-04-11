@@ -329,7 +329,7 @@ class MultiPreviewUsageTrackerTest {
 
   @Test
   fun testLogEvent_EssentialsMode() {
-    StudioFlags.COMPOSE_PREVIEW_ESSENTIALS_MODE.override(true)
+    StudioFlags.PREVIEW_ESSENTIALS_MODE.override(true)
     fun logAndGetMultiPreviewEvent() =
       MultiPreviewUsageTracker.getInstance(null)
         .logEvent(MultiPreviewEvent(listOf(), ""))
@@ -337,13 +337,13 @@ class MultiPreviewUsageTrackerTest {
 
     try {
       val settings = AndroidEditorSettings.getInstance().globalState
-      settings.isComposePreviewEssentialsModeEnabled = false
+      settings.isPreviewEssentialsModeEnabled = false
       assertFalse(logAndGetMultiPreviewEvent().isComposePreviewLiteMode)
 
-      settings.isComposePreviewEssentialsModeEnabled = true
+      settings.isPreviewEssentialsModeEnabled = true
       assertTrue(logAndGetMultiPreviewEvent().isComposePreviewLiteMode)
     } finally {
-      StudioFlags.COMPOSE_PREVIEW_ESSENTIALS_MODE.clearOverride()
+      StudioFlags.PREVIEW_ESSENTIALS_MODE.clearOverride()
     }
   }
 

@@ -15,63 +15,86 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.appinspection
 
-import com.android.ddmlib.testing.FakeAdbRule
-import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
-import com.android.tools.idea.layoutinspector.AdbServiceRule
+import com.android.adblib.DeviceSelector
+import com.android.adblib.testing.FakeAdbSession
 import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
-import com.android.tools.idea.layoutinspector.pipeline.adb.FakeShellCommandHandler
-import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
-import org.junit.Before
+import com.intellij.testFramework.ProjectRule
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.RuleChain
 
 class DebugViewAttributesTest {
-  private val commandHandler = FakeShellCommandHandler()
-  private val projectRule = AndroidProjectRule.inMemory()
-  private val adbRule = FakeAdbRule().withDeviceCommandHandler(commandHandler)
-  private val adbService = AdbServiceRule(projectRule::project, adbRule)
-  lateinit var device: DeviceDescriptor
+  @get:Rule val projectRule = ProjectRule()
+  private val process = MODERN_DEVICE.createProcess()
+  private val deviceSelector = DeviceSelector.fromSerialNumber(process.device.serial)
+  private val device = process.device
 
-  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(adbRule).around(adbService)!!
+  private var adbSession = FakeAdbSession()
 
-  @Before
-  fun before() {
-    val process = MODERN_DEVICE.createProcess()
-    device = process.device
-    adbRule.attachDevice(
-      device.serial,
-      device.manufacturer,
-      device.model,
-      device.version,
-      device.apiLevel.toString(),
+  @Test
+  fun testEnableSettingSuccess() = runBlocking {
+    adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings get global debug_view_attributes",
+      "0",
     )
+    adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings put global debug_view_attributes 1",
+      "",
+    )
+
+    assertThat(DebugViewAttributes(projectRule.project, adbSession).set(device))
+      .isEqualTo(SetFlagResult.Set(false))
+    assertThat(adbSession.deviceServices.shellV2Requests.size).isEqualTo(2)
+    assertThat(adbSession.deviceServices.shellV2Requests.poll().command)
+      .isEqualTo("settings get global debug_view_attributes")
+    assertThat(adbSession.deviceServices.shellV2Requests.poll().command)
+      .isEqualTo("settings put global debug_view_attributes 1")
   }
 
   @Test
-  fun testSetAndClear_perDeviceSetting() {
-    assertThat(DebugViewAttributes.set(projectRule.project, device)).isTrue()
-    assertThat(commandHandler.debugViewAttributes).isEqualTo("1")
-    assertThat(commandHandler.debugViewAttributesChangesCount).isEqualTo(1)
+  fun testEnableSettingFailure() = runBlocking {
+    adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings get global debug_view_attributes",
+      "0",
+    )
+    adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings put global debug_view_attributes 1",
+      "",
+      "error",
+    )
+
+    assertThat(DebugViewAttributes(projectRule.project, adbSession).set(device))
+      .isEqualTo(SetFlagResult.Failure("error"))
+    assertThat(adbSession.deviceServices.shellV2Requests.size).isEqualTo(2)
+    assertThat(adbSession.deviceServices.shellV2Requests.poll().command)
+      .isEqualTo("settings get global debug_view_attributes")
+    assertThat(adbSession.deviceServices.shellV2Requests.poll().command)
+      .isEqualTo("settings put global debug_view_attributes 1")
   }
 
   @Test
-  fun testSetAndClearWhenPerDeviceIsZero_perDeviceSetting() {
-    commandHandler.debugViewAttributes = "0"
+  fun testSettingIsNotEnabledIfAlreadyEnabled() = runBlocking {
+    adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings get global debug_view_attributes",
+      "1",
+    )
+    adbSession.deviceServices.configureShellCommand(
+      deviceSelector,
+      "settings put global debug_view_attributes 1",
+      "",
+    )
 
-    assertThat(DebugViewAttributes.set(projectRule.project, device)).isTrue()
-    assertThat(commandHandler.debugViewAttributes).isEqualTo("1")
-    assertThat(commandHandler.debugViewAttributesChangesCount).isEqualTo(1)
-  }
-
-  @Test
-  fun testSetAndClearWhenPerDeviceIsSet_perDeviceSetting() {
-    commandHandler.debugViewAttributes = "1"
-
-    assertThat(DebugViewAttributes.set(projectRule.project, device)).isFalse()
-    assertThat(commandHandler.debugViewAttributes).isEqualTo("1")
-    assertThat(commandHandler.debugViewAttributesChangesCount).isEqualTo(0)
+    assertThat(DebugViewAttributes(projectRule.project, adbSession).set(device))
+      .isEqualTo(SetFlagResult.Set(true))
+    assertThat(adbSession.deviceServices.shellV2Requests.size).isEqualTo(1)
+    assertThat(adbSession.deviceServices.shellV2Requests.poll().command)
+      .isEqualTo("settings get global debug_view_attributes")
   }
 }

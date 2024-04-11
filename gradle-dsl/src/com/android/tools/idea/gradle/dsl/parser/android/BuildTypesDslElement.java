@@ -22,10 +22,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainContainer;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElementSchema;
-import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.google.common.collect.ImmutableMap;
-import com.intellij.util.containers.ContainerUtil;
 import java.util.ArrayList;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
@@ -44,7 +41,7 @@ public final class BuildTypesDslElement extends AbstractFlavorTypeCollectionDslE
   }
 
   // the order is significant to the extent that it matches the order these build types are added by the Android Gradle Plugin
-  @NotNull private static final List<String> implicitBuildTypes = ContainerUtil.immutableList("release", "debug");
+  @NotNull private static final List<String> implicitBuildTypes = List.of("release", "debug");
 
   @Override
   public boolean implicitlyExists(@NotNull String name) {

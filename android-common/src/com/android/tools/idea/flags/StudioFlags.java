@@ -63,11 +63,6 @@ public final class StudioFlags {
     return new Flags(userOverrides, new PropertyOverrides(), new ServerFlagOverrides());
   }
 
-  private static boolean applicationIsInternal() {
-    Application application = ApplicationManager.getApplication();
-    return application != null && !application.isUnitTestMode() && application.isInternal();
-  }
-
   @TestOnly
   public static void validate() {
     FLAGS.validate();
@@ -99,7 +94,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_SHOW_AGP_VERSION_COMBO_BOX = new BooleanFlag(
     NPW, "show.agp.version.combobox", "Show AGP version combobox",
     "Show a combobox to select the version of Android Gradle plugin used for the new project",
-    applicationIsInternal());
+    IdeaIsInternalDefault.INSTANCE);
 
   public static final Flag<Boolean> NPW_NEW_NATIVE_MODULE = new BooleanFlag(
     NPW, "new.native.module", "New Android Native Module",
@@ -244,11 +239,6 @@ public final class StudioFlags {
     "Log in the IDEA log the messages coming from Java and native code of Layoutlib Native.",
     false);
 
-  public static final Flag<Boolean> NELE_USE_CUSTOM_TRAFFIC_LIGHTS_FOR_RESOURCES = new BooleanFlag(
-    NELE, "use.custom.traffic.lights.for.resources", "Base traffic lights on the errors from the shared issue panel",
-    "Use errors from the current file and qualifiers tab in the traffic light rendering for resource files.",
-    true);
-
   public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = new BooleanFlag(
     NELE, "asset.repository.include.aars.through.project.system", "Include AARs through project system",
     "Include resource directories from AARs found through project system.",
@@ -272,6 +262,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_XML_TO_COMPOSE = new BooleanFlag(
     NELE, "xml.to.compose", "Enable XML to Compose conversion",
     "Enable an action that converts XML layouts to Compose using the Gemini backend",
+    false);
+
+  public static final Flag<Boolean> PREVIEW_ZOOM_ANIMATION = new BooleanFlag(
+    NELE, "preview.zoom.animation", "Enable animation while zooming",
+    "If enabled, Zoom change will show up an animation.",
     false);
   //endregion
 
@@ -398,6 +393,13 @@ public final class StudioFlags {
     "adb.connection.status.widget.enabled",
     "Enable and Show ADB Connection Widget",
     "Enables and shows the ADB connection status widget in the status bar",
+    false);
+
+  public static final Flag<Boolean> ALERT_UPON_DEVICE_SUBOPTIMAL_SPEED = new BooleanFlag(
+    RUNDEBUG,
+    "device.connect.detect.speed",
+    "Alert when USB device negotiated speed is below maximum",
+    "Poor USB cables can drop USB negotiated speed below maximum capable speed. Alert user when this is the case.",
     false);
 
   public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = new BooleanFlag(
@@ -1222,15 +1224,15 @@ public final class StudioFlags {
     PREVIEW_COMMON, "keep.image.on.error", "Keeps the last valid image after a render error",
     "If enabled, when an error happens, the surface will keep the last valid image",
     true);
+
+  public static final Flag<Boolean> PREVIEW_ESSENTIALS_MODE = new BooleanFlag(
+    PREVIEW_COMMON, "essentials.mode", "Enable Preview Essentials Mode",
+    "If enabled, Preview Essentials Mode will be enabled.",
+    ChannelDefault.enabledUpTo(CANARY));
   //endregion
 
   //region Compose
   private static final FlagGroup COMPOSE = new FlagGroup(FLAGS, "compose", "Compose");
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_ESSENTIALS_MODE = new BooleanFlag(
-    COMPOSE, "preview.essentials.mode", "Enable Compose Preview Essentials Mode",
-    "If enabled, Compose Preview Essentials Mode will be enabled.",
-    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE = new BooleanFlag(
     COMPOSE, "preview.scroll.on.caret.move", "Enable the Compose Preview scrolling when the caret moves",
@@ -1406,6 +1408,11 @@ public final class StudioFlags {
     COMPOSE, "ui.check.mode.ai.quickfix", "Enable AI-powered quick fix action for UI Check",
     "Enable an AI-powered quick fix action for UI Check issues.",
     false);
+
+  public static final Flag<Boolean> COMPOSE_SEND_PREVIEW_TO_STUDIO_BOT = new BooleanFlag(
+    COMPOSE, "send.preview.to.studio.bot", "Enable action to send Compose Previews to Studio Bot",
+    "Enables a context-menu action to send Compose Previews to Studio Bot as context.",
+    false);
   //endregion
 
   // region Wear surfaces
@@ -1429,7 +1436,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SYNTHETIC_HAL_PANEL = new BooleanFlag(
     WEAR_HEALTH_SERVICES, "synthetic.hal.panel.enabled", "Enable synthetic HAL panel",
     "If enabled, a button to display panel for modifying emulator sensors will appear",
-    false
+    ChannelDefault.enabledUpTo(CANARY)
   );
   // endregion
 
@@ -1730,7 +1737,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART = new BooleanFlag(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
-  public static final Flag<Boolean> TSDKVUA_API_35 = new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", false);
+  public static final Flag<Boolean> TSDKVUA_API_35 = new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", true);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR

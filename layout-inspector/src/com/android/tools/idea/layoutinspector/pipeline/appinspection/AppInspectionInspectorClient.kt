@@ -90,6 +90,7 @@ class AppInspectionInspectorClient(
     AppInspectionDiscoveryService.instance.apiServices,
   @TestOnly
   private val sdkHandler: AndroidSdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler(),
+  private val debugViewAttributes: DebugViewAttributes = DebugViewAttributes(model.project),
 ) :
   AbstractInspectorClient(
     APP_INSPECTION_CLIENT,
@@ -114,8 +115,6 @@ class AppInspectionInspectorClient(
     notifyError(t)
     logError(t)
   }
-
-  private var debugViewAttributesChanged = false
 
   override val capabilities =
     EnumSet.of(
@@ -186,12 +185,19 @@ class AppInspectionInspectorClient(
 
         logEvent(DynamicLayoutInspectorEventType.ATTACH_SUCCESS)
 
-        debugViewAttributesChanged = DebugViewAttributes.set(model.project, process.device)
-        if (debugViewAttributesChanged && !isInstantlyAutoConnected) {
-          // Show the banner only if debugViewAttributes has changed and if the process was not
-          // started from a fresh app deployment (in this case the Activity is restarted as soon as
-          // it starts, so there is no need to notify the user).
-          showActivityRestartedInBanner(notificationModel)
+        when (val setFlagResult = debugViewAttributes.set(process.device)) {
+          is SetFlagResult.Set -> {
+            if (!setFlagResult.previouslySet && !isInstantlyAutoConnected) {
+              // Show the banner only if debugViewAttributes has changed and if the process was not
+              // started from a fresh app deployment (in this case the Activity is restarted as soon
+              // as
+              // it starts, so there is no need to notify the user).
+              showActivityRestartedInBanner(notificationModel)
+            }
+          }
+          is SetFlagResult.Failure -> {
+            showUnableToSetDebugViewAttributesBanner(notificationModel)
+          }
         }
 
         val completableDeferred = CompletableDeferred<Unit>()

@@ -31,15 +31,16 @@ import com.android.tools.idea.compose.preview.actions.ShowDebugBoundaries
 import com.android.tools.idea.compose.preview.actions.StopUiCheckPreviewAction
 import com.android.tools.idea.compose.preview.actions.UiCheckDropDownAction
 import com.android.tools.idea.compose.preview.actions.visibleOnlyInUiCheck
-import com.android.tools.idea.compose.preview.essentials.ComposePreviewEssentialsModeManager
 import com.android.tools.idea.editors.sourcecode.isKotlinFileType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.GroupSwitchAction
 import com.android.tools.idea.preview.actions.StopAnimationInspectorAction
 import com.android.tools.idea.preview.actions.StopInteractivePreviewAction
 import com.android.tools.idea.preview.actions.findPreviewManager
+import com.android.tools.idea.preview.actions.isPreviewRefreshing
 import com.android.tools.idea.preview.actions.visibleOnlyInDefaultPreview
 import com.android.tools.idea.preview.actions.visibleOnlyInStaticPreview
+import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
 import com.android.tools.idea.preview.modes.GALLERY_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.GRID_NO_GROUP_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.LIST_NO_GROUP_LAYOUT_OPTION
@@ -99,7 +100,7 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
             isSurfaceLayoutActionEnabled = {
               !isPreviewRefreshing(it.dataContext) &&
                 // If Essentials Mode is enabled, it should not be possible to switch layout.
-                !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
+                !PreviewEssentialsModeManager.isEssentialsModeEnabled
             },
             additionalActionProvider = ColorBlindModeAction(),
           )
@@ -111,7 +112,7 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
             isSurfaceLayoutActionEnabled = {
               !isPreviewRefreshing(it.dataContext) &&
                 // If Essentials Mode is enabled, it should not be possible to switch layout.
-                !ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
+                !PreviewEssentialsModeManager.isEssentialsModeEnabled
             },
           )
           .visibleOnlyInUiCheck(),
@@ -123,8 +124,8 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
 
     override fun update(e: AnActionEvent) {
       super.update(e)
-      if (isEssentialsModeSelected != ComposePreviewEssentialsModeManager.isEssentialsModeEnabled) {
-        isEssentialsModeSelected = ComposePreviewEssentialsModeManager.isEssentialsModeEnabled
+      if (isEssentialsModeSelected != PreviewEssentialsModeManager.isEssentialsModeEnabled) {
+        isEssentialsModeSelected = PreviewEssentialsModeManager.isEssentialsModeEnabled
         if (isEssentialsModeSelected) {
           val layoutSwitcher = e.getData(DESIGN_SURFACE)?.layoutManagerSwitcher
           ApplicationManager.getApplication().invokeLater {
@@ -203,13 +204,6 @@ internal val PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE =
   DataKey.create<PsiComposePreviewElementInstance>("$PREFIX.PreviewElement")
 
 @TestOnly fun getComposePreviewManagerKeyForTests() = COMPOSE_PREVIEW_MANAGER
-
-/**
- * Returns whether the [ComposePreviewManager] corresponding to the given [DataContext] is currently
- * refreshing.
- */
-internal fun isPreviewRefreshing(context: DataContext) =
-  context.findPreviewManager(COMPOSE_PREVIEW_MANAGER)?.status()?.isRefreshing == true
 
 /** Returns whether the filter of preview is enabled. */
 internal fun isPreviewFilterEnabled(context: DataContext): Boolean {

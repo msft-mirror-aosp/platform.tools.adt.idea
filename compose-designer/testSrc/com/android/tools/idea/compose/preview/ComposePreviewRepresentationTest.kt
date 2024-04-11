@@ -42,14 +42,17 @@ import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.preview.actions.getPreviewManager
 import com.android.tools.idea.preview.analytics.PreviewRefreshTracker
 import com.android.tools.idea.preview.analytics.PreviewRefreshTrackerForTest
+import com.android.tools.idea.preview.fast.FastPreviewSurface
 import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.gallery.GalleryMode
 import com.android.tools.idea.preview.groups.PreviewGroupManager
+import com.android.tools.idea.preview.modes.DEFAULT_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.GRID_NO_GROUP_LAYOUT_OPTION
-import com.android.tools.idea.preview.modes.LIST_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.modes.UiCheckInstance
+import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
+import com.android.tools.idea.preview.mvvm.PreviewViewModelStatus
 import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.TestProjectSystem
@@ -383,7 +386,7 @@ class ComposePreviewRepresentationTest {
       preview.uiCheckFilterFlow.value
     )
     delayUntilCondition(250) {
-      LIST_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
+      DEFAULT_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
     // Check that the surface zooms to fit when exiting UI check mode.
@@ -479,7 +482,7 @@ class ComposePreviewRepresentationTest {
     }
 
     setModeAndWaitForRefresh(PreviewMode.Default()) {
-      LIST_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
+      DEFAULT_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
   }
 
@@ -652,6 +655,8 @@ class ComposePreviewRepresentationTest {
     assertTrue(getData(PreviewModeManager.KEY.name) is PreviewModeManager)
     assertTrue(getData(PreviewGroupManager.KEY.name) is PreviewGroupManager)
     assertTrue(getData(PreviewFlowManager.KEY.name) is PreviewFlowManager<*>)
+    assertTrue(getData(PREVIEW_VIEW_MODEL_STATUS.name) is PreviewViewModelStatus)
+    assertTrue(getData(FastPreviewSurface.KEY.name) is FastPreviewSurface)
   }
 
   @Test

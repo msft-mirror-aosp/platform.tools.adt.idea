@@ -38,8 +38,8 @@ import org.jetbrains.annotations.VisibleForTesting
 
 private const val CONFIGURABLE_ID = "nele.options"
 private val DISPLAY_NAME =
-  if (IdeInfo.getInstance().isAndroidStudio) "Design Tools"
-  else AndroidDesignerBundle.message("android.uibuilder.nloptionsconfigurable.displayName")
+  if (IdeInfo.getInstance().isAndroidStudio) "UI Tools"
+  else message("android.uibuilder.nloptionsconfigurable.displayName")
 
 @VisibleForTesting const val LABEL_TRACK_PAD = "Track Pad"
 @VisibleForTesting
@@ -159,8 +159,8 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
       }
 
       val essentialsModeObservable = createEssentialsModeObservable()
-      group("Compose Preview") {
-        if (StudioFlags.COMPOSE_PREVIEW_ESSENTIALS_MODE.get()) {
+      group("Preview Settings") {
+        if (StudioFlags.PREVIEW_ESSENTIALS_MODE.get()) {
           buttonsGroup(message("android.uibuilder.nloptionsconfigurable.resource.usage")) {
             row { comment(message("essentials.mode.resource.usage", "Compose Preview")) }
               .visibleIf(essentialsModeObservable)
@@ -172,9 +172,9 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
                       message("android.uibuilder.nloptionsconfigurable.resource.usage.default")
                     )
                     .bindSelected({
-                      !state.isComposePreviewEssentialsModeEnabled && !EssentialsMode.isEnabled()
+                      !state.isPreviewEssentialsModeEnabled && !EssentialsMode.isEnabled()
                     }) {
-                      state.isComposePreviewEssentialsModeEnabled = !it
+                      state.isPreviewEssentialsModeEnabled = !it
                     }
               }
               .enabledIf(essentialsModeObservable.not())
@@ -193,9 +193,9 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
                   // TODO(b/327343295) add "Learn More" link when the DAC page is live
                   .comment(message("essentials.mode.hint"))
                   .bindSelected({
-                    state.isComposePreviewEssentialsModeEnabled || EssentialsMode.isEnabled()
+                    state.isPreviewEssentialsModeEnabled || EssentialsMode.isEnabled()
                   }) {
-                    state.isComposePreviewEssentialsModeEnabled = it
+                    state.isPreviewEssentialsModeEnabled = it
                   }
               }
               .enabledIf(essentialsModeObservable.not())

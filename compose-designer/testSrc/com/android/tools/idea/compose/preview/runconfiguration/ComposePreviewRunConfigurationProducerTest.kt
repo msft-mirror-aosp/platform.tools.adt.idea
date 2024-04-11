@@ -60,13 +60,13 @@ class ComposePreviewRunConfigurationProducerTest : AndroidTestCase() {
           .trimIndent(),
       )
     composableFunction = PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java).first()
-    StudioFlags.COMPOSE_PREVIEW_ESSENTIALS_MODE.override(true)
+    StudioFlags.PREVIEW_ESSENTIALS_MODE.override(true)
   }
 
   override fun tearDown() {
     super.tearDown()
-    StudioFlags.COMPOSE_PREVIEW_ESSENTIALS_MODE.clearOverride()
-    AndroidEditorSettings.getInstance().globalState.isComposePreviewEssentialsModeEnabled = false
+    StudioFlags.PREVIEW_ESSENTIALS_MODE.clearOverride()
+    AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = false
   }
 
   override fun configureAdditionalModules(
@@ -104,7 +104,7 @@ class ComposePreviewRunConfigurationProducerTest : AndroidTestCase() {
   }
 
   fun testSetupConfigurationFromContextWhenEssentialsModeIsEnabled() {
-    AndroidEditorSettings.getInstance().globalState.isComposePreviewEssentialsModeEnabled = true
+    AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = true
 
     val context = ConfigurationContext(composableFunction)
     val runConfiguration = newComposePreviewRunConfiguration()
@@ -297,7 +297,7 @@ class ComposePreviewRunConfigurationProducerTest : AndroidTestCase() {
   }
 
   fun testIsConfigurationFromContextWhenEssentialsModeIsEnabled() {
-    AndroidEditorSettings.getInstance().globalState.isComposePreviewEssentialsModeEnabled = true
+    AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = true
     val producer = ComposePreviewRunConfigurationProducer()
     val context = ConfigurationContext(composableFunction)
     val runConfiguration = newComposePreviewRunConfiguration()

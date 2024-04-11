@@ -274,11 +274,6 @@ class GradleSyncStateHolder constructor(private val project: Project)  {
     // Note: we log this as well as message above so the stack trace is present in the logs.
     if (error != null) LOG.warn(error)
 
-    // If we are in use tests also log to stdout to help debugging.
-    if (ApplicationManager.getApplication().isUnitTestMode) {
-      println("***** sync error ${if (error == null) message else error.message}")
-    }
-
     logSyncEvent(AndroidStudioEvent.EventKind.GRADLE_SYNC_FAILURE, rootProjectPath)
     SyncFailureUsageReporter.getInstance().collectProcessedError(externalSystemTaskId, project, rootProjectPath, error)
     syncFinished(LastSyncState.FAILED, rootProjectPath)
@@ -572,8 +567,6 @@ class GradleSyncStateHolder constructor(private val project: Project)  {
       val rootProjectPath = stopTrackingTask(project, id) ?: return
       GradleSyncStateHolder.getInstance(project).syncFailed(null, e, rootProjectPath)
     }
-
-    override fun onStart(id: ExternalSystemTaskId) = error("Not expected to be called. onStart with a different signature is implemented")
 
     override fun onEnd(id: ExternalSystemTaskId) = Unit
     override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) = Unit
