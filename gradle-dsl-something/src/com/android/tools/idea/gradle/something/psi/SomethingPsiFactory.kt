@@ -20,6 +20,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiParserFacade
+import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.PsiTreeUtil
 
 class SomethingPsiFactory(private val project: Project) {
@@ -70,6 +71,8 @@ class SomethingPsiFactory(private val project: Project) {
 
   fun createNewline(): PsiElement = createToken("\n")
 
+  fun createComma(): LeafPsiElement =  createFile(",").descendantOfType()!!
+
   private fun createToken(token: String): PsiElement =
     PsiParserFacade.getInstance(project).createWhiteSpaceFromText(token)
 
@@ -83,8 +86,7 @@ class SomethingPsiFactory(private val project: Project) {
     createFromText("$key = $value") ?: error("Failed to create SomethingAssignment `$key = $value`")
 
   fun createFactory(identifier: String): SomethingFactory {
-    val factory = createFromText<SomethingFactory>("$identifier(\"placeholder\")")
-    factory?.argumentsList?.arguments?.firstOrNull()?.let { it.delete() }
+    val factory = createFromText<SomethingFactory>("$identifier()")
     return factory ?: error("Failed to create createFactory `$identifier( )`")
   }
 

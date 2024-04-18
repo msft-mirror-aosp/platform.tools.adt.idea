@@ -49,8 +49,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.flags.StudioFlags.COMPOSE_INTERACTIVE_FPS_LIMIT
 import com.android.tools.idea.flags.StudioFlags.PREVIEW_RENDER_QUALITY_NOTIFY_REFRESH_TIME
 import com.android.tools.idea.log.LoggerWithFixedInfo
-import com.android.tools.idea.modes.essentials.EssentialsMode
-import com.android.tools.idea.modes.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.Colors
 import com.android.tools.idea.preview.DefaultRenderQualityManager
 import com.android.tools.idea.preview.DefaultRenderQualityPolicy
@@ -63,6 +61,7 @@ import com.android.tools.idea.preview.actions.BuildAndRefresh
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.annotations.findAnnotatedMethodsValues
 import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
+import com.android.tools.idea.preview.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.fast.CommonFastPreviewSurface
 import com.android.tools.idea.preview.fast.FastPreviewSurface
 import com.android.tools.idea.preview.flow.PreviewFlowManager
@@ -287,7 +286,6 @@ class ComposePreviewRepresentation(
   private val previewBuildListenersManager =
     PreviewBuildListenersManager(
       isFastPreviewSupported = true,
-      PreviewEssentialsModeManager::isEssentialsModeEnabled,
       ::invalidate,
       ::requestRefresh,
       ::requestVisibilityAndNotificationsUpdate,
@@ -672,6 +670,12 @@ class ComposePreviewRepresentation(
         }
       )
       .apply { mainSurface.background = Colors.DEFAULT_BACKGROUND_COLOR }
+      .also {
+        it.mainSurface.analyticsManager.setEditorFileTypeWithoutTracking(
+          psiFilePointer.virtualFile,
+          project,
+        )
+      }
 
   @VisibleForTesting
   val staticPreviewInteractionHandler =
@@ -731,13 +735,6 @@ class ComposePreviewRepresentation(
         lifecycleManager = lifecycleManager,
         previewFlowManager = composePreviewFlowManager,
         previewModeManager = previewModeManager,
-        isEssentialsModeEnabled = PreviewEssentialsModeManager::isEssentialsModeEnabled,
-        onUpdatedFromStudioEssentialsMode = {
-          logComposePreviewLiteModeEvent(
-            ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType
-              .STUDIO_ESSENTIALS_MODE_SWITCH
-          )
-        },
         onUpdatedFromPreviewEssentialsMode = {
           logComposePreviewLiteModeEvent(
             ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.PREVIEW_LITE_MODE_SWITCH
@@ -776,7 +773,7 @@ class ComposePreviewRepresentation(
       fpsLimitFlow.collect {
         interactiveManager.fpsLimit = it
         // When getting out of Essentials Mode, request a refresh
-        if (!EssentialsMode.isEnabled()) requestRefresh()
+        if (!PreviewEssentialsModeManager.isEssentialsModeEnabled) requestRefresh()
       }
     }
   }
@@ -890,7 +887,7 @@ class ComposePreviewRepresentation(
   // endregion
 
   override fun onCaretPositionChanged(event: CaretEvent, isModificationTriggered: Boolean) {
-    if (EssentialsMode.isEnabled()) return
+    if (PreviewEssentialsModeManager.isEssentialsModeEnabled) return
     if (isModificationTriggered) return // We do not move the preview while the user is typing
     if (!StudioFlags.COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE.get()) return
     if (mode.value is PreviewMode.Interactive) return

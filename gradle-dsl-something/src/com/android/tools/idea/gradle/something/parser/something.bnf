@@ -30,12 +30,21 @@
   classHeader='generatedFilesHeader.txt'
 
   tokens = [
+    // Note: we do not generate the lexer from these token definitions (any more) because of the need
+    // to support nested comments, and potentially other non-regular constructs.  We need to maintain this
+    // list of tokens so that the SomethingElementTypeHolder has all necessary fields generated (corresponding
+    // to these token names).
     OP_EQ = "="
     OP_DOT = "."
     OP_LBRACE = "{"
     OP_RBRACE = "}"
     OP_LPAREN = "("
     OP_RPAREN = ")"
+    OP_COMMA = ","
+
+    BLOCK_COMMENT_START = "/*"
+    BLOCK_COMMENT_END = "*/"
+    BLOCK_COMMENT_CONTENTS = "BLOCK_COMMENT_CONTENTS"
 
     line_comment = "regexp://.*"
     number = "regexp:\d(\d|_+\d)*[Ll]?"
@@ -47,6 +56,7 @@
 
   implements("assignment|block|factory")=[
      "com.android.tools.idea.gradle.something.psi.SomethingEntry"
+       "com.android.tools.idea.gradle.something.psi.SomethingIdentifierOwner"
   ]
   implements("identifier")=[
      "com.intellij.psi.PsiNamedElement"
@@ -94,7 +104,6 @@ block ::= block_head OP_LBRACE block_entry* OP_RBRACE {
 private block_head ::= (factory | identifier)
 private block_entry ::= !'}' entry
 factory ::= identifier OP_LPAREN argumentsList OP_RPAREN {pin=2}
-// this might become a true list eventually, but the current specification only allows for single-argument factories.
-argumentsList ::= rvalue? {
+argumentsList ::= (rvalue (OP_COMMA rvalue)*)? {
    methods=[getArguments factory="" literal="" property=""]
 }

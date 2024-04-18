@@ -29,10 +29,12 @@ import com.android.tools.idea.editors.build.ProjectBuildStatusManager
 import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
 import com.android.tools.idea.editors.fast.FastPreviewManager
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LoggerWithFixedInfo
-import com.android.tools.idea.modes.essentials.EssentialsMode
-import com.android.tools.idea.modes.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.CommonPreviewRefreshRequest
+import com.android.tools.idea.preview.CommonPreviewRefreshType
+import com.android.tools.idea.preview.DefaultRenderQualityManager
+import com.android.tools.idea.preview.DefaultRenderQualityPolicy
 import com.android.tools.idea.preview.DelegatingPreviewElementModelAdapter
 import com.android.tools.idea.preview.MemoizedPreviewElementProvider
 import com.android.tools.idea.preview.NavigatingInteractionHandler
@@ -42,13 +44,19 @@ import com.android.tools.idea.preview.PreviewElementModelAdapter
 import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.PreviewRefreshManager
 import com.android.tools.idea.preview.PsiPreviewElementInstance
+import com.android.tools.idea.preview.RenderQualityManager
+import com.android.tools.idea.preview.RenderQualityPolicy
+import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
+import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
+import com.android.tools.idea.preview.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.fast.CommonFastPreviewSurface
 import com.android.tools.idea.preview.fast.FastPreviewSurface
 import com.android.tools.idea.preview.flow.CommonPreviewFlowManager
 import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.gallery.CommonGalleryEssentialsModeManager
 import com.android.tools.idea.preview.gallery.GalleryMode
+import com.android.tools.idea.preview.getDefaultPreviewQuality
 import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.interactive.InteractivePreviewManager
 import com.android.tools.idea.preview.interactive.analytics.InteractivePreviewUsageTracker
@@ -132,7 +140,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     ) -> CommonPreviewViewModel,
   configureDesignSurface: NlDesignSurface.Builder.() -> Unit,
   renderingTopic: RenderingTopic,
-  private val isEssentialsModeEnabled: () -> Boolean,
   useCustomInflater: Boolean = true,
 ) :
   PreviewRepresentation,
@@ -158,6 +165,9 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       onResumeActivate = { activate(isResuming = true) },
       onDeactivate = {
         LOG.debug("onDeactivate")
+        qualityPolicy.deactivate()
+        allowQualityChangeIfInactive.set(true)
+        requestRefresh(type = CommonPreviewRefreshType.QUALITY)
         if (mode.value is PreviewMode.Interactive) {
           interactiveManager.pause()
         }
@@ -179,39 +189,64 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   @VisibleForTesting
   val previewView = invokeAndWaitIfNeeded {
     viewConstructor(
-      project,
-      NlDesignSurface.builder(project, this)
-        .setSceneManagerProvider { surface, model ->
-          NlDesignSurface.defaultSceneManagerProvider(surface, model).apply {
-            setUseCustomInflater(useCustomInflater)
-            setShrinkRendering(true)
-            setRenderingTopic(renderingTopic)
-            setListenResourceChange(false) // don't re-render on resource changes
-            setUpdateAndRenderWhenActivated(false) // don't re-render on activation
+        project,
+        NlDesignSurface.builder(project, this)
+          .setSceneManagerProvider { surface, model ->
+            NlDesignSurface.defaultSceneManagerProvider(surface, model).apply {
+              setUseCustomInflater(useCustomInflater)
+              setShrinkRendering(true)
+              setRenderingTopic(renderingTopic)
+              setListenResourceChange(false) // don't re-render on resource changes
+              setUpdateAndRenderWhenActivated(false) // don't re-render on activation
+            }
           }
-        }
-        .setInteractionHandlerProvider {
-          delegateInteractionHandler.apply {
-            delegate = NavigatingInteractionHandler(it, navigationHandler)
+          .setInteractionHandlerProvider {
+            delegateInteractionHandler.apply {
+              delegate = NavigatingInteractionHandler(it, navigationHandler)
+            }
           }
-        }
-        .setDelegateDataProvider {
-          when (it) {
-            PREVIEW_VIEW_MODEL_STATUS.name -> previewViewModel
-            PreviewModeManager.KEY.name -> this@CommonPreviewRepresentation
-            PreviewGroupManager.KEY.name,
-            PreviewFlowManager.KEY.name -> previewFlowManager
-            FastPreviewSurface.KEY.name -> this@CommonPreviewRepresentation
-            else -> null
+          .setDelegateDataProvider {
+            when (it) {
+              PREVIEW_VIEW_MODEL_STATUS.name -> previewViewModel
+              PreviewModeManager.KEY.name -> this@CommonPreviewRepresentation
+              PreviewGroupManager.KEY.name,
+              PreviewFlowManager.KEY.name -> previewFlowManager
+              FastPreviewSurface.KEY.name -> this@CommonPreviewRepresentation
+              else -> null
+            }
           }
-        }
-        .apply { configureDesignSurface() },
-      this,
-    )
+          .apply { configureDesignSurface() },
+        this,
+      )
+      .also {
+        it.mainSurface.analyticsManager.setEditorFileTypeWithoutTracking(
+          psiFilePointer.virtualFile,
+          project,
+        )
+      }
   }
 
   private val surface: NlDesignSurface
     get() = previewView.mainSurface
+
+  /** Used for allowing to decrease qualities of previews after deactivating this representation */
+  private val allowQualityChangeIfInactive = AtomicBoolean(false)
+
+  /** [RenderQualityPolicy] used to configure the [qualityManager] */
+  private val qualityPolicy = DefaultRenderQualityPolicy {
+    surface.zoomController.screenScalingFactor
+  }
+
+  /**
+   * Used for defining the target render quality of each preview and detecting the need of changing
+   * the quality the previews. See [RenderQualityManager] for more details.
+   */
+  private val qualityManager: RenderQualityManager =
+    if (StudioFlags.PREVIEW_RENDER_QUALITY.get())
+      DefaultRenderQualityManager(surface, qualityPolicy) {
+        requestRefresh(type = CommonPreviewRefreshType.QUALITY)
+      }
+    else SimpleRenderQualityManager { getDefaultPreviewQuality() }
 
   /** Whether the preview needs a full refresh or not. */
   private val invalidated = AtomicBoolean(true)
@@ -235,7 +270,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   private val previewBuildListenersManager =
     PreviewBuildListenersManager(
       isFastPreviewSupported = isFastPreviewAvailable(),
-      isEssentialsModeEnabled,
       ::invalidate,
       ::requestRefresh,
     )
@@ -305,8 +339,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
         lifecycleManager = lifecycleManager,
         previewFlowManager = previewFlowManager,
         previewModeManager = previewModeManager,
-        isEssentialsModeEnabled = isEssentialsModeEnabled,
-        onUpdatedFromStudioEssentialsMode = {},
         onUpdatedFromPreviewEssentialsMode = {},
         requestRefresh = ::requestRefresh,
       )
@@ -441,7 +473,9 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
             .asCollection()
             .sortByDisplayAndSourcePosition()
 
-        val needsFullRefresh = invalidated.getAndSet(false)
+        val needsFullRefresh =
+          request.refreshType != CommonPreviewRefreshType.QUALITY && invalidated.getAndSet(false)
+
         invalidateIfCancelled.set(needsFullRefresh)
 
         previewViewModel.setHasPreviews(filePreviewElements.isNotEmpty())
@@ -450,17 +484,27 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
             "No updates on the PreviewElements, just refreshing the existing ones"
           )
           // In this case, there are no new previews. We need to make sure that the surface is still
-          // correctly
-          // configured and that we are showing the right size for components. For example, if the
-          // user switches on/off
-          // decorations, that will not generate/remove new PreviewElements but will change the
-          // surface settings.
+          // correctly configured and that we are showing the right size for components. For
+          // example, if the user switches on/off decorations, that will not generate/remove new
+          // PreviewElements but will change the surface settings.
           refreshProgressIndicator.text =
             message("refresh.progress.indicator.reusing.existing.previews")
           surface.refreshExistingPreviewElements(
             refreshProgressIndicator,
             previewElementModelAdapter::modelToElement,
             this@CommonPreviewRepresentation::configureLayoutlibSceneManager,
+            refreshFilter = { sceneManager ->
+              // For quality change requests, only re-render those that need a quality change.
+              // For other types of requests, re-render every preview.
+              request.refreshType != CommonPreviewRefreshType.QUALITY ||
+                qualityManager.needsQualityChange(sceneManager)
+            },
+            refreshOrder = { sceneManager ->
+              // decreasing quality before increasing
+              qualityManager
+                .getTargetQuality(sceneManager)
+                .compareTo(sceneManager.lastRenderQuality)
+            },
             refreshEventBuilder = request.refreshEventBuilder,
           )
         } else {
@@ -477,6 +521,12 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     }
 
   private fun createRefreshJob(request: CommonPreviewRefreshRequest): Job {
+    if (project.isDisposed) {
+      return CompletableDeferred<Unit>().also {
+        it.completeExceptionally(IllegalStateException("Already disposed"))
+      }
+    }
+
     val startTime = System.nanoTime()
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(
@@ -493,6 +543,20 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       }
     }
 
+    // Make sure not to start refreshes when deactivated, unless it is the first quality refresh
+    // that happens since deactivation. This is expected to happen to decrease the quality of its
+    // previews when deactivating.
+    val shouldProcessRequest =
+      when {
+        lifecycleManager.isActive() -> true
+        request.refreshType != CommonPreviewRefreshType.QUALITY -> false
+        else -> allowQualityChangeIfInactive.getAndSet(false)
+      }
+    if (!shouldProcessRequest) {
+      refreshProgressIndicator.processFinish()
+      return CompletableDeferred(Unit)
+    }
+
     val invalidateIfCancelled = AtomicBoolean(false)
     val refreshJob = createRefreshJob(request, refreshProgressIndicator, invalidateIfCancelled)
     refreshJob.invokeOnCompletion {
@@ -506,14 +570,32 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     return refreshJob
   }
 
-  private fun requestRefresh(onRefreshCompleted: CompletableDeferred<Unit>? = null) {
-    if (!lifecycleManager.isActive()) {
+  private fun requestRefresh(
+    type: CommonPreviewRefreshType = CommonPreviewRefreshType.NORMAL,
+    onRefreshCompleted: CompletableDeferred<Unit>? = null,
+  ) {
+    // Make sure not to allow quality change refreshes when the flag is disabled
+    if (type == CommonPreviewRefreshType.QUALITY && !StudioFlags.PREVIEW_RENDER_QUALITY.get()) {
+      onRefreshCompleted?.completeExceptionally(IllegalStateException("Not enabled"))
+      return
+    }
+    // Make sure not to request refreshes when deactivated, unless it is an allowed quality refresh,
+    // which is expected to happen to decrease the quality of the previews when deactivating.
+    val shouldEnqueueRequest =
+      when {
+        lifecycleManager.isActive() -> true
+        type != CommonPreviewRefreshType.QUALITY -> false
+        else -> allowQualityChangeIfInactive.get()
+      }
+    if (!shouldEnqueueRequest) {
       onRefreshCompleted?.completeExceptionally(IllegalStateException("Not active"))
       return
     }
+
     val request =
       CommonPreviewRefreshRequest(
         clientId = this@CommonPreviewRepresentation.hashCode().toString(),
+        refreshType = type,
         delegateRefresh = { createRefreshJob(it as CommonPreviewRefreshRequest) },
         onRefreshCompleted = onRefreshCompleted,
       )
@@ -523,7 +605,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   private suspend fun invalidateAndRefresh() {
     CompletableDeferred<Unit>().let {
       invalidate()
-      requestRefresh(it)
+      requestRefresh(onRefreshCompleted = it)
       it.join()
     }
   }
@@ -543,9 +625,13 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     layoutlibSceneManager.apply {
       interactive = mode.value is PreviewMode.Interactive
       isUsePrivateClassLoader = mode.value is PreviewMode.Interactive
+      quality = qualityManager.getTargetQuality(this@apply)
     }
 
   private fun activate(isResuming: Boolean) {
+    qualityPolicy.activate()
+    requestRefresh(type = CommonPreviewRefreshType.QUALITY)
+
     initializeFlows()
     if (!isResuming) {
       onInit()
@@ -595,7 +681,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
           isFastPreviewAvailable = ::isFastPreviewAvailable,
           requestFastPreviewRefresh = delegateFastPreviewSurface::requestFastPreviewRefreshSync,
           restorePreviousMode = ::restorePrevious,
-          isEssentialsModeEnabled = isEssentialsModeEnabled,
           previewElementProvider = previewElementProvider,
         ) {
           it
@@ -635,7 +720,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       fpsLimitFlow.collect {
         interactiveManager.fpsLimit = it
         // When getting out of Essentials Mode, request a refresh
-        if (!EssentialsMode.isEnabled()) requestRefresh()
+        if (!PreviewEssentialsModeManager.isEssentialsModeEnabled) requestRefresh()
       }
     }
   }
@@ -709,5 +794,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
    * should not be available in this case.
    */
   private fun isFastPreviewAvailable() =
-    FastPreviewManager.getInstance(project).isAvailable && !isEssentialsModeEnabled()
+    FastPreviewManager.getInstance(project).isAvailable &&
+      !PreviewEssentialsModeManager.isEssentialsModeEnabled
 }

@@ -298,13 +298,6 @@ jvm_import(
 
 # managed by go/iml_to_build
 jvm_import(
-    name = "tomlj",
-    jars = ["//prebuilts/tools/common/m2:tomlj_files"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
     name = "agp-version",
     jars = ["//tools/base/common/agp-version:libagp-version.jar"],
     visibility = ["//visibility:public"],
@@ -314,5 +307,19 @@ jvm_import(
 jvm_import(
     name = "sqlite-inspector-proto",
     jars = ["//tools/base/app-inspection/inspectors/database:database_inspector_java_proto.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "libadblib-tools-proto",
+    jars = ["//tools/base/adblib-tools:libadblib-tools-proto.jar"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "gradle-declarative-dsl",
+    jars = ["//prebuilts/tools/common/m2:gradle-declarative-dsl_files"],
     visibility = ["//visibility:public"],
 )

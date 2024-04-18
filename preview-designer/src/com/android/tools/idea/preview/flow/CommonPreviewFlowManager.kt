@@ -27,6 +27,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.PsiPreviewElement
 import com.android.tools.idea.preview.PsiPreviewElementInstance
+import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
 import com.android.tools.idea.preview.groups.PreviewGroup
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
@@ -53,6 +54,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.base.util.module
 
@@ -153,7 +155,6 @@ class CommonPreviewFlowManager<T : PsiPreviewElementInstance>(
     isFastPreviewAvailable: () -> Boolean,
     requestFastPreviewRefresh: suspend () -> Unit,
     restorePreviousMode: () -> Unit,
-    isEssentialsModeEnabled: () -> Boolean,
     previewElementProvider: PreviewElementProvider<K>,
     toInstantiatedPreviewElementsFlow: (Flow<FlowableCollection<K>>) -> Flow<FlowableCollection<T>>,
   ) {
@@ -161,13 +162,25 @@ class CommonPreviewFlowManager<T : PsiPreviewElementInstance>(
       val project = psiFilePointer.project
       launch(workerThread) {
         // Launch all the listeners that are bound to the current activation.
-        previewElementsOnFileChangesFlow(project) { previewElementProvider }
-          .map {
-            when (it) {
-              is FlowableCollection.Uninitialized -> FlowableCollection.Uninitialized
-              is FlowableCollection.Present ->
-                FlowableCollection.Present(it.collection.sortByDisplayAndSourcePosition())
+        val previewElementsFlow =
+          previewElementsOnFileChangesFlow(project) { previewElementProvider }
+            .map {
+              when (it) {
+                is FlowableCollection.Uninitialized -> FlowableCollection.Uninitialized
+                is FlowableCollection.Present ->
+                  FlowableCollection.Present(it.collection.sortByDisplayAndSourcePosition())
+              }
             }
+
+        // Combine both the flow of global ModuleClassLoaderOverlay modifications and the preview
+        // elements flow. If Fast Preview is used and a new class is injected into the
+        // ModuleClassLoader, it might change the number of content of instantiated previews.
+        // This ensures that the previews are resolved and instantiated.
+        previewElementsFlow
+          .combine(
+            ModuleClassLoaderOverlays.NotificationManager.getInstance(project).modificationFlow
+          ) { previewElements, _ ->
+            previewElements
           }
           .let { toInstantiatedPreviewElementsFlow(it) }
           .collectLatest {
@@ -316,7 +329,7 @@ class CommonPreviewFlowManager<T : PsiPreviewElementInstance>(
             if (
               previewModeManager.mode.value !is PreviewMode.Interactive &&
                 previewModeManager.mode.value !is PreviewMode.AnimationInspection &&
-                !isEssentialsModeEnabled()
+                !PreviewEssentialsModeManager.isEssentialsModeEnabled
             )
               requestRefresh()
           }

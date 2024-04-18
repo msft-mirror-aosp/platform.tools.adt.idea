@@ -140,6 +140,10 @@ internal data class MotionEventMessage(
     const val ACTION_POINTER_UP = 6
     const val ACTION_HOVER_MOVE = 7
     const val ACTION_SCROLL = 8
+    const val ACTION_HOVER_ENTER = 9
+    const val ACTION_HOVER_EXIT = 10
+    const val ACTION_BUTTON_PRESS = 11
+    const val ACTION_BUTTON_RELEASE = 12
 
     // - Axes
     const val AXIS_VSCROLL = 9
@@ -420,18 +424,18 @@ internal class StopClipboardSyncMessage private constructor(): ControlMessage(TY
 
 /**
  * Requests a device state (folding pose) change. A DeviceStateNotification message will be sent
- * when and if the device state actually changes. If [state] is equal to [PHYSICAL_STATE],
+ * when and if the device state actually changes. If [deviceStateId] is equal to [PHYSICAL_STATE],
  * the device will return to its actual physical state.
  */
-internal data class RequestDeviceStateMessage(val state: Int) : ControlMessage(TYPE) {
+internal data class RequestDeviceStateMessage(val deviceStateId: Int) : ControlMessage(TYPE) {
 
   override fun serialize(stream: Base128OutputStream) {
     super.serialize(stream)
-    stream.writeInt(state + 1) // Add 1 to make sure that PHYSICAL_STATE is encoded efficiently.
+    stream.writeInt(deviceStateId + 1) // Add 1 to make sure that PHYSICAL_STATE is encoded efficiently.
   }
 
   override fun toString(): String =
-      "RequestDeviceStateMessage(state=$state)"
+      "RequestDeviceStateMessage(deviceStateId=$deviceStateId)"
 
   companion object : Deserializer {
     const val TYPE = 12
@@ -439,8 +443,8 @@ internal data class RequestDeviceStateMessage(val state: Int) : ControlMessage(T
     const val PHYSICAL_STATE = -1
 
     override fun deserialize(stream: Base128InputStream): RequestDeviceStateMessage {
-      val state = stream.readInt() - 1 // Subtracting 1 to account for shifted encoding.
-      return RequestDeviceStateMessage(state)
+      val deviceStateId = stream.readInt() - 1 // Subtracting 1 to account for shifted encoding.
+      return RequestDeviceStateMessage(deviceStateId)
     }
   }
 }
@@ -566,22 +570,31 @@ internal data class ClipboardChangedNotification(val text: String) : ControlMess
  * ]
  * ```
  */
-internal data class SupportedDeviceStatesNotification(val text: String) : ControlMessage(TYPE) {
+internal data class SupportedDeviceStatesNotification(val deviceStates: List<DeviceState>, val deviceStateId: Int) : ControlMessage(TYPE) {
 
   override fun serialize(stream: Base128OutputStream) {
     super.serialize(stream)
-    stream.writeBytes(text.toByteArray(UTF_8))
+    stream.writeInt(deviceStates.size)
+    for (state in deviceStates) {
+      state.serialize(stream)
+    }
+    stream.writeInt(deviceStateId + 1) // Offset by 1 to efficiently represent -1.
   }
 
   override fun toString(): String =
-      "SupportedDeviceStatesNotification(text=\"$text\")"
+      "SupportedDeviceStatesNotification(deviceStates=\"$deviceStates\", deviceStateId=$deviceStateId)"
 
   companion object : Deserializer {
     const val TYPE = 17
 
     override fun deserialize(stream: Base128InputStream): SupportedDeviceStatesNotification {
-      val bytes = stream.readBytes()
-      return SupportedDeviceStatesNotification(bytes.toString(UTF_8))
+      val numStates = stream.readInt()
+      val deviceStates = ArrayList<DeviceState>(numStates)
+      for (i in 0 until numStates) {
+        deviceStates.add(DeviceState.deserialize(stream))
+      }
+      val deviceStateId = stream.readInt() - 1
+      return SupportedDeviceStatesNotification(deviceStates, deviceStateId)
     }
   }
 }
@@ -590,21 +603,21 @@ internal data class SupportedDeviceStatesNotification(val text: String) : Contro
  * Notification of a device state change. One such notification is always sent when the screen
  * sharing agent starts on a foldable device,
  */
-internal data class DeviceStateNotification(val deviceState: Int) : ControlMessage(TYPE) {
+internal data class DeviceStateNotification(val deviceStateId: Int) : ControlMessage(TYPE) {
 
   override fun serialize(stream: Base128OutputStream) {
     super.serialize(stream)
-    stream.writeInt(deviceState)
+    stream.writeInt(deviceStateId + 1) // Offset by 1 to efficiently represent -1.
   }
 
   override fun toString(): String =
-      "DeviceStateNotification(deviceState=$deviceState)"
+      "DeviceStateNotification(deviceStateId=$deviceStateId)"
 
   companion object : Deserializer {
     const val TYPE = 18
 
     override fun deserialize(stream: Base128InputStream): DeviceStateNotification {
-      val deviceState = stream.readInt()
+      val deviceState = stream.readInt() - 1
       return DeviceStateNotification(deviceState)
     }
   }

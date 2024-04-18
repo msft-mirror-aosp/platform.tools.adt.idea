@@ -16,6 +16,8 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.flags.junit.FlagRule
+import com.android.testutils.MockitoKt.mock
+import com.android.testutils.MockitoKt.whenever
 import com.android.testutils.delayUntilCondition
 import com.android.testutils.retryUntilPassing
 import com.android.testutils.waitForCondition
@@ -38,7 +40,6 @@ import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.modes.essentials.EssentialsMode
 import com.android.tools.idea.preview.actions.getPreviewManager
 import com.android.tools.idea.preview.analytics.PreviewRefreshTracker
 import com.android.tools.idea.preview.analytics.PreviewRefreshTrackerForTest
@@ -58,9 +59,11 @@ import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.TestProjectSystem
 import com.android.tools.idea.run.configuration.execution.findElementByText
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
+import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.SourceCodeEditorProvider
+import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
@@ -73,6 +76,7 @@ import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
@@ -103,6 +107,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.jetbrains.android.uipreview.AndroidEditorSettings
 import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -155,6 +160,18 @@ class ComposePreviewRepresentationTest {
   private val fixture
     get() = projectRule.fixture
 
+  private var composePreviewEssentialsModeEnabled: Boolean = false
+    set(value) {
+      runWriteActionAndWait {
+        AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = value
+        ApplicationManager.getApplication()
+          .messageBus
+          .syncPublisher(NlOptionsConfigurable.Listener.TOPIC)
+          .onOptionsChanged()
+      }
+      field = value
+    }
+
   @Before
   fun setup() {
     logger.setLevel(LogLevel.ALL)
@@ -182,7 +199,7 @@ class ComposePreviewRepresentationTest {
     StudioFlags.NELE_ATF_FOR_COMPOSE.clearOverride()
     StudioFlags.COMPOSE_UI_CHECK_COLORBLIND_MODE.clearOverride()
     StudioFlags.COMPOSE_UI_CHECK_FOR_WEAR.clearOverride()
-    EssentialsMode.setEnabled(false, project)
+    composePreviewEssentialsModeEnabled = false
   }
 
   @Test
@@ -679,6 +696,7 @@ class ComposePreviewRepresentationTest {
         )
       }
       val surfaceMock = Mockito.mock(NlDesignSurface::class.java)
+      whenever(surfaceMock.analyticsManager).thenReturn(mock<NlAnalyticsManager>())
       val composeView = TestComposePreviewView(surfaceMock)
       val previewRepresentation =
         ComposePreviewRepresentation(composeTest, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
@@ -869,7 +887,7 @@ class ComposePreviewRepresentationTest {
   @Test
   fun testInteractivePreviewManagerFpsLimitIsInitializedWhenEssentialsModeIsEnabled() =
     runComposePreviewRepresentationTest {
-      EssentialsMode.setEnabled(true, project)
+      composePreviewEssentialsModeEnabled = true
 
       val preview = createPreviewAndCompile()
 
@@ -883,10 +901,10 @@ class ComposePreviewRepresentationTest {
 
       assertEquals(30, preview.interactiveManager.fpsLimit)
 
-      EssentialsMode.setEnabled(true, project)
+      composePreviewEssentialsModeEnabled = true
       retryUntilPassing(5.seconds) { assertEquals(10, preview.interactiveManager.fpsLimit) }
 
-      EssentialsMode.setEnabled(false, project)
+      composePreviewEssentialsModeEnabled = false
       retryUntilPassing(5.seconds) { assertEquals(30, preview.interactiveManager.fpsLimit) }
     }
 

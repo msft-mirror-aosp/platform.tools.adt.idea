@@ -131,21 +131,21 @@ private:
   Base128InputStream input_stream_;
   Base128OutputStream output_stream_;
   volatile bool stopped = false;
-  PointerHelper* pointer_helper_;  // Owned.
+  PointerHelper* pointer_helper_ = nullptr;  // Owned.
   JObjectArray pointer_properties_;  // MotionEvent.PointerProperties[]
   JObjectArray pointer_coordinates_;  // MotionEvent.PointerCoords[]
-  int64_t motion_event_start_time_;
-  KeyCharacterMap* key_character_map_;  // Owned.
+  int64_t motion_event_start_time_ = 0;
+  KeyCharacterMap* key_character_map_ = nullptr;  // Owned.
 
   ClipboardListener clipboard_listener_;
-  int max_synced_clipboard_length_;
+  int max_synced_clipboard_length_ = 0;
   std::string last_clipboard_text_;
-  std::atomic_bool clipboard_changed_;
+  std::atomic_bool clipboard_changed_ = false;
 
   DeviceStateListener device_state_listener_;
   bool device_supports_multiple_states_ = false;
-  std::atomic_int32_t device_state_ = -1;
-  int32_t previous_device_state_ = -1;
+  std::atomic_int32_t device_state_identifier_ = DeviceStateManager::INVALID_DEVICE_STATE_IDENTIFIER;
+  int32_t previous_device_state_ = DeviceStateManager::INVALID_DEVICE_STATE_IDENTIFIER;
 
   std::mutex display_events_mutex_;
   std::vector<DisplayEvent> pending_display_events_;  // GUARDED_BY(display_events_mutex_)

@@ -281,6 +281,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     return selectedValue.get();
   }
 
+  @Override
+  public void openErrorDialog(@NotNull String message, @NotNull String title) {
+    Messages.showErrorDialog(message, title);
+  }
+
   /**
    * Gets a {@link List} of directories containing the symbol files corresponding to the architecture of the session currently selected.
    */
@@ -332,6 +337,20 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
           profilerState.STARTUP_CPU_PROFILING_CONFIGURATION_NAME =
             CpuProfilerConfigConverter.fromTaskTypeToConfigName(taskType, recordingType);
         }
+      }
+    }
+  }
+
+  @Override
+  public void disableStartupTasks() {
+    RunManager runManager = RunManager.getInstance(myProject);
+    if (runManager != null) {
+      RunnerAndConfigurationSettings configurationSettings = runManager.getSelectedConfiguration();
+      if (configurationSettings != null &&
+          configurationSettings.getConfiguration() instanceof AndroidRunConfigurationBase androidConfiguration) {
+        ProfilerState profilerState = androidConfiguration.getProfilerState();
+        // Disable/reset all startup profiling configurations before setting one.
+        profilerState.disableStartupProfiling();
       }
     }
   }

@@ -35,10 +35,14 @@ public interface SomethingElementTypeHolder {
   IElementType PROPERTY = new SomethingElementType("PROPERTY");
   IElementType QUALIFIED = new SomethingElementType("QUALIFIED");
 
+  IElementType BLOCK_COMMENT_CONTENTS = new SomethingTokenType("BLOCK_COMMENT_CONTENTS");
+  IElementType BLOCK_COMMENT_END = new SomethingTokenType("*/");
+  IElementType BLOCK_COMMENT_START = new SomethingTokenType("/*");
   IElementType BOOLEAN = new SomethingTokenType("boolean");
   IElementType LINE_COMMENT = new SomethingTokenType("line_comment");
   IElementType NULL = new SomethingTokenType("null");
   IElementType NUMBER = new SomethingTokenType("number");
+  IElementType OP_COMMA = new SomethingTokenType(",");
   IElementType OP_DOT = new SomethingTokenType(".");
   IElementType OP_EQ = new SomethingTokenType("=");
   IElementType OP_LBRACE = new SomethingTokenType("{");

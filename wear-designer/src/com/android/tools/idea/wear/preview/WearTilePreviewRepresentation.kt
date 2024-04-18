@@ -18,11 +18,11 @@ package com.android.tools.idea.wear.preview
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.preview.PreviewElementModelAdapter
 import com.android.tools.idea.preview.PreviewElementProvider
+import com.android.tools.idea.preview.actions.CommonPreviewActionManager
 import com.android.tools.idea.preview.representation.CommonPreviewRepresentation
 import com.android.tools.idea.preview.views.CommonNlDesignSurfacePreviewView
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSupportedActions
-import com.android.tools.idea.wear.preview.essentials.WearTilePreviewEssentialsModeManager
 import com.android.tools.rendering.RenderAsyncActionExecutor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
@@ -32,7 +32,8 @@ private val WEAR_TILE_SUPPORTED_ACTIONS = setOf(NlSupportedActions.TOGGLE_ISSUE_
 internal class WearTilePreviewRepresentation(
   adapterViewFqcn: String,
   psiFile: PsiFile,
-  previewProviderConstructor: (SmartPsiElementPointer<PsiFile>) -> PreviewElementProvider<PsiWearTilePreviewElement>,
+  previewProviderConstructor:
+    (SmartPsiElementPointer<PsiFile>) -> PreviewElementProvider<PsiWearTilePreviewElement>,
   previewElementModelAdapterDelegate: PreviewElementModelAdapter<PsiWearTilePreviewElement, NlModel>,
 ) :
   CommonPreviewRepresentation<PsiWearTilePreviewElement>(
@@ -44,11 +45,10 @@ internal class WearTilePreviewRepresentation(
     ::WearTilePreviewViewModel,
     NlDesignSurface.Builder::configureDesignSurface,
     renderingTopic = RenderAsyncActionExecutor.RenderingTopic.WEAR_TILE_PREVIEW,
-    isEssentialsModeEnabled = WearTilePreviewEssentialsModeManager::isEssentialsModeEnabled,
   )
 
 private fun NlDesignSurface.Builder.configureDesignSurface() {
-  setActionManagerProvider(::WearTilePreviewActionManager)
+  setActionManagerProvider(::CommonPreviewActionManager)
   setSupportedActions(WEAR_TILE_SUPPORTED_ACTIONS)
   setScreenViewProvider(WEAR_TILE_SCREEN_VIEW_PROVIDER, false)
 }

@@ -17,6 +17,7 @@ package com.android.tools.idea.profilers
 
 import com.android.ddmlib.IDevice
 import com.android.tools.adtui.model.AspectObserver
+import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.run.AndroidRunConfiguration
@@ -103,7 +104,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
                                     processInfo.processName) { p: Common.Process? -> processInfo.processFilter.invoke(p!!) }
       project.putUserData(LAST_RUN_APP_INFO, null)
     }
-    else {
+    else if (!IdeInfo.getInstance().isGameTools){
       StartupManager.getInstance(project).runWhenProjectIsInitialized { profilers.preferredProcessName = getPreferredProcessName(project) }
     }
 
@@ -139,7 +140,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     try {
       val selections = devices.map {
         ToolbarDeviceSelection(it.name, it.version.featureLevel, it.isRunning,
-                               if (it.isRunning) it.launchedDevice.get().serialNumber else "")
+                               if (it.isRunning) it.launchedDevice.get().serialNumber else "", it.icon)
       }
       return selections
     }

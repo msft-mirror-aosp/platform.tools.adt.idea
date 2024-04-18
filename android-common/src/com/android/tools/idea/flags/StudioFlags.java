@@ -402,13 +402,6 @@ public final class StudioFlags {
     "Poor USB cables can drop USB negotiated speed below maximum capable speed. Alert user when this is the case.",
     false);
 
-  public static final Flag<Boolean> DEPLOYMENT_TARGET_DEVICE_PROVISIONER_MIGRATION = new BooleanFlag(
-    RUNDEBUG,
-    "deployment.target.deviceprovisioner",
-    "Use Device Provisioner to provide deployment targets",
-    "Uses the Device Provisioner to get the list of potential devices to deploy to.",
-    true);
-
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = new BooleanFlag(
     RUNDEBUG,
     "adb.device.explorer.package.filter.enable",
@@ -736,10 +729,6 @@ public final class StudioFlags {
     "Suggest migrating current project JDK configuration to .gradle/config.properties where gradleJvm uses the " +
     "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
 
-  public static final Flag<Boolean> DECLARATIVE_PLUGIN_STUDIO_SUPPORT =
-    new BooleanFlag(GRADLE_IDE, "declarative.plugin.studio.support", "Studio support for AGP declarative plugin",
-                "Enable support for gradle.build.toml in PSD and Assistants", false);
-
   public static final Flag<Boolean> GRADLE_DECLARATIVE_SOMETHING_IDE_SUPPORT = new BooleanFlag(
     GRADLE_IDE,
     "gradle.declarative.ide.support",
@@ -1062,6 +1051,13 @@ public final class StudioFlags {
     EDITOR, "dagger.support.enabled",
     "Enable editor support for Dagger",
     "If enabled adds Dagger specific find usages, gutter icons and new parsing for Dagger errors",
+    true
+  );
+
+  public static final Flag<Boolean> DAGGER_CACHE_RELATED_ELEMENTS = new BooleanFlag(
+    EDITOR, "dagger.cache.related.elements",
+    "Enable caching related Dagger elements",
+    "If enabled, related Dagger elements will be cached rather than being recalculated every time they're required.",
     true
   );
 
@@ -1433,8 +1429,8 @@ public final class StudioFlags {
 
   private static final FlagGroup WEAR_HEALTH_SERVICES = new FlagGroup(FLAGS, "wear.health.services", "Wear Health Services");
 
-  public static final Flag<Boolean> SYNTHETIC_HAL_PANEL = new BooleanFlag(
-    WEAR_HEALTH_SERVICES, "synthetic.hal.panel.enabled", "Enable synthetic HAL panel",
+  public static final Flag<Boolean> WEAR_HEALTH_SERVICES_PANEL = new BooleanFlag(
+    WEAR_HEALTH_SERVICES, "enable.panel", "Enable Wear Health Services panel",
     "If enabled, a button to display panel for modifying emulator sensors will appear",
     ChannelDefault.enabledUpTo(CANARY)
   );
@@ -1943,6 +1939,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_SETTINGS_ACCOUNT_UI =
     new BooleanFlag(GOOGLE_LOGIN, "enabled", "Enable new login settings UI",
                 "When enabled, a login settings page will replace the popup from the login action in the top right.", true);
+  public static final Flag<Boolean> ENABLE_COMBINED_LOGIN_UI =
+    new BooleanFlag(GOOGLE_LOGIN, "combined.login.enabled", "Enable combined login",
+                    "When enabled, a combined login page will show when logging in for a new user.", false);
   // endregion GOOGLE_LOGIN
 
   public static Boolean isBuildOutputShowsDownloadInfo() {

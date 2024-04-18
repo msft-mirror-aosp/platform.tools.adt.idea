@@ -241,6 +241,8 @@ internal class DeviceViewTest {
 
       fakeUi.mouse.press(40, 30)
       assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+          MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
           MotionEventMessage(listOf(expectedCoordinates[i * 2]), MotionEventMessage.ACTION_DOWN, 0, 0, 0))
 
       fakeUi.mouse.dragTo(60, 55)
@@ -363,13 +365,14 @@ internal class DeviceViewTest {
     fakeUi.keyboard.setFocus(view)
     fakeUi.mouse.moveTo(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0,
-                           0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_MOVE, 0, 0, 0))
     fakeUi.keyboard.press(VK_CONTROL)
     fakeUi.layoutAndDispatchEvents()
     assertAppearance("MultiTouch1")
 
     fakeUi.mouse.press(mousePosition)
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0))
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
         MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0), MotionEventMessage.Pointer(417, 1633, 1)),
                            MotionEventMessage.ACTION_DOWN, 0, 0, 0))
@@ -404,20 +407,12 @@ internal class DeviceViewTest {
       assertThat(agent.getNextControlMessage(2.seconds)).isEqualTo(TextInputMessage(c.toString()))
     }
 
-    val controlCharacterCases = mapOf(
+    val trivialKeyStrokeCases = mapOf(
       VK_ENTER to AKEYCODE_ENTER,
       VK_TAB to AKEYCODE_TAB,
       VK_ESCAPE to AKEYCODE_ESCAPE,
       VK_BACK_SPACE to AKEYCODE_DEL,
       VK_DELETE to if (SystemInfo.isMac) AKEYCODE_DEL else AKEYCODE_FORWARD_DEL,
-    )
-    for ((hostKeyStroke, androidKeyCode) in controlCharacterCases) {
-      fakeUi.keyboard.pressAndRelease(hostKeyStroke)
-      assertThat(agent.getNextControlMessage(2.seconds)).isEqualTo(KeyEventMessage(ACTION_DOWN, androidKeyCode, 0))
-      assertThat(agent.getNextControlMessage(2.seconds)).isEqualTo(KeyEventMessage(ACTION_UP, androidKeyCode, 0))
-    }
-
-    val trivialKeyStrokeCases = mapOf(
       VK_LEFT to AKEYCODE_DPAD_LEFT,
       VK_KP_LEFT to AKEYCODE_DPAD_LEFT,
       VK_RIGHT to AKEYCODE_DPAD_RIGHT,
@@ -997,7 +992,9 @@ internal class DeviceViewTest {
     // Pressing mouse should generate mouse events instead of touch
     fakeUi.mouse.press(mousePosition)
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
-      MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_DOWN, 1, 1, 0))
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_HOVER_EXIT, 0, 0, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(
+        MotionEventMessage(listOf(MotionEventMessage.Pointer(663, 707, 0)), MotionEventMessage.ACTION_DOWN, 1, 1, 0))
 
     // Disable hardware input
     executeStreamingAction("android.streaming.hardware.input", view, agentRule.project, modifiers = CTRL_DOWN_MASK)

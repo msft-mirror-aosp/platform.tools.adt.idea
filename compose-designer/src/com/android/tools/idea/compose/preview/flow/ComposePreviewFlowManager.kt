@@ -26,7 +26,6 @@ import com.android.tools.idea.concurrency.smartModeFlow
 import com.android.tools.idea.editors.build.ProjectStatus
 import com.android.tools.idea.editors.build.PsiCodeFileChangeDetectorService
 import com.android.tools.idea.preview.FilePreviewElementProvider
-import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
 import com.android.tools.idea.preview.flow.CommonPreviewFlowManager
 import com.android.tools.idea.preview.flow.PreviewElementFilter
 import com.android.tools.idea.preview.flow.PreviewFlowManager
@@ -41,7 +40,6 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,7 +142,7 @@ internal class ComposePreviewFlowManager : PreviewFlowManager<PsiComposePreviewE
     (filteredPreviewElementsFlow.value as? FlowableCollection.Present<*>)?.collection?.size ?: 0
 
   /** Initializes the flows that will listen to different events and will call [requestRefresh]. */
-  @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+  @OptIn(ExperimentalCoroutinesApi::class)
   fun CoroutineScope.initializeFlows(
     disposable: Disposable,
     previewModeManager: PreviewModeManager,
@@ -171,7 +169,6 @@ internal class ComposePreviewFlowManager : PreviewFlowManager<PsiComposePreviewE
           isFastPreviewAvailable = { isFastPreviewAvailable(project) },
           requestFastPreviewRefresh = requestFastPreviewRefresh,
           restorePreviousMode = restorePreviousMode,
-          isEssentialsModeEnabled = PreviewEssentialsModeManager::isEssentialsModeEnabled,
           previewElementProvider =
             FilePreviewElementProvider(psiFilePointer, defaultFilePreviewElementFinder),
           toInstantiatedPreviewElementsFlow =

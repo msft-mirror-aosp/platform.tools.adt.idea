@@ -307,6 +307,9 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   }
 
   @Override
+  public void openErrorDialog(@NotNull String message, @NotNull String title) { }
+
+  @Override
   @Nullable
   public <T> T openListBoxChooserDialog(@NotNull String title,
                                         @Nullable String message,
@@ -406,6 +409,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public void enableStartupTask(@NotNull ProfilerTaskType taskType, @NotNull TaskHomeTabModel.TaskRecordingType recordingType) {
+    // No-op.
+  }
+
+  @Override
+  public void disableStartupTasks() {
     // No-op.
   }
 

@@ -74,6 +74,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:layoutinspector-skia-proto",
         "//tools/adt/idea/.idea/libraries:layoutinspector-view-proto",
         "//tools/adt/idea/.idea/libraries:libadb-server-proto",
+        "//tools/adt/idea/.idea/libraries:libadblib-tools-proto",
         "//tools/adt/idea/.idea/libraries:libam-instrumentation-data-proto",
         "//tools/adt/idea/.idea/libraries:network_inspector_java_proto",
         "//tools/adt/idea/.idea/libraries:perfetto-proto",
@@ -85,6 +86,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:transport-proto",
         "//tools/adt/idea/.idea/libraries:utp-core-proto-jarjar",
         "//tools/adt/idea/.idea/libraries:zxing-core",
+        "//tools/adt/idea/.idea/libraries:gradle-declarative-dsl",
         "//tools/adt/idea/android:libandroid-core-proto",
         "//tools/adt/idea/project-system-gradle:libandroid-core-proto",
         "//tools/adt/idea/android:libstudio.android-test-plugin-host-retention-proto",
@@ -256,6 +258,7 @@ studio_plugin(
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
+            "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
         ],
         "repository.jar": [
             "//tools/base/repository:studio.android.sdktools.repository",
@@ -656,7 +659,7 @@ studio_plugin(
 )
 
 studio_plugin(
-    name = "com.google.tools.intellij.aiplugin",
+    name = "com.google.tools.ij.aiplugin",
     directory = "gemini",
     libs = [
         "//tools/vendor/google/ml/aiplugin/core:aida_grpc",
@@ -669,6 +672,7 @@ studio_plugin(
         "aiplugin.jar": [
             "//tools/vendor/google/ml/aiplugin/core:aiplugin.core",
             "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
+            "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",
         ],
     },
     visibility = ["//visibility:public"],
@@ -713,7 +717,7 @@ android_studio(
         ":androidx.compose.plugins.idea",
         ":com.google.services.git4insights",
         ":com.google.services.firebase",
-        ":com.google.tools.intellij.aiplugin",
+        ":com.google.tools.ij.aiplugin",
         ":com.google.gct.directaccess",
         ":com.google.gct.testing",
         ":com.google.gct",

@@ -239,7 +239,8 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
    * Checks if the given parent {@link ClassLoader} is the same as the given to this {@link StudioModuleClassLoader} at construction
    * time. This class loader adds additional parents to the chain so {@link ClassLoader#getParent()} can not be used directly.
    */
-  boolean isCompatibleParentClassLoader(@Nullable ClassLoader parent) {
+  @Override
+  protected boolean isCompatibleParentClassLoader(@Nullable ClassLoader parent) {
     return getParentAtConstruction() == parent;
   }
 
@@ -252,18 +253,23 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
     return myParentAtConstruction;
   }
 
+  @Override
   @NotNull
   public Set<String> getNonProjectLoadedClasses() { return myImpl.getNonProjectLoadedClassNames(); }
 
+  @Override
   @NotNull
   public Set<String> getProjectLoadedClasses() { return myImpl.getProjectLoadedClassNames(); }
 
+  @Override
   @NotNull
   public ClassTransform getProjectClassesTransform() { return myImpl.getProjectTransforms(); }
 
+  @Override
   @NotNull
   public ClassTransform getNonProjectClassesTransform() { return myImpl.getNonProjectTransforms(); }
 
+  @Override
   public boolean areDependenciesUpToDate() {
     Module module = getModule();
     if (module == null) return true;
@@ -381,7 +387,8 @@ public final class StudioModuleClassLoader extends ModuleClassLoader implements 
     return isDisposed.get();
   }
 
-  void dispose() {
+  @Override
+  public void dispose() {
     isDisposed.set(true);
     myImpl.dispose();
     ourDisposeService.submit(() -> {
