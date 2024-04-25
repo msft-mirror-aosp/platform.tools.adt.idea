@@ -199,7 +199,8 @@ public final class StudioFlags {
     true);
 
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = new BooleanFlag(PROFILER, "task.based.ux", "Task-based UX",
-    "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)", true);
+    "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)",
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android", false);
@@ -729,11 +730,11 @@ public final class StudioFlags {
     "Suggest migrating current project JDK configuration to .gradle/config.properties where gradleJvm uses the " +
     "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
 
-  public static final Flag<Boolean> GRADLE_DECLARATIVE_SOMETHING_IDE_SUPPORT = new BooleanFlag(
+  public static final Flag<Boolean> GRADLE_DECLARATIVE_IDE_SUPPORT = new BooleanFlag(
     GRADLE_IDE,
     "gradle.declarative.ide.support",
-    "Studio support for Gradle declarative files",
-    "Enable support for gradle.build.something in Android Studio",
+    "Studio support for Gradle's Declarative Configuration Language",
+    "Enable support for build.gradle.dcl in Android Studio",
     false
   );
 
@@ -1662,6 +1663,15 @@ public final class StudioFlags {
       true
     );
 
+  public static final Flag<Boolean> CRASHLYTICS_SHOW_INSIGHT =
+    new BooleanFlag(
+      APP_INSIGHTS,
+      "crashlytics.show.insight",
+      "Show insight for Crashlytics",
+      "Show AI generated insights for Crashlytics issue",
+      false
+    );
+
   public static final Flag<Boolean> PLAY_VITALS_ENABLED =
     new BooleanFlag(
       APP_INSIGHTS,
@@ -1693,6 +1703,15 @@ public final class StudioFlags {
       "Enable VCS integration for Play Vitals.",
       "Enhance code navigation in the Play Vitals tab to aid crash investigation with the recorded VCS info",
       true);
+
+  public static final Flag<Boolean> PLAY_VITALS_SHOW_INSIGHT =
+    new BooleanFlag(
+      APP_INSIGHTS,
+      "play.vitals.show.insight",
+      "Show insight for Play Vitals",
+      "Show AI generated insights for Play Vitals issue",
+      false
+    );
   // endregion App Insights
 
   // region App Links Assistant
@@ -1796,7 +1815,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
                     "Enable sending additional file context with completion requests",
                     "When enabled, additional file context (eg, currently open files) are included in inline code completion requests.",
-                    false);
+                    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_BUILD_SYNC_ERROR_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "build.and.sync.error.context.enabled",
@@ -1846,6 +1865,12 @@ public final class StudioFlags {
                     "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
                     ChannelDefault.enabledUpTo(DEV));
 
+  public static final Flag<Boolean> STUDIOBOT_TRANSFORM_HISTORY_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.transform.history.enabled",
+                    "Enable the transform history in the transform diff.",
+                    "When enabled, allows the user to navigate transform history in the diff view.",
+                    ChannelDefault.enabledUpTo(DEV));
+
   public static final Flag<Boolean> STUDIOBOT_EXPERIMENTAL_SLASH_COMMANDS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.experimental.slash.commands.enabled",
                     "Enable experimental slash comments.",
@@ -1868,6 +1893,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
                     "Suggest missing dependencies when inserting/pasting code snippets",
                     "When enabled, a dependency suggestion dialog will appear when inserting/pasting code snippets that might require missing dependencies.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_HALLUCINATION_DETECTOR_ENABLED =
+    new BooleanFlag(STUDIOBOT, "hallucination.detector.enabled",
+                    "Run hallucination analysis on generated code.",
+                    "When enabled, a hallucination detection utility will run on generated code snippets, and emit metrics when hallucinations are detected.",
                     ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =

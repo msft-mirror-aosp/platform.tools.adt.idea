@@ -19,15 +19,20 @@ import com.android.sdklib.deviceprovisioner.Resolution
 import com.android.sdklib.devices.Abi
 import com.google.common.collect.Range
 import kotlin.time.Duration
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class TestDeviceSource : DeviceSource {
   override val profiles = mutableListOf<DeviceProfile>()
+
+  val selectedProfile = MutableStateFlow<DeviceProfile?>(null)
 
   fun add(device: TestDevice) {
     profiles.add(device)
   }
 
-  override fun WizardPageScope.selectionUpdated(profile: DeviceProfile) {}
+  override fun WizardPageScope.selectionUpdated(profile: DeviceProfile) {
+    selectedProfile.value = profile
+  }
 }
 
 data class TestDevice(
@@ -36,6 +41,7 @@ data class TestDevice(
   override val name: String,
   override val resolution: Resolution = Resolution(2000, 1200),
   override val displayDensity: Int = 300,
+  override val displayDiagonalLength: Double = 0.0,
   override val isVirtual: Boolean = true,
   override val isRemote: Boolean = false,
   override val abis: List<Abi> = listOf(Abi.ARM64_V8A),
@@ -45,5 +51,22 @@ data class TestDevice(
   override val source: Class<out DeviceSource>
     get() = TestDeviceSource::class.java
 
-  override fun toBuilder(): DeviceProfile.Builder = throw UnsupportedOperationException()
+  override fun toBuilder(): Builder = Builder().apply { copyFrom(this@TestDevice) }
+
+  class Builder : DeviceProfile.Builder() {
+    override fun build(): TestDevice =
+      TestDevice(
+        apiRange = apiRange,
+        manufacturer = manufacturer,
+        name = name,
+        resolution = resolution,
+        displayDensity = displayDensity,
+        displayDiagonalLength = displayDiagonalLength,
+        isVirtual = isVirtual,
+        isRemote = isRemote,
+        abis = abis,
+        isAlreadyPresent = isAlreadyPresent,
+        availabilityEstimate = availabilityEstimate,
+      )
+  }
 }

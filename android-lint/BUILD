@@ -35,6 +35,7 @@ iml_module(
         "//tools/adt/idea/assistant[module]",
         "//tools/adt/idea/analytics[module]",
         "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer[module]",
+        "//tools/base/flags:studio.android.sdktools.flags[module]",
     ],
 )
 
@@ -111,6 +112,8 @@ iml_module(
         "@intellij//:com.intellij.gradle[test]",
         "//tools/base/lint/libs/lint-tests:studio.android.sdktools.lint.testinfrastructure[module, test]",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea[module, test]",
+        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module, test]",
+        "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative[module, test]",
     ],
 )
 

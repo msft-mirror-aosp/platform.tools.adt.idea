@@ -53,8 +53,11 @@ class VirtualDeviceTest {
         abis = listOf(Abi.ARM64_V8A),
         resolution = Resolution(1200, 800),
         displayDensity = 200,
+        displayDiagonalLength = 6.2,
       )
 
     assertThat(device.toBuilder().build()).isEqualTo(device)
+    assertThat(device.update { graphicAcceleration = GpuMode.HOST }.graphicAcceleration)
+      .isEqualTo(GpuMode.HOST)
   }
 }

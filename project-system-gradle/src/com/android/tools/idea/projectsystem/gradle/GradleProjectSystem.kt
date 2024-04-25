@@ -23,7 +23,6 @@ import com.android.tools.idea.gradle.AndroidGradleClassJarProvider
 import com.android.tools.idea.gradle.model.IdeAndroidArtifact
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaArtifact
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult
@@ -269,10 +268,6 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
     val applicationIdToModule: Map<String, Set<Module>>
   )
 
-  private class LazyComparator<T>(private val delegateProvider: Lazy<Comparator<T>>): Comparator<T> {
-    override fun compare(o1: T, o2: T): Int = delegateProvider.value.compare(o1, o2)
-  }
-
   private fun getGradleProjectCensus(project: Project): GradleProjectCensus {
     return CachedValuesManager.getManager(project).getCachedValue(project, CachedValueProvider {
       val packageToModule = persistentMapOf<String, PersistentSet<Module>>().builder()
@@ -368,15 +363,6 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
   override fun supportsProfilingMode() = true
 
 }
-
-private val IdeBaseArtifactCore.scopeType: ScopeType
-  get() = when (this.name) {
-    IdeArtifactName.ANDROID_TEST -> ScopeType.ANDROID_TEST
-    IdeArtifactName.MAIN -> ScopeType.MAIN
-    IdeArtifactName.TEST_FIXTURES -> ScopeType.TEST_FIXTURES
-    IdeArtifactName.UNIT_TEST -> ScopeType.UNIT_TEST
-    IdeArtifactName.SCREENSHOT_TEST -> ScopeType.SCREENSHOT_TEST
-  }
 
 fun createSourceProvidersFromModel(model: GradleAndroidModel): SourceProviders {
   val all =

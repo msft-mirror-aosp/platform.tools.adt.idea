@@ -15,12 +15,14 @@
  */
 package com.android.tools.idea.lint.common
 
+import com.android.SdkConstants.EXT_GRADLE_DECLARATIVE
 import com.android.SdkConstants.FN_ANDROID_PROGUARD_FILE
 import com.android.SdkConstants.FN_PROJECT_PROGUARD_FILE
 import com.android.SdkConstants.OLD_PROGUARD_FILE
 import com.android.ide.common.gradle.Dependency
 import com.android.ide.common.gradle.Module as ExternalModule
 import com.android.ide.common.repository.AgpVersion
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.lint.client.api.IssueRegistry
 import com.android.tools.lint.client.api.LintClient
 import com.android.tools.lint.client.api.LintClient.Companion.CLIENT_STUDIO
@@ -92,7 +94,9 @@ abstract class LintIdeSupport {
       fileType === JavaFileType.INSTANCE ||
         fileType === KotlinFileType.INSTANCE ||
         fileType === PropertiesFileType.INSTANCE ||
-        fileType === TomlFileType
+        fileType === TomlFileType ||
+        (StudioFlags.GRADLE_DECLARATIVE_IDE_SUPPORT.get() &&
+          file.name.endsWith(EXT_GRADLE_DECLARATIVE))
     ) {
       return true
     }

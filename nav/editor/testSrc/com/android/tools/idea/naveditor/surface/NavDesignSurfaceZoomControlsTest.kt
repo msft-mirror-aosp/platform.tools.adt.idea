@@ -209,10 +209,10 @@ class NavDesignSurfaceZoomControlsTest {
       .withComponentRegistrar(NavComponentRegistrar)
       .build()
 
-    UIUtil.invokeAndWaitIfNeeded(Runnable {
+    UIUtil.invokeAndWaitIfNeeded {
       surface.addModelWithoutRender(model)
       surface.currentNavigation = surface.sceneManager!!.model.find("FirstFragment")!!
-    })
+    }
 
     val fakeUi = UIUtil.invokeAndWaitIfNeeded(Computable {
       val outerPanel = JPanel(BorderLayout()).apply {
@@ -240,7 +240,7 @@ class NavDesignSurfaceZoomControlsTest {
       .filterIsInstance<ZoomToFitAction>()
       .single()
 
-    val event = TestActionEvent { dataId -> surface.getData(dataId) }
+    val event = TestActionEvent.createTestEvent { dataId -> surface.getData(dataId) }
     zoomToFitAction.actionPerformed(event)
     val zoomToFitScale = surface.zoomController.scale
 
@@ -249,9 +249,9 @@ class NavDesignSurfaceZoomControlsTest {
       val originalScale = surface.zoomController.scale
       repeat(3) {
         zoomInAction.actionPerformed(event)
-        UIUtil.invokeAndWaitIfNeeded(Runnable {
+        UIUtil.invokeAndWaitIfNeeded {
           fakeUi.layoutAndDispatchEvents()
-        })
+        }
       }
       Assert.assertTrue(surface.zoomController.scale > originalScale)
       ImageDiffUtil.assertImageSimilar(getGoldenImagePath("zoomIn"), fakeUi.render(), 0.1, 1)
@@ -260,9 +260,9 @@ class NavDesignSurfaceZoomControlsTest {
     // Verify zoom to fit
     run {
       zoomToFitAction.actionPerformed(event)
-      UIUtil.invokeAndWaitIfNeeded(Runnable {
+      UIUtil.invokeAndWaitIfNeeded {
         fakeUi.layoutAndDispatchEvents()
-      })
+      }
       Assert.assertEquals(zoomToFitScale, surface.zoomController.scale, 0.01)
       ImageDiffUtil.assertImageSimilar(getGoldenImagePath("zoomFit"), fakeUi.render(), 0.1, 1)
     }
@@ -272,9 +272,9 @@ class NavDesignSurfaceZoomControlsTest {
       val originalScale = surface.zoomController.scale
       repeat(3) {
         zoomOutAction.actionPerformed(event)
-        UIUtil.invokeAndWaitIfNeeded(Runnable {
+        UIUtil.invokeAndWaitIfNeeded {
           fakeUi.layoutAndDispatchEvents()
-        })
+        }
       }
       Assert.assertTrue(surface.zoomController.scale < originalScale)
       ImageDiffUtil.assertImageSimilar(getGoldenImagePath("zoomOut"), fakeUi.render(), 0.1, 1)

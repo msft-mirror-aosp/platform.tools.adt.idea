@@ -16,9 +16,11 @@
 package com.android.tools.idea.res
 
 import com.android.SdkConstants
+import com.android.SdkConstants.EXT_GRADLE_DECLARATIVE
+import com.android.SdkConstants.EXT_GRADLE_KTS
 import com.android.annotations.concurrency.Slow
 import com.android.tools.idea.fileTypes.FontFileType
-import com.android.tools.idea.flags.StudioFlags.GRADLE_DECLARATIVE_SOMETHING_IDE_SUPPORT
+import com.android.tools.idea.flags.StudioFlags.GRADLE_DECLARATIVE_IDE_SUPPORT
 import com.android.tools.idea.lang.aidl.AidlFileType
 import com.android.tools.idea.lang.rs.AndroidRenderscriptFileType
 import com.intellij.ide.highlighter.JavaFileType
@@ -37,12 +39,8 @@ fun isGradleFile(psiFile: PsiFile): Boolean {
 
   val fileType = psiFile.fileType
   val name = psiFile.name
-  if (fileType.name == "Kotlin" && name.endsWith(SdkConstants.EXT_GRADLE_KTS)) return true
-  if (
-    GRADLE_DECLARATIVE_SOMETHING_IDE_SUPPORT.get() &&
-      name.endsWith(SdkConstants.EXT_GRADLE_SOMETHING)
-  )
-    return true
+  if (fileType.name == "Kotlin" && name.endsWith(EXT_GRADLE_KTS)) return true
+  if (GRADLE_DECLARATIVE_IDE_SUPPORT.get() && name.endsWith(EXT_GRADLE_DECLARATIVE)) return true
 
   // Do not test getFileType() as this will differ depending on whether the TOML plugin is
   // active.

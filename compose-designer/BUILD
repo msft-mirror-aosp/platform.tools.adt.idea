@@ -8,10 +8,7 @@ load("//tools/base/bazel:maven.bzl", "maven_repository")
 iml_module(
     name = "intellij.android.compose-designer",
     # do not sort: must match IML order
-    srcs = [
-        "gen",
-        "src",
-    ],
+    srcs = ["src"],
     iml_files = ["intellij.android.compose-designer.iml"],
     kotlin_use_compose = True,
     lint_baseline = "lint_baseline.xml",

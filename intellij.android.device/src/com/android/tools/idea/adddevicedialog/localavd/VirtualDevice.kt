@@ -40,6 +40,7 @@ internal constructor(
   override val name: String,
   override val resolution: Resolution,
   override val displayDensity: Int,
+  override val displayDiagonalLength: Double,
   override val abis: List<Abi>,
   internal val sdkExtensionLevel: AndroidVersion,
   internal val skin: Skin,
@@ -114,6 +115,7 @@ internal constructor(
         name = name,
         resolution = resolution,
         displayDensity = displayDensity,
+        displayDiagonalLength = displayDiagonalLength,
         abis = abis,
         sdkExtensionLevel = sdkExtensionLevel,
         skin = skin,
@@ -132,6 +134,9 @@ internal constructor(
       )
   }
 }
+
+internal fun VirtualDevice.update(block: VirtualDevice.Builder.() -> Unit): VirtualDevice =
+  toBuilder().apply(block).build()
 
 internal data class Custom internal constructor(internal val value: StorageCapacity) :
   ExpandedStorage() {

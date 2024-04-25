@@ -200,8 +200,8 @@ studio_plugin(
             "//tools/adt/idea/ml-api:intellij.android.ml-api",
             "//tools/adt/idea/streaming:intellij.android.streaming",
             "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
+            "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative",
             "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
-            "//tools/adt/idea/gradle-dsl-something:intellij.android.gradle.dsl.something",
             "//tools/adt/idea/gradle-dsl-toml:intellij.android.gradle.dsl.toml",
             "//tools/adt/idea/android-lang-databinding:intellij.android.lang-databinding",
             "//tools/adt/idea/android-lang:intellij.android.lang",
@@ -255,6 +255,7 @@ studio_plugin(
             "//tools/base/kotlin-multiplatform-models:studio.android.kotlin-multiplatform-models",
             "//tools/adt/idea/safemode:intellij.android.safemode",
             "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
+            "//tools/adt/idea/completion:intellij.android.completion",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",

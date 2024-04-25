@@ -119,7 +119,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -1552,7 +1551,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
    *
    * @param block the {@link Callable} to be executed in the Render thread.
    * @param timeout maximum time to wait for the action to execute. If <= 0, the default timeout
-   *                 (see {@link RenderAsyncActionExecutor#DEFAULT_RENDER_THREAD_TIMEOUT_MS}) will be used.
+   *                will be used (see {@link RenderAsyncActionExecutor).
    * @param timeUnit   the {@link TimeUnit} for the timeout.
    *
    * @return A {@link CompletableFuture} that completes when the block finalizes.
@@ -1645,26 +1644,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   @Override
   public @NotNull CompletableFuture<Void> executeCallbacksAndRequestRender() {
     return executeCallbacksAsync().thenCompose(b -> requestRenderAsync());
-  }
-
-  /**
-   * Executes the given {@link Runnable} callback synchronously with the given timeout. Then calls {@link #executeCallbacksAsync()} and requests
-   * render afterwards. Callers must be aware that long timeouts should only be passed when not on EDT, otherwise the UI will freeze.
-   * Returns true if the callback was executed successfully and on time, and render was requested.
-   */
-  public boolean executeCallbacksAndRequestRender(long timeout, TimeUnit timeoutUnit, @Nullable Runnable callback) {
-    try {
-      if (callback != null) {
-        RenderService.getRenderAsyncActionExecutor()
-          .runAsyncActionWithTimeout(timeout, timeoutUnit, Executors.callable(callback)).get(timeout, timeoutUnit);
-      }
-      executeCallbacksAsync().thenCompose(b -> requestRenderAsync());
-      return true;
-    }
-    catch (Exception e) {
-      Logger.getInstance(LayoutlibSceneManager.class).debug("executeCallbacksAndRequestRender did not complete successfully", e);
-      return false;
-    }
   }
 
   /**

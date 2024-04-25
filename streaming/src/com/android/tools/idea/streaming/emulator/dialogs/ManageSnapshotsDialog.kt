@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.Slow
 import com.android.annotations.concurrency.UiThread
 import com.android.emulator.control.SnapshotPackage
 import com.android.tools.adtui.ImageUtils
+import com.android.tools.adtui.common.AdtUiUtils.updateToolbars
 import com.android.tools.adtui.ui.ImagePanel
 import com.android.tools.adtui.util.getHumanizedSize
 import com.android.tools.concurrency.AndroidIoManager
@@ -133,6 +134,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
 
   private val snapshotTableModel = SnapshotTableModel()
   private val snapshotTable = SnapshotTable(snapshotTableModel)
+  private lateinit var decoratedTable: JPanel
   private val createSnapshotButton = JButton(message("manage.snapshots.create.snapshot")).apply {
     addActionListener { createSnapshot() }
   }
@@ -302,7 +304,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
           .setRemoveActionUpdater { !snapshotTable.selectionModel.isSelectedIndex(QUICK_BOOT_SNAPSHOT_MODEL_ROW) }
           .setToolbarPosition(ActionToolbarPosition.BOTTOM)
           .setButtonComparator(message("manage.snapshots.load"), message("manage.snapshots.edit"), message("manage.snapshots.remove"))
-          .createPanel()
+          .createPanel().also { decoratedTable = it }
       )
     }
   }
@@ -332,6 +334,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
               snapshotTableModel.addRow(snapshot)
               snapshotTable.selection = listOf(snapshot)
               TableUtil.scrollSelectionToVisible(snapshotTable)
+              updateToolbars(decoratedTable)  // Workaround for https://youtrack.jetbrains.com/issue/IDEA-352328.
             }
           }
         }
