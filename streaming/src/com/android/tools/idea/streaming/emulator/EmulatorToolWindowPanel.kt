@@ -196,7 +196,7 @@ internal class EmulatorToolWindowPanel(
     emulatorView.addPostureListener(object: PostureListener {
       override fun postureChanged(posture: PostureDescriptor) {
         EventQueue.invokeLater {
-          mainToolbar.updateActionsImmediately()
+          mainToolbar.updateActionsAsync()
         }
       }
     })
@@ -220,8 +220,8 @@ internal class EmulatorToolWindowPanel(
     mainToolbar.targetComponent = emulatorView
     secondaryToolbar.targetComponent = emulatorView
     emulatorView.addPropertyChangeListener(DISPLAY_MODE_PROPERTY) {
-      mainToolbar.updateActionsImmediately()
-      secondaryToolbar.updateActionsImmediately()
+      mainToolbar.updateActionsAsync()
+      secondaryToolbar.updateActionsAsync()
     }
 
     val uiState = savedUiState as EmulatorUiState? ?: EmulatorUiState()
@@ -248,10 +248,12 @@ internal class EmulatorToolWindowPanel(
    * Destroys content of the emulator panel and returns its state for later recreation.
    */
   override fun destroyContent(): EmulatorUiState {
+    val uiState = EmulatorUiState()
+    val disposable = contentDisposable ?: return uiState
+    contentDisposable = null
+
     multiDisplayStateUpdater.run()
     multiDisplayStateStorage.removeUpdater(multiDisplayStateUpdater)
-
-    val uiState = EmulatorUiState()
 
     for (panel in displayPanels.values) {
       uiState.zoomScrollState[panel.displayId] = panel.zoomScrollState
@@ -273,8 +275,7 @@ internal class EmulatorToolWindowPanel(
 
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusOwnerListener)
     emulator.removeConnectionStateListener(this)
-    contentDisposable?.let { Disposer.dispose(it) }
-    contentDisposable = null
+    Disposer.dispose(disposable)
 
     centerPanel.removeAll()
     displayPanels.clear()
@@ -287,7 +288,7 @@ internal class EmulatorToolWindowPanel(
   }
 
   fun updateMainToolbar() {
-    mainToolbar.updateActionsImmediately()
+    mainToolbar.updateActionsAsync()
   }
 
   override fun getData(dataId: String): Any? {
@@ -360,8 +361,8 @@ internal class EmulatorToolWindowPanel(
       val rootPanel = buildLayout(layoutRoot, newDisplays)
       displayDescriptors = newDisplays
       setRootPanel(rootPanel)
-      mainToolbar.updateActionsImmediately()
-      secondaryToolbar.updateActionsImmediately()
+      mainToolbar.updateActionsAsync()
+      secondaryToolbar.updateActionsAsync()
     }
 
     fun buildLayout(multiDisplayState: MultiDisplayState) {
@@ -409,8 +410,8 @@ internal class EmulatorToolWindowPanel(
     }
 
     private fun setRootPanel(rootPanel: JPanel) {
-      mainToolbar.updateActionsImmediately() // Rotation buttons are hidden in multi-display mode.
-      secondaryToolbar.updateActionsImmediately()
+      mainToolbar.updateActionsAsync() // Rotation buttons are hidden in multi-display mode.
+      secondaryToolbar.updateActionsAsync()
       centerPanel.removeAll()
       centerPanel.addToCenter(rootPanel)
       centerPanel.validate()

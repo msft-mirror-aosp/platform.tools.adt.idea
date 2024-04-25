@@ -13,12 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.adddevicedialog.localavd
+package com.android.tools.idea.streaming.device
 
-internal enum class Service(private val string: String) {
-  GOOGLE_PLAY_STORE("Google Play Store"),
-  GOOGLE_APIS("Google APIs"),
-  ANDROID_OPEN_SOURCE("Android Open Source");
+import com.android.tools.idea.flags.StudioFlags
+import com.intellij.openapi.diagnostic.thisLogger
+import java.util.function.Supplier
 
-  override fun toString() = string
+object B330395367Logger {
+  private val LOG = thisLogger()
+
+  fun log(lazyMessage: Supplier<String>) {
+    if (StudioFlags.DEVICE_MIRRORING_B330395367_LOGGING.get()) {
+      LOG.info(lazyMessage.get())
+    }
+  }
 }

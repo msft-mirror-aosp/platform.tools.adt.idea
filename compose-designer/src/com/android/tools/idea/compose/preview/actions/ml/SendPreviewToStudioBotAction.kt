@@ -18,12 +18,14 @@ package com.android.tools.idea.compose.preview.actions.ml
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.compose.preview.actions.ml.utils.Blob
 import com.android.tools.idea.compose.preview.actions.ml.utils.ContextualEditorBalloon.Companion.contextualEditorBalloon
-import com.android.tools.idea.compose.preview.actions.ml.utils.KotlinCodeTransformer
+import com.android.tools.idea.compose.preview.actions.ml.utils.transformAndShowDiff
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.util.containingFile
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.studiobot.MimeType
+import com.android.tools.idea.studiobot.ModelType
 import com.android.tools.idea.studiobot.StudioBot
+import com.android.tools.idea.studiobot.prompts.Prompt
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.intellij.openapi.Disposable
@@ -39,6 +41,7 @@ import com.intellij.psi.util.parentOfType
 import icons.StudioIcons
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
+import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtFunction
 
 // TODO: create a second class to send only a portion of the preview as the image context, e.g.
@@ -100,14 +103,13 @@ class SendPreviewToStudioBotAction : AnAction(message("action.send.preview.to.ge
           icon = StudioIcons.Compose.Toolbar.RUN_CONFIGURATION,
           placeholderText = message("circle.to.fix.balloon.placeholder"),
         ) { userQuery ->
-          KotlinCodeTransformer()
-            .transformAndShowDiff(
-              userQuery,
-              previewCode,
-              filePointer,
-              Blob(imageBytes, MimeType.PNG),
-              diffDisposable,
-            )
+          transformAndShowDiff(
+            buildPrompt(filePointer, previewCode, Blob(imageBytes, MimeType.PNG), userQuery),
+            filePointer,
+            diffDisposable,
+            // TODO: upgrade to gemini
+            ModelType.EXPERIMENTAL_VISION,
+          )
         }
       }
       .show(dataContext)
@@ -118,5 +120,44 @@ class SendPreviewToStudioBotAction : AnAction(message("action.send.preview.to.ge
     val byteArrayOutputStream = ByteArrayOutputStream(8192)
     ImageIO.write(renderedImage, "png", byteArrayOutputStream)
     return byteArrayOutputStream.toByteArray()
+  }
+
+  /**
+   * Takes the code of a Compose Preview function, its corresponding image, and a custom
+   * instruction. Builds a prompt asking for the transformed function code.
+   */
+  private fun buildPrompt(
+    filePointer: SmartPsiElementPointer<PsiFile>,
+    previewFunctionCode: String,
+    blob: Blob?,
+    query: String,
+  ): Prompt {
+    val defaultPrompt =
+      """
+      |You are an expert Android programmer knowledgeable in Kotlin and Java.
+      |You follow all the best coding practices.
+      """
+        .trimMargin()
+    return com.android.tools.idea.studiobot.prompts.buildPrompt(filePointer.project) {
+      userMessage {
+        // TODO: This was supposed to be a systemMessage, but the current model (Vision) doesn't
+        //  support multi-turn
+        text(defaultPrompt, listOf())
+        text("This is the code corresponding to the following Compose Preview:", listOf())
+        filePointer.element?.let {
+          code(previewFunctionCode, KotlinLanguage.INSTANCE, listOf(it.virtualFile))
+        }
+        blob?.let { blob(data = it.data, mimeType = it.mimeType, filesUsed = emptyList()) }
+        text(
+          """
+          |The response must modify the code above in order to achieve the following: $query
+          |The response must contain the entire function code, not only the modified parts.
+          |The response must only include the modified code, not any other piece of text.
+          """
+            .trimMargin(),
+          listOf(),
+        )
+      }
+    }
   }
 }
