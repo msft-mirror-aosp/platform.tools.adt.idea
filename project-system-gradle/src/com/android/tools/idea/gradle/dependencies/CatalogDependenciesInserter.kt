@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dependencies
 
+import android.annotation.SuppressLint
 import com.android.ide.common.gradle.Dependency
 import com.android.ide.common.gradle.RichVersion
 import com.android.ide.common.repository.keysMatch
@@ -38,6 +39,7 @@ import com.intellij.psi.PsiFile
 import org.gradle.api.plugins.JavaPlatformPlugin
 import org.jetbrains.kotlin.utils.addIfNotNull
 
+@SuppressLint("AddDependencyUsage")
 class CatalogDependenciesInserter(private val projectModel: ProjectBuildModel) : DependenciesInserter(projectModel) {
   @JvmOverloads
   override fun addClasspathDependency(dependency: String,
@@ -221,7 +223,7 @@ class CatalogDependenciesInserter(private val projectModel: ProjectBuildModel) :
 
 
   private fun getCatalogModel(): GradleVersionCatalogModel {
-    val catalogModel = projectModel.versionCatalogsModel.getVersionCatalogModel(VersionCatalogModel.DEFAULT_CATALOG_NAME)
+    val catalogModel = DependenciesHelper.getDefaultCatalogModel(projectModel)
     // check invariant that at this point catalog must be available as algorithm chose to add dependency to catalog
     check(catalogModel != null) { "Catalog ${VersionCatalogModel.DEFAULT_CATALOG_NAME} must be available to add dependency" }
     return catalogModel

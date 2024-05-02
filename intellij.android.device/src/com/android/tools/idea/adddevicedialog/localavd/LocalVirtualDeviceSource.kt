@@ -17,7 +17,9 @@ package com.android.tools.idea.adddevicedialog.localavd
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.android.ide.common.rendering.HardwareConfigHelper
 import com.android.resources.ScreenOrientation
+import com.android.resources.ScreenRound
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.SdkVersionInfo
 import com.android.sdklib.deviceprovisioner.Resolution
@@ -27,6 +29,7 @@ import com.android.sdklib.internal.avd.EmulatedProperties
 import com.android.sdklib.internal.avd.GpuMode
 import com.android.tools.idea.adddevicedialog.DeviceProfile
 import com.android.tools.idea.adddevicedialog.DeviceSource
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.adddevicedialog.WizardAction
 import com.android.tools.idea.adddevicedialog.WizardPageScope
 import com.android.tools.idea.avdmanager.DeviceManagerConnection
@@ -113,7 +116,9 @@ internal class LocalVirtualDeviceSource(
         Resolution(this.defaultHardware.screen.xDimension, this.defaultHardware.screen.yDimension),
       displayDensity = this.defaultHardware.screen.pixelDensity.dpiValue,
       displayDiagonalLength = this.defaultHardware.screen.diagonalLength,
+      isRound = this.defaultHardware.screen.screenRound == ScreenRound.ROUND,
       abis = this.defaultHardware.supportedAbis + this.defaultHardware.translatedAbis,
+      formFactor = this.formFactor,
       // TODO: Choose an appropriate skin
       skin = DefaultSkin(Path.of(sdk, "skins", "pixel_6")),
       frontCamera = AvdCamera.EMULATED,
@@ -137,4 +142,14 @@ internal class LocalVirtualDeviceSource(
         .map { Range.closed(it.minSdkLevel, it.maxSdkLevel) }
         .reduce(Range<Int>::span)
         .intersection(Range.closed(1, SdkVersionInfo.HIGHEST_KNOWN_API))
+
+  private val Device.formFactor: String
+    get() =
+      when {
+        HardwareConfigHelper.isWear(this) -> FormFactors.WEAR
+        HardwareConfigHelper.isAutomotive(this) -> FormFactors.AUTO
+        HardwareConfigHelper.isTv(this) -> FormFactors.TV
+        HardwareConfigHelper.isTablet(this) -> FormFactors.TABLET
+        else -> FormFactors.PHONE
+      }
 }

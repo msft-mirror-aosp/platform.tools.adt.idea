@@ -17,22 +17,32 @@ package com.android.tools.idea.adddevicedialog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.intellij.icons.AllIcons
-import com.intellij.ui.JBColor
-import org.jetbrains.jewel.bridge.toComposeColor
+import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
+import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
@@ -41,13 +51,33 @@ import org.jetbrains.jewel.ui.util.thenIf
 
 internal data class TableColumn<T>(
   val name: String,
-  val weight: Float,
+  val width: TableColumnWidth,
   val comparator: Comparator<T>? = null,
   val rowContent: @Composable (T) -> Unit,
 )
 
-internal fun <T> TableTextColumn(name: String, weight: Float = 1f, attribute: (T) -> String) =
-  TableColumn<T>(name, weight, compareBy(attribute)) { Text(attribute(it)) }
+sealed interface TableColumnWidth {
+  fun RowScope.widthModifier(): Modifier
+
+  class Fixed(val width: Dp) : TableColumnWidth {
+    override fun RowScope.widthModifier(): Modifier = Modifier.width(width)
+  }
+
+  class Weighted(val weight: Float) : TableColumnWidth {
+    override fun RowScope.widthModifier(): Modifier = Modifier.weight(weight, fill = true)
+  }
+}
+
+internal fun <T> TableTextColumn(
+  name: String,
+  width: TableColumnWidth = TableColumnWidth.Weighted(1f),
+  overflow: TextOverflow = TextOverflow.Ellipsis,
+  maxLines: Int = 1,
+  attribute: (T) -> String,
+) =
+  TableColumn<T>(name, width, compareBy(attribute)) {
+    Text(attribute(it), overflow = overflow, maxLines = maxLines)
+  }
 
 internal enum class SortOrder {
   ASCENDING,
@@ -97,10 +127,14 @@ internal fun <T> TableHeader(
   onClick: (TableColumn<T>) -> Unit,
   columns: List<TableColumn<T>>,
 ) {
-  Row(Modifier.fillMaxWidth()) {
+  Row(
+    Modifier.fillMaxWidth().padding(ROW_PADDING),
+    horizontalArrangement = Arrangement.spacedBy(CELL_SPACING),
+  ) {
     columns.forEach {
-      Row(Modifier.weight(it.weight, fill = true).clickable { onClick(it) }) {
-        Text(it.name, fontWeight = FontWeight.Bold)
+      val widthModifier = with(it.width) { widthModifier() }
+      Row(widthModifier.clickable { onClick(it) }) {
+        Text(it.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (it == sortColumn) {
           sortOrder.icon()
         }
@@ -119,9 +153,20 @@ internal fun <T> TableRow(
   Row(
     Modifier.fillMaxWidth()
       .clickable { onClick(value) }
-      .thenIf(selected) { background(JBColor.BLUE.toComposeColor()) }
+      .thenIf(selected) {
+        background(
+          retrieveColorOrUnspecified("Table.selectionBackground").takeOrElse { Color.Cyan }
+        )
+      }
+      .padding(ROW_PADDING),
+    horizontalArrangement = Arrangement.spacedBy(CELL_SPACING),
   ) {
-    columns.forEach { Box(Modifier.weight(it.weight, fill = true)) { it.rowContent(value) } }
+    val contentColor =
+      if (selected) retrieveColorOrUnspecified("Table.selectionForeground")
+      else LocalContentColor.current
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+      columns.forEach { Box(with(it.width) { widthModifier() }) { it.rowContent(value) } }
+    }
   }
 }
 
@@ -140,7 +185,9 @@ internal fun <T> Table(
       tableSortState.sortOrder,
       onClick = { column ->
         if (column.comparator != null) {
-          tableSortState.sortOrder = if (tableSortState.sortColumn == column) tableSortState.sortOrder.opposite else SortOrder.ASCENDING
+          tableSortState.sortOrder =
+            if (tableSortState.sortColumn == column) tableSortState.sortOrder.opposite
+            else SortOrder.ASCENDING
           tableSortState.sortColumn = column
         }
       },
@@ -161,3 +208,6 @@ internal fun <T> Table(
     }
   }
 }
+
+private val CELL_SPACING = 4.dp
+private val ROW_PADDING = 4.dp

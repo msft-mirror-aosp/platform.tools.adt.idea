@@ -110,14 +110,56 @@ iml_module(
             "data": [
                 "//prebuilts/studio/jdk/jdk11:jdk11",
                 "//prebuilts/studio/jdk/jdk17:jdk17_runtime_files",
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
             ],
             "test_filter": "com.android.tools.idea.gradle.project.sync.jdk.integration",
         },
         "errors.integration": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.errors.integration",
+            "data": [
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+            ],
+        },
+        "providers.integration": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.ProviderIntegrationTestCase",
+            "data": [
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+            ],
+        },
+        # This is split out because it (should) require kts indexing, which is otherwise incredibly slow in tests: we try to turn the
+        # indexing off elsewhere by masking the KotlinScriptWorkspaceFileIndexContributor extension, but it has to stay on here.
+        "kts.highlighting": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.highlighting.GradleKtsResolveSymbolsTest",
+            "data": [
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+            ],
+        },
+        "runs_gradle": {
+            "test_filter": ".runsGradle",
+            "shard_count": 15,
+            "data": [
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+            ],
         },
         "other": {
-            "shard_count": 26,
+            # Note: we do not include AGP/Gradle artifacts in this test target, to enforce the separation between tests which require Gradle
+            # to run (in split targets above) and this catch-all target.
+            "data": [],
         },
     },
     tags = ["no_test_windows"],
@@ -135,10 +177,6 @@ iml_module(
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/designer/testData",
         "//tools/adt/idea/project-system-gradle/testData",
-        "//tools/base/build-system:android_gradle_plugin.zip",
-        "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-        "//tools/base/build-system:gradle-distrib",
-        "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
     ],
     test_resources = ["testSrc/resources"],
     test_srcs = ["testSrc"],
@@ -325,6 +363,7 @@ maven_repository(
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.6.21",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.6.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.22",
         "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_" + KGP_VERSION_FOR_TESTS,
         "@maven//:org.jetbrains.kotlin.kotlin-native-prebuilt_" + KGP_VERSION_FOR_TESTS,
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.4.32",
@@ -334,6 +373,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.5.0",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.6.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.22",
         "@maven//:org.jetbrains.kotlin.kotlin-test-junit_" + KGP_VERSION_FOR_TESTS,
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.5.2",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.6.4",

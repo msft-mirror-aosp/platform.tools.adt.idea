@@ -29,6 +29,7 @@ import com.android.tools.idea.streaming.emulator.CUSTOM_FONT_SIZE
 import com.android.tools.idea.streaming.uisettings.testutil.UiControllerListenerValidator
 import com.android.tools.idea.streaming.uisettings.ui.FontSize
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsModel
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.registerOrReplaceServiceInstance
 import kotlinx.coroutines.runBlocking
@@ -82,6 +83,7 @@ class DeviceUiSettingsControllerTest {
   @Test
   fun testReadCustomValue() {
     agent.darkMode = true
+    agent.gestureNavigation = true
     agent.appLocales = "da"
     agent.talkBackInstalled = true
     agent.talkBackOn = true
@@ -96,6 +98,7 @@ class DeviceUiSettingsControllerTest {
   @Test
   fun testReadCustomValueWithoutFontSizeAndDensity() {
     agent.darkMode = true
+    agent.gestureNavigation = true
     agent.appLocales = "da"
     agent.talkBackInstalled = true
     agent.talkBackOn = true
@@ -107,6 +110,15 @@ class DeviceUiSettingsControllerTest {
     controller.initAndWait()
     val listeners = UiControllerListenerValidator(model, customValues = false, settable = true)
     listeners.checkValues(expectedChanges = 1, expectedCustomValues = true, expectedSettable = false)
+  }
+
+  @Test
+  fun testGestureOverlayMissingAndTalkbackInstalled() {
+    agent.gestureOverlayInstalled = false
+    agent.talkBackInstalled = true
+    controller.initAndWait()
+    assertThat(model.gestureOverlayInstalled.value).isFalse()
+    assertThat(model.talkBackInstalled.value).isTrue()
   }
 
   @Test
@@ -122,6 +134,21 @@ class DeviceUiSettingsControllerTest {
     controller.initAndWait()
     model.inDarkMode.setFromUi(false)
     waitForCondition(10.seconds) { !agent.darkMode }
+  }
+
+  @Test
+  fun testGestureNavigationOn() {
+    controller.initAndWait()
+    model.gestureNavigation.setFromUi(true)
+    waitForCondition(10.seconds) { agent.gestureNavigation }
+  }
+
+  @Test
+  fun testGestureNavigationOff() {
+    agent.gestureNavigation = true
+    controller.initAndWait()
+    model.gestureNavigation.setFromUi(false)
+    waitForCondition(10.seconds) { !agent.gestureNavigation }
   }
 
   @Test

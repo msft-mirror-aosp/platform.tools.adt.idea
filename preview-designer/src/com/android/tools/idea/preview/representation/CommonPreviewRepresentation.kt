@@ -48,6 +48,7 @@ import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.RenderQualityPolicy
 import com.android.tools.idea.preview.SimpleRenderQualityManager
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
+import com.android.tools.idea.preview.animation.AnimationPreview
 import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
 import com.android.tools.idea.preview.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.fast.CommonFastPreviewSurface
@@ -353,6 +354,9 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       delegateRefresh = ::invalidateAndRefresh,
     )
 
+  var currentInspector: AnimationPreview<*>? = null
+    private set
+
   override val component: JComponent
     get() = previewView.component
 
@@ -527,6 +531,27 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       }
     }
 
+    // Make sure not to start refreshes when deactivated, unless it is the first quality refresh
+    // that happens since deactivation. This is expected to happen to decrease the quality of its
+    // previews when deactivating.
+    val shouldProcessRequest =
+      when {
+        lifecycleManager.isActive() -> true
+        request.refreshType != CommonPreviewRefreshType.QUALITY -> false
+        else -> allowQualityChangeIfInactive.getAndSet(false)
+      }
+    if (!shouldProcessRequest) {
+      return CompletableDeferred(Unit)
+    }
+
+    // Return early when quality refresh won't actually refresh anything
+    if (
+      request.refreshType == CommonPreviewRefreshType.QUALITY &&
+        !qualityManager.needsQualityChange(surface)
+    ) {
+      return CompletableDeferred(Unit)
+    }
+
     val startTime = System.nanoTime()
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(
@@ -541,20 +566,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       return CompletableDeferred<Unit>().also {
         it.completeExceptionally(IllegalStateException("Already disposed"))
       }
-    }
-
-    // Make sure not to start refreshes when deactivated, unless it is the first quality refresh
-    // that happens since deactivation. This is expected to happen to decrease the quality of its
-    // previews when deactivating.
-    val shouldProcessRequest =
-      when {
-        lifecycleManager.isActive() -> true
-        request.refreshType != CommonPreviewRefreshType.QUALITY -> false
-        else -> allowQualityChangeIfInactive.getAndSet(false)
-      }
-    if (!shouldProcessRequest) {
-      refreshProgressIndicator.processFinish()
-      return CompletableDeferred(Unit)
     }
 
     val invalidateIfCancelled = AtomicBoolean(false)
@@ -746,6 +757,9 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       is PreviewMode.Gallery -> {
         withContext(uiThread) { previewView.galleryMode = null }
       }
+      is PreviewMode.AnimationInspection -> {
+        stopAnimationInspector()
+      }
       else -> {}
     }
   }
@@ -764,9 +778,33 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
         surface.repaint()
         withContext(uiThread) { previewView.galleryMode = GalleryMode(surface) }
       }
+      is PreviewMode.AnimationInspection -> {
+        startAnimationInspector(mode.selected)
+      }
       else -> {}
     }
     surface.background = mode.backgroundColor
+  }
+
+  private suspend fun startAnimationInspector(element: PreviewElement<*>) {
+    LOG.debug("Starting animation inspector mode on: $element")
+    invalidateAndRefresh()
+    createAnimationInspector()?.also {
+      Disposer.register(this@CommonPreviewRepresentation, it)
+      withContext(uiThread) { previewView.bottomPanel = it.component }
+    }
+    ActivityTracker.getInstance().inc()
+  }
+
+  protected open fun createAnimationInspector(): AnimationPreview<*>? {
+    return null
+  }
+
+  private suspend fun stopAnimationInspector() {
+    LOG.debug("Stopping animation inspector mode")
+    currentInspector?.dispose()
+    withContext(uiThread) { previewView.bottomPanel = null }
+    invalidateAndRefresh()
   }
 
   private suspend fun startInteractivePreview(element: PreviewElement<*>) {

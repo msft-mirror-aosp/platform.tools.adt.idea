@@ -51,12 +51,9 @@ internal fun DeviceTable(
 
   val columns: List<TableColumn<DeviceProfile>> = remember {
     listOf(
-      TableColumn("", 0.5f) {
-        // TODO: Represent actual device type
-        Icon("studio/icons/avd/device-mobile.svg", "", StudioIcons::class.java)
-      },
+      TableColumn("", TableColumnWidth.Fixed(16.dp)) { it.Icon(Modifier.size(16.dp)) },
       TableTextColumn("OEM") { it.manufacturer },
-      TableTextColumn("Name", 2f) { it.name },
+      TableTextColumn("Name", TableColumnWidth.Weighted(2f), maxLines = 2) { it.name },
       TableTextColumn("API") {
         // This case is a bit strange, because we adjust the display based on the API filter.
         // TODO: We will need a way to pass the API level on to the next stage.
@@ -91,34 +88,49 @@ internal fun DeviceTable(
         Icon("actions/previewDetails.svg", "Details", AllIcons::class.java, Modifier.size(20.dp))
       }
     }
-    HorizontalSplitLayout(
-      first = { DeviceFilters(filterState, modifier = it) },
-      second = {
-        Row(modifier = it) {
-          Table(
-            columns,
-            devices.filter(filterState::apply),
-            { it },
-            modifier = Modifier.weight(1f),
-            tableSelectionState = tableSelectionState,
-          )
-          if (showDetails) {
-            when (val selection = tableSelectionState.selection) {
-              null -> EmptyStatePanel("Select a device", Modifier.width(200.dp).fillMaxHeight())
-              else ->
-                DeviceDetails(
-                  selection,
-                  filterState.apiLevelFilter.apiLevel.apiLevel,
-                  modifier = Modifier.width(200.dp).fillMaxHeight(),
-                )
+    if (devices.none(filterState.textFilter::apply)) {
+      EmptyStatePanel(
+        "No devices found for \"${filterState.textFilter.searchText}\".",
+        Modifier.fillMaxSize(),
+      )
+    } else {
+      HorizontalSplitLayout(
+        first = { DeviceFilters(filterState, modifier = it) },
+        second = {
+          Row(modifier = it) {
+            val filteredDevices = devices.filter(filterState::apply)
+            if (filteredDevices.isEmpty()) {
+              EmptyStatePanel(
+                "No devices found matching the current filters.",
+                Modifier.fillMaxSize(),
+              )
+            } else {
+              Table(
+                columns,
+                filteredDevices,
+                { it },
+                modifier = Modifier.weight(1f),
+                tableSelectionState = tableSelectionState,
+              )
+              if (showDetails) {
+                when (val selection = tableSelectionState.selection) {
+                  null -> EmptyStatePanel("Select a device", Modifier.width(200.dp).fillMaxHeight())
+                  else ->
+                    DeviceDetails(
+                      selection,
+                      filterState.apiLevelFilter.apiLevel.apiLevel,
+                      modifier = Modifier.width(200.dp).fillMaxHeight(),
+                    )
+                }
+              }
             }
           }
-        }
-      },
-      modifier = Modifier.fillMaxSize(),
-      minRatio = 0.1f,
-      maxRatio = 0.5f,
-    )
+        },
+        modifier = Modifier.fillMaxSize(),
+        minRatio = 0.1f,
+        maxRatio = 0.5f,
+      )
+    }
   }
 }
 

@@ -44,6 +44,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiImportStatementBase
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiPackageStatement
+import com.intellij.psi.SyntheticElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
@@ -155,6 +156,7 @@ class SuppressLintQuickFix(private val id: String, element: PsiElement? = null) 
     val offset = element.textOffset
     addNoInspectionComment(project, file, offset)
   }
+
   /**
    * Given a file and offset of a statement, inserts a //noinspection <id> comment on the
    * **previous** line.
@@ -311,7 +313,7 @@ class SuppressLintQuickFix(private val id: String, element: PsiElement? = null) 
       val annotation = AnnotationUtil.findAnnotation(modifierOwner, annotationName)
       val newAnnotation = createNewAnnotation(project, container, annotation, id)
       if (newAnnotation != null) {
-        if (annotation != null && annotation.isPhysical) {
+        if (annotation != null && annotation !is SyntheticElement) {
           annotation.replace(newAnnotation)
         } else {
           val attributes = newAnnotation.parameterList.attributes

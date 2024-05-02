@@ -67,7 +67,7 @@ class UiSettingsRule : ExternalResource() {
     get() = adb.shellV2Requests.map { it.command }
 
   val emulator: FakeEmulator by lazy { createAndStartEmulator() }
-  val deviceSelector: DeviceSelector by lazy { DeviceSelector.fromSerialNumber(emulator.serialNumber) }
+  val emulatorDeviceSelector: DeviceSelector by lazy { DeviceSelector.fromSerialNumber(emulator.serialNumber) }
   val emulatorConfiguration: EmulatorConfiguration by lazy { EmulatorConfiguration.readAvdDefinition(emulator.avdId, emulator.avdFolder)!! }
 
   override fun before() {
@@ -79,6 +79,8 @@ class UiSettingsRule : ExternalResource() {
 
   fun configureUiSettings(
     darkMode: Boolean = false,
+    gestureOverlayInstalled: Boolean = true,
+    gestureNavigation: Boolean = false,
     applicationId: String = APPLICATION_ID1,
     appLocales: String = "",
     talkBackInstalled: Boolean = false,
@@ -86,13 +88,16 @@ class UiSettingsRule : ExternalResource() {
     selectToSpeakOn: Boolean = false,
     fontSize: Int = DEFAULT_FONT_SIZE,
     physicalDensity: Int = DEFAULT_DENSITY,
-    overrideDensity: Int = DEFAULT_DENSITY
+    overrideDensity: Int = DEFAULT_DENSITY,
+    deviceSelector: DeviceSelector = emulatorDeviceSelector
   ) {
     val overrideLine = if (physicalDensity != overrideDensity) "\n      Override density: $overrideDensity" else ""
     val command = POPULATE_COMMAND
     val response = """
       -- Dark Mode --
       Night mode: ${if (darkMode) "yes" else "no"}
+      -- Gestures --
+      ${if (gestureOverlayInstalled) "[${if (gestureNavigation) "x" else " "}] com.android.internal.systemui.navbar.gestural" else ""}
       -- List Packages --
       package:com.google.some.package1
       ${if (talkBackInstalled) "package:com.google.android.marvin.talkback" else "package:com.google.some.package2"}
@@ -108,7 +113,7 @@ class UiSettingsRule : ExternalResource() {
       -- Foreground Application --
          Proc # 0: fg     T/A/TOP  LCMNFU  t: 0 17132:com.example.test.process1/u0a405 (top-activity)
          Proc # 0: fg     T/A/TOP  LCMNFU  t: 0 17132:com.example.test.process1/u0a405 (top-activity)
-    """.trimIndent()
+    """.trimIndent().replace("\n\n", "\n") // trim spaces and remove all empty lines
     adb.configureShellCommand(deviceSelector, command, response)
 
     adb.configureShellCommand(deviceSelector, POPULATE_LANGUAGE_COMMAND.format(applicationId), """
@@ -124,6 +129,15 @@ class UiSettingsRule : ExternalResource() {
 
   fun createAndStartEmulator(api: Int = 33): FakeEmulator {
     val avdFolder = FakeEmulator.createPhoneAvd(emulatorRule.avdRoot, api = api)
+    val emulator = emulatorRule.newEmulator(avdFolder)
+    emulator.start()
+    val emulatorController = getControllerOf(emulator)
+    waitForCondition(5.seconds) { emulatorController.connectionState == EmulatorController.ConnectionState.CONNECTED }
+    return emulator
+  }
+
+  fun createAndStartWatchEmulator(api: Int = 33): FakeEmulator {
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = api)
     val emulator = emulatorRule.newEmulator(avdFolder)
     emulator.start()
     val emulatorController = getControllerOf(emulator)

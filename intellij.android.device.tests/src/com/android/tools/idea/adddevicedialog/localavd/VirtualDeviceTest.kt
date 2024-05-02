@@ -22,6 +22,7 @@ import com.android.sdklib.devices.Abi
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.EmulatedProperties
 import com.android.sdklib.internal.avd.GpuMode
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.google.common.collect.Range
 import com.google.common.truth.Truth.assertThat
@@ -33,9 +34,10 @@ class VirtualDeviceTest {
   fun builder() {
     val device =
       VirtualDevice(
-        name = "Pixel 6 API 34",
-        manufacturer = "Google",
+        name = "RoundPhone",
+        manufacturer = "BlueBerry",
         apiRange = Range.closed(21, 34),
+        formFactor = FormFactors.PHONE,
         sdkExtensionLevel = AndroidVersion(34, null, 7, true),
         skin = DefaultSkin(Path.of("/tmp/skin")),
         frontCamera = AvdCamera.EMULATED,
@@ -54,6 +56,7 @@ class VirtualDeviceTest {
         resolution = Resolution(1200, 800),
         displayDensity = 200,
         displayDiagonalLength = 6.2,
+        isRound = true,
       )
 
     assertThat(device.toBuilder().build()).isEqualTo(device)

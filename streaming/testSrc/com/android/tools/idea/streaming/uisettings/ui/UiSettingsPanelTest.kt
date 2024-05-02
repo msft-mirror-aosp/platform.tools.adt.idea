@@ -57,8 +57,13 @@ class UiSettingsPanelTest {
     model.appLanguage.addElement(RUSSIAN_LANGUAGE)
     model.appLanguage.selection.setFromController(DEFAULT_LANGUAGE)
 
-    panel = UiSettingsPanel(model, showResetButton = nameRule.methodName == "testResetButton")
+    panel = UiSettingsPanel(
+      model,
+      showResetButton = nameRule.methodName == "testResetButton",
+      isWear = nameRule.methodName == "testWearControls"
+    )
     model.inDarkMode.uiChangeListener = ChangeListener { lastCommand = "dark=$it" }
+    model.gestureNavigation.uiChangeListener = ChangeListener { lastCommand = "gestures=$it" }
     model.appLanguage.selection.uiChangeListener = ChangeListener { lastCommand = "locale=${it?.tag}" }
     model.talkBackOn.uiChangeListener = ChangeListener { lastCommand = "talkBackOn=$it" }
     model.selectToSpeakOn.uiChangeListener = ChangeListener { lastCommand = "selectToSpeakOn=$it" }
@@ -77,6 +82,27 @@ class UiSettingsPanelTest {
 
     checkBox.doClick()
     waitForCondition(1.seconds) { lastCommand == "dark=false" }
+  }
+
+  @Test
+  fun testGestureOverlayNotInstalled() {
+    model.gestureOverlayInstalled.setFromController(false)
+    val checkBox = panel.getDescendant<JCheckBox> { it.name == GESTURE_NAVIGATION_TITLE }
+    assertThat(checkBox.isVisible).isFalse()
+  }
+
+  @Test
+  fun testSetGestureNavigationFromUi() {
+    model.gestureOverlayInstalled.setFromController(true)
+    val checkBox = panel.getDescendant<JCheckBox> { it.name == GESTURE_NAVIGATION_TITLE }
+    assertThat(checkBox.isVisible).isTrue()
+    assertThat(checkBox.isSelected).isFalse()
+
+    checkBox.doClick()
+    waitForCondition(1.seconds) { lastCommand == "gestures=true" }
+
+    checkBox.doClick()
+    waitForCondition(1.seconds) { lastCommand == "gestures=false" }
   }
 
   @Test
@@ -162,5 +188,13 @@ class UiSettingsPanelTest {
     val button = panel.getDescendant<JButton> { it.name == RESET_BUTTON_TEXT }
     button.doClick()
     waitForCondition(1.seconds) { lastCommand == "reset" }
+  }
+
+  @Test
+  fun testWearControls() {
+    assertThat(panel.findDescendant<JCheckBox> { it.name == DARK_THEME_TITLE }).isNull()
+    assertThat(panel.findDescendant<JCheckBox> { it.name == GESTURE_NAVIGATION_TITLE }).isNull()
+    assertThat(panel.findDescendant<JCheckBox> { it.name == SELECT_TO_SPEAK_TITLE }).isNull()
+    assertThat(panel.findDescendant<JSlider> { it.name == DENSITY_TITLE }).isNull()
   }
 }

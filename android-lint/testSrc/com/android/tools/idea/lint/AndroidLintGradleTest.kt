@@ -192,7 +192,7 @@ class AndroidLintGradleTest : AndroidGradleTestCase() {
       """
         Warning: Use version catalog instead
             implementation("com.android.support:appcompat-v7:28.0.0")
-                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Fix: Replace with new library catalog declaration for appcompat-v7
             Fix: Suppress UseTomlInstead with a comment
       """
@@ -206,7 +206,7 @@ class AndroidLintGradleTest : AndroidGradleTestCase() {
       """
         Warning: Use version catalog instead
             implementation("com.android.support:appcompat-v7:28.0.0")
-                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             Fix: Replace with new library catalog declaration for appcompat-v7
             Fix: Suppress UseTomlInstead with a comment
       """
@@ -271,6 +271,7 @@ fun JavaCodeInsightTestFixture.checkLint(
   val fileText = psiFile.text
   val sb = StringBuilder()
   val target = psiFile.findCaretOffset(caret)
+  editor.caretModel.moveToOffset(target)
   val highlights =
     doHighlighting(HighlightSeverity.WARNING).asSequence().sortedBy { it.startOffset }
   for (highlight in highlights) {

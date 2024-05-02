@@ -220,6 +220,10 @@ class FakeScreenSharingAgent(
   @Volatile
   var darkMode = false
   @Volatile
+  var gestureOverlayInstalled = true
+  @Volatile
+  var gestureNavigation = false
+  @Volatile
   var foregroundProcess = ""
   @Volatile
   var appLocales = ""
@@ -624,11 +628,15 @@ class FakeScreenSharingAgent(
 
   private fun sendUiSettingsResponse(message: UiSettingsRequest) {
     sendNotificationOrResponse(
-      UiSettingsResponse(message.requestId, darkMode, foregroundProcess, appLocales, talkBackInstalled, talkBackOn, selectToSpeakOn, fontSizeSettable, fontSize, screenDensitySettable, screenDensity))
+      UiSettingsResponse(message.requestId, darkMode, gestureOverlayInstalled, gestureNavigation, foregroundProcess, appLocales, talkBackInstalled, talkBackOn, selectToSpeakOn, fontSizeSettable, fontSize, screenDensitySettable, screenDensity))
   }
 
   private fun setDarkMode(message: SetDarkModeMessage) {
     darkMode = message.darkMode
+  }
+
+  private fun setGestureNavigation(message: SetGestureNavigationMessage) {
+    gestureNavigation = message.on
   }
 
   private fun setAppLanguage(message: SetAppLanguageMessage) {
@@ -1084,6 +1092,7 @@ class FakeScreenSharingAgent(
         is SetSelectToSpeakMessage -> setSelectToSpeak(message)
         is SetFontSizeMessage -> setFontSize(message)
         is SetScreenDensityMessage -> setScreenDensity(message)
+        is SetGestureNavigationMessage -> setGestureNavigation(message)
         else -> {}
       }
       commandLog.add(message)
