@@ -34,7 +34,7 @@ class InspectionsTest {
   @Test
   fun testNeedsComposableInspection() {
     fixture.enableInspections(
-      PreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
+      ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
     )
 
     @Suppress("TestFunctionName")
@@ -211,7 +211,7 @@ class InspectionsTest {
 
   @Test
   fun testPreviewMustBeTopLevel() {
-    fixture.enableInspections(PreviewMustBeTopLevelFunction() as InspectionProfileEntry)
+    fixture.enableInspections(ComposePreviewMustBeTopLevelFunction() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName", "ClassName")
     @Language("kotlin")
@@ -572,7 +572,7 @@ class InspectionsTest {
   @Test
   fun testInspectionsWithNoImport() {
     fixture.enableInspections(
-      PreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
+      ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
     )
 
     @Suppress("TestFunctionName")

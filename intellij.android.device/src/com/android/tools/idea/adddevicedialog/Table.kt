@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.adddevicedialog
 
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,10 +23,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
@@ -33,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
@@ -56,6 +61,7 @@ internal data class TableColumn<T>(
   val rowContent: @Composable (T) -> Unit,
 )
 
+@Suppress("ModifierFactoryExtensionFunction")
 sealed interface TableColumnWidth {
   fun RowScope.widthModifier(): Modifier
 
@@ -71,11 +77,12 @@ sealed interface TableColumnWidth {
 internal fun <T> TableTextColumn(
   name: String,
   width: TableColumnWidth = TableColumnWidth.Weighted(1f),
+  attribute: (T) -> String,
+  comparator: Comparator<T>? = compareBy(attribute),
   overflow: TextOverflow = TextOverflow.Ellipsis,
   maxLines: Int = 1,
-  attribute: (T) -> String,
 ) =
-  TableColumn<T>(name, width, compareBy(attribute)) {
+  TableColumn(name, width, comparator) {
     Text(attribute(it), overflow = overflow, maxLines = maxLines)
   }
 
@@ -92,7 +99,7 @@ internal enum class SortOrder {
 }
 
 @Composable
-internal fun SortOrder.icon() =
+internal fun SortOrder.Icon() =
   when (this) {
     // In Swing, we would do `UIManager.get("Table.ascendingSortIcon", null) as Icon`; instead use
     // IJ platform icons
@@ -136,7 +143,7 @@ internal fun <T> TableHeader(
       Row(widthModifier.clickable { onClick(it) }) {
         Text(it.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (it == sortColumn) {
-          sortOrder.icon()
+          sortOrder.Icon()
         }
       }
     }
@@ -194,17 +201,24 @@ internal fun <T> Table(
       columns,
     )
     Divider(Orientation.Horizontal)
-    LazyColumn {
-      val sortedRows = tableSortState.comparator?.let { rows.sortedWith(it) } ?: rows
+    Box {
+      val lazyListState = rememberLazyListState()
+      LazyColumn(state = lazyListState) {
+        val sortedRows = tableSortState.comparator?.let { rows.sortedWith(it) } ?: rows
 
-      items(sortedRows.size, { index -> rowId(sortedRows[index]) }) { index ->
-        TableRow(
-          sortedRows[index],
-          selected = sortedRows[index] == tableSelectionState.selection,
-          onClick = { row -> tableSelectionState.selection = row },
-          columns,
-        )
+        items(sortedRows.size, { index -> rowId(sortedRows[index]) }) { index ->
+          TableRow(
+            sortedRows[index],
+            selected = sortedRows[index] == tableSelectionState.selection,
+            onClick = { row -> tableSelectionState.selection = row },
+            columns,
+          )
+        }
       }
+      VerticalScrollbar(
+        modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+        adapter = rememberScrollbarAdapter(lazyListState),
+      )
     }
   }
 }

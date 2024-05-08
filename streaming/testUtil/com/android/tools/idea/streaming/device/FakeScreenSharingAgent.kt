@@ -154,8 +154,6 @@ class FakeScreenSharingAgent(
   private val audioEncoder: AVCodec by lazy {
     avcodec_find_encoder(AV_CODEC_ID_OPUS) ?: throw RuntimeException("$codecName encoder not found")
   }
-  private val isAudioStreamingSupported: Boolean
-    get() = featureLevel >= 31 && (agentFlags and AUDIO_STREAMING_SUPPORTED) != 0
 
   private val clipboardInternal = AtomicReference("")
   private val clipboardSynchronizationActive = AtomicBoolean()
@@ -200,7 +198,7 @@ class FakeScreenSharingAgent(
   var isRunning: Boolean = false
     private set
   val videoStreamActive: Boolean
-      get() = displayStreamers.isNotEmpty()
+    get() = displayStreamers.isNotEmpty()
   val audioStreamActive: Boolean
     get() = audioStreamer != null
   @Volatile
@@ -222,7 +220,7 @@ class FakeScreenSharingAgent(
   @Volatile
   var gestureOverlayInstalled = true
   @Volatile
-  var gestureNavigation = false
+  var gestureNavigation = true
   @Volatile
   var foregroundProcess = ""
   @Volatile
@@ -264,7 +262,7 @@ class FakeScreenSharingAgent(
 
     parseArgs(command)
     val videoChannel = SuspendingSocketChannel.open().also { this.videoChannel = it }
-    val audioChannel = if (isAudioStreamingSupported) SuspendingSocketChannel.open().also { this.audioChannel = it } else null
+    val audioChannel = if (featureLevel >= 31) SuspendingSocketChannel.open().also { this.audioChannel = it } else null
     val controlChannel = SuspendingSocketChannel.open()
 
     ChannelClosingSynchronizer(listOf(videoChannel, controlChannel)).start()

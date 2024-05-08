@@ -15,12 +15,21 @@
  */
 package com.android.tools.idea.adddevicedialog.localavd
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.android.sdklib.AndroidVersion
+import com.android.sdklib.getReleaseNameAndDetails
+import com.android.tools.idea.adddevicedialog.Table
+import com.android.tools.idea.adddevicedialog.TableColumn
+import com.android.tools.idea.adddevicedialog.TableColumnWidth
+import com.android.tools.idea.adddevicedialog.TableTextColumn
 import kotlinx.collections.immutable.ImmutableCollection
+import kotlinx.collections.immutable.ImmutableList
+import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -31,6 +40,7 @@ internal fun DevicePanel(
   device: VirtualDevice,
   selectedServices: Services?,
   servicesCollection: ImmutableCollection<Services>,
+  images: ImmutableList<SystemImage>,
   onDeviceChange: (VirtualDevice) -> Unit,
   onSelectedServicesChange: (Services?) -> Unit,
 ) {
@@ -49,28 +59,86 @@ internal fun DevicePanel(
     Modifier.padding(bottom = Padding.SMALL_MEDIUM),
   )
 
-  Text("Services", Modifier.padding(bottom = Padding.SMALL))
+  ServicesDropdown(
+    selectedServices,
+    servicesCollection,
+    onSelectedServicesChange,
+    Modifier.padding(bottom = Padding.MEDIUM_LARGE),
+  )
 
-  Row {
-    Dropdown(
-      Modifier.padding(end = Padding.MEDIUM),
-      menuContent = {
-        servicesCollection.forEach {
-          selectableItem(selectedServices == it, onClick = { onSelectedServicesChange(it) }) {
-            Text(it.toString())
+  SystemImageTable(images)
+}
+
+@Composable
+private fun ServicesDropdown(
+  selectedServices: Services?,
+  servicesCollection: ImmutableCollection<Services>,
+  onSelectedServicesChange: (Services?) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Column(modifier) {
+    Text("Services", Modifier.padding(bottom = Padding.SMALL))
+
+    Row {
+      Dropdown(
+        Modifier.padding(end = Padding.MEDIUM),
+        menuContent = {
+          servicesCollection.forEach {
+            selectableItem(selectedServices == it, onClick = { onSelectedServicesChange(it) }) {
+              Text(it.toString())
+            }
           }
-        }
 
-        separator()
+          separator()
 
-        selectableItem(selectedServices == null, onClick = { onSelectedServicesChange(null) }) {
-          Text("Show All")
-        }
-      },
-    ) {
-      Text(selectedServices?.toString() ?: "Show All")
+          selectableItem(selectedServices == null, onClick = { onSelectedServicesChange(null) }) {
+            Text("Show All")
+          }
+        },
+      ) {
+        Text(selectedServices?.toString() ?: "Show All")
+      }
+
+      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
     }
+  }
+}
 
-    InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+@Composable
+private fun SystemImageTable(images: ImmutableList<SystemImage>) {
+  val columns =
+    listOf(
+      TableColumn(
+        "System Image",
+        TableColumnWidth.Weighted(1F),
+        Comparator.comparing(SystemImage::androidVersion),
+      ) {
+        AndroidVersionText(it.androidVersion)
+      },
+      TableTextColumn(
+        "Services",
+        attribute = { it.services.toString() },
+        comparator = Comparator.comparing(SystemImage::services),
+      ),
+      TableTextColumn("API", attribute = { _ -> "" }),
+      TableTextColumn("ABI", attribute = { _ -> "" }),
+    )
+
+  // TODO: http://b/339247492 - Stop calling distinct
+  Table(columns, images.distinct(), { it })
+}
+
+@Composable
+private fun AndroidVersionText(version: AndroidVersion) {
+  val nameAndDetails = version.getReleaseNameAndDetails(includeCodeName = true)
+  val details = nameAndDetails.details
+
+  if (details == null) {
+    Text(nameAndDetails.name)
+  } else {
+    Row {
+      Text(nameAndDetails.name, Modifier.padding(end = Padding.SMALL))
+      Text(details, color = retrieveColorOrUnspecified("Component.infoForeground"))
+    }
   }
 }

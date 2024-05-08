@@ -46,7 +46,7 @@ import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.toUElement
 
 private const val TILE_PREVIEW_ANNOTATION_NAME = "Preview"
-private const val TILE_PREVIEW_ANNOTATION_FQ_NAME =
+const val TILE_PREVIEW_ANNOTATION_FQ_NAME =
   "androidx.wear.tiles.tooling.preview.$TILE_PREVIEW_ANNOTATION_NAME"
 private const val TILE_PREVIEW_DATA_FQ_NAME = "androidx.wear.tiles.tooling.preview.TilePreviewData"
 
@@ -72,6 +72,13 @@ internal object WearTilePreviewElementFinder : FilePreviewElementFinder<PsiWearT
       .distinct()
   }
 }
+
+/**
+ * Returns true if a [UMethod] is not null is annotated with a Tile Preview annotation, either
+ * directly or through a Multi-Preview annotation.
+ */
+fun UMethod?.hasTilePreviewAnnotation() =
+  this?.findAllAnnotationsInGraph { it.isTilePreviewAnnotation() }?.any() ?: false
 
 internal fun UAnnotation.isTilePreviewAnnotation() = runReadAction {
   this.qualifiedName == TILE_PREVIEW_ANNOTATION_FQ_NAME

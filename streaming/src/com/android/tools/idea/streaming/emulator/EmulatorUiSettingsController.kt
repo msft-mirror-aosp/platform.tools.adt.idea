@@ -25,7 +25,9 @@ import com.android.tools.idea.res.AppLanguageInfo
 import com.android.tools.idea.res.AppLanguageService
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.android.tools.idea.streaming.uisettings.data.AppLanguage
+import com.android.tools.idea.streaming.uisettings.data.hasLimitedUiSettingsSupport
 import com.android.tools.idea.streaming.uisettings.stats.UiSettingsStats
+import com.android.tools.idea.streaming.uisettings.ui.FontSize
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsController
 import com.android.tools.idea.streaming.uisettings.ui.UiSettingsModel
 import com.google.wireless.android.sdk.stats.DeviceInfo
@@ -51,6 +53,7 @@ private const val FOREGROUND_APPLICATION_DIVIDER = "-- Foreground Application --
 private const val APP_LANGUAGE_DIVIDER = "-- App Language --"
 
 internal const val GESTURES_OVERLAY = "com.android.internal.systemui.navbar.gestural"
+internal const val THREE_BUTTON_OVERLAY = "com.android.internal.systemui.navbar.threebutton"
 internal const val ENABLED_ACCESSIBILITY_SERVICES = "enabled_accessibility_services"
 internal const val ACCESSIBILITY_BUTTON_TARGETS = "accessibility_button_targets"
 private const val TALKBACK_PACKAGE_NAME = "com.google.android.marvin.talkback"
@@ -85,6 +88,13 @@ internal const val POPULATE_LANGUAGE_COMMAND =
   "echo $APP_LANGUAGE_DIVIDER; " +
   "cmd locale get-app-locales %s; "  // Parameter: applicationId
 
+internal const val FACTORY_RESET_COMMAND_FOR_LIMITED_DEVICE =
+  "cmd uimode night no; " +
+  "cmd locale set-app-locales %s --locales null; " +
+  "settings delete secure $ENABLED_ACCESSIBILITY_SERVICES; " +
+  "settings delete secure $ACCESSIBILITY_BUTTON_TARGETS; " +
+  "settings put system font_scale 1; " // Parameters: applicationId
+
 internal const val FACTORY_RESET_COMMAND =
   "cmd uimode night no; " +
   "cmd overlay enable $GESTURES_OVERLAY; " +
@@ -117,6 +127,14 @@ internal class EmulatorUiSettingsController(
   private val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.US))
   private var readApplicationId = ""
   private var readPhysicalDensity = 160
+  private val hasLimitedUiSettingsSupportForDevice = emulatorConfig.deviceType.hasLimitedUiSettingsSupport
+  private var lastDarkMode = false
+  private var lastGestureNavigation = false
+  private var lastLocaleTag = ""
+  private var lastTalkBack = false
+  private var lastSelectToSpeak = false
+  private var lastFontSize = FontSize.NORMAL.percent
+  private var lastDensity = readPhysicalDensity
 
   override suspend fun populateModel() {
     val context = CommandContext(project)
@@ -126,6 +144,7 @@ internal class EmulatorUiSettingsController(
       executeCommand(POPULATE_LANGUAGE_COMMAND.format(context.applicationId), context)
     }
     processAccessibility(context.enabled, context.buttons)
+    updateResetButton()
 
     // Assume all emulators have settable font size and density.
     // We do not have any OEM system images for our emulators.
@@ -153,6 +172,7 @@ internal class EmulatorUiSettingsController(
   private fun processDarkMode(iterator: ListIterator<String>) {
     val isInDarkMode = iterator.hasNext() && iterator.next() == "Night mode: yes"
     model.inDarkMode.setFromController(isInDarkMode)
+    lastDarkMode = isInDarkMode
   }
 
   private fun processGestureNavigation(iterator: ListIterator<String>) {
@@ -170,6 +190,7 @@ internal class EmulatorUiSettingsController(
     }
     model.gestureOverlayInstalled.setFromController(gestureOverlayInstalled)
     model.gestureNavigation.setFromController(gestureNavigation)
+    lastGestureNavigation = gestureNavigation
   }
 
   private fun processListPackages(iterator: ListIterator<String>) {
@@ -189,6 +210,7 @@ internal class EmulatorUiSettingsController(
   private fun processFontSize(iterator: ListIterator<String>) {
     val fontSize = (if (iterator.hasNext()) iterator.next() else "1.0").toFloatOrNull() ?: 1f
     model.fontSizeInPercent.setFromController((fontSize * 100f + 0.5f).toInt())
+    lastFontSize = model.fontSizeInPercent.value
   }
 
   private fun processScreenDensity(iterator: ListIterator<String>) {
@@ -196,6 +218,7 @@ internal class EmulatorUiSettingsController(
     val overrideDensity = readDensity(iterator, OVERRIDE_DENSITY_PATTERN) ?: physicalDensity
     model.screenDensity.setFromController(overrideDensity)
     readPhysicalDensity = physicalDensity
+    lastDensity = overrideDensity
   }
 
   private fun processAppLanguage(iterator: ListIterator<String>, info: Map<String, AppLanguageInfo>) {
@@ -206,10 +229,11 @@ internal class EmulatorUiSettingsController(
     }
     val match = Regex(APP_LANGUAGE_PATTERN).find(appLanguageLine) ?: return
     val applicationId = match.groupValues[1]
-    val localeTag = match.groupValues[2].split(",").firstOrNull() ?: ""
+    val localeTag = match.groupValues[2].split(",").firstOrNull().takeIf { it != "null" } ?: ""
     val localeConfig = info[applicationId]?.localeConfig ?: return
     addLanguage(applicationId, localeConfig, localeTag)
     readApplicationId = applicationId
+    lastLocaleTag = localeTag
   }
 
   private fun processForegroundProcess(iterator: ListIterator<String>, context: CommandContext) {
@@ -243,26 +267,37 @@ internal class EmulatorUiSettingsController(
     model.talkBackOn.setFromController(enabled.services.contains(TALK_BACK_SERVICE_NAME))
     model.selectToSpeakOn.setFromController(enabled.services.contains(SELECT_TO_SPEAK_SERVICE_NAME) &&
                                             buttonTarget.services.contains(SELECT_TO_SPEAK_SERVICE_NAME))
+    lastTalkBack = model.talkBackOn.value
+    lastSelectToSpeak = model.selectToSpeakOn.value
   }
 
   override fun setDarkMode(on: Boolean) {
     val darkMode = if (on) "yes" else "no"
     scope.launch { executeShellCommand("cmd uimode night $darkMode") }
+    lastDarkMode = on
+    updateResetButton()
   }
 
   override fun setGestureNavigation(on: Boolean) {
     val operation = if (on) "enable" else "disable"
-    scope.launch { executeShellCommand("cmd overlay $operation $GESTURES_OVERLAY") }
+    val opposite = if (!on) "enable" else "disable"
+    scope.launch { executeShellCommand("cmd overlay $operation $GESTURES_OVERLAY; cmd overlay $opposite $THREE_BUTTON_OVERLAY") }
+    lastGestureNavigation = on
+    updateResetButton()
   }
 
   override fun setAppLanguage(applicationId: String, language: AppLanguage?) {
     if (applicationId.isNotEmpty()) {
       scope.launch { executeShellCommand("cmd locale set-app-locales %s --locales %s".format(applicationId, language?.tag)) }
+      lastLocaleTag = language?.tag ?: ""
+      updateResetButton()
     }
   }
 
   override fun setTalkBack(on: Boolean) {
     scope.launch { changeSecureSetting(ENABLED_ACCESSIBILITY_SERVICES, TALK_BACK_SERVICE_NAME, on) }
+    lastTalkBack = on
+    updateResetButton()
   }
 
   override fun setSelectToSpeak(on: Boolean) {
@@ -270,21 +305,44 @@ internal class EmulatorUiSettingsController(
       changeSecureSetting(ENABLED_ACCESSIBILITY_SERVICES, SELECT_TO_SPEAK_SERVICE_NAME, on)
       changeSecureSetting(ACCESSIBILITY_BUTTON_TARGETS, SELECT_TO_SPEAK_SERVICE_NAME, on)
     }
+    lastSelectToSpeak = on
+    updateResetButton()
   }
 
   override fun setFontSize(percent: Int) {
     scope.launch { executeShellCommand("settings put system font_scale %s".format(decimalFormat.format(percent.toFloat() / 100f))) }
+    lastFontSize = percent
+    updateResetButton()
   }
 
   override fun setScreenDensity(density: Int) {
     scope.launch { executeShellCommand("wm density %d".format(density)) }
+    lastDensity = density
+    updateResetButton()
   }
 
   override fun reset() {
     scope.launch {
-      executeShellCommand(FACTORY_RESET_COMMAND.format(readApplicationId, readPhysicalDensity))
+      if (hasLimitedUiSettingsSupportForDevice) {
+        executeShellCommand(FACTORY_RESET_COMMAND_FOR_LIMITED_DEVICE.format(readApplicationId))
+      }
+      else {
+        executeShellCommand(FACTORY_RESET_COMMAND.format(readApplicationId, readPhysicalDensity))
+      }
       populateModel()
     }
+  }
+
+  private fun updateResetButton() {
+    var isDefault = !lastDarkMode && lastLocaleTag.isEmpty() && !lastTalkBack && lastFontSize == FontSize.NORMAL.percent
+    if (!hasLimitedUiSettingsSupportForDevice) {
+      isDefault =
+        isDefault &&
+        lastGestureNavigation &&
+        !lastSelectToSpeak &&
+        lastDensity == readPhysicalDensity
+    }
+    model.differentFromDefault.setFromController(!isDefault)
   }
 
   private suspend fun changeSecureSetting(settingsName: String, serviceName: String, on: Boolean) {

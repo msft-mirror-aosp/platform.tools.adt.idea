@@ -15,20 +15,13 @@
  */
 package com.android.tools.idea.wear.preview.lint
 
-import com.android.tools.idea.projectsystem.isAndroidTestModule
-import com.android.tools.idea.projectsystem.isUnitTestModule
+import com.android.flags.junit.FlagRule
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.wear.preview.WearTileProjectRule
-import com.intellij.codeInspection.InspectionEP
-import com.intellij.codeInspection.InspectionProfileEntry
-import com.intellij.codeInspection.LocalInspectionEP
 import com.intellij.lang.annotation.HighlightSeverity
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runInEdt
-import com.intellij.openapi.project.modules
-import com.intellij.openapi.roots.SourceFolder
-import com.intellij.testFramework.PsiTestUtil
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -37,27 +30,21 @@ import org.junit.Test
 class WearTilePreviewNotSupportedInUnitTestFilesTest {
   @get:Rule val projectRule = WearTileProjectRule(AndroidProjectRule.withAndroidModel())
 
+  @get:Rule
+  val wearTilePreviewFlagRule = FlagRule(StudioFlags.WEAR_TILE_PREVIEW, true)
+
   private val fixture
     get() = projectRule.fixture
 
+  private val inspection = WearTilePreviewNotSupportedInUnitTestFiles()
+
   @Before
   fun setUp() {
-    val inspections = LocalInspectionEP.LOCAL_INSPECTION.extensions
-      .filter { e -> e.implementationClass == WearTilePreviewNotSupportedInUnitTestFiles::class.java.name }
-      .map(InspectionEP::instantiateTool)
-    fixture.enableInspections(*inspections.toTypedArray())
+    fixture.enableInspections(inspection)
 
+    fixture.addUnitTestSourceRoot()
+    fixture.addAndroidTestSourceRoot()
 
-    val androidTestModule = projectRule.project.modules.single { it.isAndroidTestModule() }
-    val androidTestSourceRoot = fixture.tempDirFixture.findOrCreateDir("src/androidTest")
-    val unitTestModule = fixture.project.modules.single { it.isUnitTestModule() }
-    val unitTestRoot = fixture.tempDirFixture.findOrCreateDir("src/test")
-    runInEdt {
-      ApplicationManager.getApplication().runWriteAction<SourceFolder> {
-        PsiTestUtil.addSourceRoot(androidTestModule, androidTestSourceRoot, true)
-        PsiTestUtil.addSourceRoot(unitTestModule, unitTestRoot, true)
-      }
-    }
     fixture.addFileToProject(
       "src/main/test/multipreview.kt",
       // language=kotlin
@@ -71,6 +58,32 @@ class WearTilePreviewNotSupportedInUnitTestFilesTest {
      """
         .trimIndent(),
     )
+  }
+
+  @Test
+  fun isAvailableForKotlinAndJavaUnitTestFiles() {
+    // supported types
+    val kotlinUnitTestFile = fixture.addFileToProject("src/test/test.kt", "")
+    val javaUnitTestFile = fixture.addFileToProject("src/test/Test.java", "")
+    assertTrue(inspection.isAvailableForFile(kotlinUnitTestFile))
+    assertTrue(inspection.isAvailableForFile(javaUnitTestFile))
+
+    // unsupported types
+    val xmlUnitTestFile = fixture.configureByText("src/test/test.xml", "")
+    val htmlUnitTestFile = fixture.configureByText("src/test/test.html", "")
+    assertFalse(inspection.isAvailableForFile(xmlUnitTestFile))
+    assertFalse(inspection.isAvailableForFile(htmlUnitTestFile))
+  }
+
+  @Test
+  fun canBeDisabled() {
+    val kotlinUnitTestFile = fixture.addFileToProject("src/test/Test.kt", "")
+    val javaUnitTestFile = fixture.configureByText("src/test/Test.java", "")
+
+    StudioFlags.WEAR_TILE_PREVIEW.override(false)
+
+    assertFalse(inspection.isAvailableForFile(kotlinUnitTestFile))
+    assertFalse(inspection.isAvailableForFile(javaUnitTestFile))
   }
 
   @Test

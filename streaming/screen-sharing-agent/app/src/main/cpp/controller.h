@@ -33,6 +33,7 @@
 #include "geom.h"
 #include "jvm.h"
 #include "ui_settings.h"
+#include "virtual_input_device.h"
 
 namespace screensharing {
 
@@ -83,20 +84,21 @@ private:
   };
 
   void Initialize();
+  void InitializeKeyboard();
   void ProcessMessage(const ControlMessage& message);
   void ProcessMotionEvent(const MotionEventMessage& message);
   void ProcessKeyboardEvent(const KeyEventMessage& message) {
     ProcessKeyboardEvent(jni_, message);
   }
-  static void ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message);
+  void ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message);
   void ProcessTextInput(const TextInputMessage& message);
   static void ProcessSetDeviceOrientation(const SetDeviceOrientationMessage& message);
   static void ProcessSetMaxVideoResolution(const SetMaxVideoResolutionMessage& message);
-  static void StartVideoStream(const StartVideoStreamMessage& message);
+  void StartVideoStream(const StartVideoStreamMessage& message);
   static void StopVideoStream(const StopVideoStreamMessage& message);
   static void StartAudioStream(const StartAudioStreamMessage& message);
   static void StopAudioStream(const StopAudioStreamMessage& message);
-  static void WakeUpDevice();
+  void WakeUpDevice();
 
   void StartClipboardSync(const StartClipboardSyncMessage& message);
   void StopClipboardSync();
@@ -135,6 +137,10 @@ private:
   PointerHelper* pointer_helper_ = nullptr;  // Owned.
   JObjectArray pointer_properties_;  // MotionEvent.PointerProperties[]
   JObjectArray pointer_coordinates_;  // MotionEvent.PointerCoords[]
+  VirtualKeyboard* keyboard_ = nullptr;
+  VirtualMouse* mouse_ = nullptr;
+  VirtualStylus* stylus_ = nullptr;
+  VirtualTouchscreen* touchscreen_ = nullptr;
   int64_t motion_event_start_time_ = 0;
   KeyCharacterMap* key_character_map_ = nullptr;  // Owned.
 

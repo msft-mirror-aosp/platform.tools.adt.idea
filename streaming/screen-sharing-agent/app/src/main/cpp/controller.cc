@@ -132,6 +132,10 @@ Controller::~Controller() {
   output_stream_.Close();
   delete pointer_helper_;
   delete key_character_map_;
+  delete keyboard_;
+  delete mouse_;
+  delete stylus_;
+  delete touchscreen_;
 }
 
 void Controller::Stop() {
@@ -182,6 +186,15 @@ void Controller::Initialize() {
   DisplayManager::AddDisplayListener(jni_, this);
 
   Agent::InitializeSessionEnvironment();
+}
+
+void Controller::InitializeKeyboard() {
+  if (keyboard_ == nullptr) {
+    keyboard_ = new VirtualKeyboard();
+    if (!keyboard_->IsValid()) {
+      Log::E("Failed to create a virtual keyboard");
+    }
+  }
 }
 
 void Controller::Run() {
@@ -425,37 +438,57 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
 }
 
 void Controller::ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message) {
-  int64_t now = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-  KeyEvent event(jni);
-  event.down_time_millis = now;
-  event.event_time_millis = now;
-  int32_t action = message.action();
-  event.action = action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action;
-  event.code = message.keycode();
-  event.meta_state = message.meta_state();
-  event.source = KeyCharacterMap::VIRTUAL_KEYBOARD;
-  InjectKeyEvent(jni, event, InputEventInjectionSync::NONE);
-  if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
-    event.action = AKEY_EVENT_ACTION_UP;
+  if (Agent::feature_level() >= 29 && Agent::flags() & USE_UINPUT) {
+    InitializeKeyboard();
+    int32_t action = message.action();
+    auto now = duration_cast<nanoseconds>(steady_clock::now().time_since_epoch());
+    keyboard_->WriteKeyEvent(message.keycode(), action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action, now);
+    if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
+      action = AKEY_EVENT_ACTION_UP;
+      keyboard_->WriteKeyEvent(message.keycode(), AKEY_EVENT_ACTION_UP, now);
+    }
+  } else {
+    KeyEvent event(jni);
+    int64_t now = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+    event.down_time_millis = now;
+    event.event_time_millis = now;
+    int32_t action = message.action();
+    event.action = action == KeyEventMessage::ACTION_DOWN_AND_UP ? AKEY_EVENT_ACTION_DOWN : action;
+    event.code = message.keycode();
+    event.meta_state = message.meta_state();
+    event.source = KeyCharacterMap::VIRTUAL_KEYBOARD;
     InjectKeyEvent(jni, event, InputEventInjectionSync::NONE);
+    if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
+      event.action = AKEY_EVENT_ACTION_UP;
+      InjectKeyEvent(jni, event, InputEventInjectionSync::NONE);
+    }
   }
 }
 
 void Controller::ProcessTextInput(const TextInputMessage& message) {
+  nanoseconds now;
+  if (Agent::feature_level() >= 29 && Agent::flags() & USE_UINPUT) {
+    InitializeKeyboard();
+    now = duration_cast<nanoseconds>(steady_clock::now().time_since_epoch());
+  }
   const u16string& text = message.text();
   for (uint16_t c: text) {
     JObjectArray event_array = key_character_map_->GetEvents(&c, 1);
     if (event_array.IsNull()) {
-      Log::E(jni_.GetAndClearException(), "Unable to map character '\\u%04X' to key events", c);
+      Log::W(jni_.GetAndClearException(), "Unable to map character '\\u%04X' to key events", c);
       continue;
     }
     auto len = event_array.GetLength();
     for (int i = 0; i < len; i++) {
       JObject key_event = event_array.GetElement(i);
-      if (Log::IsEnabled(Log::Level::DEBUG)) {
-        Log::D("key_event: %s", key_event.ToString().c_str());
+      if (Agent::feature_level() >= 29 && Agent::flags() & USE_UINPUT) {
+        keyboard_->WriteKeyEvent(KeyEvent::GetKeyCode(key_event), KeyEvent::GetAction(key_event), now);
+      } else {
+        if (Log::IsEnabled(Log::Level::DEBUG)) {
+          Log::D("key_event: %s", key_event.ToString().c_str());
+        }
+        InputManager::InjectInputEvent(jni_, key_event, InputEventInjectionSync::NONE);
       }
-      InputManager::InjectInputEvent(jni_, key_event, InputEventInjectionSync::NONE);
     }
   }
 }

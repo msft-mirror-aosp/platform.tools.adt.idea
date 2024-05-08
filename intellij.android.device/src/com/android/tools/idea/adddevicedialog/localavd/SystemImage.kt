@@ -17,19 +17,26 @@ package com.android.tools.idea.adddevicedialog.localavd
 
 import androidx.compose.runtime.Immutable
 import com.android.repository.api.RepoPackage
+import com.android.sdklib.AndroidVersion
 import com.android.sdklib.SystemImageTags
+import com.android.sdklib.devices.Abi
 import com.android.sdklib.repository.meta.DetailsTypes.ApiDetailsType
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
 import com.google.common.annotations.VisibleForTesting
+import kotlinx.collections.immutable.ImmutableCollection
+import kotlinx.collections.immutable.toImmutableSet
 
 @Immutable
-internal class SystemImage @VisibleForTesting internal constructor(repoPackage: RepoPackage) {
-  internal val androidVersion = (repoPackage.typeDetails as ApiDetailsType).androidVersion
-  internal val services = getServices(repoPackage)
-
+internal data class SystemImage
+@VisibleForTesting
+internal constructor(
+  internal val androidVersion: AndroidVersion,
+  internal val services: Services,
+  internal val abis: ImmutableCollection<Abi>,
+) {
   internal companion object {
     internal fun getSystemImages(): Collection<SystemImage> {
       val indicator = StudioLoggerProgressIndicator(SystemImage::class.java)
@@ -44,22 +51,36 @@ internal class SystemImage @VisibleForTesting internal constructor(repoPackage: 
 
       return manager.packages.remotePackages.values
         .filter(RepoPackage::hasSystemImage)
-        .map(::SystemImage)
+        .map(::from)
         .toList()
     }
-  }
 
-  private fun getServices(repoPackage: RepoPackage): Services {
-    val tags = SystemImageTags.getTags(repoPackage)
+    @VisibleForTesting
+    internal fun from(repoPackage: RepoPackage): SystemImage {
+      val details = repoPackage.typeDetails as ApiDetailsType
 
-    if (SystemImageTags.hasGooglePlay(tags, androidVersion, repoPackage)) {
-      return Services.GOOGLE_PLAY_STORE
+      return SystemImage(
+        details.androidVersion,
+        repoPackage.getServices(details.androidVersion),
+        details.abis.map(::valueOfString).toImmutableSet(),
+      )
     }
 
-    if (SystemImageTags.hasGoogleApi(tags)) {
-      return Services.GOOGLE_APIS
+    private fun RepoPackage.getServices(androidVersion: AndroidVersion): Services {
+      val tags = SystemImageTags.getTags(this)
+
+      if (SystemImageTags.hasGooglePlay(tags, androidVersion, this)) {
+        return Services.GOOGLE_PLAY_STORE
+      }
+
+      if (SystemImageTags.hasGoogleApi(tags)) {
+        return Services.GOOGLE_APIS
+      }
+
+      return Services.ANDROID_OPEN_SOURCE
     }
 
-    return Services.ANDROID_OPEN_SOURCE
+    private fun valueOfString(string: String) =
+      requireNotNull(Abi.values().firstOrNull { it.toString() == string })
   }
 }

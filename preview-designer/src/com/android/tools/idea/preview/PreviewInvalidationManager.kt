@@ -13,18 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.streaming.device
+package com.android.tools.idea.preview
 
-import com.android.tools.idea.flags.StudioFlags
-import com.intellij.openapi.diagnostic.thisLogger
-import java.util.function.Supplier
+import com.intellij.openapi.actionSystem.DataKey
 
-object B330395367Logger {
-  private val LOG = thisLogger()
+/**
+ * Preview Manager that enables the invalidation of a preview representation. When invalidated, a
+ * preview representation will refresh all of its previews.
+ */
+interface PreviewInvalidationManager {
+  /** Invalidates the preview representation, forcing a full refresh of its previews. */
+  fun invalidate()
 
-  fun log(lazyMessage: Supplier<String>) {
-    if (StudioFlags.DEVICE_MIRRORING_B330395367_LOGGING.get()) {
-      LOG.info(lazyMessage.get())
-    }
+  companion object {
+    val KEY = DataKey.create<PreviewInvalidationManager>("PreviewInvalidationManager")
   }
 }

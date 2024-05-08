@@ -119,7 +119,7 @@ public final class StudioFlags {
     NPW, "genai.template",
     "Enable GenAI template",
     "Allows the GenAI template to be used.",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   //endregion
 
   //region Memory Usage Reporting
@@ -401,7 +401,7 @@ public final class StudioFlags {
     "device.connect.detect.speed",
     "Alert when USB device negotiated speed is below maximum",
     "Poor USB cables can drop USB negotiated speed below maximum capable speed. Alert user when this is the case.",
-    false);
+    true);
 
   public static final Flag<Boolean> DEVICE_EXPLORER_PROCESSES_PACKAGE_FILTER = new BooleanFlag(
     RUNDEBUG,
@@ -830,11 +830,6 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.devbuild.skia", "Use the locally-built skia rendering server",
     "If enabled and this is a locally-built studio instance, use the locally-built skia server instead of one from the SDK.", false);
 
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_AUTO_CONNECT_TO_FOREGROUND_PROCESS_ENABLED = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.auto.connect.foreground", "Enable automatically connecting to foreground process",
-    "When this flag is enabled, LayoutInspector will automatically connect to whatever debuggable process is in the foreground on the phone.",
-    true);
-
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_IN_RUNNING_DEVICES_ENABLED = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.running.devices", "Enable Layout Inspector in Running Devices",
     "When this flag is enabled, LayoutInspector be integrated in the Running Devices tool window, instead of in its own tool window.",
@@ -920,14 +915,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "allow.remote.emulators", "Allow Mirroring of Remote Emulators",
     "Treats remote emulators the same as physical devices for the purpose of display mirroring",
     false);
-  public static final Flag<Boolean> DEVICE_MIRRORING_AUDIO = new BooleanFlag(
-    DEVICE_MIRRORING, "audio", "Enable Audio Streaming",
-    "Enables streaming of audio",
-    true);
-  public static final Flag<Boolean> DEVICE_MIRRORING_TAB_DND = new BooleanFlag(
-    DEVICE_MIRRORING, "tab.dnd", "Drag and Drop of Device Tabs",
-    "Allow drag and drop of device tabs",
-    true);
   public static final Flag<String> DEVICE_MIRRORING_AGENT_LOG_LEVEL = new StringFlag(
     DEVICE_MIRRORING, "agent.log.level", "On Device Logging Level for Mirroring",
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
@@ -947,15 +934,15 @@ public final class StudioFlags {
     "");
   public static final Flag<Boolean> DEVICE_MIRRORING_AUTO_RESET_UI_SETTINGS = new BooleanFlag(
     DEVICE_MIRRORING, "auto.reset", "The agent should reset all changed UI settings on disconnect",
-    "Enables the reset logic in the device agent for the UI settings picker",
+    "Enable the reset logic in the device agent for the UI settings picker",
     true);
   public static final Flag<Boolean> DEVICE_MIRRORING_REMOTE_TEMPLATES_IN_PLUS = new BooleanFlag(
     DEVICE_MIRRORING, "remote.templates.in.plus", "Show remote device templates in plus action",
     "Show and allow starting remote device from their templates through the plus action",
     false);
-  public static final Flag<Boolean> DEVICE_MIRRORING_B330395367_LOGGING = new BooleanFlag(
-    DEVICE_MIRRORING, "b330395367.logging", "Logging for investigation of b/330395367",
-    "Enable detailed logging for investigation of b/330395367",
+  public static final Flag<Boolean> DEVICE_MIRRORING_USE_UINPUT = new BooleanFlag(
+    DEVICE_MIRRORING, "use.uinput", "Use uinput module (https://kernel.org/doc/html/v4.12/input/uinput.html)",
+    "Use uinput module ((https://kernel.org/doc/html/v4.12/input/uinput.html) for injecting input events",
     false);
   //endregion
 
@@ -1858,12 +1845,6 @@ public final class StudioFlags {
                     "When enabled, queries sent by editor actions, like Explain Code, will attach context (e.g. resolved references) from the project.",
                     ChannelDefault.enabledUpTo(DEV));
 
-  public static final Flag<Boolean> STUDIOBOT_CHAT_CONTEXT_ENABLED =
-    new BooleanFlag(STUDIOBOT, "chat.context.enabled",
-                    "Enable sending context with chat queries.",
-                    "When enabled, chat queries will attach context (e.g. project structure, currently open file) from the project.",
-                    ChannelDefault.enabledUpTo(DEV));
-
   public static final Flag<Boolean> STUDIOBOT_EDITOR_AI_ACTIONS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.actions.enabled",
                     "Enable AI Actions in the editor.",
@@ -1880,24 +1861,24 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
                     "Enable the custom transform action in the editor.",
                     "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_CUSTOM_TRANSFORM_V2_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.v2.enabled",
+                    "Use updated APIs to perform custom transform action in the editor.",
+                    "When enabled, the custom transform action will use newer APIs. This is an internal migration flag.",
                     ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_TRANSFORM_HISTORY_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.history.enabled",
                     "Enable the transform history in the transform diff.",
                     "When enabled, allows the user to navigate transform history in the diff view.",
-                    ChannelDefault.enabledUpTo(DEV));
+                    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_EXPERIMENTAL_SLASH_COMMANDS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.experimental.slash.commands.enabled",
                     "Enable experimental slash comments.",
                     "When enabled, experimental slash commands will be enabled.",
-                    ChannelDefault.enabledUpTo(CANARY));
-
-  public static final Flag<Boolean> STUDIOBOT_USE_FACTS_FOR_CONTEXT =
-    new BooleanFlag(STUDIOBOT, "chat.use.facts.for.context",
-                    "Use retrieval augmentation facts to attach context to queries.",
-                    "When enabled, project context is attached to queries using facts, instead of prepending them directly to the query string.",
                     ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_USE_COMPOSE_TOOLWINDOW_UI =
@@ -1917,6 +1898,18 @@ public final class StudioFlags {
                     "Run hallucination analysis on generated code.",
                     "When enabled, a hallucination detection utility will run on generated code snippets, and emit metrics when hallucinations are detected.",
                     ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_CURRENT_FILE_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "current.file.context",
+                    "Use the current file as context",
+                    "Attach the current file's path, contents, and selection with chat queries.",
+                    ChannelDefault.enabledUpTo(DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_OPEN_FILES_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "open.files.context",
+                    "Use the currently open files as context",
+                    "Attach the currently open files' paths and contents with chat queries.",
+                    false);
 
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
@@ -1960,6 +1953,20 @@ public final class StudioFlags {
                 "AI generation requests per hour",
                 "AI generation requests per hour",
                 3600);
+
+  public static final Flag<Integer> STUDIOBOT_GENERATION_CANDIDATE_COUNT =
+    new IntFlag(STUDIOBOT, "generations.candidate.count",
+                "How many candidates to request for each generation",
+                "How many candidates to request for each generation",
+                1);
+
+  private static final int APOLLO_GENERATION_MODEL_CONTEXT_SIZE = 8192;
+
+  public static final Flag<Integer> STUDIOBOT_GENERATION_MODEL_CONTEXT_SIZE_TOKENS =
+    new IntFlag(STUDIOBOT, "generations.model.context.size",
+                "Generation model context size in tokens",
+                "Generation model context size in tokens",
+                APOLLO_GENERATION_MODEL_CONTEXT_SIZE);
 
   // endregion STUDIO_BOT
 

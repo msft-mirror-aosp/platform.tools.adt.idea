@@ -19,9 +19,9 @@ import static com.android.SdkConstants.ANDROID_SDK_ROOT_ENV;
 import static com.android.SdkConstants.FD_EMULATOR;
 import static com.android.SdkConstants.FD_LIB;
 import static com.android.SdkConstants.FN_HARDWARE_INI;
-import static com.android.ide.common.rendering.HardwareConfigHelper.isAutomotive;
-import static com.android.ide.common.rendering.HardwareConfigHelper.isAutomotiveDistantDisplay;
-import static com.android.ide.common.rendering.HardwareConfigHelper.isRollable;
+import static com.android.sdklib.devices.Device.isAutomotive;
+import static com.android.sdklib.devices.Device.isAutomotiveDistantDisplay;
+import static com.android.sdklib.devices.Device.isRollable;
 import static com.android.sdklib.SystemImageTags.DEFAULT_TAG;
 import static com.android.sdklib.SystemImageTags.GOOGLE_APIS_TAG;
 import static com.android.sdklib.internal.avd.AvdManager.AVD_INI_DISPLAY_SETTINGS_FILE;
@@ -992,38 +992,6 @@ public class AvdManagerConnection {
       hardwareProperties.put(HardwareProperties.HW_INITIAL_ORIENTATION,
                              ScreenOrientation.LANDSCAPE.getShortDisplayValue().toLowerCase(Locale.ROOT));
     }
-    if (device.getId().equals("13.5in Freeform")) {
-      hardwareProperties.put(AVD_INI_DISPLAY_SETTINGS_FILE, "freeform");
-    }
-    if (isRollable(device.getId())) {
-      hardwareProperties.put(AVD_INI_ROLL, "yes");
-      hardwareProperties.put(AVD_INI_ROLL_COUNT, "1");
-      hardwareProperties.put(AVD_INI_HINGE_TYPE, "3");
-      hardwareProperties.put(AVD_INI_ROLL_RANGES, "58.55-100");
-      hardwareProperties.put(AVD_INI_ROLL_DEFAULTS, "67.5");
-      hardwareProperties.put(AVD_INI_ROLL_RADIUS, "3");
-      hardwareProperties.put(AVD_INI_ROLL_DIRECTION, "1");
-      hardwareProperties.put(AVD_INI_ROLL_RESIZE_1_AT_POSTURE, "1");
-      hardwareProperties.put(AVD_INI_ROLL_RESIZE_2_AT_POSTURE, "2");
-      hardwareProperties.put(AVD_INI_POSTURE_LISTS, "1, 2, 3");
-      hardwareProperties.put(AVD_INI_ROLL_PERCENTAGES_POSTURE_DEFINITIONS, "58.55-76.45, 76.45-94.35, 94.35-100");
-    }
-    if (device.getId().equals("resizable")) {
-      hardwareProperties.put(AVD_INI_RESIZABLE_CONFIG, "phone-0-1080-2400-420, foldable-1-2208-1840-420, tablet-2-1920-1200-240, desktop-3-1920-1080-160");
-    }
-    //TODO: Remove hard coded config when the runtime configuration is available (b/337978287, b/337980217)
-    if (isAutomotive(device)) {
-      hardwareProperties.put(AVD_INI_CLUSTER_WIDTH, "400");
-      hardwareProperties.put(AVD_INI_CLUSTER_HEIGHT, "600");
-      hardwareProperties.put(AVD_INI_CLUSTER_DENSITY, "120");
-      hardwareProperties.put(AVD_INI_CLUSTER_FLAG, "0");
-    }
-    if (isAutomotiveDistantDisplay(device)) {
-      hardwareProperties.put(AVD_INI_DISTANT_DISPLAY_WIDTH, "3000");
-      hardwareProperties.put(AVD_INI_DISTANT_DISPLAY_HEIGHT, "600");
-      hardwareProperties.put(AVD_INI_DISTANT_DISPLAY_DENSITY, "120");
-      hardwareProperties.put(AVD_INI_DISTANT_DISPLAY_FLAG, "0");
-    }
     if (currentInfo != null && !avdName.equals(currentInfo.getName()) && removePrevious) {
       assert myAvdManager != null;
       boolean success = myAvdManager.moveAvd(currentInfo, avdName, currentInfo.getDataFolderPath());
@@ -1049,8 +1017,7 @@ public class AvdManagerConnection {
 
   @Nullable
   private File getRoundSkin(SystemImageDescription systemImageDescription) {
-    Path[] skins = systemImageDescription.getSkins();
-    for (Path skin : skins) {
+    for (Path skin : systemImageDescription.getSkins()) {
       if (skin.getFileName().toString().contains("Round")) {
         return FileOpUtils.toFile(skin);
       }

@@ -339,6 +339,11 @@
     <option name="single" path="ActionManager" hit="Generate the Baseline Profile for the selected app. Note that generation is always per app and cannot be done for a single method or class." />
     <option name="that" path="ActionManager" hit="Generate the Baseline Profile for the selected app. Note that generation is always per app and cannot be done for a single method or class." />
     <option name="the" path="ActionManager" hit="Generate the Baseline Profile for the selected app. Note that generation is always per app and cannot be done for a single method or class." />
+    <option name="dagger" path="ActionManager" hit="Go to Related Dagger Items" />
+    <option name="go" path="ActionManager" hit="Go to Related Dagger Items" />
+    <option name="items" path="ActionManager" hit="Go to Related Dagger Items" />
+    <option name="related" path="ActionManager" hit="Go to Related Dagger Items" />
+    <option name="to" path="ActionManager" hit="Go to Related Dagger Items" />
     <option name="hardware" path="ActionManager" hit="Hardware Input" />
     <option name="input" path="ActionManager" hit="Hardware Input" />
     <option name="help" path="ActionManager" hit="Help" />
@@ -1459,8 +1464,6 @@
     <option name="settings" hit=" Note: These settings are for features that are considered experimental." />
     <option name="that" hit=" Note: These settings are for features that are considered experimental." />
     <option name="these" hit=" Note: These settings are for features that are considered experimental." />
-    <option name="device" hit="Device Streaming" />
-    <option name="streaming" hit="Device Streaming" />
     <option name="experimental" hit="Experimental" />
     <option name="gradle" hit="Gradle" />
     <option name="compose" hit="Jetpack Compose" />

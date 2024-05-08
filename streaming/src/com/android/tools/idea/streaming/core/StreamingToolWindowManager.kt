@@ -45,7 +45,6 @@ import com.android.tools.idea.streaming.MirroringManager
 import com.android.tools.idea.streaming.MirroringState
 import com.android.tools.idea.streaming.RUNNING_DEVICES_TOOL_WINDOW_ID
 import com.android.tools.idea.streaming.core.StreamingDevicePanel.UiState
-import com.android.tools.idea.streaming.device.B330395367Logger
 import com.android.tools.idea.streaming.device.DeviceClient
 import com.android.tools.idea.streaming.device.DeviceConfiguration
 import com.android.tools.idea.streaming.device.DeviceToolWindowPanel
@@ -128,7 +127,6 @@ import java.awt.EventQueue
 import java.awt.event.KeyEvent
 import java.text.Collator
 import java.time.Duration
-import java.util.Arrays
 import java.util.function.Supplier
 
 private const val DEVICE_FRAME_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.emulator.frame.visible"
@@ -388,7 +386,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun onToolWindowShown() {
-    B330395367Logger.log { "StreamingToolWindowManager.onToolWindowShown" }
     if (!initialized) {
       initialized = true
 
@@ -474,7 +471,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun onToolWindowHidden() {
-    B330395367Logger.log { "StreamingToolWindowManager.onToolWindowHidden" }
     if (!contentShown) {
       return
     }
@@ -534,28 +530,13 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
     panel.zoomToolbarVisible = zoomToolbarIsVisible
 
-    if (StudioFlags.DEVICE_MIRRORING_TAB_DND.get()) {
-      if (findContentByDeviceId(panel.id) != null) {
-        reportDuplicatePanel(content)
-        return null
-      }
-
-      // Add panel to the end.
-      contentManager.addContent(content)
+    if (findContentByDeviceId(panel.id) != null) {
+      reportDuplicatePanel(content)
+      return null
     }
-    else {
-      var index = Arrays.binarySearch(contentManager.contents, content, TAB_COMPARATOR).inv()
-      if (index < 0) {
-        index = index.inv()
-        if (panel.id == ID_KEY.get(contentManager.contents[index])) {
-          reportDuplicatePanel(content)
-          return null
-        }
-      }
 
-      // Insert panel in alphabetical order of the title.
-      contentManager.addContent(content, index)
-    }
+    // Add panel to the end.
+    contentManager.addContent(content)
 
     if (!content.isSelected) {
       // Activate the newly added panel if it corresponds to a recently launched or used Emulator.
@@ -623,7 +604,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun viewSelectionChanged() {
-    B330395367Logger.log { "StreamingToolWindowManager.viewSelectionChanged" }
     for (contentManager in contentManagers) {
       for (i in 0 until contentManager.contentCount) {
         val content = contentManager.getContent(i) ?: break
