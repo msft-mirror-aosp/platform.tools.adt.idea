@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.adtui.compose
+package com.android.tools.adtui.status
 
 import com.android.tools.adtui.actions.DropDownAction
 import com.intellij.icons.AllIcons
@@ -86,7 +86,7 @@ interface InformationPopup : Disposable {
  * If the underlying action creates a popup, its DataProvider should return true for
  * this data key to prevent closing the parent popup prematurely.
  */
-val POPUP_ACTION = DataKey.create<Boolean>("compose.information_popup.popup_action")
+val POPUP_ACTION = DataKey.create<Boolean>("information_popup.popup_action")
 
 /**
  * The popup contains an optional `title` and `description` that can contain HTML contents.

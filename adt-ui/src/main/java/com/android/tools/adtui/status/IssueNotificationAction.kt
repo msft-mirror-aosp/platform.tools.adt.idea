@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.adtui.compose
+package com.android.tools.adtui.status
 
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.common.ColoredIconGenerator
@@ -70,7 +70,11 @@ internal fun chipBorder(color: Color): Border = object: RoundedLineBorder(
   }
 }
 
-interface ComposeStatus {
+/**
+ * Represents the status of the IDE regarding states that are relevant to UI Previews and Live Edit,
+ * e.g. code out-of-date or up-to-date, syntax errors, build needed, compiling, etc.
+ */
+interface IdeStatus {
   val icon: Icon?
   val title: String
   val description: String
@@ -80,13 +84,13 @@ interface ComposeStatus {
     get() = false
 
   companion object {
-    val PRESENTATION = Key<Presentation>("ComposeStatus.Presentation")
+    val PRESENTATION = Key<Presentation>("IdeStatus.Presentation")
 
     /**
      * When not null, this will define the text position in the notification chip. One of [SwingConstants.LEADING] or
      * [SwingConstants.TRAILING].
      */
-    val TEXT_POSITION = Key<Int>("ComposeStatus.TextPosition")
+    val TEXT_POSITION = Key<Int>("IdeStatus.TextPosition")
   }
 
   /**
@@ -112,14 +116,13 @@ fun actionLink(text: String, action: AnAction, delegateDataContext: DataContext)
   }
 
 /**
- * Action that reports the current state of the Compose subsystem. Local issues for a given Compose subsystem are reported as part of the
- * subsystem itself and not in this action.
+ * Action that reports the current [IdeStatus].
  *
  * Clicking on the action will open a pop-up with additional details and action buttons.
  * @param popupAlarm used to show and hide the popup as a hint.
  */
 open class IssueNotificationAction(
-  private val createStatusInfo: (Project, DataContext) -> ComposeStatus?,
+  private val createStatusInfo: (Project, DataContext) -> IdeStatus?,
   private val createInformationPopup: (Project, DataContext) -> InformationPopup?,
   private val popupAlarm: Alarm = Alarm()
 ) : IconWithTextAction(), Disposable {
@@ -185,7 +188,7 @@ open class IssueNotificationAction(
   }
 
   @UiThread
-  open fun shouldHide(status: ComposeStatus, dataContext: DataContext) : Boolean {
+  open fun shouldHide(status: IdeStatus, dataContext: DataContext) : Boolean {
     return status.icon == null && StringUtil.isEmpty(status.title)
   }
 
@@ -194,7 +197,7 @@ open class IssueNotificationAction(
    * where screen real estate is limited.
    */
   @UiThread
-  open fun shouldSimplify(status: ComposeStatus, dataContext: DataContext) : Boolean = false
+  open fun shouldSimplify(status: IdeStatus, dataContext: DataContext) : Boolean = false
 
   override fun displayTextInToolbar(): Boolean = true
 
@@ -211,9 +214,9 @@ open class IssueNotificationAction(
         icon = it.icon
         text = if (shouldSimplify(it, e.dataContext)) "" else it.title
         description = it.description
-        putClientProperty(ComposeStatus.PRESENTATION, it.presentation)
+        putClientProperty(IdeStatus.PRESENTATION, it.presentation)
         val isErrorOrWarningIcon = it.icon == AllIcons.General.Error || it.icon == AllIcons.General.Warning
-        putClientProperty(ComposeStatus.TEXT_POSITION, if (isErrorOrWarningIcon) SwingConstants.TRAILING else SwingConstants.LEADING)
+        putClientProperty(IdeStatus.TEXT_POSITION, if (isErrorOrWarningIcon) SwingConstants.TRAILING else SwingConstants.LEADING)
       }
     }
   }
