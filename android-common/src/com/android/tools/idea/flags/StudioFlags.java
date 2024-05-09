@@ -1822,6 +1822,12 @@ public final class StudioFlags {
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
                     false);
 
+  public static final Flag<Boolean> STUDIOBOT_HALLUCINATION_DETECTOR_ENABLED =
+    new BooleanFlag(STUDIOBOT, "hallucination.detector.enabled",
+                    "Run hallucination analysis on generated code.",
+                    "When enabled, a hallucination detection utility will run on generated code snippets, and emit metrics when hallucinations are detected.",
+                    ChannelDefault.enabledUpTo(CANARY));
+
   // rate limits are controlled by server flags
   public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =
     new IntFlag(STUDIOBOT, "completions.per.hour",
