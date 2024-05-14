@@ -1517,9 +1517,9 @@ public final class StudioFlags {
     Flag.create(
       FIREBASE_TEST_LAB,
       "direct.access.monthly.quota",
-      "Direct Access",
-      "Enable FTL DirectAccess",
-      false);
+      "Direct Access Monthly Quota",
+      "Enable FTL DirectAccess Monthly Quota",
+      true);
 
   public static final Flag<Boolean> DIRECT_ACCESS_SETTINGS_PAGE =
     Flag.create(
