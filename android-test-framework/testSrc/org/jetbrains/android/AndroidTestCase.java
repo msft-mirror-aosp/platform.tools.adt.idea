@@ -6,7 +6,6 @@ import static com.android.tools.idea.testing.ThreadingAgentTestUtilKt.maybeCheck
 import static com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction;
 
 import com.android.SdkConstants;
-import com.android.testutils.TestUtils;
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.TestAndroidModel;
@@ -41,6 +40,7 @@ import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.ModuleRootModificationUtil;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.registry.Registry;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess;
 import com.intellij.pom.java.LanguageLevel;
@@ -77,6 +77,7 @@ import org.jetbrains.android.formatter.AndroidXmlPredefinedCodeStyle;
 import org.jetbrains.android.resourceManagers.LocalResourceManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider;
 
 /**
  * NOTE: If you are writing a new test, consider using JUnit4 with
@@ -123,6 +124,11 @@ public abstract class AndroidTestCase extends AndroidTestBase {
     // this is handled by JavaCodeInsightTestFixture#setUp(), but TestApplicationManager will only
     // be initialized once, so putting in this early initialize call won't cause any harm later.
     TestApplicationManager.getInstance();
+
+    // TODO: Clean up this once K2 scripting support is enabled (ETA: 242)
+    if (KotlinPluginModeProvider.Companion.isK2Mode()) {
+      Registry.get(K2_KTS_KEY).setValue(true);
+    }
 
     AdtTestProjectDescriptor descriptor;
     if (myProjectDescriptor == null) {

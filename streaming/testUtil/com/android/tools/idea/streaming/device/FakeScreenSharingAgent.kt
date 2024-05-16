@@ -216,6 +216,8 @@ class FakeScreenSharingAgent(
       }
     }
   @Volatile
+  var originalValues = true
+  @Volatile
   var darkMode = false
   @Volatile
   var gestureOverlayInstalled = true
@@ -232,14 +234,21 @@ class FakeScreenSharingAgent(
   @Volatile
   var selectToSpeakOn = false
   @Volatile
-  var fontSizeSettable = true
+  var fontScaleSettable = true
   @Volatile
-  var fontSize = 100
+  var fontScale = 100
   @Volatile
   var screenDensitySettable = true
   @Volatile
   var screenDensity = 480
 
+  private var originalDarkMode = false
+  private var originalGestureNavigation = true
+  private var originalTalkBackOn = false
+  private var originalSelectToSpeakOn = false
+  private var originalFontScale = 100
+  private var originalScreenDensity = 480
+  private var originalAppLocales = ""
   private var maxVideoResolution = Dimension(Int.MAX_VALUE, Int.MAX_VALUE)
   private var agentFlags = 0
   private var deviceOrientation = 0
@@ -443,6 +452,12 @@ class FakeScreenSharingAgent(
     }
   }
 
+  suspend fun produceInvalidVideoFrame(displayId: Int) {
+    return withContext(singleThreadedDispatcher) {
+      displayStreamers[displayId]?.produceInvalidFrame()
+    }
+  }
+
   suspend fun beep(frequencyHz: Double, durationMillis: Int) {
     return withContext(singleThreadedDispatcher) {
       audioStreamer?.beep(frequencyHz, durationMillis)
@@ -626,41 +641,76 @@ class FakeScreenSharingAgent(
 
   private fun sendUiSettingsResponse(message: UiSettingsRequest) {
     sendNotificationOrResponse(
-      UiSettingsResponse(message.requestId, darkMode, gestureOverlayInstalled, gestureNavigation, foregroundProcess, appLocales, talkBackInstalled, talkBackOn, selectToSpeakOn, fontSizeSettable, fontSize, screenDensitySettable, screenDensity))
+      UiSettingsResponse(message.requestId, originalValues, darkMode, gestureOverlayInstalled, gestureNavigation, foregroundProcess, appLocales, talkBackInstalled, talkBackOn, selectToSpeakOn, fontScaleSettable, fontScale, screenDensitySettable, screenDensity))
   }
 
-  private fun setDarkMode(message: SetDarkModeMessage) {
+  private fun setDarkMode(message: SetDarkModeRequest) {
     darkMode = message.darkMode
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
-  private fun setGestureNavigation(message: SetGestureNavigationMessage) {
+  private fun setGestureNavigation(message: SetGestureNavigationRequest) {
     gestureNavigation = message.on
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
-  private fun setAppLanguage(message: SetAppLanguageMessage) {
+  private fun setAppLanguage(message: SetAppLanguageRequest) {
     if (foregroundProcess == message.applicationId) {
       appLocales = message.locale
     }
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
-  private fun setTalkBack(message: SetTalkBackMessage) {
+  private fun setTalkBack(message: SetTalkBackRequest) {
     talkBackOn = message.on
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
-  private fun setSelectToSpeak(message: SetSelectToSpeakMessage) {
+  private fun setSelectToSpeak(message: SetSelectToSpeakRequest) {
     selectToSpeakOn = message.on
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
-  private fun setFontSize(message: SetFontSizeMessage) {
-    fontSize = message.fontSize
+  private fun setFontScale(message: SetFontScaleRequest) {
+    fontScale = message.fontScale
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
-  private fun setScreenDensity(message: SetScreenDensityMessage) {
+  private fun setScreenDensity(message: SetScreenDensityRequest) {
     screenDensity = message.density
+    updateOriginalValues()
+    sendNotificationOrResponse(UiSettingsCommandResponse(message.requestId, originalValues))
   }
 
   private fun sendNotificationOrResponse(message: ControlMessage) {
     controller?.sendNotificationOrResponse(message)
+  }
+
+  fun setOriginalValues() {
+    originalDarkMode = darkMode
+    originalGestureNavigation = gestureNavigation
+    originalTalkBackOn = talkBackOn
+    originalSelectToSpeakOn = selectToSpeakOn
+    originalFontScale = fontScale
+    originalScreenDensity = screenDensity
+    originalAppLocales = appLocales
+  }
+
+  private fun updateOriginalValues() {
+    originalValues =
+      originalDarkMode == darkMode &&
+      originalGestureNavigation == gestureNavigation &&
+      originalTalkBackOn == talkBackOn &&
+      originalSelectToSpeakOn == selectToSpeakOn &&
+      originalFontScale == fontScale &&
+      originalScreenDensity == screenDensity &&
+      originalAppLocales == appLocales
   }
 
   private inner class DisplayStreamer(
@@ -680,6 +730,7 @@ class FakeScreenSharingAgent(
     var displayOrientationCorrection: Int = 0
     @Volatile var frameNumber: UInt = 0u
       private set
+    private var nextFrameIsInvalid = false
 
     /** Renders display content using the last used image flavor and sends all produced video frames. */
     suspend fun renderDisplay() {
@@ -763,6 +814,11 @@ class FakeScreenSharingAgent(
       }
     }
 
+    suspend fun produceInvalidFrame() {
+      nextFrameIsInvalid = true
+      renderDisplay()
+    }
+
     /** Sends the given frame or, if [frame] is null, sends the delayed frames. */
     private suspend fun sendFrame(encoderContext: AVCodecContext, frame: AVFrame?, packet: AVPacket) {
       if (avcodec_send_frame(encoderContext, frame) < 0) {
@@ -799,7 +855,13 @@ class FakeScreenSharingAgent(
         packetHeader.packetSize = packetSize
         val buffer = VideoPacketHeader.createBuffer(packetSize)
         packetHeader.serialize(buffer)
-        buffer.put(packetData)
+        if (nextFrameIsInvalid) {
+          nextFrameIsInvalid = false
+          buffer.fill(0, packetSize)
+        }
+        else {
+          buffer.put(packetData)
+        }
         buffer.flip()
         try {
           channel.writeFully(buffer)
@@ -1084,13 +1146,13 @@ class FakeScreenSharingAgent(
         is RequestDeviceStateMessage -> requestDeviceState(message)
         is DisplayConfigurationRequest -> sendDisplayConfigurations(message)
         is UiSettingsRequest -> sendUiSettingsResponse(message)
-        is SetDarkModeMessage -> setDarkMode(message)
-        is SetAppLanguageMessage -> setAppLanguage(message)
-        is SetTalkBackMessage -> setTalkBack(message)
-        is SetSelectToSpeakMessage -> setSelectToSpeak(message)
-        is SetFontSizeMessage -> setFontSize(message)
-        is SetScreenDensityMessage -> setScreenDensity(message)
-        is SetGestureNavigationMessage -> setGestureNavigation(message)
+        is SetDarkModeRequest -> setDarkMode(message)
+        is SetAppLanguageRequest -> setAppLanguage(message)
+        is SetTalkBackRequest -> setTalkBack(message)
+        is SetSelectToSpeakRequest -> setSelectToSpeak(message)
+        is SetFontScaleRequest -> setFontScale(message)
+        is SetScreenDensityRequest -> setScreenDensity(message)
+        is SetGestureNavigationRequest -> setGestureNavigation(message)
         else -> {}
       }
       commandLog.add(message)

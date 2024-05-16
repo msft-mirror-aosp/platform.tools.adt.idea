@@ -16,6 +16,7 @@
 
 #include "ui_settings.h"
 
+#include <cmath>
 #include <numeric>
 #include <regex>
 #include <set>
@@ -38,7 +39,7 @@ namespace {
 #define LIST_PACKAGES_DIVIDER "-- List Packages --"
 #define ACCESSIBILITY_SERVICES_DIVIDER "-- Accessibility Services --"
 #define ACCESSIBILITY_BUTTON_TARGETS_DIVIDER "-- Accessibility Button Targets --"
-#define FONT_SIZE_DIVIDER "-- Font Size --"
+#define FONT_SCALE_DIVIDER "-- Font Scale --"
 #define DENSITY_DIVIDER "-- Density --"
 #define FOREGROUND_APPLICATION_DIVIDER "-- Foreground Application --"
 #define APP_LANGUAGE_DIVIDER "-- App Language --"
@@ -59,6 +60,7 @@ struct CommandContext {
     set<string> enabled;
     set<string> buttons;
     string foreground_application_id;
+    bool secure_settings_retrieved = false;
 };
 
 string TrimEnd(string value) {
@@ -128,13 +130,13 @@ void ProcessAccessibilityServices(stringstream* stream, set<string>* services) {
   }
 }
 
-void ProcessFontSize(stringstream* stream, UiSettingsState* state) {
+void ProcessFontScale(stringstream* stream, UiSettingsState* state) {
   string line;
-  float font_size = 1;
+  float font_scale = 1;
   if (getline(*stream, line, '\n')) {
-    sscanf(line.c_str(), "%g", &font_size);
+    sscanf(line.c_str(), "%g", &font_scale);
   }
-  state->set_font_size(font_size * 100.);
+  state->set_font_scale(lround(font_scale * 100.));
 }
 
 void ReadDensity(stringstream* stream, const char* pattern, int* density) {
@@ -226,6 +228,9 @@ void ProcessAppLanguage(stringstream* stream, UiSettingsState* state) {
     if (ParseAppLanguageLine(line, &application_id, &locales)) {
       stringstream ss(locales);
       getline(ss, locale, ',');  // Read the first locale, ignore the rest
+      if (locale == "null") {
+        locale = "";
+      }
       state->add_app_locale(application_id, locale);
     }
   }
@@ -250,35 +255,10 @@ void ProcessAdbOutput(const string& output, UiSettingsState* state, CommandConte
     if (line == LIST_PACKAGES_DIVIDER) ProcessListPackages(&stream, state);
     if (line == ACCESSIBILITY_SERVICES_DIVIDER) ProcessAccessibilityServices(&stream, &context->enabled);
     if (line == ACCESSIBILITY_BUTTON_TARGETS_DIVIDER) ProcessAccessibilityServices(&stream, &context->buttons);
-    if (line == FONT_SIZE_DIVIDER) ProcessFontSize(&stream, state);
+    if (line == FONT_SCALE_DIVIDER) ProcessFontScale(&stream, state);
     if (line == DENSITY_DIVIDER) ProcessDensity(&stream, state);
     if (line == FOREGROUND_APPLICATION_DIVIDER) ProcessForegroundProcess(&stream, context);
     if (line == APP_LANGUAGE_DIVIDER) ProcessAppLanguage(&stream, state);
-  }
-}
-
-string CombineServices(string serviceA, string serviceB) {
-  if (serviceA.empty()) {
-    return serviceB;
-  }
-  return serviceA + ":" + serviceB;
-}
-
-void ChangeSecureSetting(string settingsName, string serviceName, bool on) {
-  string output = ExecuteShellCommand("settings get secure " + settingsName);
-  set<string> services;
-  GetAccessibilityServices(TrimEnd(output), &services);
-
-  if (on) {
-    services.insert(serviceName);
-  } else {
-    services.erase(serviceName);
-  }
-  if (services.empty()) {
-    ExecuteShellCommand("settings delete secure " + settingsName);
-  } else {
-    string result = accumulate(services.begin(), services.end(), string(), CombineServices);
-    ExecuteShellCommand("settings put secure " + settingsName + " " + result);
   }
 }
 
@@ -294,8 +274,8 @@ void GetApplicationLocales(const vector<string>& application_ids, UiSettingsStat
   ProcessAdbOutput(TrimEnd(output), state, nullptr);
 }
 
-bool IsFontSizeSettable(int32_t font_size) {
-  string command = StringPrintf("settings put system font_scale %g 2>&1 >/dev/null", font_size / 100.0f);
+bool IsFontScaleSettable(int32_t font_scale) {
+  string command = StringPrintf("settings put system font_scale %g 2>&1 >/dev/null", font_scale / 100.0f);
   string error = ExecuteShellCommand(command);
   return error.empty();
 }
@@ -306,34 +286,89 @@ bool IsScreenDensitySettable(int32_t density) {
   return error.empty();
 }
 
-} // namespace
-
-void UiSettings::Get(UiSettingsResponse* response) {
-  UiSettingsState state;
-  Get(&state);
-  StoreInitialSettings(state);
-  state.copy(response);
-  vector<string> application_ids = state.get_application_ids();
-  string foreground_application_id = application_ids.size() == 1 ? application_ids.at(0) : "";
-  response->set_foreground_application_id(foreground_application_id);
-  response->set_app_locale(state.app_locale_of(foreground_application_id));
-  response->set_font_size_settable(IsFontSizeSettable(state.font_size()));
-  response->set_density_settable(IsScreenDensitySettable(state.density()));
+string CreateSetDarkModeCommand(bool dark_mode) {
+  return string("cmd uimode night ") + (dark_mode ? "yes" : "no") + ";\n";
 }
 
-void UiSettings::Get(UiSettingsState* state) {
+string CreateSetGestureNavigationCommand(bool gesture_navigation) {
+  auto operation = gesture_navigation ? "enable" : "disable";
+  auto opposite = !gesture_navigation ? "enable" : "disable";
+  return StringPrintf("cmd overlay %s " GESTURES_OVERLAY "; cmd overlay %s " THREE_BUTTON_OVERLAY ";\n", operation, opposite);
+}
+
+string CreateSetAppLanguageCommand(const string& application_id, const string& locale) {
+  return StringPrintf("cmd locale set-app-locales %s --locales %s;\n", application_id.c_str(), locale.c_str());
+}
+
+void GetSecureSettings(CommandContext* context) {
+  if (!context->secure_settings_retrieved) {
+    string command =
+      "echo " ACCESSIBILITY_SERVICES_DIVIDER "; "
+      "settings get secure " ENABLED_ACCESSIBILITY_SERVICES "; "
+      "echo " ACCESSIBILITY_BUTTON_TARGETS_DIVIDER "; "
+      "settings get secure " ACCESSIBILITY_BUTTON_TARGETS "; ";
+    string output = ExecuteShellCommand(command.c_str());
+    stringstream stream(output);
+    string line;
+    while (getline(stream, line, '\n')) {
+      if (line == ACCESSIBILITY_SERVICES_DIVIDER) ProcessAccessibilityServices(&stream, &context->enabled);
+      if (line == ACCESSIBILITY_BUTTON_TARGETS_DIVIDER) ProcessAccessibilityServices(&stream, &context->buttons);
+    }
+    context->secure_settings_retrieved = true;
+  }
+}
+
+string CombineServices(string serviceA, string serviceB) {
+  if (serviceA.empty()) {
+    return serviceB;
+  }
+  return serviceA + ":" + serviceB;
+}
+
+string CreateSecureSettingChangeCommand(bool on, string settingsName, string serviceName, set<string>* services) {
+  if (on) {
+    services->insert(serviceName);
+  } else {
+    services->erase(serviceName);
+  }
+  if (services->empty()) {
+    return "settings delete secure " + settingsName + ";\n";
+  } else {
+    string result = accumulate(services->begin(), services->end(), string(), CombineServices);
+    return "settings put secure " + settingsName + " " + result + ";\n";
+  }
+}
+
+string CreateSetTalkBackCommand(bool on, CommandContext* context) {
+  return CreateSecureSettingChangeCommand(on, ENABLED_ACCESSIBILITY_SERVICES, TALK_BACK_SERVICE_NAME, &context->enabled);
+}
+
+string CreateSetSelectToSpeakCommand(bool on, CommandContext* context) {
+  return CreateSecureSettingChangeCommand(on, ENABLED_ACCESSIBILITY_SERVICES, SELECT_TO_SPEAK_SERVICE_NAME, &context->enabled)
+      +  CreateSecureSettingChangeCommand(on, ACCESSIBILITY_BUTTON_TARGETS, SELECT_TO_SPEAK_SERVICE_NAME, &context->buttons);
+}
+
+string CreateSetFontScaleCommand(int32_t font_scale) {
+  return string("settings put system font_scale ") + StringPrintf("%g", font_scale / 100.0f) + ";\n";
+}
+
+string CreateSetScreenDensityCommand(int32_t density) {
+  return StringPrintf("wm density %d;\n", density);
+}
+
+void GetSettings(UiSettingsState* state, CommandContext* context) {
   string command =
     "echo " DARK_MODE_DIVIDER "; "
     "cmd uimode night; "
     "echo " GESTURES_DIVIDER "; "
     "cmd overlay list android | grep " GESTURES_OVERLAY "$; "
     "echo " LIST_PACKAGES_DIVIDER "; "
-    "pm list packages; "
+    "pm list packages | grep package:" TALKBACK_PACKAGE_NAME "$; "
     "echo " ACCESSIBILITY_SERVICES_DIVIDER "; "
     "settings get secure " ENABLED_ACCESSIBILITY_SERVICES "; "
     "echo " ACCESSIBILITY_BUTTON_TARGETS_DIVIDER "; "
     "settings get secure " ACCESSIBILITY_BUTTON_TARGETS "; "
-    "echo " FONT_SIZE_DIVIDER "; "
+    "echo " FONT_SCALE_DIVIDER "; "
     "settings get system font_scale; "
     "echo " DENSITY_DIVIDER "; "
     "wm density; "
@@ -341,16 +376,32 @@ void UiSettings::Get(UiSettingsState* state) {
     "dumpsys activity processes | grep top-activity; ";
 
   string output = ExecuteShellCommand(command.c_str());
-  CommandContext context;
-  ProcessAdbOutput(TrimEnd(output), state, &context);
+  ProcessAdbOutput(TrimEnd(output), state, context);
 
-  auto foreground_application_id = context.foreground_application_id;
+  auto foreground_application_id = context->foreground_application_id;
   if (!foreground_application_id.empty()) {
     vector<string> application_ids;
     application_ids.push_back(foreground_application_id);
     GetApplicationLocales(application_ids, state);
   }
-  ProcessAccessibility(context, state);
+  ProcessAccessibility(*context, state);
+}
+
+} // namespace
+
+void UiSettings::Get(UiSettingsResponse* response) {
+  UiSettingsState state;
+  CommandContext context;
+  GetSettings(&state, &context);
+  StoreInitialSettings(state);
+  state.copy(response);
+  vector<string> application_ids = state.get_application_ids();
+  string foreground_application_id = application_ids.size() == 1 ? application_ids.at(0) : "";
+  response->set_foreground_application_id(foreground_application_id);
+  response->set_app_locale(state.app_locale_of(foreground_application_id));
+  response->set_font_scale_settable(IsFontScaleSettable(state.font_scale()));
+  response->set_density_settable(IsScreenDensitySettable(state.density()));
+  response->set_original_values(has_original_values());
 }
 
 void UiSettings::StoreInitialSettings(const UiSettingsState& state) {
@@ -364,91 +415,102 @@ void UiSettings::StoreInitialSettings(const UiSettingsState& state) {
   state.add_unseen_app_locales(&last_settings_);
 }
 
-void UiSettings::SetDarkMode(bool dark_mode) {
-  string command = string("cmd uimode night ") + (dark_mode ? "yes" : "no");
-  ExecuteShellCommand(command);
+void UiSettings::SetDarkMode(bool dark_mode, UiSettingsCommandResponse* response) {
+  ExecuteShellCommand(CreateSetDarkModeCommand(dark_mode));
   last_settings_.set_dark_mode(dark_mode);
+  response->set_original_values(has_original_values());
 }
 
-void UiSettings::SetGestureNavigation(bool gesture_navigation) {
-  auto operation = gesture_navigation ? "enable" : "disable";
-  auto opposite = !gesture_navigation ? "enable" : "disable";
-  string command = StringPrintf("cmd overlay %s " GESTURES_OVERLAY "; cmd overlay %s " THREE_BUTTON_OVERLAY, operation, opposite);
-  ExecuteShellCommand(command);
+void UiSettings::SetGestureNavigation(bool gesture_navigation, UiSettingsCommandResponse* response) {
+  ExecuteShellCommand(CreateSetGestureNavigationCommand(gesture_navigation));
   last_settings_.set_gesture_navigation(gesture_navigation);
+  response->set_original_values(has_original_values());
 }
 
-void UiSettings::SetAppLanguage(const string& application_id, const string& locale) {
-  string command = StringPrintf("cmd locale set-app-locales %s --locales %s", application_id.c_str(), locale.c_str());
-  ExecuteShellCommand(command);
+void UiSettings::SetAppLanguage(const string& application_id, const string& locale, UiSettingsCommandResponse* response) {
+  ExecuteShellCommand(CreateSetAppLanguageCommand(application_id, locale));
   last_settings_.add_app_locale(application_id, locale);
+  response->set_original_values(has_original_values());
 }
 
-void UiSettings::SetTalkBack(bool on) {
-  ChangeSecureSetting(ENABLED_ACCESSIBILITY_SERVICES, TALK_BACK_SERVICE_NAME, on);
+void UiSettings::SetTalkBack(bool on, UiSettingsCommandResponse* response) {
+  CommandContext context;
+  GetSecureSettings(&context);
+  ExecuteShellCommand(CreateSetTalkBackCommand(on, &context));
   last_settings_.set_talkback_on(on);
+  response->set_original_values(has_original_values());
 }
 
-void UiSettings::SetSelectToSpeak(bool on) {
-  ChangeSecureSetting(ENABLED_ACCESSIBILITY_SERVICES, SELECT_TO_SPEAK_SERVICE_NAME, on);
-  ChangeSecureSetting(ACCESSIBILITY_BUTTON_TARGETS, SELECT_TO_SPEAK_SERVICE_NAME, on);
+void UiSettings::SetSelectToSpeak(bool on, UiSettingsCommandResponse* response) {
+  CommandContext context;
+  GetSecureSettings(&context);
+  ExecuteShellCommand(CreateSetSelectToSpeakCommand(on, &context));
   last_settings_.set_select_to_speak_on(on);
+  response->set_original_values(has_original_values());
 }
 
-void UiSettings::SetFontSize(int32_t font_size) {
-  string command = string("settings put system font_scale ") + StringPrintf("%g", font_size / 100.0f);
-  ExecuteShellCommand(command);
-  last_settings_.set_font_size(font_size);
+void UiSettings::SetFontScale(int32_t font_scale, UiSettingsCommandResponse* response) {
+  ExecuteShellCommand(CreateSetFontScaleCommand(font_scale));
+  last_settings_.set_font_scale(font_scale);
+  response->set_original_values(has_original_values());
 }
 
-void UiSettings::SetScreenDensity(int32_t density) {
-  string command = StringPrintf("wm density %d", density);
-  ExecuteShellCommand(command);
+void UiSettings::SetScreenDensity(int32_t density, UiSettingsCommandResponse* response) {
+  ExecuteShellCommand(CreateSetScreenDensityCommand(density));
   last_settings_.set_density(density);
+  response->set_original_values(has_original_values());
+}
+
+const bool UiSettings::has_original_values() {
+  return CreateResetCommand().empty();
+}
+
+const string UiSettings::CreateResetCommand() {
+  if (!initial_settings_recorded_ || (Agent::flags() & AUTO_RESET_UI_SETTINGS) == 0) {
+    return "";
+  }
+
+  vector<string> application_ids = initial_settings_.get_application_ids();
+  CommandContext context;
+
+  string command;
+  if (last_settings_.dark_mode() != initial_settings_.dark_mode()) {
+    command += CreateSetDarkModeCommand(initial_settings_.dark_mode());
+  }
+  if (last_settings_.gesture_navigation() != initial_settings_.gesture_navigation()) {
+    command += CreateSetGestureNavigationCommand(initial_settings_.gesture_navigation());
+  }
+  for (auto it = application_ids.begin(); it != application_ids.end(); it++) {
+    if (last_settings_.app_locale_of(*it) != initial_settings_.app_locale_of(*it)) {
+      command += CreateSetAppLanguageCommand(*it, initial_settings_.app_locale_of(*it));
+    }
+  }
+  if (last_settings_.talkback_on() != initial_settings_.talkback_on()) {
+    GetSecureSettings(&context);
+    command += CreateSetTalkBackCommand(initial_settings_.talkback_on(), &context);
+  }
+  if (last_settings_.select_to_speak_on() != initial_settings_.select_to_speak_on()) {
+    GetSecureSettings(&context);
+    command += CreateSetSelectToSpeakCommand(initial_settings_.select_to_speak_on(), &context);
+  }
+  if (last_settings_.font_scale() != initial_settings_.font_scale()) {
+    command += CreateSetFontScaleCommand(initial_settings_.font_scale());
+  }
+  if (last_settings_.density() != initial_settings_.density()) {
+    command += CreateSetScreenDensityCommand(initial_settings_.density());
+  }
+  return command;
 }
 
 // Reset all changed settings to the initial state.
-// If the user overrides any setting on the device the original state is ignored.
-void UiSettings::Reset() {
-  if (!initial_settings_recorded_ || (Agent::flags() & AUTO_RESET_UI_SETTINGS) == 0) {
-    return;
+void UiSettings::Reset(UiSettingsResponse* response) {
+  string command = CreateResetCommand();
+  if (!command.empty()) {
+    ExecuteShellCommand(command);
+    initial_settings_.copy(&last_settings_);
   }
-
-  UiSettingsState current_settings;
-  Get(&current_settings);
-  vector<string> application_ids = initial_settings_.get_application_ids();
-  GetApplicationLocales(application_ids, &current_settings);
-
-  if (current_settings.dark_mode() != initial_settings_.dark_mode() &&
-      current_settings.dark_mode() == last_settings_.dark_mode()) {
-    SetDarkMode(initial_settings_.dark_mode());
-  }
-  if (current_settings.gesture_navigation() != initial_settings_.gesture_navigation() &&
-      current_settings.gesture_navigation() == last_settings_.gesture_navigation()) {
-    SetGestureNavigation(initial_settings_.gesture_navigation());
-  }
-  for (auto it = application_ids.begin(); it != application_ids.end(); it++) {
-    if (current_settings.app_locale_of(*it) != initial_settings_.app_locale_of(*it) &&
-        current_settings.app_locale_of(*it) == last_settings_.app_locale_of(*it)) {
-      SetAppLanguage(*it, initial_settings_.app_locale_of(*it));
-    }
-  }
-
-  if (current_settings.talkback_on() != initial_settings_.talkback_on() &&
-      current_settings.talkback_on() == last_settings_.talkback_on()) {
-    SetTalkBack(initial_settings_.talkback_on());
-  }
-  if (current_settings.select_to_speak_on() != initial_settings_.select_to_speak_on() &&
-      current_settings.select_to_speak_on() == last_settings_.select_to_speak_on()) {
-    SetSelectToSpeak(initial_settings_.select_to_speak_on());
-  }
-  if (current_settings.font_size() != initial_settings_.font_size() &&
-      current_settings.font_size() == last_settings_.font_size()) {
-    SetFontSize(initial_settings_.font_size());
-  }
-  if (current_settings.density() != initial_settings_.density() &&
-      current_settings.density() == last_settings_.density()) {
-    SetScreenDensity(initial_settings_.density());
+  if (response != nullptr) {
+    Get(response);
   }
 }
 

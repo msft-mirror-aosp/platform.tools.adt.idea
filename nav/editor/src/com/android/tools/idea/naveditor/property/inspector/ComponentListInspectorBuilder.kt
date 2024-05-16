@@ -33,7 +33,6 @@ import com.intellij.openapi.editor.event.CaretListener
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.components.JBList
-import icons.StudioIcons
 import com.intellij.openapi.application.invokeLater
 import java.awt.event.HierarchyEvent
 import java.awt.event.HierarchyListener
@@ -117,7 +116,7 @@ abstract class ComponentListInspectorBuilder(val tagName: String,
       override fun caretPositionChanged(event: CaretEvent) {
         val nlModel = component.model
         val offset = event.caret?.offset ?: return
-        val view = nlModel.findByOffset(offset).firstOrNull() ?: nlModel.components.firstOrNull() ?: return
+        val view = nlModel.treeReader.findByOffset(offset).firstOrNull() ?: nlModel.treeReader.components.firstOrNull() ?: return
         list.setSelectedValue(view, true)
         if (list.selectedIndex >= 0 && !titleModel.expanded) {
           // If the section is collapsed we need to try again once it's open.
@@ -197,7 +196,7 @@ abstract class ComponentListInspectorBuilder(val tagName: String,
     : AnAction(text, text, AllIcons.General.Remove) {
     var model: InspectorLineModel? = null
     override fun actionPerformed(e: AnActionEvent) {
-      component.model.delete(list.selectedValuesList)
+      component.model.treeWriter.delete(list.selectedValuesList)
       builder.refresh(component, listModel)
       model?.refresh()
       model?.expanded = listModel.size > 0

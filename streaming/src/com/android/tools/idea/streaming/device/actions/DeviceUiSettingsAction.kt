@@ -52,12 +52,12 @@ internal class DeviceUiSettingsAction : AbstractDeviceAction(
     val config = getDeviceConfig(event) ?: return
     val screenSize = config.deviceProperties.resolution?.let { Dimension(it.width, it.height) } ?: return
     val density = config.deviceProperties.density ?: return
-    val model = UiSettingsModel(screenSize, density, config.apiLevel)
-    val controller = DeviceUiSettingsController(deviceController, config, project, model)
+    val model = UiSettingsModel(screenSize, density, config.apiLevel, config.isWatch)
+    val controller = DeviceUiSettingsController(deviceController, config, project, model, deviceView)
     AndroidCoroutineScope(deviceView).launch {
       controller.populateModel()
       EventQueue.invokeLater {
-        val panel = UiSettingsPanel(model, showResetButton = false, config.deviceProperties.deviceType.hasLimitedUiSettingsSupport)
+        val panel = UiSettingsPanel(model, config.deviceProperties.deviceType.hasLimitedUiSettingsSupport)
         showUiSettingsPopup(panel, this@DeviceUiSettingsAction, event, deviceView)
       }
     }

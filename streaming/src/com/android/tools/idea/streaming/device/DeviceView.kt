@@ -346,6 +346,9 @@ internal class DeviceView(
   }
 
   private fun getDisconnectionErrorMessage(exception: Throwable?): String {
+    if (exception is InvalidFrameException) {
+      return "Too many invalid video frames. See ${getShowLogHyperlink()} for details."
+    }
     return when ((exception as? AgentTerminatedException)?.exitCode) {
       AGENT_WEAK_VIDEO_ENCODER ->
           "Repeated video encoder errors. The device may not have sufficient computing power for encoding display contents." +
@@ -363,13 +366,13 @@ internal class DeviceView(
   }
 
   override fun canZoom(): Boolean =
-    connectionState == ConnectionState.CONNECTED
+      connectionState == ConnectionState.CONNECTED
 
   override fun computeActualSize(): Dimension =
-    computeActualSize(displayOrientationQuadrants)
+      computeActualSize(displayOrientationQuadrants)
 
   private fun computeActualSize(rotationQuadrants: Int): Dimension =
-    deviceDisplaySize.rotatedByQuadrants(rotationQuadrants)
+      deviceDisplaySize.rotatedByQuadrants(rotationQuadrants)
 
   override fun paintComponent(graphics: Graphics) {
     super.paintComponent(graphics)
@@ -531,7 +534,7 @@ internal class DeviceView(
   }
 
   private fun isInsideDisplay(event: MouseEvent) =
-    displayRectangle?.contains(event.x * screenScale, event.y * screenScale) ?: false
+      displayRectangle?.contains(event.x * screenScale, event.y * screenScale) ?: false
 
   /**
    * Adds a [listener] to receive callbacks when the state of the agent's connection changes.
@@ -560,6 +563,8 @@ internal class DeviceView(
 
   private inner class MyFrameListener : VideoDecoder.FrameListener {
 
+    private var consecutiveInvalidFrames = 0
+
     override fun onNewFrameAvailable() {
       EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
         connected()
@@ -570,6 +575,17 @@ internal class DeviceView(
     }
 
     override fun onEndOfVideoStream() {
+    }
+
+    override fun onInvalidFrame(e: InvalidFrameException) {
+      thisLogger().warn(e)
+      if (++consecutiveInvalidFrames <= MAX_INVALID_FRAME_RETRIES) {
+        deviceClient.stopVideoStream(project, displayId)
+        deviceClient.startVideoStream(project, displayId, maxVideoSize)
+      }
+      else {
+        disconnected(initialDisplayOrientation, e)
+      }
     }
   }
 
@@ -716,6 +732,7 @@ internal class DeviceView(
   }
 
   private inner class MyMouseListener : MouseAdapter() {
+
     override fun mousePressed(event: MouseEvent) {
       requestFocusInWindow()
       if (!isInsideDisplay(event)) return
@@ -821,6 +838,7 @@ internal class DeviceView(
   }
 
   companion object {
+    private const val MAX_INVALID_FRAME_RETRIES = 3
     /**
      * This is how much we want to adjust the mouse scroll for Android. This number was chosen by
      * trying different numbers until scrolling felt usable.
@@ -831,12 +849,12 @@ internal class DeviceView(
 
     private fun modifiersToMetaState(modifiers: Int): Int {
       return modifierToMetaState(modifiers, SHIFT_DOWN_MASK, AMETA_SHIFT_ON) or
-        modifierToMetaState(modifiers, CTRL_DOWN_MASK, AMETA_CTRL_ON) or
-        modifierToMetaState(modifiers, META_DOWN_MASK, AMETA_META_ON) or
-        modifierToMetaState(modifiers, ALT_DOWN_MASK, AMETA_ALT_ON)
+          modifierToMetaState(modifiers, CTRL_DOWN_MASK, AMETA_CTRL_ON) or
+          modifierToMetaState(modifiers, META_DOWN_MASK, AMETA_META_ON) or
+          modifierToMetaState(modifiers, ALT_DOWN_MASK, AMETA_ALT_ON)
     }
 
     private fun modifierToMetaState(modifiers: Int, modifierMask: Int, metaState: Int) =
-      if ((modifiers and modifierMask) != 0) metaState else 0
+        if ((modifiers and modifierMask) != 0) metaState else 0
   }
 }

@@ -15,21 +15,13 @@
  */
 package com.android.tools.idea.wear.preview.lint
 
-import com.android.flags.junit.FlagRule
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.quickfixes.ReplacePreviewAnnotationFix
-import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.wear.preview.WearPreviewBundle.message
 import com.android.tools.idea.wear.preview.WearTileProjectRule
 import com.intellij.codeInspection.ex.QuickFixWrapper
-import com.intellij.ide.highlighter.HtmlFileType
-import com.intellij.ide.highlighter.JavaFileType
-import com.intellij.ide.highlighter.XmlFileType
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiFile
-import org.jetbrains.kotlin.idea.KotlinFileType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -37,10 +29,7 @@ import org.junit.Test
 
 class WearTilePreviewMethodIsAnnotatedWithTilePreviewAnnotationTest {
 
-  @get:Rule val projectRule = WearTileProjectRule(AndroidProjectRule.withAndroidModel())
-
-  @get:Rule
-  val wearTilePreviewFlagRule = FlagRule(StudioFlags.WEAR_TILE_PREVIEW, true)
+  @get:Rule val projectRule = WearTileProjectRule()
 
   private val fixture
     get() = projectRule.fixture
@@ -50,8 +39,6 @@ class WearTilePreviewMethodIsAnnotatedWithTilePreviewAnnotationTest {
   @Before
   fun setUp() {
     fixture.enableInspections(inspection)
-
-    fixture.addUnitTestSourceRoot()
 
     fixture.addFileToProject(
       "src/main/test/Preview.kt",
@@ -74,41 +61,6 @@ class WearTilePreviewMethodIsAnnotatedWithTilePreviewAnnotationTest {
      """
         .trimIndent(),
     )
-  }
-
-  @Test
-  fun isAvailableForKotlinAndJavaFiles() {
-    // supported types
-    val kotlinFile = fixture.configureByText(KotlinFileType.INSTANCE, "")
-    val javaFile = fixture.configureByText(JavaFileType.INSTANCE, "")
-    assertTrue(inspection.isAvailableForFile(kotlinFile))
-    assertTrue(inspection.isAvailableForFile(javaFile))
-
-    // unsupported types
-    val xmlFile = fixture.configureByText(XmlFileType.INSTANCE, "")
-    val htmlFile = fixture.configureByText(HtmlFileType.INSTANCE, "")
-    assertFalse(inspection.isAvailableForFile(xmlFile))
-    assertFalse(inspection.isAvailableForFile(htmlFile))
-  }
-
-  @Test
-  fun isNotAvailableForUnitTestFiles() {
-    val kotlinUnitTestFile = fixture.addFileToProject("src/test/test.kt", "")
-    val javaUnitTestFile = fixture.addFileToProject("src/test/Test.java", "")
-
-    assertFalse(inspection.isAvailableForFile(kotlinUnitTestFile))
-    assertFalse(inspection.isAvailableForFile(javaUnitTestFile))
-  }
-
-  @Test
-  fun canBeDisabled() {
-    val kotlinFile = fixture.configureByText(KotlinFileType.INSTANCE, "")
-    val javaFile = fixture.configureByText(JavaFileType.INSTANCE, "")
-
-    StudioFlags.WEAR_TILE_PREVIEW.override(false)
-
-    assertFalse(inspection.isAvailableForFile(kotlinFile))
-    assertFalse(inspection.isAvailableForFile(javaFile))
   }
 
   @Test
@@ -185,14 +137,17 @@ class WearTilePreviewMethodIsAnnotatedWithTilePreviewAnnotationTest {
 
     val directPreviewError =
       errors.single {
-        it.description ==
-          message("inspection.preview.annotation.not.from.tile.package")
+        it.description == message("inspection.preview.annotation.not.from.tile.package")
       }
     assertEquals(
       "@Preview" to "tilePreviewWithInvalidPreviewAnnotation",
       directPreviewError.text to file.containingMethodName(directPreviewError),
     )
-    assertTrue(directPreviewError.findRegisteredQuickFix { desc, _ -> QuickFixWrapper.unwrap(desc.action) is ReplacePreviewAnnotationFix })
+    assertTrue(
+      directPreviewError.findRegisteredQuickFix { desc, _ ->
+        QuickFixWrapper.unwrap(desc.action) is ReplacePreviewAnnotationFix
+      }
+    )
 
     val multiPreviewError =
       errors.single {

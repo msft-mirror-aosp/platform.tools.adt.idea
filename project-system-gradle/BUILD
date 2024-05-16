@@ -131,6 +131,7 @@ iml_module(
         "providers.integration": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.ProviderIntegrationTestCase",
             "tags": ["cpu:4"],
+            "shard_count": 2,
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -167,7 +168,6 @@ iml_module(
             "data": [],
         },
     },
-    tags = ["no_test_windows"],
     test_class = "com.android.tools.idea.projectsystem.GradleProjectSystemTestSuite",
     test_data = [
         ":test_deps",
@@ -187,8 +187,8 @@ iml_module(
     test_srcs = ["testSrc"],
     test_tags = [
         "block-network",
-        "cpu:3",
         "no_test_mac",
+        "no_test_windows",
     ],
     test_timeout = "long",
     visibility = ["//visibility:public"],

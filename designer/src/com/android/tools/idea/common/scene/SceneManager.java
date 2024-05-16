@@ -21,6 +21,7 @@ import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.sdklib.AndroidCoordinate;
 import com.android.sdklib.AndroidDpCoordinate;
+import com.android.tools.idea.common.model.ChangeType;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.scene.decorator.SceneDecoratorFactory;
@@ -32,6 +33,7 @@ import com.android.tools.idea.res.ResourceNotificationManager;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import java.util.HashSet;
@@ -171,7 +173,7 @@ abstract public class SceneManager implements Disposable, ResourceNotificationMa
    * This includes marking the display list as dirty.
    */
   public void update() {
-    List<NlComponent> components = getModel().getComponents();
+    List<NlComponent> components = getModel().getTreeReader().getComponents();
     Scene scene = getScene();
     if (components.isEmpty()) {
       scene.removeAllComponents();
@@ -186,7 +188,13 @@ abstract public class SceneManager implements Disposable, ResourceNotificationMa
       scene.removeAllComponents();
       scene.setRoot(null);
     }
-    mySceneUpdateListener.onUpdate(rootComponent, myDesignSurface);
+
+    try {
+      mySceneUpdateListener.onUpdate(rootComponent, myDesignSurface);
+    } catch (Throwable t) {
+      // The listener throwing should not prevent the rest of the code from working
+      Logger.getInstance(SceneManager.class).error(t);
+    }
 
     List<SceneComponent> hierarchy = mySceneComponentProvider.createHierarchy(this, rootComponent);
     SceneComponent root;
@@ -226,7 +234,7 @@ abstract public class SceneManager implements Disposable, ResourceNotificationMa
 
   @NotNull
   protected NlComponent getRoot() {
-    return getModel().getComponents().get(0).getRoot();
+    return getModel().getTreeReader().getComponents().get(0).getRoot();
   }
 
   /**
@@ -376,24 +384,24 @@ abstract public class SceneManager implements Disposable, ResourceNotificationMa
     for (ResourceNotificationManager.Reason reason : reasons) {
       switch (reason) {
         case RESOURCE_EDIT:
-          myModel.notifyModifiedViaUpdateQueue(NlModel.ChangeType.RESOURCE_EDIT);
+          myModel.notifyModifiedViaUpdateQueue(ChangeType.RESOURCE_EDIT);
           break;
         case EDIT:
-          myModel.notifyModifiedViaUpdateQueue(NlModel.ChangeType.EDIT);
+          myModel.notifyModifiedViaUpdateQueue(ChangeType.EDIT);
           break;
         case IMAGE_RESOURCE_CHANGED:
           RenderUtils.clearCache(ImmutableList.of(myModel.getConfiguration()));
-          myModel.notifyModified(NlModel.ChangeType.RESOURCE_CHANGED);
+          myModel.notifyModified(ChangeType.RESOURCE_CHANGED);
           break;
         case GRADLE_SYNC:
         case PROJECT_BUILD:
         case VARIANT_CHANGED:
         case SDK_CHANGED:
           RenderUtils.clearCache(ImmutableList.of(myModel.getConfiguration()));
-          myModel.notifyModified(NlModel.ChangeType.BUILD);
+          myModel.notifyModified(ChangeType.BUILD);
           break;
         case CONFIGURATION_CHANGED:
-          myModel.notifyModified(NlModel.ChangeType.CONFIGURATION_CHANGE);
+          myModel.notifyModified(ChangeType.CONFIGURATION_CHANGE);
           break;
       }
     }

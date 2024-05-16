@@ -17,6 +17,8 @@ package com.android.tools.idea.preview.representation
 
 import com.android.tools.idea.common.model.DefaultModelUpdater
 import com.android.tools.idea.common.model.NlModel
+import com.android.tools.idea.common.scene.SceneManager.SceneUpdateListener
+import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -48,6 +50,7 @@ import com.android.tools.idea.preview.PsiPreviewElementInstance
 import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.RenderQualityPolicy
 import com.android.tools.idea.preview.SimpleRenderQualityManager
+import com.android.tools.idea.preview.ZoomConstants
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.animation.AnimationPreview
 import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
@@ -118,10 +121,31 @@ import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.psi.KtFile
 
-private val modelUpdater: NlModel.NlModelUpdaterInterface = DefaultModelUpdater()
+private val modelUpdater: NlModelUpdaterInterface = DefaultModelUpdater()
 val PREVIEW_ELEMENT_INSTANCE = DataKey.create<PsiPreviewElementInstance>("PreviewElement")
 
-/** A generic [PreviewElement] [PreviewRepresentation]. */
+/**
+ * A generic [PreviewElement] [PreviewRepresentation], that can be configured and adapted to the
+ * needs of a given preview tool by the constructor parameters.
+ *
+ * @param adapterViewFqcn the fully qualified name of the view adapter associated with the previews.
+ * @param psiFile the file containing the code to preview.
+ * @param previewProviderConstructor the function to get a [PreviewElementProvider] to be used for
+ *   finding the previews.
+ * @param previewElementModelAdapterDelegate the [PreviewElementModelAdapter] to be used when
+ *   rendering previews.
+ * @param viewConstructor the function to get a [CommonNlDesignSurfacePreviewView] to be used for
+ *   displaying the previews.
+ * @param viewModelConstructor the function to get a [CommonPreviewViewModel] to be used for
+ *   tracking big part of the state of the previews.
+ * @param configureDesignSurface the function to configure the [NlDesignSurface] that is used for
+ *   displaying the previews.
+ * @param renderingTopic the [RenderingTopic] under which the preview renderings will be executed.
+ * @param useCustomInflater a configuration to apply when rendering the previews.
+ * @param sceneUpdateListener the listener to be notified whenever the scene of a preview element is updated.
+ * @param createRefreshEventBuilder the function to get a [PreviewRefreshEventBuilder] to be used
+ *   for tracking refresh metrics.
+ */
 open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   adapterViewFqcn: String,
   psiFile: PsiFile,
@@ -143,6 +167,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   configureDesignSurface: NlDesignSurface.Builder.() -> Unit,
   renderingTopic: RenderingTopic,
   useCustomInflater: Boolean = true,
+  sceneUpdateListener: SceneUpdateListener? = null,
+  private val createRefreshEventBuilder: (NlDesignSurface) -> PreviewRefreshEventBuilder? = { null },
 ) :
   PreviewRepresentation,
   AndroidCoroutinesAware,
@@ -193,9 +219,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   val previewView = invokeAndWaitIfNeeded {
     viewConstructor(
         project,
-        NlDesignSurface.builder(project, this)
-          .setSceneManagerProvider { surface, model ->
-            NlDesignSurface.defaultSceneManagerProvider(surface, model).apply {
+        NlDesignSurface.builder(project, this) { surface, model ->
+            NlDesignSurface.defaultSceneManagerProvider(surface, model, sceneUpdateListener).apply {
               setUseCustomInflater(useCustomInflater)
               setShrinkRendering(true)
               setRenderingTopic(renderingTopic)
@@ -219,7 +244,12 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
               else -> null
             }
           }
-          .apply { configureDesignSurface() },
+          .apply {
+            setMaxZoomToFitLevel(ZoomConstants.MAX_ZOOM_TO_FIT_LEVEL)
+            setMinScale(ZoomConstants.MIN_SCALE)
+            setMaxScale(ZoomConstants.MAX_SCALE)
+            configureDesignSurface()
+          },
         this,
       )
       .also {
@@ -583,7 +613,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       if (it is CancellationException && invalidateIfCancelled.get()) {
         invalidate()
       }
-      Disposer.dispose(refreshProgressIndicator)
+      // Progress indicators must be disposed in the ui thread
+      launch(uiThread) { Disposer.dispose(refreshProgressIndicator) }
       previewViewModel.refreshCompleted(it is CancellationException, System.nanoTime() - startTime)
     }
     return refreshJob
@@ -617,6 +648,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
         refreshType = type,
         delegateRefresh = { createRefreshJob(it as CommonPreviewRefreshRequest) },
         onRefreshCompleted = onRefreshCompleted,
+        refreshEventBuilder = createRefreshEventBuilder(surface),
       )
     refreshManager.requestRefresh(request)
   }

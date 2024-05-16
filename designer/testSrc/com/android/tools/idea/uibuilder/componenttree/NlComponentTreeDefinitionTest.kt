@@ -46,12 +46,12 @@ import com.android.tools.idea.common.error.IssueProvider
 import com.android.tools.idea.common.error.NlComponentIssueSource
 import com.android.tools.idea.common.error.TestIssue
 import com.android.tools.idea.common.fixtures.ComponentDescriptor
+import com.android.tools.idea.common.model.ChangeType
 import com.android.tools.idea.common.model.DnDTransferComponent
 import com.android.tools.idea.common.model.DnDTransferItem
 import com.android.tools.idea.common.model.ItemTransferable
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlComponentReference
-import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -146,7 +146,7 @@ class NlComponentTreeDefinitionTest {
     val model = createFlowModel()
     val table = attach(content, model)
     val selectionModel = model.surface.selectionModel
-    selectionModel.setSelection(listOf(model.find("b")!!))
+    selectionModel.setSelection(listOf(model.treeReader.find("b")!!))
 
     assertThat(table.selectedRow).isEqualTo(2)
   }
@@ -178,14 +178,14 @@ class NlComponentTreeDefinitionTest {
       )
 
     // Change the model by adding another TextView to the ConstraintLayout
-    val constraint = model.components.first()
+    val constraint = model.treeReader.components.first()
     val newTag =
       XmlElementFactory.getInstance(model.project)
         .createTagFromText("<TextView android.text=\"Hello\"/>")
     constraint.addChild(NlComponent(model, newTag))
 
     // Notify the component tree
-    model.notifyModified(NlModel.ChangeType.ADD_COMPONENTS)
+    model.notifyModified(ChangeType.ADD_COMPONENTS)
     UIUtil.dispatchAllInvocationEvents()
 
     assertThat(dumpTree(table.tree))
@@ -260,7 +260,7 @@ class NlComponentTreeDefinitionTest {
       val content = createToolContent()
       val model = createFlowModel()
       val table = attach(content, model)
-      val textView = model.find("a")!!
+      val textView = model.treeReader.find("a")!!
       model.surface.selectionModel.setSelection(listOf(textView))
       val ui = FakeUi(table)
       val focusManager = FakeKeyboardFocusManager(projectRule.testRootDisposable)
@@ -280,9 +280,9 @@ class NlComponentTreeDefinitionTest {
     val model = createFlowModel()
     val table = attach(content, model)
     val tableModel = table.tableModel
-    val textA = model.find("a")!!
-    val button = model.find("b")!!
-    val linear = model.find("linear")!!
+    val textA = model.treeReader.find("a")!!
+    val button = model.treeReader.find("b")!!
+    val linear = model.treeReader.find("linear")!!
     val data = tableModel.createTransferable(textA)!!
     assertThat(data.isDataFlavorSupported(ItemTransferable.DESIGNER_FLAVOR)).isTrue()
     assertThat(tableModel.canInsert(linear, data)).isTrue()
@@ -320,8 +320,8 @@ class NlComponentTreeDefinitionTest {
     val model = createFlowModel()
     val table = attach(content, model)
     val tableModel = table.tableModel
-    val checkBox = model.find("d")!!
-    val flow = model.find("flow")!!
+    val checkBox = model.treeReader.find("d")!!
+    val flow = model.treeReader.find("flow")!!
     val referenceB = NlComponentReference(flow, "b")
     val data = tableModel.createTransferable(checkBox)!!
     assertThat(data.isDataFlavorSupported(ItemTransferable.DESIGNER_FLAVOR)).isTrue()
@@ -367,8 +367,8 @@ class NlComponentTreeDefinitionTest {
     val model = createFlowModel()
     val table = attach(content, model)
     val tableModel = table.tableModel
-    val textView = model.find("a")!!
-    val flow = model.find("flow")!!
+    val textView = model.treeReader.find("a")!!
+    val flow = model.treeReader.find("flow")!!
     val referenceC = NlComponentReference(flow, "c")
     val data = tableModel.createTransferable(textView)!!
     assertThat(data.isDataFlavorSupported(ItemTransferable.DESIGNER_FLAVOR)).isTrue()
@@ -412,7 +412,7 @@ class NlComponentTreeDefinitionTest {
     val model = createFlowModel()
     val table = attach(content, model)
     val tableModel = table.tableModel
-    val flow = model.find("flow")!!
+    val flow = model.treeReader.find("flow")!!
     val referenceB = NlComponentReference(flow, "b")
     val referenceC = NlComponentReference(flow, "c")
     val data = tableModel.createTransferable(referenceC)!!
@@ -452,9 +452,9 @@ class NlComponentTreeDefinitionTest {
     val model = createFlowModel()
     val table = attach(content, model)
     val tableModel = table.tableModel
-    val textA = model.find("a")!!
-    val button = model.find("b")!!
-    val linear = model.find("linear")!!
+    val textA = model.treeReader.find("a")!!
+    val button = model.treeReader.find("b")!!
+    val linear = model.treeReader.find("linear")!!
     val imageViewXml =
       """
       <ImageView
@@ -504,7 +504,7 @@ class NlComponentTreeDefinitionTest {
           .trimIndent()
       )
 
-    val inserted = model.find { it.tagName == IMAGE_VIEW }
+    val inserted = model.treeReader.find { it.tagName == IMAGE_VIEW }
     assertThat(inserted?.getAttribute(ANDROID_URI, "src")).isEqualTo("@drawable/my_icon")
   }
 
@@ -515,7 +515,7 @@ class NlComponentTreeDefinitionTest {
     val content = createToolContent()
     val model = createFlowModel()
     val surface = model.surface
-    val textView = model.find("a")!!
+    val textView = model.treeReader.find("a")!!
     val issues = surface.issueModel
     val provider =
       object : IssueProvider() {
@@ -543,7 +543,7 @@ class NlComponentTreeDefinitionTest {
     val table = attach(content, model)
     val ui = FakeUi(table)
     val rect = table.getCellRect(1, 2, false)
-    val textView = model.find("a")!!
+    val textView = model.treeReader.find("a")!!
     ui.mouse.click(rect.midX, rect.midY)
     val balloon = popupRule.fakePopupFactory.getBalloon(0)
     Disposer.register(projectRule.testRootDisposable, balloon)

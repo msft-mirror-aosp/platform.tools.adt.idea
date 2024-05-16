@@ -142,7 +142,7 @@ void Controller::Stop() {
   if (device_supports_multiple_states_) {
     DeviceStateManager::RemoveDeviceStateListener(&device_state_listener_);
   }
-  ui_settings_.Reset();
+  ui_settings_.Reset(nullptr);
   stopped = true;
 }
 
@@ -302,32 +302,36 @@ void Controller::ProcessMessage(const ControlMessage& message) {
       SendUiSettings((const UiSettingsRequest&) message);
       break;
 
-    case SetDarkModeMessage::TYPE:
-      SetDarkMode((const SetDarkModeMessage&) message);
+    case SetDarkModeRequest::TYPE:
+      SetDarkMode((const SetDarkModeRequest&) message);
       break;
 
-    case SetFontSizeMessage::TYPE:
-      SetFontSize((const SetFontSizeMessage&) message);
+    case SetFontScaleRequest::TYPE:
+      SetFontScale((const SetFontScaleRequest&) message);
       break;
 
-    case SetScreenDensityMessage::TYPE:
-      SetScreenDensity((const SetScreenDensityMessage&) message);
+    case SetScreenDensityRequest::TYPE:
+      SetScreenDensity((const SetScreenDensityRequest&) message);
       break;
 
-    case SetTalkBackMessage::TYPE:
-      SetTalkBack((const SetTalkBackMessage&) message);
+    case SetTalkBackRequest::TYPE:
+      SetTalkBack((const SetTalkBackRequest&) message);
       break;
 
-    case SetSelectToSpeakMessage::TYPE:
-      SetSelectToSpeak((const SetSelectToSpeakMessage&) message);
+    case SetSelectToSpeakRequest::TYPE:
+      SetSelectToSpeak((const SetSelectToSpeakRequest&) message);
       break;
 
-    case SetAppLanguageMessage::TYPE:
-      SetAppLanguage((const SetAppLanguageMessage&) message);
+    case SetAppLanguageRequest::TYPE:
+      SetAppLanguage((const SetAppLanguageRequest&) message);
       break;
 
-    case SetGestureNavigationMessage::TYPE:
-      SetGestureNavigation((const SetGestureNavigationMessage&) message);
+    case SetGestureNavigationRequest::TYPE:
+      SetGestureNavigation((const SetGestureNavigationRequest&) message);
+      break;
+
+    case ResetUiSettingsRequest::TYPE:
+      ResetUiSettings((const ResetUiSettingsRequest&) message);
       break;
 
     default:
@@ -339,9 +343,15 @@ void Controller::ProcessMessage(const ControlMessage& message) {
 void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
   int32_t action = message.action();
   Log::V("Controller::ProcessMotionEvent action:%d", action);
+  int32_t display_id = message.display_id();
+  DisplayInfo display_info = Agent::GetDisplayInfo(display_id);
+  if (!display_info.IsValid()) {
+    return;
+  }
+
   int64_t now = UptimeMillis();
   MotionEvent event(jni_);
-  event.display_id = message.display_id();
+  event.display_id = display_id;
   event.action = action;
   event.button_state = message.button_state();
   event.event_time_millis = now;
@@ -368,11 +378,6 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
     event.source = AINPUT_SOURCE_MOUSE;
   } else {
     event.source = AINPUT_SOURCE_STYLUS | AINPUT_SOURCE_TOUCHSCREEN;
-  }
-
-  DisplayInfo display_info = Agent::GetDisplayInfo(message.display_id());
-  if (!display_info.IsValid()) {
-    return;
   }
 
   for (auto& pointer : message.pointers()) {
@@ -427,13 +432,14 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
   }
   InjectMotionEvent(jni_, event, InputEventInjectionSync::NONE);
 
-  if (event.action == AMOTION_EVENT_ACTION_UP) {
+  if (action == AMOTION_EVENT_ACTION_UP) {
     // This event may have started an app. Update the app-level display orientation.
-    Agent::SetVideoOrientation(message.display_id(), DisplayStreamer::CURRENT_VIDEO_ORIENTATION);
+    Agent::SetVideoOrientation(display_id, DisplayStreamer::CURRENT_VIDEO_ORIENTATION);
+  }
 
-    if (!display_info.IsOn()) {
-      ProcessKeyboardEvent(KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0));  // Wakeup the display.
-    }
+  // Wake up the device if the display was turned off.
+  if (action == AMOTION_EVENT_ACTION_DOWN && !display_info.IsOn()) {
+    WakeUpDevice();
   }
 }
 
@@ -632,32 +638,60 @@ void Controller::SendUiSettings(const UiSettingsRequest& message) {
   output_stream_.Flush();
 }
 
-void Controller::SetDarkMode(const SetDarkModeMessage& message) {
-  ui_settings_.SetDarkMode(message.dark_mode());
+void Controller::SetDarkMode(const SetDarkModeRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetDarkMode(message.dark_mode(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
-void Controller::SetAppLanguage(const SetAppLanguageMessage& message) {
-  ui_settings_.SetAppLanguage(message.application_id(), message.locale());
+void Controller::SetAppLanguage(const SetAppLanguageRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetAppLanguage(message.application_id(), message.locale(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
-void Controller::SetGestureNavigation(const SetGestureNavigationMessage& message) {
-  ui_settings_.SetGestureNavigation(message.gesture_navigation());
+void Controller::SetGestureNavigation(const SetGestureNavigationRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetGestureNavigation(message.gesture_navigation(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
-void Controller::SetTalkBack(const SetTalkBackMessage& message) {
-  ui_settings_.SetTalkBack(message.talkback_on());
+void Controller::SetTalkBack(const SetTalkBackRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetTalkBack(message.talkback_on(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
-void Controller::SetSelectToSpeak(const SetSelectToSpeakMessage& message) {
-  ui_settings_.SetSelectToSpeak(message.select_to_speak_on());
+void Controller::SetSelectToSpeak(const SetSelectToSpeakRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetSelectToSpeak(message.select_to_speak_on(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
-void Controller::SetFontSize(const SetFontSizeMessage& message) {
-  ui_settings_.SetFontSize(message.font_size());
+void Controller::SetFontScale(const SetFontScaleRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetFontScale(message.font_scale(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
-void Controller::SetScreenDensity(const SetScreenDensityMessage& message) {
-  ui_settings_.SetScreenDensity(message.density());
+void Controller::SetScreenDensity(const SetScreenDensityRequest& message) {
+  UiSettingsCommandResponse response(message.request_id());
+  ui_settings_.SetScreenDensity(message.density(), &response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
+}
+
+void Controller::ResetUiSettings(const ResetUiSettingsRequest& message) {
+  UiSettingsResponse response(message.request_id());
+  ui_settings_.Reset(&response);
+  response.Serialize(output_stream_);
+  output_stream_.Flush();
 }
 
 void Controller::OnDisplayAdded(int32_t display_id) {

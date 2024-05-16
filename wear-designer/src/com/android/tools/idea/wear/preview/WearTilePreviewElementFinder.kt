@@ -21,6 +21,7 @@ import com.android.tools.idea.preview.FilePreviewElementFinder
 import com.android.tools.idea.preview.annotations.NodeInfo
 import com.android.tools.idea.preview.annotations.UAnnotationSubtreeInfo
 import com.android.tools.idea.preview.annotations.findAllAnnotationsInGraph
+import com.android.tools.idea.preview.buildPreviewName
 import com.android.tools.idea.preview.findPreviewDefaultValues
 import com.android.tools.idea.preview.qualifiedName
 import com.android.tools.idea.preview.toSmartPsiPointer
@@ -41,6 +42,7 @@ import org.jetbrains.kotlin.asJava.LightClassUtil
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UElement
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.evaluateString
 import org.jetbrains.uast.toUElement
@@ -48,7 +50,7 @@ import org.jetbrains.uast.toUElement
 private const val TILE_PREVIEW_ANNOTATION_NAME = "Preview"
 const val TILE_PREVIEW_ANNOTATION_FQ_NAME =
   "androidx.wear.tiles.tooling.preview.$TILE_PREVIEW_ANNOTATION_NAME"
-private const val TILE_PREVIEW_DATA_FQ_NAME = "androidx.wear.tiles.tooling.preview.TilePreviewData"
+const val TILE_PREVIEW_DATA_FQ_NAME = "androidx.wear.tiles.tooling.preview.TilePreviewData"
 
 /** Object that can detect wear tile preview elements in a file. */
 internal object WearTilePreviewElementFinder : FilePreviewElementFinder<PsiWearTilePreviewElement> {
@@ -74,15 +76,23 @@ internal object WearTilePreviewElementFinder : FilePreviewElementFinder<PsiWearT
 }
 
 /**
- * Returns true if a [UMethod] is not null is annotated with a Tile Preview annotation, either
- * directly or through a Multi-Preview annotation.
+ * Returns true if a [UMethod] or [UAnnotation] is not null is annotated with a Tile Preview
+ * annotation, either directly or through a Multi-Preview annotation.
  */
-fun UMethod?.hasTilePreviewAnnotation() =
-  this?.findAllAnnotationsInGraph { it.isTilePreviewAnnotation() }?.any() ?: false
+fun UElement?.hasTilePreviewAnnotation(): Boolean {
+  assert(this is UMethod? || this is UAnnotation?) {
+    "The UElement should be either a UMethod or a UAnnotation"
+  }
+  return this?.findAllAnnotationsInGraph { it.isTilePreviewAnnotation() }?.any() ?: false
+}
 
 internal fun UAnnotation.isTilePreviewAnnotation() = runReadAction {
   this.qualifiedName == TILE_PREVIEW_ANNOTATION_FQ_NAME
 }
+
+/** Returns true if the [UElement] is a `@Preview` annotation */
+private fun UElement?.isWearTilePreviewAnnotation() =
+  (this as? UAnnotation)?.isTilePreviewAnnotation() == true
 
 @Slow
 private fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(
@@ -95,9 +105,12 @@ private fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(
   val displaySettings = runReadAction {
     val name = annotation.findAttributeValue("name")?.evaluateString()?.nullize()
     val group = annotation.findAttributeValue("group")?.evaluateString()?.nullize()
-    val previewName = name?.let { "${uMethod.name} - $name" } ?: uMethod.name
     PreviewDisplaySettings(
-      name = previewName,
+      buildPreviewName(
+        methodName = uMethod.name,
+        nameParameter = name,
+        isPreviewAnnotation = UElement?::isWearTilePreviewAnnotation,
+      ),
       group = group,
       showDecoration = false,
       showBackground = true,
@@ -136,7 +149,11 @@ private suspend fun findUMethodsWithTilePreviewSignature(
 ): List<UMethod> {
   val pointerManager = SmartPointerManager.getInstance(project)
   return smartReadAction(project) {
-      PsiTreeUtil.findChildrenOfAnyType(vFile.toPsiFile(project), PsiMethod::class.java, KtNamedFunction::class.java)
+      PsiTreeUtil.findChildrenOfAnyType(
+          vFile.toPsiFile(project),
+          PsiMethod::class.java,
+          KtNamedFunction::class.java,
+        )
         .map { pointerManager.createSmartPsiElementPointer(it) }
     }
     .filter { smartReadAction(project) { it.element?.isMethodWithTilePreviewSignature() } ?: false }

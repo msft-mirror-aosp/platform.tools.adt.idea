@@ -36,6 +36,7 @@ import com.android.tools.idea.util.StudioPathManager;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
 
@@ -450,6 +451,14 @@ public final class StudioFlags {
     "Note: Changing the value of this flag requires restarting Android Studio.",
     true);
 
+  public static final Flag<Boolean> ADBLIB_USE_PROCESS_INVENTORY_SERVER = new BooleanFlag(
+    RUNDEBUG,
+    "adblib.use.process.inventory.server",
+    "Use local tcp server for discovering JDWP processes",
+    "Start and/or use a local TCP server for discovering and publishing JDWP processes. " +
+    "Note: Changing the value of this flag requires restarting Android Studio.",
+    false);
+
   public static final Flag<Boolean> JDWP_TRACER = new BooleanFlag(
     RUNDEBUG,
     "adb.jdwp.tracer.enabled",
@@ -862,6 +871,11 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.extra.logging", "Add extra logging for problem detection",
     "When this flag is enabled, LayoutInspector will add extra logging for detection of various problems.",
     false);
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_RECOMPOSITION_COUNTS_DEFAULT = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.recomposition.counts.default", "Enable or disable recomposition counts by default",
+    "When this flag is enabled, recomposition counts will be enabled by default.",
+    true);
   //endregion
 
   //region Embedded Emulator
@@ -1222,6 +1236,15 @@ public final class StudioFlags {
   //region Compose
   private static final FlagGroup COMPOSE = new FlagGroup(FLAGS, "compose", "Compose");
 
+  public enum ClosureScheme {CLASS, INDY}
+
+  public static final Flag<ClosureScheme> CLOSURE_SCHEME = new EnumFlag<>(
+    COMPOSE,
+    "deploy.codegen.closure.scheme",
+    "Lambda / SAM code generation scheme",
+    "Implementation of lambda used by Kotlin / Compose code generation within Studio",
+    ClosureScheme.CLASS);
+
   public static final Flag<Boolean> COMPOSE_PREVIEW_SCROLL_ON_CARET_MOVE = new BooleanFlag(
     COMPOSE, "preview.scroll.on.caret.move", "Enable the Compose Preview scrolling when the caret moves",
     "If enabled, when moving the caret in the text editor, the Preview will show the preview currently under the cursor.",
@@ -1431,6 +1454,12 @@ public final class StudioFlags {
     "If enabled, a button to display panel for modifying emulator sensors will appear",
     ChannelDefault.enabledUpTo(CANARY)
   );
+
+  public static final Flag<Long> WEAR_HEALTH_SERVICES_POLLING_INTERVAL_MS = new LongFlag(
+    WEAR_HEALTH_SERVICES, "polling.interval", "Wear Health Services polling interval",
+    "The polling interval in milliseconds to be used when querying Wear Health Services for updates",
+    TimeUnit.SECONDS.toMillis(1)
+  );
   // endregion
 
   // region App Inspection
@@ -1560,7 +1589,7 @@ public final class StudioFlags {
       "direct.access.monthly.quota",
       "Direct Access Monthly Quota",
       "Enable FTL DirectAccess Monthly Quota",
-      false);
+      true);
 
   public static final Flag<Boolean> DIRECT_ACCESS_CREATE_PROJECT =
     new BooleanFlag(

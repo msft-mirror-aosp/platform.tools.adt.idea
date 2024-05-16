@@ -24,17 +24,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.android.sdklib.AndroidVersion
+import com.android.sdklib.devices.Abi
 import com.android.sdklib.getFullApiName
 import com.android.sdklib.getReleaseNameAndDetails
 import com.android.tools.idea.adddevicedialog.Table
 import com.android.tools.idea.adddevicedialog.TableColumn
 import com.android.tools.idea.adddevicedialog.TableColumnWidth
 import com.android.tools.idea.adddevicedialog.TableTextColumn
+import com.android.utils.CpuArchitecture
+import com.android.utils.osArchitecture
+import com.intellij.icons.ExpUiIcons
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Dropdown
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.separator
@@ -42,11 +47,11 @@ import org.jetbrains.jewel.ui.component.separator
 @Composable
 internal fun DevicePanel(
   device: VirtualDevice,
-  selectedServices: Services?,
+  state: DevicePanelState,
   servicesCollection: ImmutableCollection<Services>,
   images: ImmutableList<SystemImage>,
   onDeviceChange: (VirtualDevice) -> Unit,
-  onSelectedServicesChange: (Services?) -> Unit,
+  onStateChange: (DevicePanelState) -> Unit,
 ) {
   Text("Name", Modifier.padding(bottom = Padding.SMALL))
 
@@ -64,14 +69,27 @@ internal fun DevicePanel(
   )
 
   ServicesDropdown(
-    selectedServices,
+    state.selectedServices,
     servicesCollection,
-    onSelectedServicesChange,
+    onSelectedServicesChange = { onStateChange(state.copy(selectedServices = it)) },
     Modifier.padding(bottom = Padding.MEDIUM_LARGE),
   )
 
-  SystemImageTable(images, Modifier.height(150.dp).padding(bottom = Padding.SMALL))
-  ShowSdkExtensionSystemImagesCheckbox()
+  SystemImageTable(images, state, Modifier.height(150.dp).padding(bottom = Padding.SMALL))
+
+  ShowSdkExtensionSystemImagesCheckbox(
+    state.sdkExtensionSystemImagesVisible,
+    onSdkExtensionSystemImagesVisibleChange = {
+      onStateChange(state.copy(sdkExtensionSystemImagesVisible = it))
+    },
+    Modifier.padding(bottom = Padding.SMALL),
+  )
+
+  CheckboxRow(
+    "Only show system images recommended for my host CPU architecture",
+    state.onlyForHostCpuArchitectureVisible,
+    onCheckedChange = { onStateChange(state.copy(onlyForHostCpuArchitectureVisible = it)) },
+  )
 }
 
 @Composable
@@ -110,9 +128,16 @@ private fun ServicesDropdown(
 }
 
 @Composable
-private fun SystemImageTable(images: ImmutableList<SystemImage>, modifier: Modifier = Modifier) {
+private fun SystemImageTable(
+  images: ImmutableList<SystemImage>,
+  state: DevicePanelState,
+  modifier: Modifier = Modifier,
+) {
   val columns =
     listOf(
+      TableColumn("", TableColumnWidth.Weighted(1F), Comparator.comparing(SystemImage::isRemote)) {
+        if (it.isRemote) DownloadIcon()
+      },
       TableColumn(
         "System Image",
         TableColumnWidth.Weighted(1F),
@@ -135,7 +160,41 @@ private fun SystemImageTable(images: ImmutableList<SystemImage>, modifier: Modif
     )
 
   // TODO: http://b/339247492 - Stop calling distinct
-  Table(columns, images.distinct(), { it }, modifier)
+  Table(columns, images.filter(state::test).distinct(), { it }, modifier)
+}
+
+internal data class DevicePanelState
+internal constructor(
+  internal val selectedServices: Services?,
+  internal val sdkExtensionSystemImagesVisible: Boolean = false,
+  internal val onlyForHostCpuArchitectureVisible: Boolean = true,
+) {
+  internal fun test(image: SystemImage): Boolean {
+    val servicesMatch = selectedServices == null || image.services == selectedServices
+
+    val androidVersionMatches =
+      sdkExtensionSystemImagesVisible || image.androidVersion.isBaseExtension
+
+    val abisMatch =
+      !onlyForHostCpuArchitectureVisible ||
+        image.abis.contains(valueOfCpuArchitecture(osArchitecture))
+
+    return servicesMatch && androidVersionMatches && abisMatch
+  }
+
+  private companion object {
+    private fun valueOfCpuArchitecture(architecture: CpuArchitecture) =
+      when (architecture) {
+        CpuArchitecture.X86_64 -> Abi.X86_64
+        CpuArchitecture.ARM -> Abi.ARM64_V8A
+        else -> throw IllegalArgumentException(architecture.toString())
+      }
+  }
+}
+
+@Composable
+private fun DownloadIcon() {
+  Icon("expui/general/download.svg", null, ExpUiIcons::class.java)
 }
 
 @Composable
@@ -154,12 +213,16 @@ private fun AndroidVersionText(version: AndroidVersion) {
 }
 
 @Composable
-private fun ShowSdkExtensionSystemImagesCheckbox() {
-  Row {
+private fun ShowSdkExtensionSystemImagesCheckbox(
+  sdkExtensionSystemImagesVisible: Boolean,
+  onSdkExtensionSystemImagesVisibleChange: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Row(modifier) {
     CheckboxRow(
       "Show SDK extension system images",
-      false,
-      {},
+      sdkExtensionSystemImagesVisible,
+      onSdkExtensionSystemImagesVisibleChange,
       Modifier.padding(end = Padding.MEDIUM),
     )
 

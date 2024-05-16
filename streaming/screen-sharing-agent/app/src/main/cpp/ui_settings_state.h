@@ -36,6 +36,14 @@ public:
     response_.copy(response);
   }
 
+  void set_original_values(bool original_values) {
+    response_.set_original_values(original_values);
+  }
+
+  bool original_values() const {
+    return response_.original_values();
+  }
+
   void set_dark_mode(bool dark_mode) {
     response_.set_dark_mode(dark_mode);
   }
@@ -84,12 +92,12 @@ public:
     return response_.select_to_speak_on();
   }
 
-  void set_font_size(int32_t font_size) {
-    response_.set_font_size(font_size);
+  void set_font_scale(int32_t font_scale) {
+    response_.set_font_scale(font_scale);
   }
 
-  int32_t font_size() {
-    return response_.font_size();
+  int32_t font_scale() {
+    return response_.font_scale();
   }
 
   void set_density(int32_t density) {

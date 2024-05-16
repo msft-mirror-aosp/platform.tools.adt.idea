@@ -34,8 +34,8 @@ import org.junit.runner.Description
 import org.junit.runners.model.Statement
 import kotlin.time.Duration.Companion.seconds
 
-const val DEFAULT_FONT_SIZE = 100
-const val CUSTOM_FONT_SIZE = 130
+const val DEFAULT_FONT_SCALE = 100
+const val CUSTOM_FONT_SCALE = 130
 const val DEFAULT_DENSITY = 480
 const val CUSTOM_DENSITY = 560
 const val APPLICATION_ID1 = "com.example.test.process1"
@@ -86,7 +86,7 @@ class UiSettingsRule : ExternalResource() {
     talkBackInstalled: Boolean = false,
     talkBackOn: Boolean = false,
     selectToSpeakOn: Boolean = false,
-    fontSize: Int = DEFAULT_FONT_SIZE,
+    fontScale: Int = DEFAULT_FONT_SCALE,
     physicalDensity: Int = DEFAULT_DENSITY,
     overrideDensity: Int = DEFAULT_DENSITY,
     deviceSelector: DeviceSelector = emulatorDeviceSelector
@@ -99,15 +99,13 @@ class UiSettingsRule : ExternalResource() {
       -- Gestures --
       ${if (gestureOverlayInstalled) "[${if (gestureNavigation) "x" else " "}] com.android.internal.systemui.navbar.gestural" else ""}
       -- List Packages --
-      package:com.google.some.package1
-      ${if (talkBackInstalled) "package:com.google.android.marvin.talkback" else "package:com.google.some.package2"}
-      package:com.google.some.package3
+      ${if (talkBackInstalled) "package:com.google.android.marvin.talkback" else ""}
       -- Accessibility Services --
       ${formatAccessibilityServices(talkBackOn, selectToSpeakOn)}
       -- Accessibility Button Targets --
       ${formatAccessibilityServices(talkBackOn = false, selectToSpeakOn)}
-      -- Font Size --
-      ${(fontSize.toFloat() / 100f)}
+      -- Font Scale --
+      ${(fontScale.toFloat() / 100f)}
       -- Density --
       Physical density: $physicalDensity$overrideLine
       -- Foreground Application --

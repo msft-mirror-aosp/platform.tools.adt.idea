@@ -19,6 +19,7 @@ import static com.android.SdkConstants.ATTR_SHOW_IN;
 import static com.android.SdkConstants.TOOLS_URI;
 import static com.android.resources.Density.DEFAULT_DENSITY;
 import static com.android.tools.idea.common.surface.ShapePolicyKt.SQUARE_SHAPE_POLICY;
+import static com.android.tools.idea.rendering.StudioRenderServiceKt.taskBuilder;
 import static com.android.tools.rendering.ProblemSeverity.ERROR;
 import static com.intellij.util.ui.update.Update.LOW_PRIORITY;
 
@@ -35,6 +36,7 @@ import com.android.tools.idea.common.analytics.CommonUsageTracker;
 import com.android.tools.idea.common.diagnostics.NlDiagnosticsManager;
 import com.android.sdklib.AndroidCoordinate;
 import com.android.sdklib.AndroidDpCoordinate;
+import com.android.tools.idea.common.model.ChangeType;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.ModelListener;
 import com.android.tools.idea.common.model.NlComponent;
@@ -56,7 +58,6 @@ import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.modes.essentials.EssentialsMode;
-import com.android.tools.idea.rendering.AndroidFacetRenderModelModule;
 import com.android.tools.idea.rendering.RenderResultUtilKt;
 import com.android.tools.idea.rendering.RenderResults;
 import com.android.tools.idea.rendering.RenderServiceUtilsKt;
@@ -272,7 +273,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
    */
   private boolean myCacheSuccessfulRenderImage = false;
 
-  protected static LayoutEditorRenderResult.Trigger getTriggerFromChangeType(@Nullable NlModel.ChangeType changeType) {
+  protected static LayoutEditorRenderResult.Trigger getTriggerFromChangeType(@Nullable ChangeType changeType) {
     if (changeType == null) {
       return null;
     }
@@ -358,7 +359,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
     model.getConfiguration().addListener(myConfigurationChangeListener);
 
-    List<NlComponent> components = model.getComponents();
+    List<NlComponent> components = model.getTreeReader().getComponents();
     if (!components.isEmpty()) {
       NlComponent rootComponent = components.get(0).getRoot();
 
@@ -423,13 +424,25 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
    * @param config configuration for layout validation when rendering.
    */
   public LayoutlibSceneManager(@NotNull NlModel model, @NotNull DesignSurface<LayoutlibSceneManager> designSurface, LayoutScannerConfiguration config) {
+    this(model, designSurface, config, null);
+  }
+
+  /**
+   * Creates a new LayoutlibSceneManager with the default settings for running render requests.
+   *
+   * @param model the {@link NlModel} to be rendered by this {@link LayoutlibSceneManager}.
+   * @param designSurface the {@link DesignSurface} user to present the result of the renders.
+   * @param config configuration for layout validation when rendering.
+   * @param listener {@link SceneManager.SceneUpdateListener } allows performing additional operations affected by the scene root component when updating the scene.
+   */
+  public LayoutlibSceneManager(@NotNull NlModel model, @NotNull DesignSurface<LayoutlibSceneManager> designSurface, LayoutScannerConfiguration config, @Nullable SceneManager.SceneUpdateListener listener) {
     this(
       model,
       designSurface,
       AppExecutorUtil.getAppExecutorService(),
       MergingRenderingQueue::new,
       new LayoutlibSceneManagerHierarchyProvider(),
-      null,
+      listener,
       config,
       RealTimeSessionClock::new);
   }
@@ -647,12 +660,12 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
 
   /**
-   * Set of {@link com.android.tools.idea.common.model.NlModel.ChangeType}s that, when in Power Save Mode, will not refresh the
+   * Set of {@link com.android.tools.idea.common.model.ChangeType}s that, when in Power Save Mode, will not refresh the
    * scene automatically.
    */
-  private static final EnumSet<NlModel.ChangeType> powerModeChangesNotTriggeringRefresh = EnumSet.of(
-    NlModel.ChangeType.RESOURCE_CHANGED,
-    NlModel.ChangeType.RESOURCE_EDIT
+  private static final EnumSet<ChangeType> powerModeChangesNotTriggeringRefresh = EnumSet.of(
+    ChangeType.RESOURCE_CHANGED,
+    ChangeType.RESOURCE_EDIT
   );
 
   /**
@@ -1038,8 +1051,8 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   }
 
   @VisibleForTesting
-  protected RenderModelModule createRenderModule(AndroidFacet facet) {
-    return new AndroidFacetRenderModelModule(facet);
+  protected RenderModelModule wrapRenderModule(RenderModelModule core) {
+    return core;
   }
 
   /**
@@ -1080,8 +1093,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
     RenderService renderService = StudioRenderService.getInstance(getModel().getProject());
     RenderLogger logger = myLogRenderErrors ? RenderServiceUtilsKt.createHtmlLogger(renderService, project) : renderService.getNopLogger();
-    RenderModelModule renderModule = createRenderModule(facet);
-    RenderService.RenderTaskBuilder renderTaskBuilder = renderService.taskBuilder(renderModule, configuration, logger)
+    RenderService.RenderTaskBuilder renderTaskBuilder = taskBuilder(renderService, facet, configuration, logger, this::wrapRenderModule)
       .withPsiFile(new PsiXmlFile(getModel().getFile()))
       .withLayoutScanner(myLayoutScannerConfig.isLayoutScannerEnabled())
       .withTopic(myRenderingTopic)
@@ -1107,7 +1119,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
                 if (exception instanceof ClassNotFoundException) {
                   logger.addMessage(RenderProblem.createHtml(ERROR,
                                                              "Error inflating the preview",
-                                                             renderModule.getProject(),
+                                                             facet.getModule().getProject(),
                                                              logger.getLinkManager(), exception, ShowFixFactory.INSTANCE));
                 }
                 else {
@@ -1451,6 +1463,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
           if (exception instanceof CompletionException && exception.getCause() != null) {
             exception = exception.getCause();
           }
+          if (getModel().isDisposed()) return null;
           return RenderResults.createRenderTaskErrorResult(getModel().getFile(), exception);
         }
         return result;
