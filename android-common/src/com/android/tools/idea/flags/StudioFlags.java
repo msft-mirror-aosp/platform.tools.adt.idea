@@ -1397,7 +1397,12 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW = new BooleanFlag(
     COMPOSE, "preview.generate.preview.action", "Enable editor action for generating Compose Previews",
-    "Enable a context-menu action that can generate a Compose Previews corresponding to the selected @Composable",
+    "Enable a context-menu action that can generate a Compose Preview corresponding to the selected @Composable",
+    false);
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_ALL_PREVIEWS_FILE = new BooleanFlag(
+    COMPOSE, "preview.generate.previews.file.action", "Enable editor action for generating all Compose Previews for a file",
+    "Enable a context-menu action that can generate Compose Previews corresponding to the @Composable functions of a file",
     false);
 
   public static final Flag<Boolean> COMPOSE_UI_CHECK_MODE = new BooleanFlag(
@@ -1580,15 +1585,6 @@ public final class StudioFlags {
       "direct.access",
       "Direct Access",
       "Enable FTL DirectAccess",
-      true);
-
-  // TODO (b/328524309): Remove the flag once monthly quota are enabled.
-  public static final Flag<Boolean> DIRECT_ACCESS_MONTHLY_QUOTA =
-    new BooleanFlag(
-      FIREBASE_TEST_LAB,
-      "direct.access.monthly.quota",
-      "Direct Access Monthly Quota",
-      "Enable FTL DirectAccess Monthly Quota",
       true);
 
   public static final Flag<Boolean> DIRECT_ACCESS_CREATE_PROJECT =
@@ -1996,6 +1992,12 @@ public final class StudioFlags {
                 "Generation model context size in tokens",
                 "Generation model context size in tokens",
                 APOLLO_GENERATION_MODEL_CONTEXT_SIZE);
+
+  public static final Flag<Boolean> STUDIOBOT_GENERATE_TEST_SCENARIOS =
+    new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
+                    "Enable test scenario generation.",
+                    "When enabled, generate test scenarios and corresponding function names for the selected code.",
+                    ChannelDefault.enabledUpTo(CANARY));
 
   // endregion STUDIO_BOT
 

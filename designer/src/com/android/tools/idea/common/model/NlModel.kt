@@ -51,17 +51,20 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiFunction
 import java.util.function.Consumer
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.TestOnly
 
 /**
  * Model for an XML file
  *
- * @param myComponentRegistrar Returns the responsible for registering an [NlComponent] to enhance
- *   it with layout-specific properties and methods.
- * @param myXmlFileProvider [LayoutlibSceneManager] requires the file from model to be an [XmlFile]
- *   to be able to render it. This is true in case of layout file and some others as well. However,
- *   we want to use model to render other file types (e.g. Java and Kotlin source files that contain
+ * @param componentRegistrar Returns the responsible for registering an [NlComponent] to enhance it
+ *   with layout-specific properties and methods.
+ * @param xmlFileProvider [LayoutlibSceneManager] requires the file from model to be an [XmlFile] to
+ *   be able to render it. This is true in case of layout file and some others as well. However, we
+ *   want to use model to render other file types (e.g. Java and Kotlin source files that contain
  *   custom Android [View]s)that do not have explicit conversion to [XmlFile] (but might have
  *   implicit). This provider should provide us with [XmlFile] representation of the VirtualFile fed
  *   to the model.
@@ -77,22 +80,34 @@ protected constructor(
   val facet: AndroidFacet,
   val virtualFile: VirtualFile,
   open val configuration: Configuration,
-  private val myComponentRegistrar: Consumer<NlComponent>,
-  private val myXmlFileProvider: BiFunction<Project, VirtualFile, XmlFile>,
+  private val componentRegistrar: Consumer<NlComponent>,
+  private val xmlFileProvider: BiFunction<Project, VirtualFile, XmlFile>,
   modelUpdater: NlModelUpdaterInterface?,
   override var dataContext: DataContext,
 ) : ModificationTracker, DataContextHolder {
 
   val treeWriter = NlTreeWriter(facet, { file }, ::notifyModified, { createComponent(it) })
+  val treeReader = NlTreeReader { file }
 
-  private val myListeners = createWithDirectExecutor<ModelListener>()
+  private val listeners = createWithDirectExecutor<ModelListener>()
+
+  private val _displayName = MutableStateFlow<String?>(null)
 
   /** Model name. This can be used when multiple models are displayed at the same time */
-  var modelDisplayName: String? = null
+  val modelDisplayName: StateFlow<String?> = _displayName.asStateFlow()
+
+  fun setDisplayName(value: String?) {
+    _displayName.value = value
+  }
+
+  private val _tooltip = MutableStateFlow<String?>(null)
 
   /** Text to display when displaying a tooltip related to this model */
-  var modelTooltip: String? = null
-    private set
+  val tooltip: StateFlow<String?> = _tooltip.asStateFlow()
+
+  fun setTooltip(value: String?) {
+    _tooltip.value = value
+  }
 
   // Deliberately not rev'ing the model version and firing changes here;
   // we know only the warnings layer cares about this change and can be
@@ -102,7 +117,7 @@ protected constructor(
 
   private val activations: MutableSet<Any> = Collections.newSetFromMap(WeakHashMap())
   private val modelVersion = ModelVersion()
-  private var myConfigurationModificationCount: Long = configuration.modificationCount
+  private var configurationModificationCount: Long = configuration.modificationCount
 
   @get:VisibleForTesting
   val updateQueue =
@@ -126,9 +141,9 @@ protected constructor(
     private set
 
   /** Executor used for asynchronous updates. */
-  private val myUpdateExecutor = AppExecutorUtil.createBoundedApplicationPoolExecutor("NlModel", 1)
+  private val updateExecutor = AppExecutorUtil.createBoundedApplicationPoolExecutor("NlModel", 1)
 
-  private val myThemeUpdateComputation = AtomicReference<Disposable?>()
+  private val themeUpdateComputation = AtomicReference<Disposable?>()
   var isDisposed: Boolean = false
     private set
 
@@ -153,8 +168,6 @@ protected constructor(
    * rendering or layouting.
    */
   var organizationGroup: OrganizationGroup? = null
-
-  val treeReader = NlTreeReader { file }
 
   init {
     Disposer.register(parent, this)
@@ -196,10 +209,10 @@ protected constructor(
       // If the resources have changed or the configuration has been modified, request a model
       // update
 
-      if (configuration.modificationCount != myConfigurationModificationCount) {
+      if (configuration.modificationCount != configurationModificationCount) {
         updateTheme()
       }
-      myListeners.forEach { listener: ModelListener -> listener.modelActivated(this) }
+      listeners.forEach { listener: ModelListener -> listener.modelActivated(this) }
       updateQueue.resume()
       return true
     } else {
@@ -210,13 +223,13 @@ protected constructor(
   fun updateTheme() {
     val computationToken = Disposer.newDisposable()
     Disposer.register(this, computationToken)
-    val oldComputation = myThemeUpdateComputation.getAndSet(computationToken)
+    val oldComputation = themeUpdateComputation.getAndSet(computationToken)
     if (oldComputation != null) {
       Disposer.dispose(oldComputation)
     }
     ReadAction.nonBlocking(
         Callable<Void?> {
-          if (myThemeUpdateComputation.get() !== computationToken) {
+          if (themeUpdateComputation.get() !== computationToken) {
             return@Callable null // A new update has already been scheduled.
           }
           val themeUrl = ResourceUrl.parse(configuration.theme)
@@ -227,12 +240,12 @@ protected constructor(
         }
       )
       .expireWith(computationToken)
-      .submit(myUpdateExecutor)
+      .submit(updateExecutor)
   }
 
   @Slow
   private fun updateTheme(themeUrl: ResourceUrl, computationToken: Disposable) {
-    if (myThemeUpdateComputation.get() !== computationToken) {
+    if (themeUpdateComputation.get() !== computationToken) {
       return // A new update has already been scheduled.
     }
     try {
@@ -244,21 +257,21 @@ protected constructor(
         )
       if (resolver.getStyle(themeReference) == null) {
         val theme = configuration.preferredTheme
-        if (myThemeUpdateComputation.get() !== computationToken) {
+        if (themeUpdateComputation.get() !== computationToken) {
           return // A new update has already been scheduled.
         }
         configuration.setTheme(theme)
         cachedResourceResolver = configuration.resourceResolver
       }
     } finally {
-      if (myThemeUpdateComputation.compareAndSet(computationToken, null)) {
+      if (themeUpdateComputation.compareAndSet(computationToken, null)) {
         Disposer.dispose(computationToken)
       }
     }
   }
 
   private fun deactivate() {
-    myConfigurationModificationCount = configuration.modificationCount
+    configurationModificationCount = configuration.modificationCount
     updateQueue.suspend()
   }
 
@@ -287,7 +300,7 @@ protected constructor(
   }
 
   val file: XmlFile
-    get() = myXmlFileProvider.apply(project, virtualFile)
+    get() = xmlFileProvider.apply(project, virtualFile)
 
   fun syncWithPsi(newRoot: XmlTag, roots: List<TagSnapshotTreeNode>) {
     myModelUpdater.updateFromTagSnapshot(this, newRoot, roots)
@@ -302,11 +315,11 @@ protected constructor(
    * listener is only added once.
    */
   fun addListener(listener: ModelListener) {
-    myListeners.add(listener)
+    listeners.add(listener)
   }
 
   fun removeListener(listener: ModelListener) {
-    myListeners.remove(listener)
+    listeners.remove(listener)
   }
 
   /**
@@ -316,7 +329,7 @@ protected constructor(
    *   entirely by moving all the derived data into the Scene.
    */
   fun notifyListenersModelDerivedDataChanged() {
-    myListeners.forEach { listener: ModelListener -> listener.modelDerivedDataChanged(this) }
+    listeners.forEach { listener: ModelListener -> listener.modelDerivedDataChanged(this) }
   }
 
   /**
@@ -328,7 +341,7 @@ protected constructor(
    *   out.
    */
   fun notifyListenersModelChangedOnLayout(animate: Boolean) {
-    myListeners.forEach { listener: ModelListener -> listener.modelChangedOnLayout(this, animate) }
+    listeners.forEach { listener: ModelListener -> listener.modelChangedOnLayout(this, animate) }
   }
 
   val module: Module
@@ -345,18 +358,14 @@ protected constructor(
    * @param animate should the changes be animated or not.
    */
   fun notifyLiveUpdate(animate: Boolean) {
-    myListeners.forEach { listener -> listener.modelLiveUpdate(this, animate) }
+    listeners.forEach { listener -> listener.modelLiveUpdate(this, animate) }
   }
 
   /** Simply create a component. In most cases you probably want [NlTreeWriter.createComponent]. */
   fun createComponent(tag: XmlTag): NlComponent {
     val component = NlComponent(this, tag)
-    myComponentRegistrar.accept(component)
+    componentRegistrar.accept(component)
     return component
-  }
-
-  fun setTooltip(tooltip: String?) {
-    modelTooltip = tooltip
   }
 
   override fun dispose() {
@@ -372,7 +381,7 @@ protected constructor(
       deactivate() // ensure listeners are unregistered if necessary
     }
 
-    myListeners.clear()
+    listeners.clear()
   }
 
   override fun toString(): String {
@@ -403,7 +412,7 @@ protected constructor(
     modelVersion.increase(reason)
     updateTheme()
     lastChangeType = reason
-    myListeners.forEach { listener: ModelListener -> listener.modelChanged(this) }
+    listeners.forEach { listener: ModelListener -> listener.modelChanged(this) }
   }
 
   fun notifyModified(reason: ChangeType) {

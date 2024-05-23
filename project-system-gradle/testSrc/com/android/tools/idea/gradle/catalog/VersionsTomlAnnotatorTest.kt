@@ -441,6 +441,20 @@ class VersionsTomlAnnotatorTest {
   }
 
   @Test
+  fun checkAliasDuplicationSpecialCase3() {
+    val file = fixture.addFileToProject("gradle/libs.versions.toml","""
+      [plugins]
+      alias.id = "id"
+      alias.version = "1.0"
+      ${"alias_A" highlightedAs HighlightSeverity.ERROR } = "some:plugin"
+      ${"alias_a" highlightedAs HighlightSeverity.ERROR } = "some:plugin"
+    """.trimIndent())
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+
+    fixture.checkHighlighting()
+  }
+
+  @Test
   fun checkDoubleUnderscore() {
     val file = fixture.addFileToProject("gradle/libs.versions.toml","""
       [plugins]
@@ -473,6 +487,30 @@ class VersionsTomlAnnotatorTest {
       [plugins]
       ${"alias_" highlightedAs HighlightSeverity.ERROR } = "some:plugin"
       ${"alias-" highlightedAs HighlightSeverity.ERROR } = "some:plugin"
+    """.trimIndent())
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+
+    fixture.checkHighlighting()
+  }
+
+  @Test
+  fun checkDigitAfterDelimiter() {
+    val file = fixture.addFileToProject("gradle/libs.versions.toml","""
+      [plugins]
+      ${"first_4Plugin" highlightedAs HighlightSeverity.ERROR } = "some:plugin"
+      ${"second-4Plugin" highlightedAs HighlightSeverity.ERROR } = "some:plugin"
+    """.trimIndent())
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+
+    fixture.checkHighlighting()
+  }
+
+  @Test
+  fun checkDigitAfterDelimiterForVersions() {
+    val file = fixture.addFileToProject("gradle/libs.versions.toml","""
+      [versions]
+      ${"first_4Version" highlightedAs HighlightSeverity.WARNING } = "1.0"
+      ${"second-4Version" highlightedAs HighlightSeverity.WARNING } = "1.0"
     """.trimIndent())
     fixture.configureFromExistingVirtualFile(file.virtualFile)
 

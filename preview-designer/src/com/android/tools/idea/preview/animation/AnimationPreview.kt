@@ -23,6 +23,7 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.animation.timeline.TimelineElement
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
+import com.android.tools.idea.uibuilder.scene.executeInRenderSession
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
@@ -86,9 +87,7 @@ abstract class AnimationPreview<T : AnimationManager>(
     BottomPanel(rootComponent, tracker).apply {
       addResetListener {
         scope.launch {
-          animations.filterIsInstance<SupportedAnimationManager>().forEach {
-            it.elementState.value = it.elementState.value.copy(valueOffset = 0)
-          }
+          animations.filterIsInstance<SupportedAnimationManager>().forEach { it.offset.value = 0 }
           resetTimelineAndUpdateWindowSize(false)
         }
       }
@@ -112,7 +111,6 @@ abstract class AnimationPreview<T : AnimationManager>(
    * it immutable to avoid [ConcurrentModificationException] as multiple threads can access and
    * modify [animations] at the same time.
    */
-  @VisibleForTesting
   var animations: List<T> = emptyList()
     private set
 
@@ -229,11 +227,11 @@ abstract class AnimationPreview<T : AnimationManager>(
       // If single supported animation tab is selected.
       // We assume here only supported animations could be opened.
       selectedAnimation =
-        animations.findIsInstanceAnd<SupportedAnimationManager> { it.tabComponent == component }
+        animations.findIsInstanceAnd<SupportedAnimationManager> { it.tab.component == component }
       if (component is AllTabPanel) { // If coordination tab is selected.
         component.addTimeline(timeline)
       } else {
-        selectedAnimation?.addTimeline(timeline)
+        selectedAnimation?.tab?.addTimeline(timeline)
       }
       scope.launch { updateTimelineElements() }
     }
@@ -256,6 +254,9 @@ abstract class AnimationPreview<T : AnimationManager>(
           cachedVal = newValue
           scope.launch {
             setClockTime(newValue)
+            animations.filterIsInstance<SupportedAnimationManager>().forEach {
+              it.loadAnimatedPropertiesAtCurrentTime(false)
+            }
             renderAnimation()
           }
         }
@@ -284,6 +285,9 @@ abstract class AnimationPreview<T : AnimationManager>(
   protected suspend fun resetTimelineAndUpdateWindowSize(longTimeout: Boolean) {
     // Set the timeline to 0
     setClockTime(0, longTimeout)
+    animations.filterIsInstance<SupportedAnimationManager>().forEach {
+      it.loadAnimatedPropertiesAtCurrentTime(false)
+    }
     updateMaxDuration(longTimeout)
     // Update the cached value manually to prevent the timeline to set the clock time to 0 using the
     // short timeout.
@@ -364,7 +368,7 @@ abstract class AnimationPreview<T : AnimationManager>(
     removeAnimation(animationManager)
     if (animationManager is SupportedAnimationManager) {
       tabbedPane.tabs
-        .find { it.component == animationManager.tabComponent }
+        .find { it.component == animationManager.tab.component }
         ?.let { tabbedPane.removeTab(it) }
     }
     if (animations.isEmpty()) {
@@ -395,6 +399,10 @@ abstract class AnimationPreview<T : AnimationManager>(
       )
       coordinationTab.addTimeline(timeline)
     }
+  }
+
+  protected suspend fun executeInRenderSession(longTimeout: Boolean = false, function: () -> Unit) {
+    sceneManagerProvider()?.executeInRenderSession(longTimeout) { function() }
   }
 
   override fun dispose() {

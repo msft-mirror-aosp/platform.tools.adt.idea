@@ -51,6 +51,7 @@ class DeclarativeService {
       schemaFolder.lastModified()
       val paths = schemaFolder.list { _: File?, name: String -> name.endsWith(".dcl.schema") } ?: return null
       val schemas = mutableListOf<AnalysisSchema>()
+      var failure = false
       for (path in paths) {
         try {
           val schema = File(schemaFolder, path)
@@ -58,17 +59,18 @@ class DeclarativeService {
           schemas.add(analysisSchema)
         }
         catch (e: Exception) {
+          failure = true
           log.warn("Declarative schema parsing error: $e")
         }
       }
       return if (schemas.isNotEmpty())
-        DeclarativeSchema(schemas)
+        DeclarativeSchema(schemas, failure)
       else null
     }
   }
 }
 
-class DeclarativeSchema(private val schemas: List<AnalysisSchema>) {
+class DeclarativeSchema(private val schemas: List<AnalysisSchema>, val failureHappened: Boolean) {
   private val _dataClassesByFqName: Map<FqName, DataClass> by lazy {
     schemas.fold(mapOf()) { acc, e -> acc + e.dataClassesByFqName }
   }
@@ -81,11 +83,26 @@ class DeclarativeSchema(private val schemas: List<AnalysisSchema>) {
   fun getRootMemberFunctions(): List<SchemaMemberFunction> = _rootMemberFunctions
 }
 
-fun getTopLevelReceiverByName(name: String, schema: DeclarativeSchema): FqName? =
-  getReceiverByName(name, schema.getRootMemberFunctions())
+fun getTopLevelReceiverByName(name: String, schema: DeclarativeSchema): FqName? {
+  getReceiverByName(name, schema.getRootMemberFunctions())?.let {
+    return it
+  }
+  // this is specific case for settings.gradle.dcl - hopefully, eventually schema file will be fixed
+  // to have all settingsInternal attributes in rootMembers
+  schema.getDataClassesByFqName()[FqName("org.gradle.api.internal", "SettingsInternal")]?.let {
+    return it.properties.find { it.name == name }?.type?.fqName()
+  }
+  return null
+
+}
+
+private fun DataTypeRef.fqName() = (this as? DataTypeRef.Name)?.fqName
 
 fun getReceiverByName(name: String, memberFunctions: List<SchemaMemberFunction>): FqName? {
   val dataMemberFunction = memberFunctions.find { it.simpleName == name } ?: return null
-  val accessor = (dataMemberFunction.semantics as? FunctionSemantics.AccessAndConfigure)?.accessor
-  return (accessor?.objectType as? DataTypeRef.Name)?.fqName
+  (dataMemberFunction.semantics as? FunctionSemantics.AccessAndConfigure)?.accessor?.let {
+    return it.objectType.fqName()
+  }
+  dataMemberFunction.receiver.fqName()?.let { return it }
+  return null
 }

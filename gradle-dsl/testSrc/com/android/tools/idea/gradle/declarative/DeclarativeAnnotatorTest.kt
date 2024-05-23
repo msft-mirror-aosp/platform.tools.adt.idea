@@ -270,5 +270,40 @@ class DeclarativeAnnotatorTest: DeclarativeSchemaTestBase() {
     fixture.checkHighlighting()
   }
 
+  @Test
+  fun checkCorrectSettingsSyntax(){
+    writeToSchemaFile(TestFile.DECLARATIVE_SETTINGS_SCHEMAS)
+
+    val file = fixture.addFileToProject("settings.gradle.dcl",
+    """
+      rootProject {
+         name = "nowinandroid"
+      }
+
+      enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+      include(":app")
+      include(":app-nia-catalog")
+    """.trimIndent())
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+
+    fixture.checkHighlighting()
+  }
+
+  @Test
+  fun checkCorrectDemoSyntax(){
+    writeToSchemaFile(TestFile.DECLARATIVE_DEMO_SCHEMAS)
+
+    val file = fixture.addFileToProject("build.gradle.dcl",
+                                        """
+    androidApplication {
+       jdkVersion = 11
+       compileSdk = 33
+    }
+    """.trimIndent())
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+
+    fixture.checkHighlighting()
+  }
+
   private fun addDeclarativeBuildFile(text: String) = fixture.addFileToProject("build.gradle.dcl", text.trimIndent())
 }

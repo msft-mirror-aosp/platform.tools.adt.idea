@@ -21,7 +21,6 @@ import com.android.adblib.shellAsLines
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.res.AppLanguageInfo
 import com.android.tools.idea.res.AppLanguageService
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.android.tools.idea.streaming.uisettings.data.AppLanguage
@@ -63,7 +62,7 @@ private const val SELECT_TO_SPEAK_SERVICE_CLASS = "com.google.android.accessibil
 internal const val SELECT_TO_SPEAK_SERVICE_NAME = "$TALKBACK_PACKAGE_NAME/$SELECT_TO_SPEAK_SERVICE_CLASS"
 private const val PHYSICAL_DENSITY_PATTERN = "Physical density: (\\d+)"
 private const val OVERRIDE_DENSITY_PATTERN = "Override density: (\\d+)"
-private const val FOREGROUND_PROCESS_PATTERN = "\\d*:(\\S*)/\\S* \\(top-activity\\)"
+private const val FOREGROUND_APPLICATION_PATTERN = "mFocusedApp=ActivityRecord.* .* (\\S*)/\\S* "
 private const val APP_LANGUAGE_PATTERN = "Locales for (.+) for user \\d+ are \\[(.*)]"
 
 internal const val POPULATE_COMMAND =
@@ -82,7 +81,7 @@ internal const val POPULATE_COMMAND =
   "echo $DENSITY_DIVIDER; " +
   "wm density; " +
   "echo $FOREGROUND_APPLICATION_DIVIDER; " +
-  "dumpsys activity processes | grep top-activity; "
+  "dumpsys activity activities | grep mFocusedApp=ActivityRecord; "
 
 internal const val POPULATE_LANGUAGE_COMMAND =
   "echo $APP_LANGUAGE_DIVIDER; " +
@@ -137,10 +136,10 @@ internal class EmulatorUiSettingsController(
   private var lastDensity = readPhysicalDensity
 
   override suspend fun populateModel() {
-    val context = CommandContext(project)
+    val context = CommandContext()
     executeCommand(POPULATE_COMMAND, context)
 
-    if (context.applicationId.isNotEmpty() && context.languageInfo.keys.contains(context.applicationId)) {
+    if (context.applicationId.isNotEmpty()) {
       executeCommand(POPULATE_LANGUAGE_COMMAND.format(context.applicationId), context)
     }
     processAccessibility(context.enabled, context.buttons)
@@ -163,8 +162,8 @@ internal class EmulatorUiSettingsController(
         ACCESSIBILITY_BUTTON_TARGETS_DIVIDER -> processAccessibilityServices(iterator, context.buttons)
         FONT_SCALE_DIVIDER -> processFontScale(iterator)
         DENSITY_DIVIDER -> processScreenDensity(iterator)
-        FOREGROUND_APPLICATION_DIVIDER -> processForegroundProcess(iterator, context)
-        APP_LANGUAGE_DIVIDER -> processAppLanguage(iterator, context.languageInfo)
+        FOREGROUND_APPLICATION_DIVIDER -> processForegroundApplication(iterator, context)
+        APP_LANGUAGE_DIVIDER -> processAppLanguage(iterator)
       }
     }
   }
@@ -221,7 +220,7 @@ internal class EmulatorUiSettingsController(
     lastDensity = overrideDensity
   }
 
-  private fun processAppLanguage(iterator: ListIterator<String>, info: Map<String, AppLanguageInfo>) {
+  private fun processAppLanguage(iterator: ListIterator<String>) {
     val appLanguageLine = (if (iterator.hasNext()) iterator.next() else "")
     if (appLanguageLine.startsWith(DIVIDER_PREFIX)) {
       iterator.previous()
@@ -230,19 +229,20 @@ internal class EmulatorUiSettingsController(
     val match = Regex(APP_LANGUAGE_PATTERN).find(appLanguageLine) ?: return
     val applicationId = match.groupValues[1]
     val localeTag = match.groupValues[2].split(",").firstOrNull().takeIf { it != "null" } ?: ""
-    val localeConfig = info[applicationId]?.localeConfig ?: return
-    addLanguage(applicationId, localeConfig, localeTag)
+    AppLanguageService.getInstance(project).getAppLanguageInfo(deviceSerialNumber, applicationId)?.let {
+      addLanguage(applicationId, it.localeConfig, localeTag)
+    }
     readApplicationId = applicationId
     lastLocaleTag = localeTag
   }
 
-  private fun processForegroundProcess(iterator: ListIterator<String>, context: CommandContext) {
+  private fun processForegroundApplication(iterator: ListIterator<String>, context: CommandContext) {
     val line = if (iterator.hasNext()) iterator.next() else return
     if (line.startsWith(DIVIDER_PREFIX)) {
       iterator.previous()
       return
     }
-    val match = Regex(FOREGROUND_PROCESS_PATTERN).find(line) ?: return
+    val match = Regex(FOREGROUND_APPLICATION_PATTERN).find(line) ?: return
     context.applicationId = match.groupValues[1]
   }
 
@@ -384,10 +384,9 @@ internal class EmulatorUiSettingsController(
   /**
    * Context for handling adb commands.
    */
-  private class CommandContext(project: Project) {
+  private class CommandContext {
     val enabled = AccessibilityData()
     val buttons = AccessibilityData()
     var applicationId = ""
-    val languageInfo = AppLanguageService.getInstance(project).getAppLanguageInfo().associateBy { it.applicationId }
   }
 }
