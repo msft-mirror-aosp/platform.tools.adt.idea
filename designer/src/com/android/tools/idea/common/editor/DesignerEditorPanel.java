@@ -32,6 +32,7 @@ import com.android.tools.idea.common.surface.DesignSurfaceHelper;
 import com.android.tools.idea.common.surface.DesignSurfaceListener;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.idea.editors.notifications.NotificationPanel;
+import com.android.tools.idea.rendering.BuildTargetReference;
 import com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild;
 import com.android.tools.idea.uibuilder.editor.NlActionManager;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
@@ -342,7 +343,8 @@ public class DesignerEditorPanel extends JPanel implements Disposable {
         throw new WaitingForGradleSyncException("Waiting for next gradle sync to set AndroidFacet.");
       }
     }
-    NlModel model = myModelProvider.createModel(myEditor, myProject, facet, myComponentRegistrar, myFile);
+    NlModel model =
+      myModelProvider.createModel(myEditor, myProject, BuildTargetReference.from(facet, myFile), myComponentRegistrar, myFile);
 
     Module modelModule = AndroidPsiUtils.getModuleSafely(myProject, myFile);
     // Dispose the surface if we remove the module from the project, and show some text warning the user.
@@ -492,7 +494,7 @@ public class DesignerEditorPanel extends JPanel implements Disposable {
 
     ModelProvider defaultModelProvider = (disposable, project, facet, componentRegistrar, file) -> {
       Configuration configuration = FileTypeUtilsKt.getConfiguration(file, ConfigurationManager.getOrCreateInstance(facet.getModule()));
-      NlModel model = NlModel.builder(disposable, facet, file, configuration)
+      NlModel model = new NlModel.Builder(disposable, facet, file, configuration)
         .withComponentRegistrar(componentRegistrar)
         .build();
       model.setDisplayName(""); // For the Layout Editor, set an empty name to enable SceneView toolbars.
@@ -504,7 +506,7 @@ public class DesignerEditorPanel extends JPanel implements Disposable {
      */
     NlModel createModel(@NotNull Disposable parentDisposable,
                         @NotNull Project project,
-                        @NotNull AndroidFacet facet,
+                        @NotNull BuildTargetReference buildTarget,
                         @NotNull Consumer<NlComponent> componentRegistrar,
                         @NotNull VirtualFile file);
   }

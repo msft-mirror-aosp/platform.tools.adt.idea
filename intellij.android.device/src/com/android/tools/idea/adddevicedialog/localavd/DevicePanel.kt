@@ -23,20 +23,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.android.sdklib.AndroidVersion
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.getFullApiName
-import com.android.sdklib.getReleaseNameAndDetails
 import com.android.tools.idea.adddevicedialog.Table
 import com.android.tools.idea.adddevicedialog.TableColumn
 import com.android.tools.idea.adddevicedialog.TableColumnWidth
+import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.adddevicedialog.TableTextColumn
 import com.android.utils.CpuArchitecture
 import com.android.utils.osArchitecture
 import com.intellij.icons.ExpUiIcons
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
-import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
@@ -51,6 +49,7 @@ internal fun DevicePanel(
   state: DevicePanelState,
   servicesCollection: ImmutableCollection<Services>,
   images: ImmutableList<SystemImage>,
+  systemImageTableSelectionState: TableSelectionState<SystemImage>,
   onDeviceChange: (VirtualDevice) -> Unit,
   onStateChange: (DevicePanelState) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
@@ -80,6 +79,7 @@ internal fun DevicePanel(
   SystemImageTable(
     images,
     state,
+    systemImageTableSelectionState,
     onDownloadButtonClick,
     Modifier.height(150.dp).padding(bottom = Padding.SMALL),
   )
@@ -137,38 +137,43 @@ private fun ServicesDropdown(
 @Composable
 private fun SystemImageTable(
   images: ImmutableList<SystemImage>,
-  state: DevicePanelState,
+  devicePanelState: DevicePanelState,
+  selectionState: TableSelectionState<SystemImage>,
   onDownloadButtonClick: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val columns =
     listOf(
-      TableColumn("", TableColumnWidth.Weighted(1F), Comparator.comparing(SystemImage::isRemote)) {
+      TableColumn("", TableColumnWidth.Fixed(16.dp), Comparator.comparing(SystemImage::isRemote)) {
         if (it.isRemote) DownloadButton(onClick = { onDownloadButtonClick(it.path) })
       },
-      TableColumn(
-        "System Image",
-        TableColumnWidth.Weighted(1F),
-        Comparator.comparing(SystemImage::androidVersion),
-      ) {
-        AndroidVersionText(it.androidVersion)
-      },
+      TableTextColumn("System Image", attribute = SystemImage::name),
       TableTextColumn(
         "Services",
+        TableColumnWidth.Fixed(132.dp),
         attribute = { it.services.toString() },
-        comparator = Comparator.comparing(SystemImage::services),
+        Comparator.comparing(SystemImage::services),
       ),
       TableTextColumn(
         "API",
-        attribute = { it.androidVersion.getFullApiName() },
+        attribute = {
+          it.androidVersion.getFullApiName(includeReleaseName = true, includeCodeName = true)
+        },
         comparator = Comparator.comparing(SystemImage::androidVersion),
       ),
-      TableTextColumn("ABIs", attribute = { it.abis.joinToString() }),
-      TableTextColumn("Translated ABIs", attribute = { it.translatedAbis.joinToString() }),
+      TableTextColumn(
+        "ABIs",
+        TableColumnWidth.Fixed(77.dp),
+        attribute = { it.abis.joinToString() },
+      ),
+      TableTextColumn(
+        "Translated ABIs",
+        TableColumnWidth.Fixed(77.dp),
+        attribute = { it.translatedAbis.joinToString() },
+      ),
     )
 
-  // TODO: http://b/339247492 - Stop calling distinct
-  Table(columns, images.filter(state::test).distinct(), { it }, modifier)
+  Table(columns, images.filter(devicePanelState::test), { it }, modifier, selectionState)
 }
 
 internal data class DevicePanelState
@@ -203,21 +208,6 @@ internal constructor(
 @Composable
 private fun DownloadButton(onClick: () -> Unit) {
   IconButton(onClick) { Icon("expui/general/download.svg", null, ExpUiIcons::class.java) }
-}
-
-@Composable
-private fun AndroidVersionText(version: AndroidVersion) {
-  val nameAndDetails = version.getReleaseNameAndDetails(includeCodeName = true)
-  val details = nameAndDetails.details
-
-  if (details == null) {
-    Text(nameAndDetails.name)
-  } else {
-    Row {
-      Text(nameAndDetails.name, Modifier.padding(end = Padding.SMALL))
-      Text(details, color = retrieveColorOrUnspecified("Component.infoForeground"))
-    }
-  }
 }
 
 @Composable

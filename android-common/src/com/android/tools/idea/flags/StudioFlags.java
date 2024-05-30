@@ -270,6 +270,16 @@ public final class StudioFlags {
     NELE, "preview.zoom.animation", "Enable animation while zooming",
     "If enabled, Zoom change will show up an animation.",
     false);
+
+  public static final Flag<Boolean> SCROLLABLE_ZOOM_ON_GRID = new BooleanFlag(
+    NELE, "scrollable.zoom.grid.layout", "Enable scrollable zoom on grid layout",
+    "If enabled, zooming on a grid layout will not re-layout the items and will make the preview scrollable.",
+    false);
+
+  public static final Flag<Boolean> DETACHABLE_ATTACHED_TOOLWINDOWS = new BooleanFlag(
+    NELE, "detached.attached.toolwindows", "Allow floating attached tool windows",
+    "Allows floating attached tool windows (partly broken).",
+    false);
   //endregion
 
   //region Resource Repository
@@ -876,14 +886,15 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.recomposition.counts.default", "Enable or disable recomposition counts by default",
     "When this flag is enabled, recomposition counts will be enabled by default.",
     true);
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_RECOMPOSITION_PARENT_COUNTS = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.recomposition.parent.counts", "Enable or disable recomposition parent counts",
+    "When this flag is enabled, the max recomposition count among the children of a node is displayed in a separate column.",
+    ChannelDefault.enabledUpTo(CANARY));
   //endregion
 
   //region Embedded Emulator
   private static final FlagGroup EMBEDDED_EMULATOR = new FlagGroup(FLAGS, "embedded.emulator", "Embedded Emulator");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_RESIZABLE_FOLDING = new BooleanFlag(
-    EMBEDDED_EMULATOR, "resizable.folding", "Folding Support in Resizable AVD",
-    "Folding toolbar button in the Foldable mode of Resizable AVD",
-    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_SCREENSHOT_STATISTICS = new BooleanFlag(
     EMBEDDED_EMULATOR, "screenshot.statistics", "Enable Collection of Screenshot Statistics",
     "Captures statistics of received Emulator screenshots",
@@ -915,7 +926,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_SETTINGS_PICKER = new BooleanFlag(
     EMBEDDED_EMULATOR, "settings.picker", "Show settings picker",
     "Enables the settings picker to be shown for testing an application",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   //endregion
 
   //region Device Mirroring
@@ -1603,14 +1614,6 @@ public final class StudioFlags {
       "Show Device Streaming Settings Page",
       true);
 
-  public static final Flag<Boolean> DIRECT_ACCESS_ADD_DEVICE =
-    new BooleanFlag(
-      FIREBASE_TEST_LAB,
-      "direct.access.add.device",
-      "Direct Access Add Device",
-      "Enable the new FTL DirectAccess Add Device workflow.",
-      true);
-
   public static final Flag<String> DIRECT_ACCESS_ENDPOINT =
     new StringFlag(
       FIREBASE_TEST_LAB,
@@ -1629,14 +1632,6 @@ public final class StudioFlags {
       "monitoring.googleapis.com"
     );
 
-  public static final Flag<String> DIRECT_ACCESS_MONITORING_METRICS_DIRECTORY =
-    new StringFlag(
-      FIREBASE_TEST_LAB,
-      "direct.access.monitoring.metrics.directory",
-      "FTL Direct Access Metrics Directory",
-      "The directory for FTL Direct Access monthly usage metrics.",
-      "device_streaming"
-    );
   // endregion Firebase Test Lab
 
   // region App Insights
@@ -2019,7 +2014,7 @@ public final class StudioFlags {
                 10);
   // endregion WEAR_RUN_CONFIGS_AUTOCREATE
 
-  // region GOOGLE_LOGIN
+  // region Google Login
   private static final FlagGroup GOOGLE_LOGIN =
     new FlagGroup(FLAGS, "google.login", "Google Login");
   public static final Flag<Boolean> ENABLE_SETTINGS_ACCOUNT_UI =
@@ -2028,7 +2023,17 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_COMBINED_LOGIN_UI =
     new BooleanFlag(GOOGLE_LOGIN, "combined.login.enabled", "Enable combined login",
                     "When enabled, a combined login page will show when logging in for a new user.", true);
-  // endregion GOOGLE_LOGIN
+  // endregion Google Login
+
+  // region Cloud Integration
+  private static final FlagGroup CLOUD_INTEGRATION =
+    new FlagGroup(FLAGS, "cloud", "Cloud Integration");
+  // TODO(b/341816638): delete in L
+  public static final Flag<Boolean> SHOW_CLOUD_DEPRECATION_MESSAGES =
+    new BooleanFlag(CLOUD_INTEGRATION, "enabled", "Show bundled cloud plugin deprecation messages",
+                    "When enabled, deprecation messages will show when using functionality from the bundled cloud plugin.", false);
+
+  // endregion Cloud Integration
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.

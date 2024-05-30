@@ -21,6 +21,7 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.type.typeOf
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.configurations.ConfigurationMatcher
+import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.uibuilder.model.NlComponentRegistrar
 import com.android.tools.idea.uibuilder.type.LayoutFileType
 import com.google.common.annotations.VisibleForTesting
@@ -83,8 +84,7 @@ object PixelDeviceModelsProvider : VisualizationModelsProvider {
         deviceCaches[configurationManager] = deviceList
         Disposer.register(
           configurationManager,
-          Disposable { deviceCaches.remove(configurationManager) },
-        )
+        ) { deviceCaches.remove(configurationManager) }
         deviceList
       }
 
@@ -99,10 +99,15 @@ object PixelDeviceModelsProvider : VisualizationModelsProvider {
       val betterFile =
         ConfigurationMatcher.getBetterMatch(config, null, null, null, null) ?: virtualFile
       val model =
-        NlModel.builder(parentDisposable, facet, betterFile, config)
-          .withModelTooltip(config.toHtmlTooltip())
+        NlModel.Builder(
+            parentDisposable,
+            BuildTargetReference.gradleOnly(facet),
+            betterFile,
+            config,
+          )
           .withComponentRegistrar(NlComponentRegistrar)
           .build()
+      model.setTooltip(config.toHtmlTooltip())
       model.setDisplayName(device.displayName)
       models.add(model)
 

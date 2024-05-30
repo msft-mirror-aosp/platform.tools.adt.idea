@@ -21,13 +21,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import java.util.EnumSet
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableSet
-import org.jetbrains.jewel.bridge.theme.SwingBridgeTheme
-import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.ui.component.TabData
 import org.jetbrains.jewel.ui.component.TabStrip
 import org.jetbrains.jewel.ui.component.Text
@@ -36,18 +35,25 @@ import org.jetbrains.jewel.ui.component.Text
 internal fun ConfigureDevicePanel(
   device: VirtualDevice,
   images: ImmutableList<SystemImage>,
+  systemImageTableSelectionState: TableSelectionState<SystemImage>,
   skins: ImmutableCollection<Skin>,
   onDeviceChange: (VirtualDevice) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
   onImportButtonClick: () -> Unit,
 ) {
-  @OptIn(ExperimentalJewelApi::class)
-  SwingBridgeTheme {
-    Column {
-      Text("Configure device")
-      Text("Add a device to device manager")
-      Tabs(device, images, skins, onDeviceChange, onDownloadButtonClick, onImportButtonClick)
-    }
+  Column {
+    Text("Configure device")
+    Text("Add a device to device manager")
+
+    Tabs(
+      device,
+      images,
+      systemImageTableSelectionState,
+      skins,
+      onDeviceChange,
+      onDownloadButtonClick,
+      onImportButtonClick,
+    )
   }
 }
 
@@ -55,6 +61,7 @@ internal fun ConfigureDevicePanel(
 private fun Tabs(
   device: VirtualDevice,
   images: ImmutableList<SystemImage>,
+  systemImageTableSelectionState: TableSelectionState<SystemImage>,
   skins: ImmutableCollection<Skin>,
   onDeviceChange: (VirtualDevice) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
@@ -83,6 +90,7 @@ private fun Tabs(
         devicePanelState,
         servicesSet,
         images,
+        systemImageTableSelectionState,
         onDeviceChange,
         onStateChange = { devicePanelState = it },
         onDownloadButtonClick,

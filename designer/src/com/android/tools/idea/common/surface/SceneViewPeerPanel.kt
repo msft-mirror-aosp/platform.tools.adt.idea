@@ -20,6 +20,7 @@ import com.android.tools.idea.actions.SCENE_VIEW
 import com.android.tools.idea.common.model.scaleBy
 import com.android.tools.idea.common.surface.organization.OrganizationGroup
 import com.android.tools.idea.common.surface.sceneview.SceneViewTopPanel
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
 import com.android.tools.idea.uibuilder.surface.layout.PositionableContent
 import com.android.tools.idea.uibuilder.surface.layout.PositionablePanel
@@ -37,9 +38,11 @@ import java.awt.Dimension
 import java.awt.Insets
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-/** Distance between the top bound of bottom bar and bottom bound of SceneView. */
-@SwingCoordinate private const val BOTTOM_BAR_TOP_MARGIN = 3
+/** Distance between bottom bound of SceneView and bottom of [SceneViewPeerPanel]. */
+@SwingCoordinate private const val BOTTOM_BORDER_HEIGHT = 3
 
 /** Minimum allowed width for the SceneViewPeerPanel. */
 @SwingCoordinate private const val SCENE_VIEW_PEER_PANEL_MIN_WIDTH = 100
@@ -50,15 +53,21 @@ import javax.swing.JPanel
  * coordinates of the [SceneView] and can be used to paint Swing elements on top of the [SceneView].
  */
 class SceneViewPeerPanel(
+  val scope: CoroutineScope,
   val sceneView: SceneView,
-  private val labelPanel: LabelPanel,
+  private val labelPanel: JComponent,
   sceneViewStatusIconAction: AnAction?,
   sceneViewToolbarActions: List<AnAction>,
-  sceneViewBottomBar: JComponent?,
   sceneViewLeftBar: JComponent?,
   sceneViewRightBar: JComponent?,
   private val sceneViewErrorsPanel: JComponent?,
 ) : JPanel(), PositionablePanel, DataProvider {
+
+  init {
+    scope.launch(uiThread) {
+      sceneView.sceneManager.model.organizationGroup?.isOpened?.collect { invalidate() }
+    }
+  }
 
   /**
    * Contains cached layout data that can be used by this panel to verify when it's been invalidated
@@ -93,7 +102,7 @@ class SceneViewPeerPanel(
           sceneView.margin.also {
             // Extend top to account for the top toolbar
             it.top += sceneViewTopPanel.preferredSize.height
-            it.bottom += sceneViewBottomPanel.preferredSize.height
+            it.bottom += BOTTOM_BORDER_HEIGHT
             it.left += sceneViewLeftPanel.preferredSize.width
             it.right += sceneViewRightPanel.preferredSize.width
             if (sceneViewErrorsPanel?.isVisible == true) {
@@ -162,8 +171,6 @@ class SceneViewPeerPanel(
   val sceneViewTopPanel =
     SceneViewTopPanel(this, sceneViewStatusIconAction, sceneViewToolbarActions, labelPanel)
 
-  private val sceneViewBottomPanel =
-    wrapPanel(sceneViewBottomBar).apply { border = JBUI.Borders.emptyTop(BOTTOM_BAR_TOP_MARGIN) }
   val sceneViewLeftPanel = wrapPanel(sceneViewLeftBar)
   val sceneViewRightPanel = wrapPanel(sceneViewRightBar)
   val sceneViewCenterPanel = wrapPanel(sceneViewErrorsPanel)
@@ -183,7 +190,6 @@ class SceneViewPeerPanel(
 
     add(sceneViewTopPanel)
     add(sceneViewCenterPanel)
-    add(sceneViewBottomPanel)
     add(sceneViewLeftPanel)
     add(sceneViewRightPanel)
     // This setup the initial positions of sceneViewTopPanel, sceneViewCenterPanel,
@@ -198,8 +204,6 @@ class SceneViewPeerPanel(
 
   override fun doLayout() {
     layoutData = LayoutData.fromSceneView(sceneView)
-    labelPanel.updateFromLayoutData(layoutData)
-    labelPanel.doLayout()
 
     //      SceneViewPeerPanel layout:
     //
@@ -212,7 +216,7 @@ class SceneViewPeerPanel(
     //      |  Left   |                       |  Right   |    |
     //      |  Panel  |                       |  Panel   |    ↓
     //      |---------------------------------------------
-    //      |            sceneViewBottomPanel            |    ↕ preferredHeight
+    //      |                                            |    ↕ BOTTOM_BORDER_HEIGHT
     //      |---------------------------------------------
     //
     //       ←-------→                         ←--------→
@@ -239,12 +243,6 @@ class SceneViewPeerPanel(
       sceneViewTopPanel.preferredSize.height,
       width + insets.horizontal - leftSectionWidth,
       centerPanelHeight,
-    )
-    sceneViewBottomPanel.setBounds(
-      0,
-      sceneViewTopPanel.preferredSize.height + centerPanelHeight,
-      width + insets.horizontal,
-      sceneViewBottomPanel.preferredSize.height,
     )
     sceneViewLeftPanel.setBounds(
       0,
@@ -282,7 +280,7 @@ class SceneViewPeerPanel(
 
     return Dimension(
       maxOf(sceneViewTopPanel.minimumSize.width, SCENE_VIEW_PEER_PANEL_MIN_WIDTH, centerPanelWidth),
-      sceneViewBottomPanel.preferredSize.height +
+      BOTTOM_BORDER_HEIGHT +
         centerPanelHeight +
         sceneViewTopPanel.minimumSize.height +
         JBUI.scale(20),
@@ -290,7 +288,8 @@ class SceneViewPeerPanel(
   }
 
   override fun isVisible(): Boolean {
-    return sceneView.isVisible
+    return sceneView.isVisible &&
+      sceneView.sceneManager.model.organizationGroup?.isOpened?.value ?: true
   }
 
   override fun getData(dataId: String): Any? {

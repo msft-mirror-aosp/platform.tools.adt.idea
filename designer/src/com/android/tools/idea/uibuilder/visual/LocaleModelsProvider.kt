@@ -22,6 +22,7 @@ import com.android.tools.idea.common.type.typeOf
 import com.android.tools.idea.configurations.ConfigurationForFile
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.configurations.ConfigurationMatcher
+import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.uibuilder.model.NlComponentRegistrar
 import com.android.tools.idea.uibuilder.type.LayoutFileType
@@ -84,10 +85,15 @@ object LocaleModelsProvider : VisualizationModelsProvider {
 
     run {
       val firstModel =
-        NlModel.builder(parentDisposable, facet, defaultFile, defaultLocaleConfig)
-          .withModelTooltip(defaultLocaleConfig.toHtmlTooltip())
+        NlModel.Builder(
+            parentDisposable,
+            BuildTargetReference.gradleOnly(facet),
+            defaultFile,
+            defaultLocaleConfig,
+          )
           .withComponentRegistrar(NlComponentRegistrar)
           .build()
+      firstModel.setTooltip(defaultLocaleConfig.toHtmlTooltip())
       firstModel.setDisplayName("Default (no locale)")
       models.add(firstModel)
 
@@ -112,12 +118,17 @@ object LocaleModelsProvider : VisualizationModelsProvider {
       config.locale = locale
       val label = Locale.getLocaleLabel(locale, false)
       val model =
-        NlModel.builder(parentDisposable, facet, betterFile, config)
-          .withModelTooltip(config.toHtmlTooltip())
+        NlModel.Builder(
+            parentDisposable,
+            BuildTargetReference.gradleOnly(facet),
+            betterFile,
+            config,
+          )
           .withComponentRegistrar(NlComponentRegistrar)
           .build()
-      models.add(model)
+      model.setTooltip(config.toHtmlTooltip())
       model.setDisplayName(label)
+      models.add(model)
 
       registerModelsProviderConfigurationListener(model, currentFileConfig, config, EFFECTIVE_FLAGS)
     }

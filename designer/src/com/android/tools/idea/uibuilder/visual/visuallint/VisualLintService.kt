@@ -350,7 +350,7 @@ fun createRenderResult(model: NlModel, runAtfChecks: Boolean): CompletableFuture
   val logger = renderService.createHtmlLogger(model.project)
 
   return renderService
-    .taskBuilder(model.facet, model.configuration, logger)
+    .taskBuilder(model.buildTarget, model.configuration, logger)
     .withPsiFile(PsiXmlFile(model.file))
     .withLayoutScanner(runAtfChecks)
     .withTopic(RenderingTopic.VISUAL_LINT)

@@ -19,7 +19,6 @@ import com.android.annotations.concurrency.Slow
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.common.model.NlModel
-import com.android.tools.idea.common.model.NlModelBuilder
 import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.model.updateFileContentBlocking
 import com.android.tools.idea.common.scene.render
@@ -30,6 +29,7 @@ import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.navigation.PreviewNavigationHandler
+import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.uibuilder.model.NlComponentRegistrar
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
@@ -281,10 +281,15 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
           Configuration.create(configurationManager, FolderConfiguration.createDefault())
         newModel =
           withContext(AndroidDispatchers.workerThread) {
-            NlModel.builder(parentDisposable, facet, file, configuration)
+            NlModel.Builder(
+                parentDisposable,
+                BuildTargetReference.from(facet, psiFile.virtualFile),
+                file,
+                configuration,
+              )
               .withComponentRegistrar(NlComponentRegistrar)
               .withXmlProvider { project, virtualFile ->
-                NlModelBuilder.getDefaultFile(project, virtualFile).also {
+                NlModel.getDefaultFile(project, virtualFile).also {
                   it.putUserData(ModuleUtilCore.KEY_MODULE, facet.module)
                 }
               }

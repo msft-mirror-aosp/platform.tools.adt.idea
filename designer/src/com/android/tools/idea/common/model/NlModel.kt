@@ -23,10 +23,12 @@ import com.android.ide.common.resources.ResourceResolver
 import com.android.resources.ResourceType
 import com.android.resources.ResourceUrl
 import com.android.tools.configurations.Configuration
+import com.android.tools.idea.AndroidPsiUtils
 import com.android.tools.idea.common.lint.LintAnnotationsModel
 import com.android.tools.idea.common.surface.organization.OrganizationGroup
 import com.android.tools.idea.common.type.DesignerEditorFileType
 import com.android.tools.idea.common.type.typeOf
+import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.res.ResourceNotificationManager
 import com.android.tools.idea.util.ListenerCollection.Companion.createWithDirectExecutor
 import com.google.common.annotations.VisibleForTesting
@@ -77,17 +79,24 @@ open class NlModel
 @VisibleForTesting
 protected constructor(
   parent: Disposable,
-  val facet: AndroidFacet,
+  val buildTarget: BuildTargetReference,
   val virtualFile: VirtualFile,
   open val configuration: Configuration,
   private val componentRegistrar: Consumer<NlComponent>,
   private val xmlFileProvider: BiFunction<Project, VirtualFile, XmlFile>,
-  modelUpdater: NlModelUpdaterInterface?,
   override var dataContext: DataContext,
 ) : ModificationTracker, DataContextHolder {
 
-  val treeWriter = NlTreeWriter(facet, { file }, ::notifyModified, { createComponent(it) })
+  val treeWriter =
+    NlTreeWriter(buildTarget.facet, { file }, ::notifyModified, { createComponent(it) })
   val treeReader = NlTreeReader { file }
+
+  /**
+   * Adds information to the model from a render result. A given model can use different updaters
+   * depending on what its usage requires. E.g. interactive preview may need less information from
+   * an [NlModel] than a standard preview, so different updaters can be used in those cases.
+   */
+  private var modelUpdater: NlModelUpdaterInterface = DefaultModelUpdater()
 
   private val listeners = createWithDirectExecutor<ModelListener>()
 
@@ -148,13 +157,6 @@ protected constructor(
     private set
 
   /**
-   * Adds information to the model from a render result. A given model can use different updaters
-   * depending on what its usage requires. E.g. interactive preview may need less information from
-   * an [NlModel] than a standard preview, so different updaters can be used in those cases.
-   */
-  private var myModelUpdater: NlModelUpdaterInterface = modelUpdater ?: DefaultModelUpdater()
-
-  /**
    * Returns the latest calculated [ResourceResolver]. This is just to be used from those context
    * where obtaining the resource resolver can not be done like the UI thread. The cached resource
    * resolver is updated after every model update, including theme changes.
@@ -189,7 +191,7 @@ protected constructor(
    * @return true if the model was not active before and was activated.
    */
   fun activate(source: Any): Boolean {
-    if (facet.isDisposed) {
+    if (buildTarget.facet.isDisposed) {
       return false
     }
 
@@ -303,11 +305,11 @@ protected constructor(
     get() = xmlFileProvider.apply(project, virtualFile)
 
   fun syncWithPsi(newRoot: XmlTag, roots: List<TagSnapshotTreeNode>) {
-    myModelUpdater.updateFromTagSnapshot(this, newRoot, roots)
+    modelUpdater.updateFromTagSnapshot(this, newRoot, roots)
   }
 
   fun updateAccessibility(viewInfos: List<ViewInfo>) {
-    myModelUpdater.updateFromViewInfo(this, viewInfos)
+    modelUpdater.updateFromViewInfo(this, viewInfos)
   }
 
   /**
@@ -344,11 +346,14 @@ protected constructor(
     listeners.forEach { listener: ModelListener -> listener.modelChangedOnLayout(this, animate) }
   }
 
+  val facet: AndroidFacet
+    get() = buildTarget.facet
+
   val module: Module
-    get() = facet.module
+    get() = buildTarget.module
 
   val project: Project
-    get() = module.project
+    get() = buildTarget.project
 
   /**
    * This will warn model listeners that the model has been changed "live", without the attributes
@@ -459,47 +464,52 @@ protected constructor(
   }
 
   fun setModelUpdater(modelUpdater: NlModelUpdaterInterface) {
-    myModelUpdater = modelUpdater
+    this.modelUpdater = modelUpdater
   }
 
   companion object {
     const val DELAY_AFTER_TYPING_MS: Int = 250
 
-    @JvmStatic
-    fun builder(
-      parent: Disposable,
-      facet: AndroidFacet,
-      file: VirtualFile,
-      configuration: Configuration,
-    ): NlModelBuilder {
-      return NlModelBuilder(parent, facet, file, configuration)
+    fun getDefaultFile(project: Project, virtualFile: VirtualFile) =
+      AndroidPsiUtils.getPsiFileSafely(project, virtualFile) as XmlFile
+  }
+
+  /** An [NlModel] builder */
+  class Builder(
+    val parentDisposable: Disposable,
+    val buildTarget: BuildTargetReference,
+    val file: VirtualFile,
+    val configuration: Configuration,
+  ) {
+    private var componentRegistrar: Consumer<NlComponent> = Consumer {}
+    private var xmlFileProvider: BiFunction<Project, VirtualFile, XmlFile> =
+      BiFunction { project, virtualFile ->
+        getDefaultFile(project, virtualFile)
+      }
+    private var dataContext: DataContext = DataContext.EMPTY_CONTEXT
+
+    fun withComponentRegistrar(componentRegistrar: Consumer<NlComponent>): Builder = also {
+      this.componentRegistrar = componentRegistrar
     }
 
-    /**
-     * Method called by the [NlModelBuilder] to instantiate a new NlModel. Should only be called by
-     * [NlModelBuilder].
-     */
+    fun withXmlProvider(xmlFileProvider: BiFunction<Project, VirtualFile, XmlFile>): Builder =
+      also {
+        this.xmlFileProvider = xmlFileProvider
+      }
+
+    fun withDataContext(dataContext: DataContext): Builder = also { this.dataContext = dataContext }
+
+    /** Instantiate a new [NlModel]. */
     @Slow
-    internal fun create(
-      parent: Disposable,
-      facet: AndroidFacet,
-      file: VirtualFile,
-      configuration: Configuration,
-      componentRegistrar: Consumer<NlComponent>,
-      xmlFileProvider: BiFunction<Project, VirtualFile, XmlFile>,
-      modelUpdater: NlModelUpdaterInterface?,
-      dataContext: DataContext,
-    ): NlModel {
-      return NlModel(
-        parent,
-        facet,
+    fun build(): NlModel =
+      NlModel(
+        parentDisposable,
+        buildTarget,
         file,
         configuration,
         componentRegistrar,
         xmlFileProvider,
-        modelUpdater,
         dataContext,
       )
-    }
   }
 }

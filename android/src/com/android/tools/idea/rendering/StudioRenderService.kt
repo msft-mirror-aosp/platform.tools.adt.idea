@@ -24,19 +24,18 @@ import com.android.tools.rendering.RenderLogger
 import com.android.tools.rendering.RenderService
 import com.android.tools.rendering.RenderTask
 import com.android.tools.rendering.api.RenderModelModule
-import com.android.tools.sdk.getLayoutLibrary
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.ShutDownTracker
-import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.sdk.getInstance
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.utils.identity
 
 /** Studio-specific [RenderService] management. */
 open class StudioRenderService {
+
   companion object {
     /**
      * [Key] used to keep the [StudioRenderService] instance project association. They key is also used as synchronization object to guard
@@ -78,12 +77,12 @@ open class StudioRenderService {
  */
 @JvmOverloads
 fun RenderService.taskBuilder(
-  facet: AndroidFacet,
+  buildTarget: BuildTargetReference,
   configuration: Configuration,
-  logger: RenderLogger = createLogger(facet.module.project),
+  logger: RenderLogger = createLogger(buildTarget.project),
   wrapRenderModule: (RenderModelModule) -> RenderModelModule = identity(),
 ): RenderService.RenderTaskBuilder =
-  taskBuilder(wrapRenderModule(AndroidFacetRenderModelModule(facet)), configuration, logger)
+  taskBuilder(wrapRenderModule(AndroidFacetRenderModelModule(buildTarget)), configuration, logger)
 
 fun getLayoutLibrary(module: Module, target: IAndroidTarget?): LayoutLibrary? {
   val context = StudioLayoutlibContext(module.project)

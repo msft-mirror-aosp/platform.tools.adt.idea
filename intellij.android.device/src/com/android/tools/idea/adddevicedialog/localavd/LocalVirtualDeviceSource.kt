@@ -16,7 +16,10 @@
 package com.android.tools.idea.adddevicedialog.localavd
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.android.resources.ScreenOrientation
 import com.android.resources.ScreenRound
 import com.android.sdklib.AndroidVersion
@@ -29,6 +32,7 @@ import com.android.sdklib.internal.avd.GpuMode
 import com.android.tools.idea.adddevicedialog.DeviceProfile
 import com.android.tools.idea.adddevicedialog.DeviceSource
 import com.android.tools.idea.adddevicedialog.FormFactors
+import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.adddevicedialog.WizardAction
 import com.android.tools.idea.adddevicedialog.WizardPageScope
 import com.android.tools.idea.avdmanager.DeviceManagerConnection
@@ -36,22 +40,31 @@ import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import com.android.tools.idea.avdmanager.skincombobox.SkinCollector
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBoxModel
-import com.android.tools.idea.progress.StudioLoggerProgressIndicator
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.sdk.AndroidSdks
+import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.google.common.collect.Range
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
+import java.awt.Component
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.jetbrains.android.AndroidPluginDisposable
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 
 internal class LocalVirtualDeviceSource(
   private val project: Project?,
-  private val systemImages: ImmutableCollection<SystemImage>,
+  systemImages: ImmutableCollection<SystemImage>,
   private val skins: ImmutableCollection<Skin>,
 ) : DeviceSource {
+  private var systemImages by mutableStateOf(systemImages)
+
   companion object {
     internal fun create(project: Project?): LocalVirtualDeviceSource {
       val images = SystemImage.getSystemImages().toImmutableList()
@@ -73,20 +86,23 @@ internal class LocalVirtualDeviceSource(
 
   @Composable
   private fun WizardPageScope.ConfigurationPage(device: DeviceProfile) {
-    val state =
-      remember(device) {
-        LocalAvdConfigurationState(project, systemImages, skins, device as VirtualDevice)
-      }
+    val state = remember(device) { LocalAvdConfigurationState(skins, device as VirtualDevice) }
 
     val api = device.apiRange.upperEndpoint()
+    val images = systemImages.filter { it.androidVersion.apiLevel == api }.toImmutableList()
+
+    // TODO: http://b/342003916
+    val systemImageTableSelectionState = remember { TableSelectionState(images.first()) }
+
     @OptIn(ExperimentalJewelApi::class) val parent = LocalComponent.current
 
     ConfigureDevicePanel(
       state.device,
-      state.systemImages.filter { it.androidVersion.apiLevel == api }.toImmutableList(),
+      images,
+      systemImageTableSelectionState,
       state.skins,
       onDeviceChange = { state.device = it },
-      onDownloadButtonClick = { state.downloadSystemImage(parent, it) },
+      onDownloadButtonClick = { downloadSystemImage(parent, it) },
       onImportButtonClick = {
         // TODO Validate the skin
         val skin =
@@ -105,8 +121,35 @@ internal class LocalVirtualDeviceSource(
 
     nextAction = WizardAction.Disabled
     finishAction = WizardAction {
-      VirtualDevices().add(state.device, getArbitrarySystemImage())
+      // TODO: http://b/342003691
+      VirtualDevices().add(state.device, systemImageTableSelectionState.selection!!)
+
       close()
+    }
+  }
+
+  private fun downloadSystemImage(parent: Component, path: String) {
+    val dialog = SdkQuickfixUtils.createDialogForPaths(parent, listOf(path), false)
+
+    if (dialog == null) {
+      thisLogger().warn("Could not create the SDK Quickfix Installation dialog")
+      return
+    }
+
+    dialog.show()
+
+    val parentDisposable =
+      if (project == null) {
+        AndroidPluginDisposable.getApplicationInstance()
+      } else {
+        AndroidPluginDisposable.getProjectInstance(project)
+      }
+
+    AndroidCoroutineScope(parentDisposable, AndroidDispatchers.uiThread).launch {
+      systemImages =
+        withContext(AndroidDispatchers.workerThread) {
+          SystemImage.getSystemImages().toImmutableList()
+        }
     }
   }
 
@@ -162,11 +205,3 @@ private val Device.formFactor: String
       Device.isTablet(this) -> FormFactors.TABLET
       else -> FormFactors.PHONE
     }
-
-// TODO(b/335263078): Delete this.
-private fun getArbitrarySystemImage() =
-  AndroidSdks.getInstance()
-    .tryToChooseSdkHandler()
-    .getSystemImageManager(StudioLoggerProgressIndicator(LocalVirtualDeviceSource::class.java))
-    .images
-    .first { it.`package`.path == "system-images;android-34;google_apis;x86_64" }
