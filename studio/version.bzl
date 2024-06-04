@@ -3,5 +3,5 @@ visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//t
 
 STUDIO_CODENAME = "Jellyfish"
 STUDIO_VERSION = "Stable"
-STUDIO_MICRO_PATCH = "1.19"
-STUDIO_RELEASE_NUMBER = 2
+STUDIO_MICRO_PATCH = "1.20"
+STUDIO_RELEASE_NUMBER = 3
