@@ -31,8 +31,8 @@ import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
+import com.intellij.openapi.fileEditor.impl.text.PsiAwareTextEditorProvider
 import com.intellij.openapi.fileEditor.impl.text.QuickDefinitionProvider
-import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.fileEditor.impl.text.TextEditorState
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
@@ -41,6 +41,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.util.SlowOperations
 import com.intellij.util.xmlb.XmlSerializer
+import kotlinx.coroutines.runBlocking
 import org.jdom.Attribute
 import org.jdom.Element
 import org.jetbrains.annotations.TestOnly
@@ -96,7 +97,10 @@ private constructor(private val providers: Collection<PreviewRepresentationProvi
     val textEditor =
       SlowOperations.allowSlowOperations(
         ThrowableComputable {
-          TextEditorProvider.getInstance().createEditor(project, file) as TextEditor
+          runBlocking {
+              PsiAwareTextEditorProvider().createEditorBuilder(project, file, document = null)
+            }
+            .build() as TextEditor
         }
       )
 
@@ -118,7 +122,7 @@ private constructor(private val providers: Collection<PreviewRepresentationProvi
       // Persist the text editor state
       (state.editorState as? TextEditorState)?.let {
         val editorElement = Element(EDITOR_STATE_TAG)
-        TextEditorProvider().writeState(it, project, editorElement)
+        PsiAwareTextEditorProvider().writeState(it, project, editorElement)
         targetElement.addContent(editorElement)
       }
 
@@ -151,7 +155,8 @@ private constructor(private val providers: Collection<PreviewRepresentationProvi
       sourceElement.children.forEach {
         when (it.name) {
           EDITOR_STATE_TAG -> {
-            editorState = TextEditorProvider().readState(it, project, file) as? TextEditorState
+            editorState =
+              PsiAwareTextEditorProvider().readState(it, project, file) as? TextEditorState
           }
           MULTI_PREVIEW_STATE_TAG -> {
             multiPreviewState =

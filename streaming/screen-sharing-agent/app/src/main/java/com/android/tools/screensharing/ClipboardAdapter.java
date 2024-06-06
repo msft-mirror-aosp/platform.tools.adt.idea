@@ -71,7 +71,7 @@ public class ClipboardAdapter {
         }
       }
       catch (NoSuchMethodException e) {
-        Log.e(ATTRIBUTION_TAG, e.getMessage());
+        Log.e(ATTRIBUTION_TAG, "Unable to find the IClipboard." + e.getMessage() + " method");
         clipboard = null;
       }
     }
@@ -112,19 +112,29 @@ public class ClipboardAdapter {
     }
 
     int numberOfParameters = setPrimaryClipMethod.getParameterCount();
+    Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: Calling IClipboard.setPrimaryClip has " + numberOfParameters + " parameters");
     if (numberOfParameters == 1) {
+      Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: Calling IClipboard.setPrimaryClip(" + clipboard + ", " + clipData + ")");
       setPrimaryClipMethod.invoke(clipboard, clipData);
     }
     else if (numberOfParameters == 2) {
+      Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: Calling IClipboard.setPrimaryClip(" + clipboard + ", " + clipData + ", " +
+                             PACKAGE_NAME + ")");
       setPrimaryClipMethod.invoke(clipboard, clipData, PACKAGE_NAME);
     }
     else if (numberOfParameters == 3) {
+      Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: Calling IClipboard.setPrimaryClip(" + clipboard + ", " + clipData + ", " +
+                             PACKAGE_NAME + ", " + USER_ID + ")");
       setPrimaryClipMethod.invoke(clipboard, clipData, PACKAGE_NAME, USER_ID);
     }
     else if (numberOfParameters == 4) {
+      Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: Calling IClipboard.setPrimaryClip(" + clipboard + ", " + clipData + ", " +
+                             PACKAGE_NAME + ", " + ATTRIBUTION_TAG + ", " + USER_ID + ")");
       setPrimaryClipMethod.invoke(clipboard, clipData, PACKAGE_NAME, ATTRIBUTION_TAG, USER_ID);
     }
     else if (numberOfParameters == 5) {
+      Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: Calling IClipboard.setPrimaryClip(" + clipboard + ", " + clipData + ", " +
+                             PACKAGE_NAME + ", " + ATTRIBUTION_TAG + ", " + USER_ID + ", " + DEVICE_ID_DEFAULT + ")");
       setPrimaryClipMethod.invoke(clipboard, clipData, PACKAGE_NAME, ATTRIBUTION_TAG, USER_ID, DEVICE_ID_DEFAULT);
     }
   }
@@ -191,7 +201,7 @@ public class ClipboardAdapter {
     if (minParam <= parameterCount && parameterCount <= maxParam) {
       return true;
     }
-    Log.e(ATTRIBUTION_TAG, "Unexpected number of " + method.getName() + " parameters: " + parameterCount);
+    Log.e(ATTRIBUTION_TAG, "Unexpected number of IClipboard." + method.getName() + " parameters: " + parameterCount);
     return false;
   }
 }

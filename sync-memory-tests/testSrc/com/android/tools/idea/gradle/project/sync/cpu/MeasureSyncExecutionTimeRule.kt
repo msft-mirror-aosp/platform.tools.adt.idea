@@ -21,10 +21,9 @@ import com.android.tools.idea.gradle.project.sync.gradle.CaptureType
 import com.android.tools.idea.gradle.project.sync.gradle.MeasurementCheckpoint
 import com.android.tools.idea.gradle.project.sync.gradle.MeasurementPluginConfig
 import com.android.tools.idea.gradle.project.sync.memory.OUTPUT_DIRECTORY
-import com.android.tools.perflogger.Analyzer
 import com.android.tools.perflogger.Benchmark
+import com.android.tools.perflogger.EDivisiveAnalyzer
 import com.android.tools.perflogger.Metric
-import com.android.tools.perflogger.WindowDeviationAnalyzer
 import com.intellij.openapi.project.Project
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -40,23 +39,9 @@ val CPU_BENCHMARK = Benchmark.Builder("Cpu time")
   .setProject("Android Studio Sync Test")
   .build()
 
-private val ANALYZER = listOf(
-  WindowDeviationAnalyzer.Builder()
-    .setMetricAggregate(Analyzer.MetricAggregate.MEDIAN)
-    // This means, out of last 100 runs, only consider the last 50 "recent", including the current one.
-    // The rest is "historic". The analyzer works by compares the set of recent values and historic values
-    .setRunInfoQueryLimit(100)
-    .setRecentWindowSize(50)
-    .addMedianTolerance(
-      WindowDeviationAnalyzer.MedianToleranceParams.Builder()
-        .setConstTerm(0.0)
-        .setMadCoeff(0.0)
-        .setMedianCoeff(0.05) // flag 5% regressions
-        .build())
-    .build()
-)
+private val ANALYZER = listOf(EDivisiveAnalyzer)
 
-private typealias TimestampedMeasurement = Pair<Instant, Duration>
+private data class TimestampedMeasurement(val timestamp: Instant, val measurement: Duration, val analyzed: Boolean)
 
 private data class Durations(
   val gradleConfiguration : Duration,
@@ -79,7 +64,7 @@ total: ${total.inWholeSeconds}s
   """.trimIndent()
 }
 
-class MeasureSyncExecutionTimeRule(val syncCount: Int) : ExternalResource() {
+class MeasureSyncExecutionTimeRule(val syncCount: Int, private val enableAnalyzers: Boolean = true) : ExternalResource() {
   private val results = mutableListOf<Durations>()
   private val processedFiles = mutableSetOf<String>()
   private lateinit var syncStartTimestamp : Instant
@@ -124,21 +109,22 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int) : ExternalResource() {
         else -> ""
       }
       listOf(
-        "${prefix}Gradle_Configuration_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleConfiguration),
-        "${prefix}Gradle_Before_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleBeforeAndroidExecution),
-        "${prefix}Gradle_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleAndroidExecution),
-        "${prefix}Gradle_After_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleAfterAndroidExecution),
-        "${prefix}Gradle_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradle),
-        "${prefix}Ide_Ms" to TimestampedMeasurement(value.finishTimestamp, value.ide),
-        "${prefix}Total_Ms" to TimestampedMeasurement(value.finishTimestamp, value.total),
+        "${prefix}Gradle_Configuration_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleConfiguration, analyzed = true),
+        "${prefix}Gradle_Before_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleBeforeAndroidExecution, analyzed = false),
+        "${prefix}Gradle_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleAndroidExecution, analyzed = true),
+        "${prefix}Gradle_After_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleAfterAndroidExecution, analyzed = false),
+        "${prefix}Gradle_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradle, analyzed = true),
+        "${prefix}Ide_Ms" to TimestampedMeasurement(value.finishTimestamp, value.ide, analyzed = true),
+        "${prefix}Total_Ms" to TimestampedMeasurement(value.finishTimestamp, value.total, analyzed = false),
       )
       }.groupBy { (type, _,) -> type }
       .mapValues { groupEntry -> groupEntry.value.map {it.second} }.entries // unpack group values
       .forEach { (type, values: List<TimestampedMeasurement>) ->
       values.forEach { value ->
-        println("Recording ${projectName}_$type -> ${value.second.inWholeMilliseconds} ms (${value.second.inWholeSeconds} seconds)")
+        println("Recording ${projectName}_$type -> ${value.measurement.inWholeMilliseconds} ms (${value.measurement.inWholeSeconds} seconds)")
       }
-      recordCpuMeasurement("${projectName}_$type", values, enableAnalyzers = !type.startsWith(droppedPrefix) )
+      val isMetricAnalyzed = !type.startsWith(droppedPrefix) && values.any { it.analyzed }
+      recordCpuMeasurement("${projectName}_$type", values, isMetricAnalyzed)
     }
   }
   private fun getTimestampForCheckpoint(checkpointName: String): Instant {
@@ -147,16 +133,16 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int) : ExternalResource() {
       processedFiles.add(file.name)
     }
   }
-}
 
-internal fun recordCpuMeasurement(metricName: String, values: Iterable<TimestampedMeasurement>, enableAnalyzers: Boolean) {
-  Metric(metricName).apply {
-    values.forEach {
-      addSamples(CPU_BENCHMARK, Metric.MetricSample(it.first.toEpochMilliseconds(), it.second.toLong(DurationUnit.MILLISECONDS)))
+  private fun recordCpuMeasurement(metricName: String, values: Iterable<TimestampedMeasurement>, isMetricAnalyzed: Boolean) {
+    Metric(metricName).apply {
+      values.forEach {
+        addSamples(CPU_BENCHMARK, Metric.MetricSample(it.timestamp.toEpochMilliseconds(), it.measurement.toLong(DurationUnit.MILLISECONDS)))
+      }
+      if (enableAnalyzers && isMetricAnalyzed) {
+        setAnalyzers(CPU_BENCHMARK, ANALYZER)
+      }
+      commit()
     }
-    if (enableAnalyzers) {
-      setAnalyzers(CPU_BENCHMARK, ANALYZER)
-    }
-    commit()
   }
 }

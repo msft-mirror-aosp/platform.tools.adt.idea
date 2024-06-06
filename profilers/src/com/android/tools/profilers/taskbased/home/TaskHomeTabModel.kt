@@ -143,7 +143,7 @@ class TaskHomeTabModel(profilers: StudioProfilers) : TaskEntranceTabModel(profil
   @VisibleForTesting
   val selectedProcess: Common.Process get() = processListModel.selectedProcess.value
 
-  override fun onEnterTaskButtonClick() {
+  override fun doEnterTaskButton() {
     // Save snapshot of the task home selections made just in case user changes any selection in between enter task button click and usage
     // of the selection state.
     setSelectionState()
@@ -166,7 +166,7 @@ class TaskHomeTabModel(profilers: StudioProfilers) : TaskEntranceTabModel(profil
         profilers.ideServices.enableStartupTask(selectedTaskType, _taskRecordingType.value)
 
         val prefersProfileable = taskGridModel.selectedTaskType.value.prefersProfileable
-        profilers.ideServices.buildAndLaunchAction(prefersProfileable)
+        profilers.ideServices.buildAndLaunchAction(prefersProfileable, selectedDevice!!.featureLevel)
 
         // Reset process selection as process will be recreated and thus the original selection will be lost.
         processListModel.resetProcessSelection()

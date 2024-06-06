@@ -105,6 +105,8 @@ class VisualLintService(val project: Project) : Disposable {
 
   private val ignoredTypes: MutableList<VisualLintErrorType>
 
+  private var listenerRemovalDisposable: Disposable? = null
+
   init {
     val connection = project.messageBus.connect()
     ignoredTypes = mutableListOf()
@@ -181,7 +183,8 @@ class VisualLintService(val project: Project) : Disposable {
         val wasAdded = issueModel.addIssueProvider(issueProvider, true)
         issueModel.uiCheckInstanceId = issueProvider.uiCheckInstanceId
         if (wasAdded) {
-          Disposer.register(parentDisposable) { issueModel.removeIssueProvider(issueProvider) }
+          listenerRemovalDisposable = Disposable { issueModel.removeIssueProvider(issueProvider) }
+          Disposer.register(parentDisposable, listenerRemovalDisposable!!)
         }
 
         val visualLintBaseConfigIssues = VisualLintBaseConfigIssues()
@@ -220,9 +223,9 @@ class VisualLintService(val project: Project) : Disposable {
     try {
       val modelsToAnalyze =
         if (Device.isWear(baseModel.configuration.device)) {
-          WearDeviceModelsProvider.createNlModels(baseModel, baseModel.file, baseModel.facet)
+          WearDeviceModelsProvider.createNlModels(baseModel, baseModel.file, baseModel.buildTarget)
         } else {
-          WindowSizeModelsProvider.createNlModels(baseModel, baseModel.file, baseModel.facet)
+          WindowSizeModelsProvider.createNlModels(baseModel, baseModel.file, baseModel.buildTarget)
         }
       val latch = CountDownLatch(modelsToAnalyze.size)
       val hasTimedOut = AtomicBoolean(false)
@@ -335,11 +338,18 @@ class VisualLintService(val project: Project) : Disposable {
   }
 
   fun removeAllIssueProviders() {
+    listenerRemovalDisposable?.let {
+      // This disposable is not needed anymore, so we dispose it to avoid it hanging around in the
+      // Disposer tree
+      Disposer.dispose(it)
+      listenerRemovalDisposable = null
+    }
     issueModel.removeAllIssueProviders()
     issueModel.updateErrorsList()
   }
 
   override fun dispose() {
+    listenerRemovalDisposable = null
     issueModel.removeAllIssueProviders()
   }
 }

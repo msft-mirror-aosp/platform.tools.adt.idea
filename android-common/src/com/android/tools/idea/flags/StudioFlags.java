@@ -927,6 +927,10 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "settings.picker", "Show settings picker",
     "Enables the settings picker to be shown for testing an application",
     true);
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS = new BooleanFlag(
+    EMBEDDED_EMULATOR, "ui.settings.debug.layout", "Show Debug Layout in UI settings",
+    "Enables Debug Layout in UI settings to display layout bounds",
+    false);
   //endregion
 
   //region Device Mirroring
@@ -1282,6 +1286,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_BYTECODE_ANALYSIS = new BooleanFlag(
+    COMPOSE, "deploy.live.edit.deploy.bytecode.analysis",
+    "LiveEdit: Determine which group IDs to invalidate using bytecode analysisr.",
+    "If enabled, compiler output in LE will be analyzed with ASM during the group selection step",
+    true
+  );
+
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS = new BooleanFlag(
     COMPOSE, "deploy.live.edit.deploy.confined.analysis",
     "LiveEdit: Limit compilation error analysis to only the current file",
@@ -1453,7 +1464,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> GLANCE_APP_WIDGET_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "glance.preview.appwidget.enabled", "Enable Glance AppWidget preview",
     "If enabled, a preview for annotated glance app widget composable functions is displayed",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Boolean> WEAR_TILE_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
@@ -1757,15 +1768,6 @@ public final class StudioFlags {
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.web.checks", "App Links Assistant web checks",
                 "Web checks (i.e. domain-side validation) for the App Links Assistant", true);
   // endregion App Links Assistant
-
-  // region GOOGLE_PLAY_SDK_INDEX
-  private static final FlagGroup GOOGLE_PLAY_SDK_INDEX = new FlagGroup(FLAGS, "google.play.sdk.index", "Google Play SDK Index");
-  public static final Flag<Boolean> SHOW_SDK_INDEX_POLICY_ISSUES = new BooleanFlag(
-    GOOGLE_PLAY_SDK_INDEX, "show.sdk.policy.issues", "Show SDK Index policy issues",
-    "Whether or not SDK Index policy issues should be shown",
-    true
-  );
-  // endregion GOOGLE_PLAY_SDK_INDEX
 
   // region NEW_COLLECT_LOGS_DIALOG
   private static final FlagGroup NEW_COLLECT_LOGS_DIALOG = new FlagGroup(FLAGS, "new.collect.logs", "New Collect Logs Dialog");

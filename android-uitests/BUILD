@@ -256,6 +256,7 @@ maven_repository(
         "@maven//:androidx.wear.tiles.tiles-material_1.2.0-alpha05",
         "@maven//:androidx.wear.tiles.tiles_1.2.0-alpha05",
         "@maven//:androidx.wear.watchface.watchface-complications-data-source-ktx_1.1.1",
+        "@maven//:androidx.wear.wear-tooling-preview_1.0.0",
         "@maven//:androidx.wear.wear_1.2.0",
         "@maven//:com.android.application.com.android.application.gradle.plugin_7.2.0",
         "@maven//:com.android.application.com.android.application.gradle.plugin_7.4.1",
@@ -666,6 +667,19 @@ java_test(
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.NewActivityTest"],
     tags = COMMON_TAGS + ["manual"],  # b/74910563
+    test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
+    runtime_deps = [":intellij.android.guiTests_testlib"],
+)
+
+java_test(
+    name = "DeviceConfigurationDialogTest",
+    size = "large",
+    data = COMMON_DATA,
+    jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.avdmanager.DeviceConfigurationDialogTest"],
+    tags = COMMON_TAGS + [
+        "no_windows",
+        "qa_smoke",
+    ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
 )

@@ -20,15 +20,12 @@ import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.run.profiler.AbstractProfilerExecutorGroup
 import com.android.tools.idea.run.profiler.ProfilingMode
 import com.android.tools.idea.util.CommonAndroidUtil
-import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxStrings.PROFILE_WITH_COMPLETE_DATA_ACTION_NAME
-import com.android.tools.profilers.taskbased.common.constants.TaskBasedUxStrings.PROFILE_WITH_LOW_OVERHEAD_ACTION_NAME
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.PROFILE_WITH_COMPLETE_DATA_ACTION_NAME
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.PROFILE_WITH_LOW_OVERHEAD_ACTION_NAME
 import com.intellij.execution.Executor
 import com.intellij.execution.ExecutorRegistry
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.actionSystem.ActionGroup
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowId
 import icons.StudioIcons
@@ -67,7 +64,10 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
 
     override val startActionText = "Profile"
     override fun canRun(profile: RunProfile) = true
-    override fun isApplicable(project: Project) = true
+    override fun isApplicable(project: Project): Boolean {
+      val isProfilingModeSupported = project.getProjectSystem().supportsProfilingMode() == true
+      return isProfilingModeSupported && StudioFlags.PROFILEABLE_BUILDS.get()
+    }
     override fun getStartActionText(configurationName: String) = if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
       when (profilingMode) {
         ProfilingMode.PROFILEABLE -> "Profiler: Run '$configurationName' as profileable (low overhead)"
@@ -81,21 +81,6 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
         ProfilingMode.DEBUGGABLE -> "Profile '$configurationName' with complete data (debuggable)"
         else -> "Profile '$configurationName'"
       }
-    }
-  }
-
-  private class GroupWrapper(actionGroup: ActionGroup) : ExecutorGroupWrapper(actionGroup) {
-    /**
-     * @return true if the Profileable Builds feature flag is true and the project's build system supports profiling mode (e.g. Gradle).
-     */
-    override fun groupShouldBeVisible(e: AnActionEvent): Boolean {
-      val isProfilingModeSupported = e.project?.getProjectSystem()?.supportsProfilingMode() ?: false
-      return isProfilingModeSupported && StudioFlags.PROFILEABLE_BUILDS.get()
-    }
-
-    override fun updateDisabledActionPresentation(eventPresentation: Presentation) {
-      eventPresentation.icon = PROFILEABLE_ICON
-      eventPresentation.text = "Profile"
     }
   }
 
@@ -140,8 +125,6 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
    * method.
    */
   override fun getToolWindowId(): String = ToolWindowId.RUN
-
-  override fun createExecutorGroupWrapper(actionGroup: ActionGroup): ExecutorGroupWrapper = GroupWrapper(actionGroup)
 
   /**
    * Returns the child executor for the given profiling mode.

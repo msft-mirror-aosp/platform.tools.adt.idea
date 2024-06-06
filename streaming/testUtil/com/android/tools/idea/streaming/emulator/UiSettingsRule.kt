@@ -45,8 +45,8 @@ const val APPLICATION_ID2 = "com.example.test.app2"
  * Supplies fakes for UI settings tests
  */
 class UiSettingsRule : ExternalResource() {
-  private val appLanguageServices = AppLanguageService { _, applicationId ->
-    when (applicationId) {
+  private val appLanguageServices = AppLanguageService { context ->
+    when (context.applicationId) {
       APPLICATION_ID1 -> AppLanguageInfo(APPLICATION_ID1, setOf(LocaleQualifier("da"), LocaleQualifier("ru")))
       APPLICATION_ID2 -> AppLanguageInfo(APPLICATION_ID2, setOf(LocaleQualifier("es")))
       else -> null
@@ -92,6 +92,7 @@ class UiSettingsRule : ExternalResource() {
     fontScale: Int = DEFAULT_FONT_SCALE,
     physicalDensity: Int = DEFAULT_DENSITY,
     overrideDensity: Int = DEFAULT_DENSITY,
+    debugLayout: Boolean = false,
     deviceSelector: DeviceSelector = emulatorDeviceSelector
   ) {
     val overrideLine = if (physicalDensity != overrideDensity) "\n      Override density: $overrideDensity" else ""
@@ -111,6 +112,8 @@ class UiSettingsRule : ExternalResource() {
       ${(fontScale.toFloat() / 100f)}
       -- Density --
       Physical density: $physicalDensity$overrideLine
+      -- Debug Layout --
+      $debugLayout
       -- Foreground Application --
         mFocusedApp=ActivityRecord{64d5519 u0 $applicationId/com.example.test.MainActivity t8}
     """.trimIndent().replace("\n\n", "\n") // trim spaces and remove all empty lines

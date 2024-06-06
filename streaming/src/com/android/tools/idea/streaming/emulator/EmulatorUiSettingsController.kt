@@ -21,6 +21,8 @@ import com.android.adblib.shellAsLines
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.projectsystem.ApplicationProjectContextProvider.RunningApplicationIdentity
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.res.AppLanguageService
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.android.tools.idea.streaming.uisettings.data.AppLanguage
@@ -48,6 +50,7 @@ private const val ACCESSIBILITY_SERVICES_DIVIDER = "-- Accessibility Services --
 private const val ACCESSIBILITY_BUTTON_TARGETS_DIVIDER = "-- Accessibility Button Targets --"
 private const val FONT_SCALE_DIVIDER = "-- Font Scale --"
 private const val DENSITY_DIVIDER = "-- Density --"
+private const val DEBUG_LAYOUT_DIVIDER = "-- Debug Layout --"
 private const val FOREGROUND_APPLICATION_DIVIDER = "-- Foreground Application --"
 private const val APP_LANGUAGE_DIVIDER = "-- App Language --"
 
@@ -65,6 +68,8 @@ private const val OVERRIDE_DENSITY_PATTERN = "Override density: (\\d+)"
 private const val FOREGROUND_APPLICATION_PATTERN = "mFocusedApp=ActivityRecord.* .* (\\S*)/\\S* "
 private const val APP_LANGUAGE_PATTERN = "Locales for (.+) for user \\d+ are \\[(.*)]"
 
+private const val SYSPROPS_TRANSACTION = 1599295570 // from frameworks/base/core/java/android/os/IBinder.java
+
 internal const val POPULATE_COMMAND =
   "echo $DARK_MODE_DIVIDER; " +
   "cmd uimode night; " +
@@ -80,6 +85,8 @@ internal const val POPULATE_COMMAND =
   "settings get system font_scale; " +
   "echo $DENSITY_DIVIDER; " +
   "wm density; " +
+  "echo $DEBUG_LAYOUT_DIVIDER; " +
+  "getprop debug.layout; " +
   "echo $FOREGROUND_APPLICATION_DIVIDER; " +
   "dumpsys activity activities | grep mFocusedApp=ActivityRecord; "
 
@@ -101,7 +108,11 @@ internal const val FACTORY_RESET_COMMAND =
   "settings delete secure $ENABLED_ACCESSIBILITY_SERVICES; " +
   "settings delete secure $ACCESSIBILITY_BUTTON_TARGETS; " +
   "settings put system font_scale 1; " +
-  "wm density %d; "  // Parameters: applicationId, density
+  "wm density %d; " // Parameters: applicationId, density
+
+internal const val FACTORY_RESET_DEBUG_LAYOUT =
+    "setprop debug.layout false; " +
+    "service call activity $SYSPROPS_TRANSACTION"
 
 private fun EmulatorConfiguration.toDeviceInfo(serialNumber: String): DeviceInfo {
   return DeviceInfo.newBuilder()
@@ -123,7 +134,7 @@ internal class EmulatorUiSettingsController(
   parentDisposable: Disposable,
 ) : UiSettingsController(model, UiSettingsStats(emulatorConfig.toDeviceInfo(deviceSerialNumber))) {
   private val scope = AndroidCoroutineScope(parentDisposable)
-  private val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.US))
+  private val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols.getInstance(Locale.ROOT))
   private var readApplicationId = ""
   private var readPhysicalDensity = 160
   private val hasLimitedUiSettingsSupportForDevice = emulatorConfig.deviceType.hasLimitedUiSettingsSupport
@@ -134,6 +145,7 @@ internal class EmulatorUiSettingsController(
   private var lastSelectToSpeak = false
   private var lastFontScale = FontScale.NORMAL.percent
   private var lastDensity = readPhysicalDensity
+  private var lastDebugLayout = false
 
   override suspend fun populateModel() {
     val context = CommandContext()
@@ -156,12 +168,13 @@ internal class EmulatorUiSettingsController(
     while (iterator.hasNext()) {
       when (iterator.next()) {
         DARK_MODE_DIVIDER -> processDarkMode(iterator)
-        GESTURES_DIVIDER -> processGestureNavigation(iterator)
-        LIST_PACKAGES_DIVIDER -> processListPackages(iterator)
-        ACCESSIBILITY_SERVICES_DIVIDER -> processAccessibilityServices(iterator, context.enabled)
-        ACCESSIBILITY_BUTTON_TARGETS_DIVIDER -> processAccessibilityServices(iterator, context.buttons)
         FONT_SCALE_DIVIDER -> processFontScale(iterator)
         DENSITY_DIVIDER -> processScreenDensity(iterator)
+        ACCESSIBILITY_SERVICES_DIVIDER -> processAccessibilityServices(iterator, context.enabled)
+        ACCESSIBILITY_BUTTON_TARGETS_DIVIDER -> processAccessibilityServices(iterator, context.buttons)
+        GESTURES_DIVIDER -> processGestureNavigation(iterator)
+        DEBUG_LAYOUT_DIVIDER -> processDebugLayout(iterator)
+        LIST_PACKAGES_DIVIDER -> processListPackages(iterator)
         FOREGROUND_APPLICATION_DIVIDER -> processForegroundApplication(iterator, context)
         APP_LANGUAGE_DIVIDER -> processAppLanguage(iterator)
       }
@@ -172,6 +185,24 @@ internal class EmulatorUiSettingsController(
     val isInDarkMode = iterator.hasNext() && iterator.next() == "Night mode: yes"
     model.inDarkMode.setFromController(isInDarkMode)
     lastDarkMode = isInDarkMode
+  }
+
+  private fun processFontScale(iterator: ListIterator<String>) {
+    val fontScale = (if (iterator.hasNext()) iterator.next() else "1.0").toFloatOrNull() ?: 1f
+    model.fontScaleInPercent.setFromController((fontScale * 100f + 0.5f).toInt())
+    lastFontScale = model.fontScaleInPercent.value
+  }
+
+  private fun processScreenDensity(iterator: ListIterator<String>) {
+    val physicalDensity = readDensity(iterator, PHYSICAL_DENSITY_PATTERN) ?: 160
+    val overrideDensity = readDensity(iterator, OVERRIDE_DENSITY_PATTERN) ?: physicalDensity
+    model.screenDensity.setFromController(overrideDensity)
+    readPhysicalDensity = physicalDensity
+    lastDensity = overrideDensity
+  }
+
+  private fun processAccessibilityServices(iterator: ListIterator<String>, data: AccessibilityData) {
+    data.servicesLine = if (iterator.hasNext()) iterator.next() else "null"
   }
 
   private fun processGestureNavigation(iterator: ListIterator<String>) {
@@ -192,6 +223,21 @@ internal class EmulatorUiSettingsController(
     lastGestureNavigation = gestureNavigation
   }
 
+  private fun processDebugLayout(iterator: ListIterator<String>) {
+    var isDebuggingLayout = false
+    if (iterator.hasNext()) {
+      val line = iterator.next()
+      if (line.startsWith(DIVIDER_PREFIX)) {
+        iterator.previous()
+      }
+      else {
+        isDebuggingLayout = line == "true"
+      }
+    }
+    model.debugLayout.setFromController(isDebuggingLayout)
+    lastDebugLayout = isDebuggingLayout
+  }
+
   private fun processListPackages(iterator: ListIterator<String>) {
     var talkBackInstalled = false
     val talkBackServiceLine = "package:$TALKBACK_PACKAGE_NAME"
@@ -206,20 +252,6 @@ internal class EmulatorUiSettingsController(
     model.talkBackInstalled.setFromController(talkBackInstalled)
   }
 
-  private fun processFontScale(iterator: ListIterator<String>) {
-    val fontScale = (if (iterator.hasNext()) iterator.next() else "1.0").toFloatOrNull() ?: 1f
-    model.fontScaleInPercent.setFromController((fontScale * 100f + 0.5f).toInt())
-    lastFontScale = model.fontScaleInPercent.value
-  }
-
-  private fun processScreenDensity(iterator: ListIterator<String>) {
-    val physicalDensity = readDensity(iterator, PHYSICAL_DENSITY_PATTERN) ?: 160
-    val overrideDensity = readDensity(iterator, OVERRIDE_DENSITY_PATTERN) ?: physicalDensity
-    model.screenDensity.setFromController(overrideDensity)
-    readPhysicalDensity = physicalDensity
-    lastDensity = overrideDensity
-  }
-
   private fun processAppLanguage(iterator: ListIterator<String>) {
     val appLanguageLine = (if (iterator.hasNext()) iterator.next() else "")
     if (appLanguageLine.startsWith(DIVIDER_PREFIX)) {
@@ -229,9 +261,12 @@ internal class EmulatorUiSettingsController(
     val match = Regex(APP_LANGUAGE_PATTERN).find(appLanguageLine) ?: return
     val applicationId = match.groupValues[1]
     val localeTag = match.groupValues[2].split(",").firstOrNull().takeIf { it != "null" } ?: ""
-    AppLanguageService.getInstance(project).getAppLanguageInfo(deviceSerialNumber, applicationId)?.let {
+    AppLanguageService.getInstance(project).getAppLanguageInfo(
+      RunningApplicationIdentity(applicationId = applicationId, processName = null))?.let {
       addLanguage(applicationId, it.localeConfig, localeTag)
     }
+
+
     readApplicationId = applicationId
     lastLocaleTag = localeTag
   }
@@ -259,10 +294,6 @@ internal class EmulatorUiSettingsController(
     return match.groupValues[1].toIntOrNull()
   }
 
-  private fun processAccessibilityServices(iterator: ListIterator<String>, data: AccessibilityData) {
-    data.servicesLine = if (iterator.hasNext()) iterator.next() else "null"
-  }
-
   private fun processAccessibility(enabled: AccessibilityData, buttonTarget: AccessibilityData) {
     model.talkBackOn.setFromController(enabled.services.contains(TALK_BACK_SERVICE_NAME))
     model.selectToSpeakOn.setFromController(enabled.services.contains(SELECT_TO_SPEAK_SERVICE_NAME) &&
@@ -278,20 +309,16 @@ internal class EmulatorUiSettingsController(
     updateResetButton()
   }
 
-  override fun setGestureNavigation(on: Boolean) {
-    val operation = if (on) "enable" else "disable"
-    val opposite = if (!on) "enable" else "disable"
-    scope.launch { executeShellCommand("cmd overlay $operation $GESTURES_OVERLAY; cmd overlay $opposite $THREE_BUTTON_OVERLAY") }
-    lastGestureNavigation = on
+  override fun setFontScale(percent: Int) {
+    scope.launch { executeShellCommand("settings put system font_scale ${decimalFormat.format(percent / 100.0)}") }
+    lastFontScale = percent
     updateResetButton()
   }
 
-  override fun setAppLanguage(applicationId: String, language: AppLanguage?) {
-    if (applicationId.isNotEmpty()) {
-      scope.launch { executeShellCommand("cmd locale set-app-locales %s --locales %s".format(applicationId, language?.tag)) }
-      lastLocaleTag = language?.tag ?: ""
-      updateResetButton()
-    }
+  override fun setScreenDensity(density: Int) {
+    scope.launch { executeShellCommand("wm density $density") }
+    lastDensity = density
+    updateResetButton()
   }
 
   override fun setTalkBack(on: Boolean) {
@@ -309,26 +336,40 @@ internal class EmulatorUiSettingsController(
     updateResetButton()
   }
 
-  override fun setFontScale(percent: Int) {
-    scope.launch { executeShellCommand("settings put system font_scale %s".format(decimalFormat.format(percent.toFloat() / 100f))) }
-    lastFontScale = percent
+  override fun setGestureNavigation(on: Boolean) {
+    val operation = if (on) "enable" else "disable"
+    val opposite = if (!on) "enable" else "disable"
+    scope.launch { executeShellCommand("cmd overlay $operation $GESTURES_OVERLAY; cmd overlay $opposite $THREE_BUTTON_OVERLAY") }
+    lastGestureNavigation = on
     updateResetButton()
   }
 
-  override fun setScreenDensity(density: Int) {
-    scope.launch { executeShellCommand("wm density %d".format(density)) }
-    lastDensity = density
+  override fun setDebugLayout(on: Boolean) {
+    scope.launch { executeShellCommand("setprop debug.layout $on; service call activity $SYSPROPS_TRANSACTION") }
+    lastDebugLayout = on
     updateResetButton()
+  }
+
+  override fun setAppLanguage(applicationId: String, language: AppLanguage?) {
+    if (applicationId.isNotEmpty()) {
+      scope.launch { executeShellCommand("cmd locale set-app-locales $applicationId --locales ${language?.tag.orEmpty()}") }
+      lastLocaleTag = language?.tag ?: ""
+      updateResetButton()
+    }
   }
 
   override fun reset() {
     scope.launch {
-      if (hasLimitedUiSettingsSupportForDevice) {
-        executeShellCommand(FACTORY_RESET_COMMAND_FOR_LIMITED_DEVICE.format(readApplicationId))
+      var command = if (hasLimitedUiSettingsSupportForDevice) {
+        FACTORY_RESET_COMMAND_FOR_LIMITED_DEVICE.format(readApplicationId)
       }
       else {
-        executeShellCommand(FACTORY_RESET_COMMAND.format(readApplicationId, readPhysicalDensity))
+        FACTORY_RESET_COMMAND.format(readApplicationId, readPhysicalDensity)
       }
+      if (StudioFlags.EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS.get()) {
+        command += FACTORY_RESET_DEBUG_LAYOUT
+      }
+      executeShellCommand(command)
       populateModel()
     }
   }
@@ -341,6 +382,9 @@ internal class EmulatorUiSettingsController(
         lastGestureNavigation &&
         !lastSelectToSpeak &&
         lastDensity == readPhysicalDensity
+    }
+    if (StudioFlags.EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS.get()) {
+      isDefault = isDefault && !lastDebugLayout
     }
     model.differentFromDefault.setFromController(!isDefault)
   }

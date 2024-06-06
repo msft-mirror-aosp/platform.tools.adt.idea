@@ -21,34 +21,17 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.gradle.CaptureType
 import com.android.tools.idea.gradle.project.sync.gradle.MeasurementPluginConfig
 import com.android.tools.idea.gradle.project.sync.mutateGradleProperties
-import com.android.tools.perflogger.Analyzer
 import com.android.tools.perflogger.Metric
-import com.android.tools.perflogger.WindowDeviationAnalyzer
+import com.android.tools.perflogger.EDivisiveAnalyzer
 import com.google.common.truth.Truth
 import org.junit.rules.ExternalResource
 import java.io.File
 import java.nio.file.Files
 
-private val ANALYZER = listOf(
-  WindowDeviationAnalyzer.Builder()
-    // mean, median, min  in this case is all same, since we only have single measurement per type.
-    .setMetricAggregate(Analyzer.MetricAggregate.MEDIAN)
-    // This means, out of last 50 runs, only consider 1 "recent", which means the rest is "historic".
-    // It's fine to consider only 1 run as recent here because the measurements are quite stable.
-    .setRunInfoQueryLimit(50)
-    .setRecentWindowSize(1)
-    .addMedianTolerance(
-      WindowDeviationAnalyzer.MedianToleranceParams.Builder()
-        .setConstTerm(0.0)
-        .setMadCoeff(0.0)
-        .setMedianCoeff(0.05) // flag 5% regressions
-        .build())
-    .build()
-)
-
+private val ANALYZER = listOf(EDivisiveAnalyzer)
 
 // If `capture_heap` system property is set to `true` the test will also capture the heap alongside
-class CaptureSyncMemoryFromHistogramRule(private val projectName: String) : ExternalResource() {
+class CaptureSyncMemoryFromHistogramRule(private val projectName: String, private val disableAnalyzers: Boolean = false) : ExternalResource() {
   override fun before() {
     StudioFlags.GRADLE_HEAP_ANALYSIS_OUTPUT_DIRECTORY.override(OUTPUT_DIRECTORY)
     StudioFlags.GRADLE_HEAP_ANALYSIS_LIGHTWEIGHT_MODE.override(true)
@@ -103,14 +86,13 @@ class CaptureSyncMemoryFromHistogramRule(private val projectName: String) : Exte
   private fun recordMemoryMeasurement(
     capturedMetricNames: MutableList<String>,
     metricName: String,
-    measurement: TimestampedMeasurement,
-    enableAnalyzer: Boolean = true) {
+    measurement: TimestampedMeasurement) {
     Metric(metricName).apply {
       addSamples(MEMORY_BENCHMARK, Metric.MetricSample(
         measurement.first.toEpochMilliseconds(),
         measurement.second
       ))
-      if (enableAnalyzer) {
+      if (!disableAnalyzers) {
         setAnalyzers(MEMORY_BENCHMARK, ANALYZER)
       }
       commit() // There is only one measurement per type, so we can commit immediately.

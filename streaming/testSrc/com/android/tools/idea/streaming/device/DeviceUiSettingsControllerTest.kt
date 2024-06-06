@@ -59,8 +59,8 @@ class DeviceUiSettingsControllerTest {
   @Before
   fun before() {
     agent.foregroundProcess = APPLICATION_ID1
-    val appLanguageServices = AppLanguageService { _, applicationId ->
-      when (applicationId) {
+    val appLanguageServices = AppLanguageService { context ->
+      when (context.applicationId) {
         APPLICATION_ID1 -> AppLanguageInfo(APPLICATION_ID1, setOf(LocaleQualifier("da"), LocaleQualifier("ru")))
         APPLICATION_ID2 -> AppLanguageInfo(APPLICATION_ID2, setOf(LocaleQualifier("es")))
         else -> null
@@ -90,15 +90,15 @@ class DeviceUiSettingsControllerTest {
   @Test
   fun testReadCustomValue() {
     agent.setOriginalValues()
-    agent.originalValues = false
-    agent.darkMode = true
-    agent.gestureNavigation = false
-    agent.appLocales = "da"
+    agent.currentUiSettings.darkMode = true
+    agent.currentUiSettings.gestureNavigation = false
+    agent.currentUiSettings.appLocales = "da"
     agent.talkBackInstalled = true
-    agent.talkBackOn = true
-    agent.selectToSpeakOn = true
-    agent.fontScale = CUSTOM_FONT_SCALE
-    agent.screenDensity = CUSTOM_DENSITY
+    agent.currentUiSettings.talkBackOn = true
+    agent.currentUiSettings.selectToSpeakOn = true
+    agent.currentUiSettings.fontScale = CUSTOM_FONT_SCALE
+    agent.currentUiSettings.screenDensity = CUSTOM_DENSITY
+    agent.currentUiSettings.debugLayout = true
     controller.initAndWait()
     val listeners = UiControllerListenerValidator(model, customValues = false, settable = false)
     listeners.checkValues(expectedChanges = 1, expectedCustomValues = true, expectedSettable = true)
@@ -107,16 +107,17 @@ class DeviceUiSettingsControllerTest {
 
   @Test
   fun testReadCustomValueWithoutFontScaleAndDensity() {
-    agent.darkMode = true
-    agent.gestureNavigation = false
-    agent.appLocales = "da"
+    agent.currentUiSettings.darkMode = true
+    agent.currentUiSettings.gestureNavigation = false
+    agent.currentUiSettings.appLocales = "da"
     agent.talkBackInstalled = true
-    agent.talkBackOn = true
-    agent.selectToSpeakOn = true
+    agent.currentUiSettings.talkBackOn = true
+    agent.currentUiSettings.selectToSpeakOn = true
     agent.fontScaleSettable = false
-    agent.fontScale = CUSTOM_FONT_SCALE
+    agent.currentUiSettings.fontScale = CUSTOM_FONT_SCALE
     agent.screenDensitySettable = false
-    agent.screenDensity = CUSTOM_DENSITY
+    agent.currentUiSettings.screenDensity = CUSTOM_DENSITY
+    agent.currentUiSettings.debugLayout = true
     agent.setOriginalValues()
     controller.initAndWait()
     val listeners = UiControllerListenerValidator(model, customValues = false, settable = true)
@@ -138,37 +139,37 @@ class DeviceUiSettingsControllerTest {
     agent.setOriginalValues()
     controller.initAndWait()
     model.inDarkMode.setFromUi(true)
-    waitForCondition(10.seconds) { agent.darkMode }
+    waitForCondition(10.seconds) { agent.currentUiSettings.darkMode }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
   }
 
   @Test
   fun testSetNightOff() {
     agent.setOriginalValues()
-    agent.darkMode = true
+    agent.currentUiSettings.darkMode = true
     controller.initAndWait()
     model.inDarkMode.setFromUi(false)
-    waitForCondition(10.seconds) { !agent.darkMode }
+    waitForCondition(10.seconds) { !agent.currentUiSettings.darkMode }
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
   @Test
   fun testGestureNavigationOn() {
-    agent.gestureNavigation = false
+    agent.currentUiSettings.gestureNavigation = false
     agent.setOriginalValues()
     controller.initAndWait()
     model.gestureNavigation.setFromUi(true)
-    waitForCondition(10.seconds) { agent.gestureNavigation }
+    waitForCondition(10.seconds) { agent.currentUiSettings.gestureNavigation }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
   }
 
   @Test
   fun testGestureNavigationOff() {
-    agent.gestureNavigation = true
+    agent.currentUiSettings.gestureNavigation = true
     agent.setOriginalValues()
     controller.initAndWait()
     model.gestureNavigation.setFromUi(false)
-    waitForCondition(10.seconds) { !agent.gestureNavigation }
+    waitForCondition(10.seconds) { !agent.currentUiSettings.gestureNavigation }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
   }
 
@@ -178,10 +179,10 @@ class DeviceUiSettingsControllerTest {
     controller.initAndWait()
     val appLanguage = model.appLanguage
     appLanguage.selection.setFromUi(appLanguage.getElementAt(1))
-    waitForCondition(10.seconds) { agent.appLocales == "da"}
+    waitForCondition(10.seconds) { agent.currentUiSettings.appLocales == "da"}
     waitForCondition(10.seconds) { model.differentFromDefault.value }
     appLanguage.selection.setFromUi(appLanguage.getElementAt(0))
-    waitForCondition(10.seconds) { agent.appLocales == ""}
+    waitForCondition(10.seconds) { agent.currentUiSettings.appLocales == ""}
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
@@ -191,7 +192,7 @@ class DeviceUiSettingsControllerTest {
     agent.setOriginalValues()
     controller.initAndWait()
     model.talkBackOn.setFromUi(true)
-    waitForCondition(10.seconds) { agent.talkBackOn }
+    waitForCondition(10.seconds) { agent.currentUiSettings.talkBackOn }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
   }
 
@@ -199,10 +200,10 @@ class DeviceUiSettingsControllerTest {
   fun testSetTalkBackOff() {
     agent.setOriginalValues()
     agent.talkBackInstalled = true
-    agent.talkBackOn = true
+    agent.currentUiSettings.talkBackOn = true
     controller.initAndWait()
     model.talkBackOn.setFromUi(false)
-    waitForCondition(10.seconds) { !agent.talkBackOn }
+    waitForCondition(10.seconds) { !agent.currentUiSettings.talkBackOn }
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
@@ -212,7 +213,7 @@ class DeviceUiSettingsControllerTest {
     agent.talkBackInstalled = true
     controller.initAndWait()
     model.selectToSpeakOn.setFromUi(true)
-    waitForCondition(10.seconds) { agent.selectToSpeakOn }
+    waitForCondition(10.seconds) { agent.currentUiSettings.selectToSpeakOn }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
   }
 
@@ -220,10 +221,10 @@ class DeviceUiSettingsControllerTest {
   fun testSetSelectToSpeakOff() {
     agent.setOriginalValues()
     agent.talkBackInstalled = true
-    agent.selectToSpeakOn = true
+    agent.currentUiSettings.selectToSpeakOn = true
     controller.initAndWait()
     model.selectToSpeakOn.setFromUi(false)
-    waitForCondition(10.seconds) { !agent.selectToSpeakOn }
+    waitForCondition(10.seconds) { !agent.currentUiSettings.selectToSpeakOn }
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
@@ -232,13 +233,13 @@ class DeviceUiSettingsControllerTest {
     agent.setOriginalValues()
     controller.initAndWait()
     model.fontScaleIndex.setFromUi(0)
-    waitForCondition(10.seconds) { agent.fontScale == 85 }
+    waitForCondition(10.seconds) { agent.currentUiSettings.fontScale == 85 }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
     model.fontScaleIndex.setFromUi(1)
-    waitForCondition(10.seconds) { agent.fontScale == 100 }
+    waitForCondition(10.seconds) { agent.currentUiSettings.fontScale == 100 }
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
     model.fontScaleIndex.setFromUi(3)
-    waitForCondition(10.seconds) { agent.fontScale == FontScale.LARGE_130.percent }
+    waitForCondition(10.seconds) { agent.currentUiSettings.fontScale == FontScale.LARGE_130.percent }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
   }
 
@@ -247,21 +248,33 @@ class DeviceUiSettingsControllerTest {
     agent.setOriginalValues()
     controller.initAndWait()
     model.screenDensityIndex.setFromUi(0)
-    waitForCondition(10.seconds) { agent.screenDensity == 408 }
+    waitForCondition(10.seconds) { agent.currentUiSettings.screenDensity == 408 }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
     model.screenDensityIndex.setFromUi(1)
-    waitForCondition(10.seconds) { agent.screenDensity == 480 }
+    waitForCondition(10.seconds) { agent.currentUiSettings.screenDensity == 480 }
     waitForCondition(10.seconds) { !model.differentFromDefault.value }
     model.screenDensityIndex.setFromUi(model.screenDensityMaxIndex.value)
-    waitForCondition(10.seconds) { agent.screenDensity == 672 }
+    waitForCondition(10.seconds) { agent.currentUiSettings.screenDensity == 672 }
     waitForCondition(10.seconds) { model.differentFromDefault.value }
+  }
+
+  @Test
+  fun testSetDebugLayout() {
+    agent.setOriginalValues()
+    controller.initAndWait()
+    model.debugLayout.setFromUi(true)
+    waitForCondition(10.seconds) { agent.currentUiSettings.debugLayout }
+    waitForCondition(10.seconds) { model.differentFromDefault.value }
+    model.debugLayout.setFromUi(false)
+    waitForCondition(10.seconds) { !agent.currentUiSettings.debugLayout }
+    waitForCondition(10.seconds) { !model.differentFromDefault.value }
   }
 
   private fun createUiSettingsController(): DeviceUiSettingsController {
     val view = createDeviceView(device)
     view.setBounds(0, 0, 600, 800)
     waitForCondition(10.seconds) { view.isConnected }
-    return DeviceUiSettingsController(view.deviceController!!, device.serialNumber, view.deviceClient.deviceConfig, project, model, view)
+    return DeviceUiSettingsController(view.deviceController!!, view.deviceClient.deviceConfig, project, model, view)
   }
 
   private fun createDeviceView(device: FakeDevice): DeviceView {
