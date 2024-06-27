@@ -97,6 +97,12 @@ public final class StudioFlags {
     "Show a combobox to select the version of Android Gradle plugin used for the new project",
     IdeaIsInternalDefault.INSTANCE);
 
+  public static final Flag<Boolean> NPW_INCLUDE_ALL_COMPATIBLE_ANDROID_GRADLE_PLUGIN_VERSIONS = new BooleanFlag(
+    NPW, "show.agp.version.combobox.all.versions", "List all previous versions of AGP",
+    "List all versions of AGP in the new project wizard combo box. " +
+    "When disabled the combo box will only the two newest stable major-minor series of AGP versions.",
+    ChannelDefault.enabledUpTo(DEV));
+
   public static final Flag<Boolean> NPW_NEW_NATIVE_MODULE = new BooleanFlag(
     NPW, "new.native.module", "New Android Native Module",
     "Show template to create a new Android Native module in the new module wizard.",
@@ -457,7 +463,7 @@ public final class StudioFlags {
     "Use adblib to track devices (IDevice)",
     "Use adblib instead of ddmlib to track and implement `IDevice` instances. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_USAGE_TRACKER = new BooleanFlag(
     RUNDEBUG,
@@ -673,6 +679,11 @@ public final class StudioFlags {
     false
   );
 
+  public static final Flag<Boolean> INCLUDE_ANDROIDX_DEV_ANDROID_GRADLE_PLUGIN_SNAPSHOTS = new BooleanFlag(
+    GRADLE_IDE, "agp.snapshot.repo", "Enable AGP snapshot repository",
+    "Also consults the androidx.dev snapshot repository for available versions of AGP.",
+    ChannelDefault.enabledUpTo(DEV));
+
   public static final Flag<Boolean> USE_DEVELOPMENT_OFFLINE_REPOS = new BooleanFlag(
     GRADLE_IDE, "development.offline.repos", "Enable development offline repositories",
     "Uses the development offline repositories " +
@@ -801,6 +812,26 @@ public final class StudioFlags {
     " instead obtain the information from the applications dependency graph.",
     true
   );
+
+  public static final Flag<Boolean> GRADLE_BUILD_RUNTIME_CLASSPATH_FOR_LIBRARY_UNIT_TESTS = new BooleanFlag(
+    GRADLE_IDE,
+    "gradle.build.runtime.classpath.for.library.unit.tests",
+    "Controls whether runtime classpath is fetched for library unit tests",
+    "Controls whether runtime classpath is fetched for library unit tests. " +
+    "Requires gradle.ide.gradle.skip.runtime.classpath.for.libraries to be on to take effect",
+    true
+  );
+
+  public static final Flag<Boolean> GRADLE_BUILD_RUNTIME_CLASSPATH_FOR_LIBRARY_SCREENSHOT_TESTS = new BooleanFlag(
+    GRADLE_IDE,
+    "gradle.build.runtime.classpath.for.library.screenshot.tests",
+    "Controls whether runtime classpath is fetched for library screenshot tests",
+    "Controls whether runtime classpath is fetched for library screenshot tests. " +
+    "Requires gradle.ide.gradle.skip.runtime.classpath.for.libraries to be on to take effect",
+    true
+  );
+
+
   public static final Flag<String> GRADLE_LOCAL_DISTRIBUTION_URL = new StringFlag(
     GRADLE_IDE, "local.distribution.url", "Local override for distributionUrl",
     "When creating a project, Gradle updates the distributionUrl to point to a server accessible via the internet. When internet egress " +
@@ -951,7 +982,11 @@ public final class StudioFlags {
     true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS = new BooleanFlag(
     EMBEDDED_EMULATOR, "ui.settings.debug.layout", "Show Debug Layout in UI settings",
-    "Enables Debug Layout in UI settings to display layout bounds",
+    "Enables Debug Layout in Device UI Shortcuts to display layout bounds",
+    false);
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_GESTURE_NAVIGATION_IN_UI_SETTINGS = new BooleanFlag(
+    EMBEDDED_EMULATOR, "ui.settings.gesture.navigation", "Show Gesture Navigation in Device UI Shortcuts",
+    "Enables Gesture Navigation setting in Device UI Shortcuts",
     false);
   //endregion
 
@@ -1297,7 +1332,7 @@ public final class StudioFlags {
     COMPOSE, "deploy.live.edit.deploy.enable.default",
     "Enable live edit by default",
     "If enabled, live edit will be enabled by default",
-    ChannelDefault.enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ADVANCED_SETTINGS_MENU = new BooleanFlag(
@@ -2079,6 +2114,18 @@ public final class StudioFlags {
                     "When enabled, deprecation messages will show when using functionality from the bundled cloud plugin.", false);
 
   // endregion Cloud Integration
+
+  // region Backup
+  private static final FlagGroup BACKUP =
+    new FlagGroup(FLAGS, "backup", "Backup");
+  public static final Flag<Boolean> BACKUP_SHOW_ACTIONS_IN_DEVICE_EXPLORER =
+    new BooleanFlag(
+      BACKUP,
+      "enabled",
+      "Show backup & restore actions in Device Explorer",
+      "Show backup & restore actions in Device Explorer",
+      false);
+  // endregion Backup
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.

@@ -16,6 +16,7 @@
 package com.android.tools.screensharing;
 
 import static android.os.Build.VERSION.SDK_INT;
+import static com.android.tools.screensharing.Main.ATTRIBUTION_TAG;
 
 import android.content.ClipData;
 import android.os.PersistableBundle;
@@ -30,7 +31,6 @@ import java.lang.reflect.Method;
 @SuppressWarnings("unused") // Called through JNI.
 public class ClipboardAdapter {
   private static final String PACKAGE_NAME = "com.android.shell";
-  private static final String ATTRIBUTION_TAG = "studio.screen.sharing";
   private static final int USER_ID = 0;
   private static final int DEVICE_ID_DEFAULT = 0; // From android.companion.virtual.VirtualDeviceManager
 
@@ -195,6 +195,16 @@ public class ClipboardAdapter {
 
   private static boolean checkNumberOfParameters(Method method, int minParam, int maxParam) {
     int parameterCount = method.getParameterCount();
+    if (minParam <= parameterCount && parameterCount <= maxParam) {
+      return true;
+    }
+
+    Log.e(ATTRIBUTION_TAG, "Unexpected number of IClipboard." + method.getName() + " parameters: " + parameterCount +
+                           " types: " + getParameterTypesString(method));
+    return false;
+  }
+
+  private static String getParameterTypesString(Method method) {
     Class<?>[] parameterTypes = method.getParameterTypes();
     StringBuilder types = new StringBuilder();
     for (Class<?> parameterType : parameterTypes) {
@@ -203,13 +213,6 @@ public class ClipboardAdapter {
       }
       types.append(parameterType.getName());
     }
-    if (minParam <= parameterCount && parameterCount <= maxParam) {
-      Log.d(ATTRIBUTION_TAG, "ClipboardAdapter: IClipboard." + method.getName() + '(' + types + ')');
-      return true;
-    }
-
-    Log.e(ATTRIBUTION_TAG, "Unexpected number of IClipboard." + method.getName() + " parameters: " + parameterCount +
-                           " types: " + types);
-    return false;
+    return types.toString();
   }
 }

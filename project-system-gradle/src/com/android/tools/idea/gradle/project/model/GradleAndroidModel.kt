@@ -43,7 +43,6 @@ import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.model.TestExecutionOption
 import com.android.tools.idea.model.TestOptions
-import com.android.tools.idea.projectsystem.CommonTestType
 import com.android.tools.idea.projectsystem.TestComponentType
 import com.android.tools.lint.client.api.LintClient.Companion.getGradleDesugaring
 import com.android.tools.lint.detector.api.Desugaring
@@ -52,6 +51,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ImmutableMap
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.pom.java.LanguageLevel
 import com.jetbrains.rd.util.getOrCreate
 import org.jetbrains.android.facet.AndroidFacet
 import java.io.File
@@ -209,6 +209,11 @@ class GradleAndroidModel(
   }
 
   /**
+   * Returns the JVM `targetCompatibility` for the module.
+   */
+  fun getTargetLanguageLevel(): LanguageLevel? = data.getJavaTargetLanguageLevel()
+
+  /**
    * Returns the `minSdkVersion` specified by the user (in the default config or product flavors).
    * This is normally the merged value, but for example when using preview platforms, the Gradle plugin
    * will set minSdkVersion and targetSdkVersion to match the level of the compileSdkVersion; in this case
@@ -264,7 +269,7 @@ class GradleAndroidModel(
   }
 
   override fun getDesugaring(): Set<Desugaring> {
-    return getGradleDesugaring(agpVersion, data.getJavaLanguageLevel(), androidProject.javaCompileOptions.isCoreLibraryDesugaringEnabled)
+    return getGradleDesugaring(agpVersion, data.getJavaSourceLanguageLevel(), androidProject.javaCompileOptions.isCoreLibraryDesugaringEnabled)
   }
 
   override fun getResValues(): Map<String, DynamicResourceValue> {

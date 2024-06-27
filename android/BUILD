@@ -138,6 +138,7 @@ iml_module(
         "//tools/adt/idea/safemode:intellij.android.safemode[module]",
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile[module]",
         "//tools/adt/idea/completion:intellij.android.completion[module]",
+        "//tools/base/backup:studio.android.sdktools.backup[module]",
     ],
 )
 
@@ -238,6 +239,7 @@ iml_module(
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
         "//tools/adt/idea/android-lang:intellij.android.lang[module, test]",
         "//tools/adt/idea/android/lib:instantapps-api",
+        "//tools/adt/idea/android:compose-compiler",
         "//tools/analytics-library/crash:analytics-crash[module, test]",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:emulator-proto",
@@ -685,4 +687,11 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k1[module, test]",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k2[module, test]",
     ],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "compose-compiler",
+    jars = ["//tools/adt/idea/compose-ide-plugin/compose-compiler:compose-compiler.jar"],
+    visibility = ["//visibility:public"],
 )

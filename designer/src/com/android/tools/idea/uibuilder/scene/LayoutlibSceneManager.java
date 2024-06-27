@@ -21,7 +21,6 @@ import static com.android.resources.Density.DEFAULT_DENSITY;
 import static com.android.tools.idea.common.surface.ShapePolicyKt.SQUARE_SHAPE_POLICY;
 import static com.android.tools.idea.rendering.StudioRenderServiceKt.taskBuilder;
 import static com.android.tools.idea.uibuilder.scene.LayoutlibSceneManagerUtilsKt.getTriggerFromChangeType;
-import static com.android.tools.idea.uibuilder.scene.LayoutlibSceneManagerUtilsKt.shouldRefreshInPowerSaveMode;
 import static com.android.tools.idea.uibuilder.scene.LayoutlibSceneManagerUtilsKt.updateTargetProviders;
 import static com.android.tools.rendering.ProblemSeverity.ERROR;
 import static com.intellij.util.ui.update.Update.LOW_PRIORITY;
@@ -93,7 +92,6 @@ import com.google.wireless.android.sdk.stats.LayoutEditorRenderResult;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.util.ProgressIndicatorBase;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.ui.ColorUtil;
@@ -139,7 +137,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   private final ModelChangeListener myModelChangeListener = new ModelChangeListener();
   private final ConfigurationListener myConfigurationChangeListener = new ConfigurationChangeListener();
   private final boolean myAreListenersRegistered;
-  private final DesignSurfaceProgressIndicator myProgressIndicator;
   private final RenderingQueue myRenderingQueue;
   @NotNull
   private RenderAsyncActionExecutor.RenderingTopic myRenderingTopic = RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED;
@@ -298,18 +295,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
                                   @NotNull LayoutScannerConfiguration layoutScannerConfig,
                                   @NotNull Supplier<SessionClock> sessionClockFactory) {
     super(model, designSurface, sceneComponentProvider, sceneUpdateListener);
-    myProgressIndicator = new DesignSurfaceProgressIndicator(new ProgressRegistration() {
-
-      @Override
-      public void unregisterIndicator(@NotNull ProgressIndicatorBase indicator) {
-        designSurface.unregisterIndicator(indicator);
-      }
-
-      @Override
-      public void registerIndicator(@NotNull ProgressIndicatorBase indicator) {
-        designSurface.registerIndicator(indicator);
-      }
-    });
     myRenderTaskDisposerExecutor = renderTaskDisposerExecutor;
     myRenderingQueue = renderingQueueFactory.apply(this);
     mySessionClockFactory = sessionClockFactory;
@@ -463,8 +448,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
         model.removeListener(myModelChangeListener);
       }
       myRenderListeners.clear();
-
-      myProgressIndicator.stop();
     }
     finally {
       super.dispose();
@@ -585,11 +568,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     }
   }
 
-  /**
-   * Records whether this {@link LayoutlibSceneManager} is out of date and needs to be refreshed.
-   */
-  private final AtomicBoolean isOutOfDate = new AtomicBoolean(false);
-
   private class ModelChangeListener implements ModelListener {
     @Override
     public void modelDerivedDataChanged(@NotNull NlModel model) {
@@ -609,12 +587,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
     @Override
     public void modelChanged(@NotNull NlModel model) {
-      if (EssentialsMode.isEnabled() &&
-          !shouldRefreshInPowerSaveMode(model.getLastChangeType())) {
-        isOutOfDate.set(true);
-        return;
-      }
-
       NlDesignSurface surface = getDesignSurface();
       // The structure might have changed, force a re-inflate
       forceReinflate();
@@ -957,7 +929,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       }
     }
 
-    fireOnInflateStart();
     // Record the current version we're rendering from; we'll use that in #activate to make sure we're picking up any
     // external changes
     AndroidFacet facet = getModel().getFacet();
@@ -1040,7 +1011,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
         return result;
       })
       .thenApply(result -> {
-        fireOnInflateComplete();
         return logIfSuccessful(result, null, CommonUsageTracker.RenderResultType.INFLATE);
       })
       .whenCompleteAsync(this::notifyModelUpdateIfSuccessful, AppExecutorUtil.getAppExecutorService());
@@ -1283,7 +1253,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       myRenderFutures.clear();
       myIsCurrentlyRendering = false;
     }
-    isOutOfDate.set(false);
     callbacks.forEach(callback -> callback.complete(null));
     // If there are pending futures, we should trigger the render update
     if (hasPendingRenders()) {
@@ -1347,12 +1316,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     myElapsedFrameTimeMs = ms;
   }
 
-  protected void fireOnInflateStart() {
-    myRenderListeners.forEach(RenderListener::onInflateStarted);
-  }
-  protected void fireOnInflateComplete() {
-    myRenderListeners.forEach(RenderListener::onInflateCompleted);
-  }
   protected void fireOnRenderStart() {
     myRenderListeners.forEach(RenderListener::onRenderStarted);
   }
@@ -1599,11 +1562,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   @Override
   public int getInteractiveEventsCount() {
     return myInteractiveEventsCounter.get();
-  }
-
-  @Override
-  public boolean isOutOfDate() {
-    return isOutOfDate.get();
   }
 
   @TestOnly

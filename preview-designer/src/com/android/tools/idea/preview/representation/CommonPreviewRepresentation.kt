@@ -85,6 +85,8 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepres
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
+import com.android.tools.idea.uibuilder.surface.defaultSceneManagerProvider
 import com.android.tools.idea.util.runWhenSmartAndSyncedOnEdt
 import com.android.tools.preview.PreviewDisplaySettings
 import com.android.tools.preview.PreviewElement
@@ -155,7 +157,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   previewElementModelAdapterDelegate: PreviewElementModelAdapter<T, NlModel>,
   viewConstructor:
     (
-      project: Project, surfaceBuilder: NlDesignSurface.Builder, parentDisposable: Disposable,
+      project: Project, surfaceBuilder: NlSurfaceBuilder, parentDisposable: Disposable,
     ) -> CommonNlDesignSurfacePreviewView,
   viewModelConstructor:
     (
@@ -166,7 +168,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       psiFilePointer: SmartPsiElementPointer<PsiFile>,
       hasRenderErrors: () -> Boolean,
     ) -> CommonPreviewViewModel,
-  configureDesignSurface: NlDesignSurface.Builder.(NavigationHandler) -> Unit,
+  configureDesignSurface: NlSurfaceBuilder.(NavigationHandler) -> Unit,
   renderingTopic: RenderingTopic,
   useCustomInflater: Boolean = true,
   sceneUpdateListener: SceneUpdateListener? = null,
@@ -221,8 +223,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   val previewView = invokeAndWaitIfNeeded {
     viewConstructor(
         project,
-        NlDesignSurface.builder(project, this) { surface, model ->
-            NlDesignSurface.defaultSceneManagerProvider(surface, model, sceneUpdateListener).apply {
+        NlSurfaceBuilder.builder(project, this) { surface, model ->
+            defaultSceneManagerProvider(surface, model, sceneUpdateListener).apply {
               setUseCustomInflater(useCustomInflater)
               setShrinkRendering(true)
               setRenderingTopic(renderingTopic)
@@ -843,7 +845,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
 
   private suspend fun stopAnimationInspector() {
     LOG.debug("Stopping animation inspector mode")
-    currentInspector?.dispose()
+    currentInspector?.let { Disposer.dispose(it) }
     withContext(uiThread) { previewView.bottomPanel = null }
     invalidateAndRefresh()
   }

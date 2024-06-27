@@ -190,6 +190,7 @@ studio_plugin(
             "//tools/adt/idea/dagger:intellij.android.dagger",
             "//tools/adt/idea/databinding:intellij.android.databinding",
             "//tools/adt/idea/app-inspection/inspectors/database:app-inspection.inspectors.database",
+            "//tools/adt/idea/backup:intellij.android.backup",
             "//tools/adt/idea/debuggers:intellij.android.debuggers",
             "//tools/adt/idea/deploy:intellij.android.deploy",
             "//tools/adt/idea/device-explorer:intellij.android.device-explorer",
@@ -303,6 +304,7 @@ studio_plugin(
             "//tools/base/annotations:studio.android.sdktools.android-annotations",
             "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer",
             "//tools/base/apkparser:studio.android.sdktools.binary-resources",
+            "//tools/base/backup:studio.android.sdktools.backup",
             "//tools/base/build-analyzer/common:studio.android.build-analyzer.common",
             "//tools/base/build-system/builder-model:studio.android.sdktools.builder-model",
             "//tools/base/build-system/builder-test-api:studio.android.sdktools.builder-test-api",
@@ -827,7 +829,6 @@ py_test(
         "update_sdk_files": "$(locations :update_sdk_files)",
     },
     tags = [
-        "no_mac",
         "no_windows",
     ],
     visibility = ["//visibility:public"],
@@ -854,7 +855,6 @@ py_test(
         "mkspec_files": "$(locations :mkspec_files)",
     },
     tags = [
-        "no_mac",
         "no_windows",
     ],
     visibility = ["//visibility:public"],
@@ -893,7 +893,6 @@ py_test(
     name = "tools_test",
     srcs = ["tools_test.py"],
     tags = [
-        "no_mac",
         "no_windows",
     ],
     visibility = ["//visibility:public"],
@@ -937,7 +936,6 @@ java_binary(
     main_class = "com.intellij.updater.Runner",
     tags = [
         "block_network",
-        "no_mac",
         "no_windows",
     ],
     visibility = ["//visibility:public"],
@@ -1008,7 +1006,6 @@ iml_module(
     ],
     iml_files = ["tests/intellij.android.studio.tests.iml"],
     tags = [
-        "no_mac",
         "no_windows",
     ],
     test_class = "com.android.testutils.JarTestSuite",
