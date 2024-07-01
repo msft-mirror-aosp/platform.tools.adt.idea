@@ -17,6 +17,7 @@
 #include "controller.h"
 
 #include <android/keycodes.h>
+#include <poll.h>
 #include <sys/socket.h>
 
 #include "accessors/device_state_manager.h"
@@ -38,7 +39,7 @@ namespace {
 constexpr int BUFFER_SIZE = 4096;
 constexpr int UTF8_MAX_BYTES_PER_CHARACTER = 4;
 
-constexpr int SOCKET_RECEIVE_TIMEOUT_MILLIS = 250;
+constexpr duration SOCKET_RECEIVE_POLL_TIMEOUT = 250ms;
 
 constexpr int FINGER_TOUCH_SIZE = 1;
 
@@ -76,11 +77,11 @@ Point AdjustedDisplayCoordinates(int32_t x, int32_t y, const DisplayInfo& displa
   }
 }
 
-// Sets the receive timeout for the given socket. Zero timeout value means that reading
-// from the socket will never time out.
-void SetReceiveTimeoutMillis(int timeout_millis, int socket_fd) {
-  struct timeval tv = { .tv_sec = timeout_millis / 1000, .tv_usec = (timeout_millis % 1000) * 1000 };
-  setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+// Waits for incoming data on a socket. Returns true if new data is available, or false otherwise.
+template <class T>
+bool WaitForIncomingData(T timeout, int socket_fd) {
+  struct pollfd fds = {socket_fd, POLLIN, 0};
+  return poll(&fds, 1, duration_cast<milliseconds>(timeout).count()) > 0;
 }
 
 bool CheckVideoSize(Size video_resolution) {
@@ -211,7 +212,7 @@ void Controller::Run() {
 
   try {
     for (;;) {
-      auto socket_timeout = SOCKET_RECEIVE_TIMEOUT_MILLIS;
+      auto socket_timeout = SOCKET_RECEIVE_POLL_TIMEOUT;
       if (!stopped) {
         if (max_synced_clipboard_length_ != 0) {
           SendClipboardChangedNotification();
@@ -229,14 +230,16 @@ void Controller::Run() {
         SendPendingDisplayEvents();
       }
 
-      SetReceiveTimeoutMillis(socket_timeout, socket_fd_);  // Set a receive timeout to avoid blocking for a long time.
+      if (!WaitForIncomingData(socket_timeout, socket_fd_)) {
+        continue;
+      };
+
       int32_t message_type;
       try {
         message_type = input_stream_.ReadInt32();
       } catch (IoTimeout& e) {
         continue;
       }
-      SetReceiveTimeoutMillis(0, socket_fd_);  // Remove receive timeout for reading the rest of the message.
       unique_ptr<ControlMessage> message = ControlMessage::Deserialize(message_type, input_stream_);
       if (!stopped) {
         ProcessMessage(*message);
@@ -835,7 +838,7 @@ map<int32_t, DisplayInfo> Controller::GetDisplays() {
   map<int32_t, DisplayInfo> displays;
   for (auto display_id: display_ids) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni_, display_id);
-    if (display_info.IsOn() && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0) {
+    if ((display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0) {
       displays[display_id] = display_info;
     }
   }
