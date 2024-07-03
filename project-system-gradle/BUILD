@@ -160,6 +160,7 @@ iml_module(
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+                "//prebuilts/studio/jdk/jdk17:jdk17_runtime_files",
                 "//prebuilts/studio/jdk:jdk21",
             ],
         },
@@ -188,7 +189,6 @@ iml_module(
     test_srcs = ["testSrc"],
     test_tags = [
         "block-network",
-        "no_test_mac",
         "noci:studio-win",
     ],
     test_timeout = "long",
@@ -281,7 +281,6 @@ generate_old_agp_tests_from_list(
             ],
             tags = [
                 "block-network",
-                "no_test_mac",
                 "noci:studio-win",
             ],
             test_class = "com.android.tools.idea.projectsystem.GradleProjectSystemOldAgpTestSuite",

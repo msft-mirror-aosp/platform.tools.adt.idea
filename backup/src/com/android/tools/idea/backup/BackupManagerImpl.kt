@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.backup
 
+import com.android.annotations.concurrency.UiThread
 import com.android.backup.BackupHandler
 import com.android.backup.BackupProgressListener
 import com.android.backup.BackupProgressListener.Step
@@ -25,15 +26,15 @@ import com.android.backup.RestoreHandler
 import com.android.tools.environment.Logger
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.backup.BackupBundle.message
+import com.android.tools.idea.backup.BackupFileType.FILE_CHOOSER_DESCRIPTOR
+import com.android.tools.idea.backup.BackupFileType.FILE_SAVER_DESCRIPTOR
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.notification.NotificationType.WARNING
 import com.intellij.notification.Notifications
-import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileChooser.FileChooserFactory
-import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -48,7 +49,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 
 private const val BACKUP_PATH_KEY = "Backup.Path"
-private const val BACKUP_EXT = "backup"
 private const val NOTIFICATION_GROUP = "Backup"
 
 /** Implementation of [BackupManager] */
@@ -56,10 +56,16 @@ internal class BackupManagerImpl(private val project: Project) : BackupManager {
   private val adbSession = AdbLibService.getSession(project)
   private val logger: Logger = Logger.getInstance(this::class.java)
 
-  override suspend fun backup(serialNumber: String, applicationId: String, backupFile: Path) {
+  @UiThread
+  override fun backupModal(
+    serialNumber: String,
+    applicationId: String,
+    backupFile: Path,
+    notify: Boolean,
+  ): BackupResult {
     logger.debug("Backing up '$applicationId' from $backupFile on '${serialNumber}'")
     // TODO(348406593): Find a way to make the modal dialog be switched to background task
-    runWithModalProgressBlocking(
+    return runWithModalProgressBlocking(
       ModalTaskOwner.project(project),
       message("backup"),
       cancellable(),
@@ -69,36 +75,64 @@ internal class BackupManagerImpl(private val project: Project) : BackupManager {
         val handler =
           BackupHandler(adbSession, serialNumber, logger, listener, backupFile, applicationId)
         val result = handler.backup()
-        result.notify(message("backup"))
+        val operation = message("backup")
+        if (notify) {
+          result.notify(operation)
+        }
+        if (result is Error) {
+          logger.warn(message("notification.error", operation), result.throwable)
+        }
+        result
       }
     }
   }
 
-  override suspend fun restore(serialNumber: String, backupFile: Path) {
-    logger.debug("Restoring from $backupFile on '${serialNumber}'")
+  @UiThread
+  override fun restoreModal(serialNumber: String, backupFile: Path, notify: Boolean): BackupResult {
     // TODO(348406593): Find a way to make the modal dialog be switched to background task
-    runWithModalProgressBlocking(
+    return runWithModalProgressBlocking(
       ModalTaskOwner.project(project),
       message("restore"),
       cancellable(),
     ) {
       reportSequentialProgress { reporter ->
         val listener = BackupProgressListener(reporter::onStep)
-        val handler = RestoreHandler(adbSession, logger, serialNumber, listener, backupFile)
-        val result = handler.restore()
-        result.notify(message("restore"))
+        restore(serialNumber, backupFile, listener, notify)
       }
     }
   }
 
+  override suspend fun restore(
+    serialNumber: String,
+    backupFile: Path,
+    listener: BackupProgressListener?,
+    notify: Boolean,
+  ): BackupResult {
+    val path =
+      when {
+        backupFile.pathString.startsWith('/') -> backupFile
+        else -> Path.of(project.basePath ?: "", backupFile.pathString)
+      }
+    logger.debug("Restoring from $path on '${serialNumber}'")
+    val handler = RestoreHandler(adbSession, logger, serialNumber, listener, path)
+    val result = handler.restore()
+    val operation = message("restore")
+    if (notify) {
+      result.notify(operation)
+    }
+    if (result is Error) {
+      logger.warn(message("notification.error", operation), result.throwable)
+    }
+    return result
+  }
+
   override suspend fun chooseBackupFile(nameHint: String): Path? {
-    val dialog =
+    val path =
       FileChooserFactory.getInstance()
-        .createSaveFileDialog(
-          FileSaverDescriptor(message("backup.choose.backup.file.dialog.title"), "", BACKUP_EXT),
-          project,
-        )
-    val path = dialog.save(getBackupPath(), nameHint)?.file?.toPath()
+        .createSaveFileDialog(FILE_SAVER_DESCRIPTOR, project)
+        .save(getBackupPath(), nameHint)
+        ?.file
+        ?.toPath()
     if (path != null) {
       setBackupPath(path)
     }
@@ -106,17 +140,24 @@ internal class BackupManagerImpl(private val project: Project) : BackupManager {
   }
 
   override fun chooseRestoreFile(): Path? {
-    val descriptor =
-      FileChooserDescriptor(true, false, true, true, false, false)
-        .withTitle(message("backup.choose.restore.file.dialog.title"))
-        .withFileFilter { it.name.endsWith(".$BACKUP_EXT") }
     return FileChooserFactory.getInstance()
-      .createFileChooser(descriptor, project, null)
+      .createFileChooser(FILE_CHOOSER_DESCRIPTOR, project, null)
       .choose(project)
       .firstOrNull()
       ?.toNioPath()
       ?.normalize()
   }
+
+  override suspend fun getApplicationId(backupFile: Path): String? {
+    try {
+      return RestoreHandler.validateBackupFile(backupFile)
+    } catch (e: Exception) {
+      logger.warn("File ${backupFile.pathString} is not a valid backup file")
+      return null
+    }
+  }
+
+  override fun getRestoreRunConfigSection(project: Project) = RestoreRunConfigSection(project)
 
   private fun BackupResult.notify(operation: String) {
     when (this) {
@@ -135,7 +176,6 @@ internal class BackupManagerImpl(private val project: Project) : BackupManager {
       return
     }
     val notification = Notification(NOTIFICATION_GROUP, message, WARNING)
-    logger.warn(message, throwable)
     Notifications.Bus.notify(notification, project)
   }
 

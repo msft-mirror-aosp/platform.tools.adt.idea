@@ -156,7 +156,8 @@ class DeviceProcessService @NonInjectable constructor(private val connectDebugge
     }
   }
 
-  suspend fun backupApplication(
+  @UiThread
+  fun backupApplication(
     project: Project,
     packageName: String,
     device: IDevice,
@@ -164,13 +165,14 @@ class DeviceProcessService @NonInjectable constructor(private val connectDebugge
   ) {
     if (device.serialNumber == device.serialNumber) {
       val backupManager = BackupManager.getInstance(project)
-      backupManager.backup(device.serialNumber, packageName, path)
+      backupManager.backupModal(device.serialNumber, packageName, path)
     }
   }
 
-  suspend fun restoreApplication(project: Project, device: IDevice, path: Path) {
+  @UiThread
+  fun restoreApplication(project: Project, device: IDevice, path: Path) {
     val backupManager = BackupManager.getInstance(project)
-    backupManager.restore(device.serialNumber, path)
+    backupManager.restoreModal(device.serialNumber, path)
   }
 
   private fun reportError(title: String, messageToReport: String) {

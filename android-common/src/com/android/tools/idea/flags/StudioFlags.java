@@ -222,7 +222,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = new BooleanFlag(PROFILER, "task.based.ux", "Task-based UX",
     "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android", false);
@@ -1532,7 +1532,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> WEAR_TILE_PREVIEW = new BooleanFlag(
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
     "If enabled, a preview for functions annotated with @Preview and returning TilePreviewData is displayed",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   // endregion
 
   // region Wear Health Services
@@ -2097,9 +2097,6 @@ public final class StudioFlags {
   // region Google Login
   private static final FlagGroup GOOGLE_LOGIN =
     new FlagGroup(FLAGS, "google.login", "Google Login");
-  public static final Flag<Boolean> ENABLE_SETTINGS_ACCOUNT_UI =
-    new BooleanFlag(GOOGLE_LOGIN, "enabled", "Enable new login settings UI",
-                "When enabled, a login settings page will replace the popup from the login action in the top right.", true);
   public static final Flag<Boolean> ENABLE_COMBINED_LOGIN_UI =
     new BooleanFlag(GOOGLE_LOGIN, "combined.login.enabled", "Enable combined login",
                     "When enabled, a combined login page will show when logging in for a new user.", true);
@@ -2116,14 +2113,36 @@ public final class StudioFlags {
   // endregion Cloud Integration
 
   // region Backup
-  private static final FlagGroup BACKUP =
-    new FlagGroup(FLAGS, "backup", "Backup");
+  private static final FlagGroup BACKUP = new FlagGroup(FLAGS, "backup", "Backup");
   public static final Flag<Boolean> BACKUP_SHOW_ACTIONS_IN_DEVICE_EXPLORER =
     new BooleanFlag(
       BACKUP,
-      "enabled",
+      "show.in.device.explorer",
       "Show backup & restore actions in Device Explorer",
       "Show backup & restore actions in Device Explorer",
+      false);
+
+  public static final Flag<Boolean> BACKUP_SHOW_RESTORE_ACTION_IN_PROJECT_VIEW =
+    new BooleanFlag(
+      BACKUP,
+      "show.in.project.view",
+      "Show restore action in project view",
+      "Show restore action in project view",
+      false);
+
+  public static final Flag<Boolean> BACKUP_SHOW_RESTORE_SECION_IN_RUN_CONFIG =
+    new BooleanFlag(
+      BACKUP,
+      "show.in.run.config",
+      "Show restore section in run config",
+      "Show restore section in run config",
+      false);
+  public static final Flag<Boolean> BACKUP_SHOW_BACKUP_ACTION_IN_MAIN_TOOLBAR =
+    new BooleanFlag(
+      BACKUP,
+      "show.in.maintoolbar",
+      "Show backup action in main toolbar",
+      "Show backup action in main toolbar",
       false);
   // endregion Backup
 

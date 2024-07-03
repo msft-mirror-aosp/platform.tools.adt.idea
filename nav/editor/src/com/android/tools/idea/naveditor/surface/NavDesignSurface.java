@@ -53,6 +53,7 @@ import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.DesignSurfaceHelper;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.common.surface.ZoomChange;
+import com.android.tools.idea.common.surface.ZoomControlsPolicy;
 import com.android.tools.idea.common.surface.ZoomListener;
 import com.android.tools.idea.naveditor.analytics.NavUsageTracker;
 import com.android.tools.idea.naveditor.editor.NavActionManager;
@@ -599,7 +600,7 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
   }
 
   @Override
-  public void scrollToCenter(@NotNull List<NlComponent> list) {
+  public void scrollToCenter(List<? extends NlComponent> list) {
     Scene scene = getScene();
     SceneView view = getFocusedSceneView();
     if (list.isEmpty() || scene == null || view == null) {

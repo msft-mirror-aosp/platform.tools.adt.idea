@@ -86,6 +86,7 @@ iml_module(
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
         "//tools/adt/idea/apkanalyzer:intellij.android.apkanalyzer[module]",
         "//tools/adt/idea/android-lang:intellij.android.lang[module]",
+        "//tools/adt/idea/backup:intellij.android.backup.api[module]",
         "//tools/adt/idea/android-adb:intellij.android.adb[module]",
         "//tools/adt/idea/android/lib:instantapps-api",
         "//tools/analytics-library/crash:analytics-crash[module]",
@@ -192,7 +193,6 @@ iml_module(
     test_tags = [
         "block-network",
         "cpu:3",
-        "no_test_mac",
     ],
     test_timeout = "long",
     visibility = ["//visibility:public"],

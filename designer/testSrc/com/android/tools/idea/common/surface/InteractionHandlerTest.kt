@@ -136,16 +136,16 @@ private class Surface(
     ZoomControlsPolicy.AUTO_HIDE,
   ) {
 
-  override fun getLayoutManagerSwitcher(): LayoutManagerSwitcher? = null
+  override val layoutManagerSwitcher: LayoutManagerSwitcher?
+    get() = null
 
-  override fun getSelectionAsTransferable(): ItemTransferable {
-    return ItemTransferable(DnDTransferItem(0, ImmutableList.of()))
-  }
+  override val selectionAsTransferable: ItemTransferable
+    get() = ItemTransferable(DnDTransferItem(0, ImmutableList.of()))
 
   override fun createSceneManager(model: NlModel) =
     TestSceneManager(model, this).apply { updateSceneView() }
 
-  override fun scrollToCenter(list: MutableList<NlComponent>) {}
+  override fun scrollToCenter(list: List<NlComponent>) {}
 
   override fun getScrollToVisibleOffset() = Dimension()
 
@@ -154,7 +154,8 @@ private class Surface(
 
   override fun forceRefresh(): CompletableFuture<Void> = CompletableFuture.completedFuture(null)
 
-  override fun getSelectableComponents(): List<NlComponent> = emptyList()
+  override val selectableComponents: List<NlComponent>
+    get() = emptyList()
 
   private val zoomControllerFake = createZoomControllerFake()
 

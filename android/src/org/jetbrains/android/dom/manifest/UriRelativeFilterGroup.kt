@@ -13,16 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.jetbrains.android.dom.manifest
 
-package com.android.tools.idea.backup
+import com.intellij.util.xml.SubTagList
+import org.jetbrains.android.dom.Styleable
 
-import com.google.common.truth.Truth.assertThat
-import org.junit.Test
-import org.junit.runner.RunWith
-
-internal class StubTest {
-  @Test
-  fun pass() {
-    assertThat(true).isTrue()
-  }
+@Styleable("AndroidManifestUriRelativeFilterGroup")
+interface UriRelativeFilterGroup : ManifestElement {
+  @SubTagList("data") fun getDataElements(): List<Data>
 }

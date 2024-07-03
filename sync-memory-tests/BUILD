@@ -15,7 +15,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
                 "perfgate-release",
             ],
         },
@@ -25,7 +24,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         # This test is run in release branch, too but not analyzed due to small number of runs per test
@@ -38,7 +36,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
                 "perfgate-release",
             ],
         },
@@ -65,8 +62,8 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
+            "data": ["//tools/base/build-system:gradle-distrib-latest-snapshot"],
         },
         "Benchmark1000MemoryLatestGradleTest": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark1000MemoryLatestGradleTest",
@@ -74,8 +71,8 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
+            "data": ["//tools/base/build-system:gradle-distrib-latest-snapshot"],
         },
         "Benchmark1000CpuLatestKotlinTest": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark1000CpuLatestKotlinTest",
@@ -83,8 +80,8 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
+            "data": ["//tools/base/build-system/integration-test:latest_kotlin_gradle_plugin_prebuilts_for_sync_benchmarks"],
         },
         "Benchmark1000MemoryLatestKotlinTest": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark1000MemoryLatestKotlinTest",
@@ -92,8 +89,8 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
+            "data": ["//tools/base/build-system/integration-test:latest_kotlin_gradle_plugin_prebuilts_for_sync_benchmarks"],
         },
         # Presubmit tests
         "SyncBenchmarkVersionTest": {
@@ -107,7 +104,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "Benchmark500Cpu": {
@@ -116,7 +112,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "Benchmark200Repeated20TimesMemory": {
@@ -125,7 +120,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "Benchmark1000Memory": {
@@ -134,7 +128,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         # Disabled tests
@@ -146,7 +139,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "BenchmarkMultiApp100Cpu": {
@@ -156,7 +148,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "BenchmarkMultiApp190Cpu": {
@@ -168,7 +159,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "Benchmark4200Memory": {
@@ -179,7 +169,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "BenchmarkMultiApp100Memory": {
@@ -189,7 +178,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
         "BenchmarkMultiApp190Memory": {
@@ -199,7 +187,6 @@ iml_module(
                 "noci:studio-win",
                 "noci:studio-linux",
                 "ci:perfgate-linux",
-                "ci:perfgate-win",
             ],
         },
     },
@@ -215,9 +202,7 @@ iml_module(
         "//tools/base/build-system:android_gradle_plugin.zip",
         "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
         "//tools/base/build-system:gradle-distrib",
-        "//tools/base/build-system:gradle-distrib-latest-snapshot",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
-        "//tools/base/build-system/integration-test:latest_kotlin_gradle_plugin_prebuilts_for_sync_benchmarks",
         "//tools/data-binding:data_binding_runtime.zip",
     ],
     test_jvm_flags = [
@@ -228,8 +213,6 @@ iml_module(
     test_tags = [
         "block-network",
         "cpu:3",
-        "no_test_mac",
-        "noci:studio-win",
     ],
     test_timeout = "eternal",
     visibility = ["//visibility:public"],
@@ -265,4 +248,34 @@ kotlin_library(
     name = "benchmark_summary_lib",
     srcs = ["src/com/android/tools/idea/gradle/project/sync/memory/BenchmarkSummaryTool.kt"],
     deps = ["@maven//:com.google.code.gson.gson"],
+)
+
+# See for latest versions: https://services.gradle.org/distributions-snapshots/
+
+# usage (meant to be used with a clean repo):
+# for Gradle update
+# bazel run //tools/adt/idea/sync-memory-tests:update_benchmark_versions -- gradle 8.10-20240621020500+0000
+# available versions: https://services.gradle.org/distributions-snapshots
+# This will generate commits at
+# tools/adt/idea
+# tools/external/gradle
+
+# for Kotlin update
+# bazel run //tools/adt/idea/sync-memory-tests:update_benchmark_versions -- kotlin 2.0.0-dev-6897
+# available versions: https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
+# This one might take a while since maven_fetch.sh takes some time
+# This will generate commits at
+# tools/adt/idea
+# tools/base
+# prebuilts/tools
+java_binary(
+    name = "update_benchmark_versions",
+    testonly = True,
+    main_class = "com.android.tools.idea.gradle.project.sync.UpdateBenchmarkVersionsKt",
+    runtime_deps = [":update_benchmark_versions_lib"],
+)
+
+kotlin_library(
+    name = "update_benchmark_versions_lib",
+    srcs = ["src/com/android/tools/idea/gradle/project/sync/UpdateBenchmarkVersions.kt"],
 )

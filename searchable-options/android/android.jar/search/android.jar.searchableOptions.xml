@@ -77,6 +77,15 @@
     <option name="available" path="ActionManager" hit="Available devices" />
     <option name="devices" path="ActionManager" hit="Available devices" />
     <option name="back" path="ActionManager" hit="Back" />
+    <option name="app" path="ActionManager" hit="Backup App State" />
+    <option name="backup" path="ActionManager" hit="Backup App State" />
+    <option name="state" path="ActionManager" hit="Backup App State" />
+    <option name="a" path="ActionManager" hit="Backup app state to a file" />
+    <option name="app" path="ActionManager" hit="Backup app state to a file" />
+    <option name="backup" path="ActionManager" hit="Backup app state to a file" />
+    <option name="file" path="ActionManager" hit="Backup app state to a file" />
+    <option name="state" path="ActionManager" hit="Backup app state to a file" />
+    <option name="to" path="ActionManager" hit="Backup app state to a file" />
     <option name="apk" path="ActionManager" hit="Build APK(s)" />
     <option name="build" path="ActionManager" hit="Build APK(s)" />
     <option name="s" path="ActionManager" hit="Build APK(s)" />
@@ -686,6 +695,12 @@
     <option name="logcat" path="ActionManager" hit="Restart Logcat monitoring" />
     <option name="monitoring" path="ActionManager" hit="Restart Logcat monitoring" />
     <option name="restart" path="ActionManager" hit="Restart Logcat monitoring" />
+    <option name="application" path="ActionManager" hit="Restore Application" />
+    <option name="restore" path="ActionManager" hit="Restore Application" />
+    <option name="application" path="ActionManager" hit="Restore Application from file" />
+    <option name="file" path="ActionManager" hit="Restore Application from file" />
+    <option name="from" path="ActionManager" hit="Restore Application from file" />
+    <option name="restore" path="ActionManager" hit="Restore Application from file" />
     <option name="and" path="ActionManager" hit="Return and Erase Device" />
     <option name="device" path="ActionManager" hit="Return and Erase Device" />
     <option name="erase" path="ActionManager" hit="Return and Erase Device" />

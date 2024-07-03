@@ -30,16 +30,12 @@ import com.android.tools.configurations.Configuration;
 import com.android.tools.editor.PanZoomListener;
 import com.android.tools.idea.common.analytics.DesignerAnalyticsManager;
 import com.android.tools.idea.common.editor.ActionManager;
-import com.android.tools.idea.common.error.IssueListener;
 import com.android.tools.idea.common.error.IssueModel;
 import com.android.tools.idea.common.error.LintIssueProvider;
-import com.android.tools.idea.common.layout.LayoutManagerSwitcher;
-import com.android.tools.idea.common.layout.SceneViewAlignment;
 import com.android.tools.idea.common.lint.LintAnnotationsModel;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.DefaultSelectionModel;
 import com.android.tools.idea.common.model.ItemTransferable;
-import com.android.tools.idea.common.model.ModelListener;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.model.SelectionListener;
@@ -53,7 +49,6 @@ import com.android.tools.idea.common.surface.layout.NonScrollableDesignSurfaceVi
 import com.android.tools.idea.common.surface.layout.ScrollableDesignSurfaceViewport;
 import com.android.tools.idea.common.type.DefaultDesignerFileType;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
-import com.android.tools.idea.ui.designer.EditorDesignSurface;
 import com.android.tools.idea.common.layout.manager.PositionableContentLayoutManager;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
@@ -68,23 +63,14 @@ import com.intellij.openapi.actionSystem.DataProvider;
 import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
-import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.ui.EditorNotifications;
-import com.intellij.ui.JBColor;
-import com.intellij.ui.components.Magnificator;
-import com.intellij.ui.components.ZoomableViewport;
-import com.intellij.util.Alarm;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.concurrency.EdtExecutorService;
-import com.intellij.util.ui.AsyncProcessIcon;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import com.intellij.util.ui.update.MergingUpdateQueue;
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -93,14 +79,12 @@ import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
 import java.awt.MouseInfo;
 import java.awt.Point;
-import java.awt.PointerInfo;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -118,8 +102,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.OverlayLayout;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
-import org.jetbrains.android.uipreview.AndroidEditorSettings;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -128,20 +110,8 @@ import org.jetbrains.annotations.TestOnly;
 /**
  * A generic design surface for use in a graphical editor.
  */
-public abstract class DesignSurface<T extends SceneManager> extends EditorDesignSurface
-  implements Disposable, InteractableScenesSurface, ZoomableViewport, ScaleListener {
-
-  /**
-   * Determines the visibility of the zoom controls in this surface.
-   */
-  public enum ZoomControlsPolicy {
-    /** The zoom controls will always be visible. */
-    VISIBLE,
-    /** The zoom controls will never be visible. */
-    HIDDEN,
-    /** The zoom controls will only be visible when the mouse is over the surface. */
-    AUTO_HIDE
-  }
+public abstract class DesignSurface<T extends SceneManager> extends PreviewSurface<T>
+  implements Disposable, InteractableScenesSurface, ScaleListener {
 
   /**
    * Filter got {@link #getModels()} to avoid returning disposed elements
@@ -156,13 +126,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   private static final Integer LAYER_PROGRESS = JLayeredPane.POPUP_LAYER + 10;
   private static final Integer LAYER_MOUSE_CLICK = LAYER_PROGRESS + 10;
 
-  private final Project myProject;
-
-  /**
-   * The scale level when magnification started. This is used as a standard when the new scale level is evaluated.
-   */
-  @SurfaceScale private double myMagnificationStartedScale;
-
   /**
    * {@link JScrollPane} contained in this surface when zooming is enabled.
    */
@@ -172,47 +135,22 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    * Otherwise, it will be the ScreenViewPanel container.
    */
   @NotNull private final JComponent myContentContainerPane;
-  @NotNull private final DesignSurfaceViewport myViewport;
+  @NotNull protected final DesignSurfaceViewport myViewport;
   @NotNull private final JLayeredPane myLayeredPane;
   @NotNull protected final SceneViewPanel mySceneViewPanel;
   @NotNull private final MouseClickDisplayPanel myMouseClickDisplayPanel;
   @VisibleForTesting
   private final GuiInputHandler myGuiInputHandler;
-  private final Object myListenersLock = new Object();
-  @GuardedBy("myListenersLock")
-  protected final ArrayList<DesignSurfaceListener> myListeners = new ArrayList<>();
-  @GuardedBy("myListenersLock")
-  @NotNull private final ArrayList<PanZoomListener> myZoomListeners = new ArrayList<>();
+
   private final ActionManager<? extends DesignSurface<T>> myActionManager;
-  @NotNull private WeakReference<FileEditor> myFileEditorDelegate = new WeakReference<>(null);
   private final ReentrantReadWriteLock myModelToSceneManagersLock = new ReentrantReadWriteLock();
   @GuardedBy("myModelToSceneManagersLock")
   private final LinkedHashMap<NlModel, T> myModelToSceneManagers = new LinkedHashMap<>();
-
-  private final SelectionModel mySelectionModel;
-  private final ModelListener myModelListener = new ModelListener() {
-    @Override
-    public void modelDerivedDataChanged(@NotNull NlModel model) {
-      updateNotifications();
-    }
-
-    @Override
-    public void modelChanged(@NotNull NlModel model) {
-      updateNotifications();
-    }
-
-    @Override
-    public void modelChangedOnLayout(@NotNull NlModel model, boolean animate) {
-      repaint();
-    }
-  };
 
   @NotNull
   private final List<CompletableFuture<Void>> myRenderFutures = new ArrayList<>();
 
   protected final IssueModel myIssueModel;
-  private final Object myErrorQueueLock = new Object();
-  private MergingUpdateQueue myErrorQueue;
   private boolean myIsActive = false;
   private LintIssueProvider myLintIssueProvider;
 
@@ -228,27 +166,11 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
    */
   private boolean myIsInitialZoomLevelDetermined = false;
 
-  private final Timer myRepaintTimer = new Timer(15, (actionEvent) -> {
-    repaint();
-  });
-
   @NotNull
   private final Function<DesignSurface<T>, DesignSurfaceActionHandler> myActionHandlerProvider;
 
-  /**
-   * See {@link ZoomControlsPolicy}.
-   */
-  @NotNull
-  private final ZoomControlsPolicy myZoomControlsPolicy;
-
   @NotNull
   private final AWTEventListener myOnHoverListener;
-
-  @NotNull
-  private final List<IssueListener> myIssueListeners = new ArrayList<>();
-
-  @NotNull
-  private final IssueListener myIssueListener = issue -> myIssueListeners.forEach(listener -> listener.onIssueSelected(issue));
 
   public DesignSurface(
     @NotNull Project project,
@@ -272,18 +194,12 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     @NotNull Function<DesignSurface<T>, DesignSurfaceActionHandler> actionHandlerProvider,
     @NotNull SelectionModel selectionModel,
     @NotNull ZoomControlsPolicy zoomControlsPolicy) {
-    super(new BorderLayout());
+    super(project, selectionModel, zoomControlsPolicy, new BorderLayout());
 
     Disposer.register(parentDisposable, this);
-    myProject = project;
-    mySelectionModel = selectionModel;
-    myZoomControlsPolicy = zoomControlsPolicy;
-    myIssueModel = new IssueModel(this, myProject);
+    myIssueModel = new IssueModel(this, getProject());
 
-    boolean hasZoomControls = myZoomControlsPolicy != ZoomControlsPolicy.HIDDEN;
-
-    setOpaque(true);
-    setFocusable(false);
+    boolean hasZoomControls = getZoomControlsPolicy() != ZoomControlsPolicy.HIDDEN;
 
     myAnalyticsManager = new DesignerAnalyticsManager(this);
 
@@ -300,9 +216,9 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
         notifySelectionListeners(Collections.emptyList());
       }
     };
-    mySelectionModel.addListener(selectionListener);
+    getSelectionModel().addListener(selectionListener);
 
-    myProgressPanel = new MyProgressPanel();
+    myProgressPanel = new SurfaceProgressPanel(this, this::useSmallProgressIcon);
     myProgressPanel.setName("Layout Editor Progress Panel");
 
     mySceneViewPanel = new SceneViewPanel(
@@ -402,7 +318,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
       myLayeredPane.add(zoomControlsLayerPane, JLayeredPane.DRAG_LAYER);
       zoomControlsLayerPane.add(myActionManager.getDesignSurfaceToolbar(), BorderLayout.EAST);
-      if (myZoomControlsPolicy == ZoomControlsPolicy.AUTO_HIDE) {
+      if (getZoomControlsPolicy() == ZoomControlsPolicy.AUTO_HIDE) {
         myOnHoverListener = DesignSurfaceHelper.createZoomControlAutoHiddenListener(this, zoomControlsLayerPane);
         zoomControlsLayerPane.setVisible(false);
         Toolkit.getDefaultToolkit().addAWTEventListener(myOnHoverListener, AWTEvent.MOUSE_EVENT_MASK);
@@ -441,18 +357,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   @NotNull
   protected abstract T createSceneManager(@NotNull NlModel model);
 
-  /**
-   * When not null, returns a {@link JPanel} to be rendered next to the primary panel of the editor.
-   */
-  public JPanel getAccessoryPanel() {
-    return null;
-  }
-
-  @NotNull
-  public Project getProject() {
-    return myProject;
-  }
-
   @NotNull
   public DesignerEditorFileType getLayoutType() {
     NlModel model = getModel();
@@ -468,21 +372,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   @NotNull
   public Function<DesignSurface<T>, DesignSurfaceActionHandler> getActionHandlerProvider() {
     return myActionHandlerProvider;
-  }
-
-  @NotNull
-  public SelectionModel getSelectionModel() {
-    return mySelectionModel;
-  }
-
-  @NotNull
-  public abstract ItemTransferable getSelectionAsTransferable();
-
-  /**
-   * Returns whether render error panels should be rendered when {@link SceneView}s in this surface have render errors.
-   */
-  public boolean shouldRenderErrorsPanel() {
-    return false;
   }
 
   /**
@@ -553,7 +442,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       }
     }
 
-    model.addListener(myModelListener);
+    model.addListener(getModelListener());
     // SceneManager creation is a slow operation. Multiple can happen in parallel.
     // We optimistically create a new scene manager for the given model and then, with the mapping
     // locked we checked if a different one has been added.
@@ -577,26 +466,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       manager.activate(this);
     }
     return manager;
-  }
-
-  /**
-   * Gets a copy of {@code myListeners} under a lock. Use this method instead of accessing the listeners directly.
-   */
-  @NotNull
-  private ImmutableList<DesignSurfaceListener> getListeners() {
-    synchronized (myListenersLock) {
-      return ImmutableList.copyOf(myListeners);
-    }
-  }
-
-  /**
-   * Gets a copy of {@code myZoomListeners} under a lock. Use this method instead of accessing the listeners directly.
-   */
-  @NotNull
-  private ImmutableList<PanZoomListener> getZoomListeners() {
-    synchronized (myListenersLock) {
-      return ImmutableList.copyOf(myZoomListeners);
-    }
   }
 
   /**
@@ -657,7 +526,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       .supplyAsync(() -> addModel(modelToAdd), AppExecutorUtil.getAppExecutorService())
       .whenCompleteAsync((model, ex) -> {
           if (getProject().isDisposed() || modelToAdd.isDisposed()) return;
-          for (DesignSurfaceListener listener : getListeners()) {
+          for (DesignSurfaceListener listener : getSurfaceListeners()) {
             // TODO: The listeners have the expectation of the call happening in the EDT. We need
             //       to address that.
             listener.modelChanged(this, modelToAdd);
@@ -691,7 +560,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
     model.deactivate(this);
 
-    model.removeListener(myModelListener);
+    model.removeListener(getModelListener());
 
     Disposer.dispose(manager);
     UIUtil.invokeLaterIfNeeded(this::revalidateScrollArea);
@@ -767,10 +636,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
   @Override
   public void dispose() {
-    synchronized (myListenersLock) {
-      myListeners.clear();
-      myZoomListeners.clear();
-    }
+    clearListeners();
     myGuiInputHandler.stopListening();
     Toolkit.getDefaultToolkit().removeAWTEventListener(myOnHoverListener);
     synchronized (myRenderFutures) {
@@ -783,8 +649,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       }
       myRenderFutures.clear();
     }
-    if (myRepaintTimer.isRunning()) {
-      myRepaintTimer.stop();
+    if (getRepaintTimer().isRunning()) {
+      getRepaintTimer().stop();
     }
     getModels().forEach(this::removeModelImpl);
   }
@@ -820,16 +686,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     return getInteractionPane();
   }
 
-  /**
-   * Call this to generate repaints
-   */
-  public void needsRepaint() {
-    if (!myRepaintTimer.isRunning()) {
-      myRepaintTimer.setRepeats(false);
-      myRepaintTimer.start();
-    }
-  }
-
   @Override
   @Nullable
   public SceneView getFocusedSceneView() {
@@ -840,7 +696,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       assert manager != null;
       return Iterables.getFirst(manager.getSceneViews(), null);
     }
-    List<NlComponent> selection = mySelectionModel.getSelection();
+    List<NlComponent> selection = getSelectionModel().getSelection();
     if (!selection.isEmpty()) {
       NlComponent primary = selection.get(0);
       SceneManager manager = getSceneManager(primary.getModel());
@@ -868,45 +724,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     }
   }
 
-  @Nullable
-  @Override
-  public Magnificator getMagnificator() {
-    return (scale, at) -> null;
-  }
-
-  @Override
-  public void magnificationStarted(Point at) {
-    myMagnificationStartedScale = getZoomController().getScale();
-  }
-
-  @Override
-  public void magnificationFinished(double magnification) {
-  }
-
-  @Override
-  public void magnify(double magnification) {
-    if (Double.compare(magnification, 0) == 0) {
-      return;
-    }
-
-    Point mouse;
-    if (!GraphicsEnvironment.isHeadless()) {
-      PointerInfo pointerInfo = MouseInfo.getPointerInfo();
-      if (pointerInfo == null) {
-        return;
-      }
-      mouse = pointerInfo.getLocation();
-      SwingUtilities.convertPointFromScreen(mouse, getViewport().getViewportComponent());
-    }
-    else {
-      // In headless mode we assume the scale point is at the center.
-      mouse = new Point(getWidth() / 2, getHeight() / 2);
-    }
-    double sensitivity = AndroidEditorSettings.getInstance().getGlobalState().getMagnifySensitivity();
-    @SurfaceScale double newScale = myMagnificationStartedScale + magnification * sensitivity;
-    getZoomController().setScale(newScale, mouse.x, mouse.y);
-  }
-
   @Override
   public void setPanning(boolean isPanning) {
     myGuiInputHandler.setPanning(isPanning);
@@ -929,11 +746,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     if (myScrollPane == null) return null;
     return new Rectangle(myScrollPane.getViewport().getViewPosition(), myScrollPane.getViewport().getSize());
   }
-
-  /**
-   * Scroll to the center of a list of given components. Usually the center of the area containing these elements.
-   */
-  public abstract void scrollToCenter(@NotNull List<NlComponent> list);
 
   /**
    * Given a rectangle relative to a sceneView, find its absolute coordinates and then scroll to
@@ -1056,10 +868,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     notifyScaleChanged(update.getPreviousScale(), update.getNewScale());
   }
 
-  protected boolean isKeepingScaleWhenReopen() {
-    return true;
-  }
-
   /**
    * Save the current zoom level from the file of the given {@link NlModel}.
    */
@@ -1068,7 +876,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       return;
     }
     SurfaceState state = DesignSurfaceSettings.getInstance(model.getProject()).getSurfaceState();
-    state.saveFileScale(myProject, model.getVirtualFile(), getZoomController());
+    state.saveFileScale(getProject(), model.getVirtualFile(), getZoomController());
   }
 
   /**
@@ -1080,25 +888,13 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       return false;
     }
     SurfaceState state = DesignSurfaceSettings.getInstance(model.getProject()).getSurfaceState();
-    Double previousScale = state.loadFileScale(myProject, model.getVirtualFile(), getZoomController());
+    Double previousScale = state.loadFileScale(getProject(), model.getVirtualFile(), getZoomController());
     if (previousScale != null) {
       getZoomController().setScale(previousScale);
       return true;
     }
     else {
       return false;
-    }
-  }
-
-  private void notifyScaleChanged(double previousScale, double newScale) {
-    for (PanZoomListener myZoomListener : getZoomListeners()) {
-      myZoomListener.zoomChanged(previousScale, newScale);
-    }
-  }
-
-  private void notifyPanningChanged(AdjustmentEvent adjustmentEvent) {
-    for (PanZoomListener myZoomListener : getZoomListeners()) {
-      myZoomListener.panningChanged(adjustmentEvent);
     }
   }
 
@@ -1118,13 +914,8 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     return myAnalyticsManager;
   }
 
-  @Nullable
-  public LayoutScannerControl getLayoutScannerControl() {
-    return null;
-  }
-
   protected void notifySelectionListeners(@NotNull List<NlComponent> newSelection) {
-    List<DesignSurfaceListener> listeners = Lists.newArrayList(myListeners);
+    List<DesignSurfaceListener> listeners = getSurfaceListeners();
     for (DesignSurfaceListener listener : listeners) {
       listener.componentSelectionChanged(this, newSelection);
     }
@@ -1150,32 +941,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     }
   }
 
-  public void addListener(@NotNull DesignSurfaceListener listener) {
-    synchronized (myListenersLock) {
-      myListeners.remove(listener); // ensure single registration
-      myListeners.add(listener);
-    }
-  }
-
-  public void removeListener(@NotNull DesignSurfaceListener listener) {
-    synchronized (myListenersLock) {
-      myListeners.remove(listener);
-    }
-  }
-
-  public void addPanZoomListener(PanZoomListener listener) {
-    synchronized (myListenersLock) {
-      myZoomListeners.remove(listener);
-      myZoomListeners.add(listener);
-    }
-  }
-
-  public void removePanZoomListener(PanZoomListener listener) {
-    synchronized (myListenersLock) {
-      myZoomListeners.remove(listener);
-    }
-  }
-
   /**
    * The editor has been activated
    */
@@ -1189,7 +954,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       for (SceneManager manager : getSceneManagers()) {
         manager.activate(this);
       }
-      if (myZoomControlsPolicy == ZoomControlsPolicy.AUTO_HIDE) {
+      if (getZoomControlsPolicy() == ZoomControlsPolicy.AUTO_HIDE) {
         Toolkit.getDefaultToolkit().addAWTEventListener(myOnHoverListener, AWTEvent.MOUSE_EVENT_MASK);
       }
     }
@@ -1214,20 +979,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     myGuiInputHandler.cancelInteraction();
   }
 
-  /**
-   * Sets the file editor to which actions like undo/redo will be delegated. This is only needed if this DesignSurface is not a child
-   * of a {@link FileEditor}.
-   * <p>
-   * The surface will only keep a {@link WeakReference} to the editor.
-   */
-  public void setFileEditorDelegate(@Nullable FileEditor fileEditor) {
-    myFileEditorDelegate = new WeakReference<>(fileEditor);
-  }
 
-  @Nullable
-  public FileEditor getFileEditorDelegate() {
-    return myFileEditorDelegate.get();
-  }
 
   @Override
   @Deprecated
@@ -1336,10 +1088,10 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
   private final Set<ProgressIndicator> myProgressIndicators = new HashSet<>();
 
   @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
-  private final MyProgressPanel myProgressPanel;
+  private final SurfaceProgressPanel myProgressPanel;
 
   public void registerIndicator(@NotNull ProgressIndicator indicator) {
-    if (myProject.isDisposed() || Disposer.isDisposed(this)) {
+    if (getProject().isDisposed() || Disposer.isDisposed(this)) {
       return;
     }
 
@@ -1356,127 +1108,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
 
       if (myProgressIndicators.isEmpty()) {
         myProgressPanel.hideProgressIcon();
-      }
-    }
-  }
-
-  protected boolean useSmallProgressIcon() {
-    return true;
-  }
-
-  /**
-   * Panel which displays the progress icon. The progress icon can either be a large icon in the
-   * center, when there is no rendering showing, or a small icon in the upper right corner when there
-   * is a rendering. This is necessary because even though the progress icon looks good on some
-   * renderings, depending on the layout theme colors it is invisible in other cases.
-   */
-  private class MyProgressPanel extends JPanel {
-    private AsyncProcessIcon mySmallProgressIcon;
-    private AsyncProcessIcon myLargeProgressIcon;
-    private boolean mySmall;
-    private boolean myProgressVisible;
-
-    private MyProgressPanel() {
-      super(new BorderLayout());
-      setOpaque(false);
-      setVisible(false);
-    }
-
-    /**
-     * The "small" icon mode isn't just for the icon size; it's for the layout position too; see {@link #doLayout}
-     */
-    private void setSmallIcon(boolean small) {
-      if (small != mySmall) {
-        if (myProgressVisible && getComponentCount() != 0) {
-          AsyncProcessIcon oldIcon = getProgressIcon();
-          oldIcon.suspend();
-        }
-        mySmall = true;
-        removeAll();
-        AsyncProcessIcon icon = getProgressIcon();
-        add(icon, BorderLayout.CENTER);
-        if (myProgressVisible) {
-          icon.setVisible(true);
-          icon.resume();
-        }
-      }
-    }
-
-    public void showProgressIcon() {
-      if (!myProgressVisible) {
-        setSmallIcon(useSmallProgressIcon());
-        myProgressVisible = true;
-        setVisible(true);
-        AsyncProcessIcon icon = getProgressIcon();
-        if (getComponentCount() == 0) { // First time: haven't added icon yet?
-          add(getProgressIcon(), BorderLayout.CENTER);
-        }
-        else {
-          icon.setVisible(true);
-        }
-        icon.resume();
-      }
-    }
-
-    public void hideProgressIcon() {
-      if (myProgressVisible) {
-        myProgressVisible = false;
-        setVisible(false);
-        AsyncProcessIcon icon = getProgressIcon();
-        icon.setVisible(false);
-        icon.suspend();
-      }
-    }
-
-    @Override
-    public void doLayout() {
-      super.doLayout();
-      setBackground(JBColor.RED); // make this null instead?
-
-      if (!myProgressVisible) {
-        return;
-      }
-
-      // Place the progress icon in the center if there's no rendering, and in the
-      // upper right corner if there's a rendering. The reason for this is that the icon color
-      // will depend on whether we're in a light or dark IDE theme, and depending on the rendering
-      // in the layout it will be invisible. For example, in Darcula the icon is white, and if the
-      // layout is rendering a white screen, the progress is invisible.
-      AsyncProcessIcon icon = getProgressIcon();
-      Dimension size = icon.getPreferredSize();
-      if (mySmall) {
-        icon.setBounds(getWidth() - size.width - 1, 1, size.width, size.height);
-      }
-      else {
-        icon.setBounds(getWidth() / 2 - size.width / 2, getHeight() / 2 - size.height / 2, size.width, size.height);
-      }
-    }
-
-    @Override
-    public Dimension getPreferredSize() {
-      return getProgressIcon().getPreferredSize();
-    }
-
-    @NotNull
-    private AsyncProcessIcon getProgressIcon() {
-      return getProgressIcon(mySmall);
-    }
-
-    @NotNull
-    private AsyncProcessIcon getProgressIcon(boolean small) {
-      if (small) {
-        if (mySmallProgressIcon == null) {
-          mySmallProgressIcon = new AsyncProcessIcon("Android layout rendering");
-          Disposer.register(DesignSurface.this, mySmallProgressIcon);
-        }
-        return mySmallProgressIcon;
-      }
-      else {
-        if (myLargeProgressIcon == null) {
-          myLargeProgressIcon = new AsyncProcessIcon.Big("Android layout rendering");
-          Disposer.register(DesignSurface.this, myLargeProgressIcon);
-        }
-        return myLargeProgressIcon;
       }
     }
   }
@@ -1581,7 +1212,7 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       return getConfigurations();
     }
     if (PlatformCoreDataKeys.FILE_EDITOR.is(dataId)) {
-      return myFileEditorDelegate.get();
+      return getFileEditorDelegate();
     }
     else if (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.is(dataId) ||
              PlatformDataKeys.CUT_PROVIDER.is(dataId) ||
@@ -1670,17 +1301,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     }
   }
 
-  @NotNull
-  protected MergingUpdateQueue getErrorQueue() {
-    synchronized (myErrorQueueLock) {
-      if (myErrorQueue == null) {
-        myErrorQueue = new MergingUpdateQueue("android.error.computation", 200, true, null, this, null,
-                                              Alarm.ThreadToUse.POOLED_THREAD);
-      }
-      return myErrorQueue;
-    }
-  }
-
   @Override
   public void updateUI() {
     super.updateUI();
@@ -1692,14 +1312,6 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
       }
     }
   }
-
-  /**
-   * Returns all the selectable components in the design surface
-   *
-   * @return the list of components
-   */
-  @NotNull
-  abstract public List<NlComponent> getSelectableComponents();
 
   /**
    * Enables the mouse click display. If enabled, the clicks of the user are displayed in the surface.
@@ -1725,39 +1337,5 @@ public abstract class DesignSurface<T extends SceneManager> extends EditorDesign
     if (mySceneViewPanel != null) {
       mySceneViewPanel.setBackground(bg);
     }
-  }
-
-  @Nullable
-  public abstract LayoutManagerSwitcher getLayoutManagerSwitcher();
-
-  /**
-   * Sets the {@link SceneViewAlignment} for the {@link SceneView}s. This only applies to {@link SceneView}s when the
-   * content size is less than the minimum size allowed. See {@link SceneViewPanel}.
-   */
-  public final void setSceneViewAlignment(@NotNull SceneViewAlignment sceneViewAlignment) {
-    mySceneViewPanel.setSceneViewAlignment(sceneViewAlignment.getAlignmentX());
-  }
-
-  /**
-   * Updates the notifications panel associated to this {@link DesignSurface}.
-   */
-  protected void updateNotifications() {
-    FileEditor fileEditor = myFileEditorDelegate.get();
-    VirtualFile file = fileEditor != null ? fileEditor.getFile() : null;
-    if (file == null) return;
-    UIUtil.invokeLaterIfNeeded(() -> EditorNotifications.getInstance(myProject).updateNotifications(file));
-  }
-
-  public void addIssueListener(@NotNull IssueListener listener) {
-    myIssueListeners.add(listener);
-  }
-
-  public void removeIssueListener(@NotNull IssueListener listener) {
-    myIssueListeners.remove(listener);
-  }
-
-  @NotNull
-  public IssueListener getIssueListener() {
-    return myIssueListener;
   }
 }
