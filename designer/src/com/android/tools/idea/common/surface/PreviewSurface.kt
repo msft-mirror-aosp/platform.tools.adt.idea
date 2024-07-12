@@ -16,30 +16,67 @@
 package com.android.tools.idea.common.surface
 
 import com.android.annotations.concurrency.GuardedBy
+import com.android.annotations.concurrency.Slow
+import com.android.annotations.concurrency.UiThread
+import com.android.sdklib.AndroidCoordinate
+import com.android.tools.adtui.Pannable
+import com.android.tools.adtui.common.SwingCoordinate
+import com.android.tools.configurations.Configuration
 import com.android.tools.editor.PanZoomListener
 import com.android.tools.idea.common.error.Issue
 import com.android.tools.idea.common.error.IssueListener
+import com.android.tools.idea.common.error.IssueModel
+import com.android.tools.idea.common.error.LintIssueProvider
 import com.android.tools.idea.common.layout.LayoutManagerSwitcher
+import com.android.tools.idea.common.lint.LintAnnotationsModel
 import com.android.tools.idea.common.model.ItemTransferable
 import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.model.SelectionModel
+import com.android.tools.idea.common.scene.Scene
 import com.android.tools.idea.common.scene.SceneManager
+import com.android.tools.idea.common.surface.DesignSurfaceSettings.Companion.getInstance
+import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport
+import com.android.tools.idea.common.type.DefaultDesignerFileType
+import com.android.tools.idea.common.type.DesignerEditorFileType
 import com.android.tools.idea.ui.designer.EditorDesignSurface
+import com.android.tools.idea.uibuilder.surface.ScreenView
+import com.google.common.collect.ImmutableCollection
 import com.google.common.collect.ImmutableList
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.EditorNotifications
 import com.intellij.util.ui.UIUtil
+import java.awt.Dimension
+import java.awt.GraphicsEnvironment
 import java.awt.LayoutManager
+import java.awt.MouseInfo
+import java.awt.Point
+import java.awt.Rectangle
 import java.awt.event.AdjustmentEvent
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.lang.ref.WeakReference
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
+import javax.swing.JComponent
+import javax.swing.JLayeredPane
 import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import javax.swing.Timer
 import kotlin.concurrent.withLock
+import kotlin.math.max
+import kotlin.math.min
+import org.jetbrains.annotations.TestOnly
+
+private val LAYER_PROGRESS = JLayeredPane.POPUP_LAYER + 10
+private val LAYER_MOUSE_CLICK = LAYER_PROGRESS + 10
 
 /**
  * TODO Once [DesignSurface] is converted to kt, rename [PreviewSurface] back to [DesignSurface].
@@ -49,11 +86,119 @@ abstract class PreviewSurface<T : SceneManager>(
   val selectionModel: SelectionModel,
   val zoomControlsPolicy: ZoomControlsPolicy,
   layout: LayoutManager,
-) : EditorDesignSurface(layout) {
+) :
+  EditorDesignSurface(layout), Disposable, InteractableScenesSurface, ScaleListener, DataProvider {
+
+  abstract val guiInputHandler: GuiInputHandler
+
+  private val mouseClickDisplayPanel = MouseClickDisplayPanel(parentDisposable = this)
+
+  private val progressPanel =
+    SurfaceProgressPanel(parentDisposable = this, ::useSmallProgressIcon).apply {
+      name = "Layout Editor Progress Panel"
+    }
+
+  private val progressIndicators: MutableSet<ProgressIndicator> = HashSet()
+
+  protected abstract val sceneViewPanel: SceneViewPanel
+
+  val layeredPane: JComponent =
+    JLayeredPane().apply {
+      setFocusable(true)
+      add(progressPanel, LAYER_PROGRESS)
+      add(mouseClickDisplayPanel, LAYER_MOUSE_CLICK)
+    }
+
+  abstract val viewport: DesignSurfaceViewport
+
+  /**
+   * Enables the mouse click display. If enabled, the clicks of the user are displayed in the
+   * surface.
+   */
+  fun enableMouseClickDisplay() {
+    mouseClickDisplayPanel.isEnabled = true
+  }
+
+  /** Disables the mouse click display. */
+  fun disableMouseClickDisplay() {
+    mouseClickDisplayPanel.isEnabled = false
+  }
+
+  /** Sets the tooltip for the design surface */
+  fun setDesignToolTip(text: String?) {
+    sceneViewPanel.setToolTipText(text)
+  }
+
+  /**
+   * Asks the [ScreenView]s contained in this [DesignSurface] for a re-layouts. The re-layout will
+   * not happen immediately in this call.
+   */
+  @UiThread abstract fun revalidateScrollArea()
+
+  /** Converts a given point that is in view coordinates to viewport coordinates. */
+  @TestOnly
+  fun getCoordinatesOnViewportForTest(viewCoordinates: Point): Point {
+    return SwingUtilities.convertPoint(
+      sceneViewPanel,
+      viewCoordinates.x,
+      viewCoordinates.y,
+      viewport.viewportComponent,
+    )
+  }
+
+  fun registerIndicator(indicator: ProgressIndicator) {
+    if (project.isDisposed || Disposer.isDisposed(this)) {
+      return
+    }
+    synchronized(progressIndicators) {
+      if (progressIndicators.add(indicator)) {
+        progressPanel.showProgressIcon()
+      }
+    }
+  }
+
+  fun unregisterIndicator(indicator: ProgressIndicator) {
+    synchronized(progressIndicators) {
+      progressIndicators.remove(indicator)
+      if (progressIndicators.isEmpty()) {
+        progressPanel.hideProgressIcon()
+      }
+    }
+  }
 
   init {
     isOpaque = true
     isFocusable = false
+
+    // TODO: Do this as part of the layout/validate operation instead
+    addComponentListener(
+      object : ComponentAdapter() {
+        /**
+         * When surface is opened at first time, it zoom-to-fit the content to make the previews fit
+         * the initial window size. After that it leave user to control the zoom. This flag
+         * indicates if the initial zoom-to-fit is done or not.
+         */
+        private var isInitialZoomLevelDetermined = false
+
+        override fun componentResized(componentEvent: ComponentEvent) {
+          if (componentEvent.id == ComponentEvent.COMPONENT_RESIZED) {
+            if (!isInitialZoomLevelDetermined && isShowing && width > 0 && height > 0) {
+              // Set previous scale when DesignSurface becomes visible at first time.
+              val hasModelAttached = restoreZoomOrZoomToFit()
+              if (!hasModelAttached) {
+                // No model is attached, ignore the setup of initial zoom level.
+                return
+              }
+              // The default size is defined, enable the flag.
+              isInitialZoomLevelDetermined = true
+            }
+            // We rebuilt the scene to make sure all SceneComponents are placed at right positions.
+            sceneManagers.forEach { manager: T -> manager.scene.needsRebuildList() }
+            repaint()
+          }
+        }
+      }
+    )
   }
 
   protected open fun useSmallProgressIcon(): Boolean {
@@ -174,9 +319,9 @@ abstract class PreviewSurface<T : SceneManager>(
 
   /**
    * Gets a copy of [zoomListeners] under a lock. Use this method instead of accessing the listeners
-   * directly. TODO Make it private
+   * directly.
    */
-  protected fun getZoomListeners(): ImmutableList<PanZoomListener> {
+  private fun getZoomListeners(): ImmutableList<PanZoomListener> {
     listenersLock.withLock {
       return ImmutableList.copyOf(zoomListeners)
     }
@@ -192,6 +337,26 @@ abstract class PreviewSurface<T : SceneManager>(
     }
   }
 
+  override fun onScaleChange(update: ScaleChange) {
+    if (update.isAnimating) {
+      revalidateScrollArea()
+      return
+    }
+    models.firstOrNull()?.let { storeCurrentScale(it) }
+    revalidateScrollArea()
+    notifyScaleChanged(update.previousScale, update.newScale)
+  }
+
+  /** Save the current zoom level from the file of the given [NlModel]. */
+  private fun storeCurrentScale(model: NlModel) {
+    if (!isKeepingScaleWhenReopen()) {
+      return
+    }
+    val state = getInstance(project).surfaceState
+    // TODO Maybe have a reference to virtualFile directly instead of from NlModel
+    state.saveFileScale(project, model.virtualFile, zoomController)
+  }
+
   protected fun notifyScaleChanged(previousScale: Double, newScale: Double) {
     for (listener in getZoomListeners()) {
       listener.zoomChanged(previousScale, newScale)
@@ -203,6 +368,22 @@ abstract class PreviewSurface<T : SceneManager>(
       listener.panningChanged(adjustmentEvent)
     }
   }
+
+  /**
+   * @param x the x coordinate of the double click converted to pixels in the Android coordinate
+   *   system
+   * @param y the y coordinate of the double click converted to pixels in the Android coordinate
+   *   system
+   */
+  open fun notifyComponentActivate(
+    component: NlComponent,
+    @AndroidCoordinate x: Int,
+    @AndroidCoordinate y: Int,
+  ) {
+    notifyComponentActivate(component)
+  }
+
+  open fun notifyComponentActivate(component: NlComponent) {}
 
   abstract val selectionAsTransferable: ItemTransferable
 
@@ -227,7 +408,330 @@ abstract class PreviewSurface<T : SceneManager>(
    */
   abstract fun scrollToCenter(list: List<NlComponent>)
 
+  /**
+   * The offsets to the left and top edges when scrolling to a component by calling
+   * [scrollToVisible].
+   */
+  @get:SwingCoordinate protected abstract val scrollToVisibleOffset: Dimension
+
+  /**
+   * Ensures that the given model is visible in the surface by scrolling to it if needed. If the
+   * [SceneView] is partially visible and [forceScroll] is set to `false`, no scroll will happen.
+   */
+  fun scrollToVisible(sceneView: SceneView, forceScroll: Boolean) {
+    sceneViewPanel.findSceneViewRectangle(sceneView)?.let { sceneViewRectangle ->
+      if (forceScroll || !viewport.viewRect.intersects(sceneViewRectangle)) {
+        val offset = scrollToVisibleOffset
+        setScrollPosition(sceneViewRectangle.x - offset.width, sceneViewRectangle.y - offset.height)
+      }
+    }
+  }
+
+  /**
+   * Given a rectangle relative to a sceneView, find its absolute coordinates and then scroll to
+   * center such rectangle. See [scrollToCenter]
+   *
+   * @param sceneView the [SceneView] that contains the given rectangle.
+   * @param rectangle the rectangle that should be visible, with its coordinates relative to the
+   *   sceneView.
+   */
+  protected fun scrollToCenter(sceneView: SceneView, @SwingCoordinate rectangle: Rectangle) {
+    val availableSpace = viewport.extentSize
+    sceneViewPanel.findMeasuredSceneViewRectangle(sceneView, availableSpace)?.let {
+      sceneViewRectangle ->
+      val topLeftCorner =
+        Point(sceneViewRectangle.x + rectangle.x, sceneViewRectangle.y + rectangle.y)
+      scrollToCenter(Rectangle(topLeftCorner, rectangle.size))
+    }
+  }
+
+  /**
+   * Move the scroll position to make the given rectangle visible and centered. If the given
+   * rectangle is too big for the available space, it will be centered anyway and some of its
+   * borders will probably not be visible at the new scroll position.
+   *
+   * @param rectangle the rectangle that should be centered.
+   */
+  private fun scrollToCenter(@SwingCoordinate rectangle: Rectangle) {
+    val availableSpace = viewport.extentSize
+    val extraW = availableSpace.width - rectangle.width
+    val extraH = availableSpace.height - rectangle.height
+    setScrollPosition(rectangle.x - (extraW + 1) / 2, rectangle.y - (extraH + 1) / 2)
+  }
+
   protected open fun isKeepingScaleWhenReopen(): Boolean {
     return true
+  }
+
+  /**
+   * Restore the zoom level if it can be loaded from persistent settings, otherwise zoom-to-fit.
+   *
+   * @return whether zoom-to-fit or zoom restore has happened, which won't happen if there is no
+   *   model.
+   */
+  fun restoreZoomOrZoomToFit(): Boolean {
+    val model = model ?: return false
+    if (!restorePreviousScale(model)) {
+      zoomController.zoomToFit()
+    }
+    return true
+  }
+
+  /**
+   * Load the saved zoom level from the file of the given [NlModel]. Return true if the previous
+   * zoom level is restored, false otherwise.
+   */
+  private fun restorePreviousScale(model: NlModel): Boolean {
+    if (!isKeepingScaleWhenReopen()) {
+      return false
+    }
+    val state = getInstance(model.project).surfaceState
+    val previousScale =
+      state.loadFileScale(project, model.virtualFile, zoomController) ?: return false
+    zoomController.setScale(previousScale)
+    return true
+  }
+
+  @Slow
+  /** Some implementations might be slow */
+  protected abstract fun createSceneManager(model: NlModel): T
+
+  /**
+   * @return the primary (first) [NlModel] if exist. null otherwise.
+   * @see [models]
+   */
+  @Deprecated("The surface can contain multiple models. Use {@link #getModels()} instead.")
+  val model: NlModel?
+    get() = models.firstOrNull()
+
+  @Deprecated(
+    "Use getSceneManager(NlModel) or getSceneManagers() instead. Using this method will cause the code not to correctly support multiple previews."
+  )
+  open val sceneManager: T?
+    get() = model?.let { getSceneManager(it) }
+
+  abstract val models: ImmutableList<NlModel>
+  abstract val sceneManagers: ImmutableList<T>
+
+  abstract fun getSceneManager(model: NlModel): T?
+
+  override val focusedSceneView: SceneView?
+    get() {
+      val managers = sceneManagers
+      if (managers.size == 1) {
+        // Always return primary SceneView In single-model mode,
+        val manager: T = checkNotNull(sceneManager)
+        return manager.sceneViews.firstOrNull()
+      }
+      val selection = selectionModel.selection
+      if (selection.isNotEmpty()) {
+        val primary = selection[0]
+        val manager: T? = getSceneManager(primary.model)
+        return manager?.sceneViews?.firstOrNull()
+      }
+      return null
+    }
+
+  /** Returns the list of [SceneView]s attached to this [DesignSurface]. */
+  val sceneViews: ImmutableCollection<SceneView>
+    get() {
+      return sceneManagers
+        .stream()
+        .flatMap { sceneManager: T -> sceneManager.sceneViews.stream() }
+        .collect(ImmutableList.toImmutableList())
+    }
+
+  @Deprecated("Owner can have multiple scenes")
+  override val scene: Scene?
+    get() = sceneManager?.scene
+
+  override fun getSceneViewAt(@SwingCoordinate x: Int, @SwingCoordinate y: Int): SceneView? {
+    val sceneViews = sceneViews
+    val scaledSize = Dimension()
+    for (view in sceneViews) {
+      view.getScaledContentSize(scaledSize)
+      if (
+        (view.x <= x && x <= view.x + scaledSize.width && view.y <= y) &&
+          y <= (view.y + scaledSize.height)
+      ) {
+        return view
+      }
+    }
+    return null
+  }
+
+  /**
+   * Returns the [SceneView] under the mouse cursor if the mouse is within the coordinates of this
+   * surface or null otherwise.
+   */
+  val sceneViewAtMousePosition: SceneView?
+    get() {
+      val mouseLocation =
+        if (!GraphicsEnvironment.isHeadless()) MouseInfo.getPointerInfo().location else null
+      if (mouseLocation == null || contains(mouseLocation) || !isVisible || !isEnabled) {
+        return null
+      }
+
+      SwingUtilities.convertPointFromScreen(mouseLocation, sceneViewPanel)
+      return getSceneViewAt(mouseLocation.x, mouseLocation.y)
+    }
+
+  override fun onHover(@SwingCoordinate x: Int, @SwingCoordinate y: Int) {
+    sceneViews.forEach { it.onHover(x, y) }
+  }
+
+  val layoutType: DesignerEditorFileType
+    get() = model?.type ?: DefaultDesignerFileType
+
+  /**
+   * @return true if the content is editable (e.g. move position or drag-and-drop), false otherwise.
+   */
+  val isEditable: Boolean
+    get() = layoutType.isEditable()
+
+  override fun getConfigurations(): ImmutableCollection<Configuration> {
+    return models.stream().map(NlModel::configuration).collect(ImmutableList.toImmutableList())
+  }
+
+  /**
+   * Update the status of [GuiInputHandler]. It will start or stop listening depending on the
+   * current layout type. TODO Make private
+   */
+  protected fun reactivateGuiInputHandler() {
+    if (isEditable) {
+      guiInputHandler.startListening()
+    } else {
+      guiInputHandler.stopListening()
+    }
+  }
+
+  /** Support for panning actions. */
+  val pannable =
+    object : Pannable {
+      override var isPanning: Boolean
+        get() = guiInputHandler.isPanning
+        set(value) {
+          guiInputHandler.isPanning = value
+        }
+
+      override val isPannable: Boolean
+        get() = true
+
+      /**
+       * Sets the offset for the scroll viewer to the specified x and y values The offset will never
+       * be less than zero, and never greater that the maximum value allowed by the sizes of the
+       * underlying view and the extent. If the zoom factor is large enough that a scroll bars isn't
+       * visible, the position will be set to zero.
+       */
+      @set:SwingCoordinate
+      @get:SwingCoordinate
+      override var scrollPosition: Point
+        get() = viewport.viewPosition
+        set(value) {
+          value.setLocation(max(0.0, value.x.toDouble()), max(0.0, value.y.toDouble()))
+
+          val extent: Dimension = viewport.extentSize
+          val view: Dimension = viewport.viewSize
+
+          val minX = min(value.x.toDouble(), (view.width - extent.width).toDouble()).toInt()
+          val minY = min(value.y.toDouble(), (view.height - extent.height).toDouble()).toInt()
+
+          value.setLocation(minX, minY)
+
+          viewport.viewPosition = value
+        }
+    }
+
+  fun setScrollPosition(@SwingCoordinate x: Int, @SwingCoordinate y: Int) {
+    pannable.scrollPosition = Point(x, y)
+  }
+
+  /**
+   * This is called before [setModel]. After the returned future completes, we'll wait for smart
+   * mode and then invoke [setModel]. If a [DesignSurface] needs to do any extra work before the
+   * model is set it should be done here.
+   */
+  open fun goingToSetModel(model: NlModel?): CompletableFuture<*> {
+    return CompletableFuture.completedFuture<Any?>(null)
+  }
+
+  abstract fun setModel(model: NlModel?): CompletableFuture<Void>
+
+  // TODO Make private
+  protected val renderFutures = mutableListOf<CompletableFuture<Void>>()
+
+  /** Returns true if this surface is currently refreshing. */
+  fun isRefreshing(): Boolean {
+    synchronized(renderFutures) {
+      return renderFutures.isNotEmpty()
+    }
+  }
+
+  /**
+   * Invalidates all models and request a render of the layout. This will re-inflate the [NlModel]s
+   * and render them sequentially. The result [CompletableFuture] will notify when all the
+   * renderings have completed.
+   */
+  open fun requestRender(): CompletableFuture<out Void?> {
+    if (sceneManagers.isEmpty()) {
+      return CompletableFuture.completedFuture(null)
+    }
+    return requestSequentialRender { it.requestLayoutAndRenderAsync(false) }
+  }
+
+  /**
+   * Schedule the render requests sequentially for all [SceneManager]s in this [DesignSurface].
+   *
+   * @param renderRequest The requested rendering to be scheduled. This gives the caller a chance to
+   *   choose the preferred rendering request.
+   * @return A callback which is triggered when the scheduled rendering are completed.
+   */
+  protected fun requestSequentialRender(
+    renderRequest: (T) -> CompletableFuture<Void>
+  ): CompletableFuture<Void> {
+    val callback = CompletableFuture<Void>()
+    synchronized(renderFutures) {
+      if (renderFutures.isNotEmpty()) {
+        // TODO: This may make the rendered previews not match the last status of NlModel if the
+        // modifications happen during rendering.
+        // Similar case happens in LayoutlibSceneManager#requestRender function, both need to be
+        // fixed.
+        renderFutures.add(callback)
+        return callback
+      } else {
+        renderFutures.add(callback)
+      }
+    }
+
+    // Cascading the CompletableFuture to make them executing sequentially.
+    var renderFuture = CompletableFuture.completedFuture<Void?>(null)
+    for (manager in sceneManagers) {
+      renderFuture =
+        renderFuture.thenCompose {
+          val future = renderRequest(manager)
+          invalidate()
+          future
+        }
+    }
+    renderFuture.thenRun {
+      synchronized(renderFutures) {
+        renderFutures.forEach { it.complete(null) }
+        renderFutures.clear()
+      }
+      updateNotifications()
+    }
+
+    return callback
+  }
+
+  private var lintIssueProvider: LintIssueProvider? = null
+  val issueModel: IssueModel = IssueModel(this, project)
+
+  fun setLintAnnotationsModel(model: LintAnnotationsModel) {
+    lintIssueProvider?.let { it.lintAnnotationsModel = model }
+
+    if (lintIssueProvider == null) {
+      lintIssueProvider = LintIssueProvider(model).also { issueModel.addIssueProvider(it) }
+    }
   }
 }

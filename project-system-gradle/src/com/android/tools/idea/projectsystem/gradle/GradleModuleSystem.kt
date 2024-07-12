@@ -58,12 +58,10 @@ import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifests
 import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifestsOfLibs
 import com.android.tools.idea.projectsystem.getForFile
 import com.android.tools.idea.projectsystem.getMainModule
-import com.android.tools.idea.projectsystem.getScreenshotTestModule
 import com.android.tools.idea.projectsystem.getTransitiveNavigationFiles
 import com.android.tools.idea.projectsystem.isAndroidTestFile
 import com.android.tools.idea.projectsystem.isAndroidTestModule
 import com.android.tools.idea.projectsystem.isScreenshotTestFile
-import com.android.tools.idea.projectsystem.isScreenshotTestModule
 import com.android.tools.idea.projectsystem.sourceProviders
 import com.android.tools.idea.rendering.StudioModuleDependencies
 import com.android.tools.idea.res.AndroidDependenciesCache
@@ -584,7 +582,7 @@ class GradleModuleSystem(
   override val isMlModelBindingEnabled: Boolean get() = readFromAgpFlags { it.mlModelBindingEnabled } ?: false
 
   override val isViewBindingEnabled: Boolean get() = GradleAndroidModel.get(module)?.androidProject?.viewBindingOptions?.enabled ?: false
-
+  override val isDataBindingEnabled: Boolean get() = GradleAndroidModel.get(module)?.androidProject?.agpFlags?.dataBindingEnabled ?: false
   override val isKaptEnabled: Boolean get() = GradleAndroidModel.get(module)?.androidProject?.isKaptEnabled ?: false
 
   override val applicationRClassConstantIds: Boolean get() = readFromAgpFlags { it.applicationRClassConstantIds } ?: true

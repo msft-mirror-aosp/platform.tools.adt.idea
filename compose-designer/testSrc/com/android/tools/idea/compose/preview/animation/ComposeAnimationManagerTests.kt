@@ -19,6 +19,7 @@ import androidx.compose.animation.tooling.ComposeAnimatedProperty
 import androidx.compose.animation.tooling.ComposeAnimation
 import androidx.compose.animation.tooling.ComposeAnimationType
 import com.android.testutils.delayUntilCondition
+import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.scene.render
@@ -34,10 +35,10 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSlider
 import junit.framework.TestCase.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -76,7 +77,9 @@ class ComposeAnimationManagerTests(private val animationType: ComposeAnimationTy
       assertEquals("true", toolbar.components[2].findComboBox().text)
       assertEquals("false", toolbar.components[4].findComboBox().text)
       ui.clickOn(toolbar.components[1])
-      assertEquals("false", toolbar.components[2].findComboBox().text)
+      retryUntilPassing(5.seconds) {
+        assertEquals("false", toolbar.components[2].findComboBox().text)
+      }
       assertEquals("true", toolbar.components[4].findComboBox().text)
     }
   }
@@ -92,7 +95,9 @@ class ComposeAnimationManagerTests(private val animationType: ComposeAnimationTy
       assertEquals("State1", toolbar.components[2].findComboBox().text)
       assertEquals("State2", toolbar.components[4].findComboBox().text)
       ui.clickOn(toolbar.components[1])
-      assertEquals("State2", toolbar.components[2].findComboBox().text)
+      retryUntilPassing(5.seconds) {
+        assertEquals("State2", toolbar.components[2].findComboBox().text)
+      }
       assertEquals("State1", toolbar.components[4].findComboBox().text)
     }
   }
@@ -116,7 +121,9 @@ class ComposeAnimationManagerTests(private val animationType: ComposeAnimationTy
       assertEquals("(1, 1)", toolbar.components[2].findComboBox().text)
       assertEquals("(2, 3)", toolbar.components[4].findComboBox().text)
       ui.clickOn(toolbar.components[1])
-      assertEquals("(2, 3)", toolbar.components[2].findComboBox().text)
+      retryUntilPassing(5.seconds) {
+        assertEquals("(2, 3)", toolbar.components[2].findComboBox().text)
+      }
       assertEquals("(1, 1)", toolbar.components[4].findComboBox().text)
     }
   }
@@ -129,12 +136,13 @@ class ComposeAnimationManagerTests(private val animationType: ComposeAnimationTy
       assertEquals("false", toolbar.components[2].findComboBox().text)
       assertEquals("true", toolbar.components[4].findComboBox().text)
       ui.clickOn(toolbar.components[1])
-      assertEquals("true", toolbar.components[2].findComboBox().text)
+      retryUntilPassing(5.seconds) {
+        assertEquals("true", toolbar.components[2].findComboBox().text)
+      }
       assertEquals("false", toolbar.components[4].findComboBox().text)
     }
   }
 
-  @Ignore("http://b/348574356")
   @Test
   fun transitionIsCached() {
     var transitionCalls = 0
@@ -152,19 +160,19 @@ class ComposeAnimationManagerTests(private val animationType: ComposeAnimationTy
       }
 
     setupAndCheckToolbar(animationType, setOf("one", "two"), clock) { toolbar, ui ->
-      delayUntilCondition(200) { transitionCalls == 1 }
+      withContext(workerThread) { delayUntilCondition(200) { transitionCalls == 1 } }
       assertEquals(1, transitionCalls)
-      delayUntilCondition(200) { stateCalls == 1 }
+      withContext(workerThread) { delayUntilCondition(200) { stateCalls == 1 } }
       assertEquals(1, stateCalls)
       // Swap
       ui.clickOn(toolbar.components[1])
-      delayUntilCondition(200) { transitionCalls == 2 }
+      withContext(workerThread) { delayUntilCondition(200) { transitionCalls == 2 } }
       assertEquals(2, transitionCalls)
       assertEquals(2, stateCalls)
       // Swap again
       ui.clickOn(toolbar.components[1])
       assertEquals(2, transitionCalls)
-      delayUntilCondition(200) { stateCalls == 3 }
+      withContext(workerThread) { delayUntilCondition(200) { stateCalls == 3 } }
       assertEquals(3, stateCalls)
     }
   }
@@ -194,25 +202,28 @@ class ComposeAnimationManagerTests(private val animationType: ComposeAnimationTy
         override val states = setOf("one", "two")
       }
 
+    var ui: FakeUi
     runBlocking {
       surface.sceneManagers.forEach { it.render() }
       ComposeAnimationSubscriber.onAnimationSubscribed(clock, animation).join()
       withContext(uiThread) {
-        val ui = FakeUi(inspector.component.apply { size = Dimension(500, 400) })
+        ui = FakeUi(inspector.component.apply { size = Dimension(500, 400) })
         ui.updateToolbars()
         ui.layout()
-        delayUntilCondition(200) { numberOfCalls == 1 }
-        val errorPanel =
-          TreeWalker(ui.root)
-            .descendantStream()
-            .filter { it is JPanel && it.name == "Error Panel" }
-            .findFirst()
-        assertTrue(errorPanel.isPresent)
       }
+    }
+    retryUntilPassing(10.seconds) {
+      assertEquals(
+        true,
+        TreeWalker(ui.root)
+          .descendantStream()
+          .filter { it is JPanel && it.name == "Error Panel" }
+          .findFirst()
+          .isPresent,
+      )
     }
   }
 
-  @Ignore("http://b/348574356")
   @Test
   fun changeTime() {
     var numberOfCalls = 0

@@ -9,7 +9,6 @@ import com.android.SdkConstants;
 import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.model.AndroidModel;
 import com.android.tools.idea.model.TestAndroidModel;
-import com.android.tools.idea.rendering.BuildTargetReference;
 import com.android.tools.idea.sdk.AndroidSdkPathStore;
 import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.idea.testing.AndroidTestUtils;
@@ -93,7 +92,6 @@ public abstract class AndroidTestCase extends AndroidTestBase {
   protected List<Module> myAdditionalModules;
 
   protected AndroidFacet myFacet;
-  protected BuildTargetReference myBuildTarget;
   protected CodeStyleSettings mySettings;
 
   protected AdtTestProjectDescriptor myProjectDescriptor;
@@ -159,8 +157,6 @@ public abstract class AndroidTestCase extends AndroidTestBase {
     createManifest();
 
     myFacet = addAndroidFacetAndSdk(myModule);
-    myBuildTarget = BuildTargetReference.gradleOnly(myFacet);
-
     removeFacetOn(myFixture.getProjectDisposable(), myFacet);
 
     myFixture.copyDirectoryToProject(getResDir(), "res");
@@ -264,7 +260,10 @@ public abstract class AndroidTestCase extends AndroidTestBase {
     }
   }
 
-  public static void initializeModuleFixtureBuilderWithSrcAndGen(AndroidModuleFixtureBuilder moduleFixtureBuilder, String moduleRoot) {
+  public static void initializeModuleFixtureBuilderWithSrcAndGen(
+    AndroidModuleFixtureBuilder<?> moduleFixtureBuilder,
+    String moduleRoot
+  ) {
     moduleFixtureBuilder.setModuleRoot(moduleRoot);
     moduleFixtureBuilder.addContentRoot(moduleRoot);
 

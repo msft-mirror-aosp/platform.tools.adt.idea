@@ -24,18 +24,11 @@ import com.android.annotations.VisibleForTesting;
 import com.android.annotations.concurrency.GuardedBy;
 import com.android.annotations.concurrency.Slow;
 import com.android.annotations.concurrency.UiThread;
-import com.android.sdklib.AndroidCoordinate;
 import com.android.tools.adtui.common.SwingCoordinate;
-import com.android.tools.configurations.Configuration;
-import com.android.tools.editor.PanZoomListener;
 import com.android.tools.idea.common.analytics.DesignerAnalyticsManager;
 import com.android.tools.idea.common.editor.ActionManager;
-import com.android.tools.idea.common.error.IssueModel;
-import com.android.tools.idea.common.error.LintIssueProvider;
-import com.android.tools.idea.common.lint.LintAnnotationsModel;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.DefaultSelectionModel;
-import com.android.tools.idea.common.model.ItemTransferable;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlModel;
 import com.android.tools.idea.common.model.SelectionListener;
@@ -47,14 +40,10 @@ import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport;
 import com.android.tools.idea.common.layout.manager.MatchParentLayoutManager;
 import com.android.tools.idea.common.surface.layout.NonScrollableDesignSurfaceViewport;
 import com.android.tools.idea.common.surface.layout.ScrollableDesignSurfaceViewport;
-import com.android.tools.idea.common.type.DefaultDesignerFileType;
-import com.android.tools.idea.common.type.DesignerEditorFileType;
 import com.android.tools.idea.common.layout.manager.PositionableContentLayoutManager;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.intellij.openapi.Disposable;
@@ -63,7 +52,6 @@ import com.intellij.openapi.actionSystem.DataProvider;
 import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
-import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.xml.XmlTag;
@@ -76,22 +64,15 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GraphicsEnvironment;
-import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
-import java.awt.event.AdjustmentEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -101,7 +82,6 @@ import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.OverlayLayout;
-import javax.swing.SwingUtilities;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -110,8 +90,7 @@ import org.jetbrains.annotations.TestOnly;
 /**
  * A generic design surface for use in a graphical editor.
  */
-public abstract class DesignSurface<T extends SceneManager> extends PreviewSurface<T>
-  implements Disposable, InteractableScenesSurface, ScaleListener {
+public abstract class DesignSurface<T extends SceneManager> extends PreviewSurface<T> {
 
   /**
    * Filter got {@link #getModels()} to avoid returning disposed elements
@@ -123,9 +102,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
   private final Predicate<T> FILTER_DISPOSED_SCENE_MANAGERS =
     input -> input != null && FILTER_DISPOSED_MODELS.apply(input.getModel());
 
-  private static final Integer LAYER_PROGRESS = JLayeredPane.POPUP_LAYER + 10;
-  private static final Integer LAYER_MOUSE_CLICK = LAYER_PROGRESS + 10;
-
   /**
    * {@link JScrollPane} contained in this surface when zooming is enabled.
    */
@@ -136,9 +112,11 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
    */
   @NotNull private final JComponent myContentContainerPane;
   @NotNull protected final DesignSurfaceViewport myViewport;
-  @NotNull private final JLayeredPane myLayeredPane;
   @NotNull protected final SceneViewPanel mySceneViewPanel;
-  @NotNull private final MouseClickDisplayPanel myMouseClickDisplayPanel;
+
+  @Override
+  protected @NotNull SceneViewPanel getSceneViewPanel() { return mySceneViewPanel; }
+
   @VisibleForTesting
   private final GuiInputHandler myGuiInputHandler;
 
@@ -147,24 +125,13 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
   @GuardedBy("myModelToSceneManagersLock")
   private final LinkedHashMap<NlModel, T> myModelToSceneManagers = new LinkedHashMap<>();
 
-  @NotNull
-  private final List<CompletableFuture<Void>> myRenderFutures = new ArrayList<>();
-
-  protected final IssueModel myIssueModel;
   private boolean myIsActive = false;
-  private LintIssueProvider myLintIssueProvider;
 
   /**
    * Responsible for converting this surface state and send it for tracking (if logging is enabled).
    */
   @NotNull
   private final DesignerAnalyticsManager myAnalyticsManager;
-
-  /**
-   * When surface is opened at first time, it zoom-to-fit the content to make the previews fit the initial window size.
-   * After that it leave user to control the zoom. This flag indicates if the initial zoom-to-fit is done or not.
-   */
-  private boolean myIsInitialZoomLevelDetermined = false;
 
   @NotNull
   private final Function<DesignSurface<T>, DesignSurfaceActionHandler> myActionHandlerProvider;
@@ -197,7 +164,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     super(project, selectionModel, zoomControlsPolicy, new BorderLayout());
 
     Disposer.register(parentDisposable, this);
-    myIssueModel = new IssueModel(this, getProject());
 
     boolean hasZoomControls = getZoomControlsPolicy() != ZoomControlsPolicy.HIDDEN;
 
@@ -218,9 +184,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     };
     getSelectionModel().addListener(selectionListener);
 
-    myProgressPanel = new SurfaceProgressPanel(this, this::useSmallProgressIcon);
-    myProgressPanel.setName("Layout Editor Progress Panel");
-
     mySceneViewPanel = new SceneViewPanel(
       this::getSceneViews,
       () -> getGuiInputHandler().getLayers(),
@@ -236,7 +199,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     else {
       myScrollPane = null;
     }
-    myMouseClickDisplayPanel = new MouseClickDisplayPanel(this);
 
     // Setup the layers for the DesignSurface
     // If the surface is scrollable, we use four layers:
@@ -250,11 +212,9 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     //
     // If the surface is NOT scrollable, the zoom controls will not be added and the scroll pane will be replaced
     // by the actual content.
-    myLayeredPane = new JLayeredPane();
-    myLayeredPane.setFocusable(true);
     if (myScrollPane != null) {
-      myLayeredPane.setLayout(new MatchParentLayoutManager());
-      myLayeredPane.add(myScrollPane, JLayeredPane.POPUP_LAYER);
+      getLayeredPane().setLayout(new MatchParentLayoutManager());
+      getLayeredPane().add(myScrollPane, JLayeredPane.POPUP_LAYER);
       myContentContainerPane = myScrollPane;
       myViewport = new ScrollableDesignSurfaceViewport(myScrollPane.getViewport());
       myScrollPane.addComponentListener(new ComponentAdapter() {
@@ -266,48 +226,21 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       });
     }
     else {
-      myLayeredPane.setLayout(new OverlayLayout(myLayeredPane));
+      getLayeredPane().setLayout(new OverlayLayout(getLayeredPane()));
       mySceneViewPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-      myLayeredPane.add(mySceneViewPanel, JLayeredPane.POPUP_LAYER);
+      getLayeredPane().add(mySceneViewPanel, JLayeredPane.POPUP_LAYER);
       myContentContainerPane = mySceneViewPanel;
       myViewport = new NonScrollableDesignSurfaceViewport(this);
     }
-    myLayeredPane.add(myProgressPanel, LAYER_PROGRESS);
-    myLayeredPane.add(myMouseClickDisplayPanel, LAYER_MOUSE_CLICK);
 
-    add(myLayeredPane);
-
-    // TODO: Do this as part of the layout/validate operation instead
-    addComponentListener(new ComponentAdapter() {
-      @Override
-      public void componentResized(ComponentEvent componentEvent) {
-        if (componentEvent.getID() == ComponentEvent.COMPONENT_RESIZED) {
-          if (!myIsInitialZoomLevelDetermined && isShowing() && getWidth() > 0 && getHeight() > 0) {
-            // Set previous scale when DesignSurface becomes visible at first time.
-            boolean hasModelAttached = restoreZoomOrZoomToFit();
-            if (!hasModelAttached) {
-              // No model is attached, ignore the setup of initial zoom level.
-              return;
-            }
-            // The default size is defined, enable the flag.
-            myIsInitialZoomLevelDetermined = true;
-          }
-          // We rebuilt the scene to make sure all SceneComponents are placed at right positions.
-          getSceneManagers().forEach(manager -> {
-            Scene scene = manager.getScene();
-            scene.needsRebuildList();
-          });
-          repaint();
-        }
-      }
-    });
+    add(getLayeredPane());
 
     Interactable interactable = interactableProvider.apply(this);
     myGuiInputHandler = new GuiInputHandler(this, interactable, interactionProviderCreator.apply(this));
     myGuiInputHandler.startListening();
     //noinspection AbstractMethodCallInConstructor
     myActionManager = actionManagerProvider.apply(this);
-    myActionManager.registerActionsShortcuts(myLayeredPane);
+    myActionManager.registerActionsShortcuts(getLayeredPane());
 
     if (hasZoomControls) {
       JPanel zoomControlsLayerPane = new JPanel();
@@ -316,7 +249,7 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       zoomControlsLayerPane.setLayout(new BorderLayout());
       zoomControlsLayerPane.setFocusable(false);
 
-      myLayeredPane.add(zoomControlsLayerPane, JLayeredPane.DRAG_LAYER);
+      getLayeredPane().add(zoomControlsLayerPane, JLayeredPane.DRAG_LAYER);
       zoomControlsLayerPane.add(myActionManager.getDesignSurfaceToolbar(), BorderLayout.EAST);
       if (getZoomControlsPolicy() == ZoomControlsPolicy.AUTO_HIDE) {
         myOnHoverListener = DesignSurfaceHelper.createZoomControlAutoHiddenListener(this, zoomControlsLayerPane);
@@ -332,35 +265,11 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     }
   }
 
-  /**
-   * Restore the zoom level if it can be loaded from persistent settings, otherwise zoom-to-fit.
-   * @return whether zoom-to-fit or zoom restore has happened, which won't happen if there is no model.
-   */
-  public boolean restoreZoomOrZoomToFit() {
-    NlModel model = Iterables.getFirst(getModels(), null);
-    if (model == null) {
-      return false;
-    }
-    if (!restorePreviousScale(model)) {
-      getZoomController().zoomToFit();
-    }
-    return true;
-  }
-
   @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
   @NotNull
+  @Override
   public DesignSurfaceViewport getViewport() {
     return myViewport;
-  }
-
-  @Slow // Some implementations might be slow
-  @NotNull
-  protected abstract T createSceneManager(@NotNull NlModel model);
-
-  @NotNull
-  public DesignerEditorFileType getLayoutType() {
-    NlModel model = getModel();
-    return model == null ? DefaultDesignerFileType.INSTANCE : model.getType();
   }
 
   @NotNull
@@ -375,21 +284,11 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
   }
 
   /**
-   * @return the primary (first) {@link NlModel} if exist. null otherwise.
-   * @see #getModels()
-   * @deprecated The surface can contain multiple models. Use {@link #getModels()} instead.
-   */
-  @Deprecated
-  @Nullable
-  public NlModel getModel() {
-    return Iterables.getFirst(getModels(), null);
-  }
-
-  /**
    * @return the list of added {@link NlModel}s.
    * @see #getModel()
    */
   @NotNull
+  @Override
   public ImmutableList<NlModel> getModels() {
     myModelToSceneManagersLock.readLock().lock();
     try {
@@ -405,6 +304,7 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
    */
   @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
   @NotNull
+  @Override
   public ImmutableList<T> getSceneManagers() {
     myModelToSceneManagersLock.readLock().lock();
     try {
@@ -586,7 +486,8 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
    * @see #addAndRenderModel(NlModel)
    * @see #removeModel(NlModel)
    */
-  public CompletableFuture<Void> setModel(@Nullable NlModel model) {
+  @Override
+  public @NotNull CompletableFuture<Void> setModel(@Nullable NlModel model) {
     NlModel oldModel = getModel();
     if (model == oldModel) {
       return CompletableFuture.completedFuture(null);
@@ -622,32 +523,20 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       .thenRun(() -> {});
   }
 
-  /**
-   * Update the status of {@link GuiInputHandler}. It will start or stop listening depending on the current layout type.
-   */
-  private void reactivateGuiInputHandler() {
-    if (isEditable()) {
-      myGuiInputHandler.startListening();
-    }
-    else {
-      myGuiInputHandler.stopListening();
-    }
-  }
-
   @Override
   public void dispose() {
     clearListeners();
     myGuiInputHandler.stopListening();
     Toolkit.getDefaultToolkit().removeAWTEventListener(myOnHoverListener);
-    synchronized (myRenderFutures) {
-      for (CompletableFuture<Void> future : myRenderFutures) {
+    synchronized (getRenderFutures()) {
+      for (CompletableFuture<Void> future : getRenderFutures()) {
         try {
           future.cancel(true);
         }
         catch (CancellationException ignored) {
         }
       }
-      myRenderFutures.clear();
+      getRenderFutures().clear();
     }
     if (getRepaintTimer().isRunning()) {
       getRepaintTimer().stop();
@@ -668,11 +557,8 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     mySceneViewPanel.repaint();
   }
 
-  /**
-   * Asks the ScreenViews for a re-layouts the ScreenViews contained in this design surface. The re-layout will not happen immediately in
-   * this call.
-   */
   @UiThread
+  @Override
   public void revalidateScrollArea() {
     // Mark the scene view panel as invalid to force a revalidation when the scroll pane is revalidated.
     mySceneViewPanel.invalidate();
@@ -686,108 +572,9 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     return getInteractionPane();
   }
 
-  @Override
-  @Nullable
-  public SceneView getFocusedSceneView() {
-    ImmutableList<T> managers = getSceneManagers();
-    if (managers.size() == 1) {
-      // Always return primary SceneView In single-model mode,
-      SceneManager manager = getSceneManager();
-      assert manager != null;
-      return Iterables.getFirst(manager.getSceneViews(), null);
-    }
-    List<NlComponent> selection = getSelectionModel().getSelection();
-    if (!selection.isEmpty()) {
-      NlComponent primary = selection.get(0);
-      SceneManager manager = getSceneManager(primary.getModel());
-      if (manager != null) {
-        return Iterables.getFirst(manager.getSceneViews(), null);
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Returns the list of SceneViews attached to this surface
-   */
-  @NotNull
-  public ImmutableCollection<SceneView> getSceneViews() {
-    return getSceneManagers().stream()
-      .flatMap(sceneManager -> sceneManager.getSceneViews().stream())
-      .collect(ImmutableList.toImmutableList());
-  }
-
-  @Override
-  public void onHover(@SwingCoordinate int x, @SwingCoordinate int y) {
-    for (SceneView sceneView : getSceneViews()) {
-      sceneView.onHover(x, y);
-    }
-  }
-
-  @Override
-  public void setPanning(boolean isPanning) {
-    myGuiInputHandler.setPanning(isPanning);
-  }
-
-  @SwingCoordinate
-  protected abstract Dimension getScrollToVisibleOffset();
-
-  @Override
-  public boolean isPanning() {
-    return myGuiInputHandler.isPanning();
-  }
-
-  @Override
-  public boolean isPannable() {
-    return true;
-  }
-
   public Rectangle getCurrentScrollRectangle() {
     if (myScrollPane == null) return null;
     return new Rectangle(myScrollPane.getViewport().getViewPosition(), myScrollPane.getViewport().getSize());
-  }
-
-  /**
-   * Given a rectangle relative to a sceneView, find its absolute coordinates and then scroll to
-   * center such rectangle. See {@link #scrollToCenter(Rectangle)}
-   * @param sceneView the {@link SceneView} that contains the given rectangle.
-   * @param rectangle the rectangle that should be visible, with its coordinates relative to the sceneView.
-   */
-  protected void scrollToCenter(@NotNull SceneView sceneView, @NotNull @SwingCoordinate Rectangle rectangle) {
-    Dimension availableSpace = getExtentSize();
-    Rectangle sceneViewRectangle =
-      mySceneViewPanel.findMeasuredSceneViewRectangle(sceneView,
-                                                      availableSpace);
-    if (sceneViewRectangle != null) {
-      Point topLeftCorner = new Point(sceneViewRectangle.x + rectangle.x,
-                                      sceneViewRectangle.y + rectangle.y);
-      scrollToCenter(new Rectangle(topLeftCorner, rectangle.getSize()));
-    }
-  }
-
-  /**
-   * Move the scroll position to make the given rectangle visible and centered.
-   * If the given rectangle is too big for the available space, it will be centered anyway and
-   * some of its borders will probably not be visible at the new scroll position.
-   * @param rectangle the rectangle that should be centered.
-   */
-  protected void scrollToCenter(@NotNull @SwingCoordinate Rectangle rectangle) {
-    Dimension availableSpace = getExtentSize();
-    int extraW = availableSpace.width - rectangle.width;
-    int extraH = availableSpace.height - rectangle.height;
-    setScrollPosition(rectangle.x - (extraW + 1) / 2, rectangle.y - (extraH + 1) / 2);
-  }
-
-  /**
-   * Ensures that the given model is visible in the surface by scrolling to it if needed.
-   * If the {@link SceneView} is partially visible and {@code forceScroll} is set to {@code false}, no scroll will happen.
-   */
-  public final void scrollToVisible(@NotNull SceneView sceneView, boolean forceScroll) {
-    Rectangle rectangle = mySceneViewPanel.findSceneViewRectangle(sceneView);
-    if (rectangle != null && (forceScroll || !getViewport().getViewRect().intersects(rectangle))) {
-      Dimension offset = getScrollToVisibleOffset();
-      setScrollPosition(rectangle.x - offset.width, rectangle.y - offset.height);
-    }
   }
 
   /**
@@ -798,40 +585,7 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     getSceneViews().stream().filter(sceneView -> sceneView.getSceneManager().getModel() == model).findFirst()
       .ifPresent(sceneView -> scrollToVisible(sceneView, forceScroll));
   }
-
-  public void setScrollPosition(@SwingCoordinate int x, @SwingCoordinate int y) {
-    setScrollPosition(new Point(x, y));
-  }
-
-  /**
-   * Sets the offset for the scroll viewer to the specified x and y values
-   * The offset will never be less than zero, and never greater that the
-   * maximum value allowed by the sizes of the underlying view and the extent.
-   * If the zoom factor is large enough that a scroll bars isn't visible,
-   * the position will be set to zero.
-   */
-  @Override
-  public void setScrollPosition(@SwingCoordinate Point p) {
-    p.setLocation(Math.max(0, p.x), Math.max(0, p.y));
-
-    Dimension extent = getExtentSize();
-    Dimension view = getViewSize();
-
-    int minX = Math.min(p.x, view.width - extent.width);
-    int minY = Math.min(p.y, view.height - extent.height);
-
-    p.setLocation(minX, minY);
-
-    getViewport().setViewPosition(p);
-  }
-
-  @Override
-  @NotNull
-  @SwingCoordinate
-  public Point getScrollPosition() {
-    return getViewport().getViewPosition();
-  }
-
+  
   /**
    * Returns the size of the surface scroll viewport.
    */
@@ -854,55 +608,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     return Math.min(Math.max(scale, getZoomController().getMinScale()), getZoomController().getMaxScale());
   }
 
-  @Override
-  public void onScaleChange(@NotNull ScaleChange update) {
-    NlModel model = Iterables.getFirst(getModels(), null);
-    if(update.isAnimating()){
-      revalidateScrollArea();
-      return;
-    }
-    if (model != null) {
-      storeCurrentScale(model);
-    }
-    revalidateScrollArea();
-    notifyScaleChanged(update.getPreviousScale(), update.getNewScale());
-  }
-
-  /**
-   * Save the current zoom level from the file of the given {@link NlModel}.
-   */
-  private void storeCurrentScale(@NotNull NlModel model) {
-    if (!isKeepingScaleWhenReopen()) {
-      return;
-    }
-    SurfaceState state = DesignSurfaceSettings.getInstance(model.getProject()).getSurfaceState();
-    state.saveFileScale(getProject(), model.getVirtualFile(), getZoomController());
-  }
-
-  /**
-   * Load the saved zoom level from the file of the given {@link NlModel}.
-   * Return true if the previous zoom level is restored, false otherwise.
-   */
-  private boolean restorePreviousScale(@NotNull NlModel model) {
-    if (!isKeepingScaleWhenReopen()) {
-      return false;
-    }
-    SurfaceState state = DesignSurfaceSettings.getInstance(model.getProject()).getSurfaceState();
-    Double previousScale = state.loadFileScale(getProject(), model.getVirtualFile(), getZoomController());
-    if (previousScale != null) {
-      getZoomController().setScale(previousScale);
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
-
-  @NotNull
-  public JComponent getLayeredPane() {
-    return myLayeredPane;
-  }
-
   @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
   @NotNull
   public JComponent getInteractionPane() {
@@ -921,27 +626,7 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     }
   }
 
-  /**
-   * @param x the x coordinate of the double click converted to pixels in the Android coordinate system
-   * @param y the y coordinate of the double click converted to pixels in the Android coordinate system
-   */
-  public void notifyComponentActivate(@NotNull NlComponent component, @AndroidCoordinate int x, @AndroidCoordinate int y) {
-    notifyComponentActivate(component);
-  }
-
-  public void notifyComponentActivate(@NotNull NlComponent component) {
-    activatePreferredEditor(component);
-  }
-
-  protected void activatePreferredEditor(@NotNull NlComponent component) {
-    for (DesignSurfaceListener listener : getListeners()) {
-      if (listener.activatePreferredEditor(this, component)) {
-        break;
-      }
-    }
-  }
-
-  /**
+   /**
    * The editor has been activated
    */
   public void activate() {
@@ -959,11 +644,11 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       }
     }
     myIsActive = true;
-    myIssueModel.activate();
+    getIssueModel().activate();
   }
 
   public void deactivateIssueModel() {
-    myIssueModel.deactivate();
+    getIssueModel().deactivate();
   }
 
   public void deactivate() {
@@ -974,12 +659,10 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       }
     }
     myIsActive = false;
-    myIssueModel.deactivate();
+    getIssueModel().deactivate();
 
     myGuiInputHandler.cancelInteraction();
   }
-
-
 
   @Override
   @Deprecated
@@ -996,61 +679,11 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     return view;
   }
 
-  @Override
-  @Nullable
-  public SceneView getSceneViewAt(@SwingCoordinate int x, @SwingCoordinate int y) {
-    Collection<SceneView> sceneViews = getSceneViews();
-    Dimension scaledSize = new Dimension();
-    for (SceneView view : sceneViews) {
-      view.getScaledContentSize(scaledSize);
-      if (view.getX() <= x &&
-          x <= (view.getX() + scaledSize.width) &&
-          view.getY() <= y &&
-          y <= (view.getY() + scaledSize.height)) {
-        return view;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Returns the {@link SceneView} under the mouse cursor if the mouse is within the coordinates of this surface or null
-   * otherwise.
-   */
-  @Nullable
-  public SceneView getSceneViewAtMousePosition() {
-    Point mouseLocation = !GraphicsEnvironment.isHeadless() ? MouseInfo.getPointerInfo().getLocation() : null;
-    if (mouseLocation == null || contains(mouseLocation) || !isVisible() || !isEnabled()) {
-      return null;
-    }
-
-    SwingUtilities.convertPointFromScreen(mouseLocation, mySceneViewPanel);
-    return getSceneViewAt(mouseLocation.x, mouseLocation.y);
-  }
-
-  @Override
-  @Deprecated
-  @Nullable
-  public Scene getScene() {
-    SceneManager sceneManager = getSceneManager();
-    return sceneManager != null ? sceneManager.getScene() : null;
-  }
-
-  /**
-   * @see #getSceneManager(NlModel)
-   * @deprecated Use {@link #getSceneManager(NlModel)} or {@link #getSceneManagers} instead.
-   * Using this method will cause the code not to correctly support multiple previews.
-   */
-  @Nullable
-  public T getSceneManager() {
-    NlModel model = getModel();
-    return model != null ? getSceneManager(model) : null;
-  }
-
   /**
    * @return The {@link SceneManager} associated to the given {@link NlModel}.
    */
   @Nullable
+  @Override
   public T getSceneManager(@NotNull NlModel model) {
     if (model.getModule().isDisposed()) {
       return null;
@@ -1065,123 +698,10 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     }
   }
 
-  /**
-   * This is called before {@link #setModel(NlModel)}. After the returned future completes, we'll wait for smart mode and then invoke
-   * {@link #setModel(NlModel)}. If a {@code DesignSurface} needs to do any extra work before the model is set it should be done here.
-   */
-  public CompletableFuture<?> goingToSetModel(NlModel model) {
-    return CompletableFuture.completedFuture(null);
-  }
-
   @NotNull
+  @Override
   public GuiInputHandler getGuiInputHandler() {
     return myGuiInputHandler;
-  }
-
-  /**
-   * @return true if the content is editable (e.g. move position or drag-and-drop), false otherwise.
-   */
-  public boolean isEditable() {
-    return getLayoutType().isEditable();
-  }
-
-  private final Set<ProgressIndicator> myProgressIndicators = new HashSet<>();
-
-  @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
-  private final SurfaceProgressPanel myProgressPanel;
-
-  public void registerIndicator(@NotNull ProgressIndicator indicator) {
-    if (getProject().isDisposed() || Disposer.isDisposed(this)) {
-      return;
-    }
-
-    synchronized (myProgressIndicators) {
-      if (myProgressIndicators.add(indicator)) {
-        myProgressPanel.showProgressIcon();
-      }
-    }
-  }
-
-  public void unregisterIndicator(@NotNull ProgressIndicator indicator) {
-    synchronized (myProgressIndicators) {
-      myProgressIndicators.remove(indicator);
-
-      if (myProgressIndicators.isEmpty()) {
-        myProgressPanel.hideProgressIcon();
-      }
-    }
-  }
-
-  /**
-   * Invalidates all models and request a render of the layout. This will re-inflate the {@link NlModel}s and render them sequentially.
-   * The result {@link CompletableFuture} will notify when all the renderings have completed.
-   */
-  @NotNull
-  public CompletableFuture<Void> requestRender() {
-    ImmutableList<T> managers = getSceneManagers();
-    if (managers.isEmpty()) {
-      return CompletableFuture.completedFuture(null);
-    }
-    return requestSequentialRender(manager -> manager.requestLayoutAndRenderAsync(false));
-  }
-
-  /**
-   * Schedule the render requests sequentially for all {@link SceneManager}s in this {@link DesignSurface}.
-   *
-   * @param renderRequest The requested rendering to be scheduled. This gives the caller a chance to choose the preferred rendering request.
-   * @return A callback which is triggered when the scheduled rendering are completed.
-   */
-  @NotNull
-  protected CompletableFuture<Void> requestSequentialRender(@NotNull Function<T, CompletableFuture<Void>> renderRequest) {
-    CompletableFuture<Void> callback = new CompletableFuture<>();
-    synchronized (myRenderFutures) {
-      if (!myRenderFutures.isEmpty()) {
-        // TODO: This may make the rendered previews not match the last status of NlModel if the modifications happen during rendering.
-        //       Similar case happens in LayoutlibSceneManager#requestRender function, both need to be fixed.
-        myRenderFutures.add(callback);
-        return callback;
-      }
-      else {
-        myRenderFutures.add(callback);
-      }
-    }
-
-    // Cascading the CompletableFuture to make them executing sequentially.
-    CompletableFuture<Void> renderFuture = CompletableFuture.completedFuture(null);
-    for (T manager : getSceneManagers()) {
-      renderFuture = renderFuture.thenCompose(it -> {
-        CompletableFuture<Void> future = renderRequest.apply(manager);
-        invalidate();
-        return future;
-      });
-    }
-    renderFuture.thenRun(() -> {
-      synchronized (myRenderFutures) {
-        myRenderFutures.forEach(future -> future.complete(null));
-        myRenderFutures.clear();
-      }
-      updateNotifications();
-    });
-
-    return callback;
-  }
-
-  /**
-   * Returns true if this surface is currently refreshing.
-   */
-  public final boolean isRefreshing() {
-    synchronized (myRenderFutures) {
-      return !myRenderFutures.isEmpty();
-    }
-  }
-
-  /**
-   * Converts a given point that is in view coordinates to viewport coordinates.
-   */
-  @TestOnly
-  @NotNull
-  public Point getCoordinatesOnViewport(@NotNull Point viewCoordinates) {
-    return SwingUtilities.convertPoint(mySceneViewPanel, viewCoordinates.x, viewCoordinates.y, getViewport().getViewportComponent());
   }
 
   @TestOnly
@@ -1193,17 +713,13 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     }
   }
 
-  /**
-   * Sets the tooltip for the design surface
-   */
-  public void setDesignToolTip(@Nullable String text) {
-    mySceneViewPanel.setToolTipText(text);
-  }
-
   @Override
   public Object getData(@NotNull @NonNls String dataId) {
-    if (DESIGN_SURFACE.is(dataId) || PANNABLE_KEY.is(dataId) || GuiInputHandler.CURSOR_RECEIVER.is(dataId)) {
+    if (DESIGN_SURFACE.is(dataId) || GuiInputHandler.CURSOR_RECEIVER.is(dataId)) {
       return this;
+    }
+    if (PANNABLE_KEY.is(dataId)) {
+      return getPannable();
     }
     if (ZOOMABLE_KEY.is(dataId)){
       return getZoomController();
@@ -1278,29 +794,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     return null;
   }
 
-  @NotNull
-  @Override
-  public ImmutableCollection<Configuration> getConfigurations() {
-    return getModels().stream()
-      .map(NlModel::getConfiguration)
-      .collect(ImmutableList.toImmutableList());
-  }
-
-  @NotNull
-  public IssueModel getIssueModel() {
-    return myIssueModel;
-  }
-
-  public void setLintAnnotationsModel(@NotNull LintAnnotationsModel model) {
-    if (myLintIssueProvider != null) {
-      myLintIssueProvider.setLintAnnotationsModel(model);
-    }
-    else {
-      myLintIssueProvider = new LintIssueProvider(model);
-      getIssueModel().addIssueProvider(myLintIssueProvider);
-    }
-  }
-
   @Override
   public void updateUI() {
     super.updateUI();
@@ -1311,20 +804,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
         manager.getSceneViews().forEach(SceneView::updateUI);
       }
     }
-  }
-
-  /**
-   * Enables the mouse click display. If enabled, the clicks of the user are displayed in the surface.
-   */
-  public void enableMouseClickDisplay() {
-    myMouseClickDisplayPanel.setEnabled(true);
-  }
-
-  /**
-   * Disables the mouse click display.
-   */
-  public void disableMouseClickDisplay() {
-    myMouseClickDisplayPanel.setEnabled(false);
   }
 
   @Override

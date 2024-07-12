@@ -28,10 +28,15 @@ import com.android.tools.idea.actions.LayoutPreviewHandler;
 import com.android.tools.idea.actions.LayoutPreviewHandlerKt;
 import com.android.tools.idea.common.diagnostics.NlDiagnosticKey;
 import com.android.tools.idea.common.editor.ActionManager;
-import com.android.tools.idea.common.error.IssueProvider;
 import com.android.tools.idea.common.layout.LayoutManagerSwitcher;
 import com.android.tools.idea.common.layout.SceneViewAlignment;
 import com.android.tools.idea.common.layout.SurfaceLayoutOption;
+import com.android.tools.idea.common.layout.option.SurfaceLayoutManager;
+import com.android.tools.idea.common.layout.positionable.PositionableContent;
+import com.android.tools.idea.common.layout.scroller.DesignSurfaceViewportScroller;
+import com.android.tools.idea.common.layout.scroller.ReferencePointScroller;
+import com.android.tools.idea.common.layout.scroller.TopLeftCornerScroller;
+import com.android.tools.idea.common.layout.scroller.ZoomCenterScroller;
 import com.android.tools.idea.common.model.Coordinates;
 import com.android.tools.idea.common.model.DnDTransferComponent;
 import com.android.tools.idea.common.model.DnDTransferItem;
@@ -45,7 +50,6 @@ import com.android.tools.idea.common.scene.SceneManager;
 import com.android.tools.idea.common.surface.DesignSurface;
 import com.android.tools.idea.common.surface.DesignSurfaceActionHandler;
 import com.android.tools.idea.common.surface.DesignSurfaceHelper;
-import com.android.tools.idea.common.surface.DesignSurfaceListener;
 import com.android.tools.idea.common.surface.Interactable;
 import com.android.tools.idea.common.surface.InteractionHandler;
 import com.android.tools.idea.common.surface.LayoutScannerControl;
@@ -55,25 +59,18 @@ import com.android.tools.idea.common.surface.SceneViewPanel;
 import com.android.tools.idea.common.surface.SurfaceScale;
 import com.android.tools.idea.common.surface.ZoomControlsPolicy;
 import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport;
-import com.android.tools.idea.common.layout.scroller.DesignSurfaceViewportScroller;
-import com.android.tools.idea.common.layout.scroller.ReferencePointScroller;
-import com.android.tools.idea.common.layout.scroller.TopLeftCornerScroller;
-import com.android.tools.idea.common.layout.scroller.ZoomCenterScroller;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager;
-import com.android.tools.idea.uibuilder.api.ViewGroupHandler;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
+import com.android.tools.idea.uibuilder.layout.option.GridLayoutManager;
+import com.android.tools.idea.uibuilder.layout.option.GridSurfaceLayoutManager;
+import com.android.tools.idea.uibuilder.layout.option.GroupedListSurfaceLayoutManager;
+import com.android.tools.idea.uibuilder.layout.option.ListLayoutManager;
 import com.android.tools.idea.uibuilder.model.NlComponentHelperKt;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.scene.RenderListener;
 import com.android.tools.idea.uibuilder.surface.interaction.CanvasResizeInteraction;
-import com.android.tools.idea.uibuilder.layout.option.GridLayoutManager;
-import com.android.tools.idea.uibuilder.layout.option.GridSurfaceLayoutManager;
 import com.android.tools.idea.uibuilder.surface.layout.GroupedGridSurfaceLayoutManager;
-import com.android.tools.idea.uibuilder.layout.option.GroupedListSurfaceLayoutManager;
-import com.android.tools.idea.uibuilder.layout.option.ListLayoutManager;
-import com.android.tools.idea.common.layout.positionable.PositionableContent;
-import com.android.tools.idea.common.layout.option.SurfaceLayoutManager;
 import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvider;
 import com.google.common.collect.ImmutableList;
@@ -107,7 +104,7 @@ import org.jetbrains.annotations.Nullable;
  * or more device renderings, etc
  */
 public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
-  implements ViewGroupHandler.AccessoryPanelVisibility, LayoutPreviewHandler, NlDiagnosticKey {
+  implements LayoutPreviewHandler, NlDiagnosticKey {
 
   private boolean myPreviewWithToolsVisibilityAndPosition = true;
 
@@ -125,7 +122,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   @NotNull private ScreenViewProvider myScreenViewProvider = NlScreenViewProvider.Companion.loadPreferredMode();
   private boolean myIsCanvasResizing = false;
   private final RenderListener myRenderListener = this::modelRendered;
-  @NotNull private ImmutableList<? extends IssueProvider> myRenderIssueProviders = ImmutableList.of();
   private final AccessoryPanel myAccessoryPanel = new AccessoryPanel(AccessoryPanel.Type.SOUTH_PANEL, true);
   @NotNull private final NlAnalyticsManager myAnalyticsManager;
   /**
@@ -156,7 +152,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   NlDesignSurface(@NotNull Project project,
                           @NotNull Disposable parentDisposable,
                           @NotNull BiFunction<NlDesignSurface, NlModel, LayoutlibSceneManager> sceneManagerProvider,
-                          @SuppressWarnings("deprecation") @NotNull SurfaceLayoutOption defaultLayoutOption,
+                          @NotNull SurfaceLayoutOption defaultLayoutOption,
                           @NotNull Function<DesignSurface<LayoutlibSceneManager>, ActionManager<? extends DesignSurface<LayoutlibSceneManager>>> actionManagerProvider,
                           @NotNull Function<DesignSurface<LayoutlibSceneManager>, Interactable> interactableProvider,
                           @NotNull Function<DesignSurface<LayoutlibSceneManager>, InteractionHandler> interactionHandlerProvider,
@@ -329,17 +325,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     return myAccessoryPanel;
   }
 
-  public void showInspectorAccessoryPanel(boolean show) {
-    for (DesignSurfaceListener listener : getSurfaceListeners()) {
-      listener.showAccessoryPanel(this, show);
-    }
-  }
-
-  @Override
-  public void show(@NotNull AccessoryPanel.Type type, boolean show) {
-    showInspectorAccessoryPanel(show);
-  }
-
   @NotNull
   @Override
   public ActionManager<DesignSurface<LayoutlibSceneManager>> getActionManager() {
@@ -378,12 +363,13 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
    */
   @SwingCoordinate
   @Override
+  @NotNull
   protected Dimension getScrollToVisibleOffset() {
     return new Dimension(2 * DEFAULT_SCREEN_OFFSET_X, 2 * DEFAULT_SCREEN_OFFSET_Y);
   }
 
   @Override
-  public CompletableFuture<Void> setModel(@Nullable NlModel model) {
+  public @NotNull CompletableFuture<Void> setModel(@Nullable NlModel model) {
     myAccessoryPanel.setModel(model);
     return super.setModel(model);
   }
@@ -391,7 +377,6 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
   @Override
   public void dispose() {
     myAccessoryPanel.setSurface(null);
-    myRenderIssueProviders = ImmutableList.of();
     super.dispose();
   }
 
@@ -427,8 +412,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
 
   @Override
   public void deactivate() {
-    myRenderIssueProviders.forEach(renderIssueProvider -> getIssueModel().removeIssueProvider(renderIssueProvider));
-    myRenderIssueProviders = ImmutableList.of();
+    myErrorQueue.deactivate(getIssueModel());
     myVisualLintIssueProvider.clear();
     super.deactivate();
   }
@@ -496,7 +480,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     super.onScaleChange(update);
 
     DesignSurfaceViewport port = getViewport();
-    Point scrollPosition = getScrollPosition();
+    Point scrollPosition = getPannable().getScrollPosition();
     Point focusPoint = update.getFocusPoint();
 
     @SuppressWarnings("deprecation")

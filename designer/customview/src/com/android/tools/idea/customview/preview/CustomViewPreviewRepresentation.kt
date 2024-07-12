@@ -32,11 +32,12 @@ import com.android.tools.idea.concurrency.UniqueTaskCoroutineLauncher
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.editors.setupChangeListener
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
-import com.android.tools.idea.projectsystem.BuildListener
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.getProjectSystem
-import com.android.tools.idea.projectsystem.setupBuildListener
+import com.android.tools.idea.rendering.AndroidBuildTargetReference
+import com.android.tools.idea.rendering.BuildListener
 import com.android.tools.idea.rendering.BuildTargetReference
+import com.android.tools.idea.rendering.setupBuildListener
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
 import com.android.tools.idea.uibuilder.model.NlComponentRegistrar
@@ -209,7 +210,7 @@ class CustomViewPreviewRepresentation(
   private val view = invokeAndWaitIfNeeded {
     CustomViewPreviewView(
       NlSurfaceBuilder.builder(project, this) { surface, model ->
-          defaultSceneManagerProvider(surface, model, null).apply { setShrinkRendering(true) }
+          defaultSceneManagerProvider(surface, model).apply { setShrinkRendering(true) }
         }
         .setSupportedActions(CUSTOM_VIEW_SUPPORTED_ACTIONS)
         .setScreenViewProvider(NlScreenViewProvider.RESIZABLE_PREVIEW, false),
@@ -284,7 +285,7 @@ class CustomViewPreviewRepresentation(
       )
 
     setupBuildListener(
-      project,
+      BuildTargetReference.from(psiFile) ?: error("Cannot obtain a build reference for: $psiFile"),
       object : BuildListener {
         override fun buildSucceeded() {
           AndroidPsiUtils.getPsiFileSafely(psiFilePointer)
@@ -402,7 +403,7 @@ class CustomViewPreviewRepresentation(
             Configuration.create(configurationManager, FolderConfiguration.createDefault())
           NlModel.Builder(
               this@CustomViewPreviewRepresentation,
-              BuildTargetReference.from(facet, psiFile.virtualFile),
+              AndroidBuildTargetReference.from(facet, psiFile.virtualFile),
               customPreviewXml,
               config,
             )

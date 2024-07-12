@@ -29,8 +29,7 @@ import com.android.tools.idea.compose.preview.TestComposePreviewView
 import com.android.tools.idea.compose.preview.waitForAllRefreshesToFinish
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.concurrency.awaitStatus
-import com.android.tools.idea.editors.build.ProjectStatus
-import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.preview.PreviewElementProvider
 import com.android.tools.idea.preview.StaticPreviewProvider
 import com.android.tools.idea.preview.modes.PreviewMode
@@ -78,7 +77,7 @@ class ParametrizedPreviewTest {
   @Before
   fun setUp() {
     Logger.getInstance(ComposePreviewRepresentation::class.java).setLevel(LogLevel.ALL)
-    Logger.getInstance(ProjectStatus::class.java).setLevel(LogLevel.ALL)
+    Logger.getInstance(RenderingBuildStatus::class.java).setLevel(LogLevel.ALL)
     RenderService.shutdownRenderExecutor(5)
     RenderService.initializeRenderExecutor()
     StudioRenderService.setForTesting(projectRule.project, createNoSecurityRenderService())
@@ -109,7 +108,6 @@ class ParametrizedPreviewTest {
   @After
   fun tearDown() {
     StudioRenderService.setForTesting(projectRule.project, null)
-    StudioFlags.COMPOSE_UI_CHECK_COLORBLIND_MODE.clearOverride()
   }
 
   /** Checks the rendering of the default `@Preview` in the Compose template. */
@@ -273,8 +271,6 @@ class ParametrizedPreviewTest {
 
   @Test
   fun testUiCheckForParametrizedPreview(): Unit = runBlocking {
-    StudioFlags.COMPOSE_UI_CHECK_COLORBLIND_MODE.override(true)
-
     val project = projectRule.project
 
     val parametrizedPreviews =

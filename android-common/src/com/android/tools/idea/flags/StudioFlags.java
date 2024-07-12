@@ -637,12 +637,13 @@ public final class StudioFlags {
     true
   );
 
+  // Disabled due to b/351811546
   public static final Flag<Boolean> LOGCAT_PROTOBUF_ENABLED = new BooleanFlag(
     LOGCAT,
     "protobuf.enable",
     "Enable Logcat Protobuf format",
     "Enable Logcat Protobuf format",
-    true
+    false
   );
 
   public static final Flag<Long> LOGCAT_FILE_RELOAD_DELAY_MS = new LongFlag(
@@ -1500,11 +1501,6 @@ public final class StudioFlags {
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> COMPOSE_UI_CHECK_COLORBLIND_MODE = new BooleanFlag(
-    COMPOSE, "ui.check.mode.colorblind", "Enable colorblind mode in UI Check for Compose preview",
-    "Enable colorblind Check mode in UI Check Mode for Compose preview",
-    true);
-
   public static final Flag<Boolean> COMPOSE_VISUAL_LINT_RUN = new BooleanFlag(
     COMPOSE, "visual.lint.run", "Enable visual lint for Compose Preview",
     "Enable so that visual lint runs on previews in the Compose Preview.",
@@ -2029,6 +2025,14 @@ public final class StudioFlags {
                     "Enables the \"Analyze Thread Safety\" button in the Project tool window",
                     false);
 
+
+  public static final Flag<Boolean> AI_RENAME_ACTION =
+    new BooleanFlag(STUDIOBOT, "ai.rename.action",
+                    "Use ML model to rename variable names",
+                    "Enables AI renaming functionalities",
+                    false);
+
+
   public static final Flag<Boolean> STUDIOBOT_ATTACHMENTS =
     new BooleanFlag(STUDIOBOT, "attachments",
                     "Enable action to add attachments",
@@ -2114,35 +2118,12 @@ public final class StudioFlags {
 
   // region Backup
   private static final FlagGroup BACKUP = new FlagGroup(FLAGS, "backup", "Backup");
-  public static final Flag<Boolean> BACKUP_SHOW_ACTIONS_IN_DEVICE_EXPLORER =
+  public static final Flag<Boolean> BACKUP_ENABLED =
     new BooleanFlag(
       BACKUP,
-      "show.in.device.explorer",
-      "Show backup & restore actions in Device Explorer",
-      "Show backup & restore actions in Device Explorer",
-      false);
-
-  public static final Flag<Boolean> BACKUP_SHOW_RESTORE_ACTION_IN_PROJECT_VIEW =
-    new BooleanFlag(
-      BACKUP,
-      "show.in.project.view",
-      "Show restore action in project view",
-      "Show restore action in project view",
-      false);
-
-  public static final Flag<Boolean> BACKUP_SHOW_RESTORE_SECION_IN_RUN_CONFIG =
-    new BooleanFlag(
-      BACKUP,
-      "show.in.run.config",
-      "Show restore section in run config",
-      "Show restore section in run config",
-      false);
-  public static final Flag<Boolean> BACKUP_SHOW_BACKUP_ACTION_IN_MAIN_TOOLBAR =
-    new BooleanFlag(
-      BACKUP,
-      "show.in.maintoolbar",
-      "Show backup action in main toolbar",
-      "Show backup action in main toolbar",
+      "enable",
+      "Enable Backup/Restore feature",
+      "Enable Backup/Restore feature",
       false);
   // endregion Backup
 

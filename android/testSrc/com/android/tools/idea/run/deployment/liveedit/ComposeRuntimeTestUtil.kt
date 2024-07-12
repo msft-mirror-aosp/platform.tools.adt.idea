@@ -22,8 +22,10 @@ import com.android.tools.idea.projectsystem.TestProjectSystem
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaLibraryDependency
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.runInEdtAndWait
@@ -49,14 +51,15 @@ val composeRuntimePath = TestUtils.resolveWorkspacePath(
  * you should probably use [setUpComposeInProjectFixture] which will also add the Compose Runtime dependency to the
  * project.
  */
-fun registerComposeCompilerPlugin(projectRule: AndroidProjectRule.Typed<*, Nothing>) {
+fun registerComposeCompilerPlugin(project: Project) {
   // Register the compose compiler plugin much like what Intellij would normally do.
-  val project = projectRule.project
   if (KotlinPluginModeProvider.isK2Mode()) {
     if (!project.extensionArea.hasExtensionPoint(FirExtensionRegistrarAdapter.extensionPointName)) {
       FirExtensionRegistrarAdapter.registerExtensionPoint(project)
     }
-    FirExtensionRegistrarAdapter.registerExtension(project, ComposeFirExtensionRegistrar())
+    if (FirExtensionRegistrarAdapter.getInstances(project).find { it is ComposeFirExtensionRegistrar } == null) {
+      FirExtensionRegistrarAdapter.registerExtension(project, ComposeFirExtensionRegistrar())
+    }
   }
   if (IrGenerationExtension.getInstances(project).find { it is ComposePluginIrGenerationExtension } == null) {
     IrGenerationExtension.registerExtension(project, ComposePluginIrGenerationExtension())
@@ -69,11 +72,12 @@ fun registerComposeCompilerPlugin(projectRule: AndroidProjectRule.Typed<*, Nothi
  */
 fun <T : CodeInsightTestFixture> setUpComposeInProjectFixture(projectRule: AndroidProjectRule.Typed<T, Nothing>) {
   // Load the compose runtime into the main module's library dependency.
+  VfsRootAccess.allowRootAccess(projectRule.testRootDisposable, composeRuntimePath)
   LocalFileSystem.getInstance().refreshAndFindFileByPath(composeRuntimePath)
   projectRule.project.modules.forEach {
     PsiTestUtil.addLibrary(it, composeRuntimePath)
   }
-  registerComposeCompilerPlugin(projectRule)
+  registerComposeCompilerPlugin(projectRule.project)
 
   // Since we depend on the project system to tell us certain information such as rather the module has compose or not, we need to
   // ask the test module system to pretend we have a compose module.

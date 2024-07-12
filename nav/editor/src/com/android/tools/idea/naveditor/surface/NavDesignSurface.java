@@ -104,7 +104,6 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.geom.Point2D;
 import java.io.File;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -263,7 +262,7 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
    * Try to create it, adding the nav library dependency if necessary.
    */
   @Override
-  public CompletableFuture<?> goingToSetModel(NlModel model) {
+  public @NotNull CompletableFuture<?> goingToSetModel(NlModel model) {
     // So it's cached in the future
     model.getConfiguration().getResourceResolver();
 
@@ -316,7 +315,7 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
   }
 
   @Override
-  public CompletableFuture<Void> setModel(@Nullable NlModel model) {
+  public @NotNull CompletableFuture<Void> setModel(@Nullable NlModel model) {
     CompletableFuture<Void> future = super.setModel(model);
     NavUsageTracker.Companion.getInstance(model)
       .createEvent(OPEN_FILE)
@@ -358,7 +357,8 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
     Project project = model.getProject();
     AndroidProjectSystem projectSystem = ProjectSystemUtil.getProjectSystem(project);
     Optional<NavDesignSurfaceToken<AndroidProjectSystem>> maybeToken =
-      Arrays.stream(NavDesignSurfaceToken.EP_NAME.getExtensions(project)).filter(t -> t.isApplicable(projectSystem))
+      NavDesignSurfaceToken.EP_NAME.getExtensionList().stream()
+        .filter(t -> t.isApplicable(projectSystem))
         .findFirst();
     if (maybeToken.isEmpty()) return false;
     NavDesignSurfaceToken<AndroidProjectSystem> token = maybeToken.get();
@@ -477,13 +477,14 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
     myCurrentNavigation = currentNavigation;
     //noinspection ConstantConditions  If the model is not null (which it must be if we're here), the sceneManager will also not be null.
     getSceneManager().update();
-    getSceneManager().layout(false);
+    getSceneManager().requestLayoutAsync(false);
     myZoomController.zoomToFit();
     currentNavigation.getModel().notifyModified(ChangeType.UPDATE_HIERARCHY);
     repaint();
   }
 
   @Override
+  @NotNull
   protected Dimension getScrollToVisibleOffset() {
     return new Dimension(0, 0);
   }
@@ -508,7 +509,6 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
     }
   }
 
-  @Override
   public void notifyComponentActivate(@NotNull NlComponent component) {
     if (myCurrentNavigation == component) {
       return;
@@ -568,7 +568,6 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
         }
       }
     }
-    super.notifyComponentActivate(component);
   }
 
   @Override
@@ -582,7 +581,7 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
       NavSceneManager sceneManager = getSceneManager();
 
       if (sceneManager != null) {
-        sceneManager.layout(false);
+        sceneManager.requestLayoutAsync(false);
         // If the Scene size has changed, we might need to resize the viewport dimensions. Ask the scroll panel to revalidate.
         validateScrollArea();
       }
@@ -614,9 +613,9 @@ public class NavDesignSurface extends DesignSurface<NavSceneManager> implements 
     @SwingCoordinate Dimension swingViewportSize = getExtentSize();
 
     @SwingCoordinate int swingStartCenterXInViewport =
-      Coordinates.getSwingX(view, (int)selectionBounds.getCenterX()) - getScrollPosition().x;
+      Coordinates.getSwingX(view, (int)selectionBounds.getCenterX()) - getPannable().getScrollPosition().x;
     @SwingCoordinate int swingStartCenterYInViewport =
-      Coordinates.getSwingY(view, (int)selectionBounds.getCenterY()) - getScrollPosition().y;
+      Coordinates.getSwingY(view, (int)selectionBounds.getCenterY()) - getPannable().getScrollPosition().y;
 
     @SwingCoordinate Point start = new Point(swingStartCenterXInViewport, swingStartCenterYInViewport);
     @SwingCoordinate Point end = new Point(swingViewportSize.width / 2, swingViewportSize.height / 2);
