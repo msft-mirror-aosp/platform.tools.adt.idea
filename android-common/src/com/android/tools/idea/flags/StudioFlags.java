@@ -1137,7 +1137,7 @@ public final class StudioFlags {
     EDITOR, "dagger.cache.related.elements",
     "Enable caching related Dagger elements",
     "If enabled, related Dagger elements will be cached rather than being recalculated every time they're required.",
-    true
+    false // TODO(b/352564637): Fix this for K2 and re-enable after 2024.2 merge
   );
 
   public static final Flag<Boolean> TRANSLATIONS_EDITOR_SYNCHRONIZATION = new BooleanFlag(
@@ -1529,6 +1529,11 @@ public final class StudioFlags {
     WEAR_SURFACES, "wear.tile.preview.enabled", "Enable Wear Tile preview",
     "If enabled, a preview for functions annotated with @Preview and returning TilePreviewData is displayed",
     true);
+
+  public static final Flag<Boolean> WEAR_TILE_ANIMATION_INSPECTOR = new BooleanFlag(
+    WEAR_SURFACES, "wear.tile.preview.animation.inspector.enabled", "Enable Wear Tile Preview Animation Inspector",
+    "If enabled, a Wear Tile Animation Inspector functionality is available in Preview",
+    false);
   // endregion
 
   // region Wear Health Services
@@ -1917,10 +1922,11 @@ public final class StudioFlags {
                     "When enabled, additional file context (eg, currently open files) are included in inline code completion requests.",
                     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> STUDIOBOT_BUILD_SYNC_ERROR_CONTEXT_ENABLED =
-    new BooleanFlag(STUDIOBOT, "build.and.sync.error.context.enabled",
-                    "Enable sending context with build/sync error queries.",
-                    "When enabled, build/sync error queries will attach context from the project.",
+  public static final Flag<Boolean> STUDIOBOT_OVERRIDE_BACKEND_EXPERIMENTS =
+    new BooleanFlag(STUDIOBOT, "override.backend.experiments",
+                    "Override flags set by AIDA backend experiments.",
+                    "When enabled, the values of flags that are usually controlled by backend experiments will be overridden" +
+                    "by the values set here.",
                     ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =
@@ -2126,6 +2132,27 @@ public final class StudioFlags {
       "Enable Backup/Restore feature",
       false);
   // endregion Backup
+
+  // region GOOGLE_PLAY_SDK_INDEX
+  private static final FlagGroup GOOGLE_PLAY_SDK_INDEX = new FlagGroup(FLAGS, "google.play.sdk.index", "Google Play SDK Index");
+  public static final Flag<Boolean> SHOW_SDK_INDEX_NOTES_FROM_DEVELOPER = new BooleanFlag(
+    GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.notes", "Show notes from SDK developer",
+    "Whether or not SDK Index critical issues should include notes from developer",
+    // The default should match GooglePlaySdkIndex.DEFAULT_SHOW_NOTES_FROM_DEVELOPER so the behavior of Android Studio and CLI is consistent
+    ChannelDefault.enabledUpTo(CANARY)
+  );
+  public static final Flag<Boolean> SHOW_SDK_INDEX_RECOMMENDED_VERSIONS = new BooleanFlag(
+    GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.recommended.versions", "Show SDK recommended versions",
+    "Whether or not to display recommended versions on SDK Index issues",
+    // The default should match GooglePlaySdkIndex.DEFAULT_SHOW_RECOMMENDED_VERSIONS so the behavior of Android Studio and CLI is consistent
+    ChannelDefault.enabledUpTo(CANARY)
+  );
+  public static final Flag<Boolean> SHOW_SUMMARY_NOTIFICATION = new BooleanFlag(
+    GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.summary.notification", "Show a notification for SDK Index issues",
+    "Show a notification after initial sync when there are blocking SDK Index issues",
+    ChannelDefault.enabledUpTo(CANARY)
+  );
+  // endregion GOOGLE_PLAY_SDK_INDEX
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.

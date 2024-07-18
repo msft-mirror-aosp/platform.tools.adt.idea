@@ -51,6 +51,7 @@ import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.impl.CoreProgressManager
+import com.intellij.openapi.progress.util.ProgressWindow
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -281,7 +282,7 @@ class PlatformIntegrationTest {
     val log = simpleApplication.openProjectWithEventLogging(outputHandler = { output ->
       if (output.contains("waiting!")) {
         CoreProgressManager.getCurrentIndicators()
-          .single { it.text.contains("Gradle:") }
+          .single { it is ProgressWindow }
           .cancel()
       }
     }) { project ->
@@ -312,7 +313,7 @@ class PlatformIntegrationTest {
     val log = simpleApplication.openProjectWithEventLogging(outputHandler = { output ->
       if (output.contains("waiting!")) {
         CoreProgressManager.getCurrentIndicators()
-          .single { it.text.contains("Gradle:") }
+          .single { it is ProgressWindow }
           .cancel()
       }
     }) { project ->

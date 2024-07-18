@@ -86,6 +86,7 @@ import com.intellij.util.ui.UIUtil;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.event.AWTEventListener;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -96,6 +97,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.swing.JScrollPane;
+import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -153,12 +155,12 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
                           @NotNull Disposable parentDisposable,
                           @NotNull BiFunction<NlDesignSurface, NlModel, LayoutlibSceneManager> sceneManagerProvider,
                           @NotNull SurfaceLayoutOption defaultLayoutOption,
-                          @NotNull Function<DesignSurface<LayoutlibSceneManager>, ActionManager<? extends DesignSurface<LayoutlibSceneManager>>> actionManagerProvider,
-                          @NotNull Function<DesignSurface<LayoutlibSceneManager>, Interactable> interactableProvider,
-                          @NotNull Function<DesignSurface<LayoutlibSceneManager>, InteractionHandler> interactionHandlerProvider,
+                          @NotNull Function1<DesignSurface<LayoutlibSceneManager>, ActionManager<? extends DesignSurface<LayoutlibSceneManager>>> actionManagerProvider,
+                          @NotNull Function1<DesignSurface<LayoutlibSceneManager>, Interactable> interactableProvider,
+                          @NotNull Function1<DesignSurface<LayoutlibSceneManager>, InteractionHandler> interactionHandlerProvider,
                           @SurfaceScale double minScale,
                           @SurfaceScale double maxScale,
-                          @NotNull Function<DesignSurface<LayoutlibSceneManager>, DesignSurfaceActionHandler> actionHandlerProvider,
+                          @NotNull Function1<DesignSurface<LayoutlibSceneManager>, DesignSurfaceActionHandler> actionHandlerProvider,
                           @Nullable DataProvider delegateDataProvider,
                           @NotNull SelectionModel selectionModel,
                           ZoomControlsPolicy zoomControlsPolicy,
@@ -597,7 +599,7 @@ public class NlDesignSurface extends DesignSurface<LayoutlibSceneManager>
     );
     // Adjust the scale change to keep the new scale between the lower and upper bounds.
     double curScale = myZoomController.getScale();
-    double boundedNewScale = getBoundedScale(curScale * scaleChangeNeeded);
+    double boundedNewScale = myZoomController.getBoundedScale(curScale * scaleChangeNeeded);
     scaleChangeNeeded = boundedNewScale / curScale;
     // The rectangle size and its coordinates relative to the sceneView have
     // changed due to the scale change.

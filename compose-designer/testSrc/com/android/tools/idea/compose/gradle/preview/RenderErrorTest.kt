@@ -332,10 +332,9 @@ class RenderErrorTest {
   }
 
   private fun SceneViewPeerPanel.getToolbarActions(): List<AnAction> =
-    sceneViewTopPanel.components
-      .filterIsInstance<ActionToolbarImpl>()
-      .single()
-      .actions
+    (sceneViewTopPanel.components.filterIsInstance<ActionToolbarImpl>().single().actionGroup
+        as DefaultActionGroup)
+      .childActionsOrStubs
       .filterIsInstance<DefaultActionGroup>()
       .single()
       .childActionsOrStubs
@@ -372,9 +371,7 @@ class RenderErrorTest {
   }
 
   private suspend fun stopUiCheck() {
-    val onRefreshCompletable = previewView.getOnRefreshCompletable()
     composePreviewRepresentation.setMode(PreviewMode.Default())
-    onRefreshCompletable.join()
     waitForAllRefreshesToFinish(1.minutes)
   }
 

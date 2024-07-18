@@ -109,7 +109,6 @@
       <module fileurl="file://$PROJECT_DIR$/as-driver/integration/as-driver.integration.iml" filepath="$PROJECT_DIR$/as-driver/integration/as-driver.integration.iml" />
       <module fileurl="file://$PROJECT_DIR$/as-driver/plugin/as-driver.plugin.iml" filepath="$PROJECT_DIR$/as-driver/plugin/as-driver.plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/as-driver/utils/as-driver.utils.iml" filepath="$PROJECT_DIR$/as-driver/utils/as-driver.utils.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/aidegen/asfp.aidegen.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/aidegen/asfp.aidegen.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/studio/asfp.studio.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/studio/asfp.studio.iml" />
@@ -404,6 +403,8 @@
       <module fileurl="file://$PROJECT_DIR$/studio/studio-sdk-all-plugins.iml" filepath="$PROJECT_DIR$/studio/studio-sdk-all-plugins.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/targetsdkversion-upgrade-assistant/targetsdkversion-upgrade-assistant.iml" filepath="$PROJECT_DIR$/../../vendor/google/targetsdkversion-upgrade-assistant/targetsdkversion-upgrade-assistant.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../studio/google/cloud/testing/test-recorder/test-recorder.iml" filepath="$PROJECT_DIR$/../../studio/google/cloud/testing/test-recorder/test-recorder.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../studio/google/cloud/testing/test-recorder/gradle/test-recorder.gradle.iml" filepath="$PROJECT_DIR$/../../studio/google/cloud/testing/test-recorder/gradle/test-recorder.gradle.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../studio/google/cloud/testing/test-recorder/test-recorder.tests.iml" filepath="$PROJECT_DIR$/../../studio/google/cloud/testing/test-recorder/test-recorder.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/testutils/testutils-tests.iml" filepath="$PROJECT_DIR$/../../base/testutils/testutils-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/url-assistant/url-assistant.iml" filepath="$PROJECT_DIR$/../../vendor/google/url-assistant/url-assistant.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/usb-devices/usb-devices.iml" filepath="$PROJECT_DIR$/../../base/usb-devices/usb-devices.iml" />

@@ -23,6 +23,7 @@ iml_module(
         "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector.gradle",
         "//tools/adt/idea/nav/editor:intellij.android.nav.editor.gradle",
         "//tools/adt/idea/profilers-android/gradle:intellij.android.profilersAndroid.gradle",
+        "//tools/studio/google/cloud/testing/test-recorder/gradle:test-recorder.gradle",
         # Templates and Wizards
         "//tools/adt/idea/android-npw:intellij.android.newProjectWizard",
         "//tools/adt/idea/android-templates:intellij.android.templates",
@@ -32,7 +33,6 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions",
         # TODO(xof): investigate
         "//tools/adt/idea/android-lint:intellij.android.lint",
-        "//tools/adt/idea/app-quality-insights/play-vitals/ide:intellij.android.app-quality-insights.play-vitals.ide",
         "//tools/adt/idea/android-navigator:intellij.android.navigator",
         "//tools/adt/idea/mlkit:intellij.android.mlkit",
         "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
@@ -42,7 +42,6 @@ iml_module(
         "//tools/vendor/google/firebase:firebase",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
         "//tools/studio/google/cloud/tools/android-studio-plugin:google-cloud-tools-as",
-        "//tools/studio/google/cloud/testing/test-recorder:test-recorder",
         "//tools/vendor/google/url-assistant:url-assistant",
     ],
     resources = ["resources"],
@@ -356,6 +355,7 @@ maven_repository(
         "@maven//:com.android.support.support-v13_28.0.0",
         "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
         "@maven//:com.android.tools.desugar_jdk_libs_1.1.5",
+        "@maven//:com.google.android.gms.play-services-ads_9.8.0",
         "@maven//:com.google.android.material.material_1.4.0",
         "@maven//:com.google.auto.value.auto-value_1.6.2",
         "@maven//:com.google.code.gson.gson_2.2.4",
@@ -402,7 +402,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.3",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.4",
-        "@maven//:org.mockito.mockito-core_5.6.0",
+        "@maven//:org.mockito.mockito-core_5.12.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )

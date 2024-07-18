@@ -30,7 +30,7 @@ import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
-import com.android.tools.idea.projectsystem.ProjectSystemService
+import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.TestProjectSystem
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
@@ -102,7 +102,6 @@ class WearTilePreviewRepresentationTest {
   fun testPreviewInitialization() =
     runBlocking(workerThread) {
       val preview = createWearTilePreviewRepresentation()
-
       preview.previewView.mainSurface.models.forEach {
         assertTrue(preview.navigationHandler.defaultNavigationMap.contains(it))
       }
@@ -370,7 +369,9 @@ class WearTilePreviewRepresentationTest {
       callback = {
         runBlocking(Dispatchers.IO) {
           logger.info("compile")
-          ProjectSystemService.getInstance(project).projectSystem.getBuildManager().compileProject()
+          projectRule.buildSystemServices.simulateArtifactBuild(
+            ProjectSystemBuildManager.BuildStatus.SUCCESS
+          )
           logger.info("activate")
           previewRepresentation.onActivate()
         }

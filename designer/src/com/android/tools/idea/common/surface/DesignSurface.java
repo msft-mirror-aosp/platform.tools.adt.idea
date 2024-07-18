@@ -21,10 +21,7 @@ import static com.android.tools.idea.actions.DesignerDataKeys.CONFIGURATIONS;
 import static com.android.tools.idea.actions.DesignerDataKeys.DESIGN_SURFACE;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.annotations.concurrency.GuardedBy;
-import com.android.annotations.concurrency.Slow;
 import com.android.annotations.concurrency.UiThread;
-import com.android.tools.adtui.common.SwingCoordinate;
 import com.android.tools.idea.common.analytics.DesignerAnalyticsManager;
 import com.android.tools.idea.common.editor.ActionManager;
 import com.android.tools.idea.common.model.Coordinates;
@@ -41,20 +38,12 @@ import com.android.tools.idea.common.layout.manager.MatchParentLayoutManager;
 import com.android.tools.idea.common.surface.layout.NonScrollableDesignSurfaceViewport;
 import com.android.tools.idea.common.surface.layout.ScrollableDesignSurfaceViewport;
 import com.android.tools.idea.common.layout.manager.PositionableContentLayoutManager;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataProvider;
-import com.intellij.openapi.actionSystem.LangDataKeys;
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.concurrency.EdtExecutorService;
 import com.intellij.util.ui.JBUI;
@@ -63,54 +52,40 @@ import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Function;
 import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.OverlayLayout;
+import kotlin.jvm.functions.Function1;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.TestOnly;
 
 /**
  * A generic design surface for use in a graphical editor.
  */
 public abstract class DesignSurface<T extends SceneManager> extends PreviewSurface<T> {
 
-  /**
-   * Filter got {@link #getModels()} to avoid returning disposed elements
-   **/
-  private static final Predicate<NlModel> FILTER_DISPOSED_MODELS = input -> input != null && !input.getModule().isDisposed();
-  /**
-   * Filter got {@link #getSceneManagers()} ()} to avoid returning disposed elements
-   **/
-  private final Predicate<T> FILTER_DISPOSED_SCENE_MANAGERS =
-    input -> input != null && FILTER_DISPOSED_MODELS.apply(input.getModel());
-
-  /**
-   * {@link JScrollPane} contained in this surface when zooming is enabled.
-   */
   @Nullable protected final JScrollPane myScrollPane;
-  /**
-   * Component that wraps the displayed content. If this is a scrollable surface, that will be the Scroll Pane.
-   * Otherwise, it will be the ScreenViewPanel container.
-   */
+
+  @Nullable
+  @Override
+  public JScrollPane getScrollPane() {
+    return myScrollPane;
+  }
+
   @NotNull private final JComponent myContentContainerPane;
+  protected @NotNull JComponent getContentContainerPane() { return myContentContainerPane; }
+
   @NotNull protected final DesignSurfaceViewport myViewport;
   @NotNull protected final SceneViewPanel mySceneViewPanel;
 
@@ -121,11 +96,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
   private final GuiInputHandler myGuiInputHandler;
 
   private final ActionManager<? extends DesignSurface<T>> myActionManager;
-  private final ReentrantReadWriteLock myModelToSceneManagersLock = new ReentrantReadWriteLock();
-  @GuardedBy("myModelToSceneManagersLock")
-  private final LinkedHashMap<NlModel, T> myModelToSceneManagers = new LinkedHashMap<>();
-
-  private boolean myIsActive = false;
 
   /**
    * Responsible for converting this surface state and send it for tracking (if logging is enabled).
@@ -134,18 +104,21 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
   private final DesignerAnalyticsManager myAnalyticsManager;
 
   @NotNull
-  private final Function<DesignSurface<T>, DesignSurfaceActionHandler> myActionHandlerProvider;
+  private final AWTEventListener myOnHoverListener;
 
   @NotNull
-  private final AWTEventListener myOnHoverListener;
+  @Override
+  public AWTEventListener getOnHoverListener() {
+    return myOnHoverListener;
+  }
 
   public DesignSurface(
     @NotNull Project project,
     @NotNull Disposable parentDisposable,
-    @NotNull Function<DesignSurface<T>, ActionManager<? extends DesignSurface<T>>> actionManagerProvider,
-    @NotNull Function<DesignSurface<T>, InteractionHandler> interactionProviderCreator,
-    @NotNull Function<DesignSurface<T>, PositionableContentLayoutManager> positionableLayoutManagerProvider,
-    @NotNull Function<DesignSurface<T>, DesignSurfaceActionHandler> designSurfaceActionHandlerProvider,
+    @NotNull Function1<DesignSurface<T>, ActionManager<? extends DesignSurface<T>>> actionManagerProvider,
+    @NotNull Function1<DesignSurface<T>, InteractionHandler> interactionProviderCreator,
+    @NotNull Function1<DesignSurface<T>, PositionableContentLayoutManager> positionableLayoutManagerProvider,
+    @NotNull Function1<DesignSurface<T>, DesignSurfaceActionHandler> designSurfaceActionHandlerProvider,
     @NotNull ZoomControlsPolicy zoomControlsPolicy) {
     this(project, parentDisposable, actionManagerProvider, SurfaceInteractable::new, interactionProviderCreator,
          positionableLayoutManagerProvider, designSurfaceActionHandlerProvider, new DefaultSelectionModel(), zoomControlsPolicy);
@@ -154,22 +127,21 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
   public DesignSurface(
     @NotNull Project project,
     @NotNull Disposable parentDisposable,
-    @NotNull Function<DesignSurface<T>, ActionManager<? extends DesignSurface<T>>> actionManagerProvider,
-    @NotNull Function<DesignSurface<T>, Interactable> interactableProvider,
-    @NotNull Function<DesignSurface<T>, InteractionHandler> interactionProviderCreator,
-    @NotNull Function<DesignSurface<T>, PositionableContentLayoutManager> positionableLayoutManagerProvider,
-    @NotNull Function<DesignSurface<T>, DesignSurfaceActionHandler> actionHandlerProvider,
+    @NotNull Function1<DesignSurface<T>, ActionManager<? extends DesignSurface<T>>> actionManagerProvider,
+    @NotNull Function1<DesignSurface<T>, Interactable> interactableProvider,
+    @NotNull Function1<DesignSurface<T>, InteractionHandler> interactionProviderCreator,
+    @NotNull Function1<DesignSurface<T>, PositionableContentLayoutManager> positionableLayoutManagerProvider,
+    @NotNull Function1<DesignSurface<T>, DesignSurfaceActionHandler> actionHandlerProvider,
     @NotNull SelectionModel selectionModel,
     @NotNull ZoomControlsPolicy zoomControlsPolicy) {
-    super(project, selectionModel, zoomControlsPolicy, new BorderLayout());
+    super(project, parentDisposable, actionManagerProvider, interactableProvider, interactionProviderCreator,
+          positionableLayoutManagerProvider, actionHandlerProvider,  selectionModel, zoomControlsPolicy);
 
     Disposer.register(parentDisposable, this);
 
     boolean hasZoomControls = getZoomControlsPolicy() != ZoomControlsPolicy.HIDDEN;
 
     myAnalyticsManager = new DesignerAnalyticsManager(this);
-
-    myActionHandlerProvider = actionHandlerProvider;
 
     // TODO: handle the case when selection are from different NlModels.
     // Manager can be null if the selected component is not part of NlModel. For example, a temporarily NlMode.
@@ -190,7 +162,7 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       this::getActionManager,
       this,
       this::shouldRenderErrorsPanel,
-      positionableLayoutManagerProvider.apply(this));
+      getPositionableLayoutManagerProvider().invoke(this));
     mySceneViewPanel.setBackground(getBackground());
 
     if (hasZoomControls) {
@@ -235,25 +207,18 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
 
     add(getLayeredPane());
 
-    Interactable interactable = interactableProvider.apply(this);
-    myGuiInputHandler = new GuiInputHandler(this, interactable, interactionProviderCreator.apply(this));
+    Interactable interactable = interactableProvider.invoke(this);
+    myGuiInputHandler = new GuiInputHandler(this, interactable, interactionProviderCreator.invoke(this));
     myGuiInputHandler.startListening();
     //noinspection AbstractMethodCallInConstructor
-    myActionManager = actionManagerProvider.apply(this);
+    myActionManager = actionManagerProvider.invoke(this);
     myActionManager.registerActionsShortcuts(getLayeredPane());
 
-    if (hasZoomControls) {
-      JPanel zoomControlsLayerPane = new JPanel();
-      zoomControlsLayerPane.setBorder(JBUI.Borders.empty(UIUtil.getScrollBarWidth()));
-      zoomControlsLayerPane.setOpaque(false);
-      zoomControlsLayerPane.setLayout(new BorderLayout());
-      zoomControlsLayerPane.setFocusable(false);
-
-      getLayeredPane().add(zoomControlsLayerPane, JLayeredPane.DRAG_LAYER);
-      zoomControlsLayerPane.add(myActionManager.getDesignSurfaceToolbar(), BorderLayout.EAST);
+    if (getZoomControlsLayerPane() != null) {
+      getLayeredPane().add(getZoomControlsLayerPane(), JLayeredPane.DRAG_LAYER);
+      getZoomControlsLayerPane().add(myActionManager.getDesignSurfaceToolbar(), BorderLayout.EAST);
       if (getZoomControlsPolicy() == ZoomControlsPolicy.AUTO_HIDE) {
-        myOnHoverListener = DesignSurfaceHelper.createZoomControlAutoHiddenListener(this, zoomControlsLayerPane);
-        zoomControlsLayerPane.setVisible(false);
+        myOnHoverListener = DesignSurfaceHelper.createZoomControlAutoHiddenListener(this, getZoomControlsLayerPane());
         Toolkit.getDefaultToolkit().addAWTEventListener(myOnHoverListener, AWTEvent.MOUSE_EVENT_MASK);
       }
       else {
@@ -277,111 +242,8 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     return myActionManager;
   }
 
-  // Allow a test to override myActionHandlerProvider when the surface is a mockito mock
-  @NotNull
-  public Function<DesignSurface<T>, DesignSurfaceActionHandler> getActionHandlerProvider() {
-    return myActionHandlerProvider;
-  }
-
-  /**
-   * @return the list of added {@link NlModel}s.
-   * @see #getModel()
-   */
   @NotNull
   @Override
-  public ImmutableList<NlModel> getModels() {
-    myModelToSceneManagersLock.readLock().lock();
-    try {
-      return ImmutableList.copyOf(Sets.filter(myModelToSceneManagers.keySet(), FILTER_DISPOSED_MODELS));
-    }
-    finally {
-      myModelToSceneManagersLock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Returns the list of all the {@link SceneManager} part of this surface
-   */
-  @VisibleForTesting(visibility = VisibleForTesting.Visibility.PROTECTED)
-  @NotNull
-  @Override
-  public ImmutableList<T> getSceneManagers() {
-    myModelToSceneManagersLock.readLock().lock();
-    try {
-      return ImmutableList.copyOf(Collections2.filter(myModelToSceneManagers.values(), FILTER_DISPOSED_SCENE_MANAGERS));
-    }
-    finally {
-      myModelToSceneManagersLock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Add an {@link NlModel} to DesignSurface and return the created {@link SceneManager}.
-   * If it is added before then it just returns the associated {@link SceneManager} which was created before. The {@link NlModel} will be
-   * moved to the last position which might affect rendering.
-   *
-   * @param model the added {@link NlModel}
-   * @see #addAndRenderModel(NlModel)
-   */
-  @Slow
-  @NotNull
-  private T addModel(@NotNull NlModel model) {
-    T manager = getSceneManager(model);
-    if (manager != null) {
-      myModelToSceneManagersLock.writeLock().lock();
-      try {
-        // No need to add same model twice. We just move it to the bottom of the model list since order is important.
-        T managerToMove = myModelToSceneManagers.remove(model);
-        if (managerToMove != null) {
-          myModelToSceneManagers.put(model, managerToMove);
-        }
-        return manager;
-      }
-      finally {
-        myModelToSceneManagersLock.writeLock().unlock();
-      }
-    }
-
-    model.addListener(getModelListener());
-    // SceneManager creation is a slow operation. Multiple can happen in parallel.
-    // We optimistically create a new scene manager for the given model and then, with the mapping
-    // locked we checked if a different one has been added.
-    T newManager = createSceneManager(model);
-    myModelToSceneManagersLock.writeLock().lock();
-    try {
-      manager = myModelToSceneManagers.putIfAbsent(model, newManager);
-      if (manager == null) {
-        // The new SceneManager was correctly added
-        manager = newManager;
-      }
-    }
-    finally {
-      myModelToSceneManagersLock.writeLock().unlock();
-    }
-    if (manager != newManager) {
-      // There was already a manager assigned to the model so discard this one.
-      Disposer.dispose(newManager);
-    }
-    if (myIsActive) {
-      manager.activate(this);
-    }
-    return manager;
-  }
-
-  /**
-   * Add an {@link NlModel} to DesignSurface and refreshes the rendering of the model. If the model was already part of the surface, it will
-   * be moved to the bottom of the list and a refresh will be triggered.
-   * The scene views are updated before starting to render and the callback
-   * {@link DesignSurfaceListener#modelChanged(DesignSurface, NlModel)} is triggered after rendering.
-   * The method returns a {@link CompletableFuture} that will complete when the render of the new model has finished.
-   * <br/><br/>
-   * Note that the order of the addition might be important for the rendering order. {@link PositionableContentLayoutManager} will receive
-   * the models in the order they are added.
-   *
-   * @param model the added {@link NlModel}
-   * @see #addModel(NlModel)
-   */
-  @NotNull
   public final CompletableFuture<Void> addAndRenderModel(@NotNull NlModel model) {
     T modelSceneManager = addModel(model);
     // Mark the scene view panel as invalid to force the scene views to be updated
@@ -402,25 +264,8 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       }, EdtExecutorService.getInstance());
   }
 
-  /**
-   * Add an {@link NlModel} to DesignSurface and return the created {@link SceneManager}.
-   * If it is added before then it just returns the associated {@link SceneManager} which created before.
-   * In this function, the scene views are not updated and {@link DesignSurfaceListener#modelChanged(DesignSurface, NlModel)}
-   * callback is triggered immediately.
-   * In the opposite, {@link #addAndRenderModel(NlModel)} updates the scene views and triggers
-   * {@link DesignSurfaceListener#modelChanged(DesignSurface, NlModel)} when render is completed.
-   * <p>
-   * <br/><br/>
-   * Note that the order of the addition might be important for the rendering order. {@link PositionableContentLayoutManager} will receive
-   * the models in the order they are added.
-   * <p>
-   * TODO(b/147225165): Remove #addAndRenderModel function and rename this function as #addModel
-   *
-   * @param model the added {@link NlModel}
-   * @see #addModel(NlModel)
-   * @see #addAndRenderModel(NlModel)
-   */
   @NotNull
+  @Override
   public final CompletableFuture<T> addModelWithoutRender(@NotNull NlModel modelToAdd) {
     return CompletableFuture
       .supplyAsync(() -> addModel(modelToAdd), AppExecutorUtil.getAppExecutorService())
@@ -435,57 +280,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       }, EdtExecutorService.getInstance());
   }
 
-  /**
-   * Remove an {@link NlModel} from DesignSurface. If it had not been added before then nothing happens.
-   *
-   * @param model the {@link NlModel} to remove
-   * @return true if the model existed and was removed
-   */
-  private boolean removeModelImpl(@NotNull NlModel model) {
-    SceneManager manager;
-    myModelToSceneManagersLock.writeLock().lock();
-    try {
-      manager = myModelToSceneManagers.remove(model);
-    }
-    finally {
-      myModelToSceneManagersLock.writeLock().unlock();
-    }
-
-    // Mark the scene view panel as invalid to force the scene views to be updated
-    mySceneViewPanel.removeSceneViewForModel(model);
-
-    if (manager == null) {
-      return false;
-    }
-
-    model.deactivate(this);
-
-    model.removeListener(getModelListener());
-
-    Disposer.dispose(manager);
-    UIUtil.invokeLaterIfNeeded(this::revalidateScrollArea);
-    return true;
-  }
-
-  /**
-   * Remove an {@link NlModel} from DesignSurface. If it isn't added before then nothing happens.
-   *
-   * @param model the {@link NlModel} to remove
-   */
-  public void removeModel(@NotNull NlModel model) {
-    if (!removeModelImpl(model)) {
-      return;
-    }
-
-    reactivateGuiInputHandler();
-  }
-
-  /**
-   * Sets the current {@link NlModel} to DesignSurface.
-   *
-   * @see #addAndRenderModel(NlModel)
-   * @see #removeModel(NlModel)
-   */
   @Override
   public @NotNull CompletableFuture<Void> setModel(@Nullable NlModel model) {
     NlModel oldModel = getModel();
@@ -523,97 +317,6 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
       .thenRun(() -> {});
   }
 
-  @Override
-  public void dispose() {
-    clearListeners();
-    myGuiInputHandler.stopListening();
-    Toolkit.getDefaultToolkit().removeAWTEventListener(myOnHoverListener);
-    synchronized (getRenderFutures()) {
-      for (CompletableFuture<Void> future : getRenderFutures()) {
-        try {
-          future.cancel(true);
-        }
-        catch (CancellationException ignored) {
-        }
-      }
-      getRenderFutures().clear();
-    }
-    if (getRepaintTimer().isRunning()) {
-      getRepaintTimer().stop();
-    }
-    getModels().forEach(this::removeModelImpl);
-  }
-
-  /**
-   * Re-layouts the ScreenViews contained in this design surface immediately.
-   */
-  @UiThread
-  public void validateScrollArea() {
-    // Mark both the sceneview panel and the scroll pane as invalid to force a relayout.
-    mySceneViewPanel.invalidate();
-    myContentContainerPane.invalidate();
-    // Validate the scroll pane immediately and layout components.
-    myContentContainerPane.validate();
-    mySceneViewPanel.repaint();
-  }
-
-  @UiThread
-  @Override
-  public void revalidateScrollArea() {
-    // Mark the scene view panel as invalid to force a revalidation when the scroll pane is revalidated.
-    mySceneViewPanel.invalidate();
-    // Schedule a layout for later.
-    myContentContainerPane.revalidate();
-    // Also schedule a repaint.
-    mySceneViewPanel.repaint();
-  }
-
-  public JComponent getPreferredFocusedComponent() {
-    return getInteractionPane();
-  }
-
-  public Rectangle getCurrentScrollRectangle() {
-    if (myScrollPane == null) return null;
-    return new Rectangle(myScrollPane.getViewport().getViewPosition(), myScrollPane.getViewport().getSize());
-  }
-
-  /**
-   * Ensures that the given model is visible in the surface by scrolling to it if needed.
-   * If the {@link NlModel} is partially visible and {@code forceScroll} is set to {@code false}, no scroll will happen.
-   */
-  public final void scrollToVisible(@NotNull NlModel model, boolean forceScroll) {
-    getSceneViews().stream().filter(sceneView -> sceneView.getSceneManager().getModel() == model).findFirst()
-      .ifPresent(sceneView -> scrollToVisible(sceneView, forceScroll));
-  }
-  
-  /**
-   * Returns the size of the surface scroll viewport.
-   */
-  @NotNull
-  @SwingCoordinate
-  public Dimension getExtentSize() {
-    return getViewport().getExtentSize();
-  }
-
-  /**
-   * Returns the size of the surface containing the ScreenViews.
-   */
-  @NotNull
-  @SwingCoordinate
-  public Dimension getViewSize() {
-    return getViewport().getViewSize();
-  }
-
-  @SurfaceScale protected double getBoundedScale(@SurfaceScale double scale) {
-    return Math.min(Math.max(scale, getZoomController().getMinScale()), getZoomController().getMaxScale());
-  }
-
-  @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
-  @NotNull
-  public JComponent getInteractionPane() {
-    return mySceneViewPanel;
-  }
-
   @NotNull
   public DesignerAnalyticsManager getAnalyticsManager() {
     return myAnalyticsManager;
@@ -626,91 +329,10 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     }
   }
 
-   /**
-   * The editor has been activated
-   */
-  public void activate() {
-    if (Disposer.isDisposed(this)) {
-      // Prevent activating a disposed surface.
-      return;
-    }
-
-    if (!myIsActive) {
-      for (SceneManager manager : getSceneManagers()) {
-        manager.activate(this);
-      }
-      if (getZoomControlsPolicy() == ZoomControlsPolicy.AUTO_HIDE) {
-        Toolkit.getDefaultToolkit().addAWTEventListener(myOnHoverListener, AWTEvent.MOUSE_EVENT_MASK);
-      }
-    }
-    myIsActive = true;
-    getIssueModel().activate();
-  }
-
-  public void deactivateIssueModel() {
-    getIssueModel().deactivate();
-  }
-
-  public void deactivate() {
-    if (myIsActive) {
-      Toolkit.getDefaultToolkit().removeAWTEventListener(myOnHoverListener);
-      for (SceneManager manager : getSceneManagers()) {
-        manager.deactivate(this);
-      }
-    }
-    myIsActive = false;
-    getIssueModel().deactivate();
-
-    myGuiInputHandler.cancelInteraction();
-  }
-
-  @Override
-  @Deprecated
-  @Nullable
-  public SceneView getSceneViewAtOrPrimary(@SwingCoordinate int x, @SwingCoordinate int y) {
-    SceneView view = getSceneViewAt(x, y);
-    if (view == null) {
-      // TODO: For keeping the behaviour as before in multi-model case, we return primary SceneView when there is no hovered SceneView.
-      SceneManager manager = getSceneManager();
-      if (manager != null) {
-        view = manager.getSceneView();
-      }
-    }
-    return view;
-  }
-
-  /**
-   * @return The {@link SceneManager} associated to the given {@link NlModel}.
-   */
-  @Nullable
-  @Override
-  public T getSceneManager(@NotNull NlModel model) {
-    if (model.getModule().isDisposed()) {
-      return null;
-    }
-
-    myModelToSceneManagersLock.readLock().lock();
-    try {
-      return myModelToSceneManagers.get(model);
-    }
-    finally {
-      myModelToSceneManagersLock.readLock().unlock();
-    }
-  }
-
   @NotNull
   @Override
   public GuiInputHandler getGuiInputHandler() {
     return myGuiInputHandler;
-  }
-
-  @TestOnly
-  public void setScrollViewSizeAndValidate(@SwingCoordinate int width, @SwingCoordinate int height) {
-    if (myScrollPane != null) {
-      myScrollPane.setSize(width, height);
-      myScrollPane.doLayout();
-      UIUtil.invokeAndWaitIfNeeded((Runnable)this::validateScrollArea);
-    }
   }
 
   @Override
@@ -734,7 +356,7 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
              PlatformDataKeys.CUT_PROVIDER.is(dataId) ||
              PlatformDataKeys.COPY_PROVIDER.is(dataId) ||
              PlatformDataKeys.PASTE_PROVIDER.is(dataId)) {
-      return getActionHandlerProvider().apply(this);
+      return getActionHandlerProvider().invoke(this);
     }
     else if (PlatformDataKeys.CONTEXT_MENU_POINT.is(dataId)) {
       SceneView view = getFocusedSceneView();
@@ -763,42 +385,11 @@ public abstract class DesignSurface<T extends SceneManager> extends PreviewSurfa
     return null;
   }
 
-  /**
-   * The data which should be obtained from the background thread.
-   * @see PlatformCoreDataKeys#BGT_DATA_PROVIDER
-   */
-  @Nullable
-  private Object getSlowData(@NotNull String dataId) {
-    if (CommonDataKeys.PSI_ELEMENT.is(dataId)) {
-      SceneView view = getFocusedSceneView();
-      if (view != null) {
-        SelectionModel selectionModel = view.getSelectionModel();
-        NlComponent primary = selectionModel.getPrimary();
-        if (primary != null) {
-          return primary.getTagDeprecated();
-        }
-      }
-    }
-    else if (LangDataKeys.PSI_ELEMENT_ARRAY.is(dataId)) {
-      SceneView view = getFocusedSceneView();
-      if (view != null) {
-        SelectionModel selectionModel = view.getSelectionModel();
-        List<NlComponent> selection = selectionModel.getSelection();
-        List<XmlTag> list = Lists.newArrayListWithCapacity(selection.size());
-        for (NlComponent component : selection) {
-          list.add(component.getTagDeprecated());
-        }
-        return list.toArray(XmlTag.EMPTY);
-      }
-    }
-    return null;
-  }
-
   @Override
   public void updateUI() {
     super.updateUI();
     //noinspection FieldAccessNotGuarded We are only accessing the reference so we do not need to guard the access
-    if (myModelToSceneManagers != null) {
+    if (getModelToSceneManagers() != null) {
       // updateUI() is called in the parent constructor, at that time all class member in this class has not initialized.
       for (SceneManager manager : getSceneManagers()) {
         manager.getSceneViews().forEach(SceneView::updateUI);

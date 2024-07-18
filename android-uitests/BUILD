@@ -328,6 +328,7 @@ maven_repository(
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.8.10",  # Needed for EmptyActivity
         "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.9.0",
+        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.9.24",
         "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.0.0",  # Kotlin/Compose 2.0.0 templates
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-bom_1.8.0",
@@ -339,16 +340,20 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.24",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_1.9.24",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.0.0",  # Kotlin/Compose 2.0.0 templates
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.9.0",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.22",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.24",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_2.0.0",
         "@maven//:org.jetbrains.kotlin.kotlin-test-junit",
         "@maven//:org.jetbrains.kotlin.plugin.compose.org.jetbrains.kotlin.plugin.compose.gradle.plugin_2.0.0",  # Kotlin/Compose 2.0.0 templates
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.7.1",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.7.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-test_1.7.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
-        "@maven//:org.mockito.mockito-core_5.6.0",
+        "@maven//:org.mockito.mockito-core_5.12.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )
@@ -367,7 +372,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.LayoutEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -380,7 +386,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.InspectionsMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -393,7 +400,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.GradleSyncMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -406,7 +414,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.FindInPathMemoryLeakTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -419,7 +428,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.EditorTabsMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -432,7 +442,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.AddResourceMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -445,7 +456,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.AddAssetMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -465,7 +477,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.NavEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -485,7 +498,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualizationTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -525,7 +539,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.SharedIssuePanelTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -545,7 +560,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualLintTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -585,7 +601,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.ComposePreviewTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -605,7 +622,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.customview.CustomViewPreviewTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -936,7 +954,8 @@ java_test(
     tags = COMMON_TAGS + [
         "noci:studio-win",
         "ui_test",
-        "very_flaky",  # b/203243180
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",  # b/203243180
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],
@@ -1662,7 +1681,8 @@ java_test(
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.androidtest.ImportTestHistoryTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
-        "very_flaky",  # b/269167918
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",  # b/269167918
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
     runtime_deps = [":intellij.android.guiTests_testlib"],

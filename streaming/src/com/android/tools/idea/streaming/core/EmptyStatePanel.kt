@@ -32,7 +32,6 @@ import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.EmulatorSettingsListener
 import com.android.tools.idea.streaming.device.settings.DeviceMirroringSettingsPage
 import com.android.tools.idea.streaming.emulator.settings.EmulatorSettingsPage
-import com.intellij.collaboration.async.cancelAndJoinSilently
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -40,7 +39,6 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.options.ShowSettingsUtil
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
@@ -49,14 +47,15 @@ import com.intellij.ui.components.htmlComponent
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
-import icons.AndroidIcons
+import icons.StudioIllustrations
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import org.jetbrains.annotations.TestOnly
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.SwingConstants
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
@@ -125,26 +124,27 @@ internal class EmptyStatePanel(project: Project, disposableParent: Disposable): 
     messageBusConnection.subscribe(DeviceMirroringSettingsListener.TOPIC, DeviceMirroringSettingsListener { updateContent() })
 
     val progress = StudioLoggerProgressIndicator(EmptyStatePanel::class.java)
-    val scope = createCoroutineScope(Dispatchers.IO)
-    scope.launch {
-      val sdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler()
-      val sdkManager = sdkHandler.getSdkManager(progress)
-      val listener = RepoLoadedListener { packages -> localPackagesUpdated(packages) }
-      try {
-        Disposer.register(this@EmptyStatePanel) { sdkManager.removeLocalChangeListener(listener) }
-        sdkManager.addLocalChangeListener(listener)
-        localPackagesUpdated(sdkManager.packages)
-      }
-      catch (_: IncorrectOperationException) {
-        // Disposed already.
-      }
-    }
     Disposer.register(this) {
       progress.cancel()
-      if (ApplicationManager.getApplication().isUnitTestMode) {
-        // Wait for asynchronous activity to finish in tests.
-        ProgressManager.getInstance() // Force instantiation of ProgressManager to avoid a potential deadlock.
-        runBlocking { @Suppress("UnstableApiUsage") scope.cancelAndJoinSilently() }
+    }
+    val scope = createCoroutineScope(Dispatchers.IO)
+    scope.launch {
+      ASYNC_ACTIVITY_COUNT?.incrementAndGet() // Keep track of asynchronous activities for tests.
+      try {
+        val sdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler()
+        val sdkManager = sdkHandler.getSdkManager(progress)
+        val listener = RepoLoadedListener { packages -> localPackagesUpdated(packages) }
+        try {
+          Disposer.register(this@EmptyStatePanel) { sdkManager.removeLocalChangeListener(listener) }
+          sdkManager.addLocalChangeListener(listener)
+          localPackagesUpdated(sdkManager.packages)
+        }
+        catch (_: IncorrectOperationException) {
+          // Disposed already.
+        }
+      }
+      finally {
+        ASYNC_ACTIVITY_COUNT?.decrementAndGet()
       }
     }
 
@@ -203,7 +203,7 @@ internal class EmptyStatePanel(project: Project, disposableParent: Disposable): 
 
     val text = htmlComponent(text = html,
                              lineWrap = true,
-                             font = JBUI.Fonts.label(13f),
+                             font = AdtUiUtils.EMPTY_TOOL_WINDOW_FONT,
                              foreground = StandardColors.PLACEHOLDER_TEXT_COLOR,
                              hyperlinkListener = hyperlinkListener).apply {
       isOpaque = false
@@ -218,9 +218,10 @@ internal class EmptyStatePanel(project: Project, disposableParent: Disposable): 
       weightx = 1 - SIDE_MARGIN * 2
       weighty = TOP_MARGIN
     }
-    val icon = JBLabel(AndroidIcons.Explorer.DevicesLineup)
+    val icon = JBLabel(StudioIllustrations.Common.DEVICES_LINEUP)
     icon.horizontalAlignment = SwingConstants.CENTER
     icon.verticalAlignment = SwingConstants.BOTTOM
+    icon.border = JBUI.Borders.emptyBottom(16)
     add(icon, c)
 
     c.apply {
@@ -263,5 +264,10 @@ internal class EmptyStatePanel(project: Project, disposableParent: Disposable): 
   }
 
   override fun dispose() {
+  }
+
+  companion object {
+    @TestOnly
+    internal val ASYNC_ACTIVITY_COUNT: AtomicInteger? = if (ApplicationManager.getApplication().isUnitTestMode) AtomicInteger() else null
   }
 }

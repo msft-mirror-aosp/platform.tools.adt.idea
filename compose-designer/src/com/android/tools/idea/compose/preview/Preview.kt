@@ -122,12 +122,14 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.problems.WolfTheProblemSolver
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.ui.AncestorListenerAdapter
+import com.intellij.util.SlowOperations
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.time.Duration
@@ -963,8 +965,7 @@ class ComposePreviewRepresentation(
         projectBuildStatus == RenderingBuildStatus.Building)
 
     // If we are refreshing, we avoid spending time checking other conditions like errors or if the
-    // preview
-    // is out of date.
+    // preview is out of date.
     val newStatus =
       ComposePreviewManager.Status(
         !isRefreshing && hasErrorsAndNeedsBuild(),
@@ -975,15 +976,15 @@ class ComposePreviewRepresentation(
         !isRefreshing &&
           (projectBuildStatus as? RenderingBuildStatus.OutOfDate)?.areResourcesOutOfDate ?: false,
         isRefreshing,
-        psiFilePointer.element,
+        SlowOperations.allowSlowOperations(
+          ThrowableComputable { runReadAction { psiFilePointer.element } }
+        ),
       )
 
     // This allows us to display notifications synchronized with any other change detection. The
-    // moment we detect a difference,
-    // we immediately ask the editor to refresh the notifications.
+    // moment we detect a difference, we immediately ask the editor to refresh the notifications.
     // For example, IntelliJ will periodically update the toolbar. If one of the actions checks the
-    // state and changes its UI, this will
-    // allow for notifications to be refreshed at the same time.
+    // state and changes its UI, this will allow for notifications to be refreshed at the same time.
     val previousStatus = previousStatusRef.getAndSet(newStatus)
     if (newStatus != previousStatus) {
       requestVisibilityAndNotificationsUpdate()

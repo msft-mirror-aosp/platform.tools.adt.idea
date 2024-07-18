@@ -58,8 +58,10 @@ import com.android.tools.idea.preview.modes.UiCheckInstance
 import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
 import com.android.tools.idea.preview.mvvm.PreviewViewModelStatus
 import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
+import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.TestProjectSystem
+import com.android.tools.idea.rendering.tokens.FakeBuildSystemFilePreviewServices
 import com.android.tools.idea.run.configuration.execution.findElementByText
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
 import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager
@@ -120,6 +122,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
@@ -568,6 +571,7 @@ class ComposePreviewRepresentationTest {
       assertFalse(overlayClassLoader.state.paths.isEmpty())
     }
 
+  @Ignore("http://b/351760199")
   @Test
   fun testRerunUiCheckAction() {
     // Use the real FileEditorManager
@@ -859,7 +863,13 @@ class ComposePreviewRepresentationTest {
     block: suspend ComposePreviewRepresentationTestContext.() -> Unit,
   ) {
     val context =
-      ComposePreviewRepresentationTestContext(previewPsiFile, mainSurface, fixture, logger)
+      ComposePreviewRepresentationTestContext(
+        previewPsiFile,
+        mainSurface,
+        fixture,
+        logger,
+        projectRule.buildSystemServices,
+      )
     runBlocking(workerThread) {
       try {
         context.block()
@@ -903,6 +913,7 @@ class ComposePreviewRepresentationTest {
     val mainSurface: NlDesignSurface,
     private val fixture: CodeInsightTestFixture,
     private val logger: Logger,
+    private val buildSystemServices: FakeBuildSystemFilePreviewServices,
   ) {
 
     private lateinit var preview: ComposePreviewRepresentation
@@ -947,10 +958,7 @@ class ComposePreviewRepresentationTest {
       Disposer.register(fixture.testRootDisposable, preview)
       withContext(workerThread) {
         logger.info("compile")
-        ProjectSystemService.getInstance(fixture.project)
-          .projectSystem
-          .getBuildManager()
-          .compileProject()
+        buildSystemServices.simulateArtifactBuild(ProjectSystemBuildManager.BuildStatus.SUCCESS)
         logger.info("activate")
         preview.onActivate()
 
