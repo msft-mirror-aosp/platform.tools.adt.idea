@@ -45,6 +45,7 @@ import com.google.wireless.android.sdk.stats.EditorFileType.KOTLIN_COMPOSE
 import com.google.wireless.android.sdk.stats.EditorFileType.KOTLIN_SCRIPT
 import com.google.wireless.android.sdk.stats.EditorFileType.NATIVE
 import com.google.wireless.android.sdk.stats.EditorFileType.PROPERTIES
+import com.google.wireless.android.sdk.stats.EditorFileType.TOML
 import com.google.wireless.android.sdk.stats.EditorFileType.UNKNOWN
 import com.google.wireless.android.sdk.stats.EditorFileType.XML
 import com.google.wireless.android.sdk.stats.EditorFileType.XML_MANIFEST
@@ -101,7 +102,7 @@ suspend fun getEditorFileTypeForAnalytics(file: VirtualFile, project: Project?):
       ResourceFolderType.XML -> XML_RES_XML
       null -> if (file.name == ANDROID_MANIFEST_XML) XML_MANIFEST else XML
     }
-
+    "TOML" -> TOML
     else -> UNKNOWN
   }
 
