@@ -146,7 +146,12 @@ iml_studio_test(
     timeout = "long",
     data = editor_performance_test_data,
     module = ":intellij.android.core.integration",
-    tags = ["perfgate"],
+    tags = [
+        "ci:perfgate-linux",
+        "ci:perfgate-win",
+        "noci:studio-linux",
+        "noci:studio-win",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.EditorPerformanceTest",
@@ -485,7 +490,6 @@ iml_studio_test(
     ],
     module = ":intellij.android.core.integration",
     tags = [
-        "noci:studio-linux",  # http://b/346573467
         "noci:studio-win",  # RBE environment doesn't allow emulation (requires nested virtualization).
     ],
     tags_linux = [

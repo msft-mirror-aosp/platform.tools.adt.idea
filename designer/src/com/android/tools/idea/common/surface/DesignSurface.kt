@@ -19,28 +19,39 @@ import com.android.annotations.concurrency.GuardedBy
 import com.android.annotations.concurrency.Slow
 import com.android.annotations.concurrency.UiThread
 import com.android.sdklib.AndroidCoordinate
+import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.Pannable
+import com.android.tools.adtui.ZOOMABLE_KEY
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.configurations.Configuration
 import com.android.tools.editor.PanZoomListener
+import com.android.tools.idea.actions.CONFIGURATIONS
+import com.android.tools.idea.actions.DESIGN_SURFACE
+import com.android.tools.idea.common.analytics.DesignerAnalyticsManager
 import com.android.tools.idea.common.editor.ActionManager
 import com.android.tools.idea.common.error.Issue
 import com.android.tools.idea.common.error.IssueListener
 import com.android.tools.idea.common.error.IssueModel
 import com.android.tools.idea.common.error.LintIssueProvider
 import com.android.tools.idea.common.layout.LayoutManagerSwitcher
+import com.android.tools.idea.common.layout.manager.MatchParentLayoutManager
 import com.android.tools.idea.common.layout.manager.PositionableContentLayoutManager
 import com.android.tools.idea.common.lint.LintAnnotationsModel
+import com.android.tools.idea.common.model.Coordinates
 import com.android.tools.idea.common.model.DefaultSelectionModel
 import com.android.tools.idea.common.model.ItemTransferable
 import com.android.tools.idea.common.model.ModelListener
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
+import com.android.tools.idea.common.model.SelectionListener
 import com.android.tools.idea.common.model.SelectionModel
 import com.android.tools.idea.common.scene.Scene
 import com.android.tools.idea.common.scene.SceneManager
+import com.android.tools.idea.common.surface.DesignSurfaceScrollPane.Companion.createDefaultScrollPane
 import com.android.tools.idea.common.surface.DesignSurfaceSettings.Companion.getInstance
 import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport
+import com.android.tools.idea.common.surface.layout.NonScrollableDesignSurfaceViewport
+import com.android.tools.idea.common.surface.layout.ScrollableDesignSurfaceViewport
 import com.android.tools.idea.common.type.DefaultDesignerFileType
 import com.android.tools.idea.common.type.DesignerEditorFileType
 import com.android.tools.idea.ui.designer.EditorDesignSurface
@@ -56,17 +67,23 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.LangDataKeys
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
+import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.xml.XmlTag
 import com.intellij.ui.EditorNotifications
+import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.containers.toArray
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.AWTEvent
 import java.awt.BorderLayout
+import java.awt.Color
+import java.awt.Component
 import java.awt.Dimension
 import java.awt.GraphicsEnvironment
 import java.awt.MouseInfo
@@ -87,32 +104,53 @@ import javax.swing.JComponent
 import javax.swing.JLayeredPane
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.OverlayLayout
 import javax.swing.SwingUtilities
 import javax.swing.Timer
 import kotlin.concurrent.withLock
 import kotlin.math.max
 import kotlin.math.min
+import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.TestOnly
 
 private val LAYER_PROGRESS = JLayeredPane.POPUP_LAYER + 10
 private val LAYER_MOUSE_CLICK = LAYER_PROGRESS + 10
-/** Filter got [PreviewSurface.models] to avoid returning disposed elements */
+/** Filter got [DesignSurface.models] to avoid returning disposed elements */
 val FILTER_DISPOSED_MODELS =
   Predicate<NlModel> { input: NlModel? -> input != null && !input.module.isDisposed }
 
 /**
- * TODO Once [DesignSurface] is converted to kt, rename [PreviewSurface] back to [DesignSurface].
+ * A generic design surface for use in a graphical editor.
+ *
+ * Setup the layers for the [DesignSurface] If the surface is scrollable, we use four layers:
+ * 1. ScrollPane layer: Layer that contains the ScreenViews and does all the rendering, including
+ *    the interaction layers.
+ * 2. Progress layer: Displays the progress icon while a rendering is happening
+ * 3. Mouse click display layer: It allows displaying clicks on the surface with a translucent
+ *    bubble
+ * 4. Zoom controls layer: Used to display the zoom controls of the surface
+ *
+ * (4) sits at the top of the stack so is the first one to receive events like clicks.
+ *
+ * If the surface is NOT scrollable, the zoom controls will not be added and the scroll pane will be
+ * replaced by the actual content.
  */
-abstract class PreviewSurface<T : SceneManager>(
+abstract class DesignSurface<T : SceneManager>(
   val project: Project,
   val parentDisposable: Disposable,
-  val actionManagerProvider: (DesignSurface<T>) -> ActionManager<out DesignSurface<T>>,
-  val interactableProvider: (DesignSurface<T>) -> Interactable = { SurfaceInteractable(it) },
-  val interactionProviderCreator: (DesignSurface<T>) -> InteractionHandler,
+  actionManagerProvider: (DesignSurface<T>) -> ActionManager<out DesignSurface<T>>,
+  interactableProvider: (DesignSurface<T>) -> Interactable = { SurfaceInteractable(it) },
+  interactionProviderCreator: (DesignSurface<T>) -> InteractionHandler,
   val positionableLayoutManagerProvider: (DesignSurface<T>) -> PositionableContentLayoutManager,
-  val actionHandlerProvider: (DesignSurface<T>) -> DesignSurfaceActionHandler,
-  val selectionModel: SelectionModel = DefaultSelectionModel(),
-  val zoomControlsPolicy: ZoomControlsPolicy,
+  // We do not need "open" here, but unfortunately we use mocks, and they fail if this is not
+  // defined as open.
+  // "open" can be removed if we remove the mocks.
+  open val actionHandlerProvider: (DesignSurface<T>) -> DesignSurfaceActionHandler,
+  // We do not need "open" here, but unfortunately we use mocks, and they fail if this is not
+  // defined as open.
+  // "open" can be removed if we remove the mocks.
+  open val selectionModel: SelectionModel = DefaultSelectionModel(),
+  private val zoomControlsPolicy: ZoomControlsPolicy,
 ) :
   EditorDesignSurface(BorderLayout()),
   Disposable,
@@ -120,7 +158,34 @@ abstract class PreviewSurface<T : SceneManager>(
   ScaleListener,
   DataProvider {
 
-  abstract val guiInputHandler: GuiInputHandler
+  init {
+    Disposer.register(parentDisposable, this)
+
+    // TODO: handle the case when selection are from different NlModels.
+    // Manager can be null if the selected component is not part of NlModel. For example, a
+    // temporarily NlMode.
+    // In that case we don't change focused SceneView.
+    val selectionListener = SelectionListener { _, selection ->
+      if (focusedSceneView != null) {
+        notifySelectionChanged(selection)
+      } else {
+        notifySelectionChanged(emptyList<NlComponent>())
+      }
+    }
+    selectionModel.addListener(selectionListener)
+  }
+
+  /**
+   * Responsible for converting this surface state and send it for tracking (if logging is enabled).
+   */
+  open val analyticsManager: DesignerAnalyticsManager = DesignerAnalyticsManager(this)
+
+  private val hasZoomControls: Boolean = zoomControlsPolicy != ZoomControlsPolicy.HIDDEN
+
+  val layeredPane: JComponent = JLayeredPane().apply { setFocusable(true) }
+
+  val guiInputHandler =
+    GuiInputHandler(this, interactableProvider(this), interactionProviderCreator(this))
 
   private val mouseClickDisplayPanel = MouseClickDisplayPanel(parentDisposable = this)
 
@@ -129,7 +194,7 @@ abstract class PreviewSurface<T : SceneManager>(
       name = "Layout Editor Progress Panel"
     }
 
-  protected val zoomControlsLayerPane: JPanel? =
+  private val zoomControlsLayerPane: JPanel? =
     if (zoomControlsPolicy != ZoomControlsPolicy.HIDDEN)
       JPanel().apply {
         border = JBUI.Borders.empty(UIUtil.getScrollBarWidth())
@@ -142,29 +207,54 @@ abstract class PreviewSurface<T : SceneManager>(
 
   private val progressIndicators: MutableSet<ProgressIndicator> = HashSet()
 
-  protected abstract val sceneViewPanel: SceneViewPanel
+  protected val sceneViewPanel =
+    SceneViewPanel(
+        sceneViewProvider = ::sceneViews,
+        interactionLayersProvider = ::getLayers,
+        actionManagerProvider = ::actionManager,
+        disposable = this,
+        shouldRenderErrorsPanel = ::shouldRenderErrorsPanel,
+        layoutManager = positionableLayoutManagerProvider(this),
+      )
+      .apply {
+        background = this@DesignSurface.background
+        if (hasZoomControls) alignmentX = CENTER_ALIGNMENT
+      }
 
   /** [JScrollPane] contained in this [DesignSurface] when zooming is enabled. */
-  abstract val scrollPane: JScrollPane?
+  val scrollPane: JScrollPane? =
+    if (hasZoomControls) {
+      createDefaultScrollPane(sceneViewPanel, background, ::notifyPanningChanged).apply {
+        addComponentListener(
+          object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent) {
+              // Relayout the PositionableContents when visible size (e.g. window size) of
+              // ScrollPane is changed.
+              revalidateScrollArea()
+            }
+          }
+        )
+      }
+    } else null
 
   /** Current scrollable [Rectangle] if available or null. */
   val currentScrollRectangle: Rectangle?
     get() = scrollPane?.viewport?.let { Rectangle(it.viewPosition, it.size) }
 
-  val layeredPane: JComponent =
-    JLayeredPane().apply {
-      setFocusable(true)
-      add(progressPanel, LAYER_PROGRESS)
-      add(mouseClickDisplayPanel, LAYER_MOUSE_CLICK)
-    }
+  private fun getLayers() = guiInputHandler.layers
 
-  abstract val viewport: DesignSurfaceViewport
+  val actionManager: ActionManager<out DesignSurface<T>> =
+    actionManagerProvider(this).apply { registerActionsShortcuts(layeredPane) }
+
+  val viewport: DesignSurfaceViewport =
+    if (scrollPane != null) ScrollableDesignSurfaceViewport(scrollPane.viewport)
+    else NonScrollableDesignSurfaceViewport(viewport = this)
 
   /**
    * Component that wraps the displayed content. If this is a scrollable surface, that will be the
    * Scroll Pane. Otherwise, it will be the ScreenViewPanel container.
    */
-  protected abstract val contentContainerPane: JComponent
+  private val contentContainerPane: JComponent = scrollPane ?: sceneViewPanel
 
   /** Returns the size of the surface scroll viewport. */
   @get:SwingCoordinate
@@ -182,8 +272,16 @@ abstract class PreviewSurface<T : SceneManager>(
   val preferredFocusedComponent: JComponent
     get() = interactionPane
 
-  // TODO make private
-  abstract val onHoverListener: AWTEventListener
+  private val onHoverListener: AWTEventListener =
+    if (zoomControlsLayerPane != null && zoomControlsPolicy == ZoomControlsPolicy.AUTO_HIDE) {
+      createZoomControlAutoHiddenListener(
+          zoomControlPaneOwner = this,
+          zoomControlComponent = zoomControlsLayerPane,
+        )
+        .apply {
+          Toolkit.getDefaultToolkit().addAWTEventListener(this@apply, AWTEvent.MOUSE_EVENT_MASK)
+        }
+    } else AWTEventListener {}
 
   /**
    * Enables the mouse click display. If enabled, the clicks of the user are displayed in the
@@ -378,8 +476,8 @@ abstract class PreviewSurface<T : SceneManager>(
     }
   }
 
-  /** Calls [repaint] with delay. TODO Make it private */
-  protected val repaintTimer = Timer(15) { repaint() }
+  /** Calls [repaint] with delay. */
+  private val repaintTimer = Timer(15) { repaint() }
 
   /** Call this to generate repaints */
   fun needsRepaint() {
@@ -389,8 +487,7 @@ abstract class PreviewSurface<T : SceneManager>(
     }
   }
 
-  // TODO Make it private
-  protected val modelListener: ModelListener =
+  private val modelListener: ModelListener =
     object : ModelListener {
       override fun modelDerivedDataChanged(model: NlModel) {
         updateNotifications()
@@ -407,10 +504,7 @@ abstract class PreviewSurface<T : SceneManager>(
 
   private val listenersLock = ReentrantLock()
 
-  // TODO Make it private
-  // TODO listeners are called directly in number of places. Shouldn't getSurfaceListeners be called
-  // instead?
-  @GuardedBy("listenersLock") protected val listeners = mutableListOf<DesignSurfaceListener>()
+  @GuardedBy("listenersLock") private val listeners = mutableListOf<DesignSurfaceListener>()
 
   @GuardedBy("listenersLock") private val zoomListeners = mutableListOf<PanZoomListener>()
 
@@ -438,8 +532,7 @@ abstract class PreviewSurface<T : SceneManager>(
     listenersLock.withLock { zoomListeners.remove(listener) }
   }
 
-  // TODO Make it private
-  protected fun clearListeners() {
+  private fun clearListeners() {
     listenersLock.withLock {
       listeners.clear()
       zoomListeners.clear()
@@ -458,11 +551,25 @@ abstract class PreviewSurface<T : SceneManager>(
 
   /**
    * Gets a copy of [listeners] under a lock. Use this method instead of accessing the listeners
-   * directly. TODO Make it private
+   * directly.
    */
-  protected fun getSurfaceListeners(): ImmutableList<DesignSurfaceListener> {
+  private fun getSurfaceListeners(): ImmutableList<DesignSurfaceListener> {
     listenersLock.withLock {
       return ImmutableList.copyOf(listeners)
+    }
+  }
+
+  private fun notifyModelChanged(model: NlModel) {
+    val listeners = getSurfaceListeners()
+    for (listener in listeners) {
+      runInEdt { listener.modelChanged(this, model) }
+    }
+  }
+
+  private fun notifySelectionChanged(newSelection: List<NlComponent?>) {
+    val listeners = getSurfaceListeners()
+    for (listener in listeners) {
+      listener.componentSelectionChanged(this, newSelection)
     }
   }
 
@@ -646,8 +753,7 @@ abstract class PreviewSurface<T : SceneManager>(
   private val modelToSceneManagersLock = ReentrantReadWriteLock()
 
   @GuardedBy("modelToSceneManagersLock")
-  // TODO Make private
-  protected val modelToSceneManagers = LinkedHashMap<NlModel, T>()
+  private val modelToSceneManagers = LinkedHashMap<NlModel, T>()
 
   /** Filter got [sceneManagers] to avoid returning disposed elements */
   private val filterDisposedSceneManagers =
@@ -696,13 +802,13 @@ abstract class PreviewSurface<T : SceneManager>(
   /**
    * Add an [NlModel] to DesignSurface and return the created [SceneManager]. If it is added before
    * then it just returns the associated [SceneManager] which was created before. The [NlModel] will
-   * be moved to the last position which might affect rendering. TODO Make private
+   * be moved to the last position which might affect rendering.
    *
    * @param model the added [NlModel]
    * @see [addAndRenderModel]
    */
   @Slow
-  protected fun addModel(model: NlModel): T {
+  private fun addModel(model: NlModel): T {
     var manager = getSceneManager(model)
     manager?.let {
       modelToSceneManagersLock.writeLock().withLock {
@@ -757,9 +863,9 @@ abstract class PreviewSurface<T : SceneManager>(
    * Remove an [NlModel] from DesignSurface. If it had not been added before then nothing happens.
    *
    * @param model the [NlModel] to remove
-   * @return true if the model existed and was removed TODO Make private
+   * @return true if the model existed and was removed
    */
-  protected fun removeModelImpl(model: NlModel): Boolean {
+  private fun removeModelImpl(model: NlModel): Boolean {
     val manager: SceneManager?
     modelToSceneManagersLock.writeLock().withLock { manager = modelToSceneManagers.remove(model) }
     // Mark the scene view panel as invalid to force the scene views to be updated
@@ -866,9 +972,9 @@ abstract class PreviewSurface<T : SceneManager>(
 
   /**
    * Update the status of [GuiInputHandler]. It will start or stop listening depending on the
-   * current layout type. TODO Make private
+   * current layout type.
    */
-  protected fun reactivateGuiInputHandler() {
+  private fun reactivateGuiInputHandler() {
     if (isEditable) {
       guiInputHandler.startListening()
     } else {
@@ -932,7 +1038,40 @@ abstract class PreviewSurface<T : SceneManager>(
    * @see [addAndRenderModel]
    * @see [removeModel]
    */
-  abstract fun setModel(model: NlModel?): CompletableFuture<Void>
+  open fun setModel(newModel: NlModel?): CompletableFuture<Void> {
+    val oldModel = model
+    if (newModel === oldModel) {
+      return CompletableFuture.completedFuture(null)
+    }
+
+    if (oldModel != null) {
+      removeModelImpl(oldModel)
+    }
+
+    if (newModel == null) {
+      return CompletableFuture.completedFuture(null)
+    }
+
+    return CompletableFuture.supplyAsync(
+        { addModel(newModel) },
+        AppExecutorUtil.getAppExecutorService(),
+      )
+      .thenCompose { requestRender() }
+      .whenCompleteAsync(
+        { _, _ ->
+          // Mark the scene view panel as invalid to force the scene views to be updated
+          sceneViewPanel.invalidate()
+
+          reactivateGuiInputHandler()
+          restoreZoomOrZoomToFit()
+          revalidateScrollArea()
+
+          notifyModelChanged(newModel)
+        },
+        EdtExecutorService.getInstance(),
+      )
+      .thenRun {}
+  }
 
   /**
    * Add an [NlModel] to [DesignSurface] and refreshes the rendering of the model. If the model was
@@ -946,7 +1085,25 @@ abstract class PreviewSurface<T : SceneManager>(
    * @param model the added [NlModel]
    * @see [addModel]
    */
-  abstract fun addAndRenderModel(model: NlModel): CompletableFuture<Void>
+  fun addAndRenderModel(model: NlModel): CompletableFuture<Void> {
+    val modelSceneManager = addModel(model)
+
+    // Mark the scene view panel as invalid to force the scene views to be updated
+    sceneViewPanel.invalidate()
+
+    // We probably do not need to request a render for all models but it is currently the
+    // only point subclasses can override to disable the layoutlib render behaviour.
+    return modelSceneManager
+      .requestRenderAsync()
+      .whenCompleteAsync(
+        { _, _ ->
+          reactivateGuiInputHandler()
+          revalidateScrollArea()
+          notifyModelChanged(model)
+        },
+        EdtExecutorService.getInstance(),
+      )
+  }
 
   /**
    * Add an [NlModel] to DesignSurface and return the created [SceneManager]. If it is added before
@@ -964,10 +1121,22 @@ abstract class PreviewSurface<T : SceneManager>(
    *
    * TODO(b/147225165): Remove [addAndRenderModel] function and rename this function as [addModel]
    */
-  abstract fun addModelWithoutRender(model: NlModel): CompletableFuture<T>
+  fun addModelWithoutRender(modelToAdd: NlModel): CompletableFuture<T> {
+    return CompletableFuture.supplyAsync(
+        { addModel(modelToAdd) },
+        AppExecutorUtil.getAppExecutorService(),
+      )
+      .whenCompleteAsync(
+        { _, _ ->
+          if (project.isDisposed || modelToAdd.isDisposed) return@whenCompleteAsync
+          notifyModelChanged(modelToAdd)
+          reactivateGuiInputHandler()
+        },
+        EdtExecutorService.getInstance(),
+      )
+  }
 
-  // TODO Make private
-  protected val renderFutures = mutableListOf<CompletableFuture<Void>>()
+  private val renderFutures = mutableListOf<CompletableFuture<Void>>()
 
   /** Returns true if this surface is currently refreshing. */
   fun isRefreshing(): Boolean {
@@ -985,7 +1154,7 @@ abstract class PreviewSurface<T : SceneManager>(
     if (sceneManagers.isEmpty()) {
       return CompletableFuture.completedFuture(null)
     }
-    return requestSequentialRender { it.requestLayoutAndRenderAsync(false) }
+    return requestSequentialRender { it.requestLayoutAndRenderAsync() }
   }
 
   /**
@@ -1048,12 +1217,61 @@ abstract class PreviewSurface<T : SceneManager>(
     }
   }
 
+  override fun updateUI() {
+    super.updateUI()
+    if (modelToSceneManagers != null) {
+      // updateUI() is called in the parent constructor, at that time all class member in this class
+      // has not initialized.
+      for (manager in sceneManagers) {
+        manager.sceneViews.forEach(Consumer { obj: SceneView -> obj.updateUI() })
+      }
+    }
+  }
+
+  override fun setBackground(bg: Color?) {
+    super.setBackground(bg)
+    // setBackground is called before the class initialization is complete so we do the null
+    // checking to prevent calling mySceneViewPanel
+    // before the constructor has completed. At that point mySceneViewPanel might still be null.
+    if (sceneViewPanel != null) {
+      sceneViewPanel.setBackground(bg)
+    }
+  }
+
+  override fun getData(dataId: @NonNls String): Any? {
+    fun getMenuPoint(): Point? {
+      val view = focusedSceneView ?: return null
+      val selection = selectionModel.primary ?: return null
+      val sceneComponent = scene?.getSceneComponent(selection) ?: return null
+      return Point(
+        Coordinates.getSwingXDip(view, sceneComponent.centerX),
+        Coordinates.getSwingYDip(view, sceneComponent.centerY),
+      )
+    }
+
+    return when {
+      DESIGN_SURFACE.`is`(dataId) || GuiInputHandler.CURSOR_RECEIVER.`is`(dataId) -> this
+      PANNABLE_KEY.`is`(dataId) -> pannable
+      ZOOMABLE_KEY.`is`(dataId) -> zoomController
+      CONFIGURATIONS.`is`(dataId) -> configurations
+      (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.`is`(dataId) ||
+        PlatformDataKeys.CUT_PROVIDER.`is`(dataId) ||
+        PlatformDataKeys.COPY_PROVIDER.`is`(dataId) ||
+        PlatformDataKeys.PASTE_PROVIDER.`is`(dataId)) -> actionHandlerProvider(this)
+      PlatformCoreDataKeys.FILE_EDITOR.`is`(dataId) -> fileEditorDelegate
+      PlatformDataKeys.CONTEXT_MENU_POINT.`is`(dataId) -> getMenuPoint()
+      PlatformCoreDataKeys.BGT_DATA_PROVIDER.`is`(dataId) -> DataProvider { getSlowData(it) }
+      PlatformCoreDataKeys.MODULE.`is`(dataId) -> model?.module
+      else -> null
+    }
+  }
+
   /**
-   * The data which should be obtained from the background thread. TODO Make private
+   * The data which should be obtained from the background thread.
    *
    * @see [PlatformCoreDataKeys.BGT_DATA_PROVIDER]
    */
-  protected fun getSlowData(dataId: String): Any? {
+  private fun getSlowData(dataId: String): Any? {
     if (CommonDataKeys.PSI_ELEMENT.`is`(dataId)) {
       return focusedSceneView?.selectionModel?.primary?.tagDeprecated
     } else if (LangDataKeys.PSI_ELEMENT_ARRAY.`is`(dataId)) {
@@ -1085,5 +1303,27 @@ abstract class PreviewSurface<T : SceneManager>(
       repaintTimer.stop()
     }
     models.forEach { removeModelImpl(it) }
+  }
+
+  init {
+    guiInputHandler.startListening()
+    add(layeredPane)
+    zoomControlsLayerPane?.add(actionManager.designSurfaceToolbar, BorderLayout.EAST)
+    layeredPane.apply {
+      add(progressPanel, LAYER_PROGRESS)
+      add(mouseClickDisplayPanel, LAYER_MOUSE_CLICK)
+      zoomControlsLayerPane?.let { add(it, JLayeredPane.DRAG_LAYER) }
+      if (scrollPane != null) {
+        layout = MatchParentLayoutManager()
+        add(scrollPane, JLayeredPane.POPUP_LAYER)
+      } else {
+        layout = OverlayLayout(this@apply)
+        add(sceneViewPanel, JLayeredPane.POPUP_LAYER)
+      }
+    }
+  }
+
+  final override fun add(comp: Component?): Component {
+    return super.add(comp)
   }
 }

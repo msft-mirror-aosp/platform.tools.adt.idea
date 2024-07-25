@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.studiobot
 
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
@@ -38,7 +38,6 @@ import org.jetbrains.annotations.TestOnly
  * [aiexclude Documentation](https://developer.android.com/studio/preview/gemini/data-and-privacy#aiexclude).
  */
 interface AiExcludeService {
-  val project: Project
 
   /**
    * Returns `true` if one or more `.aiexclude` files in [project] block [file], if [file] is not
@@ -86,11 +85,26 @@ interface AiExcludeService {
 
   // TODO(b/350768333): move to test sources
   @TestOnly
-  class FakeAiExcludeService(override val project: Project) : AiExcludeService {
+  class FakeAiExcludeService : AiExcludeService {
     var defaultStatus: ExclusionStatus = ExclusionStatus.ALLOWED
-    var defaultBlockingFiles: List<VirtualFile> = listOf()
-    val exclusionStatus: MutableMap<VirtualFile, ExclusionStatus> = mutableMapOf()
-    val blockingFiles: MutableMap<VirtualFile, List<VirtualFile>> = mutableMapOf()
+    private val exclusionStatus: MutableMap<Any, ExclusionStatus> = mutableMapOf()
+    private val blockingFiles: MutableMap<Any, List<VirtualFile>> = mutableMapOf()
+
+    fun addExclusion(
+      file: VirtualFile,
+      status: ExclusionStatus = ExclusionStatus.EXCLUDED,
+      blockingFiles: List<VirtualFile> = emptyList(),
+    ) {
+      doAddExclusion(file, status, blockingFiles)
+    }
+
+    fun addExclusion(
+      file: Path,
+      status: ExclusionStatus = ExclusionStatus.EXCLUDED,
+      blockingFiles: List<VirtualFile> = emptyList(),
+    ) {
+      doAddExclusion(file, status, blockingFiles)
+    }
 
     override fun isFileExcluded(file: VirtualFile) =
       getExclusionStatus(file) != ExclusionStatus.ALLOWED
@@ -99,14 +113,35 @@ interface AiExcludeService {
       getExclusionStatus(file) != ExclusionStatus.ALLOWED
 
     override fun getBlockingFiles(file: VirtualFile): List<VirtualFile> =
-      blockingFiles[file] ?: defaultBlockingFiles
+      blockingFiles[file] ?: file.toNioPathOrNull()?.let { getBlockingFiles(it) } ?: emptyList()
 
-    override fun getBlockingFiles(file: Path): List<VirtualFile> = throw NotImplementedError()
+    override fun getBlockingFiles(file: Path): List<VirtualFile> =
+      blockingFiles[file] ?: emptyList()
 
     override fun getExclusionStatus(file: VirtualFile): ExclusionStatus =
+      exclusionStatus[file]
+        ?: file.toNioPathOrNull()?.let { getExclusionStatus(it) }
+        ?: defaultStatus
+
+    override fun getExclusionStatus(file: Path): ExclusionStatus =
       exclusionStatus[file] ?: defaultStatus
 
-    override fun getExclusionStatus(file: Path): ExclusionStatus = throw NotImplementedError()
+    private fun doAddExclusion(
+      file: Any,
+      status: ExclusionStatus = ExclusionStatus.EXCLUDED,
+      blockingFiles: List<VirtualFile> = emptyList(),
+    ) {
+      if (status == defaultStatus) {
+        exclusionStatus.remove(file)
+      } else {
+        exclusionStatus[file] = status
+      }
+      if (blockingFiles.isEmpty()) {
+        this.blockingFiles.remove(file)
+      } else {
+        this.blockingFiles[file] = blockingFiles
+      }
+    }
   }
 
   enum class ExclusionStatus {

@@ -1188,6 +1188,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> SKIP_NAV_INFO_DUMB_MODE_CHECK = new BooleanFlag(
+    EDITOR, "skip.nav.info.dumb.mode.check",
+    "Skip check for dumb mode in NavInfoFetcher.kt",
+    "When true, NavInfoFetched.kt does not check for dumb mode, and instead allows a caller to handle an IndexNotReadyException.",
+    true
+  );
+
   //endregion
 
   //region Essentials Mode
@@ -1727,22 +1734,6 @@ public final class StudioFlags {
   // region App Insights
   private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
 
-  public static final Flag<Boolean> APP_INSIGHTS_CHANGE_AWARE_ANNOTATION_SUPPORT =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "insights.change.aware.annotation",
-      "Change-aware Annotation Support",
-      "Enhance annotation to aid crash investigation with the recorded VCS info",
-      true);
-
-  public static final Flag<Boolean> APP_INSIGHTS_VCS_SUPPORT =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "insights.vcs",
-      "VCS Support",
-      "Enhance code navigation to aid crash investigation with the recorded VCS info",
-      true);
-
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
     new StringFlag(
       APP_INSIGHTS,
@@ -1759,24 +1750,6 @@ public final class StudioFlags {
       "Set Crashlytics to be in integration test mode.",
       false);
 
-  public static final Flag<Boolean> CRASHLYTICS_VARIANTS =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "crashlytics.variants",
-      "Crashlytics Variants Support",
-      "Enabled Variant Selection in AQI Crashlytics",
-      true
-    );
-
-  public static final Flag<Boolean> CRASHLYTICS_J_UI =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "crashlytics.2023h2.ui",
-      "Crashlytics UI changes for J",
-      "Enabled Logs & Keys, Multi-event",
-      true
-    );
-
   public static final Flag<Boolean> CRASHLYTICS_SHOW_INSIGHT =
     new BooleanFlag(
       APP_INSIGHTS,
@@ -1785,14 +1758,6 @@ public final class StudioFlags {
       "Show AI generated insights for Crashlytics issue",
       true
     );
-
-  public static final Flag<Boolean> PLAY_VITALS_ENABLED =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "enable.play.vitals",
-      "Enable the play vitals tool window tab.",
-      "Enables the play vitals tab and its associated functionality.",
-      true);
 
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
     new StringFlag(
@@ -1843,9 +1808,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> IMPACT_TRACKING =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.impact.tracking", "App Links Assistant impact tracking",
                 "Impact tracking for the App Links Assistant", false);
-  public static final Flag<Boolean> WEB_CHECKS =
-    new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.web.checks", "App Links Assistant web checks",
-                "Web checks (i.e. domain-side validation) for the App Links Assistant", true);
+  public static final Flag<Boolean> JSON_GENERATION =
+    new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.json.generation", "App Links Assistant JSON generation",
+                    "JSON generation (i.e. automated assistance with fixing web issues) in the App Links Assistant", false);
   // endregion App Links Assistant
 
   // region NEW_COLLECT_LOGS_DIALOG
@@ -1933,6 +1898,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "compiler.error.context.enabled",
                 "Enable sending context with compiler error queries.",
                 "When enabled, compiler queries will attach context (e.g. error location, full trace), from the project.",
+                    ChannelDefault.enabledUpTo(DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_PROJECT_FACTS_CONTEXT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "project.facts.context.enabled",
+                    "Enable sending project facts with chat queries.",
+                    "When enabled, chat queries will attach summarized facts about the project.",
                     ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_GRADLE_ERROR_CONTEXT_ENABLED =

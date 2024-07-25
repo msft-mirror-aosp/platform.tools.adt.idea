@@ -51,7 +51,6 @@ import com.android.tools.idea.common.surface.LayoutScannerConfiguration;
 import com.android.tools.idea.common.surface.LayoutScannerEnabled;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.rendering.RenderResultUtilKt;
 import com.android.tools.idea.rendering.RenderResults;
 import com.android.tools.idea.rendering.RenderServiceUtilsKt;
@@ -140,8 +139,9 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   private RenderTask myRenderTask;
   @GuardedBy("myRenderingTaskLock")
   private SessionClock mySessionClock;
-  // Protects all accesses to the myRenderTask reference. RenderTask calls to render and layout do not need to be protected
-  // since RenderTask is able to handle those safely.
+  // Protects read and write accesses to myRenderTask.
+  // Executing RenderTask methods do not need to be protected as the corresponding
+  // synchronization needed is done in RenderTask.
   private final Object myRenderingTaskLock = new Object();
   private ResourceNotificationManager.ResourceVersion myRenderedVersion;
   // Protects all read/write accesses to the myRenderResult reference
@@ -205,9 +205,9 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   private boolean myUpdateAndRenderWhenActivated = true;
 
   /**
-   * If true, the scene is interactive.
+   * List of classes to preload when rendering.
    */
-  private boolean myIsInteractive;
+  private List<String> myClassesToPreload = Collections.emptyList();
 
   /**
    * If false, the use of the {@link ImagePool} will be disabled for the scene manager.
@@ -421,43 +421,33 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       super.dispose();
       if (ApplicationManager.getApplication().isReadAccessAllowed()) {
         // dispose is called by the project close using the read lock. Invoke the render task dispose later without the lock.
-        myRenderTaskDisposerExecutor.execute(this::disposeRenderTask);
+        myRenderTaskDisposerExecutor.execute(() -> {
+          updateRenderTask(null);
+          updateCachedRenderResult(null);
+        });
       }
       else {
-        disposeRenderTask();
+        updateRenderTask(null);
+        updateCachedRenderResult(null);
       }
     }
   }
 
   private void updateRenderTask(@Nullable RenderTask newTask) {
+    RenderTask oldTask;
     synchronized (myRenderingTaskLock) {
-      if (myRenderTask != null && !myRenderTask.isDisposed()) {
-        try {
-          myRenderTask.dispose();
-        } catch (Throwable t) {
-          Logger.getInstance(LayoutlibSceneManager.class).warn(t);
-        }
-      }
+      oldTask = myRenderTask;
       // TODO(b/168445543): move session clock to RenderTask
       mySessionClock = new RealTimeSessionClock();
       myRenderTask = newTask;
     }
-  }
-
-  private void disposeRenderTask() {
-    RenderTask renderTask;
-    synchronized (myRenderingTaskLock) {
-      renderTask = myRenderTask;
-      myRenderTask = null;
-    }
-    if (renderTask != null) {
+    if (oldTask != null) {
       try {
-        renderTask.dispose();
+        oldTask.dispose();
       } catch (Throwable t) {
         Logger.getInstance(LayoutlibSceneManager.class).warn(t);
       }
     }
-    updateCachedRenderResult(null);
   }
 
   @NotNull
@@ -587,8 +577,8 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     }
 
     @Override
-    public void modelLiveUpdate(@NotNull NlModel model, boolean animate) {
-      requestLayoutAndRenderAsync(animate);
+    public void modelLiveUpdate(@NotNull NlModel model) {
+      requestLayoutAndRenderAsync();
     }
   }
 
@@ -675,32 +665,26 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
   @Override
   @NotNull
-  public CompletableFuture<Void> requestLayoutAndRenderAsync(boolean animate) {
+  public CompletableFuture<Void> requestLayoutAndRenderAsync() {
     // Don't re-render if we're just showing the blueprint
     if (myRenderedVersion != null && getDesignSurface().getScreenViewProvider() == NlScreenViewProvider.BLUEPRINT) {
-      return requestLayoutAsync(animate);
+      return requestLayoutAsync(false);
     }
 
     LayoutEditorRenderResult.Trigger trigger = getTriggerFromChangeType(getModel().getLastChangeType());
-    // TODO(b/335424569): remove isRenderingSynchronously. The clients that want this behaviour should achieve it by using the futures
-    //   properly, but it shouldn't be a mode in LayoutlibSceneManager
-    if (getDesignSurface().isRenderingSynchronously()) {
-      return requestRenderAsync(trigger, new AtomicBoolean()).thenRun(() -> notifyListenersModelLayoutComplete(animate));
-    } else {
-      // If the update is reversed (namely, we update the View hierarchy from the component hierarchy because information about scrolling is
-      // located in the component hierarchy and is lost in the view hierarchy) we need to run render again to propagate the change
-      // (re-layout) in the scrolling values to the View hierarchy (position, children etc.) and render the updated result.
-      AtomicBoolean doubleRender = new AtomicBoolean();
-      return requestRenderAsync(trigger, doubleRender)
-        .thenCompose(v -> {
-          if (doubleRender.get()) {
-            return requestRenderAsync(trigger, new AtomicBoolean());
-          } else {
-            return CompletableFuture.completedFuture(null);
-          }
-        })
-        .whenCompleteAsync((result, ex) -> notifyListenersModelLayoutComplete(animate), AppExecutorUtil.getAppExecutorService());
-    }
+    // If the update is reversed (namely, we update the View hierarchy from the component hierarchy because information about scrolling is
+    // located in the component hierarchy and is lost in the view hierarchy) we need to run render again to propagate the change
+    // (re-layout) in the scrolling values to the View hierarchy (position, children etc.) and render the updated result.
+    AtomicBoolean doubleRender = new AtomicBoolean();
+    return requestRenderAsync(trigger, doubleRender)
+      .thenCompose(v -> {
+        if (doubleRender.get()) {
+          return requestRenderAsync(trigger, new AtomicBoolean());
+        } else {
+          return CompletableFuture.completedFuture(null);
+        }
+      })
+      .whenCompleteAsync((result, ex) -> notifyListenersModelLayoutComplete(false), AppExecutorUtil.getAppExecutorService());
   }
 
   public void setTransparentRendering(boolean enabled) {
@@ -804,18 +788,20 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       Logger.getInstance(LayoutlibSceneManager.class).warn("requestLayout after LayoutlibSceneManager has been disposed");
     }
 
+    RenderTask currentTask;
     synchronized (myRenderingTaskLock) {
-      if (myRenderTask == null) {
-        return CompletableFuture.completedFuture(null);
-      }
-      return myRenderTask.layout()
-        .thenAccept(result -> {
-          if (result != null && !isDisposed.get()) {
-            updateHierarchy(result);
-            notifyListenersModelLayoutComplete(animate);
-          }
-        });
+      currentTask = myRenderTask;
     }
+    if (currentTask == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return currentTask.layout()
+      .thenAccept(result -> {
+        if (result != null && !isDisposed.get()) {
+          updateHierarchy(result);
+          notifyListenersModelLayoutComplete(animate);
+        }
+      });
   }
 
   @Nullable
@@ -986,8 +972,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       if (myRenderResult != null && myRenderResult != result) {
         if (
           myCacheSuccessfulRenderImage
-          // Do not cache in interactive mode. It does not help and would make unnecessary copies of the bitmap.
-          && !myIsInteractive
           // The previous result was valid
           && myRenderResult.getRenderedImage().getWidth() > 1 && myRenderResult.getRenderedImage().getHeight() > 1
           // The new result is an error
@@ -1040,8 +1024,8 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       taskBuilder.usePrivateClassLoader();
     }
 
-    if (myIsInteractive) {
-      taskBuilder.preloadClasses(ComposePreloadClasses.getINTERACTIVE_CLASSES_TO_PRELOAD());
+    if (!myClassesToPreload.isEmpty()) {
+      taskBuilder.preloadClasses(myClassesToPreload);
     }
 
     if (!reportOutOfDateUserClasses) {
@@ -1077,7 +1061,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     if (flags != 0) {
       // usage tracking (we only pay attention to individual changes where only one item is affected since those are likely to be triggered
       // by the user
-      NlAnalyticsManager analyticsManager = ((NlDesignSurface)surface).getAnalyticsManager();
+      NlAnalyticsManager analyticsManager = (NlAnalyticsManager)(surface.getAnalyticsManager());
 
       if ((flags & ConfigurationListener.CFG_THEME) != 0) {
         analyticsManager.trackThemeChange();
@@ -1208,31 +1192,35 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   private CompletableFuture<RenderResult> renderImplAsync(AtomicBoolean reverseUpdate) {
     return inflateAsync(myForceInflate.getAndSet(false), reverseUpdate)
       .thenCompose(inflateResult -> {
+        if (inflateResult != null && !inflateResult.getRenderResult().isSuccess()) {
+          getDesignSurface().updateErrorDisplay();
+          return CompletableFuture.completedFuture(null);
+        }
         boolean inflated = inflateResult != null && inflateResult.getRenderResult().isSuccess();
         long elapsedFrameTimeMs = myElapsedFrameTimeMs;
-
+        RenderTask currentTask;
         synchronized (myRenderingTaskLock) {
-          if (myRenderTask == null || (inflateResult != null && !inflateResult.getRenderResult().isSuccess())) {
-            getDesignSurface().updateErrorDisplay();
-            return CompletableFuture.completedFuture(null);
-          }
-          if (elapsedFrameTimeMs != -1) {
-            myRenderTask.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(elapsedFrameTimeMs));
-          }
-          // Make sure that the task's quality is up-to-date before rendering
-          final float currentQuality = quality;
-          myRenderTask.setQuality(quality);
-          return myRenderTask.render().thenApply(result -> {
-            if (result != null && result.getRenderResult().isSuccess()) {
-              lastRenderQuality = currentQuality;
-            }
-            // When the layout was inflated in this same call, we do not have to update the hierarchy again
-            if (result != null && !inflated) {
-              reverseUpdate.set(reverseUpdate.get() || updateHierarchy(result));
-            }
-            return result;
-          });
+          currentTask = myRenderTask;
         }
+        if (currentTask == null) {
+          return CompletableFuture.completedFuture(null);
+        }
+        if (elapsedFrameTimeMs != -1) {
+          currentTask.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(elapsedFrameTimeMs));
+        }
+        // Make sure that the task's quality is up-to-date before rendering
+        final float currentQuality = quality;
+        currentTask.setQuality(currentQuality);
+        return currentTask.render().thenApply(result -> {
+          if (result != null && result.getRenderResult().isSuccess()) {
+            lastRenderQuality = currentQuality;
+          }
+          // When the layout was inflated in this same call, we do not have to update the hierarchy again
+          if (result != null && !inflated) {
+            reverseUpdate.set(reverseUpdate.get() || updateHierarchy(result));
+          }
+          return result;
+        });
       })
       .handle((result, exception) -> {
         if (exception != null) {
@@ -1290,13 +1278,14 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     if (isDisposed.get()) {
       Logger.getInstance(LayoutlibSceneManager.class).warn("executeCallbacks after LayoutlibSceneManager has been disposed");
     }
-
+    RenderTask currentTask;
     synchronized (myRenderingTaskLock) {
-      if (myRenderTask == null) {
-        return CompletableFuture.completedFuture(ExecuteCallbacksResult.EMPTY);
-      }
-      return myRenderTask.executeCallbacks(currentTimeNanos());
+      currentTask = myRenderTask;
     }
+    if (currentTask == null) {
+      return CompletableFuture.completedFuture(ExecuteCallbacksResult.EMPTY);
+    }
+    return currentTask.executeCallbacks(currentTimeNanos());
   }
 
   /**
@@ -1313,14 +1302,14 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
    */
   @NotNull
   public CompletableFuture<Void> executeInRenderSessionAsync(@NotNull Runnable block, long timeout, TimeUnit timeUnit) {
+    RenderTask currentTask;
     synchronized (myRenderingTaskLock) {
-      if (myRenderTask != null) {
-        return myRenderTask.runAsyncRenderActionWithSession(block, timeout, timeUnit);
-      }
-      else {
-        return CompletableFuture.completedFuture(null);
-      }
+      currentTask = myRenderTask;
     }
+    if (currentTask == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return currentTask.runAsyncRenderActionWithSession(block, timeout, timeUnit);
   }
 
   private long currentTimeNanos() {
@@ -1363,13 +1352,15 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       Logger.getInstance(LayoutlibSceneManager.class).warn("executeCallbacks after LayoutlibSceneManager has been disposed");
     }
 
+    RenderTask currentTask;
     synchronized (myRenderingTaskLock) {
-      if (myRenderTask == null) {
-        return CompletableFuture.completedFuture(null);
-      }
-      myInteractiveEventsCounter.incrementAndGet();
-      return myRenderTask.triggerTouchEvent(type, x, y, currentTimeNanos());
+      currentTask = myRenderTask;
     }
+    if (currentTask == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    myInteractiveEventsCounter.incrementAndGet();
+    return currentTask.triggerTouchEvent(type, x, y, currentTimeNanos());
   }
 
   /**
@@ -1383,13 +1374,15 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       Logger.getInstance(LayoutlibSceneManager.class).warn("executeCallbacks after LayoutlibSceneManager has been disposed");
     }
 
+    RenderTask currentTask;
     synchronized (myRenderingTaskLock) {
-      if (myRenderTask == null) {
-        return CompletableFuture.completedFuture(null);
-      }
-      myInteractiveEventsCounter.incrementAndGet();
-      return myRenderTask.triggerKeyEvent(event, currentTimeNanos());
+      currentTask = myRenderTask;
     }
+    if (currentTask == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    myInteractiveEventsCounter.incrementAndGet();
+    return currentTask.triggerKeyEvent(event, currentTimeNanos());
   }
 
   /**
@@ -1401,25 +1394,12 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   }
 
   /**
-   * Sets interactive mode of the scene.
-   * @param interactive true if the scene is interactive, false otherwise.
+   * Sets the list of classes to preload when rendering.
+   * This intended for classes that are very likely to be used, so that they can be preloaded.
+   * Interactive Preview is an example where preloading classes is a good idea.
    */
-  public void setInteractive(boolean interactive) {
-    var isTransitionFromInteractiveToStatic = myIsInteractive && !interactive;
-    myIsInteractive = interactive;
-    if (isTransitionFromInteractiveToStatic) {
-      forceReinflate();
-    }
-    if (StudioFlags.NELE_ATF_FOR_COMPOSE.get()) {
-      getLayoutScannerConfig().setLayoutScannerEnabled(!interactive);
-    }
-  }
-
-  /**
-   * @return true is the scene is interactive, false otherwise.
-   */
-  public boolean getInteractive() {
-    return myIsInteractive;
+  public void setClassesToPreload(List<String> classesToPreload) {
+    myClassesToPreload = classesToPreload;
   }
 
   /**
@@ -1456,7 +1436,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       if (!version.equals(myRenderedVersion)) {
         forceReinflate();
       }
-      requestLayoutAndRenderAsync(false);
+      requestLayoutAndRenderAsync();
     }
 
     return active;
@@ -1469,7 +1449,8 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       myRenderingQueue.deactivate();
       clearAndCancelPendingFutures();
       completeRender();
-      disposeRenderTask();
+      updateRenderTask(null);
+      updateCachedRenderResult(null);
     }
 
     return deactivated;

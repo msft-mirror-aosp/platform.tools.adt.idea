@@ -18,17 +18,21 @@ package com.android.tools.idea.rendering.tokens
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
-import com.android.tools.idea.projectsystem.ProjectSystemBuildManager.BuildMode
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager.BuildStatus
 import com.android.tools.idea.projectsystem.Token
+import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.getToken
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.rendering.tokens.BuildSystemFilePreviewServices.Companion.getBuildSystemFilePreviewServices
 import com.google.common.util.concurrent.ListenableFuture
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 
@@ -64,6 +68,13 @@ interface BuildSystemFilePreviewServices<P : AndroidProjectSystem, R : BuildTarg
    */
   interface BuildServices<R : BuildTargetReference> {
     fun getLastCompileStatus(buildTarget: R): ProjectSystemBuildManager.BuildStatus
+
+    /**
+     * Builds artifacts required to preview files from [buildTargets].
+     *
+     * This method does not wait for build completion.
+     */
+    fun buildArtifacts(buildTargets: Collection<R>)
   }
 
   /**
@@ -133,4 +144,45 @@ interface BuildSystemFilePreviewServices<P : AndroidProjectSystem, R : BuildTarg
         ?: error("${BuildSystemFilePreviewServices::class.java} token is not available for $this")
     }
   }
+}
+
+/**
+ * Requests building artifacts required to render a preview of [file].
+ *
+ * This method does not wait for build completion.
+ */
+fun Project.requestBuildArtifactsForRendering(file: VirtualFile) = requestBuildArtifactsForRendering(listOf(file))
+
+/**
+ * Requests building artifacts required to render a preview of [files].
+ *
+ * This method does not wait for build completion.
+ */
+@Suppress("UnstableApiUsage")
+fun Project.requestBuildArtifactsForRendering(files: Collection<VirtualFile>) {
+  val buildSystemServices = this.getProjectSystem().getBuildSystemFilePreviewServices()
+  val buildTargets = buildSystemServices.buildTargets
+  val projectIndex = ProjectFileIndex.getInstance(this)
+
+  val buildTargetReferences =
+    runReadAction {
+      files
+        .map { (it as? BackedVirtualFile)?.originFile ?: it }
+        .mapNotNull {
+          val module =
+            projectIndex.getModuleForFile(it) ?: return@mapNotNull null.also {
+              thisLogger().error(
+                "Cannot find module for: $it",
+                Throwable()
+              )
+            }
+          buildTargets.from(module, it)
+        }
+    }
+
+  buildTargetReferences.map { it to it.getBuildSystemFilePreviewServices() }
+    .groupBy { it.second.buildServices }
+    .forEach { (buildServices, references) ->
+      buildServices.buildArtifacts(buildTargetReferences)
+    }
 }
