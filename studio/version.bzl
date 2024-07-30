@@ -2,6 +2,6 @@
 visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//tools/vendor/google/aswb"])
 
 STUDIO_CODENAME = "Koala Feature Drop"
-STUDIO_VERSION = "Beta"
-STUDIO_MICRO_PATCH = "2.10"
-STUDIO_RELEASE_NUMBER = 2
+STUDIO_VERSION = "RC"
+STUDIO_MICRO_PATCH = "2.11"
+STUDIO_RELEASE_NUMBER = 1
