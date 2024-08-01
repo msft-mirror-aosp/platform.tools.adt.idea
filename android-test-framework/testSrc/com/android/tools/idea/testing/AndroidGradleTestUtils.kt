@@ -148,6 +148,7 @@ import com.intellij.build.events.MessageEvent
 import com.intellij.build.internal.DummySyncViewManager
 import com.intellij.externalSystem.JavaProjectData
 import com.intellij.gradle.toolingExtension.impl.model.sourceSetModel.DefaultGradleSourceSetModel
+import com.intellij.gradle.toolingExtension.impl.model.taskModel.DefaultGradleTaskModel
 import com.intellij.ide.impl.OpenProjectTask
 import com.intellij.ide.impl.ProjectUtil
 import com.intellij.openapi.Disposable
@@ -193,6 +194,7 @@ import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import com.intellij.testFramework.ExtensionTestUtil
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl.ensureIndexesUpToDate
@@ -218,6 +220,7 @@ import org.jetbrains.plugins.gradle.model.ExternalSourceSet
 import org.jetbrains.plugins.gradle.model.ExternalTask
 import org.jetbrains.plugins.gradle.model.GradleExtensions
 import org.jetbrains.plugins.gradle.model.GradleSourceSetModel
+import org.jetbrains.plugins.gradle.model.GradleTaskModel
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
 import org.jetbrains.plugins.gradle.service.project.data.GradleExtensionsDataService
@@ -899,6 +902,7 @@ fun AndroidProjectStubBuilder.buildMainArtifactStub(
     desugaredMethodsFiles = emptyList(),
     generatedClassPaths = emptyMap(),
     bytecodeTransforms = null,
+    generatedAssetFolders = listOf()
   )
 }
 
@@ -963,6 +967,7 @@ fun AndroidProjectStubBuilder.buildAndroidTestArtifactStub(
     desugaredMethodsFiles = emptyList(),
     generatedClassPaths = emptyMap(),
     bytecodeTransforms = null,
+    generatedAssetFolders = listOf()
   )
 }
 
@@ -1114,6 +1119,7 @@ fun AndroidProjectStubBuilder.buildTestFixturesArtifactStub(
     desugaredMethodsFiles = emptyList(),
     generatedClassPaths = emptyMap(),
     bytecodeTransforms = null,
+    generatedAssetFolders = listOf()
   )
 }
 
@@ -1479,6 +1485,7 @@ private fun setupTestProjectFromAndroidModelCore(
         override fun getArtifacts(): List<File> = listOf()
         override fun getArtifactsByConfiguration(): Map<String, MutableSet<File>> = mapOf()
         override fun getSourceSetModel(): GradleSourceSetModel = DefaultGradleSourceSetModel()
+        override fun getTaskModel(): GradleTaskModel = DefaultGradleTaskModel()
       },
       null
     )
@@ -2290,7 +2297,7 @@ private fun <T> openPreparedProject(
         val awaitGradleStartupActivity = project.coroutineScope().launch {
           project.service<AndroidGradleProjectStartupActivity.StartupService>().awaitInitialization()
         }
-        PlatformTestUtil.waitForFuture(awaitGradleStartupActivity.asCompletableFuture())
+        PlatformTestUtil.waitForFuture(awaitGradleStartupActivity.asCompletableFuture(), TimeUnit.MINUTES.toMillis(5))
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
         project.maybeOutputDiagnostics()
         project
@@ -2427,6 +2434,7 @@ fun Project.requestSyncAndWait(
       AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(this)
     }
   }
+  IndexingTestUtil.waitUntilIndexesAreReady(this);
 }
 
 /**

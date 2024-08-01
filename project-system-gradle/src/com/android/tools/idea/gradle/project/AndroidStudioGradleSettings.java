@@ -34,19 +34,10 @@ public class AndroidStudioGradleSettings extends GradleSettings {
     return linkedProjectsSettings;
   }
 
-  /**
-   * To avoid downloading project dependencies sources requires additional effort to analyze
-   * potential implications that are going to be done as part of b/315455870
-   */
-  @Override
-  public boolean isDownloadSources() {
-    return true;
-  }
-
   static void configureForAndroidStudio(@NotNull GradleProjectSettings projectSettings) {
     projectSettings.setResolveModulePerSourceSet(true);
     projectSettings.setResolveExternalAnnotations(false);
-    projectSettings.setTestRunner(TestRunner.GRADLE);
+    projectSettings.setTestRunner(TestRunner.CHOOSE_PER_TEST);
     projectSettings.setUseQualifiedModuleNames(true);
   }
 }

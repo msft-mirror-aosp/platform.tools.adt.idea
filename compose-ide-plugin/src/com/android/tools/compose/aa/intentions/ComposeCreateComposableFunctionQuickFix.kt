@@ -22,14 +22,14 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.refactoring.extractMethod.newImpl.ExtractMethodHelper.addSiblingAfter
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KtAnalysisSession
-import org.jetbrains.kotlin.analysis.api.fir.diagnostics.KtFirDiagnostic
+import org.jetbrains.kotlin.analysis.api.fir.diagnostics.KaFirDiagnostic
 import org.jetbrains.kotlin.analysis.api.renderer.types.impl.KtTypeRendererForSource
 import org.jetbrains.kotlin.analysis.api.types.KtFunctionalType
 import org.jetbrains.kotlin.analysis.api.types.KtType
 import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
-import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinDiagnosticFixFactory
-import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.diagnosticFixFactory
+import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinQuickFixFactory
 import org.jetbrains.kotlin.idea.codeinsight.api.classic.quickfixes.QuickFixActionBase
 import org.jetbrains.kotlin.idea.refactoring.getExtractionContainers
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -82,13 +82,12 @@ class ComposeCreateComposableFunctionQuickFix(
 
   companion object {
 
-    val factory: KotlinDiagnosticFixFactory<KtFirDiagnostic.UnresolvedReference> =
-      diagnosticFixFactory(KtFirDiagnostic.UnresolvedReference::class) { diagnostic ->
-        listOfNotNull(createComposableFunctionQuickFixIfApplicable(diagnostic))
-      }
+    val factory = KotlinQuickFixFactory.IntentionBased<KaFirDiagnostic.UnresolvedReference> { diagnostic ->
+      listOfNotNull(createComposableFunctionQuickFixIfApplicable(diagnostic))
+    }
 
     private fun KtAnalysisSession.createComposableFunctionQuickFixIfApplicable(
-      diagnostic: KtFirDiagnostic.UnresolvedReference
+      diagnostic: KaFirDiagnostic.UnresolvedReference
     ): ComposeCreateComposableFunctionQuickFix? {
       val unresolvedCall = diagnostic.psi.parent as? KtCallExpression ?: return null
       val parentFunction = unresolvedCall.getStrictParentOfType<KtNamedFunction>() ?: return null
@@ -134,6 +133,7 @@ class ComposeCreateComposableFunctionQuickFix(
                 val paramName =
                   if (isLastLambdaArgument) "content"
                   else arg.getArgumentName()?.referenceExpression?.getReferencedName() ?: "x$index"
+                @OptIn(KaExperimentalApi::class)
                 param(
                   paramName,
                   "${if (isLastLambdaArgument) "@$COMPOSABLE_ANNOTATION_NAME " else ""}${

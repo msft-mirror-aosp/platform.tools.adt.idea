@@ -25,7 +25,7 @@ import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiModifierListOwner
-import org.jetbrains.kotlin.analysis.api.KtAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.KtAnalysisSession
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.annotations.KtAnnotationValue
@@ -35,8 +35,9 @@ import org.jetbrains.kotlin.analysis.api.annotations.KtEnumEntryAnnotationValue
 import org.jetbrains.kotlin.analysis.api.annotations.KtKClassAnnotationValue
 import org.jetbrains.kotlin.analysis.api.annotations.annotations
 import org.jetbrains.kotlin.analysis.api.annotations.hasAnnotation
-import org.jetbrains.kotlin.analysis.api.base.KtConstantValue
-import org.jetbrains.kotlin.analysis.api.lifetime.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.base.KaConstantValue
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.types.KtNonErrorClassType
 import org.jetbrains.kotlin.asJava.elements.KtLightElement
 import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
@@ -155,15 +156,13 @@ private fun serializeKtAnnotationValue(value: KtAnnotationValue): String? {
     }
     is KtConstantAnnotationValue -> {
       when (value.constantValue) {
-        is KtConstantValue.KtStringConstantValue ->
-          (value.constantValue as KtConstantValue.KtStringConstantValue).value
+        is KaConstantValue.KaStringConstantValue ->
+          (value.constantValue as KaConstantValue.KaStringConstantValue).value
         else -> value.constantValue.renderAsKotlinConstant()
       }
     }
     is KtEnumEntryAnnotationValue -> value.callableId?.asSingleFqName()?.asString()
-    is KtKClassAnnotationValue.KtLocalKClassAnnotationValue -> value.ktClass.fqName?.asString()
-    is KtKClassAnnotationValue.KtNonLocalKClassAnnotationValue ->
-      value.classId.normalizeToJVM().asSingleFqName().asString()
+    is KtKClassAnnotationValue -> (value.type as? KtNonErrorClassType)?.classId?.normalizeToJVM()?.asSingleFqName()?.asString()
     else -> null
   }
 }
@@ -232,19 +231,19 @@ private fun KtAnnotated.getQualifierInfoFromKtAnnotatedK1(): QualifierInfo? {
   return null
 }
 
-@OptIn(KtAllowAnalysisOnEdt::class)
+@OptIn(KaAllowAnalysisOnEdt::class)
 private fun KtAnnotated.getQualifierInfoFromKtAnnotatedK2(): QualifierInfo? {
   allowAnalysisOnEdt {
     analyze(this) {
       val ktDeclarationSymbol =
-        (this@getQualifierInfoFromKtAnnotatedK2 as? KtDeclaration)?.getSymbol() ?: return null
+        (this@getQualifierInfoFromKtAnnotatedK2 as? KtDeclaration)?.symbol ?: return null
       val qualifier =
         ktDeclarationSymbol.annotations.singleOrNull { isQualifier(it.classId) } ?: return null
 
       val qualifierFqName = qualifier.classId?.asFqNameString() ?: return null
       val qualifierAttributes =
-        qualifier.arguments.associate { (attr, arg) ->
-          attr.asString() to (serializeKtAnnotationValue(arg) ?: return null)
+        qualifier.arguments.associate { arg ->
+          arg.name.asString() to (serializeKtAnnotationValue(arg.expression) ?: return null)
         }
 
       return QualifierInfo(qualifierFqName, qualifierAttributes)

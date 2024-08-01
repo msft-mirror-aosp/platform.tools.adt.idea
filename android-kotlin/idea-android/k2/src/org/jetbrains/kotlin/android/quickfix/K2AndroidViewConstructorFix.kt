@@ -17,19 +17,19 @@ package org.jetbrains.kotlin.android.quickfix
 
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
-import org.jetbrains.kotlin.analysis.api.KtAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.KtAnalysisSession
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.fir.diagnostics.KtFirDiagnostic.SupertypeNotInitialized
-import org.jetbrains.kotlin.analysis.api.lifetime.allowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.fir.diagnostics.KaFirDiagnostic.SupertypeNotInitialized
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.types.KtNonErrorClassType
 import org.jetbrains.kotlin.analysis.api.types.KtType
 import org.jetbrains.kotlin.idea.codeinsight.api.applicable.fixes.AbstractKotlinApplicableQuickFix
-import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinDiagnosticFixFactory
+import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinQuickFixFactory
 import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinQuickFixRegistrar
 import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KotlinQuickFixesList
 import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.KtQuickFixesListBuilder
-import org.jetbrains.kotlin.idea.codeinsight.api.applicators.fixes.diagnosticFixFactory
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtSuperTypeEntry
@@ -61,7 +61,8 @@ class K2AndroidViewConstructorFix(
                 return null
             }
 
-            val superConstructors = superType.getTypeScope()?.getConstructors() ?: return null
+            @OptIn(KaExperimentalApi::class)
+            val superConstructors = superType.scope?.getConstructors() ?: return null
             val superConstructorClassSignatures = superConstructors.map { constructor ->
                 constructor.valueParameters.map { param ->
                     classId(param.returnType)
@@ -84,10 +85,11 @@ class K2AndroidViewConstructorFix(
             return K2AndroidViewConstructorFix(superTypeEntry, useThreeParameterConstructor)
         }
 
-        val FACTORY: KotlinDiagnosticFixFactory<SupertypeNotInitialized> =
-            diagnosticFixFactory(SupertypeNotInitialized::class) { listOfNotNull(createForDiagnostic(it)) }
+        val FACTORY = KotlinQuickFixFactory.IntentionBased<SupertypeNotInitialized> { diagnostic ->
+            listOfNotNull(createForDiagnostic(diagnostic))
+        }
 
-        private fun KtAnalysisSession.classId(type: KtType): ClassId? = type.expandedClassSymbol?.classIdIfNonLocal
+        private fun KtAnalysisSession.classId(type: KtType): ClassId? = type.expandedClassSymbol?.classId
         private fun KtAnalysisSession.isAndroidView(type: KtType): Boolean =
             classId(type) == KotlinAndroidViewConstructorUtils.REQUIRED_SUPERTYPE
     }
@@ -95,6 +97,6 @@ class K2AndroidViewConstructorFix(
 
 class K2AndroidViewConstructorFixRegistrar : KotlinQuickFixRegistrar() {
     override val list: KotlinQuickFixesList = KtQuickFixesListBuilder.registerPsiQuickFix {
-        registerApplicator(K2AndroidViewConstructorFix.FACTORY)
+        registerFactory(K2AndroidViewConstructorFix.FACTORY)
     }
 }

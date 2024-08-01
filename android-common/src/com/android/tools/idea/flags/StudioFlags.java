@@ -38,6 +38,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
 /**
@@ -56,12 +57,36 @@ public final class StudioFlags {
     Application app = ApplicationManager.getApplication();
     FlagOverrides userOverrides;
     if (app != null && !app.isUnitTestMode()) {
-      userOverrides = StudioFlagSettings.getInstance();
+      userOverrides = new LazyStudioFlagSettings();
     }
     else {
       userOverrides = new DefaultFlagOverrides();
     }
     return new Flags(userOverrides, new PropertyOverrides(), new ServerFlagOverrides());
+  }
+
+  // This class is a workaround for b/355292387: IntelliJ 2024.2 does not allow services to be instantiated inside static initializers.
+  private static class LazyStudioFlagSettings implements FlagOverrides {
+    @Override
+    public void clear() {
+      StudioFlagSettings.getInstance().clear();
+    }
+
+    @Override
+    public void put(@NotNull Flag<?> flag, @NotNull String value) {
+      StudioFlagSettings.getInstance().put(flag, value);
+    }
+
+    @Override
+    public void remove(@NotNull Flag<?> flag) {
+      StudioFlagSettings.getInstance().remove(flag);
+    }
+
+    @Nullable
+    @Override
+    public String get(@NotNull Flag<?> flag) {
+      return StudioFlagSettings.getInstance().get(flag);
+    }
   }
 
   @TestOnly
@@ -132,6 +157,11 @@ public final class StudioFlags {
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.",
     false);
+
+  public static final Flag<Integer> NPW_COMPILE_SDK_VERSION = new IntFlag(
+    NPW, "new.project.compile.sdk", "New project Compile SDK version",
+    "SDK version to be used for compileSdk for newly created project.",
+    34);
   //endregion
 
   //region Memory Usage Reporting
@@ -1137,7 +1167,7 @@ public final class StudioFlags {
     EDITOR, "dagger.cache.related.elements",
     "Enable caching related Dagger elements",
     "If enabled, related Dagger elements will be cached rather than being recalculated every time they're required.",
-    false // TODO(b/352564637): Fix this for K2 and re-enable after 2024.2 merge
+    true
   );
 
   public static final Flag<Boolean> TRANSLATIONS_EDITOR_SYNCHRONIZATION = new BooleanFlag(
@@ -1378,6 +1408,13 @@ public final class StudioFlags {
     "If enabled, the outputs of kotlinc are desugared before being sent to LiveEdit engine. This improves " +
     "the odds of matching what was produced by the Build system",
     true
+  );
+
+  public static final Flag<String> COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS = new StringFlag(
+    COMPOSE, "deploy.live.edit.deploy.compiler.flags",
+    "LiveEdit: Set custom kotlin compiler flags",
+    "If enabled, the flags passed to the Kotlin compiler in Live Edit will be replaced with the list of flags provided",
+    ""
   );
 
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_ALLOW_MULTIPLE_MIN_API_DEX_MARKERS_IN_APK = new BooleanFlag(
@@ -1733,6 +1770,15 @@ public final class StudioFlags {
 
   // region App Insights
   private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
+
+  public static final Flag<String> APP_INSIGHTS_AI_INSIGHT_ENDPOINT =
+    new StringFlag(
+      APP_INSIGHTS,
+      "app.insights.ai.insight.endpoint",
+      "App insights AI insight endpoint",
+      "Endpoint for getting AI insight",
+      "cloudaicompanion.googleapis.com"
+    );
 
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
     new StringFlag(

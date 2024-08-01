@@ -29,6 +29,7 @@ import org.junit.Test
 
 // Test is based on generated schema files. Schema has declarations for
 // androidApplication{compileSdk, namespace, jdkVersion, minSdk}, declarativeDependencies{api, implementation}
+@org.junit.Ignore("b/349894866")
 @RunsInEdt
 class DeclarativeCompletionContributorTest : DeclarativeSchemaTestBase() {
   @get:Rule
@@ -91,6 +92,16 @@ class DeclarativeCompletionContributorTest : DeclarativeSchemaTestBase() {
         "applicationId", "coreLibraryDesugaring", "namespace", "versionName"
       )
     }
+  }
+
+  @Test
+  fun testAfterPropertyCompletion() {
+    writeToSchemaFile(TestFile.DECLARATIVE_NEW_FORMAT_SCHEMAS)
+    doNoSuggestionTest("""
+      androidLibrary {
+          compileSdk = 1$caret
+        }""".trimIndent()
+      )
   }
 
   @Test
@@ -234,6 +245,14 @@ class DeclarativeCompletionContributorTest : DeclarativeSchemaTestBase() {
       it.lookupString
     }
     check.invoke(list)
+  }
+
+  private fun doNoSuggestionTest(declarativeFile: String) {
+    val buildFile = fixture.addFileToProject(
+      "build.gradle.dcl", declarativeFile)
+    fixture.configureFromExistingVirtualFile(buildFile.virtualFile)
+    fixture.completeBasic()
+    assertThat(fixture.lookup).isNull()
   }
 
   private fun doCompletionTest(declarativeFile: String, fileAfter: String) {

@@ -48,6 +48,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
@@ -103,7 +104,7 @@ class DeviceMenuAction(
     JBPopupMenu.showBelow(button, popupMenu)
     // The items in toolbar.component are filled after JBPopupMenu.showBelow() is called.
     // So we install the tooltips after showing.
-    getChildren(null).forEachIndexed { index, action ->
+    getChildren(e.actionManager).forEachIndexed { index, action ->
       val deviceId = (action as? SetDeviceAction)?.device?.id ?: return@forEachIndexed
       DEVICE_ID_TO_TOOLTIPS[deviceId]?.let {
         (popupMenu.components[index] as? ActionMenuItem)?.let { menuItem ->
@@ -318,7 +319,7 @@ class DeviceMenuAction(
   }
 
   private fun addDevicesToPopup(title: String, devices: List<Device>, currentDevice: Device?) {
-    val group = createSubMenuGroup { title }
+    val group = DefaultActionGroup(title, true)
     add(group)
 
     for (device in devices) {

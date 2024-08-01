@@ -20,6 +20,7 @@ import com.android.builder.model.NativeVariantAbi
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
+import com.android.builder.model.v2.models.ProjectGraph
 import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.VariantDependencies
 import com.android.builder.model.v2.models.VariantDependenciesAdjacencyList
@@ -90,6 +91,7 @@ data class ActionToRun<T>(
       AndroidProject::class.java -> fetchesV2Models
       VariantDependencies::class.java -> fetchesV2Models
       VariantDependenciesAdjacencyList::class.java -> fetchesV2Models
+      ProjectGraph::class.java -> fetchesV2Models
       AndroidDsl::class.java -> fetchesV2Models
       ProjectSyncIssues::class.java -> fetchesV2Models
       AndroidProjectV1::class.java -> fetchesV1Models
@@ -167,6 +169,8 @@ data class ActionToRun<T>(
 
       @Suppress("UnstableApiUsage")
       override fun getCanQueryProjectModelInParallel(p0: Class<*>?): Boolean = error("Not intended to be used")
+
+      override fun <T : Any?> send(p0: T): Unit = error("Not intended to be used")
     }
   }
 }
@@ -296,6 +300,8 @@ private fun BuildController.toMeasuringController(syncCounters: SyncCounters): B
 
     @Suppress("UnstableApiUsage")
     override fun getCanQueryProjectModelInParallel(p0: Class<*>?): Boolean = error("Not intended to be used")
+
+    override fun <T : Any?> send(p0: T): Unit = error("Not intended to be used")
   }
 }
 
@@ -309,6 +315,7 @@ private fun <T> SyncCounters.measure(modelType: Class<*>, block: () -> T): T {
     AndroidProject::class.java -> projectModel
     VariantDependencies::class.java -> variantDependenciesModel
     VariantDependenciesAdjacencyList::class.java -> variantDependenciesModel
+    ProjectGraph::class.java -> projectGraphModel
     AndroidDsl::class.java -> projectModel
     ProjectSyncIssues::class.java -> otherModel
     AndroidProjectV1::class.java -> projectModel

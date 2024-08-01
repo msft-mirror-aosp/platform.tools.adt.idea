@@ -121,8 +121,6 @@ public class AvdManagerConnection {
   private static final ProgressIndicator REPO_LOG = new StudioLoggerProgressIndicator(AvdManagerConnection.class);
   private static final AvdManagerConnection NULL_CONNECTION = new AvdManagerConnection(null, null);
 
-  public static final String HW_LCD_DENSITY = "hw.lcd.density";
-
   private static final Map<Path, AvdManagerConnection> ourAvdCache = new WeakHashMap<>();
 
   private static @NotNull BiFunction<AndroidSdkHandler, Path, AvdManagerConnection> ourConnectionFactory =
@@ -330,7 +328,7 @@ public class AvdManagerConnection {
         skin = skin.subpath(1, skin.getNameCount());
       }
 
-      DeviceSkinUpdater.updateSkin(skin, null);
+      DeviceSkinUpdater.updateSkin(skin);
     }
 
     return Futures.transformAsync(
@@ -469,17 +467,15 @@ public class AvdManagerConnection {
       .setAvdHome(myAvdManager.getBaseAvdFolder())
       .setEmulatorSupportsSnapshots(EmulatorFeatures.getEmulatorFeatures(getEmulator()).contains(EmulatorAdvancedFeatures.FAST_BOOT))
       .setStudioParams(writeParameterFile().orElse(null))
-      .setLaunchInToolWindow(forceLaunchInToolWindow || shouldLaunchInToolWindow(project))
+      .setLaunchInToolWindow(canLaunchInToolWindow(avd, project) &&
+                             (forceLaunchInToolWindow || EmulatorSettings.getInstance().getLaunchInToolWindow()))
       .addAllStudioEmuParams(params.orElse(Collections.emptyList()))
       .build();
   }
 
-  /**
-   * Checks whether the emulator should launch in a tool window or standalone.
-   */
-  private static boolean shouldLaunchInToolWindow(@Nullable Project project) {
-    return EmulatorSettings.getInstance().getLaunchInToolWindow() &&
-           project != null && ToolWindowManager.getInstance(project).getToolWindow("Running Devices") != null;
+  /** Checks whether the emulator can be launched in the Running Device tool window. */
+  private static boolean canLaunchInToolWindow(@NotNull AvdInfo avd, @Nullable Project project) {
+    return project != null && ToolWindowManager.getInstance(project).getToolWindow("Running Devices") != null;
   }
 
   public static boolean isFoldable(@NotNull AvdInfo avd) {

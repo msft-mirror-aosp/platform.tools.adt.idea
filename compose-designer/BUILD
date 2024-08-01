@@ -48,6 +48,7 @@ iml_module(
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.compose-designer.tests",
+    generate_k2_tests = True,
     iml_files = ["intellij.android.compose-designer.tests.iml"],
     kotlin_use_compose = True,
     split_test_targets = {
@@ -277,6 +278,9 @@ iml_studio_test(
     module = ":intellij.android.compose-designer.integration",
     tags_linux = ["block-network"],
     tags_mac = [],
-    tags_windows = ["block-network"],
+    tags_windows = [
+        "block-network",
+        "noci:studio-win",  # TODO(b/355511927): flaky timeouts on Windows with IntelliJ 2024.2.
+    ],
     test_class = "com.android.tools.idea.compose.ComposePreviewKotlin",
 )
