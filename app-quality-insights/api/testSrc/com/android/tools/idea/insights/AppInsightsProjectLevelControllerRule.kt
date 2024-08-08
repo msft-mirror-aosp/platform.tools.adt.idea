@@ -128,6 +128,7 @@ class AppInsightsProjectLevelControllerRule(
     eventsState: LoadingState.Done<EventPage> = LoadingState.Ready(EventPage.EMPTY),
     detailsState: LoadingState.Done<DetailedIssueStats?> = LoadingState.Ready(null),
     notesState: LoadingState.Done<List<Note>> = LoadingState.Ready(emptyList()),
+    insightState: LoadingState.Done<AiInsight> = LoadingState.Ready(DEFAULT_AI_INSIGHT),
     isTransitionToOnlineMode: Boolean = false,
   ): AppInsightsState {
     client.completeIssuesCallWith(state)
@@ -148,6 +149,8 @@ class AppInsightsProjectLevelControllerRule(
         consumeNext()
         consumeNext()
         client.completeListNotesCallWith(notesState)
+        consumeNext()
+        client.completeFetchInsightCallWith(insightState)
       }
       resultState = consumeNext()
     }
@@ -170,6 +173,7 @@ class AppInsightsProjectLevelControllerRule(
     detailsState: LoadingState.Done<DetailedIssueStats?> = LoadingState.Ready(null),
     notesState: LoadingState.Done<List<Note>> = LoadingState.Ready(emptyList()),
     connectionsState: List<Connection> = listOf(CONNECTION1, CONNECTION2, PLACEHOLDER_CONNECTION),
+    insightState: LoadingState.Done<AiInsight> = LoadingState.Ready(DEFAULT_AI_INSIGHT),
   ): AppInsightsState {
     connections.emit(connectionsState)
     val loadingState = consumeNext()
@@ -179,7 +183,15 @@ class AppInsightsProjectLevelControllerRule(
     assertThat(loadingState.currentIssueVariants).isEqualTo(LoadingState.Ready(null))
     assertThat(loadingState.currentIssueDetails).isEqualTo(LoadingState.Ready(null))
     assertThat(loadingState.currentNotes).isEqualTo(LoadingState.Ready(null))
-    return consumeFetchState(state, issueVariantsState, eventsState, detailsState, notesState)
+    assertThat(loadingState.currentInsight).isEqualTo(LoadingState.Ready(null))
+    return consumeFetchState(
+      state,
+      issueVariantsState,
+      eventsState,
+      detailsState,
+      notesState,
+      insightState,
+    )
   }
 
   suspend fun consumeNext() = internalState.receiveWithTimeout()
@@ -357,7 +369,12 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
 
   override suspend fun fetchInsight(
     connection: Connection,
-    issue: AppInsightsIssue,
-    state: AppInsightsState,
-  ) = fetchInsightCall.initiateCall()
+    insightIssueId: IssueId,
+    eventId: String,
+    variantId: String?,
+    timeInterval: TimeIntervalFilter,
+  ): LoadingState.Done<AiInsight> = fetchInsightCall.initiateCall()
+
+  suspend fun completeFetchInsightCallWith(value: LoadingState.Done<AiInsight>) =
+    fetchInsightCall.completeWith(value)
 }

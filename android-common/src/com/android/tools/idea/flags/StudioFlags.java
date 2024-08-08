@@ -26,12 +26,14 @@ import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
 import com.android.flags.IntFlag;
 import com.android.flags.LongFlag;
+import com.android.flags.MendelFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
+import com.android.tools.idea.flags.overrides.MendelOverrides;
 import com.android.tools.idea.util.StudioPathManager;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
@@ -62,7 +64,7 @@ public final class StudioFlags {
     else {
       userOverrides = new DefaultFlagOverrides();
     }
-    return new Flags(userOverrides, new PropertyOverrides(), new ServerFlagOverrides());
+    return new Flags(userOverrides, new PropertyOverrides(), new MendelOverrides(), new ServerFlagOverrides());
   }
 
   // This class is a workaround for b/355292387: IntelliJ 2024.2 does not allow services to be instantiated inside static initializers.
@@ -276,6 +278,14 @@ public final class StudioFlags {
     "Configure the max size of the cache used by GradleClassFileFinder",
     "Allow configuring the maximum number of file references to be kept.",
     150L
+  );
+
+  public static final Flag<Boolean> MOTION_EDITOR_DEPRECATION_WARNING = new BooleanFlag(
+    DESIGN_TOOLS,
+    "motion.editor.deprecation.warning",
+    "Shows the Motion Editor deprecation warning",
+    "Shows the Motion Editor deprecation warning.",
+    false
   );
   //endregion
 
@@ -1796,13 +1806,13 @@ public final class StudioFlags {
       "Set Crashlytics to be in integration test mode.",
       false);
 
-  public static final Flag<Boolean> CRASHLYTICS_SHOW_INSIGHT =
+  public static final Flag<Boolean> CRASHLYTICS_INSIGHT_IN_TOOLWINDOW =
     new BooleanFlag(
       APP_INSIGHTS,
-      "crashlytics.show.insight",
-      "Show insight for Crashlytics",
-      "Show AI generated insights for Crashlytics issue",
-      true
+      "crashlytics.show.insight.tool.window",
+      "Show insight toolwindow in Crashlytics",
+      "Show AI generated insights for Crashlytics issue in insight toolwindow",
+      false
     );
 
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
@@ -1933,21 +1943,14 @@ public final class StudioFlags {
                     "When enabled, additional file context (eg, currently open files) are included in inline code completion requests.",
                     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> STUDIOBOT_OVERRIDE_BACKEND_EXPERIMENTS =
-    new BooleanFlag(STUDIOBOT, "override.backend.experiments",
-                    "Override flags set by AIDA backend experiments.",
-                    "When enabled, the values of flags that are usually controlled by backend experiments will be overridden" +
-                    "by the values set here.",
-                    ChannelDefault.enabledUpTo(DEV));
-
   public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =
-    new BooleanFlag(STUDIOBOT, "compiler.error.context.enabled",
+    new MendelFlag(STUDIOBOT, "compiler.error.context.enabled", 97695187,
                 "Enable sending context with compiler error queries.",
                 "When enabled, compiler queries will attach context (e.g. error location, full trace), from the project.",
                     ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_PROJECT_FACTS_CONTEXT_ENABLED =
-    new BooleanFlag(STUDIOBOT, "project.facts.context.enabled",
+    new MendelFlag(STUDIOBOT, "project.facts.context.enabled", 97715007,
                     "Enable sending project facts with chat queries.",
                     "When enabled, chat queries will attach summarized facts about the project.",
                     ChannelDefault.enabledUpTo(DEV));
@@ -2019,10 +2022,10 @@ public final class StudioFlags {
                     ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_CURRENT_FILE_CONTEXT =
-    new BooleanFlag(STUDIOBOT, "current.file.context",
-                    "Use the current file as context",
-                    "Attach the current file's path, contents, and selection with chat queries.",
-                    ChannelDefault.enabledUpTo(DEV));
+    new MendelFlag(STUDIOBOT, "current.file.context", 97694800,
+                   "Use the current file as context",
+                   "Attach the current file's path, contents, and selection with chat queries.",
+                   ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_OPEN_FILES_CONTEXT =
     new BooleanFlag(STUDIOBOT, "open.files.context",
@@ -2034,7 +2037,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
                     "Use ML model to suggest commit messages",
                     "Enables the \"Suggest Commit Message\" button in the Commit tool window",
-                    true);
+                    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> README_GENERATION =
     new BooleanFlag(STUDIOBOT, "readme.generation",
@@ -2148,6 +2151,14 @@ public final class StudioFlags {
       "Enable Backup/Restore feature",
       "Enable Backup/Restore feature",
       false);
+
+  public static final Flag<Integer> BACKUP_GMSCORE_MIN_VERSION =
+    new IntFlag(
+      BACKUP,
+      "gmscore.min.version",
+      "Minimum version of the GmsCore Backup module that is supported",
+      "Minimum version of the GmsCore Backup module that is supported",
+      Integer.MAX_VALUE); // TODO(b/356613310) Replace with actual version when available
   // endregion Backup
 
   // region GOOGLE_PLAY_SDK_INDEX

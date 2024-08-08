@@ -54,6 +54,7 @@ class SelectedIssueChangedTest {
       assertThat(transition.newState.currentIssueDetails).isEqualTo(LoadingState.Loading)
       assertThat(transition.newState.currentNotes).isEqualTo(LoadingState.Loading)
       assertThat(transition.newState.currentEvents).isEqualTo(LoadingState.Loading)
+      assertThat(transition.newState.currentInsight).isEqualTo(LoadingState.Loading)
 
       assertThat((action as Action.Multiple).actions)
         .containsExactly(
