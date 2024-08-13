@@ -84,7 +84,7 @@ class AndroidVersionsInfo {
    */
   fun getKnownTargetVersions(formFactor: FormFactor, minSdkLevel: Int): MutableList<VersionItem> {
     val minSdkLevel = minSdkLevel.coerceAtLeast(formFactor.minOfflineApiLevel)
-    val maxSdkLevel = formFactor.maxOfflineApiLevel
+    val maxSdkLevel = if (formFactor.hasUpperLimitForMinimumSdkSelection) formFactor.maxOfflineApiLevel else Int.MAX_VALUE
     return knownTargetVersions.filter {
       formFactor.isAvailable(minSdkLevel .. maxSdkLevel, it.minApiLevel) || it.androidTarget?.version?.isPreview == true
     }.toMutableList()

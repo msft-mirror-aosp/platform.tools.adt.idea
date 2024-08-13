@@ -83,4 +83,7 @@ enum class FormFactor(
 
   // Currently all form factors have emulators, but we keep this method to ease introduction of new form factors
   fun hasEmulator(): Boolean = true
+
+  // We want to expose new SDKs when creating new mobile projects.
+  val hasUpperLimitForMinimumSdkSelection: Boolean get() = this != MOBILE
 }
