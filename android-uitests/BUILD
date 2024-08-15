@@ -109,6 +109,17 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
         "//tools/adt/idea/bleak-config:intellij.android.bleak-config[module, test]",
         "//tools/adt/idea/.idea/libraries:agp-version[test]",
+        "//tools/adt/idea/as-driver:as-driver.utils[module, test]",
+    ],
+)
+
+maven_repository(
+    name = "espresso_recorder_deps",
+    artifacts = [
+        "@maven//:com.google.testing.platform.android-device-provider-local",
+        "@maven//:com.google.testing.platform.android-test-plugin",
+        "@maven//:com.google.testing.platform.core",  # CompileOnly should not be in the pom
+        "@maven//:com.google.testing.platform.launcher",  # CompileOnly should not be in the pom
     ],
 )
 
@@ -2019,11 +2030,12 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
-    ]) + select({
-        ":has_emulator": [
-            "@externsdk//:emulator",
-            "@externsdk//:system-images",
-        ],
+    ]) + [
+        ":espresso_recorder_deps",
+        "//prebuilts/studio/sdk:emulator",
+        "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
+    ] + select({
+        "@platforms//os:linux": ["//tools/adt/idea/studio:android-studio.linux.zip"],
         "//conditions:default": [],
     }),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.espresso.EspressoRecorderTest"],

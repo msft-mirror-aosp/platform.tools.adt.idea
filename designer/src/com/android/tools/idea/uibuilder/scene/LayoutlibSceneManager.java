@@ -49,7 +49,6 @@ import com.android.tools.idea.common.surface.LayoutScannerConfiguration;
 import com.android.tools.idea.common.surface.LayoutScannerEnabled;
 import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.common.type.DesignerEditorFileType;
-import com.android.tools.idea.rendering.RenderResults;
 import com.android.tools.idea.rendering.parsers.PsiXmlFile;
 import com.android.tools.idea.res.ResourceNotificationManager;
 import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager;
@@ -64,7 +63,6 @@ import com.android.tools.idea.uibuilder.surface.ScreenViewLayer;
 import com.android.tools.idea.uibuilder.type.MenuFileType;
 import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode;
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintMode;
-import com.android.tools.idea.util.ListenerCollection;
 import com.android.tools.rendering.ExecuteCallbacksResult;
 import com.android.tools.rendering.InteractionEventResult;
 import com.android.tools.rendering.RenderAsyncActionExecutor;
@@ -94,7 +92,6 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -130,7 +127,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   @GuardedBy("myFuturesLock")
   private final LinkedList<CompletableFuture<Void>> myPendingFutures = new LinkedList<>();
   @NotNull private final ViewEditor myViewEditor;
-  private final ListenerCollection<RenderListener> myRenderListeners = ListenerCollection.createWithDirectExecutor();
 
   /**
    * Helper class in charge of some render related responsibilities
@@ -173,7 +169,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
   /**
    * If true, automatically update (if needed) and re-render when being activated. Which happens after {@link #activate(Object)} is called.
-   * Note that if the it is activated already, then it will not re-render.
+   * Note that if it is activated already, then it will not re-render.
    */
   private boolean myUpdateAndRenderWhenActivated = true;
 
@@ -197,7 +193,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   /**
    * If true, the rendering will report when the user classes used by this {@link SceneManager} are out of date and have been modified
    * after the last build. The reporting will be done via the rendering log.
-   * Compose has its own mechanism to track out of date files so it will disable this reporting.
+   * Compose has its own mechanism to track out of date files, so it will disable this reporting.
    */
   private boolean reportOutOfDateUserClasses = false;
 
@@ -377,7 +373,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
         model.getConfiguration().removeListener(myConfigurationChangeListener);
         model.removeListener(myModelChangeListener);
       }
-      myRenderListeners.clear();
     }
     finally {
       super.dispose();
@@ -464,7 +459,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     @Override
     public void modelDerivedDataChanged(@NotNull NlModel model) {
       // After the model derived data is changed, we need to update the selection in Edt thread.
-      // Changing selection should run in UI thread to avoid avoid race condition.
+      // Changing selection should run in UI thread to avoid race condition.
       NlDesignSurface surface = getDesignSurface();
       CompletableFuture.runAsync(() -> {
         // Ensure the new derived that is passed to the Scene components hierarchy
@@ -840,7 +835,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     logConfigurationChange(surface);
     getModel().resetLastChange();
 
-    fireOnRenderStart();
     long renderStartTimeMs = System.currentTimeMillis();
         return myLayoutlibSceneRenderer.renderAsync(myForceInflate.getAndSet(false), myLogRenderErrors, reverseUpdate, myElapsedFrameTimeMs, quality)
       .thenApplyAsync(result -> {
@@ -860,7 +854,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
                                                                       4L);
           CommonUsageTracker.Companion.getInstance(getDesignSurface()).logRenderResult(trigger, result, CommonUsageTracker.RenderResultType.RENDER);
         }
-        fireOnRenderComplete();
+        getDesignSurface().modelRendered();
         completeRender();
 
         return result;
@@ -904,30 +898,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
   public void setElapsedFrameTimeMs(long ms) {
     myElapsedFrameTimeMs = ms;
-  }
-
-  private void fireOnRenderStart() {
-    myRenderListeners.forEach(RenderListener::onRenderStarted);
-  }
-  private void fireOnRenderComplete() {
-    myRenderListeners.forEach(RenderListener::onRenderCompleted);
-  }
-  private void fireOnRenderFail(@NotNull Throwable e) {
-    myRenderListeners.forEach(listener -> {
-      listener.onRenderFailed(e);
-    });
-  }
-
-  public void addRenderListener(@NotNull RenderListener listener) {
-    if (isDisposed.get()) {
-      Logger.getInstance(LayoutlibSceneManager.class).warn("addRenderListener after LayoutlibSceneManager has been disposed");
-    }
-
-    myRenderListeners.add(listener);
-  }
-
-  public void removeRenderListener(@NotNull RenderListener listener) {
-    myRenderListeners.remove(listener);
   }
 
   /**
@@ -996,7 +966,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
 
   /**
    * Informs layoutlib that there was a (mouse) touch event detected of a particular type at a particular point
-   * @param type type of a touch event
+   * @param type type of touch event
    * @param x horizontal android coordinate of the detected touch event
    * @param y vertical android coordinate of the detected touch event
    * @return a future that is completed when layoutlib handled the touch event
@@ -1005,7 +975,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   public CompletableFuture<InteractionEventResult> triggerTouchEventAsync(
     @NotNull RenderSession.TouchEventType type, @AndroidCoordinate int x, @AndroidCoordinate int y) {
     if (isDisposed.get()) {
-      Logger.getInstance(LayoutlibSceneManager.class).warn("executeCallbacks after LayoutlibSceneManager has been disposed");
+      Logger.getInstance(LayoutlibSceneManager.class).warn("triggerTouchEventAsync after LayoutlibSceneManager has been disposed");
     }
 
     RenderTask currentTask = myLayoutlibSceneRenderer.getRenderTask();
@@ -1024,7 +994,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   @NotNull
   public CompletableFuture<InteractionEventResult> triggerKeyEventAsync(@NotNull KeyEvent event) {
     if (isDisposed.get()) {
-      Logger.getInstance(LayoutlibSceneManager.class).warn("executeCallbacks after LayoutlibSceneManager has been disposed");
+      Logger.getInstance(LayoutlibSceneManager.class).warn("triggerKeyEventAsync after LayoutlibSceneManager has been disposed");
     }
 
     RenderTask currentTask = myLayoutlibSceneRenderer.getRenderTask();

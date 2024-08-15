@@ -29,6 +29,7 @@ import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.gradle.tooling.model.gradle.GradleBuild
 import org.gradle.tooling.model.idea.IdeaProject
 import org.gradle.util.GradleVersion
+import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider.GradleModelConsumer
 import java.io.File
 
@@ -92,6 +93,9 @@ internal class AndroidExtraModelProviderWorker(
               GradleVersion.version(gradleVersion) >= GradleVersion.version("7.4.2") &&
               v2AndroidGradleModules.all { it.modelVersions[ModelFeature.SUPPORTS_PARALLEL_SYNC] }
 
+            val shouldUseProjectGraph = GradleVersion.version(gradleVersion) >= GradleVersion.version("8.10-rc-1") &&
+                                        v2AndroidGradleModules.all { it.modelVersions[ModelFeature.HAS_PROJECT_GRAPH_MODEL] }
+
             val configuredSyncActionRunner = safeActionRunner.enableParallelFetchForV2Models(
               v2ModelBuildersSupportParallelSync,
               syncOptions.flags.studioFlagFetchKotlinModelsInParallel
@@ -99,7 +103,7 @@ internal class AndroidExtraModelProviderWorker(
 
             val models =
               SyncProjectActionWorker(buildInfo, syncCounters, syncOptions, configuredSyncActionRunner)
-                .populateAndroidModels(modules)
+                .populateAndroidModels(modules, shouldUseProjectGraph)
 
             val syncExecutionReport = IdeSyncExecutionReport(
               parallelFetchForV2ModelsEnabled =
@@ -118,9 +122,9 @@ internal class AndroidExtraModelProviderWorker(
             )
             safeActionRunner.runAction { controller ->
               // TODO(b/215344823): Idea parallel model fetching is broken for now, so we need to request it sequentially.
-              GradleSourceSetModelProvider().populateBuildModels(controller, buildInfo.rootBuild, consumer)
-              GradleSourceSetDependencyModelProvider().populateBuildModels(controller, buildInfo.rootBuild, consumer)
-              GradleExternalProjectModelProvider().populateBuildModels(controller, buildInfo.rootBuild, consumer)
+              GradleExternalProjectModelProvider().runModelProvider(controller, buildInfo, consumer)
+              GradleSourceSetModelProvider().runModelProvider(controller, buildInfo, consumer)
+              GradleSourceSetDependencyModelProvider().runModelProvider(controller, buildInfo, consumer)
             }
             NativeVariantsSyncActionWorker(buildInfo, syncOptions, safeActionRunner).fetchNativeVariantsAndroidModels()
           }
@@ -142,6 +146,18 @@ internal class AndroidExtraModelProviderWorker(
         IdeAndroidSyncError::class.java
       )
     }
+  }
+
+  private fun ProjectImportModelProvider.runModelProvider(
+    controller: BuildController,
+    buildInfo: BuildInfo,
+    modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
+  ) {
+    for (gradleProject in buildInfo.projects) {
+      populateProjectModels(controller, gradleProject, modelConsumer)
+    }
+    populateBuildModels(controller, buildInfo.rootBuild, modelConsumer)
+    populateModels(controller, listOf(buildInfo.rootBuild), modelConsumer)
   }
 
   private fun getBasicIncompleteGradleModules(): List<BasicIncompleteGradleModule> {

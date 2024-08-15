@@ -36,6 +36,7 @@ import com.intellij.openapi.actionSystem.ex.ActionManagerEx
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -44,6 +45,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.util.ConcurrencyUtil
 import com.intellij.util.ui.UIUtil
 import org.junit.After
+import org.junit.Assume.assumeFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -118,8 +120,8 @@ class EmptyStatePanelTest {
   fun testEmulatorTooOld() {
     EmulatorSettings.getInstance().launchInToolWindow = true
     emulatorPackage.setRevision(Revision(35, 1, 2))
+    waitForCondition(2.seconds) { ui.getComponent<JEditorPane>().normalizedText.contains("install Android Emulator") }
     val htmlComponent = ui.getComponent<JEditorPane>()
-    waitForCondition(2.seconds) { htmlComponent.normalizedText.contains("install Android Emulator") }
     assertThat(htmlComponent.normalizedText).contains(
         "To launch virtual devices in this window, install Android Emulator 35.1.3 or higher." +
         " Please <font color=\"589df6\"><a href=\"CheckForUpdate\">check for updates</a></font>" +

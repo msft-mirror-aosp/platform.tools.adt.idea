@@ -19,6 +19,7 @@ import com.android.tools.adtui.model.stdui.ValueChangedListener
 import com.android.tools.idea.uibuilder.property.InputTypePropertyItem
 import com.android.tools.idea.uibuilder.property.NlFlagPropertyItem
 import com.google.common.annotations.VisibleForTesting
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.BalloonImpl
 import com.intellij.ui.components.JBLabel
@@ -35,7 +36,6 @@ import javax.swing.JCheckBox
 import javax.swing.JPanel
 import javax.swing.event.ListDataEvent
 import javax.swing.event.ListDataListener
-import com.intellij.openapi.application.invokeLater
 
 // These 3 mask values comes from android/text/InputType.java:
 private const val TYPE_MASK_CLASS = 0x0f

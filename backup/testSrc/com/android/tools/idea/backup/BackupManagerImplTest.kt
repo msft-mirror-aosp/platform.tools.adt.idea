@@ -15,10 +15,13 @@
  */
 package com.android.tools.idea.backup
 
+import com.android.backup.BackupException
 import com.android.backup.BackupResult
 import com.android.backup.BackupService
 import com.android.backup.ErrorCode
 import com.android.tools.analytics.UsageTrackerRule
+import com.android.tools.idea.testing.NotificationRule
+import com.android.tools.idea.testing.NotificationRule.NotificationInfo
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.BACKUP_USAGE
 import com.google.wireless.android.sdk.stats.BackupUsageEvent
@@ -29,6 +32,9 @@ import com.google.wireless.android.sdk.stats.BackupUsageEvent.Result.SUCCESS
 import com.google.wireless.android.sdk.stats.BackupUsageEvent.Source
 import com.google.wireless.android.sdk.stats.BackupUsageEvent.Source.DEVICE_EXPLORER
 import com.google.wireless.android.sdk.stats.BackupUsageEvent.Source.RUN_MENU
+import com.intellij.notification.NotificationType
+import com.intellij.notification.NotificationType.INFORMATION
+import com.intellij.notification.NotificationType.WARNING
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -54,8 +60,9 @@ internal class BackupManagerImplTest {
     get() = projectRule.project
 
   private val usageTrackerRule = UsageTrackerRule()
+  private val notificationRule = NotificationRule(projectRule)
 
-  @get:Rule val rule = RuleChain(projectRule, usageTrackerRule, EdtRule())
+  @get:Rule val rule = RuleChain(projectRule, usageTrackerRule, notificationRule, EdtRule())
 
   private val mockBackupService = mock<BackupService>()
 
@@ -78,6 +85,10 @@ internal class BackupManagerImplTest {
 
     assertThat(usageTrackerRule.backupEvents())
       .containsExactly(backupUsageEvent(D2D, RUN_MENU, SUCCESS))
+    assertThat(notificationRule.notifications).hasSize(1)
+    notificationRule.notifications
+      .first()
+      .assert(title = "", "Backup completed successfully", INFORMATION, "RevealBackupFileAction")
   }
 
   @Test
@@ -109,6 +120,7 @@ internal class BackupManagerImplTest {
         ErrorCode.GMSCORE_IS_TOO_OLD to BackupUsageEvent.Result.GMSCORE_IS_TOO_OLD,
         ErrorCode.BACKUP_FAILED to BackupUsageEvent.Result.BACKUP_FAILED,
         ErrorCode.UNEXPECTED_ERROR to BackupUsageEvent.Result.UNEXPECTED_ERROR,
+        ErrorCode.PLAY_STORE_NOT_INSTALLED to BackupUsageEvent.Result.PLAY_STORE_NOT_INSTALLED,
       )
 
     errors.forEach { testBackupError(it.first, it.second) }
@@ -125,9 +137,52 @@ internal class BackupManagerImplTest {
         ErrorCode.RESTORE_FAILED to BackupUsageEvent.Result.RESTORE_FAILED,
         ErrorCode.INVALID_BACKUP_FILE to BackupUsageEvent.Result.INVALID_BACKUP_FILE,
         ErrorCode.UNEXPECTED_ERROR to BackupUsageEvent.Result.UNEXPECTED_ERROR,
+        ErrorCode.PLAY_STORE_NOT_INSTALLED to BackupUsageEvent.Result.PLAY_STORE_NOT_INSTALLED,
       )
 
     errors.forEach { testRestoreError(it.first, it.second) }
+  }
+
+  @Test
+  fun gmsCoreNotUpdated(): Unit = runBlocking {
+    val backupManagerImpl = BackupManagerImpl(project, mockBackupService)
+    val serialNumber = "serial"
+    val backupFile = Path.of("file")
+    whenever(mockBackupService.restore(eq(serialNumber), eq(backupFile), anyOrNull()))
+      .thenReturn(
+        BackupResult.Error(ErrorCode.GMSCORE_IS_TOO_OLD, BackupException(ErrorCode.GMSCORE_IS_TOO_OLD, "Error"))
+      )
+
+    backupManagerImpl.restore(
+      serialNumber,
+      backupFile,
+      BackupManager.Source.RUN_MENU,
+      notify = true,
+    )
+
+    assertThat(usageTrackerRule.backupEvents())
+      .containsExactly(restoreUsageEvent(RUN_MENU, BackupUsageEvent.Result.GMSCORE_IS_TOO_OLD))
+    assertThat(notificationRule.notifications).hasSize(1)
+    notificationRule.notifications
+      .first()
+      .assert("Restore Failed", "Error", WARNING, "ShowExceptionAction", "UpdateGmsAction")
+  }
+
+  private fun NotificationInfo.assert(
+    title: String,
+    text: String,
+    type: NotificationType,
+    vararg actions: String,
+  ) {
+    assertThat(this.groupId).isEqualTo("Backup")
+    assertThat(this.icon).isNull()
+    assertThat(this.important).isTrue()
+    assertThat(this.subtitle).isNull()
+
+    assertThat(this.title).isEqualTo(title)
+    assertThat(this.content).isEqualTo(text)
+    assertThat(this.type).isEqualTo(type)
+    assertThat(this.actions.map { it::class.java.simpleName }).isEqualTo(actions.asList())
   }
 
   private suspend fun testBackupError(

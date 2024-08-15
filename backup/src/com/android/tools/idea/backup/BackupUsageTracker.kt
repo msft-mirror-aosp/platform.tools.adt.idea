@@ -81,4 +81,5 @@ private fun ErrorCode.toProto() =
     ErrorCode.RESTORE_FAILED -> BackupUsageEvent.Result.RESTORE_FAILED
     ErrorCode.INVALID_BACKUP_FILE -> BackupUsageEvent.Result.INVALID_BACKUP_FILE
     ErrorCode.UNEXPECTED_ERROR -> BackupUsageEvent.Result.UNEXPECTED_ERROR
+    ErrorCode.PLAY_STORE_NOT_INSTALLED -> BackupUsageEvent.Result.PLAY_STORE_NOT_INSTALLED
   }

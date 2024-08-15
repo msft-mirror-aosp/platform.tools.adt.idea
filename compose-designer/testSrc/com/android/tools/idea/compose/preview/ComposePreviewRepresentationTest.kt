@@ -67,7 +67,6 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisi
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.SourceCodeEditorProvider
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
-import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
@@ -736,7 +735,8 @@ class ComposePreviewRepresentationTest {
     runComposePreviewRepresentationTest {
       composePreviewEssentialsModeEnabled = true
 
-      val preview = createPreviewAndCompile()
+      // Only one preview/model is shown in gallery mode
+      val preview = createPreviewAndCompile(expectedModelCount = 1)
 
       assertEquals(10, preview.interactiveManager.fpsLimit)
     }
@@ -779,7 +779,8 @@ class ComposePreviewRepresentationTest {
     }
 
     runComposePreviewRepresentationTest(testPsiFile) {
-      val preview = createPreviewAndCompile()
+      // The file above contains only 1 preview/model
+      val preview = createPreviewAndCompile(expectedModelCount = 1)
       assertInstanceOf<UiCheckModeFilter.Disabled<PsiComposePreviewElementInstance>>(
         preview.uiCheckFilterFlow.value
       )
@@ -856,6 +857,76 @@ class ComposePreviewRepresentationTest {
     }
   }
 
+  // Regression test for b/353458840
+  @Test
+  fun multiPreviewsAreOrderedByNameWhenNotInUICheckMode() {
+    val testPsiFile =
+      fixture.addFileToProjectAndInvalidate(
+        "Test.kt",
+        // language=kotlin
+        """
+            import androidx.compose.ui.tooling.preview.Devices
+            import androidx.compose.ui.tooling.preview.Preview
+            import androidx.compose.runtime.Composable
+
+            @Preview(name = "1", group = "2")
+            @Preview(name = "2", group = "2")
+            @Preview(name = "3", group = "3")
+            @Preview(name = "4", group = "3")
+            @Preview(name = "5", group = "1")
+            @Preview(name = "6", group = "1")
+            annotation class MyMultiPreview
+
+            @Composable
+            @Preview
+            fun Preview() {
+            }
+
+            @Composable
+            @MyMultiPreview
+            fun MultiPreview() {
+            }
+          """
+          .trimIndent(),
+      )
+
+    runComposePreviewRepresentationTest(testPsiFile) {
+      val preview = createPreviewAndCompile()
+
+      assertEquals(
+        """
+          TestKt.Preview
+          PreviewDisplaySettings(name=Preview, group=null, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.MultiPreview
+          PreviewDisplaySettings(name=MultiPreview - 1, group=2, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.MultiPreview
+          PreviewDisplaySettings(name=MultiPreview - 2, group=2, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.MultiPreview
+          PreviewDisplaySettings(name=MultiPreview - 3, group=3, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.MultiPreview
+          PreviewDisplaySettings(name=MultiPreview - 4, group=3, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.MultiPreview
+          PreviewDisplaySettings(name=MultiPreview - 5, group=1, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+          TestKt.MultiPreview
+          PreviewDisplaySettings(name=MultiPreview - 6, group=1, showDecoration=false, showBackground=false, backgroundColor=null, displayPositioning=NORMAL)
+
+        """
+          .trimIndent(),
+        preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection().joinToString(
+          "\n"
+        ) {
+          "${it.methodFqn}\n${it.displaySettings}\n"
+        },
+      )
+    }
+  }
+
   private fun runComposePreviewRepresentationTest(
     previewPsiFile: PsiFile = createPreviewPsiFile(),
     mainSurface: NlDesignSurface =
@@ -922,7 +993,7 @@ class ComposePreviewRepresentationTest {
 
     private lateinit var dataProvider: DataProvider
 
-    private var modelRenderedLatch: CountDownLatch = CountDownLatch(2)
+    private lateinit var newModelAddedLatch: CountDownLatch
 
     init {
       mainSurface.addListener(
@@ -930,18 +1001,17 @@ class ComposePreviewRepresentationTest {
           override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
             val id = UUID.randomUUID().toString().substring(0, 5)
             logger.info("modelChanged ($id)")
-            (surface.getSceneManager(model!!) as? LayoutlibSceneManager)?.addRenderListener {
-              logger.info("renderListener ($id)")
-              modelRenderedLatch.countDown()
-            }
+            newModelAddedLatch.countDown()
           }
         }
       )
     }
 
     suspend fun createPreviewAndCompile(
-      previewOverride: ComposePreviewRepresentation? = null
+      previewOverride: ComposePreviewRepresentation? = null,
+      expectedModelCount: Int = 2,
     ): ComposePreviewRepresentation {
+      newModelAddedLatch = CountDownLatch(expectedModelCount)
       composeView = TestComposePreviewView(mainSurface)
       preview =
         previewOverride
@@ -962,7 +1032,7 @@ class ComposePreviewRepresentationTest {
         logger.info("activate")
         preview.onActivate()
 
-        modelRenderedLatch.await()
+        newModelAddedLatch.await()
         delayWhileRefreshingOrDumb(preview)
       }
       return preview

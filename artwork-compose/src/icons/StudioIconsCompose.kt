@@ -100,7 +100,6 @@ object StudioIconsCompose {
     val Delete: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/delete.svg", "/intui/icons/common/delete.svg") // 16x16
     val Edit: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/edit.svg", "/intui/icons/common/edit.svg") // 16x16
     val ErrorDecorator: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/error-decorator.svg", "/intui/icons/common/error-decorator.svg") // 16x16
-    val ErrorInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/error-inline-selected.svg", "/intui/icons/common/error-inline-selected.svg") // 16x16
     val ErrorInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/error-inline.svg", "/intui/icons/common/error-inline.svg") // 16x16
     val ErrorStack: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/error-stack.svg", "/intui/icons/common/error-stack.svg") // 16x16
     val Error: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/error.svg", "/intui/icons/common/error.svg") // 16x16
@@ -110,12 +109,10 @@ object StudioIconsCompose {
     val Group: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/group.svg", "/intui/icons/common/group.svg") // 16x16
     val Help: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/help.svg", "/intui/icons/common/help.svg") // 16x16
     val ImportData: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/import-data.svg", "/intui/icons/common/import-data.svg") // 16x16
-    val InfoInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/info-inline-selected.svg", "/intui/icons/common/info-inline-selected.svg") // 16x16
     val InfoInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/info-inline.svg", "/intui/icons/common/info-inline.svg") // 16x16
     val Info: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/info.svg", "/intui/icons/common/info.svg") // 16x16
     val Link: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/link.svg", "/intui/icons/common/link.svg") // 16x16
     val ListView: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/list-view.svg", "/intui/icons/common/list-view.svg") // 16x16
-    val LockedInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/locked-inline-selected.svg", "/intui/icons/common/locked-inline-selected.svg") // 16x16
     val LockedInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/locked-inline.svg", "/intui/icons/common/locked-inline.svg") // 16x16
     val Login: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/login.svg", "/intui/icons/common/login.svg") // 16x16
     val Logout: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/logout.svg", "/intui/icons/common/logout.svg") // 16x16
@@ -136,14 +133,11 @@ object StudioIconsCompose {
     val Screenshot: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/screenshot.svg", "/intui/icons/common/screenshot.svg") // 16x16
     val Search: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/search.svg", "/intui/icons/common/search.svg") // 16x16
     val Settings: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/settings.svg", "/intui/icons/common/settings.svg") // 16x16
-    val SuccessInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/success-inline-selected.svg", "/intui/icons/common/success-inline-selected.svg") // 16x16
     val SuccessInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/success-inline.svg", "/intui/icons/common/success-inline.svg") // 16x16
     val Success: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/success.svg", "/intui/icons/common/success.svg") // 16x16
     val TypoStack: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/typo-stack.svg", "/intui/icons/common/typo-stack.svg") // 16x16
     val VideoCapture: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/video-capture.svg", "/intui/icons/common/video-capture.svg") // 16x16
-    val VisibilityInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/visibility-inline-selected.svg", "/intui/icons/common/visibility-inline-selected.svg") // 16x16
     val VisibilityInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/visibility-inline.svg", "/intui/icons/common/visibility-inline.svg") // 16x16
-    val WarningInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/warning-inline-selected.svg", "/intui/icons/common/warning-inline-selected.svg") // 16x16
     val WarningInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/warning-inline.svg", "/intui/icons/common/warning-inline.svg") // 16x16
     val WarningStack: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/warning-stack.svg", "/intui/icons/common/warning-stack.svg") // 16x16
     val Warning: IntelliJIconKey = IntelliJIconKey("/studio/icons/common/warning.svg", "/intui/icons/common/warning.svg") // 16x16
@@ -313,13 +307,10 @@ object StudioIconsCompose {
     object Extras {
       val DownloadOverlayLegacyLarge: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/download-overlay-legacy-large.svg", "/intui/icons/layout-editor/extras/download-overlay-legacy-large.svg") // 24x24
       val DownloadOverlayLegacy: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/download-overlay-legacy.svg", "/intui/icons/layout-editor/extras/download-overlay-legacy.svg") // 16x16
-      val PaletteDownloadSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/palette-download-selected.svg", "/intui/icons/layout-editor/extras/palette-download-selected.svg") // 16x16
       val PaletteDownload: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/palette-download.svg", "/intui/icons/layout-editor/extras/palette-download.svg") // 16x16
       val PipetteLarge: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/pipette-large.svg", "/intui/icons/layout-editor/extras/pipette-large.svg") // 24x24
       val Pipette: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/pipette.svg", "/intui/icons/layout-editor/extras/pipette.svg") // 16x16
-      val RootInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/root-inline-selected.svg", "/intui/icons/layout-editor/extras/root-inline-selected.svg") // 16x16
       val RootInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/root-inline.svg", "/intui/icons/layout-editor/extras/root-inline.svg") // 16x16
-      val VisibilityGoneInlineSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/visibility-gone-inline-selected.svg", "/intui/icons/layout-editor/extras/visibility-gone-inline-selected.svg") // 16x16
       val VisibilityGoneInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/extras/visibility-gone-inline.svg", "/intui/icons/layout-editor/extras/visibility-gone-inline.svg") // 16x16
     }
 
@@ -339,7 +330,6 @@ object StudioIconsCompose {
       val AddTransition: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/add-transition.svg", "/intui/icons/layout-editor/motion/add-transition.svg") // 16x16
       val BaseLayout: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/base-layout.svg", "/intui/icons/layout-editor/motion/base-layout.svg") // 16x16
       val ConstraintSet: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/constraint-set.svg", "/intui/icons/layout-editor/motion/constraint-set.svg") // 16x16
-      val EndConstraintSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/end-constraint-selected.svg", "/intui/icons/layout-editor/motion/end-constraint-selected.svg") // 16x16
       val EndConstraint: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/end-constraint.svg", "/intui/icons/layout-editor/motion/end-constraint.svg") // 16x16
       val Gesture: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/gesture.svg", "/intui/icons/layout-editor/motion/gesture.svg") // 16x16
       val GoToEnd: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/go-to-end.svg", "/intui/icons/layout-editor/motion/go-to-end.svg") // 16x16
@@ -361,9 +351,7 @@ object StudioIconsCompose {
       val TimelineAdd: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-add.svg", "/intui/icons/layout-editor/motion/timeline-add.svg") // 16x16
       val TimelineEndConstraint: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-end-constraint.svg", "/intui/icons/layout-editor/motion/timeline-end-constraint.svg") // 16x16
       val TimelineKeyframeHeader: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-keyframe-header.svg", "/intui/icons/layout-editor/motion/timeline-keyframe-header.svg") // 16x16
-      val TimelineKeyframeSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-keyframe-selected.svg", "/intui/icons/layout-editor/motion/timeline-keyframe-selected.svg") // 16x16
       val TimelineKeyframe: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-keyframe.svg", "/intui/icons/layout-editor/motion/timeline-keyframe.svg") // 16x16
-      val TimelineStartConstraintSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-start-constraint-selected.svg", "/intui/icons/layout-editor/motion/timeline-start-constraint-selected.svg") // 16x16
       val TimelineStartConstraint: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/timeline-start-constraint.svg", "/intui/icons/layout-editor/motion/timeline-start-constraint.svg") // 16x16
       val Transition: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/motion/transition.svg", "/intui/icons/layout-editor/motion/transition.svg") // 16x16
     }
@@ -488,7 +476,6 @@ object StudioIconsCompose {
       val DesignPropertyEnabled: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/design-property-enabled.svg", "/intui/icons/layout-editor/properties/design-property-enabled.svg") // 12x12
       val DesignProperty: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/design-property.svg", "/intui/icons/layout-editor/properties/design-property.svg") // 12x12
       val FavoritesHover: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/favorites-hover.svg", "/intui/icons/layout-editor/properties/favorites-hover.svg") // 16x16
-      val FavoritesSelected: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/favorites-selected.svg", "/intui/icons/layout-editor/properties/favorites-selected.svg") // 16x16
       val Favorites: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/favorites.svg", "/intui/icons/layout-editor/properties/favorites.svg") // 16x16
       val Flag: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/flag.svg", "/intui/icons/layout-editor/properties/flag.svg") // 14x14
       val GoneToolsAttribute: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/properties/gone-tools-attribute.svg", "/intui/icons/layout-editor/properties/gone-tools-attribute.svg") // 16x16
@@ -534,7 +521,6 @@ object StudioIconsCompose {
       val BarrierVertical: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/barrier-vertical.svg", "/intui/icons/layout-editor/toolbar/barrier-vertical.svg") // 16x16
       val BaselineAlignedConstraint: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/baseline-aligned-constraint.svg", "/intui/icons/layout-editor/toolbar/baseline-aligned-constraint.svg") // 16x16
       val BaselineAlignedOff: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/baseline-aligned-off.svg", "/intui/icons/layout-editor/toolbar/baseline-aligned-off.svg") // 16x16
-      val BaselineAlignedWhite: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/baseline-aligned-white.svg", "/intui/icons/layout-editor/toolbar/baseline-aligned-white.svg") // 16x16
       val BaselineAligned: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/baseline-aligned.svg", "/intui/icons/layout-editor/toolbar/baseline-aligned.svg") // 16x16
       val BottomAlignedConstraint: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/bottom-aligned-constraint.svg", "/intui/icons/layout-editor/toolbar/bottom-aligned-constraint.svg") // 16x16
       val BottomAligned: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/bottom-aligned.svg", "/intui/icons/layout-editor/toolbar/bottom-aligned.svg") // 16x16
@@ -546,7 +532,6 @@ object StudioIconsCompose {
       val CenterVerticalParentConstraint: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/center-vertical-parent-constraint.svg", "/intui/icons/layout-editor/toolbar/center-vertical-parent-constraint.svg") // 16x16
       val CenterVerticalParent: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/center-vertical-parent.svg", "/intui/icons/layout-editor/toolbar/center-vertical-parent.svg") // 16x16
       val CenterVertical: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/center-vertical.svg", "/intui/icons/layout-editor/toolbar/center-vertical.svg") // 16x16
-      val ClearConstraintsWhite: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/clear-constraints-white.svg", "/intui/icons/layout-editor/toolbar/clear-constraints-white.svg") // 16x16
       val ClearConstraints: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/clear-constraints.svg", "/intui/icons/layout-editor/toolbar/clear-constraints.svg") // 16x16
       val ClearWeight: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/clear-weight.svg", "/intui/icons/layout-editor/toolbar/clear-weight.svg") // 16x16
       val ConstrainBottomToBottom: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/constrain-bottom-to-bottom.svg", "/intui/icons/layout-editor/toolbar/constrain-bottom-to-bottom.svg") // 16x16
@@ -565,11 +550,8 @@ object StudioIconsCompose {
       val CreateConstraints: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/create-constraints.svg", "/intui/icons/layout-editor/toolbar/create-constraints.svg") // 16x16
       val CreateHorizChain: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/create-horiz-chain.svg", "/intui/icons/layout-editor/toolbar/create-horiz-chain.svg") // 16x16
       val CreateVertChain: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/create-vert-chain.svg", "/intui/icons/layout-editor/toolbar/create-vert-chain.svg") // 16x16
-      val CycleChainPackedWhite: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/cycle-chain-packed-white.svg", "/intui/icons/layout-editor/toolbar/cycle-chain-packed-white.svg") // 16x16
       val CycleChainPacked: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/cycle-chain-packed.svg", "/intui/icons/layout-editor/toolbar/cycle-chain-packed.svg") // 16x16
-      val CycleChainSpreadInlineWhite: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/cycle-chain-spread-inline-white.svg", "/intui/icons/layout-editor/toolbar/cycle-chain-spread-inline-white.svg") // 16x16
       val CycleChainSpreadInline: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/cycle-chain-spread-inline.svg", "/intui/icons/layout-editor/toolbar/cycle-chain-spread-inline.svg") // 16x16
-      val CycleChainSpreadWhite: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/cycle-chain-spread-white.svg", "/intui/icons/layout-editor/toolbar/cycle-chain-spread-white.svg") // 16x16
       val CycleChainSpread: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/cycle-chain-spread.svg", "/intui/icons/layout-editor/toolbar/cycle-chain-spread.svg") // 16x16
       val DeviceAutomotive: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/device-automotive.svg", "/intui/icons/layout-editor/toolbar/device-automotive.svg") // 16x16
       val DevicePhone: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-editor/toolbar/device-phone.svg", "/intui/icons/layout-editor/toolbar/device-phone.svg") // 16x16

@@ -916,13 +916,13 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> USE_NEW_DEPENDENCY_GRAPH_MODEL = new BooleanFlag(
+  public static final Flag<Boolean> USE_FLAT_DEPENDENCY_GRAPH_MODEL = new BooleanFlag(
     GRADLE_IDE,
-    "use.new.dependency.graph.model",
-    "Switches to a new dependency graph model that reduces memory use",
-    "Switches to a new dependency graph model that reduces memory use. This Flag is introduced as a killswitch in case there" +
-    "unexpected issues with the new model.",
-    true
+    "use.flat.dependency.graph.model",
+    "Switches to a flat representation of the dependency model to improve performance",
+    "Switches to a flat representation of the dependency model to improve performance. The behaviour is guarded behind a flag" +
+    "until we can decide to enable it. This currently reduces some functionality around views / analyses regarding dependency structure",
+    false
   );
 
   //endregion
@@ -1866,7 +1866,8 @@ public final class StudioFlags {
                 "Impact tracking for the App Links Assistant", false);
   public static final Flag<Boolean> JSON_GENERATION =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.json.generation", "App Links Assistant JSON generation",
-                    "JSON generation (i.e. automated assistance with fixing web issues) in the App Links Assistant", false);
+                    "JSON generation (i.e. automated assistance with fixing web issues) in the App Links Assistant",
+                    ChannelDefault.enabledUpTo(CANARY));
   // endregion App Links Assistant
 
   // region NEW_COLLECT_LOGS_DIALOG
