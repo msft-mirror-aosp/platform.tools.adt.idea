@@ -32,7 +32,10 @@ COMMON_DATA = [
     "//tools/base/build-system/integration-test:kotlin_gradle_plugin_for_compose_prebuilts",
     "//tools/data-binding:data_binding_runtime.zip",
     "//tools/vendor/google/testing/display:xvfb",
-]
+] + select({
+    "@platforms//os:macos": ["//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper"],
+    "//conditions:default": ["//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper"],
+})
 
 COMMON_TAGS = [
     "block-network",
@@ -109,7 +112,6 @@ iml_module(
         "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
         "//tools/adt/idea/bleak-config:intellij.android.bleak-config[module, test]",
         "//tools/adt/idea/.idea/libraries:agp-version[test]",
-        "//tools/adt/idea/as-driver:as-driver.utils[module, test]",
     ],
 )
 
@@ -314,7 +316,9 @@ maven_repository(
         "@maven//:com.google.auto.value.auto-value_1.6.2",
         "@maven//:com.google.code.gson.gson_2.2.4",
         "@maven//:com.google.code.gson.gson_2.6.2",
+        "@maven//:com.google.dagger.dagger-compiler_2.52",
         "@maven//:com.google.dagger.dagger-compiler_2.6",
+        "@maven//:com.google.dagger.dagger_2.52",
         "@maven//:com.google.dagger.dagger_2.6",
         "@maven//:com.google.errorprone.error_prone_annotations_2.3.2",
         "@maven//:com.google.firebase.firebase-common_12.0.1",
@@ -378,7 +382,6 @@ java_test(
         "//prebuilts/studio/layoutlib/data/fonts",
         "//prebuilts/studio/layoutlib/data/icu",
         "//prebuilts/studio/layoutlib/data/keyboards",
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
     ] + glob(["testData/LayoutTest/**"]) + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.LayoutEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
@@ -393,9 +396,7 @@ java_test(
 java_test(
     name = "InspectionsMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + [
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
-    ] + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.InspectionsMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -409,9 +410,7 @@ java_test(
 java_test(
     name = "GradleSyncMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + [
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
-    ] + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.GradleSyncMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -425,9 +424,7 @@ java_test(
 java_test(
     name = "FindInPathMemoryLeakTest",
     size = "large",
-    data = COMMON_DATA + [
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
-    ] + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.FindInPathMemoryLeakTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -441,9 +438,7 @@ java_test(
 java_test(
     name = "EditorTabsMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + [
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
-    ] + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.EditorTabsMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -457,9 +452,7 @@ java_test(
 java_test(
     name = "AddResourceMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + [
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
-    ] + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.AddResourceMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -473,9 +466,7 @@ java_test(
 java_test(
     name = "AddAssetMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + [
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
-    ] + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.AddAssetMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -496,7 +487,6 @@ java_test(
         "//prebuilts/studio/layoutlib/data/fonts",
         "//prebuilts/studio/layoutlib/data/icu",
         "//prebuilts/studio/layoutlib/data/keyboards",
-        "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
     ] + glob(["testData/Navigation/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.NavEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
@@ -2030,7 +2020,13 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + glob([
         "testData/SimpleApplication/**",
-    ]) + [
+    ]) + select({
+        ":has_emulator": [
+            "@externsdk//:emulator",
+            "@externsdk//:system-images",
+        ],
+        "//conditions:default": [],
+    }) + [
         ":espresso_recorder_deps",
         "//prebuilts/studio/sdk:emulator",
         "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
@@ -2283,6 +2279,7 @@ java_test(
     size = "large",
     data = COMMON_DATA + glob([
         "testData/Dagger2App/**",
+        "testData/Dagger2AppKotlinLib/**",
     ]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.annotator.DaggerSymbolResolutionTest"],
     tags = COMMON_TAGS + [

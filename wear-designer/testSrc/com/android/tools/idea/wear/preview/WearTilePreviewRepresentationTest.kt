@@ -38,6 +38,7 @@ import com.android.tools.idea.util.TestToolWindowManager
 import com.android.tools.idea.util.runWhenSmartAndSyncedOnEdt
 import com.android.tools.preview.PreviewElement
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
@@ -124,14 +125,12 @@ class WearTilePreviewRepresentationTest {
   fun testGroupFilteringIsSupported() =
     runBlocking(workerThread) {
       val preview = createWearTilePreviewRepresentation()
-      val previewGroupManager =
-        preview.previewView.mainSurface.getData(PreviewGroupManager.KEY.name) as PreviewGroupManager
+      val dataContext = preview.mainSurfaceDataContext
+      val previewGroupManager = PreviewGroupManager.KEY.getData(dataContext)!!
 
       assertThat(previewGroupManager.availableGroupsFlow.value.map { it.displayName })
         .containsExactly("groupA")
       assertThat(preview.previewView.mainSurface.models).hasSize(4)
-
-      val dataContext = DataContext { preview.previewView.mainSurface.getData(it) }
 
       // Select preview group "groupA"
       run {
@@ -367,25 +366,25 @@ class WearTilePreviewRepresentationTest {
       assertEquals(
         """
           TestKt.preview
-          PreviewDisplaySettings(name=preview, group=null, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=preview, baseName=preview, parameterName=null, group=null, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 1, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 1, baseName=multiPreview, parameterName=1, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 2, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 2, baseName=multiPreview, parameterName=2, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 3, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 3, baseName=multiPreview, parameterName=3, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 4, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 4, baseName=multiPreview, parameterName=4, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 5, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 5, baseName=multiPreview, parameterName=5, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 6, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 6, baseName=multiPreview, parameterName=6, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
 
         """
           .trimIndent(),
@@ -412,11 +411,16 @@ class WearTilePreviewRepresentationTest {
     assertThat(preview.previewView.galleryMode).isNotNull()
   }
 
+  private val WearTilePreviewRepresentation.mainSurfaceDataContext
+    get() =
+      DataManager.getInstance()
+        .customizeDataContext(DataContext.EMPTY_CONTEXT, previewView.mainSurface)
+
   private val WearTilePreviewRepresentation.previewModeManager
-    get() = previewView.mainSurface.getData(PreviewModeManager.KEY.name) as PreviewModeManager
+    get() = PreviewModeManager.KEY.getData(mainSurfaceDataContext)!!
 
   private val WearTilePreviewRepresentation.previewFlowManager
-    get() = previewView.mainSurface.getData(PreviewFlowManager.KEY.name) as PreviewFlowManager<*>
+    get() = PreviewFlowManager.KEY.getData(mainSurfaceDataContext)!!
 
   private var wearTilePreviewEssentialsModeEnabled: Boolean = false
     set(value) {

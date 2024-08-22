@@ -31,6 +31,8 @@ import com.android.tools.idea.naveditor.model.isDestination
 import com.android.tools.idea.naveditor.surface.NavDesignSurface
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.EdtNoGetDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import icons.StudioIcons
 import javax.swing.Icon
@@ -82,7 +84,7 @@ class TreePanel : ToolContent<DesignSurface<*>> {
 
   override fun setToolContext(toolContext: DesignSurface<*>?) {
     designSurface?.let {
-      it.selectionModel?.removeListener(contextSelectionListener)
+      it.selectionModel.removeListener(contextSelectionListener)
       it.models.firstOrNull()?.removeListener(modelListener)
       DataManager.removeDataProvider(componentTree)
     }
@@ -90,12 +92,12 @@ class TreePanel : ToolContent<DesignSurface<*>> {
     designSurface = toolContext
 
     designSurface?.let {
-      it.selectionModel?.addListener(contextSelectionListener)
+      it.selectionModel.addListener(contextSelectionListener)
       it.models.firstOrNull()?.let { model ->
         model.addListener(modelListener)
         update(model)
       }
-      DataManager.registerDataProvider(componentTree, it)
+      DataManager.registerDataProvider(componentTree, EdtNoGetDataProvider { sink -> DataSink.uiDataSnapshot(sink, it) })
     }
   }
 

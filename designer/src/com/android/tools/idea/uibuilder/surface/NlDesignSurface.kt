@@ -72,6 +72,7 @@ import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator
 import com.intellij.openapi.project.Project
@@ -224,7 +225,7 @@ internal constructor(
 
   override fun forceRefresh(): CompletableFuture<Void> {
     return requestSequentialRender {
-      it.forceReinflate()
+      it.sceneRenderConfiguration.needsInflation.set(true)
       it.requestRenderAsync()
     }
   }
@@ -372,7 +373,7 @@ internal constructor(
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(project, "Refreshing...", "", "", false)
     return requestSequentialRender {
-        it.forceReinflate()
+        it.sceneRenderConfiguration.needsInflation.set(true)
         it.requestUserInitiatedRenderAsync()
       }
       .whenComplete { _, _ -> refreshProgressIndicator.processFinish() }
@@ -622,15 +623,9 @@ internal constructor(
     sceneViewPanel.sceneViewAlignment = sceneViewAlignment.alignmentX
   }
 
-  override fun getData(dataId: String): Any? {
-    delegateDataProvider?.getData(dataId)?.let {
-      return@getData it
-    }
-
-    if (LAYOUT_PREVIEW_HANDLER_KEY.`is`(dataId)) {
-      return layoutPreviewHandler
-    }
-
-    return super.getData(dataId)
+  override fun uiDataSnapshot(sink: DataSink) {
+    super.uiDataSnapshot(sink)
+    sink[LAYOUT_PREVIEW_HANDLER_KEY] = layoutPreviewHandler
+    DataSink.uiDataSnapshot(sink, delegateDataProvider)
   }
 }

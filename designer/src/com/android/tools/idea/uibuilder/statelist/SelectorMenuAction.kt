@@ -27,6 +27,7 @@ import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.JBColor
 import com.intellij.ui.awt.RelativePoint
@@ -82,9 +83,9 @@ class SelectorMenuAction : AnAction("State Selector", null, StudioIcons.LayoutEd
     val button = e.inputEvent?.component ?: return
 
     // Setup callback to reset the animated selector toolbar when state is changed.
-    val toolbar =
-      DataManager.getDataProvider(surface)?.let { ANIMATION_TOOLBAR.getData(it) }
-        as? AnimatedSelectorToolbar
+    val dataContext =
+      DataManager.getInstance().customizeDataContext(DataContext.EMPTY_CONTEXT, surface)
+    val toolbar = ANIMATION_TOOLBAR.getData(dataContext) as? AnimatedSelectorToolbar
     val callback: () -> Unit = { toolbar?.setNoTransition() }
 
     val menu = StateListMenu(surface, callback)
@@ -106,7 +107,7 @@ class StateListMenu(designSurface: DesignSurface<*>, callback: () -> Unit) : JCo
     val height = State.values().size * STATE_ITEM_HEIGHT_PX
 
     layout = BoxLayout(this, BoxLayout.Y_AXIS).apply { background = secondaryPanelBackground }
-    border = JBUI.Borders.empty(5, 14, 5, 14)
+    border = JBUI.Borders.empty(5, 14)
     preferredSize = JBUI.size(PICKER_WIDTH_PX, height)
     background = secondaryPanelBackground
 
@@ -131,12 +132,12 @@ private fun createStateItem(
   val trueButton =
     JBRadioButton("True").apply {
       background = secondaryPanelBackground
-      border = JBUI.Borders.empty(0, 10, 0, 10)
+      border = JBUI.Borders.empty(0, 10)
     }
   val falseButton =
     JBRadioButton("False").apply {
       background = secondaryPanelBackground
-      border = JBUI.Borders.empty(0, 10, 0, 10)
+      border = JBUI.Borders.empty(0, 10)
     }
   val buttonGroup = ButtonGroup()
   buttonGroup.add(trueButton)

@@ -61,8 +61,8 @@ import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintHelperHand
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.util.MockCopyPasteManager;
 import com.google.common.base.Charsets;
-import com.intellij.ide.DeleteProvider;
 import com.intellij.ide.browsers.BrowserLauncher;
+import com.intellij.ide.ui.IdeUiService;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -262,7 +262,7 @@ public class NlComponentTreeTest extends LayoutTestCase {
                                        "    <AbsoluteLayout>  [selected]\n");
   }
 
-  public void testCopyIntoRootWhenNothingIsSelected() throws Exception {
+  public void testCopyIntoRootWhenNothingIsSelected() {
     SyncNlModel model = createModel();
     NlComponentTree tree = createTree(model);
     DesignSurfaceActionHandler actionHandler = getActionHandler(tree);
@@ -281,10 +281,10 @@ public class NlComponentTreeTest extends LayoutTestCase {
   }
 
   private static DesignSurfaceActionHandler getActionHandler(NlComponentTree tree) {
-    return (DesignSurfaceActionHandler)tree.getData(PlatformDataKeys.PASTE_PROVIDER.getName());
+    return (DesignSurfaceActionHandler)IdeUiService.getInstance().createUiDataContext(tree).getData(PlatformDataKeys.PASTE_PROVIDER);
   }
 
-  public void testPasteIntoLayoutAsFirstChild() throws Exception {
+  public void testPasteIntoLayoutAsFirstChild() {
     SyncNlModel model = createModel();
     NlComponentTree tree = createTree(model);
     SelectionModel selectionModel = model.getSurface().getSelectionModel();
@@ -304,7 +304,7 @@ public class NlComponentTreeTest extends LayoutTestCase {
                                        "    <AbsoluteLayout>\n");
   }
 
-  public void testPasteIntoParentAfterButton() throws Exception {
+  public void testPasteIntoParentAfterButton() {
     SyncNlModel model = createModel();
     NlComponentTree tree = createTree(model);
     SelectionModel selectionModel = model.getSurface().getSelectionModel();
@@ -335,7 +335,7 @@ public class NlComponentTreeTest extends LayoutTestCase {
     assertThat(actionHandler.isCopyEnabled(myDataContext)).isTrue();
   }
 
-  public void testPasteMultipleIntoLayout() throws Exception {
+  public void testPasteMultipleIntoLayout() {
     SyncNlModel model = createModel();
     NlComponentTree tree = createTree(model);
     SelectionModel selectionModel = model.getSurface().getSelectionModel();
@@ -356,7 +356,7 @@ public class NlComponentTreeTest extends LayoutTestCase {
                                        "        <Button>  [selected]\n");
   }
 
-  public void testDropOnChain() throws Exception {
+  public void testDropOnChain() {
     SyncNlModel model = createModelWithConstraintLayout();
     NlComponentTree tree = createTree(model);
     SelectionModel selectionModel = model.getSurface().getSelectionModel();
@@ -391,7 +391,7 @@ public class NlComponentTreeTest extends LayoutTestCase {
                                        "    <AbsoluteLayout>\n");
   }
 
-  public void testPasteAfterCut() throws Exception {
+  public void testPasteAfterCut() {
     SyncNlModel model = createModel();
     NlComponentTree tree = createTree(model);
     DesignSurfaceActionHandler actionHandler = getActionHandler(tree);
@@ -738,7 +738,8 @@ public class NlComponentTreeTest extends LayoutTestCase {
     tree.setSelectionPath(pathForRow4);
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
-    ((DeleteProvider)checkNotNull(tree.getData(PlatformDataKeys.DELETE_ELEMENT_PROVIDER.getName())))
+    DataContext context = IdeUiService.getInstance().createUiDataContext(tree);
+    checkNotNull(context.getData(PlatformDataKeys.DELETE_ELEMENT_PROVIDER))
       .deleteElement(DataContext.EMPTY_CONTEXT);
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
     String constraintReferences = checkNotNull(model.getTreeReader().find("barrier")).getAttribute(AUTO_URI, CONSTRAINT_REFERENCED_IDS);
@@ -793,7 +794,7 @@ public class NlComponentTreeTest extends LayoutTestCase {
     NlVisibilityGutterPanel gutterPanel = new NlVisibilityGutterPanel();
     Disposer.register(getTestRootDisposable(), gutterPanel);
     NlDesignSurface surface = (NlDesignSurface)model.getSurface();
-    NlComponentTree tree = new NlComponentTree(getProject(), surface, gutterPanel);
+    NlComponentTree tree = new NlComponentTree(surface, gutterPanel);
     Disposer.register(getTestRootDisposable(), tree);
     tree.getUpdateQueue().setPassThrough(true);
     tree.getUpdateQueue().flush();
