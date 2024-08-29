@@ -23,10 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.RemoteSystemImage
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.getFullApiName
+import com.android.tools.idea.adddevicedialog.AndroidVersionSelection
+import com.android.tools.idea.adddevicedialog.ApiFilter
 import com.android.tools.idea.adddevicedialog.Table
 import com.android.tools.idea.adddevicedialog.TableColumn
 import com.android.tools.idea.adddevicedialog.TableColumnWidth
@@ -49,10 +52,12 @@ import org.jetbrains.jewel.ui.icon.PathIconKey
 internal fun DevicePanel(
   configureDevicePanelState: ConfigureDevicePanelState,
   devicePanelState: DevicePanelState,
+  androidVersions: ImmutableList<AndroidVersion>,
   servicesCollection: ImmutableCollection<Services>,
   images: ImmutableList<ISystemImage>,
   onDevicePanelStateChange: (DevicePanelState) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
+  onSystemImageTableRowClick: (ISystemImage) -> Unit,
 ) {
   Text("Name", Modifier.padding(bottom = Padding.SMALL))
 
@@ -69,20 +74,29 @@ internal fun DevicePanel(
     Modifier.padding(bottom = Padding.SMALL_MEDIUM),
   )
 
-  ServicesDropdown(
-    devicePanelState.selectedServices,
-    servicesCollection,
-    onSelectedServicesChange = {
-      onDevicePanelStateChange(devicePanelState.copy(selectedServices = it))
-    },
-    Modifier.padding(bottom = Padding.MEDIUM_LARGE),
-  )
+  Row {
+    ApiFilter(
+      androidVersions,
+      selectedApiLevel = devicePanelState.selectedApiLevel,
+      onApiLevelChange = { onDevicePanelStateChange(devicePanelState.copy(selectedApiLevel = it)) },
+    )
+
+    ServicesDropdown(
+      devicePanelState.selectedServices,
+      servicesCollection,
+      onSelectedServicesChange = {
+        onDevicePanelStateChange(devicePanelState.copy(selectedServices = it))
+      },
+      Modifier.padding(bottom = Padding.MEDIUM_LARGE),
+    )
+  }
 
   SystemImageTable(
     images,
     devicePanelState,
     configureDevicePanelState.systemImageTableSelectionState,
     onDownloadButtonClick,
+    onSystemImageTableRowClick,
     Modifier.height(150.dp).padding(bottom = Padding.SMALL),
   )
 
@@ -144,6 +158,7 @@ private fun SystemImageTable(
   devicePanelState: DevicePanelState,
   selectionState: TableSelectionState<ISystemImage>,
   onDownloadButtonClick: (String) -> Unit,
+  onRowClick: (ISystemImage) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val columns =
@@ -158,35 +173,26 @@ private fun SystemImageTable(
       },
       TableTextColumn("System Image", attribute = { it.`package`.displayName }),
       TableTextColumn(
-        "Services",
-        TableColumnWidth.Fixed(132.dp),
-        attribute = { it.getServices().toString() },
-        Comparator.comparing(ISystemImage::getServices),
-      ),
-      TableTextColumn(
         "API",
-        attribute = {
-          it.androidVersion.getFullApiName(includeReleaseName = true, includeCodeName = true)
-        },
-        comparator = Comparator.comparing(ISystemImage::getAndroidVersion),
-      ),
-      TableTextColumn(
-        "ABIs",
-        TableColumnWidth.Fixed(77.dp),
-        attribute = { it.abiTypes.joinToString() },
-      ),
-      TableTextColumn(
-        "Translated ABIs",
-        TableColumnWidth.Fixed(77.dp),
-        attribute = { it.translatedAbiTypes.joinToString() },
+        TableColumnWidth.Fixed(250.dp),
+        { it.androidVersion.getFullApiName(includeReleaseName = true, includeCodeName = true) },
+        Comparator.comparing(ISystemImage::getAndroidVersion),
       ),
     )
 
-  Table(columns, images.filter(devicePanelState::test), { it }, modifier, selectionState)
+  Table(
+    columns,
+    images.filter(devicePanelState::test),
+    { it },
+    modifier,
+    tableSelectionState = selectionState,
+    onRowClick = onRowClick,
+  )
 }
 
 internal data class DevicePanelState
 internal constructor(
+  internal val selectedApiLevel: AndroidVersionSelection,
   internal val selectedServices: Services?,
   internal val sdkExtensionSystemImagesVisible: Boolean = false,
   internal val onlyForHostCpuArchitectureVisible: Boolean = true,
@@ -195,7 +201,8 @@ internal constructor(
     val servicesMatch = selectedServices == null || image.getServices() == selectedServices
 
     val androidVersionMatches =
-      sdkExtensionSystemImagesVisible || image.androidVersion.isBaseExtension
+      (sdkExtensionSystemImagesVisible || image.androidVersion.isBaseExtension) &&
+        selectedApiLevel.matches(image.androidVersion)
 
     val abisMatch =
       !onlyForHostCpuArchitectureVisible ||

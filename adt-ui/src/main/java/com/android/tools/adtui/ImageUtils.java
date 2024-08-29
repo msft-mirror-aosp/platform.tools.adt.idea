@@ -59,15 +59,8 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressWarnings("UndesirableClassUsage") // BufferedImage is ok, deliberately not creating Retina images in some cases
 public class ImageUtils {
-  public static final double EPSILON = 1e-5;
-
-  /**
-   * Filter that checks pixels for being completely transparent.
-   */
-  public static final CropFilter TRANSPARENCY_FILTER = (bufferedImage, x, y) -> {
-    int rgb = bufferedImage.getRGB(x, y);
-    return (rgb & 0xFF000000) == 0;
-  };
+  /** Mask of the alpha channel in the ARGB color representation. */
+  public static final int ALPHA_MASK = 0xFF000000;
 
   /**
    * Rotates the given image by the given number of quadrants.
@@ -143,6 +136,25 @@ public class ImageUtils {
    */
   public static @NotNull BufferedImage rotateByQuadrantsAndScale(
       @NotNull BufferedImage source, int numQuadrants, int destinationWidth, int destinationHeight) {
+    int imageType = source.getType();
+    if (imageType == BufferedImage.TYPE_CUSTOM) {
+      imageType = BufferedImage.TYPE_INT_ARGB;
+    }
+    return rotateByQuadrantsAndScale(source, numQuadrants, destinationWidth, destinationHeight, imageType);
+  }
+
+  /**
+   * Rotates the given image by the given number of quadrants and scales it to the given dimensions.
+   *
+   * @param source the source image
+   * @param numQuadrants the number of quadrants to rotate by counterclockwise
+   * @param destinationWidth the width of the resulting image
+   * @param destinationHeight the height of the resulting image
+   * @param imageType the type of the image to produce
+   * @return the rotated and scaled image
+   */
+  public static @NotNull BufferedImage rotateByQuadrantsAndScale(
+      @NotNull BufferedImage source, int numQuadrants, int destinationWidth, int destinationHeight, int imageType) {
     numQuadrants = numQuadrants & 0x3;
     if (numQuadrants == 0 && destinationWidth == source.getWidth() && destinationHeight == source.getHeight()) {
       return source;
@@ -186,7 +198,7 @@ public class ImageUtils {
         break;
     }
 
-    BufferedImage result = new BufferedImage(destinationWidth, destinationHeight, source.getType());
+    BufferedImage result = new BufferedImage(destinationWidth, destinationHeight, imageType);
     AffineTransform transform = new AffineTransform();
     // Please notice that the transformations are applied in the reverse order, starting from rotation.
     transform.translate(shiftX, shiftY);
@@ -567,7 +579,7 @@ public class ImageUtils {
    */
   @Nullable
   public static BufferedImage cropBlank(@Nullable BufferedImage image, @Nullable Rectangle initialCrop, int imageType) {
-    return crop(image, TRANSPARENCY_FILTER, initialCrop, imageType);
+    return crop(image, ImageUtils::isTransparentPixel, initialCrop, imageType);
   }
 
   /**
@@ -740,13 +752,22 @@ public class ImageUtils {
   public static boolean isNonOpaque(@NotNull BufferedImage image) {
     for (int y = 0; y < image.getHeight(); y++) {
       for (int x = 0; x < image.getWidth(); x++) {
-        int rgb = image.getRGB(x, y);
-        if (((rgb & 0xFF000000) ^ 0xFF000000) != 0) {
+        if (!isOpaquePixel(image, x, y)) {
           return true;
         }
       }
     }
     return false;
+  }
+
+  /** Checks if the image is fully transparent at the given coordinates. */
+  public static boolean isTransparentPixel(BufferedImage image, int x, int y) {
+    return (image.getRGB(x, y) & ALPHA_MASK) == 0;
+  }
+
+  /** Checks if the image is fully opaque at the given coordinates. */
+  public static boolean isOpaquePixel(BufferedImage image, int x, int y) {
+    return (image.getRGB(x, y) & ALPHA_MASK) == ALPHA_MASK;
   }
 
   /**
