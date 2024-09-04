@@ -37,42 +37,25 @@
           from the main menu.
           ]]>
       </description>
-      <step label="Access real devices with Device Streaming">
+      <step label="New devices now available in Android Device Streaming'">
         <stepElement>
           <section>
             <![CDATA[
-            <p>
-            Device streaming in Android Studio lets you securely connect to remote physical
-            Android devices hosted in Google's secure data centers. Powered by Firebase, it's the
-            fastest and easiest way to test your app against real devices, including the Google
-            Pixel 8 Pro, Pixel Fold, select Samsung devices, and more.
+            <p><a href="https://developer.android.com/studio/preview/android-device-streaming">Android Device Streaming</a>
+            now includes the following devices, in addition to the portfolio of 20+ device models
+            already available:
             </p>
-            <br>
-            <img
-              src="https://d.android.com/studio/releases/assistant/2023.3.1/device-streaming.gif"
-              width="428"
-              alt="">
-            <br><br>
-            <p>
-            After connecting to a device, you can deploy your app, view the display, interact with
-            the device (including rotating or unfolding the device), and anything else you might do
-            with a device over a direct ADB over SSL connection—all without leaving Android Studio.
-            When you're done using the device, Google wipes all your data and factory resets the
-            device before making it available to another developer.
-            </p>
-            <p>
-            During Open Alpha, you can use Device Streaming at no cost by simply logging into your
-            Developer account and selecting a Firebase project. If you don't already have a Firebase
-            project, it's free and easy to create one.
-            </p>
+            <ul>
+              <li>Google Pixel 9</li>
+              <li>Google Pixel 9 Pro</li>
+              <li>Google Pixel 9 Pro XL</li>
+              <li>Google Pixel 9 Pro Fold</li>
+              <li>Google Pixel 8a</li>
+              <li>Samsung Galaxy Fold5</li>
+              <li>Samsung Galaxy S23 Ultra</li>
+            </ul>
             ]]>
           </section>
-        </stepElement>
-        <stepElement>
-          <action
-              key="device.streaming.onboarding"
-              label="Get Started">
-          </action>
         </stepElement>
       </step>
       <step label="Build a Generative AI app using the Gemini API template">
