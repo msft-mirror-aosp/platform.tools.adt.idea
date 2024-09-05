@@ -23,6 +23,7 @@ import com.android.backup.BackupResult
 import com.android.backup.BackupResult.Error
 import com.android.backup.BackupResult.Success
 import com.android.backup.BackupService
+import com.android.backup.BackupType.DEVICE_TO_DEVICE
 import com.android.backup.ErrorCode
 import com.android.backup.ErrorCode.PLAY_STORE_NOT_INSTALLED
 import com.android.tools.adtui.validation.ErrorDetailDialog
@@ -31,17 +32,18 @@ import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.backup.BackupBundle.message
 import com.android.tools.idea.backup.BackupFileType.FILE_CHOOSER_DESCRIPTOR
 import com.android.tools.idea.backup.BackupFileType.FILE_SAVER_DESCRIPTOR
+import com.android.tools.idea.backup.BackupManager.Companion.NOTIFICATION_GROUP
 import com.android.tools.idea.backup.BackupManager.Source
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.flags.StudioFlags
 import com.google.wireless.android.sdk.stats.BackupUsageEvent.BackupEvent.Type.D2D
-import com.intellij.ide.actions.RevealFileAction
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.notification.NotificationType.WARNING
 import com.intellij.notification.Notifications
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.project.DumbAwareAction
@@ -60,11 +62,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
-import java.io.File
 
 private const val BACKUP_PATH_KEY = "Backup.Path"
-private const val NOTIFICATION_GROUP = "Backup"
-
 private val logger: Logger = Logger.getInstance(BackupManager::class.java)
 
 /** Implementation of [BackupManager] */
@@ -101,7 +100,11 @@ internal constructor(private val project: Project, private val backupService: Ba
     ) {
       reportSequentialProgress { reporter ->
         val listener = BackupProgressListener(reporter::onStep)
-        val result = backupService.backup(serialNumber, applicationId, backupFile, listener)
+        // TODO: Support different backup types. Probably change this method name to
+        // `showBackupDialog()` and make it handle
+        //  the type, file and any other parameters it might need.
+        val result =
+          backupService.backup(serialNumber, applicationId, DEVICE_TO_DEVICE, backupFile, listener)
         val operation = message("backup")
         if (notify) {
           result.notify(operation, backupFile, serialNumber)
@@ -193,6 +196,14 @@ internal constructor(private val project: Project, private val backupService: Ba
 
   override fun getRestoreRunConfigSection(project: Project) = RestoreRunConfigSection(project)
 
+  override suspend fun getForegroundApplicationId(serialNumber: String): String {
+    return backupService.getForegroundApplicationId(serialNumber)
+  }
+
+  override suspend fun isInstalled(serialNumber: String, applicationId: String): Boolean {
+    return backupService.isInstalled(serialNumber, applicationId)
+  }
+
   private fun BackupResult.notify(
     operation: String,
     backupFile: Path? = null,
@@ -207,7 +218,7 @@ internal constructor(private val project: Project, private val backupService: Ba
   private fun notifySuccess(message: String, backupFile: Path?) {
     val notification = Notification(NOTIFICATION_GROUP, message, INFORMATION)
     if (backupFile != null) {
-      notification.addAction(RevealBackupFileAction(backupFile))
+      notification.addAction(ShowPostBackupDialogAction(project, backupFile))
     }
     Notifications.Bus.notify(notification, project)
   }
@@ -240,9 +251,10 @@ internal constructor(private val project: Project, private val backupService: Ba
     PropertiesComponent.getInstance(project).setValue(BACKUP_PATH_KEY, path.pathString)
   }
 
-  private class RevealBackupFileAction(private val backupPath: Path) : RevealFileAction() {
+  private class ShowPostBackupDialogAction(val project: Project, private val backupPath: Path) :
+    AnAction("Add to Run Configuration") {
     override fun actionPerformed(e: AnActionEvent) {
-      openFile(backupPath)
+      PostBackupDialog(project, backupPath).show()
     }
   }
 

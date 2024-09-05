@@ -16,7 +16,7 @@
   <!-- This is temporary mechanism to mark certain plugins as K2-compatible. See IntelliJ commit cf213fb139 for details. -->
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <!--suppress PluginXmlValidity -->
-    <supportsKotlinK2Mode/>
+    <supportsKotlinPluginMode supportsK2="true"/>
   </extensions>
 
   <xi:include href="/META-INF/android-plugin.xml"/>
@@ -32,11 +32,11 @@
   <xi:include href="/META-INF/android-dagger.xml"/>
   <xi:include href="/META-INF/app-insights-api.xml"/>
   <xi:include href="/META-INF/app-insights.xml"/>
-  <xi:include href="/META-INF/backup.xml"/>
   <xi:include href="/META-INF/databinding.xml"/>
   <xi:include href="/META-INF/mlkit.xml"/>
   <xi:include href="/META-INF/sdk-updates.xml"/>
   <xi:include href="/META-INF/streaming.xml"/>
+  <xi:include href="/META-INF/backup.xml"/>
   <xi:include href="/META-INF/safeargs.xml"/>
   <xi:include href="/META-INF/pipeline.xml"/>
   <xi:include href="/META-INF/play-vitals.xml"/>
@@ -73,7 +73,6 @@
   <xi:include href="/META-INF/wizard-template-impl.xml"/>
   <xi:include href="/META-INF/android-templates.xml"/>
   <xi:include href="/META-INF/android-lint-plugin.xml"/>
-  <xi:include href="/META-INF/device-manager.xml"/>
   <xi:include href="/META-INF/threading-checker.xml"/>
   <xi:include href="/META-INF/device-manager-v2.xml"/>
   <xi:include href="/META-INF/wear-pairing.xml"/>

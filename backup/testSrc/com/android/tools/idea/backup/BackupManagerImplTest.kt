@@ -18,6 +18,8 @@ package com.android.tools.idea.backup
 import com.android.backup.BackupException
 import com.android.backup.BackupResult
 import com.android.backup.BackupService
+import com.android.backup.BackupType
+import com.android.backup.BackupType.DEVICE_TO_DEVICE
 import com.android.backup.ErrorCode
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.testing.NotificationRule
@@ -75,7 +77,7 @@ internal class BackupManagerImplTest {
     val serialNumber = "serial"
     val applicationId = "app"
     val backupFile = Path.of("file")
-    whenever(mockBackupService.backup(eq(serialNumber), eq(applicationId), eq(backupFile), any()))
+    whenever(mockBackupService.backup(eq(serialNumber), eq(applicationId), eq(DEVICE_TO_DEVICE), eq(backupFile), any()))
       .thenReturn(BackupResult.Success)
 
     backupManagerImpl.backupModal(
@@ -91,7 +93,7 @@ internal class BackupManagerImplTest {
     assertThat(notificationRule.notifications).hasSize(1)
     notificationRule.notifications
       .first()
-      .assert(title = "", "Backup completed successfully", INFORMATION, "RevealBackupFileAction")
+      .assert(title = "", "Backup completed successfully", INFORMATION, "ShowPostBackupDialogAction")
   }
 
   @Test
@@ -215,7 +217,7 @@ internal class BackupManagerImplTest {
     val serialNumber = "serial"
     val applicationId = "app"
     val backupFile = Path.of("file")
-    whenever(mockBackupService.backup(eq(serialNumber), eq(applicationId), eq(backupFile), any()))
+    whenever(mockBackupService.backup(eq(serialNumber), eq(applicationId), eq(DEVICE_TO_DEVICE), eq(backupFile), any()))
       .thenReturn(BackupResult.Error(errorCode, RuntimeException()))
 
     backupManagerImpl.backupModal(

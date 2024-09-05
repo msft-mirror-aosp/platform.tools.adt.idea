@@ -98,6 +98,7 @@ studio_plugin(
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:background-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/view:workmanager-inspector-proto",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:play_vitals_java_proto",
+        "//tools/adt/idea/app-quality-insights/play-vitals/model:titan_java_proto",
         "//tools/adt/idea/app-quality-insights/api:titan_java_proto",
         "//tools/adt/idea/app-quality-insights/api:libandroid-core-proto",
         "//tools/adt/idea/app-quality-insights/ui:libandroid-core-proto",
@@ -203,7 +204,6 @@ studio_plugin(
             "//tools/adt/idea/device-explorer-files:intellij.android.device-explorer-files",
             "//tools/adt/idea/device-explorer-monitor:intellij.android.device-explorer-monitor",
             "//tools/adt/idea/device-explorer-common:intellij.android.device-explorer-common",
-            "//tools/adt/idea/device-manager:intellij.android.device-manager",
             "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
             "//tools/adt/idea/ml-api:intellij.android.ml-api",
             "//tools/adt/idea/streaming:intellij.android.streaming",
@@ -495,7 +495,6 @@ studio_plugin(
 studio_plugin(
     name = "androidx.compose.plugins.idea",
     directory = "android-compose-ide-plugin",
-    libs = ["//tools/adt/idea/compose-ide-plugin:compose-compiler"],
     modules = {"android-compose-ide-plugin.jar": ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"]},
     visibility = ["//visibility:public"],
     deps = [

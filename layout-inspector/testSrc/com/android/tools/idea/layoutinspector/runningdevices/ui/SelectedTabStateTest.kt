@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.layoutinspector.runningdevices.ui
 
-import com.android.testutils.MockitoKt.mock
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
@@ -51,9 +50,9 @@ import javax.swing.JPanel
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
 
 class SelectedTabStateTest {
 
@@ -175,7 +174,6 @@ class SelectedTabStateTest {
 
   @Test
   @RunsInEdt
-  @Ignore("b/355500448")
   fun testRightVerticalSwapConfiguration() {
     testConfiguration(UiConfig.RIGHT_VERTICAL_SWAP)
   }

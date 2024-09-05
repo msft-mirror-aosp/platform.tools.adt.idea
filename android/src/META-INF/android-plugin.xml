@@ -370,6 +370,16 @@
     <completion.contributor language="JAVA"
                             implementationClass="org.jetbrains.android.completion.AndroidNonTransitiveRClassJavaCompletionContributor"
                             order="last, before javaLegacy"/>
+    <completion.contributor language="JAVA"
+                            implementationClass="org.jetbrains.android.completion.AndroidJavaRequiresPermissionCompletionContributor"
+                            order="first" />
+    <completion.contributor language="kotlin"
+                            implementationClass="org.jetbrains.android.completion.AndroidKotlinRequiresPermissionCompletionContributor"
+                            order="first" />
+    <weigher key="completion"
+             implementationClass="org.jetbrains.android.completion.AndroidRequiresPermissionCompletionWeigher"
+             id="AndroidRequiresPermissionCompletionWeigher"
+             order="first"/>
 
     <renamePsiElementProcessor implementation="org.jetbrains.android.refactoring.renaming.ResourceReferenceRenameProcessor" order="first"/>
     <renamePsiElementProcessor implementation="org.jetbrains.android.AndroidApplicationPackageRenameProcessor" order="first"/>
@@ -720,6 +730,8 @@
                     interface="com.android.tools.idea.ui.resourcemanager.importer.CreateDefaultResDirectoryToken"/>
     <extensionPoint qualifiedName="com.android.tools.idea.run.configuration.editors.androidWearConfigurationEditorToken"
                     interface="com.android.tools.idea.run.configuration.editors.AndroidWearConfigurationEditorToken"/>
+    <extensionPoint qualifiedName="com.android.tools.idea.testartifacts.instrumented.androidRunConfigurationToken"
+                    interface="com.android.tools.idea.testartifacts.instrumented.AndroidRunConfigurationToken"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="com.android.tools.idea.flags">

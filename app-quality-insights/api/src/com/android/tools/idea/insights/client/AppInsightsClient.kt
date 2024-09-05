@@ -21,6 +21,7 @@ import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.DetailedIssueStats
 import com.android.tools.idea.insights.Device
+import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.EventPage
 import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.IssueId
@@ -34,6 +35,7 @@ import com.android.tools.idea.insights.Permission
 import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.WithCount
+import com.android.tools.idea.insights.codecontext.CodeContext
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 
 data class IssueRequest(val connection: Connection, val filters: QueryFilters)
@@ -98,8 +100,9 @@ interface AppInsightsClient {
   suspend fun fetchInsight(
     connection: Connection,
     issueId: IssueId,
-    eventId: String,
+    event: Event,
     variantId: String?,
     timeInterval: TimeIntervalFilter,
+    codeContext: List<CodeContext>,
   ): LoadingState.Done<AiInsight>
 }

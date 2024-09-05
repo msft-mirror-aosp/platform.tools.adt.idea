@@ -31,6 +31,7 @@ import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.analytics.crash.CrashReport
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
@@ -44,7 +45,7 @@ import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.CrashReporterRule
 import com.android.tools.idea.testing.executeCapturingLoggedErrors
 import com.android.tools.idea.testing.executeCapturingLoggedWarnings
-import com.android.tools.idea.testing.flags.override
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.mockStatic
 import com.android.tools.idea.testing.override
 import com.google.common.truth.Truth.assertThat
@@ -580,7 +581,8 @@ internal class DeviceViewTest {
 
     val settings = DeviceMirroringSettings.getInstance()
     settings.synchronizeClipboard = true
-    assertThat(agent.getNextControlMessage(2.seconds)).isInstanceOf(StartClipboardSyncMessage::class.java)
+    assertThat(agent.getNextControlMessage(2.seconds)).isEqualTo(
+        StartClipboardSyncMessage(settings.maxSyncedClipboardLength, ""))
     CopyPasteManager.getInstance().setContents(StringSelection("host clipboard"))
     assertThat(agent.getNextControlMessage(2.seconds)).isEqualTo(
         StartClipboardSyncMessage(settings.maxSyncedClipboardLength, "host clipboard"))
@@ -809,7 +811,7 @@ internal class DeviceViewTest {
     createDeviceView(200, 300)
     waitForFrame()
 
-    val loggedErrors = executeCapturingLoggedWarnings() {
+    val loggedErrors = executeCapturingLoggedWarnings {
       runBlocking { agent.produceInvalidVideoFrame(PRIMARY_DISPLAY_ID) }
       assertThat(agent.getNextControlMessage(2.seconds)).isEqualTo(StopVideoStreamMessage(PRIMARY_DISPLAY_ID))
       assertThat(getNextControlMessageAndWaitForFrame(PRIMARY_DISPLAY_ID)).isEqualTo(
@@ -860,7 +862,7 @@ internal class DeviceViewTest {
 
   @Test
   fun testConnectionTimeout() {
-    StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS.override(200, testRootDisposable)
+    StudioFlags.DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS.overrideForTest(200, testRootDisposable)
     agent.startDelayMillis = 500
     val loggedErrors = executeCapturingLoggedErrors {
       createDeviceViewWithoutWaitingForAgent(500, 1000, screenScale = 1.0)
@@ -1084,7 +1086,7 @@ internal class DeviceViewTest {
     // DeviceView has to be disposed before DeviceClient.
     val disposable = Disposer.newDisposable()
     Disposer.register(testRootDisposable, disposable)
-    view = DeviceView(disposable, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, agentRule.project)
+    view = DeviceView(disposable, deviceClient, agentRule.project, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION)
     fakeUi = FakeUi(wrapInScrollPane(view, width, height), screenScale)
   }
 

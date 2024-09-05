@@ -350,6 +350,11 @@ public final class StudioFlags {
     NELE, "system.ui.options", "Enable system UI options",
     "Enable an action to customize the system UI for previews.",
     false);
+
+  public static final Flag<Boolean> NELE_BACKGROUND_DISPLAY_LIST = new BooleanFlag(
+    NELE, "background.displaylist", "Enable Display List background creation",
+    "When enabled, the scene display list is created in the background.",
+    false);
   //endregion
 
   //region Resource Repository
@@ -1683,27 +1688,6 @@ public final class StudioFlags {
   //region Device Manager
   private static final FlagGroup DEVICE_MANAGER = new FlagGroup(FLAGS, "device.manager", "Device Manager");
 
-  public static final Flag<Boolean> VIRTUAL_DEVICE_WATCHER_ENABLED = new BooleanFlag(
-    DEVICE_MANAGER,
-    "virtual.device.watcher.enabled",
-    "Enable VirtualDeviceWatcher",
-    "Enable VirtualDeviceWatcher to update the Virtual table based on disk changes",
-    true);
-
-  public static final Flag<Boolean> UNIFIED_DEVICE_MANAGER_ENABLED = new BooleanFlag(
-    DEVICE_MANAGER,
-    "unified.device.manager.enabled",
-    "Enable unified device manager",
-    "Enable new Device Manager UI with unified device list",
-    true);
-
-  public static final Flag<Boolean> DUAL_DEVICE_MANAGER_ENABLED = new BooleanFlag(
-    DEVICE_MANAGER,
-    "dual.device.manager.enabled",
-    "Enable unified device manager alongside existing device manager",
-    "Continue showing original Device Manager even with unified device manager enabled",
-    false);
-
   public static final Flag<Boolean> RESIZABLE_EXPERIMENTAL_TWEAKS_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "resizable.experimental.tweaks.enabled",
@@ -1843,13 +1827,13 @@ public final class StudioFlags {
       "Enhance code navigation in the Play Vitals tab to aid crash investigation with the recorded VCS info",
       true);
 
-  public static final Flag<Boolean> PLAY_VITALS_SHOW_INSIGHT =
+  public static final Flag<Boolean> PLAY_VITALS_INSIGHT_IN_TOOLWINDOW =
     new BooleanFlag(
       APP_INSIGHTS,
-      "play.vitals.show.insight",
-      "Show insight for Play Vitals",
-      "Show AI generated insights for Play Vitals issue",
-      true
+      "play.vitals.show.insight.tool.window",
+      "Show insight toolwindow in Play Vitals",
+      "Show AI generated insights for Play Vitals issue in insight toolwindow",
+      false
     );
   // endregion App Insights
 
@@ -1871,6 +1855,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> JSON_GENERATION =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.json.generation", "App Links Assistant JSON generation",
                     "JSON generation (i.e. automated assistance with fixing web issues) in the App Links Assistant",
+                    ChannelDefault.enabledUpTo(CANARY));
+  public static final Flag<Boolean> PLAY_DYNAMIC_FILTERS =
+    new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.play.dynamic.filters", "App Links Assistant Play Dynamic Filters support",
+                    "Support for apps that opted in to using Play Dynamic Filters to manage their app links",
                     ChannelDefault.enabledUpTo(CANARY));
   // endregion App Links Assistant
 
@@ -1995,6 +1983,12 @@ public final class StudioFlags {
                     "Enable the transform history in the transform diff.",
                     "When enabled, allows the user to navigate transform history in the diff view.",
                     ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_SHOW_TRANSFORM_HISTORY_FORWARD_BACK =
+    new BooleanFlag(STUDIOBOT, "editor.ai.transform.show.history.forward.back",
+                    "Enable the transform history forward/back buttons in the transform diff.",
+                    "When enabled, allows the user to navigate forward and back in the transform history in the diff view.",
+                    false);
 
   public static final Flag<Boolean> STUDIOBOT_EXPERIMENTAL_SLASH_COMMANDS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.experimental.slash.commands.enabled",
@@ -2165,6 +2159,14 @@ public final class StudioFlags {
       "Minimum version of the GmsCore Backup module that is supported",
       "Minimum version of the GmsCore Backup module that is supported",
       Integer.MAX_VALUE); // TODO(b/356613310) Replace with actual version when available
+
+  public static final Flag<Boolean> BACKUP_ACTION_IN_RUNNING_DEVICES =
+    new BooleanFlag(
+      BACKUP,
+      "enable.running.devices",
+      "Display Backup action in Running Devices",
+      "Display Backup action in Running Devices",
+      true);
   // endregion Backup
 
   // region GOOGLE_PLAY_SDK_INDEX

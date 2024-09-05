@@ -26,6 +26,8 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import java.net.SocketTimeoutException
+import javax.swing.JButton
+import kotlin.test.fail
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -106,7 +108,7 @@ class InsightContentPanelTest {
   @Test
   fun `test failure shows failure message if available`() = runBlocking {
     currentInsightFlow.update {
-      LoadingState.NetworkFailure("Some failure", SocketTimeoutException())
+      LoadingState.ServerFailure("Some failure", SocketTimeoutException())
     }
 
     FakeUi(insightContentPanel)
@@ -118,13 +120,44 @@ class InsightContentPanelTest {
 
   @Test
   fun `test failure shows generic failure message when message unavailable`() = runBlocking {
-    currentInsightFlow.update { LoadingState.NetworkFailure(null) }
+    currentInsightFlow.update { LoadingState.ServerFailure(null) }
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
 
     assertThat(errorText).isEqualTo("Request failed")
     assertThat(secondaryText).isEqualTo("An unknown failure occurred")
+  }
+
+  @Test
+  fun `test tos not accepted shows enable insight button`() = runBlocking {
+    currentInsightFlow.update { LoadingState.ToSNotAccepted }
+
+    val fakeUi = FakeUi(insightContentPanel)
+
+    val statusTexts =
+      fakeUi
+        .findAllComponents<Any> { it.javaClass.name.contains("StatusText\$Fragment") }
+        .map { it.toString() }
+    assertThat(statusTexts.size).isEqualTo(2)
+    assertThat(statusTexts[0]).isEqualTo("Insights require Gemini")
+    assertThat(statusTexts[1])
+      .isEqualTo("You can setup Gemini and enable insights via button below")
+
+    val button = fakeUi.findComponent<JButton>() ?: fail("Button not found")
+    assertThat(button.text).isEqualTo("Enable Insights")
+    assertThat(button.isVisible).isTrue()
+  }
+
+  @Test
+  fun `test offline mode`() = runBlocking {
+    currentInsightFlow.update { LoadingState.NetworkFailure(null) }
+
+    FakeUi(insightContentPanel)
+    delayUntilStatusTextVisible()
+
+    assertThat(errorText).isEqualTo("Insights data is not available.")
+    assertThat(secondaryText).isEmpty()
   }
 
   private suspend fun delayUntilStatusTextVisible() =

@@ -95,10 +95,18 @@ interface BackupManager {
    */
   suspend fun getApplicationId(backupFile: Path): String?
 
+  /** Gets the application id of the foreground on the device with the serial number provided. */
+  suspend fun getForegroundApplicationId(serialNumber: String): String
+
+  /** Returns true is the application is installed on the device . */
+  suspend fun isInstalled(serialNumber: String, applicationId: String): Boolean
+
   /** Returns a new [RunConfigSection] object */
   fun getRestoreRunConfigSection(project: Project): RunConfigSection
 
   companion object {
+    const val NOTIFICATION_GROUP = "Backup"
+
     @JvmStatic
     fun getInstance(project: Project): BackupManager = project.getService(BackupManager::class.java)
   }

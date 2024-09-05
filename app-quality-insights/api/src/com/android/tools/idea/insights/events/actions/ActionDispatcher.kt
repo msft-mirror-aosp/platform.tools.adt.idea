@@ -20,19 +20,19 @@ import com.android.tools.idea.insights.CancellableTimeoutException
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.EventPage
-import com.android.tools.idea.insights.EventsChanged
 import com.android.tools.idea.insights.Filters
 import com.android.tools.idea.insights.IssueState
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.RevertibleException
 import com.android.tools.idea.insights.Selection
-import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsClient
+import com.android.tools.idea.insights.codecontext.CodeContextResolver
 import com.android.tools.idea.insights.events.AiInsightFetched
 import com.android.tools.idea.insights.events.ChangeEvent
 import com.android.tools.idea.insights.events.EnterOfflineMode
 import com.android.tools.idea.insights.events.EnterOnlineMode
 import com.android.tools.idea.insights.events.ErrorThrown
+import com.android.tools.idea.insights.events.EventsChanged
 import com.android.tools.idea.insights.events.IssueDetailsChanged
 import com.android.tools.idea.insights.events.IssueToggled
 import com.android.tools.idea.insights.events.IssueVariantsChanged
@@ -86,7 +86,7 @@ class ActionDispatcher(
   private val clock: Clock,
   private val appInsightsClient: AppInsightsClient,
   private val defaultFilters: Filters,
-  private val cache: AppInsightsCache,
+  private val codeContextResolver: CodeContextResolver,
   private val eventEmitter: suspend (ChangeEvent) -> Unit,
   private val onErrorAction: (String, HyperlinkListener?) -> Unit,
 ) {
@@ -353,17 +353,23 @@ class ActionDispatcher(
   ): CancellationToken {
     return scope
       .launch {
-        val timeFilter =
-          state.filters.timeInterval.selected ?: state.filters.timeInterval.items.last()
-        val fetchedInsight =
-          appInsightsClient.fetchInsight(
-            connection,
-            action.id,
-            action.eventId,
-            action.variantId,
-            timeFilter,
-          )
-        eventEmitter(AiInsightFetched(fetchedInsight))
+        val insight =
+          if (state.mode == ConnectionMode.OFFLINE) {
+            LoadingState.NetworkFailure(null)
+          } else {
+            val timeFilter =
+              state.filters.timeInterval.selected ?: state.filters.timeInterval.items.last()
+            appInsightsClient.fetchInsight(
+              connection,
+              action.id,
+              action.event,
+              action.variantId,
+              timeFilter,
+              state.selectedEvent?.let { codeContextResolver.getSource(it.stacktraceGroup) }
+                ?: emptyList(),
+            )
+          }
+        eventEmitter(AiInsightFetched(insight))
       }
       .toToken(action)
   }

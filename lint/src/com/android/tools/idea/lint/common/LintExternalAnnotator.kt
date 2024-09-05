@@ -22,7 +22,6 @@ import com.android.SdkConstants.EXT_GRADLE_DECLARATIVE
 import com.android.SdkConstants.FN_ANDROID_PROGUARD_FILE
 import com.android.SdkConstants.FN_PROJECT_PROGUARD_FILE
 import com.android.SdkConstants.OLD_PROGUARD_FILE
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.lint.checks.DeprecatedSinceApiDetector
 import com.android.tools.lint.checks.DeprecationDetector
 import com.android.tools.lint.checks.DiscouragedDetector
@@ -195,9 +194,7 @@ class LintExternalAnnotator : ExternalAnnotator<LintEditorResult, LintEditorResu
         if (name.endsWith(DOT_KTS)) {
           scope = EnumSet.of(Scope.GRADLE_FILE, Scope.JAVA_FILE)
         }
-      } else if (
-        StudioFlags.GRADLE_DECLARATIVE_IDE_SUPPORT.get() && name.endsWith(EXT_GRADLE_DECLARATIVE)
-      ) {
+      } else if (name.endsWith(EXT_GRADLE_DECLARATIVE)) {
         scope = EnumSet.of(Scope.GRADLE_FILE, Scope.JAVA_FILE)
       } else if (
         name == OLD_PROGUARD_FILE ||
@@ -313,7 +310,8 @@ class LintExternalAnnotator : ExternalAnnotator<LintEditorResult, LintEditorResu
       val descriptionRef =
         "<a href=\"${LintInspectionDescriptionLinkHandler.LINK_PREFIX}${issue.id}\"></a>"
 
-      // We add a "More... (Ctrl+F1)" link to the end of the error message so that users can expand
+      // We add a "Toggle info (Ctrl+F1)" link to the end of the error message so that users can
+      // expand
       // the tooltip to see the issue description, which typically includes useful context and links
       // to documentation. Any "unhandled" link click that is not just an HTTP link will toggle
       // expansion of the inspection description. See
@@ -321,7 +319,7 @@ class LintExternalAnnotator : ExternalAnnotator<LintEditorResult, LintEditorResu
       // com.intellij.codeInsight.hint.LineTooltipRenderer.createHint. We could just use href="",
       // but using LINK_PREFIX seems more future-proof.
       val moreLink =
-        " <a href=\"${LintInspectionDescriptionLinkHandler.LINK_PREFIX}\">More...</a> ${DaemonTooltipsUtil.getShortcutText()}"
+        " <a href=\"${LintInspectionDescriptionLinkHandler.LINK_PREFIX}\">Toggle info ${DaemonTooltipsUtil.getShortcutText()}</a>"
 
       var messageHtml = RAW.convertTo(message, HTML)
 

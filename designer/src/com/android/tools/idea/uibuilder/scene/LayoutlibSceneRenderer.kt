@@ -56,7 +56,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -66,7 +65,6 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import org.jetbrains.android.facet.AndroidFacet
 
 private class RenderRequest(val trigger: LayoutEditorRenderResult.Trigger?) {
@@ -371,20 +369,24 @@ class LayoutlibSceneRenderer(
     if (project.isDisposed || isDisposed.get()) {
       return null
     }
-    // Wrapping into blockingContext because model.file requires read action
-    val file = blockingContext { model.file }
 
     // Some types of files must be saved to disk first, because layoutlib doesn't
     // delegate XML parsers for non-layout files (meaning layoutlib will read the
     // disk contents, so we have to push any edits to disk before rendering)
-    file.saveFileIfNecessary()
+    // Wrapping into blockingContext because model.file requires read action
+    blockingContext { model.file }.saveFileIfNecessary()
 
     // Record the current version we're rendering from; we'll use that in #activate to make sure
     // we're picking up any external changes
     val facet: AndroidFacet = model.facet
     val configuration: Configuration = model.configuration
     val resourceNotificationManager = ResourceNotificationManager.getInstance(project)
-    renderedVersion = resourceNotificationManager.getCurrentVersion(facet, file, configuration)
+    renderedVersion =
+      resourceNotificationManager.getCurrentVersion(
+        facet,
+        blockingContext { model.file },
+        configuration,
+      )
 
     val renderService = StudioRenderService.getInstance(project)
     val logger =
@@ -394,19 +396,17 @@ class LayoutlibSceneRenderer(
     var result: RenderResult? = null
     var newTask: RenderTask? = null
     try {
-      withContext(NonCancellable) {
-        // Avoid cancellation while waiting for render task creation to finish.
-        // This is needed to avoid leaks and make sure that it's correctly disposed when needed.
-        newTask = sceneRenderConfiguration.createRenderTask(configuration, renderService, logger)
-      }
-      result = newTask?.let { doInflate(it, logger) } ?: createRenderTaskErrorResult(file, logger)
+      newTask = sceneRenderConfiguration.createRenderTask(configuration, renderService, logger)
+      result =
+        newTask?.let { doInflate(it, logger) }
+          ?: createRenderTaskErrorResult(blockingContext { model.file }, logger)
     } catch (throwable: Throwable) {
       if (throwable is CancellationException) {
         // Re-throw any CancellationException to correctly propagate cancellations upward
         throw throwable
       }
       Logger.getInstance(LayoutlibSceneRenderer::class.java).warn(throwable)
-      result = createRenderTaskErrorResult(file, throwable)
+      result = createRenderTaskErrorResult(blockingContext { model.file }, throwable)
     } finally {
       // Make sure not to cancel the post-inflation work needed to keep this renderer in a
       // consistent state
@@ -456,7 +456,6 @@ class LayoutlibSceneRenderer(
           RenderProblem.createHtml(
             ProblemSeverity.ERROR,
             "Error inflating the preview",
-            model.project,
             logger.linkManager,
             throwable,
             ShowFixFactory,

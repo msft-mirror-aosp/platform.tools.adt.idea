@@ -135,11 +135,10 @@ private fun createCenterPanel(
             JLabel(message(capability.label)).also { label ->
               val plainFont = label.font.deriveFont(Font.PLAIN)
               val italicFont = label.font.deriveFont(Font.ITALIC)
-              stateManager
-                .getState(capability)
-                .map { it.synced }
-                .onEach { synced ->
-                  if (!synced) {
+              combine(stateManager.getState(capability), stateManager.ongoingExercise) {
+                  uiState,
+                  ongoingExercise ->
+                  if (uiState.hasUserChanges(ongoingExercise)) {
                     label.font = italicFont
                     label.text = "${message(capability.label)}*"
                   } else {
@@ -152,19 +151,26 @@ private fun createCenterPanel(
           val checkBox =
             JCheckBox().also { checkBox ->
               elementsToDisableDuringExercise.add(checkBox)
-              stateManager
-                .getState(capability)
-                .map { it.capabilityState.enabled }
-                .onEach { enabled -> checkBox.isSelected = enabled }
-                .launchIn(uiScope)
               checkBox.addActionListener {
                 workerScope.launch {
                   stateManager.setCapabilityEnabled(capability, checkBox.isSelected)
                 }
               }
             }
-          stateManager.ongoingExercise
-            .onEach { label.isEnabled = !it || checkBox.isSelected }
+
+          combine(stateManager.getState(capability), stateManager.ongoingExercise) {
+              uiState,
+              ongoingExercise ->
+              // When an exercise is ongoing, we want to reflect the capability state of the device,
+              // not any pending user changes
+              val isCapabilityEnabled =
+                if (ongoingExercise) uiState.upToDateState.enabled
+                else
+                  (uiState as? PendingUserChangesCapabilityUIState)?.userState?.enabled
+                    ?: uiState.upToDateState.enabled
+              checkBox.isSelected = isCapabilityEnabled
+              label.isEnabled = !ongoingExercise || isCapabilityEnabled
+            }
             .launchIn(uiScope)
 
           add(checkBox, BorderLayout.LINE_START)
@@ -238,10 +244,25 @@ private fun createCenterPanel(
                           Toolkit.getDefaultToolkit().beep()
                         }
                       }
+
+                      override fun remove(fb: FilterBypass, offset: Int, length: Int) {
+                        val newValue =
+                          fb.document.getText(0, offset) +
+                            fb.document.getText(
+                              offset + length,
+                              fb.document.length - offset - length,
+                            )
+
+                        if (validate(newValue)) {
+                          super.remove(fb, offset, length)
+                        } else {
+                          Toolkit.getDefaultToolkit().beep()
+                        }
+                      }
                     }
                   stateManager
                     .getState(capability)
-                    .map { it.capabilityState.overrideValue }
+                    .map { it.currentState.overrideValue }
                     .onEach { overrideValue ->
                       val overrideValueAsText = overrideValue.asText().trim()
                       if (!textField.isFocusOwner && textField.text.trim() != overrideValueAsText) {
@@ -482,7 +503,12 @@ internal fun createWearHealthServicesPanel(
         }
       )
       add(
-        JButton(message("wear.whs.panel.apply")).apply {
+        JButton(message("wear.whs.panel.reapply")).apply {
+          stateManager.hasUserChanges
+            .onEach {
+              text = if (it) message("wear.whs.panel.apply") else message("wear.whs.panel.reapply")
+            }
+            .launchIn(uiScope)
           stateManager.ongoingExercise
             .onEach {
               toolTipText =
@@ -496,13 +522,14 @@ internal fun createWearHealthServicesPanel(
             workerScope.launch {
               try {
                 onApplyChangesChannel.send(Unit)
+                val applyType = if (stateManager.hasUserChanges.value) "apply" else "reapply"
                 stateManager
                   .applyChanges()
                   .onSuccess {
-                    notifyUser(message("wear.whs.panel.apply.success"), MessageType.INFO)
+                    notifyUser(message("wear.whs.panel.$applyType.success"), MessageType.INFO)
                   }
                   .onFailure {
-                    notifyUser(message("wear.whs.panel.apply.failure"), MessageType.ERROR)
+                    notifyUser(message("wear.whs.panel.$applyType.failure"), MessageType.ERROR)
                   }
               } finally {
                 uiScope.launch { isEnabled = true }

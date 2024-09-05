@@ -19,19 +19,19 @@ import com.android.repository.api.RepoManager
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.SystemImageSupplier
 import com.android.sdklib.repository.AndroidSdkHandler
+import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
-import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
 import com.intellij.openapi.diagnostic.thisLogger
-import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
 
 internal object ISystemImages {
   fun systemImageFlow(sdkHandler: AndroidSdkHandler): Flow<ImmutableList<ISystemImage>> =
@@ -58,6 +58,14 @@ internal object ISystemImages {
           }
         repoManager.addLocalChangeListener(listener)
         repoManager.addRemoteChangeListener(listener)
+
+        repoManager.loadSynchronously(
+          0,
+          indicator,
+          StudioDownloader(),
+          StudioSettingsController.getInstance(),
+        )
+
         send(systemImages())
 
         awaitClose {
@@ -65,25 +73,8 @@ internal object ISystemImages {
           repoManager.removeRemoteChangeListener(listener)
         }
       }
+      .flowOn(AndroidDispatchers.workerThread)
       .conflate()
-
-  internal fun get(): ImmutableCollection<ISystemImage> {
-    val handler = AndroidSdks.getInstance().tryToChooseSdkHandler()
-    val indicator = StudioLoggerProgressIndicator(ISystemImages::class.java)
-    val repoManager = handler.getSdkManager(indicator)
-
-    repoManager.loadSynchronously(
-      0,
-      indicator,
-      StudioDownloader(),
-      StudioSettingsController.getInstance(),
-    )
-
-    val systemImageManager = handler.getSystemImageManager(indicator)
-    val logger = LogWrapper(ISystemImages.thisLogger())
-
-    return SystemImageSupplier(repoManager, systemImageManager, logger).get().toImmutableList()
-  }
 }
 
 internal fun ISystemImage.getServices(): Services {

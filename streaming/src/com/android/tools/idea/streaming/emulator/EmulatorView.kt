@@ -42,6 +42,7 @@ import com.android.tools.idea.flags.StudioFlags.EMBEDDED_EMULATOR_TRACE_NOTIFICA
 import com.android.tools.idea.flags.StudioFlags.EMBEDDED_EMULATOR_TRACE_SCREENSHOTS
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.EmulatorSettings
+import com.android.tools.idea.streaming.EmulatorSettingsListener
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
@@ -102,6 +103,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.keymap.KeymapUtil
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.wm.IdeGlassPaneUtil
@@ -116,7 +118,6 @@ import org.jetbrains.annotations.VisibleForTesting
 import java.awt.Dimension
 import java.awt.EventQueue
 import java.awt.Graphics
-import java.awt.Graphics2D
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.Rectangle
@@ -187,10 +188,11 @@ import com.android.emulator.control.Notification as EmulatorNotification
 class EmulatorView(
   disposableParent: Disposable,
   val emulator: EmulatorController,
+  project: Project,
   displayId: Int,
   private val displaySize: Dimension?,
-  deviceFrameVisible: Boolean
-) : AbstractDisplayView(displayId), ConnectionStateListener {
+  deviceFrameVisible: Boolean,
+) : AbstractDisplayView(project, displayId), ConnectionStateListener, EmulatorSettingsListener {
 
   override var displayOrientationQuadrants: Int
     get() = screenshotShape.orientation
@@ -346,6 +348,8 @@ class EmulatorView(
       }
     }
 
+  private var clipboardSynchronizer: EmulatorClipboardSynchronizer? = null
+
   private fun updateCameraPromptAndMultiTouchFeedback(event: InputEvent) = updateCameraPromptAndMultiTouchFeedback(event.modifiersEx)
 
   private fun updateCameraPromptAndMultiTouchFeedback(modifiers: Int = lastModifiers) {
@@ -432,6 +436,7 @@ class EmulatorView(
     })
 
     updateConnectionState(emulator.connectionState)
+    project.messageBus.connect(this).subscribe(EmulatorSettingsListener.TOPIC, this)
   }
 
   override fun dispose() {
@@ -500,12 +505,16 @@ class EmulatorView(
           if (notificationFeed == null) {
             requestNotificationFeed()
           }
+          if (EmulatorSettings.getInstance().synchronizeClipboard) {
+            startClipboardSynchronization()
+          }
         }
       }
     }
     else if (connectionState == ConnectionState.DISCONNECTED) {
       lastScreenshot = null
       hideLongRunningOperationIndicatorInstantly()
+      stopClipboardSynchronization()
       showDisconnectedStateMessage("Disconnected from the Emulator")
     }
 
@@ -516,7 +525,6 @@ class EmulatorView(
     if (emulatorOutOfDateNotificationShown) {
       return
     }
-    val project = getProject() ?: return
     val title = "Emulator is out of date"
     val message = XmlStringUtil.wrapInHtml("Please update the Android Emulator")
     val notification = RUNNING_DEVICES_NOTIFICATION_GROUP.createNotification(title, message, NotificationType.WARNING)
@@ -545,9 +553,7 @@ class EmulatorView(
     val displayRect = computeDisplayRectangle(skin)
     displayRectangle = displayRect
 
-    val g = graphics.create() as Graphics2D
-    val physicalToVirtualScale = 1.0 / screenScale
-    g.scale(physicalToVirtualScale, physicalToVirtualScale) // Set the scale to draw in physical pixels.
+    val g = createAdjustedGraphicsContext(graphics)
 
     var savedClip: Shape? = null
     if (skin?.isDisplayRounded == true) {
@@ -557,14 +563,9 @@ class EmulatorView(
                                           skin.displayCornerSize.width.toDouble(), skin.displayCornerSize.height.toDouble())))
     }
     // Draw display.
-    if (displayRect.width == screenshotShape.width && displayRect.height == screenshotShape.height) {
-      g.drawImage(screenshot.image, null, displayRect.x, displayRect.y)
-    }
-    else {
-      displayTransform.setToTranslation(displayRect.x.toDouble(), displayRect.y.toDouble())
-      displayTransform.scale(displayRect.width.toDouble() / screenshotShape.width, displayRect.height.toDouble() / screenshotShape.height)
-      g.drawImage(screenshot.image, displayTransform, null)
-    }
+    displayTransform.setToTranslation(displayRect.x.toDouble(), displayRect.y.toDouble())
+    displayTransform.scale(displayRect.width.toDouble() / screenshotShape.width, displayRect.height.toDouble() / screenshotShape.height)
+    g.drawImage(screenshot.image, displayTransform, null)
 
     frameNumber = screenshotShape.frameNumber
     notifyFrameListeners(displayRect, screenshot.image)
@@ -748,6 +749,33 @@ class EmulatorView(
     updateCameraPromptAndMultiTouchFeedback(event.inputEvent!!)
   }
 
+  @UiThread
+  override fun settingsChanged(settings: EmulatorSettings) {
+    if (!isConnected) {
+      return
+    }
+    if (settings.synchronizeClipboard) {
+      startClipboardSynchronization()
+    }
+    else {
+      stopClipboardSynchronization()
+    }
+  }
+
+  private fun startClipboardSynchronization() {
+    if (clipboardSynchronizer == null) {
+      clipboardSynchronizer = EmulatorClipboardSynchronizer(this, emulator)
+    }
+  }
+
+  private fun stopClipboardSynchronization() {
+    clipboardSynchronizer?.let {
+      // Stop clipboard synchronization.
+      Disposer.dispose(it)
+      clipboardSynchronizer = null
+    }
+  }
+
   /** Returns the key name of the skin button containing [point], or null if not found.  */
   private fun findSkinButtonContaining(point: Point): String? {
     if (!deviceFrameVisible) {
@@ -775,6 +803,9 @@ class EmulatorView(
       }
 
       EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
+        if (notificationReceiver != this) {
+          return@invokeLater // This notification feed has already been cancelled.
+        }
         when {
           message.hasCameraNotification() -> virtualSceneCameraActive = message.cameraNotification.active
           message.hasDisplayConfigurationsChangedNotification() ->

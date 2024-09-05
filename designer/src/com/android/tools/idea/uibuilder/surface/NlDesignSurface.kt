@@ -71,7 +71,6 @@ import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintIssueProvide
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.diagnostic.Logger
@@ -82,11 +81,11 @@ import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
-import java.util.concurrent.CompletableFuture
 import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 
 /**
@@ -99,9 +98,7 @@ import kotlinx.coroutines.launch
 class NlDesignSurface
 internal constructor(
   project: Project,
-  parentDisposable: Disposable,
   private val sceneManagerProvider: (NlDesignSurface, NlModel) -> LayoutlibSceneManager,
-  defaultLayoutOption: SurfaceLayoutOption,
   actionManagerProvider:
     (DesignSurface<LayoutlibSceneManager>) -> ActionManager<
         out DesignSurface<LayoutlibSceneManager>
@@ -118,20 +115,14 @@ internal constructor(
   private val shouldRenderErrorsPanel: Boolean,
   maxZoomToFitLevel: Double,
   issueProviderFactory: (DesignSurface<LayoutlibSceneManager>) -> VisualLintIssueProvider,
+  nlDesignSurfacePositionableContentLayoutManager: NlDesignSurfacePositionableContentLayoutManager,
 ) :
   DesignSurface<LayoutlibSceneManager>(
     project,
-    parentDisposable,
     actionManagerProvider,
     interactableProvider,
     interactionHandlerProvider,
-    { surface ->
-      NlDesignSurfacePositionableContentLayoutManager(
-        surface as NlDesignSurface,
-        parentDisposable,
-        defaultLayoutOption,
-      )
-    },
+    nlDesignSurfacePositionableContentLayoutManager,
     actionHandlerProvider,
     selectionModel,
     zoomControlsPolicy,
@@ -202,7 +193,7 @@ internal constructor(
         maxZoomToFitLevel,
       )
       .apply {
-        zoomControllerScope.launch {
+        scope.launch {
           beforeZoomChange.collect { zoomType ->
             if (zoomType == ZoomType.FIT) {
               sceneViewLayoutManager.clearCachedGroups()
@@ -233,10 +224,13 @@ internal constructor(
     revalidateScrollArea()
   }
 
+  /** Triggers a re-inflation and re-render, but it doesn't wait for it to finish. */
   override fun forceRefresh() {
-    requestSequentialRender {
-      it.sceneRenderConfiguration.needsInflation.set(true)
-      it.requestRenderAsync()
+    scope.launch {
+      sceneManagers.forEach {
+        it.sceneRenderConfiguration.needsInflation.set(true)
+        it.requestRenderAsync()
+      }
     }
   }
 
@@ -378,15 +372,22 @@ internal constructor(
     return sceneManagers.any { it.renderResult != null }
   }
 
+  /**
+   * Triggers a re-inflation and re-render. This method doesn't wait for the refresh to finish, but
+   * it sets up a progress indicator to inform the user about the refresh progress.
+   */
   override fun forceUserRequestedRefresh() {
     // When the user initiates the refresh, give some feedback via progress indicator.
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(project, "Refreshing...", "", "", false)
-    requestSequentialRender {
-        it.sceneRenderConfiguration.needsInflation.set(true)
-        it.requestUserInitiatedRenderAsync()
+    scope
+      .launch {
+        sceneManagers.forEach {
+          it.sceneRenderConfiguration.needsInflation.set(true)
+          it.requestRenderAsync().await()
+        }
       }
-      .whenComplete { _, _ -> refreshProgressIndicator.processFinish() }
+      .invokeOnCompletion { refreshProgressIndicator.processFinish() }
   }
 
   fun findSceneViewRectangles(): Map<SceneView, Rectangle?> {
@@ -579,7 +580,7 @@ internal constructor(
     isRenderingSynchronously = enabled
 
     // If animation is enabled, scanner must be paused.
-    layoutScannerControl?.let { if (enabled) it.pause() else it.resume() }
+    if (enabled) layoutScannerControl.pause() else layoutScannerControl.resume()
   }
 
   /** Return whenever surface is rotating. */

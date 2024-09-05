@@ -71,7 +71,6 @@ import com.intellij.openapi.actionSystem.IdeActions.ACTION_PASTE
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_REDO
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_SELECT_ALL
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_UNDO
-import com.intellij.openapi.client.ClientSystemInfo
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
@@ -85,7 +84,6 @@ import org.jetbrains.annotations.VisibleForTesting
 import java.awt.Dimension
 import java.awt.EventQueue
 import java.awt.Graphics
-import java.awt.Graphics2D
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.ComponentAdapter
@@ -134,10 +132,10 @@ import kotlin.math.min
 internal class DeviceView(
   disposableParent: Disposable,
   val deviceClient: DeviceClient,
+  override val project: Project,
   displayId: Int,
   private val initialDisplayOrientation: Int,
-  private val project: Project,
-) : AbstractDisplayView(displayId), DeviceMirroringSettingsListener {
+) : AbstractDisplayView(project, displayId), DeviceMirroringSettingsListener {
 
   val isConnected: Boolean
     get() = connectionState == ConnectionState.CONNECTED
@@ -383,9 +381,6 @@ internal class DeviceView(
     }
 
     val decoder = deviceClient.videoDecoder ?: return
-    val g = graphics.create() as Graphics2D
-    val physicalToVirtualScale = 1.0 / screenScale
-    g.scale(physicalToVirtualScale, physicalToVirtualScale) // Set the scale to draw in physical pixels.
 
     // Draw device display.
     decoder.consumeDisplayFrame(displayId) { displayFrame ->
@@ -407,6 +402,7 @@ internal class DeviceView(
       val displayRect = Rectangle((physicalWidth - w) / 2, (physicalHeight - h) / 2, w, h)
       displayRectangle = displayRect
       val image = displayFrame.image
+      val g = createAdjustedGraphicsContext(graphics)
       if (displayRect.width == image.width && displayRect.height == image.height) {
         g.drawImage(image, null, displayRect.x, displayRect.y)
       }
@@ -462,14 +458,8 @@ internal class DeviceView(
   }
 
   private fun startClipboardSynchronization() {
-    val synchronizer = clipboardSynchronizer
-    if (synchronizer == null) {
-      // Start clipboard synchronization.
+    if (clipboardSynchronizer == null) {
       clipboardSynchronizer = DeviceClipboardSynchronizer(this, deviceClient)
-    }
-    else {
-      // Pass the new value of maxSyncedClipboardLength to the device.
-      synchronizer.setDeviceClipboard(forceSend = true)
     }
   }
 
@@ -632,7 +622,7 @@ internal class DeviceView(
       if (isHardwareInputEnabled()) {
         return
       }
-      if (event.isControlDown || event.isMetaDown || (!ClientSystemInfo.isMac() && event.isAltDown)) {
+      if (event.isControlDown || event.isMetaDown || (!SystemInfo.isMac && event.isAltDown)) {
         return
       }
       val c = event.keyChar

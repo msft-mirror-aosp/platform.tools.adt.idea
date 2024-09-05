@@ -568,6 +568,7 @@ android-studio/license/third-party-libraries.html
 android-studio/license/third-party-libraries.json
 android-studio/license/uiautomatorviewer.jar-NOTICE
 android-studio/license/yourkit-license-redist.txt
+android-studio/modules/module-descriptors.jar
 android-studio/plugins/Groovy/lib/Groovy.jar
 android-studio/plugins/Groovy/lib/agent/gragent.jar
 android-studio/plugins/Groovy/lib/console.groovy
@@ -711,6 +712,7 @@ android-studio/plugins/Kotlin/lib/kotlin-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.allopen-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.android-extensions-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.assignment-compiler-plugin.jar
+android-studio/plugins/Kotlin/lib/kotlinc.compose-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar
 android-studio/plugins/Kotlin/lib/kotlinc.kotlin-compiler-fe10.jar
 android-studio/plugins/Kotlin/lib/kotlinc.kotlin-compiler-ir.jar
@@ -724,7 +726,6 @@ android-studio/plugins/Kotlin/lib/kotlinc.scripting-compiler-plugin.jar
 android-studio/plugins/android-apk/lib/android-apk.jar
 android-studio/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.jar
 android-studio/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.so.jar
-android-studio/plugins/android-compose-ide-plugin/lib/compose-compiler.jar
 android-studio/plugins/android-ndk/lib/android-ndk.jar
 android-studio/plugins/android-ndk/lib/android-ndk.so.jar
 android-studio/plugins/android-ndk/lib/org.eclipse.cdt.core_6.8.1.201907021957.jar
@@ -2061,15 +2062,15 @@ android-studio/plugins/dev/lib/dev.jar
 android-studio/plugins/devkit/lib/devkit-jps.jar
 android-studio/plugins/devkit/lib/devkit-runtimeModuleRepository-jps.jar
 android-studio/plugins/devkit/lib/devkit.jar
-android-studio/plugins/directaccess/lib/adb_proxy_studio_proto.jar
 android-studio/plugins/directaccess/lib/directaccess.jar
 android-studio/plugins/directaccess/lib/directaccess.so.jar
-android-studio/plugins/directaccess/lib/ftl_client_java_proto.jar
 android-studio/plugins/directaccess/lib/google-api-services-cloudbilling-v1-rev20240119-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-monitoring-v3-rev20230806-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-testing-v1-rev20240213-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
+android-studio/plugins/directaccess/lib/libadb_proxy_java_proto.jar
+android-studio/plugins/directaccess/lib/libftl_client_java_proto.jar
 android-studio/plugins/directaccess/resources/reverse_daemon.dex
 android-studio/plugins/editorconfig/lib/editorconfig.jar
 android-studio/plugins/firebase-testing/lib/firebase-testing.jar

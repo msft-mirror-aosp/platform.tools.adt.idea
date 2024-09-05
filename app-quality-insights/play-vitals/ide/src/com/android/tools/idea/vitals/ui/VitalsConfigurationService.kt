@@ -199,6 +199,7 @@ class VitalsConfigurationManager(
         if (testClient == null) {
           clientDeferred.complete(
             VitalsClient(
+              project,
               this@VitalsConfigurationManager,
               cache,
               GoogleLoginService.instance.getActiveUserAuthInterceptor(
@@ -236,7 +237,6 @@ class VitalsConfigurationManager(
               )
             },
             defaultFilters = createVitalsFilters(),
-            cache = cache,
           )
         controllerDeferred.complete(vitalsController)
       }
