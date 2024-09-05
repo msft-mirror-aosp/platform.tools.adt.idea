@@ -568,6 +568,7 @@ android-studio/license/third-party-libraries.html
 android-studio/license/third-party-libraries.json
 android-studio/license/uiautomatorviewer.jar-NOTICE
 android-studio/license/yourkit-license-redist.txt
+android-studio/modules/module-descriptors.jar
 android-studio/plugins/Groovy/lib/Groovy.jar
 android-studio/plugins/Groovy/lib/agent/gragent.jar
 android-studio/plugins/Groovy/lib/console.groovy
@@ -711,6 +712,7 @@ android-studio/plugins/Kotlin/lib/kotlin-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.allopen-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.android-extensions-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.assignment-compiler-plugin.jar
+android-studio/plugins/Kotlin/lib/kotlinc.compose-compiler-plugin.jar
 android-studio/plugins/Kotlin/lib/kotlinc.kotlin-compiler-common.jar
 android-studio/plugins/Kotlin/lib/kotlinc.kotlin-compiler-fe10.jar
 android-studio/plugins/Kotlin/lib/kotlinc.kotlin-compiler-ir.jar
@@ -724,7 +726,6 @@ android-studio/plugins/Kotlin/lib/kotlinc.scripting-compiler-plugin.jar
 android-studio/plugins/android-apk/lib/android-apk.jar
 android-studio/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.jar
 android-studio/plugins/android-compose-ide-plugin/lib/android-compose-ide-plugin.so.jar
-android-studio/plugins/android-compose-ide-plugin/lib/compose-compiler.jar
 android-studio/plugins/android-ndk/lib/android-ndk.jar
 android-studio/plugins/android-ndk/lib/android-ndk.so.jar
 android-studio/plugins/android-ndk/lib/org.eclipse.cdt.core_6.8.1.201907021957.jar
