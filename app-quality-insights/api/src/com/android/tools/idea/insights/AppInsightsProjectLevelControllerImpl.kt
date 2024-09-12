@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.insights
 
+import com.android.tools.idea.insights.ai.GeminiToolkit
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.client.AppInsightsClient
-import com.android.tools.idea.insights.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.events.ActiveConnectionChanged
 import com.android.tools.idea.insights.events.AddNoteRequested
 import com.android.tools.idea.insights.events.ChangeEvent
@@ -82,9 +82,10 @@ class AppInsightsProjectLevelControllerImpl(
   @TestOnly private val flowStart: SharingStarted = SharingStarted.Eagerly,
   private val tracker: AppInsightsTracker,
   private val clock: Clock,
-  private val project: Project,
+  override val project: Project,
   onErrorAction: (String, HyperlinkListener?) -> Unit,
   private val defaultFilters: Filters,
+  geminiToolkit: GeminiToolkit,
 ) : AppInsightsProjectLevelController {
 
   override val state: SharedFlow<AppInsightsState>
@@ -97,7 +98,7 @@ class AppInsightsProjectLevelControllerImpl(
       clock,
       appInsightsClient,
       defaultFilters,
-      CodeContextResolverImpl(project),
+      geminiToolkit,
       ::doEmit,
       onErrorAction,
     )

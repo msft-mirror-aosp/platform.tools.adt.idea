@@ -25,6 +25,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.ui.StatusText
 import java.net.SocketTimeoutException
 import javax.swing.JButton
 import kotlin.test.fail
@@ -66,6 +67,18 @@ class InsightContentPanelTest {
         controllerRule.controller.coroutineScope,
         currentInsightFlow.asStateFlow(),
         testRootDisposable,
+        object : InsightPermissionDeniedHandler {
+          override fun handlePermissionDenied(
+            permissionDenied: LoadingState.PermissionDenied,
+            statusText: StatusText,
+          ) {
+            statusText.apply {
+              clear()
+              appendText("handling permission denied")
+              appendLine("simple redirecting message")
+            }
+          }
+        },
       )
   }
 
@@ -76,9 +89,8 @@ class InsightContentPanelTest {
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
 
-    assertThat(errorText).isEqualTo("Request failed")
-
-    assertThat(secondaryText).isEqualTo("You do not have permission to fetch insights")
+    assertThat(errorText).isEqualTo("handling permission denied")
+    assertThat(secondaryText).isEqualTo("simple redirecting message")
   }
 
   @Test
@@ -158,6 +170,45 @@ class InsightContentPanelTest {
 
     assertThat(errorText).isEqualTo("Insights data is not available.")
     assertThat(secondaryText).isEmpty()
+  }
+
+  @Test
+  fun `test quota exhausted`() = runBlocking {
+    currentInsightFlow.update {
+      LoadingState.NetworkFailure(
+        "Quota exceeded for quota metric 'Duet Task API requests' and limit 'Duet Task API requests per day per user' of service 'cloudaicompanion.googleapis.com' for consumer 'project_number:123456789'."
+      )
+    }
+
+    FakeUi(insightContentPanel)
+    delayUntilStatusTextVisible()
+
+    assertThat(errorText).isEqualTo("Quota exhausted")
+    assertThat(secondaryText)
+      .isEqualTo("You have consumed your available daily quota for insights.")
+  }
+
+  @Test
+  fun `test gemini is not enabled`() = runBlocking {
+    currentInsightFlow.update { LoadingState.Unauthorized("Gemini is disabled") }
+
+    FakeUi(insightContentPanel)
+    delayUntilStatusTextVisible()
+
+    assertThat(errorText).isEqualTo("Gemini is disabled")
+    assertThat(secondaryText)
+      .isEqualTo("To see insights, please enable and authorize the Gemini plugin")
+  }
+
+  @Test
+  fun `test unsupported operation`() = runBlocking {
+    currentInsightFlow.update { LoadingState.UnsupportedOperation("Some message") }
+
+    FakeUi(insightContentPanel)
+    delayUntilStatusTextVisible()
+
+    assertThat(errorText).isEqualTo("No insight available")
+    assertThat(secondaryText).isEqualTo("Some message")
   }
 
   private suspend fun delayUntilStatusTextVisible() =

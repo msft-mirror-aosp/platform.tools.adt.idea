@@ -15,29 +15,37 @@
  */
 package com.android.tools.idea.avd
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.RemoteSystemImage
-import com.android.sdklib.devices.Abi
 import com.android.sdklib.getFullApiName
 import com.android.tools.idea.adddevicedialog.AndroidVersionSelection
 import com.android.tools.idea.adddevicedialog.ApiFilter
+import com.android.tools.idea.adddevicedialog.SortOrder
 import com.android.tools.idea.adddevicedialog.Table
 import com.android.tools.idea.adddevicedialog.TableColumn
 import com.android.tools.idea.adddevicedialog.TableColumnWidth
 import com.android.tools.idea.adddevicedialog.TableSelectionState
+import com.android.tools.idea.adddevicedialog.TableSortState
 import com.android.tools.idea.adddevicedialog.TableTextColumn
-import com.android.utils.CpuArchitecture
-import com.android.utils.osArchitecture
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
+import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
@@ -45,7 +53,7 @@ import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.separator
-import org.jetbrains.jewel.ui.icon.PathIconKey
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @Composable
 internal fun DevicePanel(
@@ -57,8 +65,9 @@ internal fun DevicePanel(
   onDevicePanelStateChange: (DevicePanelState) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-  Column {
+  Column(modifier) {
     Text("Name", Modifier.padding(bottom = Padding.SMALL))
 
     TextField(
@@ -67,20 +76,21 @@ internal fun DevicePanel(
       Modifier.padding(bottom = Padding.MEDIUM_LARGE),
     )
 
-    Text("Select System Image", Modifier.padding(bottom = Padding.SMALL_MEDIUM))
-
     Text(
-      "Available system images are displayed based on the service and ABI configuration",
-      Modifier.padding(bottom = Padding.SMALL_MEDIUM),
+      "Select system image",
+      fontWeight = FontWeight.SemiBold,
+      fontSize = LocalTextStyle.current.fontSize * 1.1,
+      modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
     )
 
-    Row {
+    Row(horizontalArrangement = Arrangement.spacedBy(Padding.MEDIUM_LARGE)) {
       ApiFilter(
         androidVersions,
         selectedApiLevel = devicePanelState.selectedApiLevel,
         onApiLevelChange = {
           onDevicePanelStateChange(devicePanelState.copy(selectedApiLevel = it))
         },
+        Modifier.padding(bottom = Padding.MEDIUM_LARGE),
       )
 
       ServicesDropdown(
@@ -93,14 +103,23 @@ internal fun DevicePanel(
       )
     }
 
-    SystemImageTable(
-      images,
-      devicePanelState,
-      configureDevicePanelState.systemImageTableSelectionState,
-      onDownloadButtonClick,
-      onSystemImageTableRowClick,
-      Modifier.weight(1f).padding(bottom = Padding.SMALL),
-    )
+    Box(Modifier.weight(1f).padding(bottom = Padding.SMALL)) {
+      val filteredImages = images.filter(devicePanelState::test)
+      if (filteredImages.isEmpty()) {
+        EmptyStatePanel(
+          "No system images available matching the current set of filters.",
+          Modifier.fillMaxSize(),
+        )
+      } else {
+        SystemImageTable(
+          filteredImages,
+          configureDevicePanelState.systemImageTableSelectionState,
+          configureDevicePanelState::setIsSystemImageTableSelectionValid,
+          onDownloadButtonClick,
+          onSystemImageTableRowClick,
+        )
+      }
+    }
 
     ShowSdkExtensionSystemImagesCheckbox(
       devicePanelState.sdkExtensionSystemImagesVisible,
@@ -111,10 +130,10 @@ internal fun DevicePanel(
     )
 
     CheckboxRow(
-      "Only show system images recommended for my host CPU architecture",
-      devicePanelState.onlyForHostCpuArchitectureVisible,
+      "Show only recommended system images",
+      devicePanelState.onlyRecommendedSystemImages,
       onCheckedChange = {
-        onDevicePanelStateChange(devicePanelState.copy(onlyForHostCpuArchitectureVisible = it))
+        onDevicePanelStateChange(devicePanelState.copy(onlyRecommendedSystemImages = it))
       },
     )
   }
@@ -157,22 +176,42 @@ private fun ServicesDropdown(
 
 @Composable
 private fun SystemImageTable(
-  images: ImmutableList<ISystemImage>,
-  devicePanelState: DevicePanelState,
+  images: List<ISystemImage>,
   selectionState: TableSelectionState<ISystemImage>,
+  onIsSystemImageTableSelectionValidChange: (Boolean) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
   onRowClick: (ISystemImage) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  onIsSystemImageTableSelectionValidChange(selectionState.selection in images)
+
+  val sortedImages = images.sortedWith(SystemImageComparator)
+  val starredImage by rememberUpdatedState(sortedImages.last().takeIf { it.isRecommended() })
+  val starColumn = remember {
+    TableColumn("", TableColumnWidth.Fixed(16.dp), comparator = SystemImageComparator) {
+      if (it == starredImage) {
+        Icon(
+          AllIconsKeys.Nodes.Favorite,
+          contentDescription = "Recommended",
+          modifier = Modifier.size(16.dp),
+        )
+      }
+    }
+  }
   val columns =
     listOf(
+      starColumn,
       TableColumn(
         "",
         TableColumnWidth.Fixed(16.dp),
         Comparator.comparing { it is RemoteSystemImage },
       ) {
-        if (it is RemoteSystemImage)
-          DownloadButton(onClick = { onDownloadButtonClick(it.`package`.path) })
+        if (it is RemoteSystemImage) {
+          DownloadButton(
+            onClick = { onDownloadButtonClick(it.`package`.path) },
+            Modifier.size(16.dp),
+          )
+        }
       },
       TableTextColumn("System Image", attribute = { it.`package`.displayName }),
       TableTextColumn(
@@ -185,9 +224,16 @@ private fun SystemImageTable(
 
   Table(
     columns,
-    images.filter(devicePanelState::test),
+    images,
     { it },
     modifier,
+    tableSortState =
+      remember {
+        TableSortState<ISystemImage>().apply {
+          sortColumn = starColumn
+          sortOrder = SortOrder.DESCENDING
+        }
+      },
     tableSelectionState = selectionState,
     onRowClick = onRowClick,
   )
@@ -198,7 +244,7 @@ internal constructor(
   internal val selectedApiLevel: AndroidVersionSelection,
   internal val selectedServices: Services?,
   internal val sdkExtensionSystemImagesVisible: Boolean = false,
-  internal val onlyForHostCpuArchitectureVisible: Boolean = true,
+  internal val onlyRecommendedSystemImages: Boolean = true,
 ) {
   internal fun test(image: ISystemImage): Boolean {
     val servicesMatch = selectedServices == null || image.getServices() == selectedServices
@@ -207,26 +253,15 @@ internal constructor(
       (sdkExtensionSystemImagesVisible || image.androidVersion.isBaseExtension) &&
         selectedApiLevel.matches(image.androidVersion)
 
-    val abisMatch =
-      !onlyForHostCpuArchitectureVisible ||
-        image.abiTypes.contains(valueOfCpuArchitecture(osArchitecture))
-
-    return servicesMatch && androidVersionMatches && abisMatch
-  }
-
-  private companion object {
-    private fun valueOfCpuArchitecture(architecture: CpuArchitecture) =
-      when (architecture) {
-        CpuArchitecture.X86_64 -> Abi.X86_64.toString()
-        CpuArchitecture.ARM -> Abi.ARM64_V8A.toString()
-        else -> throw IllegalArgumentException(architecture.toString())
-      }
+    return servicesMatch &&
+      androidVersionMatches &&
+      (!onlyRecommendedSystemImages || image.isRecommended())
   }
 }
 
 @Composable
-private fun DownloadButton(onClick: () -> Unit) {
-  IconButton(onClick) { Icon(PathIconKey("expui/general/download.svg"), null) }
+private fun DownloadButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+  IconButton(onClick, modifier) { Icon(AllIconsKeys.Actions.Download, "Download") }
 }
 
 @Composable
@@ -245,4 +280,9 @@ private fun ShowSdkExtensionSystemImagesCheckbox(
 
     InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
   }
+}
+
+@Composable
+private fun EmptyStatePanel(text: String, modifier: Modifier = Modifier) {
+  Box(modifier) { Text(text, Modifier.align(Alignment.Center)) }
 }

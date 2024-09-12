@@ -34,15 +34,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.testTag
 import com.android.resources.ScreenOrientation
-import com.android.sdklib.ISystemImage
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
-import com.android.sdklib.internal.avd.EmulatedProperties
-import com.android.sdklib.internal.avd.GpuMode
 import com.android.tools.idea.adddevicedialog.LocalFileSystem
 import com.android.tools.idea.adddevicedialog.LocalProject
 import com.intellij.icons.AllIcons
@@ -56,11 +52,9 @@ import kotlin.math.max
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
-import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -79,7 +73,7 @@ internal fun AdditionalSettingsPanel(
       verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE),
     ) {
       Row {
-        Text("Device skin", Modifier.padding(end = Padding.SMALL))
+        Text("Device skin", Modifier.padding(end = Padding.SMALL).alignByBaseline())
 
         Dropdown(
           configureDevicePanelState.device.skin,
@@ -87,10 +81,8 @@ internal fun AdditionalSettingsPanel(
           onSelectedItemChange = {
             configureDevicePanelState.device = configureDevicePanelState.device.copy(skin = it)
           },
-          Modifier.padding(end = Padding.MEDIUM),
+          Modifier.padding(end = Padding.MEDIUM).alignByBaseline(),
         )
-
-        OutlinedButton(onImportButtonClick) { Text("Import") }
       }
 
       CameraGroup(configureDevicePanelState.device, configureDevicePanelState::device::set)
@@ -100,12 +92,13 @@ internal fun AdditionalSettingsPanel(
       StorageGroup(
         configureDevicePanelState.device,
         additionalSettingsPanelState.storageGroupState,
+        configureDevicePanelState.validity.isExpandedStorageValid,
         configureDevicePanelState::device::set,
+        configureDevicePanelState::setExpandedStorage,
       )
 
       EmulatedPerformanceGroup(
         configureDevicePanelState.device,
-        requireNotNull(configureDevicePanelState.systemImageTableSelectionState.selection),
         configureDevicePanelState::device::set,
       )
     }
@@ -118,26 +111,34 @@ internal fun AdditionalSettingsPanel(
 
 @Composable
 private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
-  GroupLayout {
+  Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Camera")
-    Text("Front")
 
-    Dropdown(
-      device.frontCamera,
-      FRONT_CAMERAS,
-      onSelectedItemChange = { onDeviceChange(device.copy(frontCamera = it)) },
-    )
+    Row {
+      Text("Front", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
-    InfoOutlineIcon(Modifier.layoutId(Icon))
-    Text("Rear")
+      Dropdown(
+        device.frontCamera,
+        FRONT_CAMERAS,
+        onSelectedItemChange = { onDeviceChange(device.copy(frontCamera = it)) },
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+      )
 
-    Dropdown(
-      device.rearCamera,
-      REAR_CAMERAS,
-      onSelectedItemChange = { onDeviceChange(device.copy(rearCamera = it)) },
-    )
+      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+    }
 
-    InfoOutlineIcon(Modifier.layoutId(Icon))
+    Row {
+      Text("Rear", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+
+      Dropdown(
+        device.rearCamera,
+        REAR_CAMERAS,
+        onSelectedItemChange = { onDeviceChange(device.copy(rearCamera = it)) },
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+      )
+
+      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+    }
   }
 }
 
@@ -148,26 +149,34 @@ private val REAR_CAMERAS = AvdCamera.values().asIterable().toImmutableList()
 
 @Composable
 private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
-  GroupLayout {
+  Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Network")
-    Text("Speed")
 
-    Dropdown(
-      device.speed,
-      SPEEDS,
-      onSelectedItemChange = { onDeviceChange(device.copy(speed = it)) },
-    )
+    Row {
+      Text("Speed", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
-    InfoOutlineIcon(Modifier.layoutId(Icon))
-    Text("Latency")
+      Dropdown(
+        device.speed,
+        SPEEDS,
+        onSelectedItemChange = { onDeviceChange(device.copy(speed = it)) },
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+      )
 
-    Dropdown(
-      device.latency,
-      LATENCIES,
-      onSelectedItemChange = { onDeviceChange(device.copy(latency = it)) },
-    )
+      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+    }
 
-    InfoOutlineIcon(Modifier.layoutId(Icon))
+    Row {
+      Text("Latency", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+
+      Dropdown(
+        device.latency,
+        LATENCIES,
+        onSelectedItemChange = { onDeviceChange(device.copy(latency = it)) },
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+      )
+
+      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+    }
   }
 }
 
@@ -176,34 +185,41 @@ private val LATENCIES = AvdNetworkLatency.values().asIterable().toImmutableList(
 
 @Composable
 private fun StartupGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
-  GroupLayout {
+  Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Startup")
-    Text("Orientation")
 
-    Dropdown(
-      menuContent = {
-        ORIENTATIONS.forEach {
-          selectableItem(
-            device.orientation == it,
-            onClick = { onDeviceChange(device.copy(orientation = it)) },
-          ) {
-            Text(it.shortDisplayValue)
+    Row {
+      Text("Orientation", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+
+      Dropdown(
+        Modifier.alignByBaseline(),
+        menuContent = {
+          ORIENTATIONS.forEach {
+            selectableItem(
+              device.orientation == it,
+              onClick = { onDeviceChange(device.copy(orientation = it)) },
+            ) {
+              Text(it.shortDisplayValue)
+            }
           }
-        }
+        },
+      ) {
+        Text(device.orientation.shortDisplayValue)
       }
-    ) {
-      Text(device.orientation.shortDisplayValue)
     }
 
-    Text("Default boot")
+    Row {
+      Text("Default boot", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
-    Dropdown(
-      device.defaultBoot,
-      BOOTS,
-      onSelectedItemChange = { onDeviceChange(device.copy(defaultBoot = it)) },
-    )
+      Dropdown(
+        device.defaultBoot,
+        BOOTS,
+        onSelectedItemChange = { onDeviceChange(device.copy(defaultBoot = it)) },
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+      )
 
-    InfoOutlineIcon(Modifier.layoutId(Icon))
+      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+    }
   }
 }
 
@@ -216,7 +232,9 @@ private val BOOTS = enumValues<Boot>().asIterable().toImmutableList()
 private fun StorageGroup(
   device: VirtualDevice,
   storageGroupState: StorageGroupState,
+  isExistingImageValid: Boolean,
   onDeviceChange: (VirtualDevice) -> Unit,
+  onExpandedStorageChange: (ExpandedStorage) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Storage")
@@ -244,9 +262,7 @@ private fun StorageGroup(
         storageGroupState.selectedRadioButton,
         onClick = {
           storageGroupState.selectedRadioButton = RadioButton.CUSTOM
-
-          val custom = storageGroupState.custom.withMaxUnit()
-          onDeviceChange(device.copy(expandedStorage = Custom(custom)))
+          onExpandedStorageChange(Custom(storageGroupState.custom.withMaxUnit()))
         },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("CustomRadioButton"),
       )
@@ -263,7 +279,6 @@ private fun StorageGroup(
     }
 
     Row {
-      val existingImageFieldState = storageGroupState.existingImageFieldState
       val fileSystem = LocalFileSystem.current
 
       RadioButtonRow(
@@ -272,26 +287,19 @@ private fun StorageGroup(
         onClick = {
           storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE
 
-          if (existingImageFieldState.valid) {
-            val image = fileSystem.getPath(existingImageFieldState.value)
-            onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
-          }
+          val image = fileSystem.getPath(storageGroupState.existingImage)
+          onExpandedStorageChange(ExistingImage(image))
         },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("ExistingImageRadioButton"),
       )
 
       ExistingImageField(
-        existingImageFieldState,
+        storageGroupState.existingImage,
         storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE,
-        onStateChange = {
-          storageGroupState.existingImageFieldState = it
-
-          if (it.valid) {
-            val image = fileSystem.getPath(it.value)
-            onDeviceChange(device.copy(expandedStorage = ExistingImage(image)))
-          }
-
-          // TODO Else image is not valid. Disable the Add button.
+        isExistingImageValid,
+        onExistingImageChange = {
+          storageGroupState.existingImage = it
+          onExpandedStorageChange(ExistingImage(fileSystem.getPath(it)))
         },
         Modifier.alignByBaseline(),
       )
@@ -302,7 +310,7 @@ private fun StorageGroup(
       storageGroupState.selectedRadioButton,
       onClick = {
         storageGroupState.selectedRadioButton = RadioButton.NONE
-        onDeviceChange(device.copy(expandedStorage = None))
+        onExpandedStorageChange(None)
       },
     )
   }
@@ -320,25 +328,23 @@ private fun <E : Enum<E>> RadioButtonRow(
 
 @Composable
 private fun ExistingImageField(
-  state: ExistingImageFieldState,
+  existingImage: String,
   enabled: Boolean,
-  onStateChange: (ExistingImageFieldState) -> Unit,
+  isExistingImageValid: Boolean,
+  onExistingImageChange: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Column(modifier) {
-    if (enabled && !state.valid) {
+    if (enabled && !isExistingImageValid) {
       Text("The specified image must be a valid file")
     }
 
-    val fileSystem = LocalFileSystem.current
     @OptIn(ExperimentalJewelApi::class) val component = LocalComponent.current
     val project = LocalProject.current
 
     TextField(
-      state.value,
-      onValueChange = {
-        onStateChange(ExistingImageFieldState(it, Files.isRegularFile(fileSystem.getPath(it))))
-      },
+      existingImage,
+      onExistingImageChange,
       Modifier.testTag("ExistingImageField"),
       enabled,
       trailingIcon = {
@@ -350,10 +356,7 @@ private fun ExistingImageField(
               enabled,
               onClick = {
                 val image = chooseFile(component, project)
-
-                if (image != null) {
-                  onStateChange(ExistingImageFieldState(image.toString(), true))
-                }
+                if (image != null) onExistingImageChange(image.toString())
               },
             )
             .pointerHoverIcon(PointerIcon.Default),
@@ -386,25 +389,10 @@ private fun chooseFile(parent: Component, project: Project?): Path? {
 @Composable
 private fun EmulatedPerformanceGroup(
   device: VirtualDevice,
-  image: ISystemImage,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Emulated Performance")
-
-    Row {
-      CheckboxRow(
-        "Enable multithreading",
-        device.cpuCoreCount != null,
-        onCheckedChange = {
-          val count = if (it) EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES else null
-          onDeviceChange(device.copy(cpuCoreCount = count))
-        },
-        Modifier.padding(end = Padding.MEDIUM),
-      )
-
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
-    }
 
     Row {
       Text("CPU cores", Modifier.alignByBaseline().padding(end = Padding.SMALL))
@@ -429,18 +417,18 @@ private fun EmulatedPerformanceGroup(
     }
 
     Row {
-      Text("Graphic acceleration", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+      Text("Graphics acceleration", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
       Dropdown(
-        device.graphicAcceleration,
-        listOf(GpuMode.AUTO, GpuMode.HOST, GpuMode.getSoftwareGpuMode(image)).toImmutableList(),
-        onSelectedItemChange = { onDeviceChange(device.copy(graphicAcceleration = it)) },
+        device.graphicsMode,
+        listOf(GraphicsMode.AUTO, GraphicsMode.HARDWARE, GraphicsMode.SOFTWARE).toImmutableList(),
+        onSelectedItemChange = { onDeviceChange(device.copy(graphicsMode = it)) },
         Modifier.alignByBaseline(),
       )
     }
 
     Row {
-      Text("Simulated RAM", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+      Text("RAM", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
       StorageCapacityField(
         device.simulatedRam,
@@ -472,9 +460,7 @@ internal class AdditionalSettingsPanelState internal constructor(device: Virtual
 internal class StorageGroupState internal constructor(device: VirtualDevice) {
   internal var selectedRadioButton by mutableStateOf(RadioButton.valueOf(device.expandedStorage))
   internal var custom by mutableStateOf(customValue(device))
-
-  internal var existingImageFieldState by
-    mutableStateOf(ExistingImageFieldState.from(device.expandedStorage))
+  internal var existingImage by mutableStateOf(device.expandedStorage.toTextFieldValue())
 
   private companion object {
     private fun customValue(device: VirtualDevice) =
@@ -483,6 +469,8 @@ internal class StorageGroupState internal constructor(device: VirtualDevice) {
       } else {
         StorageCapacity(512, StorageCapacity.Unit.MB)
       }
+
+    private fun ExpandedStorage.toTextFieldValue() = if (this is ExistingImage) toString() else ""
   }
 }
 
@@ -503,28 +491,6 @@ internal enum class RadioButton {
         is Custom -> CUSTOM
         is ExistingImage -> EXISTING_IMAGE
         is None -> NONE
-      }
-  }
-}
-
-/**
- * @property value the value of the Existing image text field
- * @property valid if Files.isRegularFile(Path.of(value)) is true
- */
-internal data class ExistingImageFieldState
-internal constructor(internal val value: String, internal val valid: Boolean) {
-  internal companion object {
-    internal fun from(storage: ExpandedStorage) =
-      if (storage is ExistingImage) {
-        // If storage is an ExistingImage the Existing image radio button is selected.
-        // storage.toString() returns storage.value.toString() which must be a valid path. Set valid
-        // to true.
-        ExistingImageFieldState(storage.toString(), true)
-      } else {
-        // The Existing image radio button is not selected. The Existing image text field is still
-        // displayed, and it still needs a string value. Use the empty string and set valid to false
-        // because the empty string is not a path to a real file.
-        ExistingImageFieldState("", false)
       }
   }
 }

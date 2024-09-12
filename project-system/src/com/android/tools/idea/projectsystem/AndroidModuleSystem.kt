@@ -34,6 +34,7 @@ import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.android.facet.AndroidFacet
 import java.nio.file.Path
 
 /**
@@ -383,8 +384,40 @@ interface AndroidModuleSystem: SampleDataDirectoryProvider, ModuleHierarchyProvi
 
   val moduleDependencies: ModuleDependencies get() = error("Not implemented")
 
-  /** Return a string suitable for presenting to the user to identify this Module System's module. */
+  /** Return a String suitable for presenting to the user to identify this Module System's module. */
   fun getDisplayNameForModule(): String = module.name
+  /** Return a String suitable for presenting to the user to identify this Module System's associated group of modules. */
+  fun getDisplayNameForModuleGroup(): String = module.name
+
+  /**
+   * Is this module an Android module that contains Android entities that are potentially relevant for production?  Returning
+   * `true` from this implies the presence of an [AndroidFacet] for the [module].
+   */
+  // TODO(xof): this (by and large) replaces calls to isMainModule, except that there might be two sorts of uses of isMainModule().  One
+  //  is approximately "does this module contain production sources?"; the other is "is this module the most likely-relevant module from
+  //  all the modules in this linked module group".  The difference shows up in projects that have type = Type.TEST under Gradle, where
+  //  the main module of that linked group is not a production module.
+  fun isProductionAndroidModule() = AndroidFacet.getInstance(module) != null
+
+  /**
+   * Is this module suitable for use in an [AndroidRunConfiguration] editor?
+   */
+  fun isValidForAndroidRunConfiguration() = when(type) {
+    Type.TYPE_APP, Type.TYPE_DYNAMIC_FEATURE -> true
+    Type.TYPE_ATOM, Type.TYPE_FEATURE, Type.TYPE_INSTANTAPP -> false // Legacy not-supported module types.
+    Type.TYPE_NON_ANDROID -> false
+    Type.TYPE_LIBRARY, Type.TYPE_TEST -> false // Valid for AndroidTestRunConfiguration instead.
+  }
+
+  /**
+   * Is this module suitable for use in an [AndroidTestRunConfiguration] editor?
+   */
+  fun isValidForAndroidTestRunConfiguration() = when(type) {
+    Type.TYPE_APP, Type.TYPE_DYNAMIC_FEATURE, Type.TYPE_LIBRARY -> false
+    Type.TYPE_TEST -> true
+    Type.TYPE_ATOM, Type.TYPE_FEATURE, Type.TYPE_INSTANTAPP -> false // Legacy not-supported module types.
+    Type.TYPE_NON_ANDROID -> false
+  }
 }
 
 /**
@@ -455,12 +488,14 @@ fun AndroidModuleSystem.getScopeType(file: VirtualFile, project: Project): Scope
 
   val inAndroidTest = testScopes.isAndroidTestSource(file)
   val inUnitTest = testScopes.isUnitTestSource(file)
+  val inScreenshotTest = testScopes.isScreenshotTestSource(file)
 
   return when {
-    !inUnitTest && inAndroidTest -> ScopeType.ANDROID_TEST
-    inUnitTest && !inAndroidTest -> ScopeType.UNIT_TEST
+    !inUnitTest && inAndroidTest && !inScreenshotTest -> ScopeType.ANDROID_TEST
+    inUnitTest && !inAndroidTest && !inScreenshotTest -> ScopeType.UNIT_TEST
+    !inUnitTest && !inAndroidTest && inScreenshotTest -> ScopeType.SCREENSHOT_TEST
     else -> throw IllegalStateException(
-      "Unexpected Test Scope: $file in $project appears to be both in Unit Tests and Android Tests, but should only be part of one.")
+      "Unexpected Test Scope: $file in $project is not in exactly one test source set.")
   }
 }
 
@@ -494,8 +529,6 @@ val LINKED_ANDROID_GRADLE_MODULE_GROUP = Key.create<LinkedAndroidGradleModuleGro
 fun Module.getHolderModule() : Module = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)?.holder ?: this
 
 fun Module.getMainModule() : Module = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)?.main ?: this
-
-fun Module.isMainModule() : Boolean = getMainModule() == this
 
 fun Module.getAndroidTestModule() : Module? = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)?.androidTest
 

@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.insights.ui
 
+import com.intellij.ide.CopyProvider
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.HTMLEditorKitBuilder
 import com.intellij.util.ui.JBUI
@@ -25,18 +29,22 @@ import javax.swing.text.DefaultCaret
 private const val EMPTY_PARAGRAPH = "<p></p>"
 
 /** [JTextPane] that displays the AI insight. */
-class InsightTextPane : JTextPane() {
+class InsightTextPane : JTextPane(), CopyProvider {
 
   private val markDownConverter = MarkDownConverter { AqiHtmlRenderer(it) }
 
+  private var currentText = ""
+
   init {
     contentType = "text/html"
-    editorKit = HTMLEditorKitBuilder.simple()
+    editorKit =
+      HTMLEditorKitBuilder.simple().apply { styleSheet.addRule("body { white-space: pre-wrap; }") }
     isEditable = false
     isOpaque = false
     background = JBColor.background()
     border = JBUI.Borders.empty(8)
     font = StartupUiUtil.labelFont
+    isFocusable = false
   }
 
   override fun setText(text: String) {
@@ -47,10 +55,20 @@ class InsightTextPane : JTextPane() {
     } else {
       super.setText(markDownConverter.toHtml(text))
     }
+    currentText = text
     val caret = caret
     if (caret is DefaultCaret) {
       caret.updatePolicy = DefaultCaret.NEVER_UPDATE
     }
     caretPosition = 0
   }
+
+  override fun performCopy(dataContext: DataContext) =
+    CopyPasteManager.copyTextToClipboard(currentText)
+
+  override fun isCopyEnabled(dataContext: DataContext) = currentText.isNotBlank()
+
+  override fun isCopyVisible(dataContext: DataContext) = true
+
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }

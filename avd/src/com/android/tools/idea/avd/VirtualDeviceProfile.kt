@@ -24,7 +24,6 @@ import com.android.sdklib.deviceprovisioner.Resolution
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.devices.Device
 import com.android.tools.idea.adddevicedialog.DeviceProfile
-import com.android.tools.idea.adddevicedialog.DeviceSource
 import com.android.tools.idea.adddevicedialog.FormFactors
 import com.google.common.collect.Range
 import icons.StudioIconsCompose
@@ -44,10 +43,9 @@ internal data class VirtualDeviceProfile(
   override val isRound: Boolean,
   override val abis: List<Abi>,
   override val formFactor: String,
+  val isDeprecated: Boolean,
+  val isGooglePlaySupported: Boolean,
 ) : DeviceProfile {
-
-  override val source: Class<out DeviceSource>
-    get() = LocalVirtualDeviceSource::class.java
 
   override val isVirtual
     get() = true
@@ -83,6 +81,8 @@ internal data class VirtualDeviceProfile(
 
   class Builder : DeviceProfile.Builder() {
     lateinit var device: Device
+    var isDeprecated: Boolean = false
+    var isGooglePlaySupported: Boolean = false
 
     fun initializeFromDevice(device: Device, androidVersions: Set<AndroidVersion>) {
       this.device = device
@@ -96,11 +96,15 @@ internal data class VirtualDeviceProfile(
       isRound = screen.screenRound == ScreenRound.ROUND
       abis = device.defaultHardware.supportedAbis + device.defaultHardware.translatedAbis
       formFactor = device.formFactor
+      isDeprecated = device.isDeprecated
+      isGooglePlaySupported = device.hasPlayStore()
     }
 
     fun copyFrom(profile: VirtualDeviceProfile) {
       super.copyFrom(profile)
       device = profile.device
+      isDeprecated = profile.isDeprecated
+      isGooglePlaySupported = profile.isGooglePlaySupported
     }
 
     override fun build(): VirtualDeviceProfile =
@@ -115,6 +119,8 @@ internal data class VirtualDeviceProfile(
         isRound = isRound,
         abis = abis,
         formFactor = formFactor,
+        isDeprecated = isDeprecated,
+        isGooglePlaySupported = isGooglePlaySupported,
       )
   }
 }

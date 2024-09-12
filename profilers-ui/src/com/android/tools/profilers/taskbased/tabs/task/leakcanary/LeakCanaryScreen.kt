@@ -23,41 +23,44 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.android.tools.profilers.leakcanary.LeakCanaryModel
-import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions
 import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizontalDivider
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.actionbars.LeakCanaryActionBar
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails.LeakDetailsPanel
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.leaklist.LeakListView
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
+import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
 
 @Composable
 fun LeakCanaryScreen(leakCanaryModel: LeakCanaryModel) {
   Column(
     modifier = Modifier.fillMaxSize(),
     verticalArrangement = Arrangement.Center,
-    horizontalAlignment = Alignment.CenterHorizontally
+    horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     LeakCanaryActionBar(leakCanaryModel)
     ToolWindowHorizontalDivider()
     HorizontalSplitLayout(
-      minRatio = TaskBasedUxDimensions.SELECTION_PANEL_MIN_RATIO_FLOAT,
-      maxRatio = TaskBasedUxDimensions.SELECTION_PANEL_MAX_RATIO_FLOAT,
-      first = {
-        LeakListView(leakCanaryModel, it)
-      },
-      second = {
-        LeakDetailsColumn(it, leakCanaryModel)
-      }
+      firstPaneMinWidth = 150.dp,
+      secondPaneMinWidth = 250.dp,
+      first = { LeakListView(leakCanaryModel) },
+      second = { LeakDetailsColumn(leakCanaryModel) },
+      state = rememberSplitLayoutState(.3f),
+      modifier = Modifier.fillMaxSize(),
     )
   }
 }
 
 @Composable
-private fun LeakDetailsColumn(modifier: Modifier, leakCanaryModel: LeakCanaryModel) {
+private fun LeakDetailsColumn(leakCanaryModel: LeakCanaryModel) {
   val selectedLeak by leakCanaryModel.selectedLeak.collectAsState()
   val isRecording by leakCanaryModel.isRecording.collectAsState()
-  Column(modifier = modifier) {
-    LeakDetailsPanel(selectedLeak = selectedLeak, gotoDeclaration = leakCanaryModel::goToDeclaration, isRecording = isRecording)
+  Column {
+    LeakDetailsPanel(
+      selectedLeak = selectedLeak,
+      gotoDeclaration = leakCanaryModel::goToDeclaration,
+      isRecording = isRecording,
+    )
   }
 }

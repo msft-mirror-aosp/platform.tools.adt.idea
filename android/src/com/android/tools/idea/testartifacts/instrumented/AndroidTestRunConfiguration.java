@@ -16,8 +16,6 @@
 
 package com.android.tools.idea.testartifacts.instrumented;
 
-import static com.android.tools.idea.projectsystem.ModuleSystemUtil.isAndroidTestModule;
-import static com.android.tools.idea.projectsystem.ModuleSystemUtil.isMainModule;
 import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getModuleSystem;
 import static com.android.tools.idea.testartifacts.instrumented.AndroidRunConfigurationToken.getModuleForAndroidTestRunConfiguration;
 import static com.intellij.codeInsight.AnnotationUtil.CHECK_HIERARCHY;
@@ -34,7 +32,6 @@ import com.android.tools.idea.run.ValidationError;
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor;
 import com.android.tools.idea.run.editor.AndroidRunConfigurationEditor;
 import com.android.tools.idea.run.editor.AndroidTestExtraParam;
-import com.android.tools.idea.run.editor.AndroidTestExtraParamKt;
 import com.android.tools.idea.run.editor.DeployTargetProvider;
 import com.android.tools.idea.run.editor.TestRunParameters;
 import com.google.common.collect.ImmutableList;
@@ -308,25 +305,8 @@ public class AndroidTestRunConfiguration extends AndroidRunConfigurationBase imp
       getProject(),
       module -> {
         if (module == null) return false;
-        final var facet = AndroidFacet.getInstance(module);
-        if (facet == null) return false;
-        final var moduleSystem = getModuleSystem(facet);
-        final var moduleType = moduleSystem.getType();
-        switch (moduleType) {
-          case TYPE_APP:
-          case TYPE_DYNAMIC_FEATURE:
-          case TYPE_LIBRARY:
-            return isAndroidTestModule(module);
-          case TYPE_TEST:
-            return isMainModule(module);
-          case TYPE_ATOM:
-          case TYPE_FEATURE:
-          case TYPE_INSTANTAPP:
-            return false; // Legacy not-supported module types.
-          case TYPE_NON_ANDROID:
-            return false;
-        }
-        return false;
+        final var moduleSystem = getModuleSystem(module);
+        return moduleSystem.isValidForAndroidTestRunConfiguration();
       },
       this,
       false,

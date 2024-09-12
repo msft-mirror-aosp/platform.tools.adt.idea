@@ -124,6 +124,11 @@ public final class StudioFlags {
     "Show a combobox to select the version of Android Gradle plugin used for the new project",
     IdeaIsInternalDefault.INSTANCE);
 
+  public static final Flag<Boolean> NPW_SHOW_AGP_VERSION_COMBO_BOX_EXPERIMENTAL_SETTING = new BooleanFlag(
+    NPW, "show.agp.version.combobox.experimental.option", "Show experimental setting allowing enabling AGP version combobox",
+    "Show a checkbox in experimental settings, which when enabled shows a combobox to select the version of Android Gradle plugin used for the new project",
+    ChannelDefault.enabledUpTo(DEV));
+
   public static final Flag<Boolean> NPW_INCLUDE_ALL_COMPATIBLE_ANDROID_GRADLE_PLUGIN_VERSIONS = new BooleanFlag(
     NPW, "show.agp.version.combobox.all.versions", "List all previous versions of AGP",
     "List all versions of AGP in the new project wizard combo box. " +
@@ -339,7 +344,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SCROLLABLE_ZOOM_ON_GRID = new BooleanFlag(
     NELE, "scrollable.zoom.grid.layout", "Enable scrollable zoom on grid layout",
     "If enabled, zooming on a grid layout will not re-layout the items and will make the preview scrollable.",
-    ChannelDefault.enabledUpTo(CANARY));
+    false);
 
   public static final Flag<Boolean> DETACHABLE_ATTACHED_TOOLWINDOWS = new BooleanFlag(
     NELE, "detached.attached.toolwindows", "Allow floating attached tool windows",
@@ -413,6 +418,13 @@ public final class StudioFlags {
     "When installing via the Package Manager, do not use the --dont-kill flag and skip process termination for API33+",
     "We assume there are no race conditions with the package manager and give full control to it.",
     true);
+
+  public static final Flag<Boolean> SUPPORT_CUSTOM_ARTIFACTS = new BooleanFlag(
+    RUNDEBUG,
+    "support.custom.artifacts",
+    "Support custom build artifacts in deployment.",
+    "Enable support and UI element for Run configuration that deploys a custom artifact",
+    false);
 
   /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
@@ -657,7 +669,7 @@ public final class StudioFlags {
     "panel.memory.saver",
     "Enable Logcat Panel memory saving feature",
     "Reduces memory usage of Logcat tool by writing data to a file when the panel is not visible",
-    true
+    false
   );
 
   public static final Flag<Boolean> LOGCAT_TERMINATE_APP_ACTIONS_ENABLED = new BooleanFlag(
@@ -1364,7 +1376,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> GALLERY_PREVIEW = new BooleanFlag(
     PREVIEW_COMMON, "preview.gallery.dropdown", "Enable new Gallery view with dropdown",
     "If enabled, Gallery view will only have dropdown selector instead of tabs.",
-    true);
+    false);
 
   //endregion
 
@@ -1698,8 +1710,16 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_CATALOG_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "device.catalog.enabled",
-    "Enable the Device Catalog for device creation",
-    "Enable new unified UI for creating AVDs and selecting Firebase devices",
+    "Enable the Device Catalog for virtual device creation",
+    "Enable new UI for creating AVDs",
+    false
+  );
+
+  public static final Flag<Boolean> DIRECT_ACCESS_DEVICE_CATALOG_ENABLED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "direct.access.device.catalog.enabled",
+    "Enable the Device Catalog for Direct Access devices",
+    "Enable new UI for selecting Firebase devices",
     false
   );
   // endregion
@@ -2000,7 +2020,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "chat.use.compose.for.ui",
                     "Use the Compose for Desktop/Jewel-based UI for the Chat toolwindow.",
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
-                    false);
+                    ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",

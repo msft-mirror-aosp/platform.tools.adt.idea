@@ -40,16 +40,18 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
+import org.jetbrains.jewel.ui.icon.PathIconKey
 
 @Composable
-fun DeviceTable(
-  devices: List<DeviceProfile>,
-  columns: List<TableColumn<DeviceProfile>>,
+fun <DeviceT : DeviceProfile> DeviceTable(
+  devices: List<DeviceT>,
+  columns: List<TableColumn<DeviceT>>,
   filterContent: @Composable () -> Unit,
   modifier: Modifier = Modifier,
-  tableSelectionState: TableSelectionState<DeviceProfile> = remember { TableSelectionState() },
-  filterState: DeviceFilterState = remember { DeviceFilterState() },
-  onRowSecondaryClick: (DeviceProfile, Offset) -> Unit = { _, _ -> },
+  tableSelectionState: TableSelectionState<DeviceT> = remember { TableSelectionState() },
+  filterState: DeviceFilterState<DeviceT> = remember { DeviceFilterState() },
+  onRowSecondaryClick: (DeviceT, Offset) -> Unit = { _, _ -> },
 ) {
   var showDetails by remember { mutableStateOf(false) }
 
@@ -58,10 +60,15 @@ fun DeviceTable(
       TextField(
         filterState.textFilter.searchText,
         onValueChange = { filterState.textFilter.searchText = it },
-        leadingIcon = { Icon("studio/icons/common/search.svg", "Search", StudioIcons::class.java) },
+        leadingIcon = {
+          Icon(
+            key = PathIconKey("studio/icons/common/search.svg", StudioIcons::class.java),
+            contentDescription = "Search",
+          )
+        },
         placeholder = {
           Text(
-            "Search for a device by name, model, or OEM",
+            filterState.textFilter.description,
             fontWeight = FontWeight.Light,
             modifier = Modifier.padding(start = 4.dp),
           )
@@ -72,7 +79,11 @@ fun DeviceTable(
         onClick = { showDetails = !showDetails },
         Modifier.align(Alignment.CenterVertically).padding(2.dp),
       ) {
-        Icon("actions/previewDetails.svg", "Details", AllIcons::class.java, Modifier.size(20.dp))
+        Icon(
+          key = PathIconKey("actions/previewDetails.svg", AllIcons::class.java),
+          contentDescription = "Details",
+          modifier = Modifier.size(20.dp),
+        )
       }
     }
     if (devices.none(filterState.textFilter::apply)) {
@@ -82,9 +93,9 @@ fun DeviceTable(
       )
     } else {
       HorizontalSplitLayout(
-        first = { DeviceFiltersPanel(it) { filterContent() } },
+        first = { DeviceFiltersPanel { filterContent() } },
         second = {
-          Row(modifier = it) {
+          Row {
             val filteredDevices = devices.filter(filterState::apply)
             if (filteredDevices.isEmpty()) {
               EmptyStatePanel(
@@ -111,8 +122,9 @@ fun DeviceTable(
           }
         },
         modifier = Modifier.fillMaxSize(),
-        minRatio = 0.1f,
-        maxRatio = 0.5f,
+        firstPaneMinWidth = 100.dp,
+        secondPaneMinWidth = 300.dp,
+        state = rememberSplitLayoutState(.3f),
       )
     }
   }

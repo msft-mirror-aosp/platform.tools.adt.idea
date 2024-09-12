@@ -18,6 +18,7 @@ package com.android.tools.idea.avd
 import androidx.compose.runtime.Immutable
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.AndroidVersion
+import com.android.sdklib.ISystemImage
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.Storage
 import com.android.sdklib.internal.avd.AvdBuilder
@@ -30,7 +31,6 @@ import com.android.sdklib.internal.avd.ColdBoot
 import com.android.sdklib.internal.avd.EmulatedProperties
 import com.android.sdklib.internal.avd.ExternalSdCard
 import com.android.sdklib.internal.avd.GenericSkin
-import com.android.sdklib.internal.avd.GpuMode
 import com.android.sdklib.internal.avd.InternalSdCard
 import com.android.sdklib.internal.avd.OnDiskSkin
 import com.android.sdklib.internal.avd.QuickBoot
@@ -59,7 +59,7 @@ internal constructor(
   internal val internalStorage: StorageCapacity,
   internal val expandedStorage: ExpandedStorage,
   internal val cpuCoreCount: Int?,
-  internal val graphicAcceleration: GpuMode,
+  internal val graphicsMode: GraphicsMode,
   internal val simulatedRam: StorageCapacity,
   internal val vmHeapSize: StorageCapacity,
 ) {
@@ -80,7 +80,7 @@ internal constructor(
         internalStorage = StorageCapacity(2_048, StorageCapacity.Unit.MB),
         expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
         cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
-        graphicAcceleration = GpuMode.AUTO,
+        graphicsMode = GraphicsMode.AUTO,
         simulatedRam = StorageCapacity(2_048, StorageCapacity.Unit.MB),
         vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB),
       )
@@ -104,15 +104,17 @@ internal fun VirtualDevice.copyFrom(avdInfo: AvdBuilder): VirtualDevice {
     internalStorage = avdInfo.internalStorage.toStorageCapacity(),
     expandedStorage = avdInfo.sdCard.toExpandedStorage(),
     cpuCoreCount = avdInfo.cpuCoreCount,
-    graphicAcceleration = avdInfo.gpuMode,
+    graphicsMode = avdInfo.gpuMode.toGraphicsMode(),
     simulatedRam = avdInfo.ram.toStorageCapacity(),
     vmHeapSize = avdInfo.vmHeap.toStorageCapacity(),
   )
 }
 
-internal fun AvdBuilder.copyFrom(device: VirtualDevice) {
+internal fun AvdBuilder.copyFrom(device: VirtualDevice, image: ISystemImage) {
   this.device = device.device
   displayName = device.name
+
+  systemImage = image
 
   sdCard = device.expandedStorage.toSdCard()
   skin = device.skin.toAvdSkin()
@@ -126,7 +128,7 @@ internal fun AvdBuilder.copyFrom(device: VirtualDevice) {
   frontCamera = device.frontCamera
   backCamera = device.rearCamera
 
-  gpuMode = device.graphicAcceleration
+  gpuMode = device.graphicsMode.toGpuMode(image)
 
   networkSpeed = device.speed
   networkLatency = device.latency
@@ -151,10 +153,7 @@ internal data class Custom internal constructor(internal val value: StorageCapac
 
 internal data class ExistingImage internal constructor(private val value: Path) :
   ExpandedStorage() {
-
-  init {
-    assert(Files.isRegularFile(value))
-  }
+  override fun isValid() = Files.isRegularFile(value)
 
   override fun toString() = value.toString()
 }
@@ -163,7 +162,9 @@ internal object None : ExpandedStorage() {
   override fun toString() = ""
 }
 
-internal sealed class ExpandedStorage
+internal sealed class ExpandedStorage {
+  internal open fun isValid() = true
+}
 
 internal fun ExpandedStorage.toSdCard(): SdCard? =
   when (this) {

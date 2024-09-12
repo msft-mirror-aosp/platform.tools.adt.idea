@@ -32,10 +32,12 @@ import com.android.emulator.control.Touch.EventExpiration.NEVER_EXPIRE
 import com.android.emulator.control.TouchEvent
 import com.android.emulator.control.WheelEvent
 import com.android.ide.common.util.Cancelable
+import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.adtui.ImageUtils.ALPHA_MASK
 import com.android.tools.adtui.common.AdtUiCursorType
 import com.android.tools.adtui.common.AdtUiCursorsProvider
 import com.android.tools.analytics.toProto
+import com.android.tools.idea.avdmanager.EmulatorLogListener
 import com.android.tools.idea.concurrency.executeOnPooledThread
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.flags.StudioFlags.EMBEDDED_EMULATOR_TRACE_NOTIFICATIONS
@@ -108,6 +110,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.wm.IdeGlassPaneUtil
 import com.intellij.openapi.wm.impl.IdeGlassPaneEx
+import com.intellij.ui.EditorNotificationPanel
 import com.intellij.util.Alarm
 import com.intellij.util.SofterReference
 import com.intellij.util.containers.ContainerUtil
@@ -192,7 +195,7 @@ class EmulatorView(
   displayId: Int,
   private val displaySize: Dimension?,
   deviceFrameVisible: Boolean,
-) : AbstractDisplayView(project, displayId), ConnectionStateListener, EmulatorSettingsListener {
+) : AbstractDisplayView(project, displayId), ConnectionStateListener, EmulatorSettingsListener, EmulatorLogListener {
 
   override var displayOrientationQuadrants: Int
     get() = screenshotShape.orientation
@@ -413,6 +416,8 @@ class EmulatorView(
 
     addKeyListener(MyKeyListener())
 
+    val messageBusConnection = ApplicationManager.getApplication().messageBus.connect(this)
+
     if (displayId == PRIMARY_DISPLAY_ID) {
       streamingSessionTracker.streamingStarted()
       showLongRunningOperationIndicator("Connecting to the Emulator")
@@ -426,17 +431,22 @@ class EmulatorView(
           updateCameraPromptAndMultiTouchFeedback()
         }
       })
+
+      messageBusConnection.subscribe(EmulatorLogListener.TOPIC, this)
     }
 
-    val connection = ApplicationManager.getApplication().messageBus.connect(this)
-    connection.subscribe(LafManagerListener.TOPIC, LafManagerListener { lafManager ->
+    messageBusConnection.subscribe(LafManagerListener.TOPIC, LafManagerListener { lafManager ->
       if (isConnected) {
         emulator.setUiTheme(getEmulatorUiTheme(lafManager))
       }
     })
+    messageBusConnection.subscribe(EmulatorSettingsListener.TOPIC, this)
 
-    updateConnectionState(emulator.connectionState)
-    project.messageBus.connect(this).subscribe(EmulatorSettingsListener.TOPIC, this)
+    if (displayId != PRIMARY_DISPLAY_ID && displaySize != null) {
+      // Three bytes per pixel plus some overhead.
+      emulator.connectGrpcOrIncreaseMaxInboundMessageSize(displaySize.width * displaySize.height * 3 + 100)
+    }
+    updateConnectionState()
   }
 
   override fun dispose() {
@@ -490,11 +500,12 @@ class EmulatorView(
 
   override fun connectionStateChanged(emulator: EmulatorController, connectionState: ConnectionState) {
     EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
-      updateConnectionState(connectionState)
+      updateConnectionState()
     }
   }
 
-  private fun updateConnectionState(connectionState: ConnectionState) {
+  private fun updateConnectionState() {
+    val connectionState = emulator.connectionState
     if (connectionState == ConnectionState.CONNECTED) {
       hideDisconnectedStateMessage()
       if (isVisible) {
@@ -762,6 +773,19 @@ class EmulatorView(
     }
   }
 
+  override fun messageLogged(avd: AvdInfo, severity: EmulatorLogListener.Severity, notifyUser: Boolean, message: String) {
+    if (notifyUser && avd.dataFolderPath == emulator.emulatorId.avdFolder) {
+      val status = when (severity) {
+        EmulatorLogListener.Severity.WARNING -> EditorNotificationPanel.Status.Warning
+        EmulatorLogListener.Severity.ERROR, EmulatorLogListener.Severity.FATAL -> EditorNotificationPanel.Status.Error
+        else -> null
+      }
+      UIUtil.invokeLaterIfNeeded {
+        findNotificationHolderPanel()?.showFadeOutNotification(message, status)
+      }
+    }
+  }
+
   private fun startClipboardSynchronization() {
     if (clipboardSynchronizer == null) {
       clipboardSynchronizer = EmulatorClipboardSynchronizer(this, emulator)
@@ -836,6 +860,12 @@ class EmulatorView(
 
     private fun updateCurrentPosture(posture: PostureValue) {
       emulatorConfig.postures.find { it.posture == posture }?.let { currentPosture = it } ?: LOG.error("Unexpected posture: $posture")
+    }
+
+    override fun onError(t: Throwable) {
+      if (notificationReceiver == this && t is EmulatorController.RetryException) {
+        requestNotificationFeed()
+      }
     }
   }
 
@@ -1383,6 +1413,12 @@ class EmulatorView(
     }
 
     override fun dispose() {
+    }
+
+    override fun onError(t: Throwable) {
+      if (screenshotReceiver == this && t is EmulatorController.RetryException) {
+        requestScreenshotFeed()
+      }
     }
   }
 

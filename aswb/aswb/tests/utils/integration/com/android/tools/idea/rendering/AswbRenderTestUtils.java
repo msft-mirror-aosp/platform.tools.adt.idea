@@ -20,8 +20,8 @@ import static org.junit.Assert.fail;
 import com.android.sdklib.devices.Device;
 import com.android.tools.configurations.ConfigurationCompat;
 import com.android.tools.idea.configurations.ConfigurationManager;
-import com.android.tools.rendering.RenderLoggerCompat;
-import com.android.tools.rendering.RenderServiceCompat;
+import com.android.tools.rendering.RenderLogger;
+import com.android.tools.rendering.RenderService;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.module.Module;
@@ -78,8 +78,8 @@ public class AswbRenderTestUtils {
     }
 
     // Give the render executor 5 seconds to shutdown.
-    RenderServiceCompat.shutdownRenderExecutor(5);
-    RenderServiceCompat.initializeRenderExecutor();
+    RenderService.shutdownRenderExecutor(5);
+    RenderService.initializeRenderExecutor();
   }
 
   /**
@@ -90,7 +90,7 @@ public class AswbRenderTestUtils {
     // Delete the layoutlib resource folder manually linked in #beforeRenderTestCase if exists.
     Files.deleteIfExists(Paths.get(PathManager.getHomePath(), LAYOUTLIB_SRC_PATH));
 
-    RenderLoggerCompat.resetFidelityErrorsFilters();
+    RenderLogger.resetFidelityErrorsFilters();
     waitForRenderTaskDisposeToFinish();
   }
 

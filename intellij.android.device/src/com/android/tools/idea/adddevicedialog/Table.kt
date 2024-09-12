@@ -44,10 +44,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -56,7 +63,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.intellij.icons.AllIcons
 import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
 import org.jetbrains.jewel.foundation.Stroke
 import org.jetbrains.jewel.foundation.modifier.border
@@ -66,12 +72,13 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.util.thenIf
 
-data class TableColumn<T>(
+data class TableColumn<in T>(
   val name: String,
   val width: TableColumnWidth,
-  val comparator: Comparator<T>? = null,
+  val comparator: Comparator<in T>? = null,
   val rowContent: @Composable (T) -> Unit,
 )
 
@@ -117,8 +124,8 @@ internal fun SortOrder.Icon() =
   when (this) {
     // In Swing, we would do `UIManager.get("Table.ascendingSortIcon", null) as Icon`; instead use
     // IJ platform icons
-    SortOrder.ASCENDING -> Icon("general/arrowUp.svg", null, AllIcons::General::class.java)
-    SortOrder.DESCENDING -> Icon("general/arrowDown.svg", null, AllIcons::General::class.java)
+    SortOrder.ASCENDING -> Icon(AllIconsKeys.General.ArrowUp, null)
+    SortOrder.DESCENDING -> Icon(AllIconsKeys.General.ArrowDown, null)
   }
 
 @Stable
@@ -131,14 +138,11 @@ class TableSortState<T> {
   var sortColumn: TableColumn<T>? by mutableStateOf(null)
   var sortOrder: SortOrder by mutableStateOf(SortOrder.ASCENDING)
 
-  val comparator: Comparator<T>?
-    get() =
-      sortColumn?.comparator?.let {
-        when (sortOrder) {
-          SortOrder.ASCENDING -> it
-          SortOrder.DESCENDING -> it.reversed()
-        }
-      }
+  val comparator: Comparator<in T>?
+    get() = sortColumn?.comparator?.reverseIf(sortOrder == SortOrder.DESCENDING)
+
+  // Without this auxiliary method, typechecking fails
+  private fun <T> Comparator<T>.reverseIf(reverse: Boolean) = if (reverse) reversed() else this
 }
 
 @Composable
@@ -147,9 +151,10 @@ internal fun <T> TableHeader(
   sortOrder: SortOrder,
   onClick: (TableColumn<T>) -> Unit,
   columns: List<TableColumn<T>>,
+  modifier: Modifier = Modifier,
 ) {
   Row(
-    Modifier.fillMaxWidth().padding(ROW_PADDING),
+    modifier.fillMaxWidth().padding(ROW_PADDING),
     horizontalArrangement = Arrangement.spacedBy(CELL_SPACING / 2),
   ) {
     columns.forEach {
@@ -179,11 +184,12 @@ internal fun <T> TableRow(
   onClick: (T) -> Unit = {},
   onSecondaryClick: (T, Offset) -> Unit = { _, _ -> },
   columns: List<TableColumn<T>>,
+  modifier: Modifier = Modifier,
 ) {
   var isFocused by remember { mutableStateOf(false) }
   var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
   Row(
-    Modifier
+    modifier
       // Divide the padding before and after the border
       .padding(ROW_PADDING / 2)
       .thenIf(selected) {
@@ -229,6 +235,9 @@ fun <T> Table(
   onRowSecondaryClick: (T, Offset) -> Unit = { _, _ -> },
 ) {
   Column(modifier.padding(ROW_PADDING)) {
+    val sortedRows = tableSortState.comparator?.let { rows.sortedWith(it) } ?: rows
+    val focusRequesters = remember(sortedRows) { Array(sortedRows.size) { FocusRequester() } }
+
     TableHeader(
       tableSortState.sortColumn,
       tableSortState.sortOrder,
@@ -241,13 +250,43 @@ fun <T> Table(
         }
       },
       columns,
+      Modifier.onKeyEvent { event ->
+        when {
+          event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown -> {
+            tableSelectionState.selection = sortedRows[0]
+            focusRequesters[0].requestFocus()
+            true
+          }
+          else -> false
+        }
+      },
     )
     Divider(Orientation.Horizontal)
     Box {
       val lazyListState = rememberLazyListState()
-      LazyColumn(state = lazyListState) {
-        val sortedRows = tableSortState.comparator?.let { rows.sortedWith(it) } ?: rows
 
+      LazyColumn(
+        state = lazyListState,
+        modifier =
+          Modifier.onKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+            val index = sortedRows.indexOf(tableSelectionState.selection)
+            if (index < 0) return@onKeyEvent false
+            val newIndex =
+              (index +
+                  when (event.key) {
+                    Key.DirectionDown -> 1
+                    Key.DirectionUp -> -1
+                    else -> return@onKeyEvent false
+                  })
+                .coerceIn(sortedRows.indices)
+            if (newIndex != index) {
+              tableSelectionState.selection = sortedRows[newIndex]
+              focusRequesters[newIndex].requestFocus()
+            }
+            true
+          },
+      ) {
         items(sortedRows.size, { index -> rowId(sortedRows[index]) }) { index ->
           TableRow(
             sortedRows[index],
@@ -255,6 +294,7 @@ fun <T> Table(
             onRowClick,
             onRowSecondaryClick,
             columns,
+            Modifier.focusRequester(focusRequesters[index]),
           )
         }
       }

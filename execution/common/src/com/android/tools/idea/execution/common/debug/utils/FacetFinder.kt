@@ -26,7 +26,6 @@ import com.android.tools.idea.projectsystem.getMainModule
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.isAndroidTestModule
-import com.android.tools.idea.projectsystem.isMainModule
 import com.android.tools.idea.projectsystem.sourceProviders
 import com.android.tools.idea.util.androidFacet
 import com.google.common.annotations.VisibleForTesting
@@ -109,7 +108,7 @@ object FacetFinder {
     // Compare using androidModuleTypeComparator type first to prioritize app-main over app-androidTest.
     val candidate = candidates.maxWithOrNull(
       // Prioritize main over test
-      Comparator.comparingInt<Module> { if(it.isMainModule()) 1 else 0 }
+      project.getProjectSystem().getProjectSystemModuleTypeComparator().reversed()
         // Then prioritize app and app-like modules over tests and libraries
         .thenComparing(androidModuleTypeComparator)
         // Then prioritize by module dependency order

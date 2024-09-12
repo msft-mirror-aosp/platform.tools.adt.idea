@@ -18,6 +18,8 @@ package com.android.tools.idea.avd
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,13 +32,14 @@ import com.android.tools.idea.adddevicedialog.ComposeWizard
 import com.android.tools.idea.adddevicedialog.DeviceFilterState
 import com.android.tools.idea.adddevicedialog.DeviceGridPage
 import com.android.tools.idea.adddevicedialog.DeviceLoadingPage
-import com.android.tools.idea.adddevicedialog.DeviceProfile
-import com.android.tools.idea.adddevicedialog.DeviceSource
 import com.android.tools.idea.adddevicedialog.DeviceTable
 import com.android.tools.idea.adddevicedialog.DeviceTableColumns
 import com.android.tools.idea.adddevicedialog.FormFactor
-import com.android.tools.idea.adddevicedialog.SingleSelectionDropdown
+import com.android.tools.idea.adddevicedialog.SingleSelectionRadioButtons
+import com.android.tools.idea.adddevicedialog.TableColumn
+import com.android.tools.idea.adddevicedialog.TableColumnWidth
 import com.android.tools.idea.adddevicedialog.TableSelectionState
+import com.android.tools.idea.adddevicedialog.TableTextColumn
 import com.android.tools.idea.adddevicedialog.uniqueValuesOf
 import com.android.tools.idea.avdmanager.ui.CloneDeviceAction
 import com.android.tools.idea.avdmanager.ui.CreateDeviceAction
@@ -48,19 +51,24 @@ import com.android.tools.idea.avdmanager.ui.ImportDevicesAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.JBMenuItem
 import com.intellij.openapi.ui.JBPopupMenu
+import icons.StudioIconsCompose
 import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.jewel.bridge.LocalComponent
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.CheckboxRow
+import org.jetbrains.jewel.ui.component.Divider
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 
-class AddDeviceWizard(val source: DeviceSource, val project: Project?) {
+internal class AddDeviceWizard(val source: LocalVirtualDeviceSource, val project: Project?) {
   fun createDialog(): ComposeWizard {
     return ComposeWizard(project, "Add Device") {
       val component = LocalComponent.current
       val density = LocalDensity.current
 
-      val filterState = getOrCreateState { DeviceFilterState() }
-      val selectionState = getOrCreateState { TableSelectionState<DeviceProfile>() }
+      val filterState = getOrCreateState { VirtualDeviceFilterState() }
+      val selectionState = getOrCreateState { TableSelectionState<VirtualDeviceProfile>() }
 
       DeviceLoadingPage(source) { profiles ->
         // Holds a Device that should be selected as a result of a DeviceUiAction; e.g. when a new
@@ -68,8 +76,7 @@ class AddDeviceWizard(val source: DeviceSource, val project: Project?) {
         var dialogSelectedDevice by remember { mutableStateOf<Device?>(null) }
         val deviceProvider =
           object : DeviceUiAction.DeviceProvider {
-            override fun getDevice(): Device? =
-              (selectionState.selection as? VirtualDeviceProfile)?.device
+            override fun getDevice(): Device? = selectionState.selection?.device
 
             override fun refreshDevices() {}
 
@@ -85,7 +92,7 @@ class AddDeviceWizard(val source: DeviceSource, val project: Project?) {
           }
         if (dialogSelectedDevice != null) {
           profiles
-            .find { (it as VirtualDeviceProfile).device == dialogSelectedDevice }
+            .find { it.device == dialogSelectedDevice }
             ?.let {
               dialogSelectedDevice = null
               selectionState.selection = it
@@ -102,9 +109,15 @@ class AddDeviceWizard(val source: DeviceSource, val project: Project?) {
               profiles,
               avdColumns,
               filterContent = {
-                SingleSelectionDropdown(
+                SingleSelectionRadioButtons(
                   FormFactor.uniqueValuesOf(profiles),
                   filterState.formFactorFilter,
+                )
+                Divider(orientation = Orientation.Horizontal, Modifier.padding(16.dp))
+                CheckboxRow(
+                  "Show obsolete device profiles",
+                  checked = filterState.showDeprecated,
+                  onCheckedChange = { filterState.showDeprecated = it },
                 )
               },
               tableSelectionState = selectionState,
@@ -149,5 +162,37 @@ class AddDeviceWizard(val source: DeviceSource, val project: Project?) {
   }
 }
 
+private class VirtualDeviceFilterState : DeviceFilterState<VirtualDeviceProfile>() {
+  var showDeprecated: Boolean by mutableStateOf(false)
+
+  override fun apply(row: VirtualDeviceProfile): Boolean =
+    super.apply(row) && (showDeprecated || !row.isDeprecated)
+}
+
+private val virtualDeviceName =
+  TableTextColumn<VirtualDeviceProfile>(
+    "Name",
+    TableColumnWidth.Weighted(2f),
+    attribute = { if (it.isDeprecated) it.name + " (Obsolete)" else it.name },
+    maxLines = 2,
+  )
+
+private val playColumn =
+  TableColumn<VirtualDeviceProfile>(
+    "Play",
+    TableColumnWidth.Fixed(40.dp),
+    comparator = compareBy { it.isGooglePlaySupported },
+  ) {
+    if (it.isGooglePlaySupported) {
+      Icon(
+        StudioIconsCompose.Avd.DevicePlayStore,
+        contentDescription = "Play Store supported",
+        modifier = Modifier.size(16.dp),
+      )
+    }
+  }
+
 private val avdColumns =
-  with(DeviceTableColumns) { persistentListOf(icon, name, width, height, density) }
+  with(DeviceTableColumns) {
+    persistentListOf(icon, virtualDeviceName, playColumn, width, height, density)
+  }

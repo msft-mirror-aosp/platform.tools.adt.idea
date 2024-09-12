@@ -71,7 +71,7 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int, val projectToCompareAgain
 
   override fun before() {
     StudioFlags.SYNC_STATS_OUTPUT_DIRECTORY.override(OUTPUT_DIRECTORY)
-    MeasurementPluginConfig.configureAndApply(OUTPUT_DIRECTORY, captureTypes = setOf(CaptureType.TIMESTAMP))
+    MeasurementPluginConfig.configureAndApply(OUTPUT_DIRECTORY, captureTypes = setOf(CaptureType.TIMESTAMP), CaptureJfrRule.shouldEnable())
   }
 
   val listener = object : GradleSyncListenerWithRoot {
@@ -146,14 +146,17 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int, val projectToCompareAgain
         addSamples(CPU_BENCHMARK, Metric.MetricSample(it.timestamp.toEpochMilliseconds(), it.measurement.toLong(DurationUnit.MILLISECONDS)))
       }
       if (enableAnalyzers && isMetricAnalyzed) {
-        val analyzers = mutableListOf<Analyzer>(EDivisiveAnalyzer)
-        // When running from a release branch, an additional analyzer to make a comparison
-        // between the release branch and the main branch is added.
-        if (System.getProperty("running.from.release.branch").toBoolean()) {
-          analyzers.add(UTestAnalyzer.forComparingWithMainBranch())
+        val analyzer = when {
+          metricToCompareAgainst != null ->
+            UTestAnalyzer.forMetricComparison(metricToCompareAgainst)
+          // When running from a release branch, an additional analyzer to make a comparison
+          // between the release branch and the main branch is added.
+          System.getProperty("running.from.release.branch").toBoolean() ->
+            UTestAnalyzer.forComparingWithMainBranch()
+          else ->
+            EDivisiveAnalyzer
         }
-        metricToCompareAgainst?.let { analyzers.add(UTestAnalyzer.forMetricComparison(it)) }
-        setAnalyzers(CPU_BENCHMARK, analyzers)
+        setAnalyzers(CPU_BENCHMARK, listOf(analyzer))
       }
       commit()
     }

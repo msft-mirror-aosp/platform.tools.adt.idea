@@ -398,6 +398,7 @@ iml_module(
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils[module, test]",
         "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative[module, test]",
         "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang[module, test]",
+        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide[module, test]",
     ],
 )
 
@@ -488,6 +489,7 @@ maven_repository(
         "@maven//:androidx.test.rules_1.4.0-alpha06",
         "@maven//:androidx.test.runner_1.4.0-alpha06",
         "@maven//:androidx.wear.watchface.watchface-guava_1.1.0",
+        "@maven//:com.adobe.marketing.mobile.core_1.5.1",
         "@maven//:com.android.support.appcompat-v7_25.4.0",
         "@maven//:com.android.support.appcompat-v7_28.0.0",
         "@maven//:com.android.support.constraint.constraint-layout_1.0.2",
@@ -496,8 +498,11 @@ maven_repository(
         "@maven//:com.android.support.support-v13_28.0.0",
         "@maven//:com.android.support.test.espresso.espresso-core_3.0.2",
         "@maven//:com.android.tools.desugar_jdk_libs_1.1.5",
+        "@maven//:com.flurry.android.analytics_13.0.0",
         "@maven//:com.google.android.gms.play-services-ads_9.8.0",
+        "@maven//:com.google.android.gms.play-services-safetynet_10.0.0",
         "@maven//:com.google.android.material.material_1.4.0",
+        "@maven//:com.google.android.play.app-update_2.0.0",
         "@maven//:com.google.auto.value.auto-value_1.6.2",
         "@maven//:com.google.code.gson.gson_2.2.4",
         "@maven//:com.google.dagger.dagger-compiler_2.6",

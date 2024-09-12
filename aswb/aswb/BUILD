@@ -89,7 +89,6 @@ java_library(
     name = "integration_test_utils",
     testonly = 1,
     srcs = glob(["tests/utils/integration/**/*.java"]) + [
-        "sdkcompat/as233/com/android/tools/rendering/RenderResultCompat.java",
         "tests/utils/sdkcompat/as233/com/android/tools/idea/sdk/IdeSdksCompat.java",
         "tests/utils/sdkcompat/as233/com/google/idea/blaze/android/MobileInstallBuildStepTestCase.java",
         "tests/utils/sdkcompat/as233/com/google/idea/blaze/android/functional/AndroidDeviceCompat.java",
@@ -220,6 +219,7 @@ intellij_integration_test_suite(
     plugins = [
         ":com.google.idea.bazel.aswb",
         "//tools/adt/idea/studio:com.android.tools.ndk",
+        "//tools/adt/idea/studio:com.android.tools.design",
         "//tools/adt/idea/studio:org.jetbrains.android",
     ],
     required_plugins = "com.google.idea.bazel.aswb,com.android.tools.ndk",

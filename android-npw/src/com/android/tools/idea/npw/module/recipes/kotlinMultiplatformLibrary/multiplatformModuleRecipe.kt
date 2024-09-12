@@ -22,6 +22,7 @@ import com.android.tools.idea.npw.module.recipes.generateManifest
 import com.android.tools.idea.npw.module.recipes.gitignore
 import com.android.tools.idea.npw.module.recipes.kotlinMultiplatformLibrary.src.exampleAndroidMain
 import com.android.tools.idea.npw.module.recipes.kotlinMultiplatformLibrary.src.exampleCommonMain
+import com.android.tools.idea.npw.module.recipes.kotlinMultiplatformLibrary.src.exampleIosMain
 import com.android.tools.idea.npw.module.recipes.setKotlinVersion
 import com.android.tools.idea.wizard.template.Category
 import com.android.tools.idea.wizard.template.Language
@@ -60,6 +61,7 @@ private fun RecipeExecutor.generateModule(
   save(
     buildKmpGradle(
       projectData.agpVersion,
+      data.name,
       data.namespace,
       data.apis.buildApi.apiString,
       data.apis.minApi.apiString,
@@ -77,12 +79,18 @@ private fun RecipeExecutor.generateModule(
   addAndroidMain(packageName, data.srcDir, language)
   data.commonSrcDir?.let { dir ->
     addCommonMain(packageName, dir, language)
+    addCommonMainDependencies(projectData.kotlinVersion)
     addCommonTestDependencies(projectData.kotlinVersion)
   }
+  data.iosSrcDir?.let { addIosMain(packageName, it, language) }
 
   addMultiplatformLocalTests(packageName, data.unitTestDir)
   addInstrumentedTests(packageName, useAndroidX, false, data.testDir, language)
   addInstrumentedTestDependencies()
+}
+
+fun RecipeExecutor.addCommonMainDependencies(kotlinVersion: String) {
+  addDependency("org.jetbrains.kotlin:kotlin-stdlib:+", "implementation", minRev = kotlinVersion, sourceSetName = "commonMain")
 }
 
 fun RecipeExecutor.addCommonTestDependencies(kotlinVersion: String) {
@@ -101,7 +109,7 @@ fun RecipeExecutor.addAndroidMain(
   val ext = language.extension
   save(
     exampleAndroidMain(packageName),
-    outFolder.resolve("AndroidPlatform.$ext")
+    outFolder.resolve("Platform.android.$ext")
   )
 }
 
@@ -112,6 +120,16 @@ fun RecipeExecutor.addCommonMain(
   save(
     exampleCommonMain(packageName),
     outFolder.resolve("Platform.$ext")
+  )
+}
+
+fun RecipeExecutor.addIosMain(
+  packageName: String, outFolder: File, language: Language
+) {
+  val ext = language.extension
+  save(
+    exampleIosMain(packageName),
+    outFolder.resolve("Platform.ios.$ext")
   )
 }
 

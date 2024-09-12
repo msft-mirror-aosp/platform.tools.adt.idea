@@ -23,6 +23,8 @@ import static com.intellij.openapi.util.text.StringUtil.join;
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager;
 import com.intellij.openapi.module.JavaModuleType;
@@ -32,11 +34,14 @@ import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleType;
 import com.intellij.openapi.project.ModuleListener;
 import com.intellij.openapi.project.Project;
+import com.intellij.platform.workspace.jps.entities.ModuleEntity;
+import com.intellij.workspaceModel.ide.impl.legacyBridge.module.ModuleBridgeImpl;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.event.HyperlinkEvent;
 import org.jetbrains.android.util.AndroidBundle;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.kotlin.idea.core.script.KotlinScriptEntitySourceK2;
 
 public class SupportedModuleChecker {
 
@@ -53,12 +58,15 @@ public class SupportedModuleChecker {
    */
   public void checkForSupportedModules(@NotNull Project project) {
     Module[] modules = ModuleManager.getInstance(project).getModules();
-    if (modules.length == 0 || !Info.getInstance(project).isBuildWithGradle()) {
+    if (modules.length == 0 || !(ProjectSystemUtil.getProjectSystem(project) instanceof GradleProjectSystem)) {
       return;
     }
     List<Module> unsupportedModules = new ArrayList<>();
     boolean androidGradleSeen = false;
     for (Module module : modules) {
+      if (isKotlinScriptModule(module)) {
+        continue;
+      }
       ModuleType moduleType = ModuleType.get(module);
       if (moduleType instanceof JavaModuleType) {
         String externalSystemId = ExternalSystemModulePropertyManager.getInstance(module).getExternalSystemId();
@@ -74,6 +82,16 @@ public class SupportedModuleChecker {
       return;
     }
     displayUnsupportedModulesNotification(project, unsupportedModules);
+  }
+
+  private boolean isKotlinScriptModule(@NotNull Module module) {
+    ModuleBridgeImpl moduleBridge = (ModuleBridgeImpl)module;
+    ModuleEntity resolved = moduleBridge.getEntityStorage().getCurrent().resolve(moduleBridge.getModuleEntityId());
+    if (resolved == null) {
+      return false;
+    }
+
+    return resolved.getEntitySource() instanceof KotlinScriptEntitySourceK2;
   }
 
   private void displayUnsupportedModulesNotification(Project project, List<Module> unsupportedModules) {

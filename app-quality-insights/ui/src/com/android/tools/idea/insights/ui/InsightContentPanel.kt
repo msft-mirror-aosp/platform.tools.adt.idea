@@ -18,6 +18,8 @@ package com.android.tools.idea.insights.ui
 import com.android.tools.idea.insights.AiInsight
 import com.android.tools.idea.insights.LoadingState
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
@@ -44,17 +46,22 @@ private const val CONTENT_CARD = "content"
 private const val EMPTY_CARD = "empty"
 private const val TOS_NOT_ACCEPTED = "tos_not_accepted"
 
+private const val RESOURCE_EXHAUSTED_MESSAGE =
+  "Quota exceeded for quota metric 'Duet Task API requests' and limit 'Duet Task API requests per day per user'"
+
 /** [JPanel] that is shown in the [InsightToolWindow] when an insight is available. */
 class InsightContentPanel(
   scope: CoroutineScope,
   currentInsightFlow: Flow<LoadingState<AiInsight?>>,
   parentDisposable: Disposable,
-) : JPanel(), Disposable {
+  permissionDeniedHandler: InsightPermissionDeniedHandler,
+) : JPanel(), DataProvider, Disposable {
 
   private val cardLayout = CardLayout()
 
   private val insightTextPane = InsightTextPane()
   private val feedbackPanel = InsightFeedbackPanel()
+  private val insightBottomPanel = InsightBottomPanel()
 
   private val insightPanel =
     JPanel(VerticalLayout()).apply {
@@ -118,7 +125,8 @@ class InsightContentPanel(
   private val loadingPanel =
     JBLoadingPanel(BorderLayout(), this).apply {
       border = JBUI.Borders.empty()
-      add(insightScrollPanel)
+      add(insightScrollPanel, BorderLayout.CENTER)
+      add(insightBottomPanel, BorderLayout.SOUTH)
     }
 
   private val emptyOrErrorPanel: JPanel =
@@ -183,26 +191,49 @@ class InsightContentPanel(
               insightTextPane.text = ""
               showContentCard(true)
             }
-            // Permission denied message is confusing. Provide a generic message
-            is LoadingState.PermissionDenied -> {
+            // Gemini plugin disabled or scope is not authorized
+            is LoadingState.Unauthorized -> {
               emptyStateText.apply {
                 clear()
-                appendText("Request failed", EMPTY_STATE_TITLE_FORMAT)
+                appendText("Gemini is disabled", EMPTY_STATE_TITLE_FORMAT)
                 appendLine(
-                  "You do not have permission to fetch insights",
+                  "To see insights, please enable and authorize the Gemini plugin",
                   EMPTY_STATE_TEXT_FORMAT,
                   null,
                 )
               }
               showEmptyCard()
             }
+            // Permission denied message is confusing. Provide a generic message
+            is LoadingState.PermissionDenied -> {
+              permissionDeniedHandler.handlePermissionDenied(aiInsight, emptyStateText)
+              showEmptyCard()
+            }
             is LoadingState.ToSNotAccepted -> {
               showToSCard()
             }
-            is LoadingState.NetworkFailure -> {
+            is LoadingState.UnsupportedOperation -> {
               emptyStateText.apply {
                 clear()
-                appendText("Insights data is not available.")
+                val cause = aiInsight.message ?: ""
+                appendText("No insight available", EMPTY_STATE_TITLE_FORMAT)
+                appendLine(cause, EMPTY_STATE_TEXT_FORMAT, null)
+              }
+              showEmptyCard()
+            }
+            is LoadingState.NetworkFailure -> {
+              val message = aiInsight.message
+              if (message?.contains(RESOURCE_EXHAUSTED_MESSAGE) == true) {
+                emptyStateText.apply {
+                  clear()
+                  appendText("Quota exhausted", EMPTY_STATE_TITLE_FORMAT)
+                  appendLine("You have consumed your available daily quota for insights.")
+                }
+              } else {
+                emptyStateText.apply {
+                  clear()
+                  appendText("Insights data is not available.")
+                }
               }
               showEmptyCard()
             }
@@ -240,9 +271,20 @@ class InsightContentPanel(
     } else {
       loadingPanel.stopLoading()
     }
-    insightPanel.isVisible = !startLoading
+    togglePanelVisibilities(!startLoading)
     cardLayout.show(this, card)
   }
 
+  private fun togglePanelVisibilities(visibility: Boolean) {
+    insightPanel.isVisible = visibility
+    insightBottomPanel.isVisible = visibility
+  }
+
   override fun dispose() = Unit
+
+  override fun getData(dataId: String) =
+    when {
+      PlatformDataKeys.COPY_PROVIDER.`is`(dataId) -> insightTextPane
+      else -> null
+    }
 }

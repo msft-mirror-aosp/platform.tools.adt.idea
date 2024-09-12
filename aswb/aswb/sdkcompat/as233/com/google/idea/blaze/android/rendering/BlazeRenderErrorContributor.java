@@ -23,7 +23,6 @@ import com.android.tools.idea.rendering.RenderUtils;
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel;
 import com.android.tools.idea.ui.designer.EditorDesignSurface;
 import com.android.tools.rendering.HtmlLinkManager;
-import com.android.tools.rendering.HtmlLinkManagerCompat;
 import com.android.tools.rendering.RenderLogger;
 import com.android.tools.rendering.RenderResult;
 import com.android.utils.HtmlBuilder;
@@ -45,6 +44,7 @@ import com.google.idea.blaze.base.lang.buildfile.references.BuildReferenceManage
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
+import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.sync.workspace.ArtifactLocationDecoder;
 import com.google.idea.blaze.base.targetmaps.SourceToTargetMap;
@@ -77,6 +77,8 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLFrameHyperlinkEvent;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /** Contribute blaze specific render errors. */
 public class BlazeRenderErrorContributor implements RenderErrorContributor {
@@ -294,7 +296,7 @@ public class BlazeRenderErrorContributor implements RenderErrorContributor {
     HtmlBuilder builder = new HtmlBuilder();
     addTargetLink(builder, target, decoder)
         .add(" uses a non-standard name for the Android manifest: ");
-    String linkToManifest = HtmlLinkManagerCompat.createFilePositionUrl(manifest, -1, 0);
+    String linkToManifest = HtmlLinkManager.createFilePositionUrl(manifest, -1, 0);
     if (linkToManifest != null) {
       builder.addLink(manifest.getName(), linkToManifest);
     } else {
@@ -433,10 +435,22 @@ public class BlazeRenderErrorContributor implements RenderErrorContributor {
                       return StringUtil.offsetToLineNumber(
                           psiFile.getText(), buildTargetPsi.getTextOffset());
                     });
-    String url = HtmlLinkManagerCompat.createFilePositionUrl(buildFile, line, 0);
+    String url = HtmlLinkManager.createFilePositionUrl(buildFile, line, 0);
     if (url != null) {
       return builder.addLink(target.toString(), url);
     }
     return builder.add(target.toString());
+  }
+
+  public static class Provider implements RenderErrorContributor.Provider {
+
+    public boolean isApplicable(Project project) {
+      return Blaze.getProjectType(project) != ProjectType.UNKNOWN
+             && Blaze.getBuildSystemName(project) == BuildSystemName.Blaze;
+    }
+
+    public RenderErrorContributor getContributor(@Nullable EditorDesignSurface surface, @NotNull RenderResult result) {
+      return new BlazeRenderErrorContributor(surface, result);
+    }
   }
 }

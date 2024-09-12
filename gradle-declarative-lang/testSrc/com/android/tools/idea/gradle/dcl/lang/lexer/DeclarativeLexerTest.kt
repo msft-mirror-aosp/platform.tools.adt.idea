@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.dcl.lang.lexer
 
-import com.android.tools.idea.gradle.dcl.ide.DeclarativeParserDefinition
+import com.android.tools.idea.gradle.dcl.lang.DeclarativeParserDefinition
 import com.intellij.testFramework.LexerTestCase
 
 class DeclarativeLexerTest : LexerTestCase() {
@@ -192,6 +192,32 @@ class DeclarativeLexerTest : LexerTestCase() {
       DeclarativeTokenType.long_literal ('0b0111L')
       WHITE_SPACE ('\n')
       DeclarativeTokenType.unsigned_long ('0b0111UL')
+      """.trimIndent()
+    )
+  }
+
+  fun testFloatNumbers() {
+    doTest(
+      """
+        0.1
+        .1
+        0_1.0
+        0.1e+1
+        0_0.1e+1
+        0_0.1E+2
+      """.trimIndent(),
+      """
+      DeclarativeTokenType.double_literal ('0.1')
+      WHITE_SPACE ('\n')
+      DeclarativeTokenType.double_literal ('.1')
+      WHITE_SPACE ('\n')
+      DeclarativeTokenType.double_literal ('0_1.0')
+      WHITE_SPACE ('\n')
+      DeclarativeTokenType.double_literal ('0.1e+1')
+      WHITE_SPACE ('\n')
+      DeclarativeTokenType.double_literal ('0_0.1e+1')
+      WHITE_SPACE ('\n')
+      DeclarativeTokenType.double_literal ('0_0.1E+2')
       """.trimIndent()
     )
   }
