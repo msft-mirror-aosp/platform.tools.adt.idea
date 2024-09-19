@@ -18,11 +18,12 @@ package com.android.tools.idea.insights.analytics
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.analytics.withProjectId
 import com.android.tools.idea.insights.ConnectionMode
+import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.EventDetails
-import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.InsightSentiment.Experiment
+import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.InsightExperiment
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.InsightSentiment.Sentiment
 import com.intellij.openapi.project.Project
 
@@ -249,7 +250,7 @@ class AppInsightsTrackerImpl(
 
   override fun logInsightSentiment(
     sentiment: Sentiment,
-    experiment: Experiment,
+    experiment: InsightExperiment,
     crashType: AppQualityInsightsUsageEvent.CrashType,
   ) {
     UsageTracker.log(
@@ -264,6 +265,29 @@ class AppInsightsTrackerImpl(
                   this.sentiment = sentiment
                   this.experiment = experiment
                   this.crashType = crashType
+                }
+                .build()
+          }
+        )
+    )
+  }
+
+  override fun logInsightFetch(
+    unanonymizedAppId: String,
+    crashType: FailureType,
+    experiment: InsightExperiment,
+  ) {
+    UsageTracker.log(
+      generateAndroidStudioEventBuilder()
+        .setAppQualityInsightsUsageEvent(
+          AppQualityInsightsUsageEvent.newBuilder().apply {
+            appId = AnonymizerUtil.anonymizeUtf8(unanonymizedAppId)
+            type = AppQualityInsightsUsageEvent.AppQualityInsightsUsageEventType.INSIGHT_FETCH
+            insightFetchDetails =
+              AppQualityInsightsUsageEvent.InsightFetchDetails.newBuilder()
+                .apply {
+                  this.crashType = crashType.toCrashType()
+                  this.experiment = experiment
                 }
                 .build()
           }

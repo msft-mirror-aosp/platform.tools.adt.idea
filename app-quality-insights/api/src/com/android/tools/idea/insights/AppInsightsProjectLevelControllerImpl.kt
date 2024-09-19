@@ -32,6 +32,7 @@ import com.android.tools.idea.insights.events.IntervalChanged
 import com.android.tools.idea.insights.events.IssueToggled
 import com.android.tools.idea.insights.events.OSesChanged
 import com.android.tools.idea.insights.events.PersistSettingsAdapter
+import com.android.tools.idea.insights.events.RefreshInsight
 import com.android.tools.idea.insights.events.ResetSnapshot
 import com.android.tools.idea.insights.events.RestoreFilterFromSettings
 import com.android.tools.idea.insights.events.SafeFiltersAdapter
@@ -237,6 +238,10 @@ class AppInsightsProjectLevelControllerImpl(
 
   override fun selectIssueVariant(variant: IssueVariant?) {
     emit(SelectedIssueVariantChanged(variant))
+  }
+
+  override fun refreshInsight(contextSharingOverride: Boolean) {
+    emit(RefreshInsight(contextSharingOverride))
   }
 
   override fun selectTimeInterval(value: TimeIntervalFilter) {

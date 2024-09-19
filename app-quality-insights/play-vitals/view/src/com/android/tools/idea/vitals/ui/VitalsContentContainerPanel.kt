@@ -24,7 +24,7 @@ import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.ui.AppInsightsContentPanel
 import com.android.tools.idea.insights.ui.AppInsightsIssuesTableCellRenderer
 import com.android.tools.idea.insights.ui.DistributionToolWindow
-import com.android.tools.idea.insights.ui.InsightToolWindow
+import com.android.tools.idea.insights.ui.insight.InsightToolWindow
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
@@ -105,7 +105,7 @@ class VitalsContentContainerPanel(
 
     if (StudioFlags.PLAY_VITALS_INSIGHT_IN_TOOLWINDOW.get()) {
       toolWindowList.add(
-        InsightToolWindow.create(projectController, this, VitalsInsightPermissionDeniedHandler())
+        InsightToolWindow.create(projectController, this, VitalsInsightPermissionDeniedHandler()) {}
       )
     }
 

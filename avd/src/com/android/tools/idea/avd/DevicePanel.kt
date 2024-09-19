@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.avd
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +23,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.RemoteSystemImage
-import com.android.sdklib.getFullApiName
 import com.android.tools.idea.adddevicedialog.AndroidVersionSelection
 import com.android.tools.idea.adddevicedialog.ApiFilter
 import com.android.tools.idea.adddevicedialog.SortOrder
@@ -46,6 +51,7 @@ import com.android.tools.idea.adddevicedialog.TableTextColumn
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
+import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
@@ -55,6 +61,7 @@ import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun DevicePanel(
   configureDevicePanelState: ConfigureDevicePanelState,
@@ -62,6 +69,7 @@ internal fun DevicePanel(
   androidVersions: ImmutableList<AndroidVersion>,
   servicesCollection: ImmutableCollection<Services>,
   images: ImmutableList<ISystemImage>,
+  deviceNameValidator: DeviceNameValidator,
   onDevicePanelStateChange: (DevicePanelState) -> Unit,
   onDownloadButtonClick: (String) -> Unit,
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
@@ -70,11 +78,26 @@ internal fun DevicePanel(
   Column(modifier) {
     Text("Name", Modifier.padding(bottom = Padding.SMALL))
 
-    TextField(
-      configureDevicePanelState.device.name,
-      onValueChange = configureDevicePanelState::setDeviceName,
-      Modifier.padding(bottom = Padding.MEDIUM_LARGE),
-    )
+    var nameError by remember { mutableStateOf<String?>(null) }
+    val nameState = rememberTextFieldState(configureDevicePanelState.device.name)
+    LaunchedEffect(Unit) {
+      snapshotFlow { nameState.text.toString() }
+        .collect {
+          configureDevicePanelState.setDeviceName(it)
+          nameError = deviceNameValidator.validate(it)
+          configureDevicePanelState.setIsDeviceNameValid(nameError == null)
+        }
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(Padding.MEDIUM_LARGE)) {
+      ErrorTooltip(nameError) {
+        TextField(
+          nameState,
+          Modifier.padding(bottom = Padding.MEDIUM_LARGE).alignByBaseline(),
+          outline = if (nameError == null) Outline.None else Outline.Error,
+        )
+      }
+    }
 
     Text(
       "Select system image",
@@ -106,10 +129,12 @@ internal fun DevicePanel(
     Box(Modifier.weight(1f).padding(bottom = Padding.SMALL)) {
       val filteredImages = images.filter(devicePanelState::test)
       if (filteredImages.isEmpty()) {
-        EmptyStatePanel(
-          "No system images available matching the current set of filters.",
-          Modifier.fillMaxSize(),
-        )
+        Box(Modifier.fillMaxSize()) {
+          Text(
+            "No system images available matching the current set of filters.",
+            Modifier.align(Alignment.Center),
+          )
+        }
       } else {
         SystemImageTable(
           filteredImages,
@@ -169,7 +194,8 @@ private fun ServicesDropdown(
         Text(selectedServices?.toString() ?: "Show All")
       }
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      // TODO: http://b/335263751
+      // InfoOutlineIcon("", Modifier.align(Alignment.CenterVertically))
     }
   }
 }
@@ -216,8 +242,8 @@ private fun SystemImageTable(
       TableTextColumn("System Image", attribute = { it.`package`.displayName }),
       TableTextColumn(
         "API",
-        TableColumnWidth.Fixed(250.dp),
-        { it.androidVersion.getFullApiName(includeReleaseName = true, includeCodeName = true) },
+        TableColumnWidth.Fixed(125.dp),
+        { it.androidVersion.apiStringWithExtension },
         Comparator.comparing(ISystemImage::getAndroidVersion),
       ),
     )
@@ -278,11 +304,7 @@ private fun ShowSdkExtensionSystemImagesCheckbox(
       Modifier.padding(end = Padding.MEDIUM),
     )
 
-    InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+    // TODO: http://b/335263751
+    // InfoOutlineIcon("", Modifier.align(Alignment.CenterVertically))
   }
-}
-
-@Composable
-private fun EmptyStatePanel(text: String, modifier: Modifier = Modifier) {
-  Box(modifier) { Text(text, Modifier.align(Alignment.Center)) }
 }

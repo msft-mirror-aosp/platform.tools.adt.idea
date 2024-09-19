@@ -18,9 +18,8 @@ package com.android.tools.idea.insights
 import com.android.testutils.time.FakeClock
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
-import com.android.tools.idea.insights.ai.GeminiToolkit
-import com.android.tools.idea.insights.ai.codecontext.CodeContext
-import com.android.tools.idea.insights.ai.codecontext.CodeContextResolver
+import com.android.tools.idea.insights.ai.FakeGeminiToolkit
+import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.client.AppConnection
@@ -83,14 +82,7 @@ class AppInsightsProjectLevelControllerRule(
   lateinit var tracker: AppInsightsTracker
   private lateinit var cache: AppInsightsCache
 
-  private val geminiToolkit =
-    object : GeminiToolkit {
-      override val isGeminiEnabled = true
-      override val codeContextResolver =
-        object : CodeContextResolver {
-          override suspend fun getSource(stack: StacktraceGroup) = emptyList<CodeContext>()
-        }
-    }
+  private val geminiToolkit = FakeGeminiToolkit(true)
 
   override fun before(description: Description) {
     val offlineStatusManager = OfflineStatusManagerImpl()
@@ -151,16 +143,16 @@ class AppInsightsProjectLevelControllerRule(
     if (state.value.issues.isNotEmpty()) {
       if (resultState.mode == ConnectionMode.ONLINE) {
         client.completeDetailsCallWith(detailsState)
+        if (resultState.selectedIssue?.issueDetails?.fatality == FailureType.FATAL) {
+          client.completeFetchInsightCallWith(insightState)
+        }
         if (key != VITALS_KEY) {
           client.completeIssueVariantsCallWith(issueVariantsState)
           client.completeListEvents(eventsState)
-          if ((eventsState as? LoadingState.Ready)?.value?.events?.isNotEmpty() == true) {
-            client.completeFetchInsightCallWith(insightState)
-            consumeNext()
-          }
         }
       }
       if (key != VITALS_KEY) {
+        consumeNext()
         consumeNext()
         consumeNext()
         consumeNext()
@@ -385,9 +377,9 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
     connection: Connection,
     issueId: IssueId,
     event: Event,
-    variantId: String?,
     timeInterval: TimeIntervalFilter,
-    codeContext: List<CodeContext>,
+    codeContextData: CodeContextData,
+    forceFetch: Boolean,
   ): LoadingState.Done<AiInsight> = fetchInsightCall.initiateCall()
 
   suspend fun completeFetchInsightCallWith(value: LoadingState.Done<AiInsight>) =

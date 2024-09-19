@@ -52,7 +52,6 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent.TemplatesUsage.T
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.DumbService
 import java.io.File
 import java.io.IOException
@@ -92,6 +91,17 @@ abstract class ModuleModel(
 
   override fun handleSkipped() {
     multiTemplateRenderer.skipRender()
+  }
+
+  open fun getParamsToLog(): String {
+    return """isLibrary: $isLibrary
+      |Application name: ${applicationName.get()}
+      |Module name: ${moduleName.get()}
+      |Package name: ${packageName.get()}
+      |Language: ${language.value}
+      |Minimum SDK: ${androidSdkInfo.valueOrNull?.minApiLevel ?: "N/A"}
+      |Kotlin DSL: ${useGradleKts.get()}
+    """.trimMargin()
   }
 
   abstract inner class ModuleTemplateRenderer : MultiTemplateRenderer.TemplateRenderer {
@@ -148,7 +158,8 @@ abstract class ModuleModel(
       val moduleModel = this@ModuleModel
       log.info("Rendering module with commandName \"${moduleModel.commandName}\" " +
                "for form factor \"${moduleModel.formFactor}\" " +
-                        "and category \"${moduleModel.category}\"")
+               "and category \"${moduleModel.category}\". " +
+               "Parameters:\n${moduleModel.getParamsToLog()}")
     }
 
     protected open fun renderTemplate(dryRun: Boolean): Boolean {

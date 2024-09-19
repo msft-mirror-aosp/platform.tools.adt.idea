@@ -17,7 +17,6 @@ package com.android.tools.idea.avd
 
 import androidx.compose.runtime.Immutable
 import com.android.resources.ScreenOrientation
-import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.Storage
@@ -40,7 +39,6 @@ import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 
 @Immutable
@@ -48,7 +46,6 @@ internal data class VirtualDevice
 internal constructor(
   val name: String,
   val device: Device,
-  internal val androidVersion: AndroidVersion,
   internal val skin: Skin,
   internal val frontCamera: AvdCamera,
   internal val rearCamera: AvdCamera,
@@ -68,10 +65,8 @@ internal constructor(
       VirtualDevice(
         name = device.displayName,
         device = device,
-        androidVersion = device.androidVersionRange.upperEndpoint(),
         skin = NoSkin.INSTANCE,
         frontCamera = AvdCamera.EMULATED,
-        // TODO We're assuming the emulator supports this feature
         rearCamera = AvdCamera.VIRTUAL_SCENE,
         speed = EmulatedProperties.DEFAULT_NETWORK_SPEED,
         latency = EmulatedProperties.DEFAULT_NETWORK_LATENCY,
@@ -93,7 +88,6 @@ internal fun VirtualDevice.copyFrom(avdInfo: AvdBuilder): VirtualDevice {
 
   return copy(
     name = avdInfo.displayName,
-    androidVersion = avdInfo.androidVersion!!,
     skin = avdInfo.skin.toSkin(),
     frontCamera = avdInfo.frontCamera,
     rearCamera = avdInfo.backCamera,
@@ -151,11 +145,11 @@ internal data class Custom internal constructor(internal val value: StorageCapac
   override fun toString() = value.toString()
 }
 
-internal data class ExistingImage internal constructor(private val value: Path) :
+internal data class ExistingImage internal constructor(private val path: String) :
   ExpandedStorage() {
-  override fun isValid() = Files.isRegularFile(value)
+  override fun isValid() = Files.isRegularFile(Paths.get(path))
 
-  override fun toString() = value.toString()
+  override fun toString() = path
 }
 
 internal object None : ExpandedStorage() {
@@ -176,7 +170,7 @@ internal fun ExpandedStorage.toSdCard(): SdCard? =
 internal fun SdCard?.toExpandedStorage() =
   when (this) {
     null -> None
-    is ExternalSdCard -> ExistingImage(Paths.get(path))
+    is ExternalSdCard -> ExistingImage(path)
     is InternalSdCard -> Custom(StorageCapacity(size, StorageCapacity.Unit.B).withMaxUnit())
   }
 

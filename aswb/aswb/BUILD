@@ -72,9 +72,7 @@ stamped_plugin_xml(
 java_library(
     name = "unit_test_utils",
     testonly = 1,
-    srcs = glob(["tests/utils/unit/**/*.java"]) + [
-        "tests/utils/sdkcompat/as233/com/android/ide/common/repository/GoogleMavenArtifactIdCompat.java",
-    ],
+    srcs = glob(["tests/utils/unit/**/*.java"]),
     visibility = combine_visibilities(TEST_ASWB_SUBPACKAGES_VISIBILITY, DEFAULT_TEST_VISIBILITY),
     deps = [
         ":aswb_lib",
@@ -88,12 +86,7 @@ java_library(
 java_library(
     name = "integration_test_utils",
     testonly = 1,
-    srcs = glob(["tests/utils/integration/**/*.java"]) + [
-        "tests/utils/sdkcompat/as233/com/android/tools/idea/sdk/IdeSdksCompat.java",
-        "tests/utils/sdkcompat/as233/com/google/idea/blaze/android/MobileInstallBuildStepTestCase.java",
-        "tests/utils/sdkcompat/as233/com/google/idea/blaze/android/functional/AndroidDeviceCompat.java",
-        "tests/utils/sdkcompat/as233/com/google/idea/blaze/android/tools/idea/run/editor/AndroidDebuggerCompat.java",
-    ],
+    srcs = glob(["tests/utils/integration/**/*.java"]),
     visibility = TEST_ASWB_SUBPACKAGES_VISIBILITY,
     deps = [
         ":aswb_lib",
@@ -118,7 +111,6 @@ java_library(
     srcs = glob(
         [
             "src/**/*.java",
-            "sdkcompat/as233/**/*.java",
             "src/com/google/idea/blaze/android/run/binary/tasks/*.java",
         ],
     ),
@@ -208,7 +200,7 @@ intellij_integration_test_suite(
         exclude = [
             "tests/integrationtests/com/google/idea/blaze/android/plugin/NdkDependenciesTest.java",  # Extracted to separate target
             "tests/integrationtests/com/google/idea/blaze/android/functional/AswbMergedManifestTest.java",  #b/222322106
-        ] + glob(["tests/integrationtests/sdkcompat/**"]),
+        ],
     ),
     additional_class_rules = [],
     data = [

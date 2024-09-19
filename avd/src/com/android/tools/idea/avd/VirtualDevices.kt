@@ -19,13 +19,8 @@ import com.android.sdklib.ISystemImage
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.AvdNames
 import com.android.sdklib.internal.avd.uniquifyAvdName
-import com.android.tools.idea.sdk.AndroidSdks
-import com.android.tools.idea.sdk.IdeAvdManagers
 
-internal class VirtualDevices(
-  private val avdManager: AvdManager =
-    IdeAvdManagers.getAvdManager(AndroidSdks.getInstance().tryToChooseSdkHandler())
-) {
+internal class VirtualDevices(private val avdManager: AvdManager) {
   internal fun add(device: VirtualDevice, image: ISystemImage) {
     val avdBuilder = avdManager.createAvdBuilder(device.device)
     avdBuilder.copyFrom(device, image)

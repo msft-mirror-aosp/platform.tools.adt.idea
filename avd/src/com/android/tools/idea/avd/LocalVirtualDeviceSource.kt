@@ -20,6 +20,7 @@ import com.android.sdklib.DeviceSystemImageMatcher
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.DeviceManager
+import com.android.sdklib.internal.avd.AvdManager
 import com.android.tools.idea.adddevicedialog.DeviceSource
 import com.android.tools.idea.adddevicedialog.LoadingState
 import com.android.tools.idea.adddevicedialog.WizardAction
@@ -28,8 +29,10 @@ import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import com.android.tools.idea.avdmanager.skincombobox.SkinCollector
 import com.android.tools.idea.avdmanager.skincombobox.SkinComboBoxModel
+import com.android.tools.idea.avdmanager.ui.NameComparator
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.sdk.AndroidSdks
+import com.android.tools.idea.sdk.IdeAvdManagers
 import com.android.tools.sdk.DeviceManagers
 import java.util.TreeSet
 import kotlinx.collections.immutable.ImmutableCollection
@@ -41,8 +44,11 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-internal class LocalVirtualDeviceSource(private val skins: ImmutableCollection<Skin>) :
-  DeviceSource<VirtualDeviceProfile> {
+internal class LocalVirtualDeviceSource(
+  private val skins: ImmutableCollection<Skin>,
+  private val avdManager: AvdManager =
+    IdeAvdManagers.getAvdManager(AndroidSdks.getInstance().tryToChooseSdkHandler()),
+) : DeviceSource<VirtualDeviceProfile> {
 
   companion object {
     internal fun create(): LocalVirtualDeviceSource {
@@ -56,13 +62,23 @@ internal class LocalVirtualDeviceSource(private val skins: ImmutableCollection<S
 
   override fun WizardPageScope.selectionUpdated(profile: VirtualDeviceProfile) {
     nextAction = WizardAction {
-      pushPage { ConfigurationPage(profile.toVirtualDevice(), null, skins, ::add) }
+      pushPage {
+        val deviceNameValidator = DeviceNameValidatorImpl(avdManager)
+        ConfigurationPage(
+          VirtualDevice.withDefaults(profile.device)
+            .copy(name = deviceNameValidator.uniquify(profile.name)),
+          null,
+          skins,
+          deviceNameValidator,
+          ::add,
+        )
+      }
     }
     finishAction = WizardAction.Disabled
   }
 
   private suspend fun add(device: VirtualDevice, image: ISystemImage): Boolean {
-    withContext(AndroidDispatchers.diskIoThread) { VirtualDevices().add(device, image) }
+    withContext(AndroidDispatchers.diskIoThread) { VirtualDevices(avdManager).add(device, image) }
     return true
   }
 
@@ -78,9 +94,11 @@ internal class LocalVirtualDeviceSource(private val skins: ImmutableCollection<S
 
         val deviceManager =
           DeviceManagers.getDeviceManager(AndroidSdks.getInstance().tryToChooseSdkHandler())
+
         fun sendDevices() {
           val profiles =
-            deviceManager.getDevices(DeviceManager.ALL_DEVICES).mapNotNull { device ->
+            deviceManager.getDevices(DeviceManager.ALL_DEVICES).mapNotNullTo(mutableListOf()) {
+              device ->
               val androidVersions =
                 systemImages
                   .filter { DeviceSystemImageMatcher.matches(device, it) }
@@ -90,6 +108,7 @@ internal class LocalVirtualDeviceSource(private val skins: ImmutableCollection<S
               if (androidVersions.isEmpty()) null
               else device.toVirtualDeviceProfile(androidVersions)
             }
+          profiles.sortWith(compareBy(NameComparator()) { it.device })
 
           // Cannot fail due to conflate() below
           trySend(LoadingState.Ready(profiles))
@@ -111,6 +130,3 @@ internal fun Device.toVirtualDeviceProfile(
   VirtualDeviceProfile.Builder()
     .apply { initializeFromDevice(this@toVirtualDeviceProfile, androidVersions) }
     .build()
-
-internal fun VirtualDeviceProfile.toVirtualDevice() =
-  VirtualDevice.withDefaults(device).copy(androidVersion = apiLevels.last())

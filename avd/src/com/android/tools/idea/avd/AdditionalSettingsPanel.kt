@@ -15,21 +15,20 @@
  */
 package com.android.tools.idea.avd
 
-import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -39,9 +38,7 @@ import com.android.resources.ScreenOrientation
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
-import com.android.tools.idea.adddevicedialog.LocalFileSystem
 import com.android.tools.idea.adddevicedialog.LocalProject
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.Project
@@ -52,12 +49,15 @@ import kotlin.math.max
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
+import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.GroupHeader
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @Composable
 internal fun AdditionalSettingsPanel(
@@ -66,12 +66,8 @@ internal fun AdditionalSettingsPanel(
   onImportButtonClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val scrollState = rememberScrollState()
-  Box(modifier) {
-    Column(
-      Modifier.verticalScroll(scrollState),
-      verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE),
-    ) {
+  VerticallyScrollableContainer(modifier) {
+    Column(verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE)) {
       Row {
         Text("Device skin", Modifier.padding(end = Padding.SMALL).alignByBaseline())
 
@@ -94,18 +90,18 @@ internal fun AdditionalSettingsPanel(
         additionalSettingsPanelState.storageGroupState,
         configureDevicePanelState.validity.isExpandedStorageValid,
         configureDevicePanelState::device::set,
-        configureDevicePanelState::setExpandedStorage,
       )
+      LaunchedEffect(Unit) {
+        additionalSettingsPanelState.storageGroupState.expandedStorageFlow.collect(
+          configureDevicePanelState::setExpandedStorage
+        )
+      }
 
       EmulatedPerformanceGroup(
         configureDevicePanelState.device,
         configureDevicePanelState::device::set,
       )
     }
-    VerticalScrollbar(
-      rememberScrollbarAdapter(scrollState),
-      modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-    )
   }
 }
 
@@ -124,7 +120,15 @@ private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        """
+        None: no camera installed for AVD
+        Emulated: use a simulated camera
+        Webcam0: use host computer webcam or built-in camera
+        """
+          .trimIndent(),
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
 
     Row {
@@ -137,7 +141,16 @@ private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        """
+        None: no camera installed for AVD
+        VirtualScene: use a virtual camera in a simulated environment
+        Emulated: use a simulated camera
+        Webcam0: use host computer webcam or built-in camera
+        """
+          .trimIndent(),
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }
@@ -162,7 +175,11 @@ private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        "Sets the initial state of the simulated network transfer rate used by the AVD. The network speed can also be adjusted in the " +
+          "emulator.",
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
 
     Row {
@@ -175,7 +192,11 @@ private fun NetworkGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        "Sets the initial state of the simulated network transfer latency used by the AVD. Latency is the delay in processing data " +
+          "across the network. The network latency can also be adjusted in the emulator.",
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }
@@ -218,7 +239,16 @@ private fun StartupGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) 
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        """
+        Choose how the AVD should start
+
+        Cold: start as from a power-up
+        Quick: start from the state that was saved when the AVD last exited
+        """
+          .trimIndent(),
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }
@@ -234,7 +264,6 @@ private fun StorageGroup(
   storageGroupState: StorageGroupState,
   isExistingImageValid: Boolean,
   onDeviceChange: (VirtualDevice) -> Unit,
-  onExpandedStorageChange: (ExpandedStorage) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Storage")
@@ -248,22 +277,30 @@ private fun StorageGroup(
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        "The amount of non-removable space available to store data on the AVD",
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
 
     Row {
       Text("Expanded storage", Modifier.padding(end = Padding.MEDIUM))
-      InfoOutlineIcon()
+
+      InfoOutlineIcon(
+        """
+        Custom: The amount of expanded storage available to store data on the AVD. We recommend at least 100 MB in order to use the camera in the emulator.
+        Existing image: Choose a file path to an existing expanded storage image. Using an existing image is useful when sharing data (pictures, media, files, etc.) between AVDs. 
+        None: No expanded storage on this AVD
+        """
+          .trimIndent()
+      )
     }
 
     Row {
       RadioButtonRow(
         RadioButton.CUSTOM,
         storageGroupState.selectedRadioButton,
-        onClick = {
-          storageGroupState.selectedRadioButton = RadioButton.CUSTOM
-          onExpandedStorageChange(Custom(storageGroupState.custom.withMaxUnit()))
-        },
+        onClick = { storageGroupState.selectedRadioButton = RadioButton.CUSTOM },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("CustomRadioButton"),
       )
 
@@ -279,17 +316,10 @@ private fun StorageGroup(
     }
 
     Row {
-      val fileSystem = LocalFileSystem.current
-
       RadioButtonRow(
         RadioButton.EXISTING_IMAGE,
         storageGroupState.selectedRadioButton,
-        onClick = {
-          storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE
-
-          val image = fileSystem.getPath(storageGroupState.existingImage)
-          onExpandedStorageChange(ExistingImage(image))
-        },
+        onClick = { storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("ExistingImageRadioButton"),
       )
 
@@ -297,21 +327,14 @@ private fun StorageGroup(
         storageGroupState.existingImage,
         storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE,
         isExistingImageValid,
-        onExistingImageChange = {
-          storageGroupState.existingImage = it
-          onExpandedStorageChange(ExistingImage(fileSystem.getPath(it)))
-        },
-        Modifier.alignByBaseline(),
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
     }
 
     RadioButtonRow(
       RadioButton.NONE,
       storageGroupState.selectedRadioButton,
-      onClick = {
-        storageGroupState.selectedRadioButton = RadioButton.NONE
-        onExpandedStorageChange(None)
-      },
+      onClick = { storageGroupState.selectedRadioButton = RadioButton.NONE },
     )
   }
 }
@@ -326,43 +349,43 @@ private fun <E : Enum<E>> RadioButtonRow(
   RadioButtonRow(value.toString(), selectedValue == value, onClick, modifier)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ExistingImageField(
-  existingImage: String,
+  existingImage: TextFieldState,
   enabled: Boolean,
   isExistingImageValid: Boolean,
-  onExistingImageChange: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Column(modifier) {
-    if (enabled && !isExistingImageValid) {
-      Text("The specified image must be a valid file")
-    }
-
+  Row(modifier) {
     @OptIn(ExperimentalJewelApi::class) val component = LocalComponent.current
     val project = LocalProject.current
 
-    TextField(
-      existingImage,
-      onExistingImageChange,
-      Modifier.testTag("ExistingImageField"),
-      enabled,
-      trailingIcon = {
-        Icon(
-          "general/openDisk.svg",
-          null,
-          AllIcons::class.java,
-          Modifier.clickable(
-              enabled,
-              onClick = {
-                val image = chooseFile(component, project)
-                if (image != null) onExistingImageChange(image.toString())
-              },
-            )
-            .pointerHoverIcon(PointerIcon.Default),
-        )
-      },
-    )
+    val errorText =
+      "The specified image must be a valid file".takeIf { enabled && !isExistingImageValid }
+    ErrorTooltip(errorText) {
+      TextField(
+        existingImage,
+        Modifier.testTag("ExistingImageField"),
+        enabled,
+        outline = if (enabled && !isExistingImageValid) Outline.Error else Outline.None,
+        trailingIcon = {
+          Icon(
+            AllIconsKeys.General.OpenDisk,
+            null,
+            Modifier.padding(start = Padding.MEDIUM_LARGE)
+              .clickable(
+                enabled,
+                onClick = {
+                  val image = chooseFile(component, project)
+                  if (image != null) existingImage.setTextAndPlaceCursorAtEnd(image.toString())
+                },
+              )
+              .pointerHoverIcon(PointerIcon.Default),
+          )
+        },
+      )
+    }
   }
 }
 
@@ -436,7 +459,11 @@ private fun EmulatedPerformanceGroup(
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        "The amount of RAM on the AVD. This RAM is allocated from the host system while the AVD is running. Larger amounts of RAM will " +
+          "allow the AVD to run more applications, but have a greater impact on the host system.",
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
 
     Row {
@@ -445,10 +472,14 @@ private fun EmulatedPerformanceGroup(
       StorageCapacityField(
         device.vmHeapSize,
         onValueChange = { onDeviceChange(device.copy(vmHeapSize = it)) },
-        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM, bottom = Padding.SMALL),
       )
 
-      InfoOutlineIcon(Modifier.align(Alignment.CenterVertically))
+      InfoOutlineIcon(
+        "The amount of RAM available to the Java virtual machine (VM) to allocate to running apps on the AVD. A larger VM heap allows " +
+          "applications to run longer between garbage collection events.",
+        Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }
@@ -460,7 +491,15 @@ internal class AdditionalSettingsPanelState internal constructor(device: Virtual
 internal class StorageGroupState internal constructor(device: VirtualDevice) {
   internal var selectedRadioButton by mutableStateOf(RadioButton.valueOf(device.expandedStorage))
   internal var custom by mutableStateOf(customValue(device))
-  internal var existingImage by mutableStateOf(device.expandedStorage.toTextFieldValue())
+  internal val existingImage = TextFieldState(device.expandedStorage.toTextFieldValue())
+
+  val expandedStorageFlow = snapshotFlow {
+    when (selectedRadioButton) {
+      RadioButton.CUSTOM -> Custom(custom.withMaxUnit())
+      RadioButton.EXISTING_IMAGE -> ExistingImage(existingImage.text.toString())
+      RadioButton.NONE -> None
+    }
+  }
 
   private companion object {
     private fun customValue(device: VirtualDevice) =

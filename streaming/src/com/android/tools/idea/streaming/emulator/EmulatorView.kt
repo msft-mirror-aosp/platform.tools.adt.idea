@@ -36,6 +36,9 @@ import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.adtui.ImageUtils.ALPHA_MASK
 import com.android.tools.adtui.common.AdtUiCursorType
 import com.android.tools.adtui.common.AdtUiCursorsProvider
+import com.android.tools.adtui.device.SkinLayout
+import com.android.tools.adtui.util.rotatedByQuadrants
+import com.android.tools.adtui.util.scaled
 import com.android.tools.analytics.toProto
 import com.android.tools.idea.avdmanager.EmulatorLogListener
 import com.android.tools.idea.concurrency.executeOnPooledThread
@@ -50,8 +53,6 @@ import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.isSameAspectRatio
-import com.android.tools.idea.streaming.core.rotatedByQuadrants
-import com.android.tools.idea.streaming.core.scaled
 import com.android.tools.idea.streaming.core.scaledDown
 import com.android.tools.idea.streaming.core.scaledUnbiased
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.DisplayMode
@@ -476,6 +477,10 @@ class EmulatorView(
 
   override fun canZoom(): Boolean = isConnected
 
+  override fun onScreenScaleChanged() {
+    requestScreenshotFeed()
+  }
+
   override fun computeActualSize(): Dimension =
       computeActualSize(screenshotShape.orientation)
 
@@ -621,13 +626,11 @@ class EmulatorView(
   }
 
   private fun requestScreenshotFeed() {
-    if (isConnected) {
-      requestScreenshotFeed(deviceDisplaySize, displayOrientationQuadrants)
-    }
+    requestScreenshotFeed(deviceDisplaySize, displayOrientationQuadrants)
   }
 
   private fun requestScreenshotFeed(displaySize: Dimension, orientationQuadrants: Int) {
-    if (width != 0 && height != 0 && isConnected) {
+    if (isConnected && width != 0 && height != 0) {
       val maxSize = physicalSize.rotatedByQuadrants(-orientationQuadrants)
       val skin = emulator.getSkin(currentPosture?.posture)
       if (skin != null && deviceFrameVisible) {

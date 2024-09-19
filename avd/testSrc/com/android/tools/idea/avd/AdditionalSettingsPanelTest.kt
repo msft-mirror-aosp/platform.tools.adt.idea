@@ -31,11 +31,11 @@ import com.android.tools.idea.adddevicedialog.LocalFileSystem
 import com.android.tools.idea.adddevicedialog.LocalProject
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
+import com.google.common.truth.Truth.assertThat
 import java.nio.file.Files
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
-import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,7 +50,6 @@ class AdditionalSettingsPanelTest {
   @Test
   fun radioButtonRowOnClicksChangeDevice() {
     // Arrange
-    val version = AndroidVersion(34, null, 7, true)
     val fileSystem = createInMemoryFileSystem()
     val home = System.getProperty("user.home")
 
@@ -58,7 +57,6 @@ class AdditionalSettingsPanelTest {
       VirtualDevice(
         device = readTestDevices().first { it.id == "pixel_8" },
         name = "Pixel 8 API 34",
-        androidVersion = version,
         skin = DefaultSkin(fileSystem.getPath(home, "Android", "Sdk", "skins", "pixel_8")),
         frontCamera = AvdCamera.EMULATED,
         rearCamera = AvdCamera.VIRTUAL_SCENE,
@@ -75,7 +73,7 @@ class AdditionalSettingsPanelTest {
       )
 
     val image = mock<ISystemImage>()
-    whenever(image.androidVersion).thenReturn(version)
+    whenever(image.androidVersion).thenReturn(AndroidVersion(34, null, 7, true))
 
     val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), image)
 
@@ -103,14 +101,17 @@ class AdditionalSettingsPanelTest {
     // Act
     rule.onNodeWithTag("ExistingImageRadioButton").performClick()
     rule.onNodeWithTag("ExistingImageField").performTextReplacement(mySdCardFileImg.toString())
+    rule.waitForIdle()
 
     // Assert
-    assertEquals(device.copy(expandedStorage = ExistingImage(mySdCardFileImg)), state.device)
+    assertThat(state.device)
+      .isEqualTo(device.copy(expandedStorage = ExistingImage(mySdCardFileImg.toString())))
 
     // Act
     rule.onNodeWithTag("CustomRadioButton").performClick()
+    rule.waitForIdle()
 
     // Assert
-    assertEquals(device, state.device)
+    assertThat(state.device).isEqualTo(device)
   }
 }

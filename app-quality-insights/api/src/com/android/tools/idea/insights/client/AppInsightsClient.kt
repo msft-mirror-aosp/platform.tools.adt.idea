@@ -35,8 +35,8 @@ import com.android.tools.idea.insights.Permission
 import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.WithCount
-import com.android.tools.idea.insights.ai.codecontext.CodeContext
-import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
+import com.android.tools.idea.insights.ai.codecontext.CodeContextData
+import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.FetchSource
 
 data class IssueRequest(val connection: Connection, val filters: QueryFilters)
 
@@ -53,7 +53,7 @@ interface AppInsightsClient {
 
   suspend fun listTopOpenIssues(
     request: IssueRequest,
-    fetchSource: AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.FetchSource? = null,
+    fetchSource: FetchSource? = null,
     mode: ConnectionMode = ConnectionMode.ONLINE,
     permission: Permission = Permission.NONE,
   ): LoadingState.Done<IssueResponse>
@@ -101,8 +101,8 @@ interface AppInsightsClient {
     connection: Connection,
     issueId: IssueId,
     event: Event,
-    variantId: String?,
     timeInterval: TimeIntervalFilter,
-    codeContext: List<CodeContext>,
+    codeContextData: CodeContextData,
+    forceFetch: Boolean = false,
   ): LoadingState.Done<AiInsight>
 }

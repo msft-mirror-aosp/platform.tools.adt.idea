@@ -35,6 +35,7 @@ import com.android.tools.idea.adddevicedialog.WizardDialogScope
 import com.android.tools.idea.adddevicedialog.WizardPageScope
 import com.android.tools.idea.avdmanager.SkinUtils
 import com.android.tools.idea.avdmanager.skincombobox.Skin
+import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.intellij.openapi.diagnostic.logger
@@ -69,6 +70,7 @@ internal fun WizardPageScope.ConfigurationPage(
   device: VirtualDevice,
   image: ISystemImage?,
   skins: ImmutableCollection<Skin>,
+  deviceNameValidator: DeviceNameValidator,
   finish: suspend (VirtualDevice, ISystemImage) -> Boolean,
 ) {
   val allImages: LoadingState<List<ISystemImage>> by
@@ -96,11 +98,23 @@ internal fun WizardPageScope.ConfigurationPage(
 
   val state =
     remember(device) {
-      configureDevicePanelState(
-        device,
-        skins,
-        image ?: images.sortedWith(SystemImageComparator).last().takeIf { it.isRecommended() },
-      )
+      if (image == null) {
+        // Adding a device
+        val state =
+          ConfigureDevicePanelState(
+            device,
+            skins,
+            images.sortedWith(SystemImageComparator).last().takeIf { it.isRecommended() },
+          )
+
+        val skin = device.device.defaultHardware.skinFile
+        state.setSkin(resolve(if (skin == null) SkinUtils.noSkin() else skin.toPath(), emptyList()))
+
+        state
+      } else {
+        // Editing a device
+        ConfigureDevicePanelState(device, skins, image)
+      }
     }
 
   @OptIn(ExperimentalJewelApi::class) val parent = LocalComponent.current
@@ -111,6 +125,7 @@ internal fun WizardPageScope.ConfigurationPage(
     state,
     image,
     images,
+    deviceNameValidator,
     onDownloadButtonClick = { coroutineScope.launch { downloadSystemImage(parent, it) } },
     onSystemImageTableRowClick = {
       state.systemImageTableSelectionState.selection = it
@@ -144,21 +159,6 @@ internal fun WizardPageScope.ConfigurationPage(
     }
 }
 
-private fun configureDevicePanelState(
-  device: VirtualDevice,
-  skins: ImmutableCollection<Skin>,
-  image: ISystemImage?,
-): ConfigureDevicePanelState {
-  val state = ConfigureDevicePanelState(device, skins, image)
-
-  if (image == null) {
-    val skin = device.device.defaultHardware.skinFile
-    state.setSkin(resolve(if (skin == null) SkinUtils.noSkin() else skin.toPath(), emptyList()))
-  }
-
-  return state
-}
-
 private suspend fun WizardDialogScope.finish(
   device: VirtualDevice,
   image: ISystemImage,
@@ -166,7 +166,7 @@ private suspend fun WizardDialogScope.finish(
   finish: suspend (VirtualDevice, ISystemImage) -> Boolean,
 ) {
   if (ensureSystemImageIsPresent(image, parent)) {
-    if (finish(device, image)) {
+    if (finish(device, image.toLocalImage())) {
       close()
     }
   }
@@ -189,6 +189,27 @@ private fun ensureSystemImageIsPresent(image: ISystemImage, parent: Component): 
     return downloadSystemImage(parent, image.`package`.path)
   }
   return true
+}
+
+// TODO: http://b/367394413 - This is a hack. Find a better way.
+private fun ISystemImage.toLocalImage(): ISystemImage {
+  if (this !is RemoteSystemImage) return this
+
+  val handler = AndroidSdks.getInstance().tryToChooseSdkHandler()
+  val indicator = StudioLoggerProgressIndicator(AvdConfigurationPage::class.java)
+
+  val images =
+    handler
+      .getSystemImageManager(indicator)
+      .imageMap
+      .get(handler.getLocalPackage(`package`.path, indicator))
+
+  if (images.size > 1) {
+    logger<AvdConfigurationPage>()
+      .warn("Multiple images for ${`package`.path}. Returning the first.")
+  }
+
+  return images.first()
 }
 
 private fun downloadSystemImage(parent: Component, path: String): Boolean {

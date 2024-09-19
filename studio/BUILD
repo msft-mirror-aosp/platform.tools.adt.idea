@@ -1,7 +1,7 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
-load("//tools/adt/idea/studio:studio.bzl", "android_studio", "iml_studio_test", "studio_plugin")
+load("//tools/adt/idea/studio:studio.bzl", "android_studio", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
-load("//tools/base/bazel:bazel.bzl", "iml_module")
+load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/common:version.bzl", "LAST_STABLE_BUILD_VERSION")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
@@ -521,6 +521,7 @@ studio_plugin(
     directory = "firebase",
     libs = [
         "//tools/vendor/google/firebase:firebase_java_proto",
+        "//tools/vendor/google/firebase:libandroid-core-proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
     ],
     licenses = [
@@ -644,6 +645,7 @@ studio_plugin(
     deps = [
         ":org.jetbrains.android",
         "@intellij//:com.intellij.java",
+        "@intellij//:org.jetbrains.kotlin",
     ],
 )
 
@@ -1064,7 +1066,7 @@ iml_module(
     ],
 )
 
-iml_studio_test(
+iml_test(
     name = "StartUpTest",
     module = ":intellij.android.studio.integration",
     tags_linux = ["block-network"],
@@ -1072,7 +1074,7 @@ iml_studio_test(
     test_class = "com.android.tools.idea.StartUpTest",
 )
 
-iml_studio_test(
+iml_test(
     name = "StartUpCustomJvmTest",
     module = ":intellij.android.studio.integration",
     tags_linux = ["block-network"],
@@ -1080,7 +1082,7 @@ iml_studio_test(
     test_class = "com.android.tools.idea.StartUpCustomJvmTest",
 )
 
-iml_studio_test(
+iml_test(
     name = "UpdateTest",
     data = [
         ":updater",
@@ -1092,7 +1094,7 @@ iml_studio_test(
     test_class = "com.android.tools.idea.UpdateTest",
 )
 
-iml_studio_test(
+iml_test(
     name = "WebpSupportTest",
     module = ":intellij.android.studio.integration",
     # TODO(b/302730760) enable test when WebP support is fully fixed

@@ -15,4 +15,16 @@
  */
 package com.android.tools.idea.insights
 
-data class AiInsight(val rawInsight: String)
+import com.android.tools.idea.insights.analytics.supportsContextSharing
+import com.android.tools.idea.serverflags.protos.ExperimentType
+
+data class AiInsight(
+  val rawInsight: String,
+  /** The experiment that was conducted to generate this insight. */
+  val experimentType: ExperimentType = ExperimentType.EXPERIMENT_TYPE_UNSPECIFIED,
+) {
+  // This is so creators of AiInsight don't have to depend on server flags
+  constructor(rawInsight: String) : this(rawInsight, ExperimentType.EXPERIMENT_TYPE_UNSPECIFIED)
+
+  fun isEnhancedWithCodeContext() = experimentType.supportsContextSharing()
+}

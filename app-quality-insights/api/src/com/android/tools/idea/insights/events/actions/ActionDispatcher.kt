@@ -289,10 +289,10 @@ class ActionDispatcher(
             if (connectionMode == ConnectionMode.ONLINE && state.mode == ConnectionMode.OFFLINE) {
               eventEmitter(EnterOnlineMode)
             }
-            eventEmitter(IssuesChanged(fetchResult, clock, lastGoodState))
+            eventEmitter(IssuesChanged(fetchResult, clock, lastGoodState, reason))
           }
           is LoadingState.Failure -> {
-            eventEmitter(IssuesChanged(fetchResult, clock, lastGoodState))
+            eventEmitter(IssuesChanged(fetchResult, clock, lastGoodState, reason))
           }
         }
       }
@@ -363,15 +363,15 @@ class ActionDispatcher(
             else -> {
               val timeFilter =
                 state.filters.timeInterval.selected ?: state.filters.timeInterval.items.last()
+              val codeContextData =
+                geminiToolkit.getSource(action.event.stacktraceGroup, action.contextSharingOverride)
               appInsightsClient.fetchInsight(
                 connection,
                 action.id,
                 action.event,
-                action.variantId,
                 timeFilter,
-                state.selectedEvent?.let {
-                  geminiToolkit.codeContextResolver.getSource(it.stacktraceGroup)
-                } ?: emptyList(),
+                codeContextData,
+                action.contextSharingOverride || action.forceFetch,
               )
             }
           }

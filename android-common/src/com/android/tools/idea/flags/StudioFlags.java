@@ -163,7 +163,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_NEW_KOTLIN_MULTIPLATFORM_MODULE = new BooleanFlag(
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.",
-    false);
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Integer> NPW_COMPILE_SDK_VERSION = new IntFlag(
     NPW, "new.project.compile.sdk", "New project Compile SDK version",
@@ -294,7 +294,7 @@ public final class StudioFlags {
     "motion.editor.deprecation.warning",
     "Shows the Motion Editor deprecation warning",
     "Shows the Motion Editor deprecation warning.",
-    false
+    true
   );
   //endregion
 
@@ -713,6 +713,14 @@ public final class StudioFlags {
     "Delay before reloading Logcat from file after filter change",
     "Delay before reloading Logcat from file after filter change. If `<= 0`, file will not be reloaded",
     TimeUnit.SECONDS.toMillis(1)
+  );
+
+  public static final Flag<Boolean> LOGCAT_DEOBFUSCATE = new BooleanFlag(
+    LOGCAT,
+    "deobfuscate",
+    "Enable stack trace deobfuscation using R8 Retrace",
+    "Enable stack trace deobfuscation using R8 Retrace",
+    false
   );
   //endregion
 
@@ -1712,7 +1720,7 @@ public final class StudioFlags {
     "device.catalog.enabled",
     "Enable the Device Catalog for virtual device creation",
     "Enable new UI for creating AVDs",
-    false
+    ChannelDefault.enabledUpTo(CANARY)
   );
 
   public static final Flag<Boolean> DIRECT_ACCESS_DEVICE_CATALOG_ENABLED = new BooleanFlag(
@@ -1720,7 +1728,7 @@ public final class StudioFlags {
     "direct.access.device.catalog.enabled",
     "Enable the Device Catalog for Direct Access devices",
     "Enable new UI for selecting Firebase devices",
-    false
+    ChannelDefault.enabledUpTo(CANARY)
   );
   // endregion
 
@@ -1820,7 +1828,7 @@ public final class StudioFlags {
       "crashlytics.show.insight.tool.window",
       "Show insight toolwindow in Crashlytics",
       "Show AI generated insights for Crashlytics issue in insight toolwindow",
-      false
+      true
     );
 
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
@@ -1853,7 +1861,7 @@ public final class StudioFlags {
       "play.vitals.show.insight.tool.window",
       "Show insight toolwindow in Play Vitals",
       "Show AI generated insights for Play Vitals issue in insight toolwindow",
-      false
+      true
     );
   // endregion App Insights
 
@@ -2076,7 +2084,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "ai.rename.action",
                     "Use AI to suggest a better identifier name",
                     "Enables AI rename suggestion functionality",
-                    false);
+                    ChannelDefault.enabledUpTo(CANARY));
 
 
   public static final Flag<Boolean> STUDIOBOT_ATTACHMENTS =
