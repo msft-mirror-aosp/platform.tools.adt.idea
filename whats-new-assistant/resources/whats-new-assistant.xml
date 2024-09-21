@@ -25,8 +25,8 @@
     <tutorial
         key="whats-new"
         label=" What's New in Ladybug"
-        icon="preview/product-icon.svg"
-        remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/preview-release-notes/2024-2-1"
+        icon="stable/product-icon.svg"
+        remoteLink="https://d.android.com/r/studio-ui/whats-new-assistant/stable-release-notes/2024-2-1"
         remoteLinkLabel="Read in a browser">
       <description>
         <![CDATA[
@@ -37,87 +37,27 @@
           from the main menu.
           ]]>
       </description>
-      <step label="Code suggestions with Gemini in Android Studio">
+      <step label="IntelliJ 2024.2 platform updates">
         <stepElement>
           <section>
             <![CDATA[
-            <p>Provide custom prompts for Gemini in Android Studio to generate code suggestions. You
-            can ask Gemini to simplify complex code by rewriting it, perform very specific code
-            transformations such as "make this code idiomatic," or generate new functions you
-            describe. Android Studio then shows you Gemini's code suggestion as a code diff, so that
-            you can review and accept only the suggestions you want.
+            <p>Android Studio Ladybug includes the IntelliJ 2024.2 platform release, which has many new features such as integrated K2 mode for improved Kotlin stability, enhanced IDE startup efficiency, simplified cron expression management, and more.
             </p>
             <br>
-            <a href="https://d.android.com/r/studio-ui/gemini/code-suggestions">Learn more</a>
+            <a href="https://www.jetbrains.com/idea/whatsnew/2024-2">Learn more</a>
             <br>
             ]]>
           </section>
         </stepElement>
       </step>
-      <step label="Analyze crash reports with Gemini in Android Studio">
+      <step label="Support for Pixel 9 series devices">
         <stepElement>
           <section>
             <![CDATA[
-            <p>Use Gemini in Android Studio to analyze your App Quality Insights crash reports,
-            generate insights, provide a crash summary, and when possible recommend next steps,
-            including sample code and links to relevant documentation. Generate all of this
-            information by clicking <b>Show Insights</b> in the <b>App Quality Insights</b> tool
-            window in Android Studio after you enable Gemini from
-            <b>View > Tool Windows > Gemini</b>.
+            <p>Android Studio and the latest Android Emulator now have device definitions for the Pixel 9, Pixel 9 Pro, Pixel 9 Pro XL, and the Pixel 9 Pro Fold, enabling you to validate your apps on these virtual devices to ensure they react correctly to a variety of screen sizes and device types. You should use API 35 with the Pixel 9 AVDs to ensure the best experience and access to the latest platform features.
             </p>
             <br>
             <a href="https://d.android.com/r/studio-ui/debug/gemini-aqi">Learn more</a>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Google Play SDK Index integration">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>The Android Studio
-            <a href="https://d.android.com/build/dependencies#sdk-insights">Google Play SDK Index integration</a>
-            now includes warnings from the
-            <a href="https://android-developers.googleblog.com/2024/05/build-better-safer-sdks-google-play-sdk-console.html">Google Play SDK Console</a>.
-            This gives you a complete view of any potential version or policy issues in your
-            dependencies before submitting your app to the Google Play Console.
-            </p>
-            <br>
-            <a href="https://d.android.com/r/studio-ui/build/play-sdk-index">Learn more</a>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Mock sensor capabilities and values">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>Android Studio now includes a new sensor panel, which lets you simulate a device
-            having or not having specific sensor capabilities, such as a heart rate sensor, as well
-            as set specific test values for these sensors. Use this panel to test how your app
-            handles devices that have different sensor capabilities. This panel is useful for
-            testing health and fitness apps, especially on Wear OS devices.
-            </p>
-            <br>
-            <a href="https://d.android.com/r/studio-ui/test/mock-sensor-capabilities-values">Learn more</a>
-            <br>
-            ]]>
-          </section>
-        </stepElement>
-      </step>
-      <step label="Compose Preview Screenshot Testing tool">
-        <stepElement>
-          <section>
-            <![CDATA[
-            <p>Use the Compose Preview Screenshot Testing tool to test your Compose UIs and
-            prevent regressions. The new tool helps you generate HTML reports that let you
-            visually detect any changes to your app's UI.
-            </p>
-            <br><br>
-            <br>
-            <a href="https://d.android.com/r/studio-ui/test/compose-screenshot-testing">Learn more</a>
             <br>
             ]]>
           </section>
@@ -127,7 +67,7 @@
         <stepElement>
           <section>
             <![CDATA[
-              <br><em>Last updated 7/2/2024</em><br>
+              <br><em>Last updated 9/20/2024</em><br>
             ]]>
           </section>
         </stepElement>
