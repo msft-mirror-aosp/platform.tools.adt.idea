@@ -19,7 +19,6 @@ import static com.google.idea.blaze.qsync.java.SrcJarInnerPathFinder.AllowPackag
 
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableCollection;
-import com.google.idea.blaze.common.artifact.BuildArtifactCache;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact;
 import com.google.idea.blaze.qsync.deps.ArtifactDirectories;
@@ -40,18 +39,18 @@ import com.google.idea.blaze.qsync.project.ProjectProto.LibrarySource;
 public class AddDependencyGenSrcsJars implements ProjectProtoUpdateOperation {
 
   private final Supplier<ImmutableCollection<TargetBuildInfo>> builtTargetsSupplier;
-  private final BuildArtifactCache buildCache;
+  private final CachedArtifactProvider cachedArtifactProvider;
   private final ProjectDefinition projectDefinition;
   private final SrcJarInnerPathFinder srcJarInnerPathFinder;
 
   public AddDependencyGenSrcsJars(
       Supplier<ImmutableCollection<TargetBuildInfo>> builtTargetsSupplier,
       ProjectDefinition projectDefinition,
-      BuildArtifactCache buildCache,
+      CachedArtifactProvider cachedArtifactProvider,
       SrcJarInnerPathFinder srcJarInnerPathFinder) {
     this.builtTargetsSupplier = builtTargetsSupplier;
     this.projectDefinition = projectDefinition;
-    this.buildCache = buildCache;
+    this.cachedArtifactProvider = cachedArtifactProvider;
     this.srcJarInnerPathFinder = srcJarInnerPathFinder;
   }
 
@@ -73,15 +72,15 @@ public class AddDependencyGenSrcsJars implements ProjectProtoUpdateOperation {
         ProjectPath projectArtifact =
             update
                 .artifactDirectory(ArtifactDirectories.DEFAULT)
-                .addIfNewer(genSrc.path(), genSrc, target.buildContext())
+                .addIfNewer(genSrc.artifactPath(), genSrc, target.buildContext())
                 .orElse(null);
 
         if (projectArtifact != null) {
           srcJarInnerPathFinder
               .findInnerJarPaths(
-                  genSrc.blockingGetFrom(buildCache),
+                  cachedArtifactProvider.apply(genSrc, ArtifactDirectories.DEFAULT),
                   EMPTY_PACKAGE_PREFIXES_ONLY,
-                  genSrc.path().toString())
+                  genSrc.artifactPath().toString())
               .stream()
               .map(JarPath::path)
               .map(projectArtifact::withInnerJarPath)
