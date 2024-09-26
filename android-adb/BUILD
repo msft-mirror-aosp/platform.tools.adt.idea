@@ -31,6 +31,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/.idea/libraries:libadblib-tools-proto",
         "//tools/adt/idea/analytics[module]",
+        "//tools/base/sdk-common:studio.android.sdktools.sdk-common[module]",
+        "//tools/analytics-library/shared:analytics-shared[module]",
     ],
 )
 
@@ -71,6 +73,8 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner[module]",
         "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools[module, test]",
         "//tools/base/jdwp-tracer:studio.android.sdktools.jdwptracer[module, test]",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing[module, test]",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
     ],
 )
 

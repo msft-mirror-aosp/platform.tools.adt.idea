@@ -56,6 +56,8 @@ public class StartUpTest {
         plugins[i] = plugins[i].replaceAll(" (.*) \\(.*\\)", "$1").strip();
       }
 
+      studio.validatePluginConfiguration();
+
       List<String> expectedPlugins = new ArrayList<>(Arrays.asList(
         "Android",
         "Android APK Support",
@@ -87,6 +89,7 @@ public class StartUpTest {
         "GitLab",
         "Google Cloud Tools For Android Studio",
         "Gradle",
+        "Gradle Declarative Support",
         "Gradle-Java",
         "Groovy",
         "HTML Tools",

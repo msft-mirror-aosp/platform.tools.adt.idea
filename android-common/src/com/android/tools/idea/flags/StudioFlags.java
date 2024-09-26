@@ -460,6 +460,15 @@ public final class StudioFlags {
     " Deploying changes that exceed the level of support configured here will cause the deployment to install via the package manager.",
     OptimisticInstallSupportLevel.DEX);
 
+  public static final Flag<Boolean> INSTALL_WITH_ASSUME_VERIFIED = new BooleanFlag(
+    RUNDEBUG,
+    "install.with.assume.verified",
+    "Enabled ART assume-verified compiler filter for API 35+ deployment.",
+    "When deploying to API 35+ device for debuggable deployment, the deployment pipeline will leverage the assume-verified" +
+    " compiler filter in ART to avoid bytecode verification when possible. This would speed up development cycles. Note that all release" +
+    " build are still verified by ART regardless of this flag.",
+    ChannelDefault.enabledUpTo(CANARY));
+
   public static final Flag<Boolean> APPLY_CHANGES_STRUCTURAL_DEFINITION = new BooleanFlag(
     RUNDEBUG,
     "applychanges.structuralredefinition",
@@ -851,14 +860,6 @@ public final class StudioFlags {
     "Migrate project to Gradle local java.home",
     "Suggest migrating current project JDK configuration to .gradle/config.properties where gradleJvm uses the " +
     "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
-
-  public static final Flag<Boolean> GRADLE_DECLARATIVE_IDE_SUPPORT = new BooleanFlag(
-    GRADLE_IDE,
-    "gradle.declarative.ide.support",
-    "Studio support for Gradle's Declarative Configuration Language",
-    "Enable support for build.gradle.dcl in Android Studio",
-    false
-  );
 
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = new BooleanFlag(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
@@ -1828,7 +1829,7 @@ public final class StudioFlags {
       "crashlytics.show.insight.tool.window",
       "Show insight toolwindow in Crashlytics",
       "Show AI generated insights for Crashlytics issue in insight toolwindow",
-      true
+      ChannelDefault.enabledUpTo(CANARY)
     );
 
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
@@ -1861,7 +1862,7 @@ public final class StudioFlags {
       "play.vitals.show.insight.tool.window",
       "Show insight toolwindow in Play Vitals",
       "Show AI generated insights for Play Vitals issue in insight toolwindow",
-      true
+      ChannelDefault.enabledUpTo(CANARY)
     );
   // endregion App Insights
 

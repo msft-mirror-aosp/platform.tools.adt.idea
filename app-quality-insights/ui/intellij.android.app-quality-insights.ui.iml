@@ -30,14 +30,10 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/adt/idea/android/libandroid-core-proto.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.log.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.dvcs.impl" level="project" />
+    <orderEntry type="library" name="studio-grpc" level="project" />
+    <orderEntry type="library" name="studio-proto" level="project" />
   </component>
 </module>

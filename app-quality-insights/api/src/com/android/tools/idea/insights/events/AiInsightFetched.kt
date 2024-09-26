@@ -15,12 +15,12 @@
  */
 package com.android.tools.idea.insights.events
 
-import com.android.tools.idea.insights.AiInsight
 import com.android.tools.idea.insights.AppInsightsState
 import com.android.tools.idea.insights.InsightsProviderKey
 import com.android.tools.idea.insights.LoadingState
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
-import com.android.tools.idea.insights.analytics.toExperiment
+import com.android.tools.idea.insights.analytics.toProto
 import com.android.tools.idea.insights.events.actions.Action
 
 data class AiInsightFetched(private val fetchedInsight: LoadingState.Done<AiInsight>) :
@@ -32,9 +32,9 @@ data class AiInsightFetched(private val fetchedInsight: LoadingState.Done<AiInsi
   ): StateTransition<Action> {
     val crashType = state.selectedIssue?.issueDetails?.fatality
     val appId = state.connections.selected?.appId
-    val experiment = (fetchedInsight as? LoadingState.Ready)?.value?.experimentType
-    if (experiment != null && crashType != null && appId != null) {
-      tracker.logInsightFetch(appId, crashType, experiment.toExperiment())
+    val insight = (fetchedInsight as? LoadingState.Ready)?.value
+    if (insight != null && crashType != null && appId != null) {
+      tracker.logInsightFetch(appId, crashType, insight.experiment.toProto(), insight.isCached)
     }
     return StateTransition(newState = state.copy(currentInsight = fetchedInsight), Action.NONE)
   }

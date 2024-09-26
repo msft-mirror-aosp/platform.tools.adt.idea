@@ -105,6 +105,9 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
   var ALWAYS_INSTALL_WITH_PM = false
 
   @JvmField
+  var ALLOW_ASSUME_VERIFIED = false
+
+  @JvmField
   var CLEAR_APP_STORAGE = false
 
   @JvmField
@@ -263,6 +266,13 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
     val state = getLaunchOptionState(LAUNCH_DEEP_LINK)
     assert(state is DeepLinkLaunch.State)
     (state as DeepLinkLaunch.State).DEEP_LINK = url
+  }
+
+  fun setLaunchUrlToActivity(url: String, activityName: String) {
+    MODE = LAUNCH_DEEP_LINK
+    val state = (getLaunchOptionState(LAUNCH_DEEP_LINK) as DeepLinkLaunch.State)
+    state.DEEP_LINK = url
+    state.ACTIVITY = activityName
   }
 
   fun isLaunchingActivity(activityName: String?): Boolean {

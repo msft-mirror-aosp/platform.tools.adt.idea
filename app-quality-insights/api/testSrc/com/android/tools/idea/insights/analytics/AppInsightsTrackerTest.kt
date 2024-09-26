@@ -15,11 +15,6 @@
  */
 package com.android.tools.idea.insights.analytics
 
-import com.android.testutils.MockitoKt.any
-import com.android.testutils.MockitoKt.argThat
-import com.android.testutils.MockitoKt.capture
-import com.android.testutils.MockitoKt.eq
-import com.android.tools.idea.insights.AiInsight
 import com.android.tools.idea.insights.AppInsightsProjectLevelControllerRule
 import com.android.tools.idea.insights.AppInsightsState
 import com.android.tools.idea.insights.CONNECTION1
@@ -48,10 +43,11 @@ import com.android.tools.idea.insights.Timed
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.VisibilityType
 import com.android.tools.idea.insights.WithCount
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.events.AiInsightFetched
 import com.android.tools.idea.insights.events.SelectedIssueChanged
-import com.android.tools.idea.serverflags.protos.ExperimentType
+import com.android.tools.idea.insights.experiments.Experiment
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.AppQualityInsightsNotesDetails
@@ -63,9 +59,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.never
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
+import org.mockito.kotlin.capture
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 
 private val ISSUE_RESPONSE =
   LoadingState.Ready(
@@ -109,17 +109,17 @@ class AppInsightsTrackerTest {
         any(),
         eq(ConnectionMode.ONLINE),
         argThat {
-          it.deviceFilter &&
-            it.osFilter &&
-            it.versionFilter &&
-            it.severityFilter ==
+          deviceFilter &&
+            osFilter &&
+            versionFilter &&
+            severityFilter ==
               AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.SeverityFilter.FATAL &&
-            it.visibilityFilter ==
+            visibilityFilter ==
               AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.VisibilityFilter
                 .USER_PERCEIVED &&
-            it.timeFilter ==
+            timeFilter ==
               AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.TimeFilter.SIXTY_DAYS &&
-            it.signalFilter ==
+            signalFilter ==
               AppQualityInsightsUsageEvent.AppQualityInsightsFetchDetails.SignalFilter
                 .REGRESSIVE_SIGNAL
         },
@@ -150,7 +150,7 @@ class AppInsightsTrackerTest {
         any(),
         eq(ConnectionMode.ONLINE),
         argThat {
-          it.statusChange ==
+          statusChange ==
             AppQualityInsightsUsageEvent.AppQualityInsightsIssueChangedDetails.StatusChange.CLOSED
         },
       )
@@ -165,7 +165,7 @@ class AppInsightsTrackerTest {
         any(),
         eq(ConnectionMode.ONLINE),
         argThat {
-          it.statusChange ==
+          statusChange ==
             AppQualityInsightsUsageEvent.AppQualityInsightsIssueChangedDetails.StatusChange.OPENED
         },
       )
@@ -194,7 +194,7 @@ class AppInsightsTrackerTest {
       .logNotesAction(
         any(),
         eq(ConnectionMode.ONLINE),
-        argThat { it.noteEvent == AppQualityInsightsNotesDetails.NoteEvent.ADDED },
+        argThat { noteEvent == AppQualityInsightsNotesDetails.NoteEvent.ADDED },
       )
 
     controllerRule.controller.deleteNote(NOTE1)
@@ -206,7 +206,7 @@ class AppInsightsTrackerTest {
       .logNotesAction(
         any(),
         eq(ConnectionMode.ONLINE),
-        argThat { it.noteEvent == AppQualityInsightsNotesDetails.NoteEvent.REMOVED },
+        argThat { noteEvent == AppQualityInsightsNotesDetails.NoteEvent.REMOVED },
       )
   }
 
@@ -299,8 +299,8 @@ class AppInsightsTrackerTest {
     verify(controllerRule.tracker, times(1))
       .logCrashListDetailView(
         argThat {
-          it.crashType == ISSUE2.issueDetails.fatality.toCrashType() &&
-            it.source ==
+          crashType == ISSUE2.issueDetails.fatality.toCrashType() &&
+            source ==
               AppQualityInsightsUsageEvent.AppQualityInsightsCrashOpenDetails.CrashOpenSource.LIST
         }
       )
@@ -310,8 +310,8 @@ class AppInsightsTrackerTest {
     verify(controllerRule.tracker, times(1))
       .logCrashListDetailView(
         argThat {
-          it.crashType == ISSUE2.issueDetails.fatality.toCrashType() &&
-            it.source ==
+          crashType == ISSUE2.issueDetails.fatality.toCrashType() &&
+            source ==
               AppQualityInsightsUsageEvent.AppQualityInsightsCrashOpenDetails.CrashOpenSource
                 .INSPECTION
         }
@@ -330,12 +330,17 @@ class AppInsightsTrackerTest {
         TEST_FILTERS,
         LoadingState.Ready(Timed(Selection(ISSUE1, listOf(ISSUE1)), Instant.now())),
       )
-    val insight = AiInsight("", ExperimentType.CONTROL)
+    val insight = AiInsight("", Experiment.CONTROL)
     val insightFetch = AiInsightFetched(LoadingState.Ready(insight))
     insightFetch.transition(testState, controllerRule.tracker, TEST_KEY)
 
     verify(controllerRule.tracker, times(1))
-      .logInsightFetch(any(), eq(ISSUE1.issueDetails.fatality), eq(InsightExperiment.CONTROL))
+      .logInsightFetch(
+        any(),
+        eq(ISSUE1.issueDetails.fatality),
+        eq(InsightExperiment.CONTROL),
+        eq(false),
+      )
   }
 
   private suspend fun consumeAndCompleteIssuesCall() {

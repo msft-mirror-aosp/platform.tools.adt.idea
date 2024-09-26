@@ -27,7 +27,6 @@ import com.android.tools.idea.common.surface.Interactable
 import com.android.tools.idea.common.surface.InteractionHandler
 import com.android.tools.idea.common.surface.LayoutScannerEnabled
 import com.android.tools.idea.common.surface.SurfaceInteractable
-import com.android.tools.idea.common.surface.SurfaceScale
 import com.android.tools.idea.common.surface.ZoomControlsPolicy
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -46,8 +45,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
-@SurfaceScale private const val DEFAULT_MIN_SCALE = 0.025
-@SurfaceScale private const val DEFAULT_MAX_SCALE = 10.0
 private val DEFAULT_NL_SUPPORTED_ACTIONS = ImmutableSet.copyOf(NlSupportedActions.values())
 
 /** Default [LayoutlibSceneManager] provider */
@@ -102,11 +99,7 @@ class NlSurfaceBuilder(
     }
   }
 
-  @Suppress("deprecation") private var surfaceLayoutOption: SurfaceLayoutOption? = null
-
-  @SurfaceScale private var minScale = DEFAULT_MIN_SCALE
-
-  @SurfaceScale private var maxScale = DEFAULT_MAX_SCALE
+  private var surfaceLayoutOption: SurfaceLayoutOption? = null
 
   /**
    * An optional [DataProvider] that allows users of the surface to provide additional information
@@ -149,6 +142,7 @@ class NlSurfaceBuilder(
 
   private var _screenViewProvider: ScreenViewProvider? = null
   private var _setDefaultScreenViewProvider = false
+  private var _shouldZoomOnFirstComponentResize = true
 
   private var _visualLintIssueProviderFactory:
     (DesignSurface<LayoutlibSceneManager>) -> VisualLintIssueProvider =
@@ -160,6 +154,14 @@ class NlSurfaceBuilder(
   @Suppress("deprecation")
   fun setLayoutOption(layoutOption: SurfaceLayoutOption): NlSurfaceBuilder {
     surfaceLayoutOption = layoutOption
+    return this
+  }
+
+  /**
+   * The surface will calculate zoom-to-fit scale when a component is resized for the first time.
+   */
+  fun shouldZoomOnFirstComponentResize(shouldZoomOnResize: Boolean): NlSurfaceBuilder {
+    _shouldZoomOnFirstComponentResize = shouldZoomOnResize
     return this
   }
 
@@ -197,36 +199,6 @@ class NlSurfaceBuilder(
     interactionHandlerProvider: (DesignSurface<LayoutlibSceneManager>) -> InteractionHandler
   ): NlSurfaceBuilder {
     _interactionHandlerProvider = interactionHandlerProvider
-    return this
-  }
-
-  /**
-   * Restrict the minimum zoom level to the given value. The default value is [.DEFAULT_MIN_SCALE].
-   * For example, if this value is 0.15 then the zoom level of [DesignSurface] can never be lower
-   * than 15%. This restriction also effects to zoom-to-fit, if the measured size of zoom-to-fit is
-   * 10%, then the zoom level will be cut to 15%. <br></br> This value should always be larger than
-   * 0, otherwise the [IllegalStateException] will be thrown.
-   *
-   * @see [setMaxScale]
-   */
-  fun setMinScale(@SurfaceScale scale: Double): NlSurfaceBuilder {
-    check(!(scale <= 0)) { "The min scale ($scale) is not larger than 0" }
-    minScale = scale
-    return this
-  }
-
-  /**
-   * Restrict the max zoom level to the given value. The default value is [.DEFAULT_MAX_SCALE]. For
-   * example, if this value is 1.0 then the zoom level of [DesignSurface] can never be larger than
-   * 100%. This restriction also effects to zoom-to-fit, if the measured size of zoom-to-fit is
-   * 120%, then the zoom level will be cut to 100%. <br></br><br></br> This value should always be
-   * larger than 0 and larger than min scale which is set by [.setMinScale]. otherwise the
-   * [IllegalStateException] will be thrown when [.build] is called.
-   *
-   * @see [setMinScale]
-   */
-  fun setMaxScale(@SurfaceScale scale: Double): NlSurfaceBuilder {
-    maxScale = scale
     return this
   }
 
@@ -304,10 +276,6 @@ class NlSurfaceBuilder(
   }
 
   fun build(): NlDesignSurface {
-    check(!(minScale > maxScale)) {
-      "The max scale ($maxScale) is lower than min scale ($minScale)"
-    }
-
     val nlDesignSurfacePositionableContentLayoutManager =
       NlDesignSurfacePositionableContentLayoutManager(surfaceLayoutOption ?: DEFAULT_OPTION)
     val surface =
@@ -317,14 +285,13 @@ class NlSurfaceBuilder(
         _actionManagerProvider,
         _interactableProvider,
         _interactionHandlerProvider,
-        minScale,
-        maxScale,
         _actionHandlerProvider,
         _delegateDataProvider,
         _selectionModel ?: DefaultSelectionModel(),
         _zoomControlsPolicy,
         _supportedActionsProvider,
         _shouldRenderErrorsPanel,
+        _shouldZoomOnFirstComponentResize,
         _visualLintIssueProviderFactory,
         nlDesignSurfacePositionableContentLayoutManager,
       )

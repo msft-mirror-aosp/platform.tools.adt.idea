@@ -105,14 +105,13 @@ internal constructor(
       >,
   interactableProvider: (DesignSurface<LayoutlibSceneManager>) -> Interactable,
   interactionHandlerProvider: (DesignSurface<LayoutlibSceneManager>) -> InteractionHandler,
-  @SurfaceScale minScale: Double,
-  @SurfaceScale maxScale: Double,
   actionHandlerProvider: (DesignSurface<LayoutlibSceneManager>) -> DesignSurfaceActionHandler,
   private val delegateDataProvider: DataProvider?,
   selectionModel: SelectionModel,
   zoomControlsPolicy: ZoomControlsPolicy,
   private val supportedActionsProvider: Supplier<ImmutableSet<NlSupportedActions>>,
   private val shouldRenderErrorsPanel: Boolean,
+  shouldZoomOnFirstComponentResize: Boolean,
   issueProviderFactory: (DesignSurface<LayoutlibSceneManager>) -> VisualLintIssueProvider,
   nlDesignSurfacePositionableContentLayoutManager: NlDesignSurfacePositionableContentLayoutManager,
 ) :
@@ -125,6 +124,7 @@ internal constructor(
     actionHandlerProvider,
     selectionModel,
     zoomControlsPolicy,
+    shouldZoomOnFirstComponentResize,
   ),
   NlDiagnosticKey {
 
@@ -200,8 +200,6 @@ internal constructor(
         }
         // TODO(b/330155137): Move setOnScaleListener to Kotlin flow
         setOnScaleListener(this@NlDesignSurface)
-        this@apply.maxScale = maxScale
-        this@apply.minScale = minScale
         screenScalingFactor = sysScale(this@NlDesignSurface).toDouble()
       }
 

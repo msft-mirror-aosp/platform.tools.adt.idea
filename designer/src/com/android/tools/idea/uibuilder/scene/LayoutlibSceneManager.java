@@ -48,7 +48,6 @@ import com.android.tools.idea.uibuilder.handlers.ViewEditorImpl;
 import com.android.tools.idea.uibuilder.menu.NavigationViewSceneView;
 import com.android.tools.idea.uibuilder.scene.decorator.NlSceneDecoratorFactory;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
-import com.android.tools.idea.uibuilder.surface.NlScreenViewProvider;
 import com.android.tools.idea.uibuilder.surface.ScreenView;
 import com.android.tools.idea.uibuilder.surface.ScreenViewLayer;
 import com.android.tools.idea.uibuilder.type.MenuFileType;
@@ -86,8 +85,6 @@ import org.jetbrains.annotations.TestOnly;
  */
 public class LayoutlibSceneManager extends SceneManager implements InteractiveSceneManager {
   private static final SceneDecoratorFactory DECORATOR_FACTORY = new NlSceneDecoratorFactory();
-
-  @Nullable private SceneView mySecondarySceneView;
 
   private int myDpi = 0;
   private final SelectionChangeListener mySelectionChangeListener = new SelectionChangeListener();
@@ -141,7 +138,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
                                   @NotNull LayoutScannerConfiguration layoutScannerConfig) {
     super(model, designSurface, sceneComponentProvider);
     myLayoutlibSceneRenderer = new LayoutlibSceneRenderer(this, renderTaskDisposerExecutor, model, (NlDesignSurface) designSurface, layoutScannerConfig);
-    createSceneView();
+    updateSceneView();
 
     getDesignSurface().getSelectionModel().addListener(mySelectionChangeListener);
 
@@ -286,24 +283,11 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     }
 
     SceneView primarySceneView = getDesignSurface().getScreenViewProvider().createPrimarySceneView(getDesignSurface(), this);
-    mySecondarySceneView = getDesignSurface().getScreenViewProvider().createSecondarySceneView(getDesignSurface(), this);
+    setSecondarySceneView(getDesignSurface().getScreenViewProvider().createSecondarySceneView(getDesignSurface(), this));
 
     getDesignSurface().updateErrorDisplay();
 
     return primarySceneView;
-  }
-
-  @NotNull
-  @Override
-  public List<SceneView> getSceneViews() {
-    ImmutableList.Builder<SceneView> builder = ImmutableList.<SceneView>builder()
-      .addAll(super.getSceneViews());
-
-    if (mySecondarySceneView != null) {
-      builder.add(mySecondarySceneView);
-    }
-
-    return builder.build();
   }
 
   private SceneView createSceneViewsForMenu() {
@@ -330,12 +314,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
     return sceneView;
   }
 
-  @Nullable
-  public SceneView getSecondarySceneView() {
-    return mySecondarySceneView;
-  }
-
-  public void updateTargets() {
+  private void updateTargets() {
     Runnable updateAgain = this::updateTargets;
     SceneComponent root = getScene().getRoot();
     if (root != null) {
@@ -444,16 +423,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   }
 
   /**
-   * Similar to {@link #requestRenderAsync()} but it will be logged as a user initiated action. This is
-   * not exposed at SceneManager level since it only makes sense for the Layout editor.
-   */
-  @NotNull
-  public CompletableFuture<Void> requestUserInitiatedRenderAsync() {
-    getSceneRenderConfiguration().getNeedsInflation().set(true);
-    return requestRenderAsync(LayoutEditorRenderResult.Trigger.USER);
-  }
-
-  /**
    * If true, register the {@link com.android.tools.idea.res.ResourceNotificationManager.ResourceChangeListener} which calls
    * {@link #resourcesChanged(ImmutableSet)} when any resource is changed.
    * By default, it is enabled.
@@ -489,7 +458,7 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
       .thenAccept(result -> {
         if (result != null && !isDisposed.get()) {
           myLayoutlibSceneRenderer.updateHierarchy(result);
-          notifyListenersModelLayoutComplete(animate);
+          getModel().notifyListenersModelChangedOnLayout(animate);
         }
       });
   }
@@ -497,10 +466,6 @@ public class LayoutlibSceneManager extends SceneManager implements InteractiveSc
   @Nullable
   public RenderResult getRenderResult() {
     return myLayoutlibSceneRenderer.getRenderResult();
-  }
-
-  private void notifyListenersModelLayoutComplete(boolean animate) {
-    getModel().notifyListenersModelChangedOnLayout(animate);
   }
 
   private void logConfigurationChange(@NotNull DesignSurface<?> surface) {

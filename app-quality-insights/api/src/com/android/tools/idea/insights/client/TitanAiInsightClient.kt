@@ -16,7 +16,7 @@
 package com.android.tools.idea.insights.client
 
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.insights.AiInsight
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.io.grpc.ClientInterceptor
 import com.android.tools.idea.io.grpc.ManagedChannel
 import com.android.tools.idea.protobuf.Any
@@ -77,16 +77,25 @@ internal constructor(channel: ManagedChannel, interceptor: ClientInterceptor) : 
     fun create(disposable: Disposable, interceptor: ClientInterceptor): TitanAiInsightClient {
       val address = StudioFlags.APP_INSIGHTS_AI_INSIGHT_ENDPOINT.get()
       val channel =
-        channelBuilderForAddress(address).build().also {
-          try {
-            Disposer.register(disposable) {
-              it.shutdown()
-              it.awaitTermination(1, TimeUnit.SECONDS)
+        channelBuilderForAddress(address)
+          .apply {
+            if (address.startsWith("localhost")) {
+              usePlaintext()
+            } else {
+              useTransportSecurity()
             }
-          } catch (e: IncorrectOperationException) {
-            it.shutdownNow()
           }
-        }
+          .build()
+          .also {
+            try {
+              Disposer.register(disposable) {
+                it.shutdown()
+                it.awaitTermination(1, TimeUnit.SECONDS)
+              }
+            } catch (e: IncorrectOperationException) {
+              it.shutdownNow()
+            }
+          }
       return TitanAiInsightClient(channel, interceptor)
     }
   }

@@ -153,6 +153,7 @@ maven_repository(
         "@maven//:androidx.compose.animation.animation_1.5.0-beta01",  # Necessary for Compose for TV
         "@maven//:androidx.compose.animation.animation_1.6.0",  # Necessary for Compose for TV
         "@maven//:androidx.compose.animation.animation_1.6.6",  # Necessary for Compose for TV
+        "@maven//:androidx.compose.animation.animation_1.7.0-beta05",
         "@maven//:androidx.compose.compiler.compiler_1.3.2",
         "@maven//:androidx.compose.compiler.compiler_1.5.1",
         "@maven//:androidx.compose.compose-bom_2022.10.00",
@@ -1196,7 +1197,7 @@ java_test(
         "//prebuilts/studio/layoutlib/data/keyboards",
         "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
-        "@maven//:com.android.support.appcompat-v7_26.1.0",
+        "@maven//:com.android.support.appcompat-v7_28.0.0",
     ] + glob([
         "testData/ConvertFrom9Patch/**",
     ]) + glob([

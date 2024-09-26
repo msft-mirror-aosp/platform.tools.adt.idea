@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.vitals.client
 
-import com.android.tools.idea.insights.AiInsight
 import com.android.tools.idea.insights.AppInsightsIssue
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
@@ -37,6 +36,7 @@ import com.android.tools.idea.insights.Permission
 import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.WithCount
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppConnection
@@ -224,11 +224,15 @@ class VitalsClient(
   override suspend fun fetchInsight(
     connection: Connection,
     issueId: IssueId,
+    failureType: FailureType,
     event: Event,
     timeInterval: TimeIntervalFilter,
     codeContextData: CodeContextData,
     forceFetch: Boolean,
   ): LoadingState.Done<AiInsight> {
+    if (failureType != FailureType.FATAL) {
+      return LoadingState.UnsupportedOperation("Insights are currently only available for crashes")
+    }
     val cachedInsight = cache.getAiInsight(connection, issueId)
     return if (cachedInsight == null || forceFetch) {
       val insight = aiInsightClient.fetchCrashInsight("", event.toGeminiInsightRequest())

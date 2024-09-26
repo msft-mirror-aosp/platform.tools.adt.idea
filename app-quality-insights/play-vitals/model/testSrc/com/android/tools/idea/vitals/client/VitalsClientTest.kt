@@ -16,7 +16,6 @@
 package com.android.tools.idea.vitals.client
 
 import com.android.testutils.time.FakeClock
-import com.android.tools.idea.insights.AiInsight
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.DEFAULT_AI_INSIGHT
@@ -39,6 +38,7 @@ import com.android.tools.idea.insights.StatsGroup
 import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.WithCount
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppConnection
@@ -473,6 +473,7 @@ class VitalsClientTest {
       client.fetchInsight(
         TEST_CONNECTION_1,
         ISSUE1.id,
+        ISSUE1.issueDetails.fatality,
         ISSUE1.sampleEvent,
         TimeIntervalFilter.ONE_DAY,
         CodeContextData.EMPTY,
@@ -515,12 +516,14 @@ class VitalsClientTest {
     client.fetchInsight(
       TEST_CONNECTION_1,
       ISSUE1.id,
+      ISSUE1.issueDetails.fatality,
       ISSUE1.sampleEvent,
       TimeIntervalFilter.ONE_DAY,
       CodeContextData.EMPTY,
       false,
     )
-    assertThat(cache.getAiInsight(TEST_CONNECTION_1, ISSUE1.id)).isEqualTo(DEFAULT_AI_INSIGHT)
+    assertThat(cache.getAiInsight(TEST_CONNECTION_1, ISSUE1.id))
+      .isEqualTo(DEFAULT_AI_INSIGHT.copy(isCached = true))
   }
 
   @Test
@@ -541,13 +544,14 @@ class VitalsClientTest {
         client.fetchInsight(
           TEST_CONNECTION_1,
           ISSUE1.id,
+          ISSUE1.issueDetails.fatality,
           ISSUE1.sampleEvent,
           TimeIntervalFilter.ONE_DAY,
           CodeContextData.EMPTY,
           false,
         )
       )
-      .isEqualTo(LoadingState.Ready(DEFAULT_AI_INSIGHT))
+      .isEqualTo(LoadingState.Ready(DEFAULT_AI_INSIGHT.copy(isCached = true)))
   }
 
   @Test
@@ -579,6 +583,7 @@ class VitalsClientTest {
         client.fetchInsight(
           TEST_CONNECTION_1,
           ISSUE1.id,
+          ISSUE1.issueDetails.fatality,
           ISSUE1.sampleEvent,
           TimeIntervalFilter.ONE_DAY,
           CodeContextData.EMPTY,
@@ -586,5 +591,33 @@ class VitalsClientTest {
         )
       )
       .isEqualTo(LoadingState.Ready(newInsight))
+  }
+
+  @Test
+  fun `test fetch insight on ANR returns unsupported operation`() = runBlocking {
+    val client =
+      VitalsClient(
+        projectRule.project,
+        projectRule.disposable,
+        AppInsightsCacheImpl(),
+        ForwardingInterceptor,
+        TestVitalsGrpcClient(),
+        FakeAiInsightClient,
+      )
+
+    val insight =
+      client.fetchInsight(
+        TEST_CONNECTION_1,
+        ISSUE1.id,
+        FailureType.ANR,
+        ISSUE1.sampleEvent,
+        TimeIntervalFilter.ONE_DAY,
+        CodeContextData.EMPTY,
+      )
+
+    assertThat(insight)
+      .isEqualTo(
+        LoadingState.UnsupportedOperation("Insights are currently only available for crashes")
+      )
   }
 }

@@ -219,6 +219,12 @@
   <extensions defaultExtensionNs="com.android.tools.idea.run.configuration.editors">
     <androidWearConfigurationEditorToken implementation="com.android.tools.idea.run.configuration.editors.AndroidWearConfigurationEditorGradleToken"/>
   </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.execution.common.debug.utils">
+    <facetFinderToken implementation="com.android.tools.idea.execution.common.debug.utils.FacetFinderGradleToken"/>
+  </extensions>
+  <extensions defaultExtensionNs="com.android.tools.idea.res">
+    <resourceClassToken implementation="com.android.tools.idea.res.ResourceClassGradleToken"/>
+  </extensions>
   <projectListeners>
     <listener class="com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder$DataImportListener"
               topic="com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener"/>
@@ -320,31 +326,30 @@
       <add-to-group group-id="FileMenu" anchor="after" relative-to-action="SaveAll"/>
       <keyboard-shortcut keymap="$default" first-keystroke="control shift o" />
     </action>
+    <action id="RefreshLinkedCppProjects" class="com.android.tools.idea.gradle.actions.RefreshLinkedCppProjectsAction">
+      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Android.SyncProject"/>
+    </action>
     <group id="Library.Properties">
       <separator/>
       <action id="LibraryProperties" class="com.android.tools.idea.gradle.actions.LibraryPropertiesAction"/>
       <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="RevealIn"/>
     </group>
     <action id="CleanGradleProject" class="com.android.tools.idea.gradle.actions.CleanProjectAction">
-      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="CompileProject"/>
     </action>
     <action internal="true" id="Android.StopGradleDaemons" class="com.android.tools.idea.gradle.actions.StopGradleDaemonsAction" />
-    <group id="GradleProjectStructureActions">
+    <group>
       <separator/>
       <action id="SelectBuildVariant" class="com.android.tools.idea.gradle.actions.SelectBuildVariantAction"/>
-      <add-to-group group-id="BuildMenu" anchor="last"/>
+      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="com.android.build.attribution.ui.OpenBuildAnalyzerAction"/>
       <separator/>
     </group>
-    <group id="Android.BuildApkOrBundle" class="com.android.tools.idea.gradle.actions.BuildApkOrBundleActionGroup" text="Build App Bundle(s) / APK(s)" popup="true">
+    <group id="Android.BuildApkOrBundle" class="com.android.tools.idea.gradle.actions.BuildApkOrBundleActionGroup" text="Generate App Bundle(s) / APK(s)" popup="true">
       <add-to-group group-id="BuildMenu" anchor="last"/>
-      <action id="Android.BuildApk" class="com.android.tools.idea.gradle.actions.BuildApkAction"/>
-      <action id="Android.BuildBundle" class="com.android.tools.idea.gradle.actions.BuildBundleAction"/>
+      <action id="Android.BuildApk" class="com.android.tools.idea.gradle.actions.GenerateApkAction"/>
+      <action id="Android.BuildBundle" class="com.android.tools.idea.gradle.actions.GenerateBundleAction"/>
     </group>
     <action id="Android.GenerateSignedApk" class="org.jetbrains.android.actions.GenerateSignedAppBundleOrApkAction">
       <add-to-group group-id="BuildMenu" anchor="last"/>
-    </action>
-    <action id="RefreshLinkedCppProjects" class="com.android.tools.idea.gradle.actions.RefreshLinkedCppProjectsAction">
-      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="RebuildGradleProject"/>
     </action>
 
     <action internal="true" id="Android.DumpProject"

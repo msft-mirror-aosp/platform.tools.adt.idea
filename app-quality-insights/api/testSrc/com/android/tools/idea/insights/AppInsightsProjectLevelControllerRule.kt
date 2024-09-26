@@ -18,6 +18,7 @@ package com.android.tools.idea.insights
 import com.android.testutils.time.FakeClock
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.FakeGeminiToolkit
 import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
@@ -47,8 +48,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.junit.runner.Description
-import org.mockito.Mockito
-import org.mockito.Mockito.mock
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.spy
 
 private suspend fun <T> ReceiveChannel<T>.receiveWithTimeout(): T = withTimeout(5000) { receive() }
 
@@ -89,9 +90,9 @@ class AppInsightsProjectLevelControllerRule(
     scope = AndroidCoroutineScope(disposable, AndroidDispatchers.uiThread)
     clock = FakeClock(NOW)
     cache = AppInsightsCacheImpl()
-    client = Mockito.spy(TestAppInsightsClient(cache))
+    client = spy(TestAppInsightsClient(cache))
     connections = MutableSharedFlow(replay = 1)
-    tracker = mock(AppInsightsTracker::class.java)
+    tracker = mock<AppInsightsTracker>()
     controller =
       AppInsightsProjectLevelControllerImpl(
         key,
@@ -143,9 +144,7 @@ class AppInsightsProjectLevelControllerRule(
     if (state.value.issues.isNotEmpty()) {
       if (resultState.mode == ConnectionMode.ONLINE) {
         client.completeDetailsCallWith(detailsState)
-        if (resultState.selectedIssue?.issueDetails?.fatality == FailureType.FATAL) {
-          client.completeFetchInsightCallWith(insightState)
-        }
+        client.completeFetchInsightCallWith(insightState)
         if (key != VITALS_KEY) {
           client.completeIssueVariantsCallWith(issueVariantsState)
           client.completeListEvents(eventsState)
@@ -376,6 +375,7 @@ class TestAppInsightsClient(private val cache: AppInsightsCache) : AppInsightsCl
   override suspend fun fetchInsight(
     connection: Connection,
     issueId: IssueId,
+    failureType: FailureType,
     event: Event,
     timeInterval: TimeIntervalFilter,
     codeContextData: CodeContextData,

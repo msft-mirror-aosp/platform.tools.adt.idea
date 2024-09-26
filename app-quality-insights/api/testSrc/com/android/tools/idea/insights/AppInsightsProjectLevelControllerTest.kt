@@ -15,9 +15,8 @@
  */
 package com.android.tools.idea.insights
 
-import com.android.testutils.MockitoKt.any
-import com.android.testutils.MockitoKt.argThat
 import com.android.testutils.time.FakeClock
+import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.testing.AndroidExecutorsRule
@@ -28,8 +27,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 
 class AppInsightsProjectLevelControllerTest {
 
@@ -167,9 +168,9 @@ class AppInsightsProjectLevelControllerTest {
     verify(client)
       .listTopOpenIssues(
         argThat {
-          it.connection == CONNECTION2 &&
-            it.filters.versions == setOf(Version.ALL) &&
-            it.filters.interval.duration == Duration.ofDays(30)
+          connection == CONNECTION2 &&
+            filters.versions == setOf(Version.ALL) &&
+            filters.interval.duration == Duration.ofDays(30)
         },
         any(),
         any(),
@@ -266,9 +267,9 @@ class AppInsightsProjectLevelControllerTest {
       verify(client)
         .listTopOpenIssues(
           argThat {
-            it.connection == CONNECTION2 &&
-              it.filters.versions == setOf(Version.ALL) &&
-              it.filters.interval.duration == Duration.ofDays(30)
+            connection == CONNECTION2 &&
+              filters.versions == setOf(Version.ALL) &&
+              filters.interval.duration == Duration.ofDays(30)
           },
           any(),
           any(),
@@ -332,9 +333,9 @@ class AppInsightsProjectLevelControllerTest {
     verify(client)
       .listTopOpenIssues(
         argThat {
-          it.connection == preferredConnection &&
-            it.filters.versions == setOf(Version.ALL) &&
-            it.filters.interval.duration == Duration.ofDays(30)
+          connection == preferredConnection &&
+            filters.versions == setOf(Version.ALL) &&
+            filters.interval.duration == Duration.ofDays(30)
         },
         any(),
         any(),
@@ -414,10 +415,10 @@ class AppInsightsProjectLevelControllerTest {
     verify(client)
       .listTopOpenIssues(
         argThat {
-          it.connection == CONNECTION1 &&
-            it.filters.versions == setOf(newVersion.value) &&
-            it.filters.interval.duration == Duration.ofDays(30) &&
-            it.filters.signal == SignalType.SIGNAL_UNSPECIFIED
+          connection == CONNECTION1 &&
+            filters.versions == setOf(newVersion.value) &&
+            filters.interval.duration == Duration.ofDays(30) &&
+            filters.signal == SignalType.SIGNAL_UNSPECIFIED
         },
         any(),
         any(),
@@ -510,9 +511,9 @@ class AppInsightsProjectLevelControllerTest {
     verify(client)
       .listTopOpenIssues(
         argThat {
-          it.connection == CONNECTION1 &&
-            it.filters.versions == setOf(newVersion.value) &&
-            it.filters.interval.duration == Duration.ofDays(1)
+          connection == CONNECTION1 &&
+            filters.versions == setOf(newVersion.value) &&
+            filters.interval.duration == Duration.ofDays(1)
         },
         any(),
         any(),
@@ -820,6 +821,8 @@ class AppInsightsProjectLevelControllerTest {
     client.completeListNotesCallWith(LoadingState.Ready(emptyList()))
     controllerRule.consumeNext()
 
+    client.completeFetchInsightCallWith(LoadingState.Ready(DEFAULT_AI_INSIGHT))
+
     assertThat(controllerRule.consumeNext())
       .isEqualTo(
         model.copy(
@@ -829,8 +832,7 @@ class AppInsightsProjectLevelControllerTest {
             LoadingState.Ready(DynamicEventGallery(listOf(ISSUE2.sampleEvent), 0, "")),
           currentIssueDetails = LoadingState.Ready(ISSUE1_DETAILS),
           currentNotes = LoadingState.Ready(emptyList()),
-          currentInsight =
-            LoadingState.UnsupportedOperation("Insights are currently only available for crashes"),
+          currentInsight = LoadingState.Ready(DEFAULT_AI_INSIGHT),
         )
       )
     return@runBlocking
@@ -860,8 +862,8 @@ class AppInsightsProjectLevelControllerTest {
       verify(client)
         .listTopOpenIssues(
           argThat {
-            it.filters.eventTypes.size == 2 &&
-              it.filters.eventTypes.containsAll(listOf(FailureType.ANR, FailureType.NON_FATAL))
+            filters.eventTypes.size == 2 &&
+              filters.eventTypes.containsAll(listOf(FailureType.ANR, FailureType.NON_FATAL))
           },
           any(),
           any(),
@@ -877,7 +879,7 @@ class AppInsightsProjectLevelControllerTest {
       controllerRule.toggleFatality(FailureType.ANR)
       assertThat(controllerRule.consumeNext().filters.failureTypeToggles.selected).isEmpty()
       verify(client, never())
-        .listTopOpenIssues(argThat { it.filters.eventTypes.isEmpty() }, any(), any(), any())
+        .listTopOpenIssues(argThat { filters.eventTypes.isEmpty() }, any(), any(), any())
 
       controllerRule.toggleFatality(FailureType.FATAL)
       client.completeIssuesCallWith(issuesResponse)
@@ -886,7 +888,7 @@ class AppInsightsProjectLevelControllerTest {
       verify(client)
         .listTopOpenIssues(
           argThat {
-            it.filters.eventTypes.size == 1 && it.filters.eventTypes.contains(FailureType.FATAL)
+            filters.eventTypes.size == 1 && filters.eventTypes.contains(FailureType.FATAL)
           },
           any(),
           any(),
@@ -1457,7 +1459,7 @@ class AppInsightsProjectLevelControllerTest {
 
     verify(client)
       .listTopOpenIssues(
-        argThat { it.filters.visibilityType == VisibilityType.USER_PERCEIVED },
+        argThat { filters.visibilityType == VisibilityType.USER_PERCEIVED },
         any(),
         any(),
         any(),

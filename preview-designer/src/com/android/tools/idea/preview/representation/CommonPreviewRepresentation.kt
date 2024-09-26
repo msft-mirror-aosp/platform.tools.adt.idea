@@ -51,7 +51,6 @@ import com.android.tools.idea.preview.PsiPreviewElementInstance
 import com.android.tools.idea.preview.RenderQualityManager
 import com.android.tools.idea.preview.RenderQualityPolicy
 import com.android.tools.idea.preview.SimpleRenderQualityManager
-import com.android.tools.idea.preview.ZoomConstants
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
 import com.android.tools.idea.preview.animation.AnimationPreview
@@ -247,6 +246,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
               delegate = NavigatingInteractionHandler(it, navigationHandler)
             }
           }
+          .shouldZoomOnFirstComponentResize(false)
           .setDelegateDataProvider {
             when (it) {
               PREVIEW_VIEW_MODEL_STATUS.name -> previewViewModel
@@ -258,11 +258,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
               else -> null
             }
           }
-          .apply {
-            setMinScale(ZoomConstants.MIN_SCALE)
-            setMaxScale(ZoomConstants.MAX_SCALE)
-            configureDesignSurface(navigationHandler)
-          },
+          .apply { configureDesignSurface(navigationHandler) },
         this,
       )
       .also {

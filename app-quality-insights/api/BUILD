@@ -36,6 +36,9 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/api:libandroid-core-proto",
         "//tools/adt/idea/server-flags:intellij.android.server-flags[module]",
         "//tools/adt/idea/ml-api:intellij.android.ml-api[module]",
+        "@intellij//:intellij.platform.vcs.dvcs.impl",
+        "@intellij//:intellij.platform.vcs.impl[test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )
 

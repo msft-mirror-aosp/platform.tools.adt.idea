@@ -412,7 +412,7 @@ android-studio/jbr/release
 android-studio/lib/annotations.jar
 android-studio/lib/app.jar
 android-studio/lib/bouncy-castle.jar
-android-studio/lib/build-marker-AI-242.21829.142.2422.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-242.23339.11.2422.__BUILD_NUMBER__
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/external-system-rt.jar
 android-studio/lib/externalProcess-rt.jar
@@ -2073,8 +2073,6 @@ android-studio/plugins/android/lib/google-http-client-gson-1.42.3.jar
 android-studio/plugins/android/lib/google-login.jar
 android-studio/plugins/android/lib/google-oauth-client-1.34.1.jar
 android-studio/plugins/android/lib/google-oauth-client-java6-1.34.1.jar
-android-studio/plugins/android/lib/gradle-declarative-dsl-core-8.9-20240529002035+0000.jar
-android-studio/plugins/android/lib/gradle-declarative-dsl-tooling-models-8.9-20240529002035+0000.jar
 android-studio/plugins/android/lib/inspectors-common.jar
 android-studio/plugins/android/lib/instantapps-api-1.8.jar
 android-studio/plugins/android/lib/javacpp-1.5.9-linux-x86_64.jar
@@ -2774,7 +2772,6 @@ android-studio/plugins/firebase-testing/lib/jsch-0.1.55.jar
 android-studio/plugins/firebase/lib/firebase.jar
 android-studio/plugins/firebase/lib/firebase.so.jar
 android-studio/plugins/firebase/lib/firebase_java_proto.jar
-android-studio/plugins/firebase/lib/libandroid-core-proto.jar
 android-studio/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 android-studio/plugins/gemini/lib/aida_grpc.jar
 android-studio/plugins/gemini/lib/aida_proto.jar
@@ -2790,6 +2787,10 @@ android-studio/plugins/google-cloud-tools-as/lib/google-api-services-sourcerepo-
 android-studio/plugins/google-cloud-tools-as/lib/google-cloud-tools-as.jar
 android-studio/plugins/google-cloud-tools-as/lib/google-cloud-tools-as.so.jar
 android-studio/plugins/google-cloud-tools-as/lib/gradle-appengine-builder-model-0.1.0.jar
+android-studio/plugins/gradle-declarative/lib/gradle-declarative-dsl-core-8.9-20240529002035+0000.jar
+android-studio/plugins/gradle-declarative/lib/gradle-declarative-dsl-tooling-models-8.9-20240529002035+0000.jar
+android-studio/plugins/gradle-declarative/lib/gradle-declarative.jar
+android-studio/plugins/gradle-declarative/lib/gradle-declarative.so.jar
 android-studio/plugins/gradle-java/lib/gradle-java.jar
 android-studio/plugins/gradle-java/lib/gradle-jps.jar
 android-studio/plugins/gradle/lib/ant/ant-antlr.jar
