@@ -15,13 +15,11 @@
  */
 package com.google.idea.blaze.qsync.java;
 
-import static com.google.idea.blaze.qsync.java.SrcJarInnerPathFinder.AllowPackagePrefixes.ALLOW_NON_EMPTY_PACKAGE_PREFIXES;
-
-import com.google.common.base.Supplier;
-import com.google.common.collect.ImmutableCollection;
-import com.google.idea.blaze.exception.BuildException;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact;
 import com.google.idea.blaze.qsync.deps.ArtifactDirectories;
+import com.google.idea.blaze.qsync.deps.ArtifactMetadata;
+import com.google.idea.blaze.qsync.deps.ArtifactTracker;
 import com.google.idea.blaze.qsync.deps.JavaArtifactInfo;
 import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate;
 import com.google.idea.blaze.qsync.deps.ProjectProtoUpdateOperation;
@@ -32,6 +30,8 @@ import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.google.idea.blaze.qsync.project.ProjectProto;
 import com.google.idea.blaze.qsync.project.ProjectProto.ProjectArtifact.ArtifactTransform;
 import com.google.idea.blaze.qsync.project.TestSourceGlobMatcher;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Adds in-project generated {@code .srcjar} files to the project proto. This allows these sources
@@ -39,73 +39,72 @@ import com.google.idea.blaze.qsync.project.TestSourceGlobMatcher;
  */
 public class AddProjectGenSrcJars implements ProjectProtoUpdateOperation {
 
-  private final Supplier<ImmutableCollection<TargetBuildInfo>> builtTargetsSupplier;
-  private final CachedArtifactProvider cachedArtifactProvider;
   private final ProjectDefinition projectDefinition;
-  private final SrcJarInnerPathFinder srcJarInnerPathFinder;
+  private final SourceJarInnerPathsAndPackagePrefixes srcJarPathMetadata;
   private final TestSourceGlobMatcher testSourceMatcher;
 
   public AddProjectGenSrcJars(
-      Supplier<ImmutableCollection<TargetBuildInfo>> builtTargetsSupplier,
       ProjectDefinition projectDefinition,
-      CachedArtifactProvider cachedArtifactProvider,
-      SrcJarInnerPathFinder srcJarInnerPathFinder) {
-    this.builtTargetsSupplier = builtTargetsSupplier;
+      SourceJarInnerPathsAndPackagePrefixes srcJarPathMetadata) {
     this.projectDefinition = projectDefinition;
-    this.cachedArtifactProvider = cachedArtifactProvider;
-    this.srcJarInnerPathFinder = srcJarInnerPathFinder;
+    this.srcJarPathMetadata = srcJarPathMetadata;
     testSourceMatcher = TestSourceGlobMatcher.create(projectDefinition);
   }
 
-  @Override
-  public void update(ProjectProtoUpdate update) throws BuildException {
-    for (TargetBuildInfo target : builtTargetsSupplier.get()) {
-      if (target.javaInfo().isEmpty()) {
-        continue;
-      }
-      JavaArtifactInfo javaInfo = target.javaInfo().get();
-      if (!projectDefinition.isIncluded(javaInfo.label())) {
-        continue;
-      }
-      for (BuildArtifact genSrc : javaInfo.genSrcs()) {
-        if (JAVA_ARCHIVE_EXTENSIONS.contains(genSrc.getExtension())) {
-          // a zip of generated sources
-          ProjectPath added =
-              update
-                  .artifactDirectory(ArtifactDirectories.DEFAULT)
-                  .addIfNewer(
-                      genSrc.artifactPath(),
-                      genSrc,
-                      target.buildContext(),
-                      ArtifactTransform.STRIP_SUPPORTED_GENERATED_SOURCES)
-                  .orElse(null);
-          if (added != null) {
-            ProjectProto.ContentEntry.Builder genSrcJarContentEntry =
-                ProjectProto.ContentEntry.newBuilder().setRoot(added.toProto());
-            // When cachedArtifactProvider.apply return an artifact stored in artifact directory (.bazel/buildout/xxx), it may has been
-            // copied and unzipped if ArtifactDirectoryUpdate.buildGeneratedSrcJars is enabled and ArtifactTransform is
-            // STRIP_SUPPORTED_GENERATED_SOURCES. It will lead to srcJarInnerPathFinder.findInnerJarPaths throw
-            // ioexception as the file is not a zip file. But since we have disabled ArtifactDirectoryUpdate.buildGeneratedSrcJars for all
-            // users, it should be pretty rare. Consider that we only use this fix as a temp workaround and there will be official fixing
-            // soon, we will use srcJarInnerPathFinder directly without careful checking.
-            for (JarPath innerPath :
-                srcJarInnerPathFinder.findInnerJarPaths(
-                    cachedArtifactProvider.apply(genSrc, ArtifactDirectories.DEFAULT),
-                    ALLOW_NON_EMPTY_PACKAGE_PREFIXES,
-                    genSrc.artifactPath().toString())) {
+  private Stream<BuildArtifact> getProjectGenSrcJars(TargetBuildInfo target) {
+    if (target.javaInfo().isEmpty()) {
+      return Stream.empty();
+    }
+    JavaArtifactInfo javaInfo = target.javaInfo().get();
+    if (!projectDefinition.isIncluded(javaInfo.label())) {
+      return Stream.empty();
+    }
+    return javaInfo.genSrcs().stream()
+        .filter(genSrc -> JAVA_ARCHIVE_EXTENSIONS.contains(genSrc.getExtension()));
+  }
 
-              genSrcJarContentEntry.addSources(
-                  ProjectProto.SourceFolder.newBuilder()
-                      .setProjectPath(added.withInnerJarPath(innerPath.path()).toProto())
-                      .setIsGenerated(true)
-                      .setIsTest(testSourceMatcher.matches(genSrc.target().getPackage()))
-                      .setPackagePrefix(innerPath.packagePrefix())
-                      .build());
-            }
-            update.workspaceModule().addContentEntries(genSrcJarContentEntry.build());
-          }
-        }
-      }
+  @Override
+  public ImmutableSetMultimap<BuildArtifact, ArtifactMetadata> getRequiredArtifacts(
+      TargetBuildInfo forTarget) {
+    return getProjectGenSrcJars(forTarget)
+        .collect(
+            ImmutableSetMultimap.toImmutableSetMultimap(
+                Function.identity(), unused -> srcJarPathMetadata));
+  }
+
+  @Override
+  public void update(ProjectProtoUpdate update, ArtifactTracker.State artifactState) {
+    for (TargetBuildInfo target : artifactState.depsMap().values()) {
+      getProjectGenSrcJars(target)
+          .forEach(
+              genSrc -> {
+                // a zip of generated sources
+                ProjectPath added =
+                    update
+                        .artifactDirectory(ArtifactDirectories.DEFAULT)
+                        .addIfNewer(
+                            genSrc.artifactPath(),
+                            genSrc,
+                            target.buildContext(),
+                            ArtifactTransform.STRIP_SUPPORTED_GENERATED_SOURCES)
+                        .orElse(null);
+                if (added != null) {
+                  ProjectProto.ContentEntry.Builder genSrcJarContentEntry =
+                      ProjectProto.ContentEntry.newBuilder().setRoot(added.toProto());
+
+                  for (JarPath innerPath : srcJarPathMetadata.from(target, genSrc)) {
+
+                    genSrcJarContentEntry.addSources(
+                        ProjectProto.SourceFolder.newBuilder()
+                            .setProjectPath(added.withInnerJarPath(innerPath.path()).toProto())
+                            .setIsGenerated(true)
+                            .setIsTest(testSourceMatcher.matches(genSrc.target().getPackage()))
+                            .setPackagePrefix(innerPath.packagePrefix())
+                            .build());
+                  }
+                  update.workspaceModule().addContentEntries(genSrcJarContentEntry.build());
+                }
+              });
     }
   }
 }
