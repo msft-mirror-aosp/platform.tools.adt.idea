@@ -18,13 +18,13 @@ package com.android.tools.idea.uibuilder.scene
 import com.android.SdkConstants.FD_RES_XML
 import com.android.SdkConstants.PreferenceTags.PREFERENCE_SCREEN
 import com.android.tools.idea.common.fixtures.ModelBuilder
-import com.android.tools.idea.common.scene.render
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlScreenViewProvider
 import com.android.tools.idea.uibuilder.type.PreferenceScreenFileType
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiDocumentManager
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import org.mockito.kotlin.whenever
 
@@ -50,22 +50,22 @@ class LayoutlibSceneManagerTest : SceneTest() {
     val nlSurface = myScene.designSurface as NlDesignSurface
 
     whenever(nlSurface.screenViewProvider).thenReturn(NlScreenViewProvider.RENDER)
-    myLayoutlibSceneManager.updateSceneView()
+    myLayoutlibSceneManager.updateSceneViews()
     assertEquals(1, myLayoutlibSceneManager.sceneViews.size)
 
     whenever(nlSurface.screenViewProvider).thenReturn(NlScreenViewProvider.BLUEPRINT)
-    myLayoutlibSceneManager.updateSceneView()
+    myLayoutlibSceneManager.updateSceneViews()
     assertEquals(1, myLayoutlibSceneManager.sceneViews.size)
 
     whenever(nlSurface.screenViewProvider).thenReturn(NlScreenViewProvider.RENDER_AND_BLUEPRINT)
-    myLayoutlibSceneManager.updateSceneView()
+    myLayoutlibSceneManager.updateSceneViews()
     // Secondary scene view should be present now
     assertEquals(2, myLayoutlibSceneManager.sceneViews.size)
   }
 
   fun testDoNotCacheSuccessfulRenderImage() = runBlocking {
     myLayoutlibSceneManager.sceneRenderConfiguration.cacheSuccessfulRenderImage = false
-    myLayoutlibSceneManager.render()
+    myLayoutlibSceneManager.requestRenderAsync().await()
     myLayoutlibSceneManager.sceneRenderConfiguration.needsInflation.set(true)
     myLayoutlibSceneManager.renderResult!!.let {
       assertTrue(it.renderResult.isSuccess)
@@ -81,7 +81,7 @@ class LayoutlibSceneManagerTest : SceneTest() {
       document.setText("<broken />")
       manager.commitAllDocuments()
     }
-    myLayoutlibSceneManager.render()
+    myLayoutlibSceneManager.requestRenderAsync().await()
     myLayoutlibSceneManager.renderResult!!.let {
       assertFalse("broken render should have failed", it.renderResult.isSuccess)
       assertFalse("image should not be valid after the failed rener", it.renderedImage.isValid)
@@ -90,7 +90,7 @@ class LayoutlibSceneManagerTest : SceneTest() {
 
   fun testCacheSuccessfulRenderImage() = runBlocking {
     myLayoutlibSceneManager.sceneRenderConfiguration.cacheSuccessfulRenderImage = true
-    myLayoutlibSceneManager.render()
+    myLayoutlibSceneManager.requestRenderAsync().await()
     myLayoutlibSceneManager.sceneRenderConfiguration.needsInflation.set(true)
     myLayoutlibSceneManager.renderResult!!.let {
       assertTrue(it.renderResult.isSuccess)
@@ -106,7 +106,7 @@ class LayoutlibSceneManagerTest : SceneTest() {
       document.setText("<broken />")
       manager.commitAllDocuments()
     }
-    myLayoutlibSceneManager.render()
+    myLayoutlibSceneManager.requestRenderAsync().await()
     myLayoutlibSceneManager.renderResult!!.let {
       assertFalse("broken render should have failed", it.renderResult.isSuccess)
       assertTrue(

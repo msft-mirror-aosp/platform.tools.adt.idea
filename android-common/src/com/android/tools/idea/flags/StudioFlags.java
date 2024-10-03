@@ -1174,42 +1174,6 @@ public final class StudioFlags {
   //region Editor
   private static final FlagGroup EDITOR = new FlagGroup(FLAGS, "editor", "Editor features");
 
-  public static final Flag<Boolean> COLLAPSE_ANDROID_NAMESPACE = new BooleanFlag(
-    EDITOR,
-    "collapse.android.namespace",
-    "Collapse the android namespace in XML code completion",
-    "If enabled, XML code completion doesn't include resources from the android namespace. Instead a fake completion item " +
-    "is used to offer just the namespace prefix.", true);
-
-  public static final Flag<Boolean> ADVANCED_JNI_ASSISTANCE = new BooleanFlag(
-    EDITOR, "advanced.jni.assistance",
-    "Enable advanced JNI assistance",
-    "If enabled, additional inspection, completion, and refactoring supports are provided related to JNI. If disabled, some " +
-    "inspections related to JNI may stop working.",
-    true
-  );
-
-  public static final Flag<Boolean> SAMPLES_SUPPORT_ENABLED = new BooleanFlag(
-    EDITOR, "samples.support.enabled",
-    "Enable supports of samples (tag inside KDoc) that are used in quick documentation",
-    "Enable supports of samples (tag inside KDoc) that are used in quick documentation",
-    true
-  );
-
-  public static final Flag<Boolean> DAGGER_SUPPORT_ENABLED = new BooleanFlag(
-    EDITOR, "dagger.support.enabled",
-    "Enable editor support for Dagger",
-    "If enabled adds Dagger specific find usages, gutter icons and new parsing for Dagger errors",
-    true
-  );
-
-  public static final Flag<Boolean> DAGGER_CACHE_RELATED_ELEMENTS = new BooleanFlag(
-    EDITOR, "dagger.cache.related.elements",
-    "Enable caching related Dagger elements",
-    "If enabled, related Dagger elements will be cached rather than being recalculated every time they're required.",
-    true
-  );
-
   public static final Flag<Boolean> TRANSLATIONS_EDITOR_SYNCHRONIZATION = new BooleanFlag(
     EDITOR, "translations.editor.synchronization",
     "Synchronize translations editor with resource file updates",
@@ -1217,46 +1181,11 @@ public final class StudioFlags {
     false
   );
 
-  public static final Flag<Boolean> JFR_MANIFEST_MERGE_ENABLED = new BooleanFlag(
-    EDITOR, "jfr.manifest.merge.enabled",
-    "Enable JFR for manifest merge",
-    "If enabled, allows JFR reports to be generated when manifest merge exceeds the defined threshold",
-    true
-  );
-
-  public static final Flag<Boolean> JFR_TYPING_LATENCY_ENABLED = new BooleanFlag(
-    EDITOR, "jfr.typing.latency.enabled",
-    "Enable JFR for typing latency",
-    "If enabled, allows JFR reports to be generated when typing latency exceeds the defined threshold",
-    true
-  );
-
   public static final Flag<Boolean> COMPOSE_STATE_READ_INLAY_HINTS_ENABLED = new BooleanFlag(
     EDITOR, "compose.state.read.inlay.hints.enabled",
     "Enable inlay hints for State reads in @Composable functions",
     "If enabled, calls out reads of variables of type State inside @Composable functions.",
     ChannelDefault.enabledUpTo(CANARY));
-
-  public static final Flag<Boolean> RENDER_DRAWABLES_IN_AUTOCOMPLETE_ENABLED = new BooleanFlag(
-    EDITOR, "render.drawables.in.autocomplete.enabled",
-    "Enable rendering of drawable resources in autocomplete popup UI",
-    "If enabled, renders drawable resources in the autocomplete popup UI.",
-    true
-  );
-
-  public static final Flag<Boolean> RENDER_COLORS_IN_AUTOCOMPLETE_ENABLED = new BooleanFlag(
-    EDITOR, "render.colors.in.autocomplete.enabled",
-    "Enable rendering of color resources in autocomplete popup UI",
-    "If enabled, renders color resources in the autocomplete popup UI.",
-    true
-  );
-
-  public static final Flag<Boolean> EVALUATE_BINDING_CONFIG_AT_CONSTRUCTION = new BooleanFlag(
-    EDITOR, "evaluate.binding.config.at.construction",
-    "Enable evaluating binding class config when it is constructed.",
-    "If enabled, binding class config is evaluated when it is constructed, rather than lazily when it is requested.",
-    true
-  );
 
   public static final Flag<Boolean> SKIP_NAV_INFO_DUMB_MODE_CHECK = new BooleanFlag(
     EDITOR, "skip.nav.info.dumb.mode.check",
@@ -1832,6 +1761,14 @@ public final class StudioFlags {
       ChannelDefault.enabledUpTo(CANARY)
     );
 
+  public static final Flag<Boolean> CRASHLYTICS_TITAN_INSIGHT_PROVIDER = new BooleanFlag(
+    APP_INSIGHTS,
+    "crashlytics.titan.insight.provider",
+    "Use Titan to provide Crashlytics insights",
+    "Use Titan to provide Crashlytics insights",
+    false
+  );
+
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
     new StringFlag(
       APP_INSIGHTS,
@@ -1989,12 +1926,6 @@ public final class StudioFlags {
                     "When enabled, queries sent by editor actions, like Explain Code, will attach context (e.g. resolved references) from the project.",
                     ChannelDefault.enabledUpTo(DEV));
 
-  public static final Flag<Boolean> STUDIOBOT_EDITOR_AI_ACTIONS_ENABLED =
-    new BooleanFlag(STUDIOBOT, "editor.ai.actions.enabled",
-                    "Enable AI Actions in the editor.",
-                    "When enabled, shows the 'AI Actions' item in the editor popup menu along with allowing individual actions to be enabled.",
-                    ChannelDefault.enabledUpTo(DEV));
-
   public static final Flag<Boolean> STUDIOBOT_TRANSFORMS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.transforms.enabled",
                     "Enable the transform actions.",
@@ -2054,6 +1985,12 @@ public final class StudioFlags {
                     "Use the currently open files as context",
                     "Attach the currently open files' paths and contents with chat queries.",
                     false);
+
+  public static final Flag<Boolean> STUDIOBOT_PROMPT_LIBRARY_ENABLED =
+    new BooleanFlag(STUDIOBOT, "prompt.library",
+                    "Enable Prompt Library",
+                    "When enabled, add prompt library settings screen.",
+                    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",

@@ -644,6 +644,7 @@ object StudioIconsCompose {
       val LoadOverlay: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/load-overlay.svg", "/intui/icons/layout-inspector/toolbar/load-overlay.svg", StudioIconsCompose.javaClass) // 16x16
       val Mode2d: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/mode-2d.svg", "/intui/icons/layout-inspector/toolbar/mode-2d.svg", StudioIconsCompose.javaClass) // 16x16
       val Mode3d: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/mode-3d.svg", "/intui/icons/layout-inspector/toolbar/mode-3d.svg", StudioIconsCompose.javaClass) // 16x16
+      val RecompositionChildrenCount: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/recomposition-children-count.svg", "/intui/icons/layout-inspector/toolbar/recomposition-children-count.svg",  StudioIconsCompose.javaClass) // 16x16
       val RecompositionCount: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/recomposition-count.svg", "/intui/icons/layout-inspector/toolbar/recomposition-count.svg", StudioIconsCompose.javaClass) // 16x16
       val RecompositionSkipped: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/recomposition-skipped.svg", "/intui/icons/layout-inspector/toolbar/recomposition-skipped.svg", StudioIconsCompose.javaClass) // 16x16
       val ResetView: IntelliJIconKey = IntelliJIconKey("/studio/icons/layout-inspector/toolbar/reset-view.svg", "/intui/icons/layout-inspector/toolbar/reset-view.svg", StudioIconsCompose.javaClass) // 16x16
@@ -910,6 +911,7 @@ object StudioIconsCompose {
       val ApplyCodeSwap: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/apply-code-swap.svg", "/intui/icons/shell/toolbar/apply-code-swap.svg", StudioIconsCompose.javaClass) // 16x16
       val AttachDebugger: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/attach-debugger.svg", "/intui/icons/shell/toolbar/attach-debugger.svg", StudioIconsCompose.javaClass) // 16x16
       val BuildModule: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/build-module.svg", "/intui/icons/shell/toolbar/build-module.svg", StudioIconsCompose.javaClass) // 16x16
+      val BuildRunConfiguration: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/build-run-configuration.svg", "/intui/icons/shell/toolbar/build-run-configuration.svg", StudioIconsCompose.javaClass) // 16x16
       val Debug: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/debug.svg", "/intui/icons/shell/toolbar/debug.svg", StudioIconsCompose.javaClass) // 16x16
       val DeviceManager: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/device-manager.svg", "/intui/icons/shell/toolbar/device-manager.svg", StudioIconsCompose.javaClass) // 16x16
       val GradleSync: IntelliJIconKey = IntelliJIconKey("/studio/icons/shell/toolbar/gradle-sync.svg", "/intui/icons/shell/toolbar/gradle-sync.svg", StudioIconsCompose.javaClass) // 16x16

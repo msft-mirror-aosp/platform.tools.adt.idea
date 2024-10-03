@@ -13,6 +13,7 @@ load(
 )
 load(
     "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
+    "combine_visibilities",
     "intellij_plugin",
     "intellij_plugin_library",
     "optional_plugin_xml",
@@ -37,10 +38,6 @@ load(
 )
 load("//tools/adt/idea/studio:studio.bzl", "intellij_plugin_import")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
-load(
-    "//tools/vendor/google/aswb/third_party/java/jetbrains:build_defs.bzl",
-    "combine_visibilities",
-)
 
 optional_plugin_xml(
     name = "optional_ndk_xml",
@@ -128,10 +125,10 @@ java_library(
         "//tools/adt/idea/aswb/querysync",
         "//tools/adt/idea/aswb/shared",
         "//tools/adt/idea/aswb/shared:artifact",
+        "//tools/adt/idea/aswb/third_party/java/auto_value",
         "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep
         "//tools/vendor/google/aswb/plugin_api:kotlin",
-        "//tools/vendor/google/aswb/third_party/java/auto:auto_value",
     ],
 )
 

@@ -24,7 +24,6 @@
   <depends>com.android.tools.idea.smali</depends>
   <depends>org.jetbrains.kotlin</depends>
   <depends>org.toml.lang</depends>
-  <depends>com.android.tools.gradle.dcl</depends>
 
   <depends optional="true" config-file="android-plugin-androidstudio.xml">com.intellij.modules.androidstudio</depends>
   <depends optional="true" config-file="android-plugin-idea.xml">com.intellij.modules.idea</depends>
@@ -82,6 +81,11 @@
       <separator/>
       <add-to-group group-id="MainToolBar" anchor="before" relative-to-action="MainToolBarSettings" />
     </group>
+
+    <action internal="true"
+            text="Validate Plugin Configuration"
+            id="Android.ValidatePluginConfiguration"
+            class="com.android.tools.idea.actions.ValidatePluginConfigurationAction"/>
 
     <group id="Internal.Android" text="Android" popup="true" internal="true">
       <action internal="true" id="Android.GetAdbAction" class="com.android.tools.idea.ddms.actions.GetAdbAction" />
@@ -316,8 +320,6 @@
     <runConfigurationProducer implementation="com.android.tools.idea.run.AndroidConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducer"
                               order="first"/>
-    <runConfigurationProducer implementation="com.android.tools.idea.testartifacts.instrumented.kmp.KotlinMultiplatformAndroidTestConfigurationProducer"
-                              />
     <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidWatchFaceRunConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidTileRunConfigurationProducer"/>
     <runConfigurationProducer implementation="com.android.tools.idea.run.configuration.AndroidComplicationRunConfigurationProducer"/>
@@ -490,10 +492,6 @@
     <problemFileHighlightFilter implementation="org.jetbrains.android.AndroidProblemFileHighlightingFilter"/>
     <spellchecker.dictionary.runtimeDictionaryProvider implementation="com.android.tools.idea.AndroidDictionaryProvider"/>
 
-    <lang.documentationProvider language="JAVA" implementationClass="org.jetbrains.android.AndroidDocumentationProvider" order="first"/>
-    <implementationViewSessionFactory implementation="org.jetbrains.android.quickDefinitions.AndroidImplementationViewSessionFactory"
-                                      order="first"/>
-
     <sdkType implementation="org.jetbrains.android.sdk.AndroidSdkType"/>
     <gotoDeclarationHandler implementation="org.jetbrains.android.AndroidGotoDeclarationHandler"/>
     <gotoSymbolContributor implementation="com.android.tools.idea.res.psi.GoToAndroidResourceContributor"/>
@@ -653,7 +651,6 @@
     <daemon.highlightInfoFilter implementation="com.android.tools.idea.sdk.SdkHighlightFilter"/>
 
     <writingAccessProvider implementation="com.android.tools.idea.sdk.SdkWritingAccessProvider"/>
-    <registryKey key="gradle.declarative.studio.support" defaultValue="false" description="Declarative IDE support"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
@@ -662,9 +659,6 @@
     <renameHandler implementation="org.jetbrains.android.refactoring.renaming.KotlinResourceRenameHandler" order="first"/>
   </extensions>
 
-  <extensions defaultExtensionNs="org.jetbrains.kotlin.idea.gradleJava">
-    <kotlinMultiplatformProducersProvider implementation="com.android.tools.idea.testartifacts.instrumented.kmp.KotlinMultiplatformAndroidTestConfigurationProducer"/>
-  </extensions>
 
   <extensionPoints>
     <extensionPoint qualifiedName="com.android.tools.idea.actions.exportProjectZipExcludesContributor"

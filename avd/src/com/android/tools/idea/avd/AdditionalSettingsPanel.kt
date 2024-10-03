@@ -393,7 +393,9 @@ private fun chooseFile(parent: Component, project: Project?): Path? {
   // TODO chooseFile logs an error because it does slow things on the EDT
   val virtualFile =
     FileChooser.chooseFile(
-      FileChooserDescriptorFactory.createSingleFileDescriptor(),
+      FileChooserDescriptorFactory.createSingleFileDescriptor().withFileFilter {
+        it.name.endsWith(".img", ignoreCase = true)
+      },
       parent,
       project,
       null,
@@ -454,8 +456,8 @@ private fun EmulatedPerformanceGroup(
       Text("RAM", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
       StorageCapacityField(
-        device.simulatedRam,
-        onValueChange = { onDeviceChange(device.copy(simulatedRam = it)) },
+        device.ram,
+        onValueChange = { onDeviceChange(device.copy(ram = it)) },
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
 

@@ -15,17 +15,40 @@
  */
 package com.android.tools.idea.insights.client
 
+import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.ai.InsightSource
+import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.protobuf.Message
 import com.android.tools.idea.studiobot.Content
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.prompts.buildPrompt
+import com.google.android.studio.gemini.CodeSnippet
 import com.google.android.studio.gemini.GeminiInsightsRequest
 import com.intellij.openapi.project.Project
+import org.jetbrains.annotations.VisibleForTesting
+
+/** Guidelines for the model to provide context and fine tune the response. */
+@VisibleForTesting
+const val GEMINI_PREAMBLE =
+  """
+    Begin with the explanation directly. Do not add fillers at the start of response.
+  """
 
 private val GEMINI_INSIGHT_PROMPT_FORMAT =
   """
     Explain this exception from my app running on %s with Android version %s:
+    Exception:
+    ```
+    %s
+    ```
+  """
+    .trimIndent()
+
+private val GEMINI_INSIGHT_WITH_CODE_CONTEXT_PROMPT_FORMAT =
+  """
+    Explain this exception from my app running on %s with Android version %s.
+    Please reference the provided source code if they are helpful.
     Exception:
     ```
     %s
@@ -40,7 +63,11 @@ class GeminiAiInsightClient private constructor(private val project: Project) : 
     additionalContextMsg: Message,
   ): AiInsight {
     val request = GeminiInsightsRequest.parser().parseFrom(additionalContextMsg.toByteArray())
-    val prompt = buildPrompt(project) { userMessage { text(createPrompt(request), emptyList()) } }
+    val prompt =
+      buildPrompt(project) {
+        systemMessage { text(GEMINI_PREAMBLE, emptyList()) }
+        userMessage { text(createPrompt(request), emptyList()) }
+      }
     val generateContentFlow = StudioBot.getInstance().model(project).generateContent(prompt)
     val response =
       buildString {
@@ -53,19 +80,60 @@ class GeminiAiInsightClient private constructor(private val project: Project) : 
           }
         }
         .trim()
-    return AiInsight(response)
+    return AiInsight(response, insightSource = InsightSource.STUDIO_BOT)
   }
 
   private fun createPrompt(request: GeminiInsightsRequest) =
-    String.format(
-        GEMINI_INSIGHT_PROMPT_FORMAT,
+    "${
+      String.format(
+        if (request.codeSnippetsList.isEmpty()) GEMINI_INSIGHT_PROMPT_FORMAT else GEMINI_INSIGHT_WITH_CODE_CONTEXT_PROMPT_FORMAT,
         request.deviceName,
         request.apiLevel,
         request.stackTrace,
       )
-      .trim()
+        .trim()
+    }${request.codeSnippetsList.toPromptString()}"
+
+  private fun List<CodeSnippet>.toPromptString() =
+    if (isEmpty()) ""
+    else "\n" + joinToString("\n") { "${it.filePath}:\n```\n${it.codeSnippet}\n```" }
 
   companion object {
     fun create(project: Project) = GeminiAiInsightClient(project)
   }
 }
+
+fun createGeminiInsightRequest(event: Event, codeContextData: CodeContextData) =
+  GeminiInsightsRequest.newBuilder()
+    .apply {
+      val device = event.eventData.device.let { "${it.manufacturer} ${it.model}" }
+      val api = event.eventData.operatingSystemInfo.displayVersion
+      val eventStackTrace = event.prettyStackTrace()
+
+      deviceName = device
+      apiLevel = api
+      stackTrace = eventStackTrace
+
+      addAllCodeSnippets(
+        codeContextData.codeContext.map { context ->
+          CodeSnippet.newBuilder()
+            .apply {
+              codeSnippet = context.content
+              filePath = context.filePath
+            }
+            .build()
+        }
+      )
+    }
+    .build()
+
+private fun Event.prettyStackTrace() =
+  buildString {
+      stacktraceGroup.exceptions.forEachIndexed { idx, exception ->
+        if (idx == 0 || exception.rawExceptionMessage.startsWith("Caused by")) {
+          appendLine(exception.rawExceptionMessage)
+          append(exception.stacktrace.frames.joinToString(separator = "") { "\t${it.rawSymbol}\n" })
+        }
+      }
+    }
+    .trim()

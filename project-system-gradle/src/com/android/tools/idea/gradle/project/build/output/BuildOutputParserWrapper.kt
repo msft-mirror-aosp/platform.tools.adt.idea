@@ -15,27 +15,30 @@
  */
 package com.android.tools.idea.gradle.project.build.output
 
+import com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext
 import com.android.tools.idea.gradle.project.build.events.FileMessageBuildIssueEvent
 import com.android.tools.idea.gradle.project.build.events.MessageBuildIssueEvent
-import com.android.tools.idea.gradle.project.sync.idea.issues.BuildIssueComposer
+import com.android.tools.idea.gradle.project.build.output.BuildOutputParserUtils.extractTaskNameFromId
+import com.android.tools.idea.gradle.project.build.events.copyWithQuickFix
 import com.android.tools.idea.gradle.project.sync.idea.issues.DescribedBuildIssueQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenStudioBotBuildIssueQuickFix
 import com.android.tools.idea.studiobot.StudioBot
 import com.intellij.build.events.BuildEvent
-import com.intellij.build.events.BuildIssueEvent
-import com.intellij.build.events.FileMessageEvent
 import com.intellij.build.events.MessageEvent
-import com.intellij.build.issue.BuildIssue
-import com.intellij.build.issue.BuildIssueQuickFix
+import com.intellij.build.events.impl.BuildIssueEventImpl
+import com.intellij.build.events.impl.FileMessageEventImpl
+import com.intellij.build.events.impl.MessageEventImpl
 import com.intellij.build.output.BuildOutputInstantReader
 import com.intellij.build.output.BuildOutputParser
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import java.util.function.Consumer
 
 
 /**
  * A wrapper class for all the build output parsers so we can inject StudioBot help link.
  */
-class BuildOutputParserWrapper(val parser: BuildOutputParser) : BuildOutputParser {
+class BuildOutputParserWrapper(val parser: BuildOutputParser, val taskId: ExternalSystemTaskId) : BuildOutputParser {
 
   private val explainerAvailable
     get() = StudioBot.getInstance().isAvailable()
@@ -53,13 +56,27 @@ class BuildOutputParserWrapper(val parser: BuildOutputParser) : BuildOutputParse
         if (messageEvent != null && messageEvent.kind == MessageEvent.Kind.ERROR
             && !it.message.startsWith("Unresolved reference:"))
         {
-          val quickFix = OpenStudioBotBuildIssueQuickFix(it.message)
+          val context = GradleErrorContext(
+            gradleTask = extractTaskNameFromId(it.parentId?:""),
+            errorMessage = it.message,
+            fullErrorDetails = it.description,
+            source = extractSourceFromTaskId(taskId)
+          )
+          val quickFix = OpenStudioBotBuildIssueQuickFix(context)
           it.toBuildIssueEventWithQuickFix(quickFix)
         } else {
           it
         }
       messageConsumer?.accept(event)
     }
+  }
+
+  private fun extractSourceFromTaskId(taskId: ExternalSystemTaskId): GradleErrorContext.Source? {
+      return when(taskId.type) {
+        ExternalSystemTaskType.RESOLVE_PROJECT -> GradleErrorContext.Source.SYNC
+        ExternalSystemTaskType.EXECUTE_TASK -> GradleErrorContext.Source.BUILD
+        else -> null
+      }
   }
 }
 
@@ -68,12 +85,11 @@ class BuildOutputParserWrapper(val parser: BuildOutputParser) : BuildOutputParse
  */
 @Suppress("UnstableApiUsage")
 private fun BuildEvent.toBuildIssueEventWithQuickFix(quickFix: DescribedBuildIssueQuickFix): BuildEvent {
-
   return when(this) {
-    // TODO(b/316057751) : Map BuildIssueEvents.
-    is BuildIssueEvent -> this
-    is FileMessageEvent -> FileMessageBuildIssueEvent(this, quickFix)
-    is MessageEvent ->  MessageBuildIssueEvent(this, quickFix)
+    // TODO(b/316057751) : Map other implementations of MessageEvents.
+    is BuildIssueEventImpl -> this.copyWithQuickFix(quickFix)
+    is FileMessageEventImpl -> FileMessageBuildIssueEvent(this, quickFix)
+    is MessageEventImpl ->  MessageBuildIssueEvent(this, quickFix)
     else -> this
   }
 }

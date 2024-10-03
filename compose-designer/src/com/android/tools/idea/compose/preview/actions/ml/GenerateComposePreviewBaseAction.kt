@@ -15,7 +15,11 @@
  */
 package com.android.tools.idea.compose.preview.actions.ml
 
-import com.android.tools.idea.compose.preview.actions.ml.utils.transformAndShowDiff
+import com.android.tools.idea.compose.preview.actions.ml.utils.appendBlock
+import com.android.tools.idea.compose.preview.actions.ml.utils.generateCodeAndExecuteCallback
+import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.studiobot.MimeType
 import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.prompts.Prompt
@@ -28,6 +32,7 @@ import com.intellij.openapi.editor.impl.EditorImpl
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
+import kotlinx.coroutines.launch
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
 private const val PREAMBLE =
@@ -95,8 +100,21 @@ abstract class GenerateComposePreviewBaseAction(text: String) : AnAction(text) {
     val filePointer = runReadAction { SmartPointerManager.createPointer(psiFile) }
     composableFunctions().run {
       if (isEmpty()) return@generateComposePreviews
-      val prompt = buildPrompt(filePointer, this@run)
-      transformAndShowDiff(prompt, filePointer, editor.disposable)
+      AndroidCoroutineScope(editor.disposable).launch(AndroidDispatchers.workerThread) {
+        generateCodeAndExecuteCallback(
+          prompt = buildPrompt(filePointer, this@run),
+          filePointer = filePointer,
+          progressIndicatorText = message("ml.actions.progress.indicator.generating.previews"),
+          callback = { project, psiFile, kotlinCodeBlock ->
+            appendBlock(
+              project = project,
+              psiFile = psiFile,
+              kotlinCodeBlock = kotlinCodeBlock,
+              inline = true,
+            )
+          },
+        )
+      }
     }
   }
 
@@ -130,14 +148,16 @@ abstract class GenerateComposePreviewBaseAction(text: String) : AnAction(text) {
           listOf(),
         )
         filePointer.element?.let {
-          code(
-            composableFunctions.joinToString(
-              transform = { function -> function.text },
-              separator = "\n\n",
-            ),
-            MimeType.KOTLIN,
-            listOf(it.virtualFile),
-          )
+          runReadAction {
+            code(
+              composableFunctions.joinToString(
+                transform = { function -> function.text },
+                separator = "\n\n",
+              ),
+              MimeType.KOTLIN,
+              listOf(it.virtualFile),
+            )
+          }
         }
         text(
           """

@@ -57,7 +57,7 @@ internal constructor(
   internal val expandedStorage: ExpandedStorage,
   internal val cpuCoreCount: Int?,
   internal val graphicsMode: GraphicsMode,
-  internal val simulatedRam: StorageCapacity,
+  internal val ram: StorageCapacity,
   internal val vmHeapSize: StorageCapacity,
 ) {
   companion object {
@@ -72,12 +72,12 @@ internal constructor(
         latency = EmulatedProperties.DEFAULT_NETWORK_LATENCY,
         orientation = device.defaultState.orientation,
         defaultBoot = Boot.QUICK,
-        internalStorage = StorageCapacity(2_048, StorageCapacity.Unit.MB),
+        internalStorage = EmulatedProperties.defaultInternalStorage(device).toStorageCapacity(),
         expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
         cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
         graphicsMode = GraphicsMode.AUTO,
-        simulatedRam = StorageCapacity(2_048, StorageCapacity.Unit.MB),
-        vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB),
+        ram = EmulatedProperties.defaultRamSize(device).toStorageCapacity(),
+        vmHeapSize = EmulatedProperties.defaultVmHeapSize(device).toStorageCapacity(),
       )
   }
 }
@@ -99,7 +99,7 @@ internal fun VirtualDevice.copyFrom(avdInfo: AvdBuilder): VirtualDevice {
     expandedStorage = avdInfo.sdCard.toExpandedStorage(),
     cpuCoreCount = avdInfo.cpuCoreCount,
     graphicsMode = avdInfo.gpuMode.toGraphicsMode(),
-    simulatedRam = avdInfo.ram.toStorageCapacity(),
+    ram = avdInfo.ram.toStorageCapacity(),
     vmHeapSize = avdInfo.vmHeap.toStorageCapacity(),
   )
 }
@@ -115,7 +115,7 @@ internal fun AvdBuilder.copyFrom(device: VirtualDevice, image: ISystemImage) {
 
   screenOrientation = device.orientation
   cpuCoreCount = device.cpuCoreCount ?: 1
-  ram = device.simulatedRam.toStorage()
+  ram = device.ram.toStorage()
   vmHeap = device.vmHeapSize.toStorage()
   internalStorage = device.internalStorage.toStorage()
 

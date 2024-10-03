@@ -39,6 +39,8 @@ import com.android.tools.idea.run.activity.launch.SpecificActivityLaunch
 import com.android.tools.idea.run.editor.AndroidRunConfigurationEditor
 import com.android.tools.idea.run.editor.ApplicationRunParameters
 import com.android.tools.idea.run.editor.DeployTargetProvider
+import com.android.tools.idea.testartifacts.instrumented.AndroidRunConfigurationToken.Companion.getModuleForAndroidRunConfiguration
+import com.android.tools.idea.testartifacts.instrumented.AndroidRunConfigurationToken.Companion.getModuleForAndroidTestRunConfiguration
 import com.google.common.base.Predicate
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.Maps
@@ -78,8 +80,18 @@ import javax.swing.Icon
 /**
  * Run Configuration used for running Android Apps (and Instant Apps) locally on a device/emulator.
  */
-open class AndroidRunConfiguration(internal val project: Project, factory: ConfigurationFactory?) :
-  AndroidRunConfigurationBase(project, factory, false), RefactoringListenerProvider, RunnerIconProvider {
+open class AndroidRunConfiguration(internal val project: Project, factory: ConfigurationFactory?, isTestConfiguration: Boolean) :
+  AndroidRunConfigurationBase(project, factory, isTestConfiguration), RefactoringListenerProvider, RunnerIconProvider {
+  constructor(project: Project, factory: ConfigurationFactory?): this(project, factory, false)
+
+  /**
+   * For internal use: [readExternal] should test whether this is less than specific values in order to take
+   * whatever steps are necessary to convert run configurations serialized under older schema versions to the
+   * current version.  See [CURRENT_SCHEMA_VERSION].
+   */
+  @JvmField
+  var ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION
+
   private val myLaunchOptionStates: MutableMap<String, LaunchOptionState> = Maps.newHashMap()
 
   // Deploy options
@@ -132,6 +144,18 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
       myLaunchOptionStates[option.id] = option.createState()
     }
     putUserData(BaseAction.SHOW_APPLY_CHANGES_UI, true)
+  }
+
+  /**
+   * Coordinate with the (Gradle Project System) MakeBeforeRunTaskProvider to build the appropriate artifacts: if
+   * we are a test configuration, then make sure to build the test artifacts as well as the main one.  (Compose Preview
+   * sets up a generalized instance of AndroidRunConfiguration with isTestConfiguration set to true.)
+   */
+  override fun getModules(): Array<Module> {
+    return super.getModules().mapNotNull {
+      // if getModuleForAndroidTestRunConfiguration(it) is null, we are (probably) not in a Gradle project: use the base module.
+      if (isTestConfiguration) (getModuleForAndroidTestRunConfiguration(it) ?: it) else getModuleForAndroidRunConfiguration(it)
+    }.toTypedArray()
   }
 
   override fun validate(executor: Executor?, quickFixCallback: Runnable?): MutableList<ValidationError> {
@@ -301,6 +325,19 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
     if (DEPLOY_APK_FROM_BUNDLE) {
       DEPLOY = true
     }
+
+    // Treat unserialized ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION as version 0
+    if (element.getChildren("option").none { it.getAttributeValue("name") == "ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" }) {
+      ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION = 0
+    }
+    if (ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION < 1) {
+      // Migrate old-style sourceSet modules to the holder module.  (Although in principle we could have had other non-main
+      // sourceSets, in practice we only ever had the main module.)
+      if (configurationModule.moduleName.endsWith(".main")) {
+        setModuleName(configurationModule.moduleName.removeSuffix(".main"))
+      }
+    }
+    ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION
   }
 
   @Throws(WriteExternalException::class)
@@ -373,5 +410,15 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
 
     @NonNls
     private val FEATURE_LIST_SEPARATOR = ","
+
+    /**
+     * This tracks changes to AndroidRunConfiguration which affect deserializing existing run configurations, for use in [readExternal].
+     * Previous states had differences such that:
+     *
+     * 0 (unset): the RunConfiguration would be given (under Gradle projects) a sourceSet module, rather than a holder module.
+     *
+     * When incrementing this value, please also add to the implementation of [readExternal], and the list of previous states (above).
+     */
+    private const val CURRENT_SCHEMA_VERSION = 1
   }
 }

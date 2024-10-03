@@ -17,6 +17,7 @@ package com.android.tools.idea.insights.client
 
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.ai.InsightSource
 import com.android.tools.idea.io.grpc.ClientInterceptor
 import com.android.tools.idea.io.grpc.ManagedChannel
 import com.android.tools.idea.protobuf.Any
@@ -30,6 +31,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.IncorrectOperationException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.guava.await
 import org.jetbrains.annotations.VisibleForTesting
 
 private const val INSTANCE_FORMAT = "projects/%s/locations/global/instances/default"
@@ -51,7 +53,7 @@ class TitanAiInsightClient
 internal constructor(channel: ManagedChannel, interceptor: ClientInterceptor) : AiInsightClient {
 
   private val taskCompletionService =
-    TaskCompletionServiceGrpc.newBlockingStub(channel).withInterceptors(interceptor)
+    TaskCompletionServiceGrpc.newFutureStub(channel).withInterceptors(interceptor)
 
   override suspend fun fetchCrashInsight(
     projectId: String,
@@ -69,8 +71,11 @@ internal constructor(channel: ManagedChannel, interceptor: ClientInterceptor) : 
               .build()
         }
         .build()
-    val response = taskCompletionService.completeTask(request)
-    return AiInsight(response.output.messagesList.first().content)
+    val response = taskCompletionService.completeTask(request).await()
+    return AiInsight(
+      response.output.messagesList.first().content,
+      insightSource = InsightSource.CRASHLYTICS_TITAN,
+    )
   }
 
   companion object {

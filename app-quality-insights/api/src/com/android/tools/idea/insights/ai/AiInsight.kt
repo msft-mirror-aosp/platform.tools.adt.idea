@@ -23,6 +23,7 @@ data class AiInsight(
   /** The experiment that was conducted to generate this insight. */
   val experiment: Experiment = Experiment.UNKNOWN,
   val isCached: Boolean = false,
+  val insightSource: InsightSource = InsightSource.UNKNOWN,
 ) {
   fun isEnhancedWithCodeContext() = experiment.supportsContextSharing()
 }

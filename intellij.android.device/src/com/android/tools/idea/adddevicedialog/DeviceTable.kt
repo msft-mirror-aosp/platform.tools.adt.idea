@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.adddevicedialog
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,18 +37,23 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.intellij.icons.AllIcons
-import icons.StudioIcons
+import icons.StudioIconsCompose
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
 import org.jetbrains.jewel.ui.icon.PathIconKey
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun <DeviceT : DeviceProfile> DeviceTable(
   devices: List<DeviceT>,
@@ -66,10 +74,13 @@ fun <DeviceT : DeviceProfile> DeviceTable(
     Row {
       TextField(
         textState,
-        leadingIcon = {
+        leadingIcon = { Icon(StudioIconsCompose.Common.Search, contentDescription = "Search") },
+        trailingIcon = {
           Icon(
-            key = PathIconKey("studio/icons/common/search.svg", StudioIcons::class.java),
-            contentDescription = "Search",
+            AllIconsKeys.General.CloseSmall,
+            contentDescription = "Clear search",
+            Modifier.clickable(onClick = { textState.setTextAndPlaceCursorAtEnd("") })
+              .pointerHoverIcon(PointerIcon.Default),
           )
         },
         placeholder = {
@@ -81,15 +92,17 @@ fun <DeviceT : DeviceProfile> DeviceTable(
         },
         modifier = Modifier.weight(1f).padding(2.dp),
       )
-      IconButton(
-        onClick = { showDetails = !showDetails },
-        Modifier.align(Alignment.CenterVertically).padding(2.dp),
-      ) {
-        Icon(
-          key = PathIconKey("actions/previewDetails.svg", AllIcons::class.java),
-          contentDescription = "Details",
-          modifier = Modifier.size(20.dp),
-        )
+      Tooltip(tooltip = { Text("Show device details") }) {
+        IconButton(
+          onClick = { showDetails = !showDetails },
+          Modifier.align(Alignment.CenterVertically).padding(2.dp),
+        ) {
+          Icon(
+            key = PathIconKey("actions/previewDetails.svg", AllIcons::class.java),
+            contentDescription = "Details",
+            modifier = Modifier.size(20.dp),
+          )
+        }
       }
     }
     if (devices.none(filterState.textFilter::apply)) {
@@ -148,10 +161,7 @@ object DeviceTableColumns {
       maxLines = 2,
     )
   val api =
-    TableTextColumn<DeviceProfile>(
-      "API",
-      attribute = { it.apiLevels.last().apiStringWithExtension },
-    )
+    TableTextColumn<DeviceProfile>("API", attribute = { it.apiRange.lowerEndpoint().toString() })
   val width =
     TableTextColumn<DeviceProfile>("Width", attribute = { it.resolution.width.toString() })
   val height =

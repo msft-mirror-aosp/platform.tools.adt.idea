@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.tools.idea.adddevicedialog.AndroidVersionSelection
@@ -54,7 +55,7 @@ internal fun ConfigureDevicePanel(
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
   onImportButtonClick: () -> Unit,
 ) {
-  Column {
+  Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
     Text(
       "Configure virtual device",
       fontWeight = FontWeight.SemiBold,
@@ -101,25 +102,24 @@ private fun Tabs(
 
   val androidVersions = images.map { it.androidVersion }.relevantVersions()
 
-  // TODO: http://b/335494340
-  var devicePanelState by remember {
-    mutableStateOf(
-      if (initialSystemImage == null) {
-        DevicePanelState(
-          AndroidVersionSelection(
-            androidVersions.firstOrNull { !it.isPreview } ?: AndroidVersion.DEFAULT
-          ),
-          servicesSet.firstOrNull(),
-        )
-      } else {
-        DevicePanelState(
-          AndroidVersionSelection(AndroidVersion(initialSystemImage.androidVersion.apiLevel)),
-          initialSystemImage.getServices(),
-          sdkExtensionSystemImagesVisible = !initialSystemImage.androidVersion.isBaseExtension,
-          onlyRecommendedSystemImages = initialSystemImage.isRecommended(),
-        )
-      }
-    )
+  val devicePanelState = remember {
+    if (initialSystemImage == null) {
+      DevicePanelState(
+        AndroidVersionSelection(
+          androidVersions.firstOrNull { !it.isPreview } ?: AndroidVersion.DEFAULT
+        ),
+        servicesSet.firstOrNull(),
+        images,
+      )
+    } else {
+      DevicePanelState(
+        AndroidVersionSelection(AndroidVersion(initialSystemImage.androidVersion.apiLevel)),
+        initialSystemImage.getServices(),
+        images,
+        !initialSystemImage.androidVersion.isBaseExtension,
+        initialSystemImage.isRecommended(),
+      )
+    }
   }
 
   val additionalSettingsPanelState = remember {
@@ -133,9 +133,7 @@ private fun Tabs(
         devicePanelState,
         androidVersions,
         servicesSet,
-        images,
         deviceNameValidator,
-        onDevicePanelStateChange = { devicePanelState = it },
         onDownloadButtonClick,
         onSystemImageTableRowClick,
         Modifier.padding(Padding.SMALL),

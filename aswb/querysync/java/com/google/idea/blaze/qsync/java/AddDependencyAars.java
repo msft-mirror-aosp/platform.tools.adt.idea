@@ -15,12 +15,13 @@
  */
 package com.google.idea.blaze.qsync.java;
 
-import com.google.common.base.Supplier;
-import com.google.idea.blaze.common.artifact.CachedArtifact;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact;
 import com.google.idea.blaze.qsync.deps.ArtifactDirectories;
 import com.google.idea.blaze.qsync.deps.ArtifactDirectoryBuilder;
+import com.google.idea.blaze.qsync.deps.ArtifactMetadata;
 import com.google.idea.blaze.qsync.deps.ArtifactTracker;
 import com.google.idea.blaze.qsync.deps.JavaArtifactInfo;
 import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate;
@@ -30,12 +31,9 @@ import com.google.idea.blaze.qsync.project.ProjectDefinition;
 import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.google.idea.blaze.qsync.project.ProjectProto.ExternalAndroidLibrary;
 import com.google.idea.blaze.qsync.project.ProjectProto.ProjectArtifact.ArtifactTransform;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.util.function.Function;
 
 /**
  * Adds external {@code .aar} files to the project proto as {@link ExternalAndroidLibrary}s. This
@@ -43,38 +41,44 @@ import java.util.zip.ZipFile;
  */
 public class AddDependencyAars implements ProjectProtoUpdateOperation {
 
-  private final Supplier<ArtifactTracker.State> artifactStateSupplier;
   private final ProjectDefinition projectDefinition;
-  private final AndroidManifestParser manifestParser;
-  private final CachedArtifactProvider cachedArtifactProvider;
+  private final AarPackageNameMetaData aarPackageNameMetadata;
 
   public AddDependencyAars(
-      Supplier<ArtifactTracker.State> artifactStateSupplier,
-      CachedArtifactProvider cachedArtifactProvider,
-      ProjectDefinition projectDefinition,
-      AndroidManifestParser manifestParser) {
-    this.artifactStateSupplier = artifactStateSupplier;
-    this.cachedArtifactProvider = cachedArtifactProvider;
+      ProjectDefinition projectDefinition, AarPackageNameMetaData aarPackageNameMetadata) {
     this.projectDefinition = projectDefinition;
-    this.manifestParser = manifestParser;
+    this.aarPackageNameMetadata = aarPackageNameMetadata;
+  }
+
+  private ImmutableList<BuildArtifact> getDependencyAars(TargetBuildInfo target) {
+    if (target.javaInfo().isEmpty()) {
+      return ImmutableList.of();
+    }
+    JavaArtifactInfo javaInfo = target.javaInfo().get();
+    if (projectDefinition.isIncluded(javaInfo.label())) {
+      return ImmutableList.of();
+    }
+    return javaInfo.ideAars();
+  }
+
+  public ImmutableSetMultimap<BuildArtifact, ArtifactMetadata> getRequiredArtifacts(
+      TargetBuildInfo forTarget) {
+    return getDependencyAars(forTarget).stream()
+        .collect(
+            ImmutableSetMultimap.toImmutableSetMultimap(
+                Function.identity(), unused -> aarPackageNameMetadata));
   }
 
   @Override
-  public void update(ProjectProtoUpdate update) throws BuildException {
+  public void update(ProjectProtoUpdate update, ArtifactTracker.State artifactState)
+      throws BuildException {
     ArtifactDirectoryBuilder aarDir = null;
-    for (TargetBuildInfo target : artifactStateSupplier.get().depsMap().values()) {
-      if (target.javaInfo().isEmpty()) {
-        continue;
-      }
-      JavaArtifactInfo javaInfo = target.javaInfo().get();
-      if (projectDefinition.isIncluded(javaInfo.label())) {
-        continue;
-      }
-      for (BuildArtifact aar : javaInfo.ideAars()) {
+    for (TargetBuildInfo target : artifactState.depsMap().values()) {
+      for (BuildArtifact aar : getDependencyAars(target)) {
         if (aarDir == null) {
           aarDir = update.artifactDirectory(ArtifactDirectories.DEFAULT);
         }
-        Optional<String> packageName = readPackageFromAarManifest(aar);
+        Optional<String> packageName = aarPackageNameMetadata.from(target, aar);
         ProjectPath dest =
             aarDir
                 .addIfNewer(aar.artifactPath(), aar, target.buildContext(), ArtifactTransform.UNZIP)
@@ -92,38 +96,5 @@ public class AddDependencyAars implements ProjectProtoUpdateOperation {
         }
       }
     }
-  }
-
-  public Optional<String> readPackageFromAarManifest(BuildArtifact aar) throws BuildException {
-    CachedArtifact cachedArtifact = cachedArtifactProvider.apply(aar, ArtifactDirectories.DEFAULT);
-
-    Path cachedArtifactPath = cachedArtifact.getPath();
-    // If we cannot find this aar from build cache, we will use the one in .bazel/buildout instead.
-    // But the on in that directory has been unzipped, so we cannot open it as a zip file.
-    if (Files.isDirectory(cachedArtifactPath)) {
-      Path androidManifest = cachedArtifactPath.resolve("AndroidManifest.xml");
-      if (Files.exists(androidManifest)) {
-        try {
-          return Optional.ofNullable(manifestParser.readPackageNameFrom(Files.newInputStream(androidManifest)));
-        }catch (IOException e) {
-          throw new BuildException(
-            String.format("Failed to read aar file %s (built by %s)", aar.artifactPath(), aar.target()), e);
-        }
-      }
-    }
-
-    try (ZipFile zip = cachedArtifactProvider.apply(aar, ArtifactDirectories.DEFAULT).openAsZipFile()) {
-
-      ZipEntry entry = zip.getEntry("AndroidManifest.xml");
-      if (entry != null) {
-        return Optional.ofNullable(manifestParser.readPackageNameFrom(zip.getInputStream(entry)));
-      }
-    } catch (IOException e) {
-      throw new BuildException(
-          String.format("Failed to read aar file %s (built by %s)", aar.artifactPath(), aar.target()), e);
-    }
-    throw new BuildException(
-        String.format(
-            "Failed to find AndroidManifest.xml in  %s (built by %s)", aar.artifactPath(), aar.target()));
   }
 }

@@ -49,7 +49,8 @@ private val DEFAULT_NL_SUPPORTED_ACTIONS = ImmutableSet.copyOf(NlSupportedAction
 
 /** Default [LayoutlibSceneManager] provider */
 fun defaultSceneManagerProvider(surface: NlDesignSurface, model: NlModel): LayoutlibSceneManager {
-  val sceneManager = LayoutlibSceneManager(model, surface, LayoutScannerEnabled())
+  val sceneManager =
+    LayoutlibSceneManager(model, surface, layoutScannerConfig = LayoutScannerEnabled())
   val settings = getProjectSettings(model.project)
   sceneManager.sceneRenderConfiguration.let { config ->
     config.showDecorations = settings.showDecorations
@@ -149,6 +150,8 @@ class NlSurfaceBuilder(
     {
       ViewVisualLintIssueProvider(it)
     }
+
+  private var _shouldShowLayoutDeprecationBanner: (SurfaceLayoutOption) -> Boolean = { false }
 
   /** Allows customizing the [SurfaceLayoutOption]. */
   @Suppress("deprecation")
@@ -275,6 +278,17 @@ class NlSurfaceBuilder(
     return this
   }
 
+  /**
+   * Consumer of [SurfaceLayoutOption] that will be used to determine if a deprecation banner should
+   * be displayed on top of the [NlDesignSurface] if the current mode is deprecated.
+   */
+  fun setShouldShowLayoutDeprecationBanner(
+    shouldShowLayoutDeprecationBanner: (SurfaceLayoutOption) -> Boolean
+  ): NlSurfaceBuilder {
+    _shouldShowLayoutDeprecationBanner = shouldShowLayoutDeprecationBanner
+    return this
+  }
+
   fun build(): NlDesignSurface {
     val nlDesignSurfacePositionableContentLayoutManager =
       NlDesignSurfacePositionableContentLayoutManager(surfaceLayoutOption ?: DEFAULT_OPTION)
@@ -302,6 +316,7 @@ class NlSurfaceBuilder(
     AndroidCoroutineScope(surface).launch(uiThread) {
       nlDesignSurfacePositionableContentLayoutManager.currentLayout.collect {
         surface.onLayoutUpdated(it)
+        surface.updateLayoutDeprecationBannerVisibility(_shouldShowLayoutDeprecationBanner(it))
       }
     }
 

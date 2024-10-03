@@ -30,7 +30,6 @@ import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl;
 import com.intellij.codeInsight.daemon.impl.HighlightInfo;
 import com.intellij.codeInsight.daemon.impl.TrafficLightRenderer;
 import com.intellij.ide.DataManager;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -43,7 +42,6 @@ import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.ex.ApplicationEx;
-import com.intellij.openapi.application.ex.ApplicationInfoEx;
 import com.intellij.openapi.application.ex.ApplicationManagerEx;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.CaretModel;
@@ -76,7 +74,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -124,39 +121,6 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
     responseObserver.onCompleted();
   }
 
-  @SuppressWarnings("UnstableApiUsage")
-  @Override
-  public void validatePluginConfiguration(ASDriver.ValidatePluginConfigurationRequest request,
-                                          StreamObserver<ASDriver.ValidatePluginConfigurationResponse> responseObserver) {
-    // Until JetBrains fixes https://youtrack.jetbrains.com/issue/IJPL-6075 upstream, we want to ensure all Android plugin
-    // dependencies are marked 'essential' so they cannot be disabled (see b/202048599, b/365493089). If this assertion fails,
-    // then AndroidStudioApplicationInfo.xml needs to be adjusted to list additional essential plugins.
-    var appInfoEx = ApplicationInfoEx.getInstanceEx();
-    var essentialPlugins = new HashSet<>(appInfoEx.getEssentialPluginIds());
-    var errors = new ArrayList<String>();
-    for (var plugin : essentialPlugins) {
-      var descriptor = PluginManagerCore.findPlugin(plugin);
-      java.util.Objects.requireNonNull(descriptor, "Failed to find descriptor for essential plugin: " + plugin);
-      for (var dependency : PluginManagerCore.INSTANCE.getNonOptionalDependenciesIds(descriptor)) {
-        // No need to worry about dependencies like "com.intellij.modules.*" because they are not true plugins (they cannot be disabled).
-        if (!essentialPlugins.contains(dependency) && !dependency.getIdString().startsWith("com.intellij.modules.")) {
-          errors.add("Essential plugin '" + plugin + "' depends on non-essential plugin '" + dependency + "'");
-        }
-      }
-    }
-    var responseBuilder = ASDriver.ValidatePluginConfigurationResponse.newBuilder();
-    if (errors.isEmpty()) {
-      responseBuilder.setResult(ASDriver.ValidatePluginConfigurationResponse.Result.OK);
-    }
-    else {
-      var msg = "The essential plugins in AndroidStudioApplicationInfo.xml do not form a transitive closure:\n" + String.join("\n", errors);
-      responseBuilder.setResult(ASDriver.ValidatePluginConfigurationResponse.Result.ERROR);
-      responseBuilder.setErrorMessage(msg);
-    }
-    responseObserver.onNext(responseBuilder.build());
-    responseObserver.onCompleted();
-  }
-
   /**
    * Kicks off a scheduled thread to capture screenshots. This is only intended to be called on
    * Windows where we don't have a better way of visually representing what's going on in the
@@ -172,7 +136,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
       ScreenshotCapturer screenshotCapturer = new ScreenshotCapturer(destination, screenshotNameFormat);
       screenshotCapturer.start();
       builder.setResult(ASDriver.StartCapturingScreenshotsResponse.Result.OK);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       builder.setErrorMessage(e.getMessage());
       builder.setResult(ASDriver.StartCapturingScreenshotsResponse.Result.ERROR);
     }
@@ -227,7 +191,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
         AnActionEvent event = AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dataContext);
         ActionUtil.performActionDumbAwareWithCallbacks(action, event);
         builder.setResult(ASDriver.ExecuteActionResponse.Result.OK);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         e.printStackTrace();
         if (!StringUtil.isEmpty(e.getMessage())) {
           errorMessage = e.getMessage();
@@ -382,7 +346,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
       studioInteractionService.findAndInvokeComponent(request.getMatchersList());
       builder.setResult(ASDriver.InvokeComponentResponse.Result.OK);
     }
-    catch (Exception e) {
+    catch (Throwable e) {
       e.printStackTrace();
       builder.setResult(ASDriver.InvokeComponentResponse.Result.ERROR);
       if (!StringUtil.isEmpty(e.getMessage())) {
@@ -483,7 +447,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
 
         builder.setStatus(ASDriver.AnalyzeFileResponse.Status.OK);
       }
-      catch (Exception e) {
+      catch (Throwable e) {
         builder.setStatus(ASDriver.AnalyzeFileResponse.Status.ERROR);
         e.printStackTrace();
       }
@@ -656,7 +620,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
 
         builder.setResult(ASDriver.EditFileResponse.Result.OK);
       }
-      catch (Exception e) {
+      catch (Throwable e) {
         e.printStackTrace();
         if (!StringUtil.isEmpty(e.getMessage())) {
           errorMessage = e.getMessage();
@@ -704,7 +668,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
         caretModel.moveToOffset(offset);
 
         builder.setResult(ASDriver.MoveCaretResponse.Result.OK);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         e.printStackTrace();
         if (!StringUtil.isEmpty(e.getMessage())) {
           errorMessage = e.getMessage();
@@ -752,7 +716,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
       studioInteractionService.waitForComponent(request.getMatchersList(), request.getWaitForEnabled());
       builder.setResult(ASDriver.WaitForComponentResponse.Result.OK);
     }
-    catch (Exception e) {
+    catch (Throwable e) {
       e.printStackTrace();
       builder.setResult(ASDriver.WaitForComponentResponse.Result.ERROR);
       if (!StringUtil.isEmpty(e.getMessage())) {
@@ -806,7 +770,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
         }
       }
       responseObserver.onNext(ASDriver.TakeBleakSnapshotResponse.newBuilder().setResult(ASDriver.TakeBleakSnapshotResponse.Result.OK).build());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       ASDriver.TakeBleakSnapshotResponse.Builder builder =
         ASDriver.TakeBleakSnapshotResponse.newBuilder().setResult(ASDriver.TakeBleakSnapshotResponse.Result.ERROR);
       if (!StringUtil.isEmpty(e.getMessage())) {
@@ -895,7 +859,7 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
       }
 
       responseBuilder.setResult(ASDriver.OpenProjectResponse.Result.OK);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       responseBuilder.setErrorMessage(e.toString());
     }
 
