@@ -64,7 +64,6 @@ import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjec
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.rootManager
 import com.intellij.openapi.roots.LibraryOrderEntry
@@ -84,10 +83,8 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.AndroidStartupManager
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.base.util.isAndroidModule
-import org.jetbrains.plugins.gradle.execution.test.runner.AllInPackageGradleConfigurationProducer
-import org.jetbrains.plugins.gradle.execution.test.runner.TestClassGradleConfigurationProducer
-import org.jetbrains.plugins.gradle.execution.test.runner.TestMethodGradleConfigurationProducer
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettingsListener
@@ -136,18 +133,10 @@ private suspend fun performActivity(project: Project) {
     return IdeInfo.getInstance().isAndroidStudio && info.isBuildWithGradle
   }
 
-  // Make sure we remove Gradle producers from the ignoredProducers list for old projects that used to run tests through AndroidJunit.
-  // This would allow running unit tests through Gradle for existing projects where Gradle producers where disabled in favor of AndroidJunit.
-  removeGradleProducersFromIgnoredList(project)
-
-  // Also, make sure that we do not use JUnit to run tests. This could happen if we find that we cannot use Gradle to run the unit tests.
-  // But since we have moved to running tests with Gradle we only want to run these when it is possible via Gradle.
-  // This would also make sure that we do not even try to create configurations using JUnit.
-  addJUnitProducersToIgnoredList(project)
-
   if (shouldSyncOrAttachModels()) {
     withContext(Dispatchers.EDT) {
       removePointlessModules(project)
+      addJUnitProducersToIgnoredList(project)
       attachCachedModelsOrTriggerSync(project, gradleProjectInfo)
       subscribeToGradleSettingChanges(project)
     }
@@ -419,19 +408,15 @@ private fun additionalProjectSetup(project: Project) {
   GradleVersionCatalogDetector.getInstance(project).maybeSuggestToml(project)
 }
 
-private fun removeGradleProducersFromIgnoredList(project: Project) {
+// Make sure that we do not use JUnit to run tests. This could happen if we find that we cannot use Gradle to run the unit tests.
+// But since we have moved to running tests with Gradle we only want to run these when it is possible via Gradle.
+// This would also make sure that we do not even try to create configurations using JUnit.
+@VisibleForTesting
+fun addJUnitProducersToIgnoredList(project: Project) {
   val producerService = RunConfigurationProducerService.getInstance(project)
-  producerService.state.ignoredProducers.remove(AllInPackageGradleConfigurationProducer::class.java.name)
-  producerService.state.ignoredProducers.remove(TestClassGradleConfigurationProducer::class.java.name)
-  producerService.state.ignoredProducers.remove(TestMethodGradleConfigurationProducer::class.java.name)
-}
-
-private fun addJUnitProducersToIgnoredList(project: Project) {
-  val producerService = RunConfigurationProducerService.getInstance(project)
-  val allJUnitProducers = DumbService.getInstance(project).filterByDumbAwareness(
-    RunConfigurationProducer.EP_NAME.extensionList).filter { it.configurationType == JUnitConfigurationType.getInstance() }
+  val allJUnitProducers = RunConfigurationProducer.EP_NAME.extensionList.filter { it.configurationType == JUnitConfigurationType.getInstance() }
   for (producer in allJUnitProducers) {
-    producerService.state.ignoredProducers.add (producer::class.java.name)
+    producerService.state.ignoredProducers.add(producer::class.java.name)
   }
 }
 
