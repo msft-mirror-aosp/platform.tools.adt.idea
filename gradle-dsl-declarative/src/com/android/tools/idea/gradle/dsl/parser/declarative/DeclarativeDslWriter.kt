@@ -16,8 +16,15 @@
 package com.android.tools.idea.gradle.dsl.parser.declarative
 
 import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeArgument
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeArgumentsList
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeAssignment
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeBlock
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeBlockGroup
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFactory
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFile
+import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativePsiFactory
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext
-import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT
+import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.METHOD
 import com.android.tools.idea.gradle.dsl.parser.GradleDslWriter
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
@@ -26,17 +33,13 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionList
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslLiteral
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainContainer
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement
 import com.android.tools.idea.gradle.dsl.parser.findLastPsiElementIn
+import com.android.tools.idea.gradle.dsl.parser.getNextValidParent
 import com.android.tools.idea.gradle.dsl.parser.maybeTrimForParent
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeArgumentsList
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeAssignment
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeBlock
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeBlockGroup
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFactory
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFile
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativePsiFactory
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.findParentOfType
@@ -51,7 +54,8 @@ class DeclarativeDslWriter(private val context: BuildModelContext) : GradleDslWr
       return null // Avoid creation of an empty block statement.
     }
 
-    val psiElementOfParent = element.parent?.create() ?: return null
+    val parent = element.parent ?: return null
+    val psiElementOfParent = parent.create() ?: return null
     val parentPsiElement = when (psiElementOfParent) {
       is DeclarativeBlock -> psiElementOfParent.blockGroup
       else -> psiElementOfParent
@@ -60,17 +64,17 @@ class DeclarativeDslWriter(private val context: BuildModelContext) : GradleDslWr
     val project = parentPsiElement.project
     val factory = DeclarativePsiFactory(project)
     val name = getNameTrimmedForParent(element)
-
+    val externalNameInfo = maybeTrimForParent(element, this)
     val psiElement = when (element) {
       is GradleDslLiteral ->
         if (parentPsiElement is DeclarativeArgumentsList)
           factory.createArgument(factory.createLiteral(element.value))
-        else if (element.externalSyntax == ASSIGNMENT)
-          factory.createAssignment(name, "\"placeholder\"")
-        else
+        else if (externalNameInfo.syntax == METHOD)
           factory.createOneParameterFactory(name, "\"placeholder\"")
-
-      is GradleDslElementList, is GradleDslBlockElement -> factory.createBlock(name)
+        else // default syntax
+          factory.createAssignment(name, "\"placeholder\"")
+      is GradleDslNamedDomainElement -> element.accessMethodName?.let { factory.createOneParameterFactoryBlock(it, name) }
+      is GradleDslElementList, is GradleDslBlockElement, is GradleDslNamedDomainContainer -> factory.createBlock(name)
       is GradleDslMethodCall -> {
         val function = if (element.isDoubleFunction()) {
           val internal = factory.createFactory(element.methodName)
@@ -81,7 +85,6 @@ class DeclarativeDslWriter(private val context: BuildModelContext) : GradleDslWr
           factory.createArgument(function)
         else function
       }
-
       else -> null
     }
     psiElement ?: return null
@@ -137,7 +140,7 @@ class DeclarativeDslWriter(private val context: BuildModelContext) : GradleDslWr
   }
 
   override fun deleteDslElement(element: GradleDslElement) {
-    element.psiElement?.delete()
+    deletePsiElement(element)
   }
 
   override fun createDslMethodCall(methodCall: GradleDslMethodCall): PsiElement {
@@ -201,5 +204,44 @@ class DeclarativeDslWriter(private val context: BuildModelContext) : GradleDslWr
     }
   }
   private fun GradleDslElement.isAlreadyCreated(): Boolean = psiElement?.findParentOfType<DeclarativeFile>(strict = false) != null
+
+  /**
+   * Delete the psiElement for the given dslElement.
+   */
+  private fun deletePsiElement(dslElement : GradleDslElement) {
+    val psiElement = dslElement.psiElement
+    if (psiElement == null || !psiElement.isValid) return
+
+    val parentDsl = dslElement.parent ?: return
+    psiElement.delete()
+    maybeDeleteIfEmpty(parentDsl)
+  }
+
+  private fun maybeDeleteIfEmpty(dslElement: GradleDslElement) {
+    val element = dslElement.psiElement
+
+    element ?: return
+    if (!element.isValid) {
+      // Skip deleting
+    }
+    else {
+      when (element) {
+        is DeclarativeBlock -> {
+          if(element.isEmptyBlock()){
+            element.delete()
+          } else {
+            return
+          }
+        }
+        is DeclarativeFile -> return
+      }
+    }
+
+    val dslParent = getNextValidParent(dslElement)
+    if (dslParent != null && dslParent.isInsignificantIfEmpty) {
+      maybeDeleteIfEmpty(dslParent)
+    }
+  }
+  private fun DeclarativeBlock.isEmptyBlock():Boolean = entries.isEmpty()
 
 }

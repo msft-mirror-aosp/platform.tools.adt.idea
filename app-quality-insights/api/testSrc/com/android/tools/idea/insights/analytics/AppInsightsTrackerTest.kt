@@ -45,8 +45,10 @@ import com.android.tools.idea.insights.VisibilityType
 import com.android.tools.idea.insights.WithCount
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.InsightSource
+import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.events.AiInsightFetched
+import com.android.tools.idea.insights.events.EventsChanged
 import com.android.tools.idea.insights.events.SelectedIssueChanged
 import com.android.tools.idea.insights.experiments.Experiment
 import com.google.common.truth.Truth.assertThat
@@ -266,24 +268,48 @@ class AppInsightsTrackerTest {
     controllerRule.consumeNext()
 
     val eventIdCaptor: ArgumentCaptor<String> = ArgumentCaptor.forClass(String::class.java)
-    val isFetchedCaptor: ArgumentCaptor<Boolean> = ArgumentCaptor.forClass(Boolean::class.java)
 
     // verify total number of tracking calls
-    verify(controllerRule.tracker, times(4))
-      .logEventViewed(
+    verify(controllerRule.tracker, times(2))
+      .logEventViewed(any(), eq(ConnectionMode.ONLINE), eq(ISSUE1.id.value), capture(eventIdCaptor))
+
+    assertThat(eventIdCaptor.allValues).containsExactly("2", "3").inOrder()
+  }
+
+  @Test
+  fun `track events fetched`() = runBlocking {
+    val cache = AppInsightsCacheImpl()
+    var testState =
+      AppInsightsState(
+        Selection(CONNECTION1, listOf(CONNECTION1)),
+        TEST_FILTERS,
+        LoadingState.Ready(Timed(Selection(ISSUE1, listOf(ISSUE1)), Instant.now())),
+        currentEvents = LoadingState.Loading,
+      )
+
+    val isFetchedCaptor = ArgumentCaptor.forClass(Boolean::class.java)
+
+    var eventsChanged = EventsChanged(LoadingState.Ready(EventPage(listOf(Event("1")), "abc")))
+    testState =
+      eventsChanged.transition(testState, controllerRule.tracker, TEST_KEY, cache).newState
+
+    eventsChanged = EventsChanged(LoadingState.Ready(EventPage(listOf(Event("2")), "def")))
+    eventsChanged.transition(testState, controllerRule.tracker, TEST_KEY, cache)
+
+    verify(controllerRule.tracker, times(2))
+      .logEventsFetched(
         any(),
-        eq(ConnectionMode.ONLINE),
         eq(ISSUE1.id.value),
-        capture(eventIdCaptor),
+        eq(ISSUE1.issueDetails.fatality),
         capture(isFetchedCaptor),
       )
 
-    assertThat(eventIdCaptor.allValues).containsExactly("1", "2", "3", "4").inOrder()
-    assertThat(isFetchedCaptor.allValues).containsExactly(true, false, false, true).inOrder()
+    assertThat(isFetchedCaptor.allValues).containsExactly(true, false).inOrder()
   }
 
   @Test
   fun `track crash view`() = runBlocking {
+    val cache = AppInsightsCacheImpl()
     val testState =
       AppInsightsState(
         Selection(CONNECTION1, listOf(CONNECTION1)),
@@ -291,11 +317,11 @@ class AppInsightsTrackerTest {
         LoadingState.Ready(Timed(Selection(ISSUE1, listOf(ISSUE1)), Instant.now())),
       )
     var issueChanged = SelectedIssueChanged(ISSUE1, IssueSelectionSource.LIST)
-    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY)
+    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY, cache)
     verify(controllerRule.tracker, never()).logCrashListDetailView(any())
 
     issueChanged = SelectedIssueChanged(ISSUE2, IssueSelectionSource.LIST)
-    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY)
+    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY, cache)
     verify(controllerRule.tracker, times(1))
       .logCrashListDetailView(
         argThat {
@@ -306,7 +332,7 @@ class AppInsightsTrackerTest {
       )
 
     issueChanged = SelectedIssueChanged(ISSUE2, IssueSelectionSource.INSPECTION)
-    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY)
+    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY, cache)
     verify(controllerRule.tracker, times(1))
       .logCrashListDetailView(
         argThat {
@@ -318,7 +344,7 @@ class AppInsightsTrackerTest {
       )
 
     issueChanged = SelectedIssueChanged(null, IssueSelectionSource.INSPECTION)
-    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY)
+    issueChanged.transition(testState, controllerRule.tracker, TEST_KEY, cache)
     verify(controllerRule.tracker, times(2)).logCrashListDetailView(any())
   }
 
@@ -333,7 +359,7 @@ class AppInsightsTrackerTest {
     val insight =
       AiInsight("", Experiment.CONTROL, insightSource = InsightSource.STUDIO_BOT, isCached = true)
     val insightFetch = AiInsightFetched(LoadingState.Ready(insight))
-    insightFetch.transition(testState, controllerRule.tracker, TEST_KEY)
+    insightFetch.transition(testState, controllerRule.tracker, TEST_KEY, AppInsightsCacheImpl())
 
     verify(controllerRule.tracker, times(1))
       .logInsightFetch(any(), eq(ISSUE1.issueDetails.fatality), eq(insight))

@@ -692,8 +692,10 @@ class AndroidModelTest : GradleFileModelTestCase() {
     assertEquals("buildToolsVersion", "23.0.0", android.buildToolsVersion())
     assertEquals("compileSdkVersion", "23", android.compileSdkVersion())
     assertEquals("defaultPublishConfig", "debug", android.defaultPublishConfig())
-    assertEquals("dynamicFeatures", listOf(":f1", ":f2"), android.dynamicFeatures())
-    assertEquals("flavorDimensions", listOf("abi", "version"), android.flavorDimensions())
+    if(!isGradleDeclarative) {
+      assertEquals("dynamicFeatures", listOf(":f1", ":f2"), android.dynamicFeatures())
+      assertEquals("flavorDimensions", listOf("abi", "version"), android.flavorDimensions())
+    }
     assertEquals("generatePureSplits", true, android.generatePureSplits())
     assertEquals("publishNonDefault", false, android.publishNonDefault())
     assertEquals("resourcePrefix", "abcd", android.resourcePrefix())
@@ -702,8 +704,10 @@ class AndroidModelTest : GradleFileModelTestCase() {
     android.buildToolsVersion().delete()
     android.compileSdkVersion().delete()
     android.defaultPublishConfig().delete()
-    android.dynamicFeatures().delete()
-    android.flavorDimensions().delete()
+    if(!isGradleDeclarative) {
+      android.dynamicFeatures().delete()
+      android.flavorDimensions().delete()
+    }
     android.generatePureSplits().delete()
     android.publishNonDefault().delete()
     android.resourcePrefix().delete()
@@ -712,8 +716,10 @@ class AndroidModelTest : GradleFileModelTestCase() {
     assertMissingProperty("buildToolsVersion", android.buildToolsVersion())
     assertMissingProperty("compileSdkVersion", android.compileSdkVersion())
     assertMissingProperty("defaultPublishConfig", android.defaultPublishConfig())
-    assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
-    assertMissingProperty("flavorDimensions", android.flavorDimensions())
+    if(!isGradleDeclarative) {
+      assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
+      assertMissingProperty("flavorDimensions", android.flavorDimensions())
+    }
     assertMissingProperty("generatePureSplits", android.generatePureSplits())
     assertMissingProperty("publishNonDefault", android.publishNonDefault())
     assertMissingProperty("resourcePrefix", android.resourcePrefix())
@@ -723,17 +729,24 @@ class AndroidModelTest : GradleFileModelTestCase() {
     assertMissingProperty("buildToolsVersion", android.buildToolsVersion())
     assertMissingProperty("compileSdkVersion", android.compileSdkVersion())
     assertMissingProperty("defaultPublishConfig", android.defaultPublishConfig())
-    assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
-    assertMissingProperty("flavorDimensions", android.flavorDimensions())
+    if(!isGradleDeclarative) {
+      assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
+      assertMissingProperty("flavorDimensions", android.flavorDimensions())
+    }
     assertMissingProperty("generatePureSplits", android.generatePureSplits())
     assertMissingProperty("publishNonDefault", android.publishNonDefault())
     assertMissingProperty("resourcePrefix", android.resourcePrefix())
     assertMissingProperty("targetProjectPath", android.targetProjectPath())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
     checkForInvalidPsiElement(android, AndroidModelImpl::class.java)
+
+    if(!isGradleDeclarative) {
+      // this will recreate android element.
+      // for declarative, it's not know whether it's a library or app
+      buildModel.reparse()
+      android = buildModel.android()
+      assertNotNull(android)
+      checkForInvalidPsiElement(android, AndroidModelImpl::class.java)
+    }
   }
 
   @Test
@@ -894,7 +907,6 @@ class AndroidModelTest : GradleFileModelTestCase() {
 
   @Test
   fun testAddAndApplyDottedBuildTypeBlock() {
-    isIrrelevantForDeclarative("No dotted notation for blocks in Declarative")
     doTestAddAndApplyOneBuildTypeBlock("dotted.buildtype", TestFile.ADD_AND_APPLY_DOTTED_BUILD_TYPE_BLOCK_EXPECTED)
   }
 
@@ -1109,12 +1121,14 @@ class AndroidModelTest : GradleFileModelTestCase() {
     assertMissingProperty(android.defaultConfig().applicationId())
     checkForInvalidPsiElement(android.defaultConfig(), ProductFlavorModelImpl::class.java)
 
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
+    if (!isGradleDeclarative) { // to create android element for declarative, we need to know whether it's app or library
+      buildModel.reparse()
+      android = buildModel.android()
+      assertNotNull(android)
 
-    assertMissingProperty(android.defaultConfig().applicationId())
-    checkForInvalidPsiElement(android.defaultConfig(), ProductFlavorModelImpl::class.java)
+      assertMissingProperty(android.defaultConfig().applicationId())
+      checkForInvalidPsiElement(android.defaultConfig(), ProductFlavorModelImpl::class.java)
+    }
   }
 
   @Test
@@ -1251,6 +1265,7 @@ class AndroidModelTest : GradleFileModelTestCase() {
 
   @Test
   fun testRemoveAndApplyBlockApplicationStatements() {
+    isIrrelevantForDeclarative("Grammar is not supported in declarative")
     writeToBuildFile(TestFile.REMOVE_AND_APPLY_BLOCK_APPLICATION_STATEMENTS)
     val buildModel = gradleBuildModel
     var android = buildModel.android()
@@ -1276,6 +1291,7 @@ class AndroidModelTest : GradleFileModelTestCase() {
 
   @Test
   fun testAddAndApplyBlockStatements() {
+    isIrrelevantForDeclarative("No such grammar")
     writeToBuildFile(TestFile.ADD_AND_APPLY_BLOCK_STATEMENTS)
     val buildModel = gradleBuildModel
     var android = buildModel.android()

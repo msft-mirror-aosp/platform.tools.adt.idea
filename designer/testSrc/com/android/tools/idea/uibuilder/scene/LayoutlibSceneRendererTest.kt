@@ -25,6 +25,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil.model
 import com.android.tools.idea.uibuilder.property.testutils.ComponentUtil.component
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.rendering.ExecuteCallbacksResult
 import com.android.tools.rendering.RenderLogger
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderResultStats
@@ -44,11 +45,13 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertFails
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -151,6 +154,30 @@ class LayoutlibSceneRendererTest {
   }
 
   @Test
+  fun testCancellationException(): Unit = runBlocking {
+    // Simulate a cancellation exception when reading the render result
+    val resultMock = mock<RenderResult>()
+    val myCancellationException = CancellationException("Test")
+    whenever(resultMock.renderResult).thenThrow(myCancellationException)
+    simulatedRenderResult = resultMock
+    renderer.requestRenderAndWait(trigger = null)
+    assertEquals("expected inflation but didn't happen", 1, taskInflateCount.get())
+    assertEquals("expected render but didn't happen", 1, taskRenderCount.get())
+    // The render result shouldn't be the mock instance, but an error result created by the
+    // renderer wrapping the caught exception.
+    assertFalse(renderer.renderResult!!.renderResult.isSuccess)
+    assertEquals(myCancellationException, renderer.renderResult!!.renderResult.exception)
+
+    // After the exception, everything should still work normally
+    simulatedRenderResult = createRenderResult(Result.Status.SUCCESS)
+    renderer.sceneRenderConfiguration.needsInflation.set(true)
+    renderer.requestRenderAndWait(trigger = null)
+    assertEquals("expected inflation but didn't happen", 2, taskInflateCount.get())
+    assertEquals("expected render but didn't happen", 2, taskRenderCount.get())
+    assertTrue(renderer.renderResult!!.renderResult.isSuccess)
+  }
+
+  @Test
   fun testRequestsAreConflated(): Unit = runBlocking {
     blockInflationAndRequestRender()
     // Add 5 requests
@@ -219,6 +246,42 @@ class LayoutlibSceneRendererTest {
     // re-inflated
     assertEquals(2, taskInflateCount.get())
     assertEquals(2, taskRenderCount.get())
+  }
+
+  @Test
+  fun testLayoutlibCallbacks() = runBlocking {
+    var executeCallbacksCount = 0
+    whenever(renderTaskMock.executeCallbacks(any())).then {
+      executeCallbacksCount++
+      CompletableFuture.completedFuture(ExecuteCallbacksResult.EMPTY)
+    }
+
+    // DO_NOT_EXECUTE should be the default
+    assertEquals(
+      LayoutlibCallbacksConfig.DO_NOT_EXECUTE,
+      renderer.sceneRenderConfiguration.layoutlibCallbacksConfig.get(),
+    )
+    renderer.requestRenderAndWait(trigger = null)
+    assertEquals(1, taskRenderCount.get())
+    assertEquals(0, executeCallbacksCount)
+
+    // EXECUTE_BEFORE_RENDERING
+    delay(10)
+    renderer.sceneRenderConfiguration.layoutlibCallbacksConfig.set(
+      LayoutlibCallbacksConfig.EXECUTE_BEFORE_RENDERING
+    )
+    renderer.requestRenderAndWait(trigger = null)
+    assertEquals(2, taskRenderCount.get())
+    assertEquals(1, executeCallbacksCount)
+
+    // EXECUTE_AND_RERENDER
+    delay(10)
+    renderer.sceneRenderConfiguration.layoutlibCallbacksConfig.set(
+      LayoutlibCallbacksConfig.EXECUTE_AND_RERENDER
+    )
+    renderer.requestRenderAndWait(trigger = null)
+    assertEquals(4, taskRenderCount.get())
+    assertEquals(2, executeCallbacksCount)
   }
 
   private fun blockInflationAndRequestRender() = runBlocking {

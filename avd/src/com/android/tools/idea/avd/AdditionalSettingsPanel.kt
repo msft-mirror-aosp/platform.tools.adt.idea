@@ -35,6 +35,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
 import com.android.resources.ScreenOrientation
+import com.android.sdklib.ISystemImage
+import com.android.sdklib.devices.CameraLocation
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
@@ -46,6 +48,8 @@ import java.awt.Component
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.math.max
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.plus
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -61,45 +65,57 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @Composable
 internal fun AdditionalSettingsPanel(
-  configureDevicePanelState: ConfigureDevicePanelState,
-  additionalSettingsPanelState: AdditionalSettingsPanelState,
+  state: ConfigureDevicePanelState,
   onImportButtonClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   VerticallyScrollableContainer(modifier) {
-    Column(verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE)) {
+    Column(
+      Modifier.padding(vertical = Padding.SMALL),
+      verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE),
+    ) {
+      val hasPlayStore = state.hasPlayStore()
+
+      if (hasPlayStore) {
+        WarningBanner(
+          "Some device settings cannot be configured when using a Google Play Store image"
+        )
+      }
+
       Row {
         Text("Device skin", Modifier.padding(end = Padding.SMALL).alignByBaseline())
 
         Dropdown(
-          configureDevicePanelState.device.skin,
-          configureDevicePanelState.skins,
-          onSelectedItemChange = {
-            configureDevicePanelState.device = configureDevicePanelState.device.copy(skin = it)
-          },
+          state.device.skin,
+          state.skins,
+          onSelectedItemChange = { state.device = state.device.copy(skin = it) },
           Modifier.padding(end = Padding.MEDIUM).alignByBaseline(),
+          !hasPlayStore,
         )
       }
 
-      CameraGroup(configureDevicePanelState.device, configureDevicePanelState::device::set)
-      NetworkGroup(configureDevicePanelState.device, configureDevicePanelState::device::set)
-      StartupGroup(configureDevicePanelState.device, configureDevicePanelState::device::set)
+      CameraGroup(state.device, state::device::set)
+      NetworkGroup(state.device, state::device::set)
+      StartupGroup(state.device, state::device::set)
 
       StorageGroup(
-        configureDevicePanelState.device,
-        additionalSettingsPanelState.storageGroupState,
-        configureDevicePanelState.validity.isExpandedStorageValid,
-        configureDevicePanelState::device::set,
+        state.device,
+        state.storageGroupState,
+        hasPlayStore,
+        state.validity.isExpandedStorageValid,
+        state::device::set,
       )
+
       LaunchedEffect(Unit) {
-        additionalSettingsPanelState.storageGroupState.expandedStorageFlow.collect(
-          configureDevicePanelState::setExpandedStorage
-        )
+        state.storageGroupState.expandedStorageFlow.collect(state::setExpandedStorage)
       }
 
-      EmulatedPerformanceGroup(
-        configureDevicePanelState.device,
-        configureDevicePanelState::device::set,
+      EmulatedPerformanceGroup(state.device, hasPlayStore, state::device::set)
+
+      PreferredAbiGroup(
+        state.device.preferredAbi,
+        state.systemImageTableSelectionState.selection,
+        onPreferredAbiChange = state::setPreferredAbi,
       )
     }
   }
@@ -107,50 +123,58 @@ internal fun AdditionalSettingsPanel(
 
 @Composable
 private fun CameraGroup(device: VirtualDevice, onDeviceChange: (VirtualDevice) -> Unit) {
+  val cameraLocations = device.device.defaultHardware.cameras.map { it.location }
+  if (cameraLocations.isEmpty()) {
+    return
+  }
   Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
     GroupHeader("Camera")
 
-    Row {
-      Text("Front", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+    if (CameraLocation.FRONT in cameraLocations) {
+      Row {
+        Text("Front", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
-      Dropdown(
-        device.frontCamera,
-        FRONT_CAMERAS,
-        onSelectedItemChange = { onDeviceChange(device.copy(frontCamera = it)) },
-        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
-      )
+        Dropdown(
+          device.frontCamera,
+          FRONT_CAMERAS,
+          onSelectedItemChange = { onDeviceChange(device.copy(frontCamera = it)) },
+          Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+        )
 
-      InfoOutlineIcon(
-        """
+        InfoOutlineIcon(
+          """
         None: no camera installed for AVD
         Emulated: use a simulated camera
         Webcam0: use host computer webcam or built-in camera
         """
-          .trimIndent(),
-        Modifier.align(Alignment.CenterVertically),
-      )
+            .trimIndent(),
+          Modifier.align(Alignment.CenterVertically),
+        )
+      }
     }
 
-    Row {
-      Text("Rear", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+    if (CameraLocation.BACK in cameraLocations) {
+      Row {
+        Text("Rear", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
-      Dropdown(
-        device.rearCamera,
-        REAR_CAMERAS,
-        onSelectedItemChange = { onDeviceChange(device.copy(rearCamera = it)) },
-        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
-      )
+        Dropdown(
+          device.rearCamera,
+          REAR_CAMERAS,
+          onSelectedItemChange = { onDeviceChange(device.copy(rearCamera = it)) },
+          Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+        )
 
-      InfoOutlineIcon(
-        """
+        InfoOutlineIcon(
+          """
         None: no camera installed for AVD
         VirtualScene: use a virtual camera in a simulated environment
         Emulated: use a simulated camera
         Webcam0: use host computer webcam or built-in camera
         """
-          .trimIndent(),
-        Modifier.align(Alignment.CenterVertically),
-      )
+            .trimIndent(),
+          Modifier.align(Alignment.CenterVertically),
+        )
+      }
     }
   }
 }
@@ -262,6 +286,7 @@ private val BOOTS = enumValues<Boot>().asIterable().toImmutableList()
 private fun StorageGroup(
   device: VirtualDevice,
   storageGroupState: StorageGroupState,
+  hasPlayStore: Boolean,
   isExistingImageValid: Boolean,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
@@ -302,6 +327,7 @@ private fun StorageGroup(
         storageGroupState.selectedRadioButton,
         onClick = { storageGroupState.selectedRadioButton = RadioButton.CUSTOM },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("CustomRadioButton"),
+        !hasPlayStore,
       )
 
       StorageCapacityField(
@@ -321,11 +347,12 @@ private fun StorageGroup(
         storageGroupState.selectedRadioButton,
         onClick = { storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("ExistingImageRadioButton"),
+        !hasPlayStore,
       )
 
       ExistingImageField(
         storageGroupState.existingImage,
-        storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE,
+        storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE && !hasPlayStore,
         isExistingImageValid,
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
@@ -335,6 +362,7 @@ private fun StorageGroup(
       RadioButton.NONE,
       storageGroupState.selectedRadioButton,
       onClick = { storageGroupState.selectedRadioButton = RadioButton.NONE },
+      enabled = !hasPlayStore,
     )
   }
 }
@@ -345,8 +373,9 @@ private fun <E : Enum<E>> RadioButtonRow(
   selectedValue: Enum<E>,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  enabled: Boolean,
 ) {
-  RadioButtonRow(value.toString(), selectedValue == value, onClick, modifier)
+  RadioButtonRow(value.toString(), selectedValue == value, onClick, modifier, enabled)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -414,6 +443,7 @@ private fun chooseFile(parent: Component, project: Project?): Path? {
 @Composable
 private fun EmulatedPerformanceGroup(
   device: VirtualDevice,
+  hasGooglePlayStore: Boolean,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(Padding.MEDIUM)) {
@@ -425,7 +455,7 @@ private fun EmulatedPerformanceGroup(
 
       Dropdown(
         Modifier.alignByBaseline(),
-        device.cpuCoreCount != null,
+        device.cpuCoreCount != null && !hasGooglePlayStore,
         menuContent = {
           for (count in 1..max(1, Runtime.getRuntime().availableProcessors() / 2)) {
             selectableItem(
@@ -449,6 +479,7 @@ private fun EmulatedPerformanceGroup(
         listOf(GraphicsMode.AUTO, GraphicsMode.HARDWARE, GraphicsMode.SOFTWARE).toImmutableList(),
         onSelectedItemChange = { onDeviceChange(device.copy(graphicsMode = it)) },
         Modifier.alignByBaseline(),
+        !hasGooglePlayStore,
       )
     }
 
@@ -459,6 +490,7 @@ private fun EmulatedPerformanceGroup(
         device.ram,
         onValueChange = { onDeviceChange(device.copy(ram = it)) },
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+        !hasGooglePlayStore,
       )
 
       InfoOutlineIcon(
@@ -474,7 +506,8 @@ private fun EmulatedPerformanceGroup(
       StorageCapacityField(
         device.vmHeapSize,
         onValueChange = { onDeviceChange(device.copy(vmHeapSize = it)) },
-        Modifier.alignByBaseline().padding(end = Padding.MEDIUM, bottom = Padding.SMALL),
+        Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
+        !hasGooglePlayStore,
       )
 
       InfoOutlineIcon(
@@ -486,8 +519,27 @@ private fun EmulatedPerformanceGroup(
   }
 }
 
-internal class AdditionalSettingsPanelState internal constructor(device: VirtualDevice) {
-  internal val storageGroupState = StorageGroupState(device)
+@Composable
+private fun PreferredAbiGroup(
+  preferredAbi: String?,
+  systemImage: ISystemImage?,
+  onPreferredAbiChange: (String?) -> Unit,
+) {
+  val availableAbis = persistentListOf("Optimal").plus(systemImage.allAbiTypes())
+  Row {
+    Text("Preferred ABI", Modifier.alignByBaseline().padding(end = Padding.SMALL))
+
+    // "Optimal" is our null value; it means we don't set a preferred ABI and use the default.
+    Dropdown(
+      preferredAbi ?: "Optimal",
+      availableAbis,
+      onSelectedItemChange = { onPreferredAbiChange(it.takeUnless { it == "Optimal" }) },
+      Modifier.alignByBaseline(),
+      enabled = availableAbis.isNotEmpty(),
+      outline =
+        if (preferredAbi == null || preferredAbi in availableAbis) Outline.None else Outline.Error,
+    )
+  }
 }
 
 internal class StorageGroupState internal constructor(device: VirtualDevice) {

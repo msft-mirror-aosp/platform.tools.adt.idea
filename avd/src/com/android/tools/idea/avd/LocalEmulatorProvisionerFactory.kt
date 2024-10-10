@@ -23,6 +23,7 @@ import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshot
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.adblib.AdbLibService
+import com.android.tools.idea.avd.EditVirtualDeviceDialog.Mode
 import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType.DIRECT_DEVICE_MANAGER
 import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType.INDIRECT
 import com.android.tools.idea.avdmanager.AvdManagerConnection
@@ -119,12 +120,23 @@ private class AvdManagerImpl(val project: Project?) : LocalEmulatorProvisionerPl
 
   override suspend fun editAvd(avdInfo: AvdInfo): Boolean {
     if (StudioFlags.DEVICE_CATALOG_ENABLED.get()) {
-      return EditVirtualDeviceDialog(project).show(avdInfo)
+      return EditVirtualDeviceDialog.show(project, avdInfo, Mode.EDIT)
     } else {
       return withContext(uiThread) {
         val avdOptionsModel = AvdOptionsModel(avdInfo)
         AvdWizardUtils.createAvdWizard(null, project, avdOptionsModel).showAndGet()
         avdOptionsModel.createdAvd.isPresent
+      }
+    }
+  }
+
+  override suspend fun duplicateAvd(avdInfo: AvdInfo) {
+    if (StudioFlags.DEVICE_CATALOG_ENABLED.get()) {
+      EditVirtualDeviceDialog.show(project, avdInfo, mode = Mode.DUPLICATE)
+    } else {
+      withContext(uiThread) {
+        AvdWizardUtils.createAvdWizardForDuplication(null, project, AvdOptionsModel(avdInfo))
+          .showAndGet()
       }
     }
   }
@@ -156,13 +168,6 @@ private class AvdManagerImpl(val project: Project?) : LocalEmulatorProvisionerPl
 
   override suspend fun showOnDisk(avdInfo: AvdInfo) {
     RevealFileAction.openDirectory(avdInfo.dataFolderPath)
-  }
-
-  override suspend fun duplicateAvd(avdInfo: AvdInfo) {
-    withContext(uiThread) {
-      AvdWizardUtils.createAvdWizardForDuplication(null, project, AvdOptionsModel(avdInfo))
-        .showAndGet()
-    }
   }
 
   override suspend fun wipeData(avdInfo: AvdInfo) {

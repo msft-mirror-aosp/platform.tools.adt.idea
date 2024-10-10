@@ -28,6 +28,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.JBDimension
+import com.intellij.util.ui.JBUI
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSeparator
@@ -90,12 +93,14 @@ class GenerateComposePreviewsForFileAction :
     init {
       title = message("action.generate.previews.for.file.dialog.title")
       init()
+      window.maximumSize = JBDimension(window.maximumSize.width, 320)
     }
 
     override fun createCenterPanel(): JComponent {
       // [Composables][padding][Horizontal separator]
-      // [Empty Panel] or [Checkboxes panel]
-      val mainPanel = JPanel(TabularLayout("Fit,5px,*", "Fit,*"))
+      // [Empty Panel] or [Checkboxes wrapped into a scroll pane]
+      val mainPanel =
+        JPanel(TabularLayout("Fit,5px,*", "Fit,*")).apply { minimumSize = JBDimension(320, 170) }
 
       mainPanel.add(
         JBLabel(message("action.generate.previews.for.file.dialog.composables.label")),
@@ -127,16 +132,14 @@ class GenerateComposePreviewsForFileAction :
       if (composableCandidates.isEmpty()) {
         return JBLabel(message("action.generate.previews.for.file.dialog.empty"))
       }
-      // Checkboxes are horizontally aligned to the left.
-      // Vertical alignment is Glue, checkboxes (n * Fit), Glue.
+      // Checkboxes are top-left aligned.
       val checkBoxesPanel =
-        JPanel(TabularLayout("Fit,*", "*,${"Fit,".repeat(composableCandidates.size)}*"))
-      // Skip the first row, as it will be a vertical glue
-      var row = 1
+        JPanel(TabularLayout("Fit,*", "${"Fit,".repeat(composableCandidates.size)}*"))
+      var row = 0
       for (checkBox in checkBoxes) {
         checkBoxesPanel.add(checkBox.value, TabularLayout.Constraint(row++, 0))
       }
-      return checkBoxesPanel
+      return JBScrollPane(checkBoxesPanel).apply { border = JBUI.Borders.empty() }
     }
   }
 }

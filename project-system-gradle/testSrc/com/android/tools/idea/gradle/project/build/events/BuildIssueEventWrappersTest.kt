@@ -16,13 +16,17 @@
 package com.android.tools.idea.gradle.project.build.events
 
 import com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext
+import com.android.tools.idea.gradle.project.build.output.toBuildIssueEventWithAdditionalDescription
 import com.android.tools.idea.gradle.project.sync.idea.issues.BuildIssueComposer
+import com.android.tools.idea.gradle.project.sync.idea.issues.BuildIssueDescriptionComposer
 import com.android.tools.idea.gradle.project.sync.idea.issues.ErrorMessageAwareBuildIssue
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenLinkQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenStudioBotBuildIssueQuickFix
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.BuildErrorMessage
 import com.intellij.build.FilePosition
+import com.intellij.build.events.BuildIssueEvent
+import com.intellij.build.events.DuplicateMessageAware
 import com.intellij.build.events.MessageEvent
 import com.intellij.build.events.impl.BuildIssueEventImpl
 import com.intellij.build.events.impl.FileMessageEventImpl
@@ -32,6 +36,9 @@ import java.io.File
 
 class BuildIssueEventWrappersTest {
   private val buildIssueFix = OpenStudioBotBuildIssueQuickFix(GradleErrorContext(null, "some error message", null, null))
+  private val additionalDescription = BuildIssueDescriptionComposer().apply {
+    addQuickFix(buildIssueFix)
+  }
 
   @Test
   fun testWrappedEventAddsQuickFixAndPreservesFileMessageEventImplFields() {
@@ -44,7 +51,7 @@ class BuildIssueEventWrappersTest {
       FilePosition(File.createTempFile("someprefix", "some suffix"), 1, 1)
     )
 
-    val wrappedEvent = FileMessageBuildIssueEvent(originalEvent, buildIssueFix)
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as FileMessageBuildIssueEvent
 
     assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(1)
     assertThat(wrappedEvent.issue.quickFixes.first()).isSameAs(buildIssueFix)
@@ -65,7 +72,7 @@ class BuildIssueEventWrappersTest {
       "message",
       "detailed message")
 
-    val wrappedEvent = MessageBuildIssueEvent(originalEvent, buildIssueFix)
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as MessageBuildIssueEvent
 
     assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(1)
     assertThat(wrappedEvent.issue.quickFixes.first()).isSameAs(buildIssueFix)
@@ -77,15 +84,178 @@ class BuildIssueEventWrappersTest {
   }
 
   @Test
+  fun testDoubleWrappedEventAddsQuickFixAndPreservesFileMessageEventImplFields() {
+    val originalEvent = FileMessageEventImpl(
+      "parentId",
+      MessageEvent.Kind.ERROR,
+      "title",
+      "message",
+      "detailed message",
+      FilePosition(File.createTempFile("someprefix", "some suffix"), 1, 1)
+    )
+    val openLinkQuickFix = OpenLinkQuickFix("https://docs.gradle.org")
+    val additionalDescription1 = BuildIssueDescriptionComposer().apply {
+      addDescription("Additional line")
+      newLine()
+      addQuickFix("Open docs", openLinkQuickFix)
+    }
+
+    val wrappedEvent = originalEvent
+      .toBuildIssueEventWithAdditionalDescription(additionalDescription1)
+      .toBuildIssueEventWithAdditionalDescription(additionalDescription) as FileMessageBuildIssueEvent
+
+    assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(2)
+    assertThat(wrappedEvent.issue.quickFixes[0]).isSameAs(openLinkQuickFix)
+    assertThat(wrappedEvent.issue.quickFixes[1]).isSameAs(buildIssueFix)
+    assertThat(wrappedEvent.result.filePosition).isEqualTo(originalEvent.result.filePosition)
+    assertThat(wrappedEvent.result.kind).isEqualTo(originalEvent.result.kind)
+    assertThat(wrappedEvent.result.details).isEqualTo(originalEvent.result.details
+                                                      + "\nAdditional line"
+                                                      + "\n<a href=\"open.more.details\">Open docs</a>"
+                                                      + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.filePosition).isEqualTo(originalEvent.filePosition)
+    assertThat(wrappedEvent.hint).isEqualTo(originalEvent.hint)
+    assertThat(wrappedEvent.description).isEqualTo(originalEvent.description
+                                                   + "\nAdditional line"
+                                                   + "\n<a href=\"open.more.details\">Open docs</a>"
+                                                   + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+  }
+
+  @Test
+  fun testDoubleWrappedEventAddsQuickFixAndPreservesMessageEventImplFields() {
+    val originalEvent = MessageEventImpl(
+      "parentId",
+      MessageEvent.Kind.ERROR,
+      "title",
+      "message",
+      "detailed message")
+
+    val openLinkQuickFix = OpenLinkQuickFix("https://docs.gradle.org")
+    val additionalDescription1 = BuildIssueDescriptionComposer().apply {
+      addDescription("Additional line")
+      newLine()
+      addQuickFix("Open docs", openLinkQuickFix)
+    }
+    val wrappedEvent = originalEvent
+      .toBuildIssueEventWithAdditionalDescription(additionalDescription1)
+      .toBuildIssueEventWithAdditionalDescription(additionalDescription) as MessageBuildIssueEvent
+
+    assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(2)
+    assertThat(wrappedEvent.issue.quickFixes[0]).isSameAs(openLinkQuickFix)
+    assertThat(wrappedEvent.issue.quickFixes[1]).isSameAs(buildIssueFix)
+    assertThat(wrappedEvent.kind).isEqualTo(originalEvent.kind)
+    assertThat(wrappedEvent.group).isEqualTo(originalEvent.group)
+    assertThat(wrappedEvent.result.kind).isEqualTo(originalEvent.result.kind)
+    assertThat(wrappedEvent.result.details).isEqualTo(originalEvent.result.details
+                                                      + "\nAdditional line"
+                                                      + "\n<a href=\"open.more.details\">Open docs</a>"
+                                                      + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.description).isEqualTo(originalEvent.description
+                                                   + "\nAdditional line"
+                                                   + "\n<a href=\"open.more.details\">Open docs</a>"
+                                                   + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+  }
+
+  @Test
+  fun testWrappingFileMessageEventImplWithNullDetails() {
+    val originalEvent = FileMessageEventImpl(
+      "parentId",
+      MessageEvent.Kind.ERROR,
+      "title",
+      "message",
+      null,
+      FilePosition(File.createTempFile("someprefix", "some suffix"), 1, 1)
+    )
+
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as FileMessageBuildIssueEvent
+
+    assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(1)
+    assertThat(wrappedEvent.issue.quickFixes.first()).isSameAs(buildIssueFix)
+    assertThat(wrappedEvent.result.filePosition).isEqualTo(originalEvent.result.filePosition)
+    assertThat(wrappedEvent.result.kind).isEqualTo(originalEvent.result.kind)
+    assertThat(wrappedEvent.filePosition).isEqualTo(originalEvent.filePosition)
+    assertThat(wrappedEvent.hint).isEqualTo(originalEvent.hint)
+    assertThat(wrappedEvent.result.details).isEqualTo("\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.description).isEqualTo("\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+  }
+
+  @Test
+  fun testWrappingMessageEventImplWithNullDetails() {
+    val originalEvent = MessageEventImpl(
+      "parentId",
+      MessageEvent.Kind.ERROR,
+      "title",
+      "message",
+      null)
+
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as MessageBuildIssueEvent
+
+    assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(1)
+    assertThat(wrappedEvent.issue.quickFixes.first()).isSameAs(buildIssueFix)
+    assertThat(wrappedEvent.kind).isEqualTo(originalEvent.kind)
+    assertThat(wrappedEvent.group).isEqualTo(originalEvent.group)
+    assertThat(wrappedEvent.result.kind).isEqualTo(originalEvent.result.kind)
+    assertThat(wrappedEvent.result.details).isEqualTo("\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.description).isEqualTo("\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+  }
+
+  @Test
+  fun testWrappingDuplicateMessageAwareMessageEvent() {
+    val originalEvent = object : MessageEventImpl(
+      "parentId",
+      MessageEvent.Kind.ERROR,
+      "title",
+      "message",
+      "detailed message"
+    ), DuplicateMessageAware {}
+
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as MessageBuildIssueEvent
+
+    assertThat(wrappedEvent).isInstanceOf(DuplicateMessageAware::class.java)
+    assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(1)
+    assertThat(wrappedEvent.issue.quickFixes.first()).isSameAs(buildIssueFix)
+    assertThat(wrappedEvent.kind).isEqualTo(originalEvent.kind)
+    assertThat(wrappedEvent.group).isEqualTo(originalEvent.group)
+    assertThat(wrappedEvent.result.kind).isEqualTo(originalEvent.result.kind)
+    assertThat(wrappedEvent.result.details).isEqualTo(originalEvent.result.details + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.description).isEqualTo(originalEvent.description + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+  }
+
+  @Test
+  fun testWrappingDuplicateMessageAwareFileMessageEven() {
+    val originalEvent = object : FileMessageEventImpl(
+      "parentId",
+      MessageEvent.Kind.ERROR,
+      "title",
+      "message",
+      "detailed message",
+      FilePosition(File.createTempFile("someprefix", "some suffix"), 1, 1)
+    ), DuplicateMessageAware {}
+
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as FileMessageBuildIssueEvent
+
+    assertThat(wrappedEvent).isInstanceOf(DuplicateMessageAware::class.java)
+    assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(1)
+    assertThat(wrappedEvent.issue.quickFixes.first()).isSameAs(buildIssueFix)
+    assertThat(wrappedEvent.result.filePosition).isEqualTo(originalEvent.result.filePosition)
+    assertThat(wrappedEvent.result.kind).isEqualTo(originalEvent.result.kind)
+    assertThat(wrappedEvent.filePosition).isEqualTo(originalEvent.filePosition)
+    assertThat(wrappedEvent.hint).isEqualTo(originalEvent.hint)
+    assertThat(wrappedEvent.result.details).isEqualTo(originalEvent.result.details + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.description).isEqualTo(originalEvent.description + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+  }
+
+  @Test
   fun testWrappedEventAddsQuickFixAndPreservesBuildIssueEventImplFields() {
     val originalEvent = BuildIssueEventImpl(
       "parentId",
       BuildIssueComposer("base message", "title")
         .addQuickFix("Open docs", OpenLinkQuickFix("https://docs.gradle.org"))
         .composeBuildIssue(),
-      MessageEvent.Kind.ERROR,)
+      MessageEvent.Kind.ERROR
+    )
 
-    val wrappedEvent = originalEvent.copyWithQuickFix(buildIssueFix)
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as BuildIssueEvent
 
     assertThat(wrappedEvent.issue.quickFixes.size).isEqualTo(2)
     assertThat(wrappedEvent.issue.quickFixes[0]).isInstanceOf(OpenLinkQuickFix::class.java)
@@ -112,15 +282,17 @@ class BuildIssueEventWrappersTest {
         .composeErrorMessageAwareBuildIssue(
           buildErrorMessage
         ),
-      MessageEvent.Kind.ERROR,)
+      MessageEvent.Kind.ERROR,
+    )
 
-    val wrappedEvent = originalEvent.copyWithQuickFix(buildIssueFix)
+    val wrappedEvent = originalEvent.toBuildIssueEventWithAdditionalDescription(additionalDescription) as BuildIssueEvent
 
     assertThat(wrappedEvent.issue).isInstanceOf(ErrorMessageAwareBuildIssue::class.java)
     assertThat((wrappedEvent.issue as ErrorMessageAwareBuildIssue).buildErrorMessage).isEqualTo(buildErrorMessage)
     assertThat(wrappedEvent.issue.quickFixes[0]).isInstanceOf(OpenLinkQuickFix::class.java)
     assertThat(wrappedEvent.issue.quickFixes[1]).isEqualTo(buildIssueFix)
     assertThat(wrappedEvent.issue.title).isEqualTo(originalEvent.issue.title)
-    assertThat(wrappedEvent.issue.description).isEqualTo(originalEvent.issue.description + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
+    assertThat(wrappedEvent.issue.description).isEqualTo(
+      originalEvent.issue.description + "\n<a href=\"open.plugin.studio.bot\">Ask Gemini</a>")
   }
 }

@@ -16,14 +16,18 @@
 package com.android.tools.idea.avd
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.android.sdklib.DeviceSystemImageMatcher
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.RemoteSystemImage
@@ -31,7 +35,6 @@ import com.android.sdklib.SdkVersionInfo
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.device.DeviceArtDescriptor
 import com.android.tools.idea.adddevicedialog.LocalFileSystem
-import com.android.tools.idea.adddevicedialog.LocalProject
 import com.android.tools.idea.adddevicedialog.WizardAction
 import com.android.tools.idea.adddevicedialog.WizardDialogScope
 import com.android.tools.idea.adddevicedialog.WizardPageScope
@@ -46,10 +49,14 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.Messages
 import java.awt.Component
+import java.nio.file.FileSystem
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -73,23 +80,36 @@ private fun resolve(sdkHandler: AndroidSdkHandler, deviceSkin: Path, imageSkins:
 internal fun WizardPageScope.ConfigurationPage(
   device: VirtualDevice,
   image: ISystemImage?,
+  systemImageStateFlow: StateFlow<SystemImageState>,
   skins: ImmutableCollection<Skin>,
   deviceNameValidator: DeviceNameValidator,
   sdkHandler: AndroidSdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler(),
   finish: suspend (VirtualDevice, ISystemImage) -> Boolean,
 ) {
-  val project = LocalProject.current
-  val imagesState: SystemImageState by
-    remember { ISystemImages.systemImageFlow(sdkHandler, project) }
-      .collectAsState(SystemImageState.INITIAL)
-  val images = imagesState.images.filter { matches(device, it) }.toImmutableList()
-  if (!imagesState.hasLocal || (images.isEmpty() && !imagesState.hasRemote)) {
+  val systemImageState by systemImageStateFlow.collectAsState()
+
+  // Wait a bit for remote images to arrive before we proceed, so that we make our initial
+  // system image selection based on the full list, if possible.
+  val isTimedOut by
+    produceState(false) {
+      delay(1.seconds)
+      value = true
+    }
+  if (
+    !systemImageState.hasLocal ||
+      (!isTimedOut && !systemImageState.hasRemote && systemImageState.error == null)
+  ) {
     Box(Modifier.fillMaxSize()) {
       Text("Loading system images...", modifier = Modifier.align(Alignment.Center))
     }
     return
   }
-  if (images.isEmpty()) {
+
+  val filteredImageState =
+    systemImageState.copy(
+      images = systemImageState.images.filter { matches(device, it) }.toImmutableList()
+    )
+  if (filteredImageState.images.isEmpty()) {
     Box(Modifier.fillMaxSize()) {
       Text("No system images available.", modifier = Modifier.align(Alignment.Center))
     }
@@ -105,18 +125,12 @@ internal fun WizardPageScope.ConfigurationPage(
           ConfigureDevicePanelState(
             device,
             skins,
-            images.sortedWith(SystemImageComparator).last().takeIf { it.isRecommended() },
+            filteredImageState.images.sortedWith(SystemImageComparator).last().takeIf {
+              it.isRecommended()
+            },
           )
 
-        val skin = device.device.defaultHardware.skinFile
-        state.setSkin(
-          resolve(
-            sdkHandler,
-            if (skin == null) SkinUtils.noSkin(fileSystem) else fileSystem.getPath(skin.path),
-            emptyList(),
-          )
-        )
-
+        state.setSkin(resolveDefaultSkin(device, sdkHandler, fileSystem))
         state
       } else {
         // Editing a device
@@ -128,36 +142,46 @@ internal fun WizardPageScope.ConfigurationPage(
 
   val coroutineScope = rememberCoroutineScope()
 
-  ConfigureDevicePanel(
-    state,
-    image,
-    images,
-    deviceNameValidator,
-    onDownloadButtonClick = { coroutineScope.launch { downloadSystemImage(parent, it) } },
-    onSystemImageTableRowClick = {
-      state.systemImageTableSelectionState.selection = it
-      state.setSkin(resolve(sdkHandler, state.device.skin.path(), it.skins))
-    },
-    onImportButtonClick = {
-      // TODO Validate the skin
-      val skin =
-        FileChooser.chooseFile(
-          FileChooserDescriptorFactory.createSingleFolderDescriptor(),
-          null, // TODO: add component from CompositionLocal?
-          null,
-          null,
-        )
+  Column {
+    if (!state.validity.isPreferredAbiValid) {
+      ErrorBanner(
+        "Preferred ABI \"${state.device.preferredAbi}\" is not available with selected system image",
+        Modifier.padding(vertical = 6.dp),
+      )
+    }
 
-      if (skin != null) state.setSkin(skin.toNioPath())
-    },
-  )
+    ConfigureDevicePanel(
+      state,
+      image,
+      filteredImageState,
+      deviceNameValidator,
+      onDownloadButtonClick = { coroutineScope.launch { downloadSystemImage(parent, it) } },
+      onSystemImageTableRowClick = {
+        state.setSystemImageSelection(it)
+        state.setSkin(resolve(sdkHandler, state.device.skin.path(), it.skins))
+      },
+      onImportButtonClick = {
+        // TODO Validate the skin
+        val skin =
+          FileChooser.chooseFile(
+            FileChooserDescriptorFactory.createSingleFolderDescriptor(),
+            null, // TODO: add component from CompositionLocal?
+            null,
+            null,
+          )
 
+        if (skin != null) state.setSkin(skin.toNioPath())
+      },
+    )
+  }
   nextAction = WizardAction.Disabled
 
   finishAction =
     if (state.validity.isValid) {
       WizardAction {
         coroutineScope.launch {
+          state.resetPlayStoreFields(resolveDefaultSkin(state.device, sdkHandler, fileSystem))
+
           finish(
             state.device,
             state.systemImageTableSelectionState.selection!!,
@@ -170,6 +194,20 @@ internal fun WizardPageScope.ConfigurationPage(
     } else {
       WizardAction.Disabled
     }
+}
+
+private fun resolveDefaultSkin(
+  device: VirtualDevice,
+  sdkHandler: AndroidSdkHandler,
+  fileSystem: FileSystem,
+): Path {
+  val skin = device.device.defaultHardware.skinFile
+
+  return resolve(
+    sdkHandler,
+    if (skin == null) SkinUtils.noSkin(fileSystem) else fileSystem.getPath(skin.path),
+    emptyList(),
+  )
 }
 
 private suspend fun WizardDialogScope.finish(

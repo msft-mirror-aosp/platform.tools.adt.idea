@@ -259,6 +259,8 @@
     <projectService serviceImplementation="com.android.tools.idea.testartifacts.instrumented.testsuite.view.state.AndroidTestResultsUserPreferences"/>
     <projectConfigurable provider="com.android.tools.idea.flags.StudioExperimentalConfigurableProvider"
                          id ="experimental" displayName="Experimental" groupId="root" groupWeight="-999"/>
+    <projectConfigurable provider="com.android.tools.idea.flags.StudioLabsConfigurableProvider"
+                         id ="studioLabs" displayName="Studio Labs" groupId="root" groupWeight="-999"/>
     <projectConfigurable provider="com.android.tools.idea.flags.PluginExperimentalConfigurableProvider"
                          id ="experimentalPlugin" displayName="Android (Experimental)" groupId="language"/>
     <applicationService serviceImplementation="com.android.tools.idea.sdk.StudioSettingsController"/>
@@ -267,8 +269,7 @@
     <applicationService serviceInterface="com.android.tools.fonts.DownloadableFontCacheService"
                         serviceImplementation="com.android.tools.idea.fonts.StudioDownloadableFontCacheService" />
 
-    <applicationService serviceInterface="com.android.tools.rendering.classloading.ModuleClassLoaderManager"
-                        serviceImplementation="org.jetbrains.android.uipreview.StudioModuleClassLoaderManager"/>
+    <applicationService serviceImplementation="org.jetbrains.android.uipreview.StudioModuleClassLoaderManager"/>
     <applicationService serviceImplementation="com.android.tools.idea.stats.ExperimentalUISettings"/>
     <projectService serviceInterface="com.android.tools.idea.res.AppLanguageService"
                     serviceImplementation="com.android.tools.idea.res.AppLanguageServiceImpl" />
@@ -450,6 +451,8 @@
 
     <!-- `language=""` means this is applicable to Language.ANY which is what images and other binary files use. -->
     <lang.findUsagesProvider language="" implementationClass="org.jetbrains.android.refactoring.AndroidFallbackFindUsagesProvider" />
+
+    <lang.inferredAnnotationProvider implementation="com.android.tools.idea.lang.AndroidSdkInferredAnnotationProvider" />
 
     <usageTypeProvider implementation="org.jetbrains.android.refactoring.AndroidBinaryResourceFileUsageTypeProvider" order="first" />
     <usageTypeProvider implementation="org.jetbrains.android.refactoring.AndroidResourceXmlUsageProvider" order="first" />

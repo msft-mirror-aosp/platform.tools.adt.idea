@@ -38,6 +38,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
 import org.jetbrains.jewel.foundation.Stroke
 import org.jetbrains.jewel.foundation.modifier.border
@@ -102,6 +104,22 @@ fun <T> TableTextColumn(
 ) =
   TableColumn(name, width, comparator) {
     Text(attribute(it), overflow = overflow, maxLines = maxLines)
+  }
+
+/**
+ * A sortable column that displays the attribute as text via toString() and sorts via the
+ * attribute's natural order.
+ */
+fun <T, V : Comparable<V>> DefaultSortableTableColumn(
+  name: String,
+  width: TableColumnWidth = TableColumnWidth.Weighted(1f),
+  attribute: (T) -> V,
+  comparator: Comparator<T>? = compareBy(attribute),
+  overflow: TextOverflow = TextOverflow.Ellipsis,
+  maxLines: Int = 1,
+) =
+  TableColumn(name, width, comparator) {
+    Text(attribute(it).toString(), overflow = overflow, maxLines = maxLines)
   }
 
 enum class SortOrder {
@@ -259,6 +277,7 @@ fun <T> Table(
       },
     )
     Divider(Orientation.Horizontal)
+    val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
     VerticallyScrollableContainer(scrollState = lazyListState) {
       LazyColumn(
@@ -277,8 +296,23 @@ fun <T> Table(
                   })
                 .coerceIn(sortedRows.indices)
             if (newIndex != index) {
-              tableSelectionState.selection = sortedRows[newIndex]
-              focusRequesters[newIndex].requestFocus()
+              val layoutInfo = lazyListState.layoutInfo
+              val newIndexInfo = layoutInfo.visibleItemsInfo.find { it.index == newIndex }
+              val shouldScroll =
+                newIndexInfo == null ||
+                  newIndexInfo.offset < layoutInfo.viewportStartOffset ||
+                  newIndexInfo.offset + newIndexInfo.size > layoutInfo.viewportEndOffset
+              if (shouldScroll) {
+                coroutineScope.launch {
+                  lazyListState.scrollToItem(newIndex)
+                  // Must wait until the item is visible, or the focusRequester won't be valid
+                  focusRequesters[newIndex].requestFocus()
+                  tableSelectionState.selection = sortedRows[newIndex]
+                }
+              } else {
+                focusRequesters[newIndex].requestFocus()
+                tableSelectionState.selection = sortedRows[newIndex]
+              }
             }
             true
           },

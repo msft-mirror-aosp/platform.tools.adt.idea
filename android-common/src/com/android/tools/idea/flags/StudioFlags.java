@@ -1136,6 +1136,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> MIGRATE_BUILDCONFIG_FROM_GRADLE_PROPERTIES_REFACTORING_ENABLED = new BooleanFlag(
     REFACTORINGS, "migrateto.dslbuildconfig.enabled", "Enable the Migrate buildConfig from gradle.properties refactoring",
     "If enabled, show the action in the refactoring menu", true);
+
+  public static final Flag<Boolean> MIGRATE_RES_VALUES_FROM_GRADLE_PROPERTIES_REFACTORING_ENABLED = new BooleanFlag(
+    REFACTORINGS, "migrateto.dslresvalues.enabled", "Enable the Migrate resValues from gradle.properties refactoring",
+    "If enabled, show the action in the refactoring menu", true);
   //endregion
 
   //region NDK
@@ -1191,6 +1195,13 @@ public final class StudioFlags {
     EDITOR, "skip.nav.info.dumb.mode.check",
     "Skip check for dumb mode in NavInfoFetcher.kt",
     "When true, NavInfoFetched.kt does not check for dumb mode, and instead allows a caller to handle an IndexNotReadyException.",
+    true
+  );
+
+  public static final Flag<Boolean> ENABLE_SDK_DOCUMENTATION_TARGET_PROVIDER = new BooleanFlag(
+    EDITOR, "enable.sdk.documentation.target.provider",
+    "Enable SDK Documentation Target Provider",
+    "When true, javadocs for Android Framework SDK classes will be served using a new supported extension point.",
     true
   );
 
@@ -1497,12 +1508,12 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW = new BooleanFlag(
     COMPOSE, "preview.generate.preview.action", "Enable editor action for generating Compose Previews",
     "Enable a context-menu action that can generate a Compose Preview corresponding to the selected @Composable",
-    false);
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_ALL_PREVIEWS_FILE = new BooleanFlag(
     COMPOSE, "preview.generate.previews.file.action", "Enable editor action for generating all Compose Previews for a file",
     "Enable a context-menu action that can generate Compose Previews corresponding to the @Composable functions of a file",
-    false);
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_UI_CHECK_MODE = new BooleanFlag(
     COMPOSE, "ui.check.mode", "Enable UI Check mode for Compose preview",
@@ -1838,6 +1849,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_API_35 = new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", true);
+  public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(TSDKVUA, "omg76167", "Mitigate omg/76167", "Mitigate omg/76167 by hiding part of API 35's 'secured background activity launches' step", false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR
@@ -1972,7 +1984,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "hallucination.detector.enabled",
                     "Run hallucination analysis on generated code.",
                     "When enabled, a hallucination detection utility will run on generated code snippets, and emit metrics when hallucinations are detected.",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    false);
 
   public static final Flag<Boolean> STUDIOBOT_CURRENT_FILE_CONTEXT =
     new MendelFlag(STUDIOBOT, "current.file.context", 97694800,
@@ -2077,6 +2089,12 @@ public final class StudioFlags {
   public static final Flag<Boolean> EXPERIMENTAL_UI_SURVEY_ENABLED =
     new BooleanFlag(EXPERIMENTAL_UI, "enabled", "Enable Experimental UI Survey", "Enable the experimental UI survey.", true);
   // endregion EXPERIMENTAL_UI
+
+  // region STUDIO_LABS
+  private static final FlagGroup STUDIO_LABS = new FlagGroup(FLAGS, "studiolabs", "Studio Labs");
+  public static final Flag<Boolean> STUDIO_LABS_SETTINGS_ENABLED =
+    new BooleanFlag(STUDIO_LABS, "enabled", "Enable Studio Labs in settings", "Enables studio labs in settings.", ChannelDefault.enabledUpTo(DEV));
+  // endregion STUDIO_LABS
 
   // region WEAR_RUN_CONFIGS_AUTOCREATE
   private static final FlagGroup WEAR_RUN_CONFIGS_AUTOCREATE =

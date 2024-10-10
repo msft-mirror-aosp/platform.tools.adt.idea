@@ -70,6 +70,7 @@ class AdditionalSettingsPanelTest {
         graphicsMode = GraphicsMode.AUTO,
         ram = StorageCapacity(2_048, StorageCapacity.Unit.MB),
         vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB),
+        preferredAbi = null,
       )
 
     val image = mock<ISystemImage>()
@@ -83,13 +84,7 @@ class AdditionalSettingsPanelTest {
         @OptIn(ExperimentalJewelApi::class) LocalComponent provides mock(),
         LocalProject provides null,
       ) {
-        Column {
-          AdditionalSettingsPanel(
-            state,
-            AdditionalSettingsPanelState(device),
-            onImportButtonClick = {},
-          )
-        }
+        Column { AdditionalSettingsPanel(state, onImportButtonClick = {}) }
       }
     }
 

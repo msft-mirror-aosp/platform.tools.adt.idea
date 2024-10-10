@@ -24,6 +24,8 @@ public interface DependencyResolutionManagementModel extends GradleBlockModel {
   @NotNull
   RepositoriesModel repositories();
 
+  RepositoriesModePropertyModel repositoriesMode();
+
   @NotNull List<VersionCatalogModel> versionCatalogs();
 
   @NotNull String catalogDefaultName();

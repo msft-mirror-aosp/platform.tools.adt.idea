@@ -17,7 +17,9 @@ package com.android.tools.idea.gradle.dsl.parser.files;
 
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
+import com.android.tools.idea.gradle.dsl.parser.elements.ElementState;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElementEnum;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.include.IncludeDslElement;
 import com.android.tools.idea.gradle.dsl.parser.plugins.PluginsDslElement;
@@ -27,6 +29,8 @@ import com.android.tools.idea.gradle.dsl.parser.settings.PluginManagementDslElem
 import com.google.common.collect.ImmutableMap;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,6 +43,17 @@ public class GradleSettingsFile extends GradleScriptFile {
                             @NotNull String moduleName,
                             @NotNull BuildModelContext context) {
     super(file, project, moduleName, context);
+    populateGlobalProperties();
+  }
+
+  // org.gradle.api.initialization.resolve.RepositoriesMode
+  public static Map<String,String> REPOSITORIES_MODE_ENUM_MAP = Stream.of("FAIL_ON_PROJECT_REPOS", "PREFER_PROJECT", "PREFER_SETTINGS")
+    .map(s -> new String[] { s, "RepositoriesMode." + s })
+    .collect(toImmutableMap(o -> o[0], o -> o[1]));
+
+  private void populateGlobalProperties() {
+    GradleDslElement repositoriesMode = new GradleDslElementEnum(this, GradleNameElement.fake("RepositoriesMode"), REPOSITORIES_MODE_ENUM_MAP);
+    myGlobalProperties.addElement(repositoriesMode, ElementState.DEFAULT, false);
   }
 
   public static final ImmutableMap<String, PropertiesElementDescription<?>> CHILD_PROPERTIES_ELEMENTS_MAP = Stream.of(new Object[][]{

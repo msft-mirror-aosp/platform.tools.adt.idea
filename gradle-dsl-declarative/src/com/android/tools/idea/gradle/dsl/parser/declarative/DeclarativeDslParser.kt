@@ -87,7 +87,9 @@ class DeclarativeDslParser(
             if (GradleDslNamedDomainElement::class.java.isAssignableFrom(description.clazz) &&
                 description.namedObjectAssociatedName == name) {
               // named object - it's always `function("name") {} ` syntax
-              getDomainNameDslElement(psi, description, context)
+              val element = getDomainNameDslElement(psi, description, context)
+              (element as? GradleDslNamedDomainElement)?.methodName = description.namedObjectAssociatedName
+              element
             }
             else {
               val identifier = psi.identifier ?: return
@@ -126,7 +128,7 @@ class DeclarativeDslParser(
     return arguments?.argumentList?.firstOrNull()?.let { literal ->
       val value = (literal.value as? DeclarativeLiteral)?.value
       if (value is String) {
-        createElement(description, context, literal)
+        createElement(description, context, literal.value)
       }
       else null
     }

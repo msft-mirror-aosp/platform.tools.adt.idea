@@ -16,6 +16,7 @@
 package com.android.tools.idea.insights
 
 import com.android.tools.idea.insights.analytics.TestAppInsightsTracker
+import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.events.EventsChanged
 import com.android.tools.idea.insights.events.actions.Action
 import com.google.common.truth.Truth.assertThat
@@ -36,15 +37,15 @@ class EventsChangedTest {
         currentInsight = LoadingState.Loading,
       )
     val event = EventsChanged(LoadingState.Ready(EventPage(eventList, "")))
-    val transition = event.transition(currentState, TestAppInsightsTracker, TEST_KEY)
+    val transition =
+      event.transition(currentState, TestAppInsightsTracker, TEST_KEY, AppInsightsCacheImpl())
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(eventList, 0, "")))
     assertThat(transition.action).isEqualTo(Action.NONE)
   }
 
   @Test
-  fun `loading new page of events appends to previous list of events and advanced index`() {
-    LoadingState.Ready(EventPage(listOf(Event("event1")), ""))
+  fun `loading new page of events appends to previous list of events`() {
     val currentState =
       AppInsightsState(
         Selection(CONNECTION1, listOf(CONNECTION1)),
@@ -54,10 +55,11 @@ class EventsChangedTest {
         currentInsight = LoadingState.Ready(DEFAULT_AI_INSIGHT),
       )
     val event = EventsChanged(LoadingState.Ready(EventPage(listOf(Event("event2")), "")))
-    val transition = event.transition(currentState, TestAppInsightsTracker, TEST_KEY)
+    val transition =
+      event.transition(currentState, TestAppInsightsTracker, TEST_KEY, AppInsightsCacheImpl())
     assertThat(transition.newState.currentEvents)
       .isEqualTo(
-        LoadingState.Ready(DynamicEventGallery(listOf(Event("event1"), Event("event2")), 1, ""))
+        LoadingState.Ready(DynamicEventGallery(listOf(Event("event1"), Event("event2")), 0, ""))
       )
     assertThat(transition.action).isEqualTo(Action.NONE)
   }

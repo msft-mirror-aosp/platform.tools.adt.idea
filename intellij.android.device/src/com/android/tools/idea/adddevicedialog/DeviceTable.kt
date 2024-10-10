@@ -71,18 +71,20 @@ fun <DeviceT : DeviceProfile> DeviceTable(
   }
 
   Column(modifier) {
-    Row {
+    Row(Modifier.padding(horizontal = 6.dp)) {
       TextField(
         textState,
         leadingIcon = { Icon(StudioIconsCompose.Common.Search, contentDescription = "Search") },
-        trailingIcon = {
-          Icon(
-            AllIconsKeys.General.CloseSmall,
-            contentDescription = "Clear search",
-            Modifier.clickable(onClick = { textState.setTextAndPlaceCursorAtEnd("") })
-              .pointerHoverIcon(PointerIcon.Default),
-          )
-        },
+        trailingIcon =
+          (@Composable {
+              Icon(
+                AllIconsKeys.General.CloseSmall,
+                contentDescription = "Clear search",
+                Modifier.clickable(onClick = { textState.setTextAndPlaceCursorAtEnd("") })
+                  .pointerHoverIcon(PointerIcon.Default),
+              )
+            })
+            .takeIf { textState.text.isNotEmpty() },
         placeholder = {
           Text(
             filterState.textFilter.description,
@@ -131,7 +133,9 @@ fun <DeviceT : DeviceProfile> DeviceTable(
                 onRowSecondaryClick = onRowSecondaryClick,
               )
               if (showDetails) {
-                when (val selection = tableSelectionState.selection) {
+                when (
+                  val selection = tableSelectionState.selection?.takeIf { filterState.apply(it) }
+                ) {
                   null -> EmptyStatePanel("Select a device", Modifier.width(200.dp).fillMaxHeight())
                   else ->
                     DeviceDetails(selection, modifier = Modifier.width(200.dp).fillMaxHeight())
@@ -161,13 +165,20 @@ object DeviceTableColumns {
       maxLines = 2,
     )
   val api =
-    TableTextColumn<DeviceProfile>("API", attribute = { it.apiRange.lowerEndpoint().toString() })
+    DefaultSortableTableColumn<DeviceProfile, Int>(
+      "API",
+      attribute = { it.apiRange.lowerEndpoint() },
+    )
   val width =
-    TableTextColumn<DeviceProfile>("Width", attribute = { it.resolution.width.toString() })
+    DefaultSortableTableColumn<DeviceProfile, Int>("Width", attribute = { it.resolution.width })
   val height =
-    TableTextColumn<DeviceProfile>("Height", attribute = { it.resolution.height.toString() })
+    DefaultSortableTableColumn<DeviceProfile, Int>("Height", attribute = { it.resolution.height })
   val density =
-    TableTextColumn<DeviceProfile>("Density", attribute = { "${it.displayDensity} dpi" })
+    TableTextColumn<DeviceProfile>(
+      "Density",
+      attribute = { "${it.displayDensity} dpi" },
+      comparator = compareBy { it.displayDensity },
+    )
   val type =
     TableTextColumn<DeviceProfile>(
       "Type",

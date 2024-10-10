@@ -214,12 +214,28 @@ class LayoutlibSceneRenderer(
           if (isActive.get()) {
             val reverseUpdate = AtomicBoolean(false)
             val rerenderIfNeeded = sceneRenderConfiguration.doubleRenderIfNeeded.getAndSet(false)
-            doRender(it, reverseUpdate)
-            if (rerenderIfNeeded && reverseUpdate.get()) {
-              doRender(it, reverseUpdate)
+            val callbacksConfig =
+              sceneRenderConfiguration.layoutlibCallbacksConfig.getAndSet(
+                LayoutlibCallbacksConfig.DO_NOT_EXECUTE
+              )
+            doRender(
+              it,
+              callbacksConfig == LayoutlibCallbacksConfig.EXECUTE_BEFORE_RENDERING,
+              reverseUpdate,
+            )
+            if (
+              (rerenderIfNeeded && reverseUpdate.get()) ||
+                callbacksConfig == LayoutlibCallbacksConfig.EXECUTE_AND_RERENDER
+            ) {
+              doRender(
+                it,
+                callbacksConfig == LayoutlibCallbacksConfig.EXECUTE_AND_RERENDER,
+                reverseUpdate,
+              )
             }
-          } else
+          } else {
             log.info("Render skipped due to deactivated LayoutlibSceneRenderer (model = $model)")
+          }
         } catch (t: CancellationException) {
           log.debug(t)
         } catch (t: Throwable) {
@@ -289,17 +305,12 @@ class LayoutlibSceneRenderer(
    *
    * This method will also [inflate] the model when forced or needed (i.e. when
    * [LayoutlibSceneRenderConfiguration.needsInflation] is true or when [renderTask] is null).
-   *
-   * Returns the [RenderResult] of the render operation, which might be an error result, or null if
-   * the model could not be rendered (e.g. because the inflation failed).
-   *
-   * Note that [CancellationException]s will be caught by this method and cause the returned
-   * [RenderResult] to be an error result.
    */
   private suspend fun doRender(
     request: RenderRequest,
+    executeCallbacksBeforeRendering: Boolean,
     reverseUpdate: AtomicBoolean,
-  ): RenderResult? {
+  ) {
     var result: RenderResult? = null
     val renderStartTimeMs = System.currentTimeMillis()
 
@@ -318,7 +329,7 @@ class LayoutlibSceneRenderer(
         else null
       if (inflateResult?.renderResult?.isSuccess == false) {
         surface.updateErrorDisplay()
-        return null
+        return
       }
       renderTask?.let {
         if (sceneRenderConfiguration.elapsedFrameTimeMs != -1L) {
@@ -329,6 +340,9 @@ class LayoutlibSceneRenderer(
         // Make sure that the task's quality is up-to-date before rendering
         val quality = sceneRenderConfiguration.quality
         it.setQuality(quality)
+        if (executeCallbacksBeforeRendering) {
+          it.executeCallbacks(sessionClock.timeNanos).await()
+        }
         result = it.render().await() // await is the suspendable version of join
         if (result?.renderResult?.isSuccess == true) {
           lastRenderQuality = quality
@@ -338,30 +352,28 @@ class LayoutlibSceneRenderer(
         }
       }
     } catch (throwable: Throwable) {
-      // Note that CancellationExceptions are not being propagated here, but an error result is
-      // created instead when cancellations or other errors happen.
       if (!model.isDisposed) {
         result =
           createRenderTaskErrorResult(file, (throwable as? CompletionException)?.cause ?: throwable)
       }
-    }
+      throw throwable
+    } finally {
+      result?.let { renderResult = result }
 
-    result?.let { renderResult = result }
-
-    // Notify surface and track metrics async
-    val renderTimeMs = System.currentTimeMillis() - renderStartTimeMs
-    executeOnPooledThread {
-      surface.modelRendered()
-      result?.let {
-        // In an unlikely event when result is disposed we can still safely request the size of the
-        // image
-        NlDiagnosticsManager.getWriteInstance(surface)
-          .recordRender(renderTimeMs, it.renderedImage.width * it.renderedImage.height * 4L)
-        CommonUsageTracker.getInstance(surface)
-          .logRenderResult(request.trigger, it, CommonUsageTracker.RenderResultType.RENDER)
+      // Notify surface and track metrics async
+      val renderTimeMs = System.currentTimeMillis() - renderStartTimeMs
+      executeOnPooledThread {
+        surface.modelRendered()
+        result?.let {
+          // In an unlikely event when result is disposed we can still safely request the size of
+          // the image
+          NlDiagnosticsManager.getWriteInstance(surface)
+            .recordRender(renderTimeMs, it.renderedImage.width * it.renderedImage.height * 4L)
+          CommonUsageTracker.getInstance(surface)
+            .logRenderResult(request.trigger, it, CommonUsageTracker.RenderResultType.RENDER)
+        }
       }
     }
-    return result
   }
 
   /**

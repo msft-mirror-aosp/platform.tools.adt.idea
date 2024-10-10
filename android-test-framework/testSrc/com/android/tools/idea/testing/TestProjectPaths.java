@@ -54,6 +54,7 @@ public final class TestProjectPaths {
   public static final String MANIFEST_CONFLICT_DYN_FEATURE_ATTR_CONFLICT_IN_XML = "projects/manifestConflict/dynamicFeatureAttributeConflictInPrimaryXml";
   public static final String MIGRATE_BUILD_CONFIG = "projects/migrateBuildConfig";
   public static final String MIGRATE_BUILD_CONFIG_WITH_GENERATED_SOURCES = "projects/migrateBuildConfigWithGeneratedSources";
+  public static final String MIGRATE_RES_VALUES = "projects/migrateResValues";
   public static final String MIGRATE_TO_APP_COMPAT = "projects/migrateToAppCompat";
   public static final String MODULE_INFO_BOTH = "projects/moduleInfo/both";
   public static final String MODULE_INFO_FLAVORS = "projects/moduleInfo/flavors";
@@ -114,7 +115,6 @@ public final class TestProjectPaths {
   public static final String SIMPLE_APP_WITH_SCREENSHOT_TEST = "projects/simpleApplicationWithScreenshot";
   public static final String SPLIT_BUILD_FILES = "projects/splitBuildFiles";
   public static final String SYNC_MULTIPROJECT = "projects/sync/multiproject";
-  public static final String TEST_ARTIFACTS_APP_LINKS = "projects/testArtifacts/appLinkTests";
   public static final String TEST_ARTIFACTS_ILLEGAL_IDENTIFIERS = "projects/testArtifacts/illegalIdentifiers";
   public static final String TEST_ARTIFACTS_KOTLIN = "projects/testArtifacts/kotlin";
   public static final String TEST_ARTIFACTS_KOTLIN_MULTIPLATFORM = "projects/testArtifacts/kotlinMultiplatform";

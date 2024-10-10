@@ -18,6 +18,7 @@ package com.android.tools.idea.avd
 import androidx.compose.runtime.Immutable
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.ISystemImage
+import com.android.sdklib.devices.CameraLocation
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.Storage
 import com.android.sdklib.internal.avd.AvdBuilder
@@ -35,6 +36,7 @@ import com.android.sdklib.internal.avd.OnDiskSkin
 import com.android.sdklib.internal.avd.QuickBoot
 import com.android.sdklib.internal.avd.SdCard
 import com.android.sdklib.internal.avd.Skin as AvdSkin
+import com.android.sdklib.internal.avd.UserSettingsKey
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
@@ -59,15 +61,19 @@ internal constructor(
   internal val graphicsMode: GraphicsMode,
   internal val ram: StorageCapacity,
   internal val vmHeapSize: StorageCapacity,
+  internal val preferredAbi: String?,
 ) {
+  internal fun hasPlayStore(image: ISystemImage) =
+    device.hasPlayStore() && image.getServices() == Services.GOOGLE_PLAY_STORE
+
   companion object {
     fun withDefaults(device: Device): VirtualDevice =
       VirtualDevice(
         name = device.displayName,
         device = device,
         skin = NoSkin.INSTANCE,
-        frontCamera = AvdCamera.EMULATED,
-        rearCamera = AvdCamera.VIRTUAL_SCENE,
+        frontCamera = if (device.hasFrontCamera()) AvdCamera.EMULATED else AvdCamera.NONE,
+        rearCamera = if (device.hasRearCamera()) AvdCamera.VIRTUAL_SCENE else AvdCamera.NONE,
         speed = EmulatedProperties.DEFAULT_NETWORK_SPEED,
         latency = EmulatedProperties.DEFAULT_NETWORK_LATENCY,
         orientation = device.defaultState.orientation,
@@ -78,29 +84,36 @@ internal constructor(
         graphicsMode = GraphicsMode.AUTO,
         ram = EmulatedProperties.defaultRamSize(device).toStorageCapacity(),
         vmHeapSize = EmulatedProperties.defaultVmHeapSize(device).toStorageCapacity(),
+        preferredAbi = null,
       )
   }
 }
 
-internal fun VirtualDevice.copyFrom(avdInfo: AvdBuilder): VirtualDevice {
+private fun Device.hasFrontCamera() =
+  defaultHardware.cameras.any { it.location == CameraLocation.FRONT }
+
+private fun Device.hasRearCamera() =
+  defaultHardware.cameras.any { it.location == CameraLocation.BACK }
+
+internal fun VirtualDevice.copyFrom(avdBuilder: AvdBuilder): VirtualDevice {
   // TODO: System image
-  // TODO: Preferred ABI
 
   return copy(
-    name = avdInfo.displayName,
-    skin = avdInfo.skin.toSkin(),
-    frontCamera = avdInfo.frontCamera,
-    rearCamera = avdInfo.backCamera,
-    speed = avdInfo.networkSpeed,
-    latency = avdInfo.networkLatency,
-    orientation = avdInfo.screenOrientation,
-    defaultBoot = avdInfo.bootMode.toBoot(),
-    internalStorage = avdInfo.internalStorage.toStorageCapacity(),
-    expandedStorage = avdInfo.sdCard.toExpandedStorage(),
-    cpuCoreCount = avdInfo.cpuCoreCount,
-    graphicsMode = avdInfo.gpuMode.toGraphicsMode(),
-    ram = avdInfo.ram.toStorageCapacity(),
-    vmHeapSize = avdInfo.vmHeap.toStorageCapacity(),
+    name = avdBuilder.displayName,
+    skin = avdBuilder.skin.toSkin(),
+    frontCamera = avdBuilder.frontCamera,
+    rearCamera = avdBuilder.backCamera,
+    speed = avdBuilder.networkSpeed,
+    latency = avdBuilder.networkLatency,
+    orientation = avdBuilder.screenOrientation,
+    defaultBoot = avdBuilder.bootMode.toBoot(),
+    internalStorage = avdBuilder.internalStorage.toStorageCapacity(),
+    expandedStorage = avdBuilder.sdCard.toExpandedStorage(),
+    cpuCoreCount = avdBuilder.cpuCoreCount,
+    graphicsMode = avdBuilder.gpuMode.toGraphicsMode(),
+    ram = avdBuilder.ram.toStorageCapacity(),
+    vmHeapSize = avdBuilder.vmHeap.toStorageCapacity(),
+    preferredAbi = avdBuilder.userSettings[UserSettingsKey.PREFERRED_ABI],
   )
 }
 
@@ -128,13 +141,18 @@ internal fun AvdBuilder.copyFrom(device: VirtualDevice, image: ISystemImage) {
   networkLatency = device.latency
 
   bootMode = device.defaultBoot.toBootMode()
+
+  when (device.preferredAbi) {
+    null -> userSettings.remove(UserSettingsKey.PREFERRED_ABI)
+    else -> userSettings[UserSettingsKey.PREFERRED_ABI] = device.preferredAbi
+  }
 }
 
 private fun StorageCapacity.toStorage(): Storage {
   return Storage(value * unit.byteCount)
 }
 
-private fun Storage.toStorageCapacity(): StorageCapacity {
+internal fun Storage.toStorageCapacity(): StorageCapacity {
   val unit = getAppropriateUnits()
   return StorageCapacity(getSizeAsUnit(unit), StorageCapacity.Unit.valueOf(unit.displayValue))
 }
@@ -180,7 +198,7 @@ internal fun AvdSkin?.toSkin(): Skin =
   when (this) {
     null -> NoSkin.INSTANCE
     is OnDiskSkin -> DefaultSkin(path)
-    is GenericSkin -> DefaultSkin(Paths.get(name))
+    is GenericSkin -> NoSkin.INSTANCE
   }
 
 internal fun Boot.toBootMode() =

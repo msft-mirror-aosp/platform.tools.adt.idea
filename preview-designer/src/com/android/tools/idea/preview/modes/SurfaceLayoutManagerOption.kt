@@ -127,6 +127,7 @@ private val organizationListPadding =
   OrganizationPadding(
     10,
     10,
+    10,
     24,
     PREVIEW_FRAME_PADDING_PROVIDER,
     ORGANIZATION_PREVIEW_RIGHT_PADDING,
@@ -134,6 +135,7 @@ private val organizationListPadding =
   )
 private val organizationGridPadding =
   OrganizationPadding(
+    10,
     10,
     10,
     24,
@@ -204,7 +206,7 @@ val GRID_LAYOUT_OPTION =
 val GRID_EXPERIMENTAL_LAYOUT_OPTION =
   SurfaceLayoutOption(
     message("new.grid.experimental.layout.title"),
-    GridLayoutManager(organizationGridPadding, GROUP_BY_BASE_COMPONENT),
+    GridLayoutManager(padding = organizationGridPadding, transform = GROUP_BY_BASE_COMPONENT),
     true,
     SceneViewAlignment.LEFT,
   )

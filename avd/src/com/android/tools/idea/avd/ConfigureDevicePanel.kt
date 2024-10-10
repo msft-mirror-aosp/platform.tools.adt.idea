@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
+import com.android.sdklib.internal.avd.EmulatedProperties
 import com.android.tools.idea.adddevicedialog.AndroidVersionSelection
 import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
@@ -49,7 +50,7 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 internal fun ConfigureDevicePanel(
   configureDevicePanelState: ConfigureDevicePanelState,
   initialSystemImage: ISystemImage?,
-  images: ImmutableList<ISystemImage>,
+  images: SystemImageState,
   deviceNameValidator: DeviceNameValidator,
   onDownloadButtonClick: (String) -> Unit,
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
@@ -77,7 +78,7 @@ internal fun ConfigureDevicePanel(
 private fun Tabs(
   configureDevicePanelState: ConfigureDevicePanelState,
   initialSystemImage: ISystemImage?,
-  images: ImmutableList<ISystemImage>,
+  imageState: SystemImageState,
   deviceNameValidator: DeviceNameValidator,
   onDownloadButtonClick: (String) -> Unit,
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
@@ -98,9 +99,11 @@ private fun Tabs(
   )
 
   val servicesSet =
-    images.mapTo(EnumSet.noneOf(Services::class.java), ISystemImage::getServices).toImmutableSet()
+    imageState.images
+      .mapTo(EnumSet.noneOf(Services::class.java), ISystemImage::getServices)
+      .toImmutableSet()
 
-  val androidVersions = images.map { it.androidVersion }.relevantVersions()
+  val androidVersions = imageState.images.map { it.androidVersion }.relevantVersions()
 
   val devicePanelState = remember {
     if (initialSystemImage == null) {
@@ -109,21 +112,15 @@ private fun Tabs(
           androidVersions.firstOrNull { !it.isPreview } ?: AndroidVersion.DEFAULT
         ),
         servicesSet.firstOrNull(),
-        images,
       )
     } else {
       DevicePanelState(
         AndroidVersionSelection(AndroidVersion(initialSystemImage.androidVersion.apiLevel)),
         initialSystemImage.getServices(),
-        images,
         !initialSystemImage.androidVersion.isBaseExtension,
         initialSystemImage.isRecommended(),
       )
     }
-  }
-
-  val additionalSettingsPanelState = remember {
-    AdditionalSettingsPanelState(configureDevicePanelState.device)
   }
 
   when (selectedTab) {
@@ -131,6 +128,7 @@ private fun Tabs(
       DevicePanel(
         configureDevicePanelState,
         devicePanelState,
+        imageState,
         androidVersions,
         servicesSet,
         deviceNameValidator,
@@ -141,7 +139,6 @@ private fun Tabs(
     Tab.ADDITIONAL_SETTINGS ->
       AdditionalSettingsPanel(
         configureDevicePanelState,
-        additionalSettingsPanelState,
         onImportButtonClick,
         Modifier.padding(Padding.SMALL),
       )
@@ -173,6 +170,7 @@ internal constructor(
     private set
 
   internal val systemImageTableSelectionState = TableSelectionState(image)
+  internal val storageGroupState = StorageGroupState(device)
 
   internal var validity by mutableStateOf(Validity())
     private set
@@ -181,8 +179,33 @@ internal constructor(
     setExpandedStorage(device.expandedStorage)
   }
 
+  internal fun hasPlayStore(): Boolean {
+    val image = systemImageTableSelectionState.selection
+    return if (image == null) false else device.hasPlayStore(image)
+  }
+
   internal fun setDeviceName(deviceName: String) {
     device = device.copy(name = deviceName)
+  }
+
+  internal fun setSystemImageSelection(systemImage: ISystemImage) {
+    systemImageTableSelectionState.selection = systemImage
+    updatePreferredAbiValidity()
+  }
+
+  internal fun setPreferredAbi(preferredAbi: String?) {
+    device = device.copy(preferredAbi = preferredAbi)
+    updatePreferredAbiValidity()
+  }
+
+  private fun updatePreferredAbiValidity() {
+    validity =
+      validity.copy(
+        isPreferredAbiValid =
+          device.preferredAbi == null ||
+            systemImageTableSelectionState.selection == null ||
+            systemImageTableSelectionState.selection.allAbiTypes().contains(device.preferredAbi)
+      )
   }
 
   internal fun setIsSystemImageTableSelectionValid(isSystemImageTableSelectionValid: Boolean) {
@@ -212,6 +235,20 @@ internal constructor(
     device = device.copy(expandedStorage = expandedStorage)
     validity = validity.copy(isExpandedStorageValid = expandedStorage.isValid())
   }
+
+  internal fun resetPlayStoreFields(skin: Path) {
+    if (!hasPlayStore()) return
+
+    device =
+      device.copy(
+        skin = getSkin(skin),
+        expandedStorage = Custom(storageGroupState.custom.withMaxUnit()),
+        cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
+        graphicsMode = GraphicsMode.AUTO,
+        ram = EmulatedProperties.defaultRamSize(device.device).toStorageCapacity(),
+        vmHeapSize = EmulatedProperties.defaultVmHeapSize(device.device).toStorageCapacity(),
+      )
+  }
 }
 
 internal data class Validity
@@ -219,9 +256,14 @@ internal constructor(
   private val isSystemImageTableSelectionValid: Boolean = true,
   internal val isExpandedStorageValid: Boolean = true,
   private val isDeviceNameValid: Boolean = true,
+  val isPreferredAbiValid: Boolean = true,
 ) {
   internal val isValid
-    get() = isSystemImageTableSelectionValid && isExpandedStorageValid && isDeviceNameValid
+    get() =
+      isSystemImageTableSelectionValid &&
+        isExpandedStorageValid &&
+        isDeviceNameValid &&
+        isPreferredAbiValid
 }
 
 private enum class Tab(val text: String) {

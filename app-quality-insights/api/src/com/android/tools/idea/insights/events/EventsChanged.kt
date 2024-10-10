@@ -21,6 +21,7 @@ import com.android.tools.idea.insights.EventPage
 import com.android.tools.idea.insights.InsightsProviderKey
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.events.actions.Action
 import com.intellij.openapi.diagnostic.Logger
 
@@ -29,6 +30,7 @@ class EventsChanged(private val eventPage: LoadingState.Done<EventPage>) : Chang
     state: AppInsightsState,
     tracker: AppInsightsTracker,
     key: InsightsProviderKey,
+    cache: AppInsightsCache,
   ): StateTransition<Action> {
     if (eventPage is LoadingState.Failure) {
       Logger.getInstance(this::class.java).warn("Failed to load events: $eventPage")
@@ -48,7 +50,7 @@ class EventsChanged(private val eventPage: LoadingState.Done<EventPage>) : Chang
                       )
                     DynamicEventGallery(newEvents.events, 0, newEvents.token)
                   } else {
-                    currentEvents.appendEventPage(newEvents).next()
+                    currentEvents.appendEventPage(newEvents)
                   }
                 }
               } else {
@@ -60,10 +62,17 @@ class EventsChanged(private val eventPage: LoadingState.Done<EventPage>) : Chang
           ),
         action = Action.NONE,
       )
-      .also {
-        if (it.newState.currentEvents is LoadingState.Ready) {
-          tracker.trackEventView(it.newState, true)
-        }
-      }
+      .also { trackEventFetched(tracker, it.newState, state.currentEvents is LoadingState.Loading) }
+  }
+
+  private fun trackEventFetched(
+    tracker: AppInsightsTracker,
+    state: AppInsightsState,
+    isFirstFetch: Boolean,
+  ) {
+    val appId = state.connections.selected?.appId ?: return
+    val issue = state.selectedIssue ?: return
+
+    tracker.logEventsFetched(appId, issue.id.value, issue.issueDetails.fatality, isFirstFetch)
   }
 }
