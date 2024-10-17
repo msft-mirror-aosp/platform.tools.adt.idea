@@ -15,43 +15,71 @@
  */
 package com.android.tools.idea.avd
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import kotlinx.collections.immutable.toImmutableList
+import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.TextField
 
 @Composable
 internal fun StorageCapacityField(
-  value: StorageCapacity,
-  onValueChange: (StorageCapacity) -> Unit,
+  value: StorageCapacity?,
+  errorMessage: String?,
+  onValueChange: (StorageCapacity?) -> Unit,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
+  outline: Outline = if (errorMessage == null) Outline.None else Outline.Error,
 ) {
   Row(modifier) {
-    TextField(
-      value.value.toString(),
-      {
-        if (STORAGE_CAPACITY_VALUE_REGEX.matches(it)) {
-          try {
-            onValueChange(StorageCapacity(it.toLong(), value.unit))
-          } catch (_: NumberFormatException) {}
-        }
-      },
-      Modifier.padding(end = Padding.SMALL).testTag("StorageCapacityFieldTextField"),
-      enabled,
-    )
+    var textFieldValue by remember { mutableStateOf(value?.value?.toString() ?: "") }
+    var dropdownValue by remember { mutableStateOf(value?.unit ?: StorageCapacity.Unit.MB) }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    ErrorTooltip(errorMessage) {
+      TextField(
+        textFieldValue,
+        {
+          textFieldValue = it
+          onValueChange(storageCapacity(it, dropdownValue))
+        },
+        Modifier.padding(end = Padding.SMALL).testTag("StorageCapacityFieldTextField"),
+        enabled,
+        // TODO: http://b/373463053
+        outline = outline,
+      )
+    }
 
     Dropdown(
-      value.unit,
+      dropdownValue,
       UNITS,
-      onSelectedItemChange = { onValueChange(StorageCapacity(value.value, it)) },
+      onSelectedItemChange = {
+        dropdownValue = it
+        onValueChange(storageCapacity(textFieldValue, dropdownValue))
+      },
       enabled = enabled,
     )
   }
 }
+
+private fun storageCapacity(textFieldValue: String, dropdownValue: StorageCapacity.Unit) =
+  if (STORAGE_CAPACITY_VALUE_REGEX.matches(textFieldValue)) {
+    try {
+      StorageCapacity(textFieldValue.toLong(), dropdownValue)
+    } catch (exception: NumberFormatException) {
+      // TODO: http://b/373706926
+      null
+    }
+  } else {
+    null
+  }
 
 private val STORAGE_CAPACITY_VALUE_REGEX = Regex("\\d+")
 private val UNITS = enumValues<StorageCapacity.Unit>().asIterable().toImmutableList()

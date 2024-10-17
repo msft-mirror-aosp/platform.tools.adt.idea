@@ -21,7 +21,10 @@ import static com.google.idea.blaze.base.qsync.DependencyTracker.DependencyBuild
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.ByteSource;
+import com.google.common.io.MoreFiles;
 import com.google.idea.blaze.base.bazel.BuildSystem;
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope;
 import com.google.idea.blaze.base.logging.utils.querysync.SyncQueryStatsScope;
@@ -375,10 +378,10 @@ public class QuerySyncProject {
   }
 
   public ImmutableCollection<Path> buildAppInspector(
-      BlazeContext parentContext, List<Label> inspectors) throws IOException, BuildException {
+      BlazeContext parentContext, Label inspector) throws IOException, BuildException {
     try (BlazeContext context = BlazeContext.create(parentContext)) {
       context.push(new BuildDepsStatsScope());
-      return appInspectorTracker.buildAppInspector(context, inspectors);
+      return appInspectorTracker.buildAppInspector(context, inspector);
     }
   }
 
@@ -580,10 +583,13 @@ public class QuerySyncProject {
     }
   }
 
-  public Iterable<Path> getBugreportFiles() {
-    return ImmutableList.<Path>builder()
-        .add(snapshotFilePath)
-        .addAll(artifactTracker.getBugreportFiles())
+  public ImmutableMap<String, ByteSource> getBugreportFiles() {
+    return ImmutableMap.<String, ByteSource>builder()
+        .put(snapshotFilePath.getFileName().toString(), MoreFiles.asByteSource(snapshotFilePath))
+        .putAll(artifactTracker.getBugreportFiles())
+        .putAll(snapshotHolder.getBugreportFiles())
+        .putAll(artifactStore.getBugreportFiles())
+        .putAll(buildArtifactCache.getBugreportFiles())
         .build();
   }
 }

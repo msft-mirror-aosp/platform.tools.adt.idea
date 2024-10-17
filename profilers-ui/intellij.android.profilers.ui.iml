@@ -14,9 +14,7 @@
           </stringArguments>
           <arrayArguments>
             <arrayArg name="pluginClasspaths">
-              <args>
-                <arg>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/androidx/compose/compiler/compiler-hosted/1.5.7/compiler-hosted-1.5.7.jar</arg>
-              </args>
+              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.0.21/kotlin-compose-compiler-plugin-2.0.21.jar</args>
             </arrayArg>
           </arrayArguments>
         </compilerArguments>
@@ -39,6 +37,7 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" />
     <orderEntry type="module" module-name="android.sdktools.perflib" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
@@ -67,5 +66,6 @@
     <orderEntry type="library" name="perfetto-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.artwork-compose" />
     <orderEntry type="module" module-name="android.sdktools.leakcanarylib" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
   </component>
 </module>

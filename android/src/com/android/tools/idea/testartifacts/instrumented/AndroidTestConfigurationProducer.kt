@@ -23,9 +23,7 @@ import com.android.tools.idea.projectsystem.SourceProviderManager
 import com.android.tools.idea.projectsystem.Token
 import com.android.tools.idea.projectsystem.androidProjectType
 import com.android.tools.idea.projectsystem.containsFile
-import com.android.tools.idea.projectsystem.getAndroidTestModule
-import com.android.tools.idea.projectsystem.getHolderModule
-import com.android.tools.idea.projectsystem.getMainModule
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.getTokenOrNull
 import com.android.tools.idea.projectsystem.isContainedBy
@@ -39,8 +37,8 @@ import com.intellij.execution.configurations.ConfigurationFactory
 import com.intellij.execution.junit.JUnitConfigurationType
 import com.intellij.execution.junit.JUnitUtil
 import com.intellij.execution.junit.JavaRunConfigurationProducerBase
-import com.intellij.execution.junit.JavaRuntimeConfigurationProducerBase
 import com.intellij.execution.junit2.PsiMemberParameterizedLocation
+import com.intellij.execution.testframework.AbstractJavaTestConfigurationProducer
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.module.Module
@@ -92,7 +90,7 @@ class AndroidTestConfigurationProducer : JavaRunConfigurationProducerBase<Androi
     // it returns false, which is not always the case with AndroidTestRunConfiguration when the producer
     // is invoked from test result panel.
     // So here we just use either the contextModule's holder module or the configuration module.
-    return contextModule?.getHolderModule() ?: configuration.configurationModule.module
+    return contextModule?.getModuleSystem()?.getHolderModule() ?: configuration.configurationModule.module
   }
 
   override fun isConfigurationFromContext(configuration: AndroidTestRunConfiguration, context: ConfigurationContext): Boolean {
@@ -297,7 +295,7 @@ private class AndroidTestConfigurator(private val facet: AndroidFacet,
    * If package name is unknown, it fallbacks to all-in-module test.
    */
   private fun tryAllInPackageTestConfiguration(configuration: AndroidTestRunConfiguration, sourceElementRef: Ref<PsiElement>): Boolean {
-    val psiPackage = JavaRuntimeConfigurationProducerBase.checkPackage(location.psiElement) ?: return false
+    val psiPackage = AbstractJavaTestConfigurationProducer.checkPackage(location.psiElement) ?: return false
     if (psiPackage.qualifiedName.isEmpty()) return false
     sourceElementRef.set(psiPackage)
 

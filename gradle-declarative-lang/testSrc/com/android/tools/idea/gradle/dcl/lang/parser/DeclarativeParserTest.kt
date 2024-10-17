@@ -145,6 +145,14 @@ class DeclarativeParserTest : ParsingTestCase("dcl/parser", "dcl", DeclarativePa
     doTest(true,true)
   }
 
+  fun testAssignWithEnum(){
+    doTest(true, true)
+  }
+
+  fun testNulls(){
+    doTest(true, true)
+  }
+
   fun testEscapedAndSingleQuote() {
     doTest(true, true)
 

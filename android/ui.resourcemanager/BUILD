@@ -31,6 +31,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/android:intellij.android.core[module, test]",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
@@ -47,5 +48,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:guava-testlib[test]",
         "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )

@@ -14,7 +14,7 @@
           </stringArguments>
           <arrayArguments>
             <arrayArg name="pluginClasspaths">
-              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/androidx/compose/compiler/compiler-hosted/1.5.7/compiler-hosted-1.5.7.jar</args>
+              <args>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.0.21/kotlin-compose-compiler-plugin-2.0.21.jar</args>
             </arrayArg>
           </arrayArguments>
         </compilerArguments>
@@ -29,6 +29,7 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="module" module-name="android.sdktools.sdklib" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />

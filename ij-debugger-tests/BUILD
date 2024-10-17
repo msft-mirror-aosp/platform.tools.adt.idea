@@ -63,6 +63,23 @@ debugger_test(
     test_include_filter = ["org.jetbrains.kotlin.idea.debugger.test.K1IdeK2CodeKotlinSteppingTestGenerated.StepOver.Uncategorized#"],
 )
 
+# 12 tests
+debugger_test(
+    name = "k1k2-kotlin-stepping-filters",
+    expected_to_fail_art = "art_k1k2_kotlin_stepping_expected_failures_filters.txt",
+    expected_to_fail_jvm = "jvm_k1k2_kotlin_stepping_expected_failures_filters.txt",
+    test_include_filter = ["org.jetbrains.kotlin.idea.debugger.test.K1IdeK2CodeKotlinSteppingTestGenerated.Filters#"],
+)
+
+# 145 tests
+debugger_test(
+    name = "k1k2-kotlin-stepping-custom",
+    expected_to_fail_art = "art_k1k2_kotlin_stepping_expected_failures_custom.txt",
+    expected_to_fail_jvm = "jvm_k1k2_kotlin_stepping_expected_failures_custom.txt",
+    shard_count = 20,
+    test_include_filter = ["org.jetbrains.kotlin.idea.debugger.test.K1IdeK2CodeKotlinSteppingTestGenerated.Custom#"],
+)
+
 maven_repository(
     name = "test_repo",
     # keep sorted: for buildifier
@@ -77,6 +94,7 @@ kotlin_library(
     srcs = ["ArtAttacher.kt"],
     # Disabled b/c it was causing problems w/ the coverage build, and we probably don't care about coverage of this anyways
     coverage_baseline_enabled = False,
+    lint_enabled = False,
     deps = [
         ":kotlin.jvm-debugger.test_lib_import",
         "@maven//:junit.junit",

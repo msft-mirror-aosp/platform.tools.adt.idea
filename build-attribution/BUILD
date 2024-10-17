@@ -83,6 +83,7 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
@@ -108,6 +109,7 @@ iml_module(
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[module, test]",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )
 
@@ -121,6 +123,7 @@ generate_old_agp_tests_from_list(
             data = [
                 "//prebuilts/studio/jdk/jdk17:jdk17_runtime_files",
                 "//prebuilts/studio/sdk:build-tools/34.0.0",
+                "//prebuilts/studio/sdk:build-tools/latest",
                 "//prebuilts/studio/sdk:platforms/android-34",
                 "//prebuilts/studio/sdk:platforms/latest",
                 "//tools/adt/idea/android/testData",

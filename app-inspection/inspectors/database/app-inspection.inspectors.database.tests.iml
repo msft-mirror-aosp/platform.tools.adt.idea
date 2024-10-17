@@ -10,6 +10,7 @@
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.gradle" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="module" module-name="app-inspection.inspectors.database" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adb" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
@@ -32,7 +33,8 @@
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.ddmlib" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.device-explorer-files" scope="TEST"/>
+    <orderEntry type="module" module-name="intellij.android.device-explorer-files" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
   </component>
 </module>

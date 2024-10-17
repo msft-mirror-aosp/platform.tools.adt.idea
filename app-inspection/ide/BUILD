@@ -50,6 +50,7 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//tools/adt/idea/.idea/libraries:studio-grpc[test]",
@@ -77,5 +78,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
         "//tools/adt/idea/app-inspection/ide/gradle:app-inspection.ide.gradle[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )

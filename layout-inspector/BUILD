@@ -27,6 +27,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
@@ -66,6 +67,7 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib[module]",
         "//tools/adt/idea/jps-model:intellij.android.jps.model[module, test]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )
 
@@ -97,6 +99,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test[test]",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "@intellij//:com.intellij.gradle",
@@ -158,6 +161,7 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/as-driver:as-driver.utils[module, test]",
         "@intellij//:JUnit",
         "@intellij//:org.jetbrains.kotlin",

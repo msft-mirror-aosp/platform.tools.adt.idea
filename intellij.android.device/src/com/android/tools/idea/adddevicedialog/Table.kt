@@ -19,6 +19,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.PointerMatcher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +32,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
@@ -42,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -56,14 +57,15 @@ import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.bridge.retrieveColorOrUnspecified
-import org.jetbrains.jewel.foundation.Stroke
-import org.jetbrains.jewel.foundation.modifier.border
+import org.jetbrains.jewel.foundation.modifier.onHover
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.ui.Orientation
@@ -72,6 +74,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.colorPalette
 import org.jetbrains.jewel.ui.util.thenIf
 
 data class TableColumn<in T>(
@@ -177,10 +180,15 @@ internal fun <T> TableHeader(
       var isFocused by remember { mutableStateOf(false) }
       Row(
         widthModifier
-          .thenIf(isFocused) { focusBorder() }
+          .semantics(mergeDescendants = true) { heading() }
+          .thenIf(isFocused) {
+            background(JewelTheme.colorPalette.gray(if (JewelTheme.isDark) 3 else 12))
+          }
           .padding(CELL_SPACING / 2)
           .onFocusChanged { isFocused = it.isFocused }
-          .thenIf(it.comparator != null) { clickable { onClick(it) } }
+          .thenIf(it.comparator != null) {
+            clickable(interactionSource = null, indication = null) { onClick(it) }
+          }
       ) {
         Text(it.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (it == sortColumn) {
@@ -201,18 +209,22 @@ internal fun <T> TableRow(
   columns: List<TableColumn<T>>,
   modifier: Modifier = Modifier,
 ) {
-  var isFocused by remember { mutableStateOf(false) }
+  var isHovered by remember { mutableStateOf(false) }
   var layoutCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
   Row(
     modifier
-      // Divide the padding before and after the border
-      .padding(ROW_PADDING / 2)
+      .focusProperties { canFocus = false }
+      .thenIf(isHovered) {
+        background(
+          retrieveColorOrUnspecified("Table.hoverBackground").takeOrElse { Color.LightGray }
+        )
+      }
       .thenIf(selected) {
         background(
           retrieveColorOrUnspecified("Table.selectionBackground").takeOrElse { Color.Cyan }
         )
       }
-      .thenIf(isFocused) { focusBorder() }
+      .onHover { isHovered = it }
       .pointerInput(value) {
         detectTapGestures(
           PointerMatcher.mouse(PointerButton.Secondary),
@@ -223,9 +235,13 @@ internal fun <T> TableRow(
         )
       }
       .onGloballyPositioned { layoutCoordinates = it }
-      .onFocusChanged { isFocused = it.isFocused }
-      .selectable(selected, onClick = { onClick(value) })
-      .padding(ROW_PADDING / 2)
+      .selectable(
+        selected,
+        interactionSource = null,
+        indication = null,
+        onClick = { onClick(value) },
+      )
+      .padding(ROW_PADDING)
       .fillMaxWidth(),
     horizontalArrangement = Arrangement.spacedBy(CELL_SPACING),
   ) {
@@ -249,10 +265,42 @@ fun <T> Table(
   onRowClick: (T) -> Unit = { tableSelectionState.selection = it },
   onRowSecondaryClick: (T, Offset) -> Unit = { _, _ -> },
 ) {
-  Column(modifier.padding(ROW_PADDING)) {
-    val sortedRows = tableSortState.comparator?.let { rows.sortedWith(it) } ?: rows
-    val focusRequesters = remember(sortedRows) { Array(sortedRows.size) { FocusRequester() } }
+  val sortedRows = tableSortState.comparator?.let { rows.sortedWith(it) } ?: rows
+  val tableFocusRequester = remember { FocusRequester() }
+  val coroutineScope = rememberCoroutineScope()
+  val lazyListState = rememberLazyListState()
 
+  Column(
+    modifier.padding(ROW_PADDING).onKeyEvent { event ->
+      if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+      val index = sortedRows.indexOf(tableSelectionState.selection)
+      val newIndex =
+        (index +
+            when (event.key) {
+              Key.DirectionDown -> 1
+              Key.DirectionUp -> -1
+              else -> return@onKeyEvent false
+            })
+          .coerceIn(sortedRows.indices)
+      if (newIndex != index) {
+        val layoutInfo = lazyListState.layoutInfo
+        val newIndexInfo = layoutInfo.visibleItemsInfo.find { it.index == newIndex }
+        val shouldScroll =
+          newIndexInfo == null ||
+            newIndexInfo.offset < layoutInfo.viewportStartOffset ||
+            newIndexInfo.offset + newIndexInfo.size > layoutInfo.viewportEndOffset
+        if (shouldScroll) {
+          coroutineScope.launch {
+            lazyListState.scrollToItem(newIndex)
+            tableSelectionState.selection = sortedRows[newIndex]
+          }
+        } else {
+          tableSelectionState.selection = sortedRows[newIndex]
+        }
+      }
+      true
+    }
+  ) {
     TableHeader(
       tableSortState.sortColumn,
       tableSortState.sortOrder,
@@ -265,81 +313,38 @@ fun <T> Table(
         }
       },
       columns,
-      Modifier.onKeyEvent { event ->
-        when {
-          event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown -> {
-            tableSelectionState.selection = sortedRows[0]
-            focusRequesters[0].requestFocus()
-            true
-          }
-          else -> false
-        }
-      },
     )
     Divider(Orientation.Horizontal)
-    val coroutineScope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
-    VerticallyScrollableContainer(scrollState = lazyListState) {
+    VerticallyScrollableContainer(scrollState = lazyListState, Modifier) {
       LazyColumn(
         state = lazyListState,
         modifier =
-          Modifier.onKeyEvent { event ->
-            if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-            val index = sortedRows.indexOf(tableSelectionState.selection)
-            if (index < 0) return@onKeyEvent false
-            val newIndex =
-              (index +
-                  when (event.key) {
-                    Key.DirectionDown -> 1
-                    Key.DirectionUp -> -1
-                    else -> return@onKeyEvent false
-                  })
-                .coerceIn(sortedRows.indices)
-            if (newIndex != index) {
-              val layoutInfo = lazyListState.layoutInfo
-              val newIndexInfo = layoutInfo.visibleItemsInfo.find { it.index == newIndex }
-              val shouldScroll =
-                newIndexInfo == null ||
-                  newIndexInfo.offset < layoutInfo.viewportStartOffset ||
-                  newIndexInfo.offset + newIndexInfo.size > layoutInfo.viewportEndOffset
-              if (shouldScroll) {
-                coroutineScope.launch {
-                  lazyListState.scrollToItem(newIndex)
-                  // Must wait until the item is visible, or the focusRequester won't be valid
-                  focusRequesters[newIndex].requestFocus()
-                  tableSelectionState.selection = sortedRows[newIndex]
+          Modifier.onFocusChanged { focusState ->
+              if (focusState.hasFocus && tableSelectionState.selection == null) {
+                lazyListState.layoutInfo.visibleItemsInfo.firstOrNull()?.let {
+                  tableSelectionState.selection = sortedRows[it.index]
                 }
-              } else {
-                focusRequesters[newIndex].requestFocus()
-                tableSelectionState.selection = sortedRows[newIndex]
               }
             }
-            true
-          },
+            .focusRequester(tableFocusRequester)
+            .focusable(),
       ) {
         items(sortedRows.size, { index -> rowId(sortedRows[index]) }) { index ->
           TableRow(
             sortedRows[index],
             selected = sortedRows[index] == tableSelectionState.selection,
-            onRowClick,
+            { row ->
+              tableFocusRequester.requestFocus()
+              onRowClick(row)
+            },
             onRowSecondaryClick,
             columns,
-            Modifier.focusRequester(focusRequesters[index]),
           )
         }
       }
     }
   }
 }
-
-@Composable
-private fun Modifier.focusBorder() =
-  border(
-    Stroke.Alignment.Center,
-    shape = RoundedCornerShape(4.dp),
-    color = JewelTheme.globalColors.outlines.focused,
-    width = JewelTheme.globalMetrics.outlineWidth,
-  )
 
 private val CELL_SPACING = 4.dp
 private val ROW_PADDING = 4.dp

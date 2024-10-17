@@ -19,15 +19,19 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Functions;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.google.common.io.ByteSource;
+import com.google.common.io.CharSource;
 import com.google.common.io.MoreFiles;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -80,7 +84,8 @@ import javax.annotation.Nullable;
  * <p>This class will ensure that a clean request is never active while we are fetching new
  * artifacts into the cache.
  */
-class BuildArtifactCacheDirectory implements BuildArtifactCache {
+@VisibleForTesting
+public class BuildArtifactCacheDirectory implements BuildArtifactCache {
 
   private static final Logger logger =
       Logger.getLogger(BuildArtifactCacheDirectory.class.getName());
@@ -268,13 +273,13 @@ class BuildArtifactCacheDirectory implements BuildArtifactCache {
 
         // Fetch absent artifacts
         ListenableFuture<?> fetch = startFetch(artifactsByPresence.get(false), accessTime, context);
-        fetch.addListener(() -> unmarkAsActive(artifactsByPresence.get(false)), directExecutor());
         context.addCancellationHandler(() -> fetch.cancel(false));
 
         // mark the  artifacts as being actively fetched. If they are requested in the meantime,
         // the future will be used to wait until the fetch is complete.
         // They are unmarked by the future listener above.
         markAsActive(artifactsByPresence.get(false), fetch);
+        fetch.addListener(() -> unmarkAsActive(artifactsByPresence.get(false)), directExecutor());
 
         // Update metadata for present artifacts
         ListenableFuture<?> metadataUpdate =
@@ -454,6 +459,25 @@ class BuildArtifactCacheDirectory implements BuildArtifactCache {
       throw new BuildException("Failed to purge the build artifact cache", e);
     } finally {
       lock.unlockWrite(stamp);
+    }
+  }
+
+  public ImmutableMap<String, ByteSource> getBugreportFiles() {
+    StringBuilder contents = new StringBuilder();
+    try {
+      for (String digest : listDigests()) {
+        if (!contents.isEmpty()) {
+          contents.append("\n");
+        }
+        contents.append(digest).append(": ").append(readAccessTime(digest));
+      }
+      return ImmutableMap.of(
+          cacheDir.getFileName().toString() + ".cachecontents",
+          CharSource.wrap(contents).asByteSource(UTF_8));
+    } catch (IOException e) {
+      return ImmutableMap.of(
+          cacheDir.getFileName().toString() + ".cachecontents",
+          CharSource.wrap(e.toString()).asByteSource(UTF_8));
     }
   }
 }

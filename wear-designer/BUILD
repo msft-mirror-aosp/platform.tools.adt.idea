@@ -45,6 +45,7 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module, test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
@@ -66,5 +67,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
         "//tools/adt/idea/preview-designer:intellij.android.preview-designer.tests[module, test]",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test[test]",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module, test]",
     ],
 )

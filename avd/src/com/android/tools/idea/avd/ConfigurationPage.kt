@@ -35,6 +35,7 @@ import com.android.sdklib.SdkVersionInfo
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.device.DeviceArtDescriptor
 import com.android.tools.idea.adddevicedialog.LocalFileSystem
+import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.adddevicedialog.WizardAction
 import com.android.tools.idea.adddevicedialog.WizardDialogScope
 import com.android.tools.idea.adddevicedialog.WizardPageScope
@@ -120,7 +121,6 @@ internal fun WizardPageScope.ConfigurationPage(
   val state =
     remember(device) {
       if (image == null) {
-        // Adding a device
         val state =
           ConfigureDevicePanelState(
             device,
@@ -128,15 +128,17 @@ internal fun WizardPageScope.ConfigurationPage(
             filteredImageState.images.sortedWith(SystemImageComparator).last().takeIf {
               it.isRecommended()
             },
+            Mode.ADD,
           )
 
         state.setSkin(resolveDefaultSkin(device, sdkHandler, fileSystem))
         state
       } else {
-        // Editing a device
-        ConfigureDevicePanelState(device, skins, image)
+        ConfigureDevicePanelState(device, skins, image, Mode.EDIT)
       }
     }
+
+  updateSystemImageSelection(state.systemImageTableSelectionState, filteredImageState)
 
   @OptIn(ExperimentalJewelApi::class) val parent = LocalComponent.current
 
@@ -177,7 +179,7 @@ internal fun WizardPageScope.ConfigurationPage(
   nextAction = WizardAction.Disabled
 
   finishAction =
-    if (state.validity.isValid) {
+    if (state.isValid) {
       WizardAction {
         coroutineScope.launch {
           state.resetPlayStoreFields(resolveDefaultSkin(state.device, sdkHandler, fileSystem))
@@ -194,6 +196,23 @@ internal fun WizardPageScope.ConfigurationPage(
     } else {
       WizardAction.Disabled
     }
+}
+
+/**
+ * Updates the system image selection based on the currently-available images: if a
+ * RemoteSystemImage is selected, and is downloaded, it becomes a SystemImage, and we should select
+ * it.
+ */
+private fun updateSystemImageSelection(
+  state: TableSelectionState<ISystemImage>,
+  images: SystemImageState,
+) {
+  val selectedImage = state.selection
+  if (selectedImage is RemoteSystemImage && selectedImage !in images.images) {
+    images.images
+      .find { it.`package`.path == selectedImage.`package`.path }
+      ?.let { state.selection = it }
+  }
 }
 
 private fun resolveDefaultSkin(

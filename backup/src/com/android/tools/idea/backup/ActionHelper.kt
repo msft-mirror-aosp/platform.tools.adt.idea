@@ -32,7 +32,4 @@ internal interface ActionHelper {
    * @return null if there is more than one target or if the target is not running
    */
   suspend fun getDeployTargetSerial(project: Project): String?
-
-  /** Display a warning popup */
-  suspend fun showWarning(project: Project, title: String, message: String)
 }

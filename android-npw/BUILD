@@ -69,6 +69,20 @@ iml_module(
         "AddBaselineProfilesModuleKtTest": {
             "test_filter": "com.android.tools.idea.npw.module.AddBaselineProfilesModuleKtTest",
         },
+        "NewModuleCompileSdkSelectionTest": {
+            "test_filter": "com.android.tools.idea.npw.module.NewModuleCompileSdkSelectionTest",
+            "data": [
+                "//prebuilts/studio/sdk:platforms/android-33",
+            ],
+        },
+        "ConfigureAndroidModuleStepTest": {
+            "test_filter": "com.android.tools.idea.npw.module.ConfigureAndroidModuleStepTest",
+            "data": [
+                "//prebuilts/studio/sdk:platforms/android-31",
+                "//prebuilts/studio/sdk:platforms/android-32",
+                "//prebuilts/studio/sdk:platforms/android-33",
+            ],
+        },
         "other": {
             "shard_count": 10,
         },
@@ -112,6 +126,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/android-npw:intellij.android.newProjectWizard[module, test]",
@@ -141,6 +156,7 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags[module, test]",
         "//tools/adt/idea/render-resources:intellij.android.render-resources[module, test]",
         "//tools/adt/idea/android-templates:intellij.android.templates[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )
 

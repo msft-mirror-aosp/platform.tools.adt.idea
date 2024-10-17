@@ -14,6 +14,7 @@
     <orderEntry type="library" name="studio-plugin-org.intellij.groovy" level="project" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
     <orderEntry type="module" module-name="intellij.android.common" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
@@ -39,14 +40,14 @@
       </library>
     </orderEntry>
     <orderEntry type="module-library">
-          <library>
-            <CLASSES>
-              <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/adt/idea/app-quality-insights/api/proto/gemini_java_proto.jar!/" />
-            </CLASSES>
-            <JAVADOC />
-            <SOURCES />
-          </library>
-        </orderEntry>
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/adt/idea/app-quality-insights/api/proto/gemini_java_proto.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
     <orderEntry type="module" module-name="studio-grpc-testutils" scope="TEST" />
     <orderEntry type="module-library">
       <library>

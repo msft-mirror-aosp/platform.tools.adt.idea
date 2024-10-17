@@ -78,7 +78,7 @@ import org.jetbrains.annotations.TestOnly;
  * </pre>
  * In the diagram the {@link WorkBench} has 4 visible {@link ToolWindowDefinition}s: A & B on the left side and
  * C & D on the right side. The {@link ToolWindowDefinition} on the bottom are referred to as split windows.<br/><br/>
- *
+ * <p>
  * When a {@link ToolWindowDefinition} is not visible a button with its name is shown in narrow side panel. The
  * buttons will restore the tool in a visible state. In the diagram E & F represent such buttons.
  *
@@ -109,14 +109,19 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   /**
    * Creates a work space with associated tool windows, which can be attached.
    *
-   * @param project the project associated with this work space.
-   * @param name a name used to identify this type of {@link WorkBench}. Also used for associating properties.
-   * @param fileEditor the file editor this work space is associated with.
+   * @param project          the project associated with this work space.
+   * @param name             a name used to identify this type of {@link WorkBench}. Also used for associating properties.
+   * @param fileEditor       the file editor this work space is associated with.
    * @param parentDisposable the parent {@link Disposable} this WorkBench will be attached to.
-   * @param delayTimeMs milliseconds to wait before switching to the loading mode of the {@link WorkBench}.
+   * @param delayTimeMs      milliseconds to wait before switching to the loading mode of the {@link WorkBench}.
    */
-  public WorkBench(@NotNull Project project, @NotNull String name, @Nullable FileEditor fileEditor, @NotNull Disposable parentDisposable, int delayTimeMs) {
-    this(project, name, fileEditor, InitParams.createParams(project, parentDisposable), DetachedToolWindowManager.getInstance(project), delayTimeMs);
+  public WorkBench(@NotNull Project project,
+                   @NotNull String name,
+                   @Nullable FileEditor fileEditor,
+                   @NotNull Disposable parentDisposable,
+                   int delayTimeMs) {
+    this(project, name, fileEditor, InitParams.createParams(project), DetachedToolWindowManager.getInstance(project),
+         delayTimeMs);
 
     Disposer.register(parentDisposable, this);
   }
@@ -124,9 +129,9 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   /**
    * Creates a work space with associated tool windows, which can be attached.
    *
-   * @param project the project associated with this work space.
-   * @param name a name used to identify this type of {@link WorkBench}. Also used for associating properties.
-   * @param fileEditor the file editor this work space is associated with.
+   * @param project          the project associated with this work space.
+   * @param name             a name used to identify this type of {@link WorkBench}. Also used for associating properties.
+   * @param fileEditor       the file editor this work space is associated with.
    * @param parentDisposable the parent {@link Disposable} this WorkBench will be attached to.
    */
   public WorkBench(@NotNull Project project, @NotNull String name, @Nullable FileEditor fileEditor, @NotNull Disposable parentDisposable) {
@@ -136,9 +141,9 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   /**
    * Initializes a {@link WorkBench} with content, context and tool windows.
    *
-   * @param content the content of the main area of the {@link WorkBench}
-   * @param context an instance identifying the data the {@link WorkBench} is manipulating
-   * @param definitions a list of tool windows associated with this {@link WorkBench}
+   * @param content          the content of the main area of the {@link WorkBench}
+   * @param context          an instance identifying the data the {@link WorkBench} is manipulating
+   * @param definitions      a list of tool windows associated with this {@link WorkBench}
    * @param minimizedWindows whether the tool windows should be minimized by default.
    */
   public void init(@NotNull JComponent content,
@@ -153,8 +158,8 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
    * Initializes a {@link WorkBench} with context and tool windows.
    * The main content is not provided, so only the tool windows will be added.
    *
-   * @param context an instance identifying the data the {@link WorkBench} is manipulating
-   * @param definitions a list of tool windows associated with this {@link WorkBench}
+   * @param context          an instance identifying the data the {@link WorkBench} is manipulating
+   * @param definitions      a list of tool windows associated with this {@link WorkBench}
    * @param minimizedWindows whether the tool windows should be minimized by default.
    */
   public void init(@NotNull T context,
@@ -694,6 +699,29 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
   }
 
   /**
+   * Shows the tool window with the given name if it exists and is minimized.
+   * @param name Name of the tool window to show
+   */
+  public void showToolWindow(@NotNull String name) {
+    Optional<AttachedToolWindow<T>> toolWindow =
+      myModel
+        .getAllTools()
+        .stream()
+        .filter((t) -> t.getToolName().equals(name))
+        .findFirst();
+    if (toolWindow.isPresent() && toolWindow.get().isMinimized()) {
+      AttachedToolWindow<T> window = toolWindow.get();
+      myModel
+        .getAllTools()
+        .stream()
+        .filter((t) -> t.isLeft() == window.isLeft() && t.isSplit() == window.isSplit())
+        .forEach((t) -> t.setMinimized(true));
+      window.setMinimized(false);
+      updateModel();
+    }
+  }
+
+  /**
    * The same {@link WorkBench} can be used in different contexts. We need to store the context in order to (re)store different properties
    * accordingly. For example, in the split editor we might have a tool window being hidden in design mode but shown in split mode.
    */
@@ -832,10 +860,10 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
       myRightMinimizePanel = rightMinimizePanel;
     }
 
-    private static <T> InitParams<T> createParams(@NotNull Project project, @NotNull Disposable parentDisposable) {
+    private static <T> InitParams<T> createParams(@NotNull Project project) {
       SideModel<T> model = new SideModel<>(project);
       return new InitParams<>(model,
-                              new ThreeComponentsSplitter(parentDisposable),
+                              new ThreeComponentsSplitter(),
                               new MinimizedPanel<>(Side.LEFT, model),
                               new MinimizedPanel<>(Side.RIGHT, model));
     }

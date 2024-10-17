@@ -33,17 +33,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.devices.CameraLocation
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.adddevicedialog.LocalProject
 import com.intellij.openapi.fileChooser.FileChooser
-import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.project.Project
+import icons.StudioIconsCompose
 import java.awt.Component
 import java.nio.file.Files
 import java.nio.file.Path
@@ -69,19 +74,19 @@ internal fun AdditionalSettingsPanel(
   onImportButtonClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val hasPlayStore = state.hasPlayStore()
+  if (hasPlayStore) {
+    WarningBanner(
+      "Some device settings cannot be configured when using a Google Play Store image",
+      Modifier.expandWidth(24.dp),
+    )
+  }
+
   VerticallyScrollableContainer(modifier) {
     Column(
       Modifier.padding(vertical = Padding.SMALL),
       verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE),
     ) {
-      val hasPlayStore = state.hasPlayStore()
-
-      if (hasPlayStore) {
-        WarningBanner(
-          "Some device settings cannot be configured when using a Google Play Store image"
-        )
-      }
-
       Row {
         Text("Device skin", Modifier.padding(end = Padding.SMALL).alignByBaseline())
 
@@ -90,7 +95,7 @@ internal fun AdditionalSettingsPanel(
           state.skins,
           onSelectedItemChange = { state.device = state.device.copy(skin = it) },
           Modifier.padding(end = Padding.MEDIUM).alignByBaseline(),
-          !hasPlayStore,
+          !hasPlayStore && !state.device.isFoldable,
         )
       }
 
@@ -298,6 +303,7 @@ private fun StorageGroup(
 
       StorageCapacityField(
         device.internalStorage,
+        validateInternalStorage(device.internalStorage, hasPlayStore),
         onValueChange = { onDeviceChange(device.copy(internalStorage = it)) },
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
@@ -330,15 +336,36 @@ private fun StorageGroup(
         !hasPlayStore,
       )
 
+      val enabled = storageGroupState.selectedRadioButton == RadioButton.CUSTOM
+
+      val errorMessage =
+        validateCustomExpandedStorage(storageGroupState.custom, hasPlayStore, enabled)
+
+      val isWarningVisible = storageGroupState.isCustomChangedWarningVisible(errorMessage == null)
+
       StorageCapacityField(
         storageGroupState.custom,
-        onValueChange = {
-          storageGroupState.custom = it
-          onDeviceChange(device.copy(expandedStorage = Custom(it.withMaxUnit())))
-        },
+        errorMessage,
+        onValueChange = { storageGroupState.custom = it },
         Modifier.alignByBaseline(),
-        storageGroupState.selectedRadioButton == RadioButton.CUSTOM,
+        enabled,
+        when {
+          errorMessage != null -> Outline.Error
+          isWarningVisible -> Outline.Warning
+          else -> Outline.None
+        },
       )
+
+      if (isWarningVisible) {
+        Icon(
+          StudioIconsCompose.Common.Warning,
+          "Warning",
+          Modifier.align(Alignment.CenterVertically)
+            .padding(start = Padding.MEDIUM, end = Padding.SMALL_MEDIUM),
+        )
+
+        Text("Modifying storage size erases existing content", Modifier.alignByBaseline())
+      }
     }
 
     Row {
@@ -366,6 +393,33 @@ private fun StorageGroup(
     )
   }
 }
+
+private fun validateInternalStorage(storage: StorageCapacity?, hasPlayStore: Boolean) =
+  when {
+    storage == null -> "Specify an internal storage value"
+    storage < VirtualDevice.MIN_INTERNAL_STORAGE ->
+      if (hasPlayStore) {
+        "Internal storage for Play Store devices must be at least ${VirtualDevice.MIN_INTERNAL_STORAGE}"
+      } else {
+        "Internal storage must be at least ${VirtualDevice.MIN_INTERNAL_STORAGE}"
+      }
+    else -> null
+  }
+
+private fun validateCustomExpandedStorage(
+  storage: StorageCapacity?,
+  hasPlayStore: Boolean,
+  customRadioButtonEnabled: Boolean,
+) =
+  when {
+    !customRadioButtonEnabled -> null
+    storage == null -> "Specify an SD card size"
+    hasPlayStore && storage < VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE_FOR_PLAY_STORE ->
+      "The SD card for Play Store devices must be at least ${VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE_FOR_PLAY_STORE}"
+    !hasPlayStore && storage < VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE ->
+      "The SD card must be at least ${VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE}"
+    else -> null
+  }
 
 @Composable
 private fun <E : Enum<E>> RadioButtonRow(
@@ -419,20 +473,19 @@ private fun ExistingImageField(
 }
 
 private fun chooseFile(parent: Component, project: Project?): Path? {
-  // TODO chooseFile logs an error because it does slow things on the EDT
-  val virtualFile =
-    FileChooser.chooseFile(
-      FileChooserDescriptorFactory.createSingleFileDescriptor().withFileFilter {
-        it.name.endsWith(".img", ignoreCase = true)
-      },
-      parent,
-      project,
-      null,
-    )
+  val descriptor =
+    FileChooserDescriptor(
+        /* chooseFiles= */ true,
+        /* chooseFolders= */ false,
+        /* chooseJars= */ true,
+        /* chooseJarsAsFiles= */ true,
+        /* chooseJarContents= */ false,
+        /* chooseMultiple= */ false,
+      )
+      .withFileFilter { it.name.endsWith(".img", ignoreCase = true) }
 
-  if (virtualFile == null) {
-    return null
-  }
+  // TODO chooseFile logs an error because it does slow things on the EDT
+  val virtualFile = FileChooser.chooseFile(descriptor, parent, project, null) ?: return null
 
   val path = virtualFile.toNioPath()
   assert(Files.isRegularFile(path))
@@ -488,9 +541,10 @@ private fun EmulatedPerformanceGroup(
 
       StorageCapacityField(
         device.ram,
+        validateRam(device.ram),
         onValueChange = { onDeviceChange(device.copy(ram = it)) },
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
-        !hasGooglePlayStore,
+        !hasGooglePlayStore || device.formFactor == FormFactors.AUTO,
       )
 
       InfoOutlineIcon(
@@ -505,6 +559,7 @@ private fun EmulatedPerformanceGroup(
 
       StorageCapacityField(
         device.vmHeapSize,
+        validateVmHeapSize(device.vmHeapSize),
         onValueChange = { onDeviceChange(device.copy(vmHeapSize = it)) },
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
         !hasGooglePlayStore,
@@ -518,6 +573,22 @@ private fun EmulatedPerformanceGroup(
     }
   }
 }
+
+private fun validateRam(ram: StorageCapacity?) =
+  when {
+    ram == null -> "Specify a RAM value"
+    ram < VirtualDevice.MIN_RAM ->
+      "RAM must be at least ${VirtualDevice.MIN_RAM}. Recommendation is ${StorageCapacity(1, StorageCapacity.Unit.GB)}."
+    else -> null
+  }
+
+private fun validateVmHeapSize(size: StorageCapacity?) =
+  when {
+    size == null -> "Specify a VM heap size"
+    size < VirtualDevice.MIN_VM_HEAP_SIZE ->
+      "VM heap must be at least ${VirtualDevice.MIN_VM_HEAP_SIZE}"
+    else -> null
+  }
 
 @Composable
 private fun PreferredAbiGroup(
@@ -542,18 +613,37 @@ private fun PreferredAbiGroup(
   }
 }
 
-internal class StorageGroupState internal constructor(device: VirtualDevice) {
+internal class StorageGroupState
+internal constructor(device: VirtualDevice, private val mode: Mode) {
   internal var selectedRadioButton by mutableStateOf(RadioButton.valueOf(device.expandedStorage))
-  internal var custom by mutableStateOf(customValue(device))
+  internal var custom by mutableStateOf<StorageCapacity?>(customValue(device))
   internal val existingImage = TextFieldState(device.expandedStorage.toTextFieldValue())
+
+  /** The initial value of Expanded storage - Custom before any edits */
+  private val oldCustom =
+    if (device.expandedStorage is Custom) device.expandedStorage.withMaxUnit() else null
 
   val expandedStorageFlow = snapshotFlow {
     when (selectedRadioButton) {
-      RadioButton.CUSTOM -> Custom(custom.withMaxUnit())
+      RadioButton.CUSTOM -> {
+        val custom = custom
+        if (custom == null) null else Custom(custom.withMaxUnit())
+      }
       RadioButton.EXISTING_IMAGE -> ExistingImage(existingImage.text.toString())
       RadioButton.NONE -> None
     }
   }
+
+  internal fun isCustomChangedWarningVisible(isValid: Boolean) =
+    when {
+      mode != Mode.EDIT -> false
+      selectedRadioButton != RadioButton.CUSTOM -> false
+      !isValid -> false
+      else -> {
+        val value = custom
+        value != null && oldCustom != Custom(value.withMaxUnit())
+      }
+    }
 
   private companion object {
     private fun customValue(device: VirtualDevice) =
@@ -586,4 +676,11 @@ internal enum class RadioButton {
         is None -> NONE
       }
   }
+}
+
+/** Extends the maxWidth of the incoming constraints by the given [extraWidth]. */
+internal fun Modifier.expandWidth(extraWidth: Dp) = layout { measurable, constraints ->
+  val placeable =
+    measurable.measure(constraints.copy(maxWidth = constraints.maxWidth + extraWidth.roundToPx()))
+  layout(placeable.width, placeable.height) { placeable.place(0, 0) }
 }

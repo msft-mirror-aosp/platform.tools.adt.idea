@@ -39,6 +39,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "@intellij//:com.intellij.java[test]",
         "@intellij//:org.jetbrains.kotlin[test]",
         "@intellij//:test-framework[test]",
@@ -47,5 +48,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth[test]",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "//tools/adt/idea/ml-api:intellij.android.ml-api[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )

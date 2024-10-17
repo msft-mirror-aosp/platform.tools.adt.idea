@@ -20,9 +20,9 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType.PROJECT_TYPE_LIBRARY
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType.PROJECT_TYPE_TEST
-import com.android.tools.idea.projectsystem.getAndroidTestModule
-import com.android.tools.idea.projectsystem.getHolderModule
-import com.android.tools.idea.projectsystem.getMainModule
+import com.android.tools.idea.projectsystem.gradle.getAndroidTestModule
+import com.android.tools.idea.projectsystem.gradle.getHolderModule
+import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.run.AndroidRunConfiguration
 import com.android.tools.idea.run.AndroidRunConfigurationType
 import com.android.tools.idea.run.ConfigurationSpecificEditor
@@ -58,7 +58,8 @@ import com.intellij.testFramework.RunsInEdt
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import javax.swing.JLabel
 
 @RunsInEdt
@@ -194,18 +195,18 @@ class AndroidRunConfigurationEditorTest {
 
   fun getAndroidRunConfigurationEditor(provider: DeployTargetProvider,
                                        project: Project): AndroidRunConfigurationEditor<AndroidTestRunConfiguration> {
-    val androidDebuggerContext = Mockito.mock(AndroidDebuggerContext::class.java)
+    val androidDebuggerContext = mock<AndroidDebuggerContext>()
     val providers: List<DeployTargetProvider> = getTargetProviders(provider)
-    val configuration = Mockito.mock(AndroidTestRunConfiguration::class.java)
-    Mockito.`when`(configuration.androidDebuggerContext).thenReturn(androidDebuggerContext)
-    Mockito.`when`(configuration.applicableDeployTargetProviders).thenReturn(providers)
-    Mockito.`when`(configuration.profilerState).thenReturn(ProfilerState())
+    val configuration = mock<AndroidTestRunConfiguration>()
+    whenever(configuration.androidDebuggerContext).thenReturn(androidDebuggerContext)
+    whenever(configuration.applicableDeployTargetProviders).thenReturn(providers)
+    whenever(configuration.profilerState).thenReturn(ProfilerState())
 
     @Suppress("unchecked_cast")
     val configurationSpecificEditor =
-      Mockito.mock(ConfigurationSpecificEditor::class.java) as ConfigurationSpecificEditor<AndroidTestRunConfiguration>
+      mock<ConfigurationSpecificEditor<AndroidTestRunConfiguration>>()
 
-    Mockito.`when`(configurationSpecificEditor.component).thenReturn(JLabel())
+    whenever(configurationSpecificEditor.component).thenReturn(JLabel())
 
     return AndroidRunConfigurationEditor(
       project,

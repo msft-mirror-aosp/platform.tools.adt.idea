@@ -18,7 +18,6 @@ package com.android.tools.adtui.workbench;
 import static com.android.tools.adtui.workbench.AttachedToolWindow.TOOL_WINDOW_PROPERTY_PREFIX;
 import static com.android.tools.adtui.workbench.PalettePanelToolContent.MIN_TOOL_WIDTH;
 import static com.google.common.truth.Truth.assertThat;
-import static com.intellij.testFramework.ServiceContainerUtil.registerServiceInstance;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
@@ -100,7 +99,7 @@ public class WorkBenchTest extends WorkBenchTestCase {
     registerProjectService(FileEditorManager.class, myFileEditorManager);
     myContent = new JPanel();
     myContent.setPreferredSize(new Dimension(500, 400));
-    mySplitter = new ThreeComponentsSplitter(getTestRootDisposable());
+    mySplitter = new ThreeComponentsSplitter();
     myPropertiesComponent = PropertiesComponent.getInstance();
     myModel = new SideModel<>(getProject());
     myLeftMinimizePanel = spy(new MinimizedPanel<>(Side.RIGHT, myModel));
@@ -414,6 +413,33 @@ public class WorkBenchTest extends WorkBenchTestCase {
 
     myToolWindow2.setPropertyAndUpdate(PropertyType.LEFT, true);
     assertThat(component.isVisible()).isTrue();
+  }
+
+  public void testShowToolWindow() {
+    assertThat(myModel.getAllTools()).containsExactly(myToolWindow1, myToolWindow2, myToolWindow3).inOrder();
+    // Minimize tool windows
+    myWorkBench.setContext("showToolWindow");
+    myWorkBench.setDefaultPropertiesForContext(true);
+    assertThat(myModel.getAllTools().stream().allMatch(AttachedToolWindow::isMinimized)).isTrue();
+
+    myWorkBench.showToolWindow(myToolWindow2.getToolName());
+
+    assertThat(myToolWindow1.isMinimized()).isTrue();
+    assertThat(myToolWindow2.isMinimized()).isFalse();
+    assertThat(myToolWindow3.isMinimized()).isTrue();
+
+    // Show all toolwindows but minimize toolwindow2 and show it again
+    // to test that only windows on same side and split are minimized
+    myWorkBench.setContext("showToolWindow2");
+    myWorkBench.setDefaultPropertiesForContext(false);
+    assertThat(myModel.getAllTools().stream().noneMatch(AttachedToolWindow::isMinimized)).isTrue();
+    myToolWindow2.setMinimized(true);
+
+    myWorkBench.showToolWindow(myToolWindow2.getToolName());
+
+    assertThat(myToolWindow1.isMinimized()).isFalse();
+    assertThat(myToolWindow2.isMinimized()).isFalse();
+    assertThat(myToolWindow3.isMinimized()).isFalse();
   }
 
   @SuppressWarnings("SameParameterValue")

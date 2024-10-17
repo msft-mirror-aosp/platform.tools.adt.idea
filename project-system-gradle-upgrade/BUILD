@@ -38,6 +38,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework[module]",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "@intellij//:intellij-sdk[test]",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module, test]",
@@ -63,6 +64,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module, test]",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle.tests[module]",
         "//tools/adt/idea/.idea/libraries:agp-version[test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )
 

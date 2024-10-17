@@ -17,6 +17,7 @@ iml_module(
         "//tools/base/build-system:gradle-distrib",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
     ],
+    test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",
     ],
@@ -31,6 +32,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/android:intellij.android.core[module, test]",
         "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//tools/adt/idea/.idea/libraries:truth[test]",
@@ -43,5 +45,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
         "//tools/analytics-library/tracker:analytics-tracker[module, test]",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test[test]",
     ],
 )

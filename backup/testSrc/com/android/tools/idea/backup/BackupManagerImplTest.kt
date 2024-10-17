@@ -19,12 +19,18 @@ import com.android.backup.BackupException
 import com.android.backup.BackupResult
 import com.android.backup.BackupService
 import com.android.backup.BackupType
+import com.android.backup.BackupType.CLOUD
 import com.android.backup.BackupType.DEVICE_TO_DEVICE
 import com.android.backup.ErrorCode
 import com.android.backup.ErrorCode.GMSCORE_IS_TOO_OLD
 import com.android.backup.ErrorCode.SUCCESS
+import com.android.tools.adtui.TreeWalker
+import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.idea.backup.BackupManager.Source.RUN_CONFIG
+import com.android.tools.idea.backup.testing.FakeDialogFactory
+import com.android.tools.idea.backup.testing.FakeDialogFactory.DialogData
 import com.android.tools.idea.testing.NotificationRule
 import com.android.tools.idea.testing.NotificationRule.NotificationInfo
 import com.google.common.truth.Truth.assertThat
@@ -34,14 +40,19 @@ import com.google.wireless.android.sdk.stats.BackupUsageEvent.BackupEvent
 import com.google.wireless.android.sdk.stats.BackupUsageEvent.RestoreEvent
 import com.intellij.notification.NotificationType
 import com.intellij.notification.NotificationType.INFORMATION
-import com.intellij.notification.NotificationType.WARNING
+import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.TextAccessor
 import java.nio.file.Path
+import javax.swing.JButton
+import javax.swing.JComponent
 import kotlin.io.path.pathString
+import kotlin.test.fail
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -50,6 +61,7 @@ import org.junit.runners.JUnit4
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 
@@ -64,28 +76,39 @@ internal class BackupManagerImplTest {
   private val usageTrackerRule = UsageTrackerRule()
   private val notificationRule = NotificationRule(projectRule)
 
-  @get:Rule val rule = RuleChain(projectRule, usageTrackerRule, notificationRule, EdtRule())
+  @get:Rule
+  val rule =
+    RuleChain(projectRule, usageTrackerRule, notificationRule, HeadlessDialogRule(), EdtRule())
 
   private val mockBackupService = mock<BackupService>()
+  private val fakeDialogFactory = FakeDialogFactory()
 
   @Test
   fun backup_success(): Unit = runBlocking {
-    val backupManagerImpl = BackupManagerImpl(project, mockBackupService)
+    val backupManagerImpl = BackupManagerImpl(project, mockBackupService, fakeDialogFactory)
     val serialNumber = "serial"
     val applicationId = "app"
-    val backupFile = Path.of("file")
     whenever(
         mockBackupService.backup(
           eq(serialNumber),
           eq(applicationId),
-          eq(DEVICE_TO_DEVICE),
-          eq(backupFile),
+          eq(CLOUD),
+          argThat { endsWith("file.backup") },
           any(),
         )
       )
       .thenReturn(BackupResult.Success)
 
-    backupManagerImpl.doBackup(serialNumber, applicationId, backupFile, RUN_CONFIG, notify = true)
+    createModalDialogAndInteractWithIt({
+      backupManagerImpl.showBackupDialog(serialNumber, applicationId, RUN_CONFIG)
+    }) { dialogWrapper ->
+      val dialog = dialogWrapper as BackupDialog
+      val typeComboBox = dialog.findComponent<ComboBox<BackupType>>("typeComboBox")
+      val fileTextField = dialog.findComponent<TextAccessor>("fileTextField")
+      typeComboBox.item = CLOUD
+      fileTextField.text = "file.backup"
+      dialog.findButton("OK").doClick()
+    }
 
     assertThat(usageTrackerRule.backupEvents())
       .containsExactly(backupUsageEvent(DEVICE_TO_DEVICE, RUN_CONFIG, SUCCESS))
@@ -98,11 +121,12 @@ internal class BackupManagerImplTest {
         INFORMATION,
         "ShowPostBackupDialogAction",
       )
+    assertThat(fakeDialogFactory.dialogs).isEmpty()
   }
 
   @Test
   fun restore_success_absolutePath(): Unit = runBlocking {
-    val backupManagerImpl = BackupManagerImpl(project, mockBackupService)
+    val backupManagerImpl = BackupManagerImpl(project, mockBackupService, fakeDialogFactory)
     val serialNumber = "serial"
     val backupFile = Path.of(if (SystemInfo.isWindows) """c:\path\file""" else "/path/file")
     whenever(mockBackupService.restore(eq(serialNumber), eq(backupFile), anyOrNull()))
@@ -116,7 +140,7 @@ internal class BackupManagerImplTest {
 
   @Test
   fun restore_success_relativePath(): Unit = runBlocking {
-    val backupManagerImpl = BackupManagerImpl(project, mockBackupService)
+    val backupManagerImpl = BackupManagerImpl(project, mockBackupService, fakeDialogFactory)
     val serialNumber = "serial"
     val backupFile = Path.of("file")
     whenever(
@@ -136,7 +160,7 @@ internal class BackupManagerImplTest {
 
   @Test
   fun gmsCoreNotUpdated(): Unit = runBlocking {
-    val backupManagerImpl = BackupManagerImpl(project, mockBackupService)
+    val backupManagerImpl = BackupManagerImpl(project, mockBackupService, fakeDialogFactory)
     val serialNumber = "serial"
     val backupFile = Path.of("file")
     whenever(mockBackupService.restore(eq(serialNumber), any(), anyOrNull()))
@@ -148,10 +172,11 @@ internal class BackupManagerImplTest {
 
     assertThat(usageTrackerRule.backupEvents())
       .containsExactly(restoreUsageEvent(RUN_CONFIG, GMSCORE_IS_TOO_OLD))
-    assertThat(notificationRule.notifications).hasSize(1)
-    notificationRule.notifications
-      .first()
-      .assert("Restore Failed", "Error", WARNING, "ShowExceptionAction", "UpdateGmsAction")
+    assertThat(notificationRule.notifications).isEmpty()
+    assertThat(fakeDialogFactory.dialogs)
+      .containsExactly(
+        DialogData("Restore Failed", "Error", listOf("Show Full Error", "Open Play Store"))
+      )
   }
 
   private fun NotificationInfo.assert(
@@ -177,9 +202,9 @@ private fun backupUsageEvent(type: BackupType, source: BackupManager.Source, res
   BackupUsageEvent.newBuilder()
     .setBackup(
       BackupEvent.newBuilder()
-        .setTypeValue(type.ordinal)
-        .setSourceValue(source.ordinal)
-        .setResultValue(result.ordinal)
+        .setTypeString(type.name)
+        .setSourceString(source.name)
+        .setResultString(result.name)
     )
     .build()
 
@@ -187,9 +212,20 @@ private fun backupUsageEvent(type: BackupType, source: BackupManager.Source, res
 private fun restoreUsageEvent(source: BackupManager.Source, errorCode: ErrorCode) =
   BackupUsageEvent.newBuilder()
     .setRestore(
-      RestoreEvent.newBuilder().setSourceValue(source.ordinal).setResultValue(errorCode.ordinal)
+      RestoreEvent.newBuilder().setSourceString(source.name).setResultString(errorCode.name)
     )
     .build()
 
 private fun UsageTrackerRule.backupEvents(): List<BackupUsageEvent> =
   usages.filter { it.studioEvent.kind == BACKUP_USAGE }.map { it.studioEvent.backupUsageEvent }
+
+private inline fun <reified T> DialogWrapper.findComponent(name: String): T {
+  return TreeWalker(rootPane).descendants().filterIsInstance<T>().find {
+    (it as JComponent).name == name
+  } ?: fail("${T::class.simpleName} named $name was not found")
+}
+
+private fun DialogWrapper.findButton(text: String): JButton {
+  return TreeWalker(rootPane).descendants().filterIsInstance<JButton>().find { it.text == text }
+    ?: fail("Button '$text' was not found")
+}

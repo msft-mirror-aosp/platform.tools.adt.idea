@@ -316,11 +316,6 @@ public final class StudioFlags {
     "Include resource directories from AARs found through project system.",
     false);
 
-  public static final Flag<Boolean> NELE_ATF_FOR_COMPOSE = new BooleanFlag(
-    NELE, "atf.for.compose", "Enable ATF checks for Compose",
-    "Allow running accessibility checks for Compose using ATF.",
-    true);
-
   public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = new BooleanFlag(
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
     "If enabled, the surface displays background class preloading progress",
@@ -1133,13 +1128,6 @@ public final class StudioFlags {
     REFACTORINGS, "infer.annotations.enabled", "Enable the Infer Annotations refactoring",
     "If enabled, show the action in the refactoring menu", false);
 
-  public static final Flag<Boolean> MIGRATE_BUILDCONFIG_FROM_GRADLE_PROPERTIES_REFACTORING_ENABLED = new BooleanFlag(
-    REFACTORINGS, "migrateto.dslbuildconfig.enabled", "Enable the Migrate buildConfig from gradle.properties refactoring",
-    "If enabled, show the action in the refactoring menu", true);
-
-  public static final Flag<Boolean> MIGRATE_RES_VALUES_FROM_GRADLE_PROPERTIES_REFACTORING_ENABLED = new BooleanFlag(
-    REFACTORINGS, "migrateto.dslresvalues.enabled", "Enable the Migrate resValues from gradle.properties refactoring",
-    "If enabled, show the action in the refactoring menu", true);
   //endregion
 
   //region NDK
@@ -1503,7 +1491,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_GENERATE_SAMPLE_DATA = new BooleanFlag(
     COMPOSE, "generate.sample.data", "Enable sample data generation for Compose",
     "Enable a Gemini context-menu action that generates sample data for a given Composable function",
-    false);
+    ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW = new BooleanFlag(
     COMPOSE, "preview.generate.preview.action", "Enable editor action for generating Compose Previews",
@@ -1515,30 +1503,20 @@ public final class StudioFlags {
     "Enable a context-menu action that can generate Compose Previews corresponding to the @Composable functions of a file",
     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> COMPOSE_UI_CHECK_MODE = new BooleanFlag(
-    COMPOSE, "ui.check.mode", "Enable UI Check mode for Compose preview",
-    "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting",
-    true);
-
   public static final Flag<Boolean> COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
     COMPOSE, "ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> COMPOSE_VISUAL_LINT_RUN = new BooleanFlag(
-    COMPOSE, "visual.lint.run", "Enable visual lint for Compose Preview",
-    "Enable so that visual lint runs on previews in the Compose Preview.",
-    true);
-
   public static final Flag<Boolean> COMPOSE_UI_CHECK_AI_QUICK_FIX = new BooleanFlag(
     COMPOSE, "ui.check.mode.ai.quickfix", "Enable AI-powered quick fix action for UI Check",
     "Enable an AI-powered quick fix action for UI Check issues.",
-    false);
+    ChannelDefault.enabledUpTo(DEV));
 
   public static final Flag<Boolean> COMPOSE_SEND_PREVIEW_TO_STUDIO_BOT = new BooleanFlag(
     COMPOSE, "send.preview.to.studio.bot", "Enable action to send Compose Previews to Studio Bot",
     "Enables a context-menu action to send Compose Previews to Studio Bot as context.",
-    false);
+    ChannelDefault.enabledUpTo(DEV));
   //endregion
 
   // region Wear surfaces
@@ -1745,6 +1723,15 @@ public final class StudioFlags {
       "App insights AI insight endpoint",
       "Endpoint for getting AI insight",
       "cloudaicompanion.googleapis.com"
+    );
+
+  public static final Flag<Boolean> GEMINI_FETCH_REAL_INSIGHT =
+    new BooleanFlag(
+      APP_INSIGHTS,
+      "gemini.fetch.real.insight",
+      "Fetch real insights",
+      "Fetch actual insights from AiInsightClient",
+      true
     );
 
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
@@ -2093,7 +2080,7 @@ public final class StudioFlags {
   // region STUDIO_LABS
   private static final FlagGroup STUDIO_LABS = new FlagGroup(FLAGS, "studiolabs", "Studio Labs");
   public static final Flag<Boolean> STUDIO_LABS_SETTINGS_ENABLED =
-    new BooleanFlag(STUDIO_LABS, "enabled", "Enable Studio Labs in settings", "Enables studio labs in settings.", ChannelDefault.enabledUpTo(DEV));
+    new BooleanFlag(STUDIO_LABS, "enabled", "Enable Studio Labs in settings", "Enables studio labs in settings.", ChannelDefault.enabledUpTo(CANARY));
   // endregion STUDIO_LABS
 
   // region WEAR_RUN_CONFIGS_AUTOCREATE

@@ -26,9 +26,13 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ex.ActionUtil
+import com.intellij.openapi.actionSystem.ex.CustomComponentAction
+import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.ui.JBPopupMenu
 import com.intellij.openapi.ui.VerticalFlowLayout
 import com.intellij.ui.components.ActionLink
@@ -41,10 +45,12 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
 import java.awt.BorderLayout
+import java.awt.Container
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.Toolkit
+import java.lang.Boolean.TRUE
 import java.util.Collections
 import javax.swing.JButton
 import javax.swing.JCheckBox
@@ -371,9 +377,9 @@ internal fun createWearHealthServicesPanel(
     JPanel(FlowLayout(FlowLayout.TRAILING)).apply {
       border = horizontalBorders
 
-      add(informationLabel)
-      add(JButton(message("wear.whs.panel.reset")).apply { addActionListener { reset() } })
-      add(
+      val resetButton =
+        JButton(message("wear.whs.panel.reset")).apply { addActionListener { reset() } }
+      val applyButton =
         JButton(message("wear.whs.panel.reapply")).apply {
           stateManager.hasUserChanges
             .onEach {
@@ -394,31 +400,46 @@ internal fun createWearHealthServicesPanel(
 
           addActionListener { applyChanges() }
         }
-      )
+
+      combine(stateManager.ongoingExercise, stateManager.status) { ongoingExercise, status ->
+          val canMakeChanges =
+            status !is WhsStateManagerStatus.Syncing &&
+              (!ongoingExercise || stateManager.hasAtLeastOneCapabilityEnabled())
+          resetButton.isEnabled = canMakeChanges
+          applyButton.isEnabled = canMakeChanges
+        }
+        .launchIn(uiScope)
+
+      add(informationLabel)
+      add(resetButton)
+      add(applyButton)
     }
+
+  val header =
+    createWearHealthServicesPanelHeader(
+      stateManager = stateManager,
+      uiScope = uiScope,
+      triggerEvent = { triggerEvent(it) },
+    )
 
   return WearHealthServicesPanel(
     component =
       JPanel(BorderLayout()).apply {
-        add(
-          createWearHealthServicesPanelHeader(
-            stateManager = stateManager,
-            uiScope = uiScope,
-            triggerEvent = { triggerEvent(it) },
-          ),
-          BorderLayout.NORTH,
-        )
+        add(header, BorderLayout.NORTH)
         add(content, BorderLayout.CENTER)
         add(footer, BorderLayout.SOUTH)
 
         isFocusCycleRoot = true
         isFocusTraversalPolicyProvider = true
-        focusTraversalPolicy = LayoutFocusTraversalPolicy()
+        focusTraversalPolicy =
+          object : LayoutFocusTraversalPolicy() {
+            override fun getFirstComponent(aContainer: Container?) = header
+          }
       }
   )
 }
 
-private fun createTriggerEventGroupsButton(triggerEvent: (EventTrigger) -> Unit): JButton {
+private fun createTriggerEventGroupsButton(triggerEvent: (EventTrigger) -> Unit): ActionButton {
   val eventTriggerGroupActions =
     EVENT_TRIGGER_GROUPS.map { eventTriggerGroup ->
       val eventTriggerActions =
@@ -430,17 +451,20 @@ private fun createTriggerEventGroupsButton(triggerEvent: (EventTrigger) -> Unit)
       }
     }
   val eventTriggerGroups =
-    DropDownAction(null, null, null).apply { addAll(eventTriggerGroupActions) }
+    DropDownAction(null, null, AllIcons.Actions.More).apply { addAll(eventTriggerGroupActions) }
 
-  return JButton(message("wear.whs.panel.trigger.events")).apply {
-    toolTipText = message("wear.whs.panel.trigger.events.tooltip")
-    isFocusable = true
-    addActionListener {
-      val popup =
-        ActionManager.getInstance().createActionPopupMenu(ActionPlaces.POPUP, eventTriggerGroups)
-      JBPopupMenu.showBelow(this, popup.component)
+  return ActionButton(
+      eventTriggerGroups,
+      eventTriggerGroups.templatePresentation.clone(),
+      ActionPlaces.EDITOR_POPUP,
+      ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE,
+    )
+    .apply {
+      presentation.putClientProperty(ActionUtil.HIDE_DROPDOWN_ICON, TRUE)
+      presentation.putClientProperty(CustomComponentAction.COMPONENT_KEY, this)
+      presentation.text = message("wear.whs.panel.trigger.events.tooltip")
+      isFocusable = true
     }
-  }
 }
 
 private fun createEventTriggerAction(
@@ -494,3 +518,6 @@ private fun createLoadCapabilityPresetButton(
     .launchIn(uiScope)
   return loadCapabilityPresetButton
 }
+
+private fun WearHealthServicesStateManager.hasAtLeastOneCapabilityEnabled() =
+  capabilitiesList.any { getState(it).value.upToDateState.enabled }

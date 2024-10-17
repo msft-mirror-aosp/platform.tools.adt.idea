@@ -16,6 +16,7 @@
 package com.android.tools.idea.avd
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,8 +49,10 @@ import com.android.tools.idea.adddevicedialog.TableColumnWidth
 import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.adddevicedialog.TableSortState
 import com.android.tools.idea.adddevicedialog.TableTextColumn
+import icons.StudioIconsCompose
 import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.ImmutableList
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.CheckboxRow
@@ -57,6 +61,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
@@ -101,6 +106,13 @@ internal fun DevicePanel(
       "Select system image",
       fontWeight = FontWeight.SemiBold,
       fontSize = LocalTextStyle.current.fontSize * 1.1,
+      modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
+    )
+
+    Text(
+      "Use the filters to help find the system image that you prefer. The combination of device " +
+        "profile and system image is only an approximation of the equivalent physical hardware.",
+      color = JewelTheme.globalColors.text.info,
       modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
     )
 
@@ -149,6 +161,7 @@ internal fun DevicePanel(
           configureDevicePanelState::setIsSystemImageTableSelectionValid,
           onDownloadButtonClick,
           onSystemImageTableRowClick,
+          Modifier.border(1.dp, JewelTheme.globalColors.borders.normal),
         )
       }
     }
@@ -227,6 +240,11 @@ private fun SystemImageTable(
           contentDescription = "Recommended",
           modifier = Modifier.size(16.dp),
         )
+      } else {
+        val warnings = it.imageWarnings()
+        if (warnings.isNotEmpty()) {
+          SystemImageWarningIcon(warnings)
+        }
       }
     }
   }
@@ -293,6 +311,26 @@ private fun ShowSdkExtensionSystemImagesCheckbox(
     InfoOutlineIcon(
       "Select this option to see images of SDK extensions for the selected API level",
       Modifier.align(Alignment.CenterVertically),
+    )
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SystemImageWarningIcon(warnings: List<String>) {
+  Tooltip(
+    tooltip = {
+      Column(Modifier.widthIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (warning in warnings) {
+          Text(warning)
+        }
+      }
+    }
+  ) {
+    Icon(
+      StudioIconsCompose.Common.Warning,
+      contentDescription = "Non-recommended image",
+      modifier = Modifier.size(16.dp),
     )
   }
 }

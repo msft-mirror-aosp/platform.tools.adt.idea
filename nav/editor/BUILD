@@ -63,6 +63,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.kotlin",
@@ -87,6 +88,7 @@ iml_module(
         "//tools/adt/idea/render-resources:intellij.android.render-resources[module]",
         "//tools/adt/idea/rendering:intellij.android.rendering[module, test]",
         "//tools/adt/idea/designer:intellij.android.designer.tests[module, test]",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )
 

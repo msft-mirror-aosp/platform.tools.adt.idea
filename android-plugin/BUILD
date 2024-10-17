@@ -76,11 +76,13 @@ iml_module(
         "//tools/adt/idea/databinding/gradle:intellij.android.databinding.gradle",
         "//tools/adt/idea/android/editing/documentation:intellij.android.core.editing.documentation",
         "//tools/adt/idea/android/editing/metrics:intellij.android.core.editing.metrics",
+        "//tools/adt/idea/studio-labs:intellij.android.studio-labs",
     ],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "//tools/base/testutils:studio.android.sdktools.testutils[module, test]",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[module, test]",
     ],

@@ -18,6 +18,7 @@ package com.android.tools.idea.wearwhs.view
 import com.android.mockito.kotlin.whenever
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.TestUtils
+import com.android.testutils.retryUntilPassing
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.DropDownAction
 import com.android.tools.adtui.swing.FakeUi
@@ -36,8 +37,8 @@ import com.android.tools.idea.wearwhs.communication.FakeDeviceManager
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
-import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ex.ActionManagerEx
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.util.Disposer
@@ -66,9 +67,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.anyString
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.spy
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.whenever
 
 @RunsInEdt
@@ -110,17 +112,15 @@ class WearHealthServicesPanelTest {
         .also { Disposer.register(projectRule.testRootDisposable, it) }
         .also { it.serialNumber = "some serial number" }
 
-    val mockActionManager = mock<ActionManager>()
-    whenever(mockActionManager.createActionPopupMenu(anyString(), any())).then { invocation ->
-      fakePopup = FakeActionPopupMenu(invocation.getArgument(1))
-      fakePopup
-    }
+    val actionManager = spy(ActionManager.getInstance() as ActionManagerEx)
+    doAnswer { invocation ->
+        fakePopup = FakeActionPopupMenu(invocation.getArgument(1))
+        fakePopup
+      }
+      .whenever(actionManager)
+      .createActionPopupMenu(anyString(), any())
     ApplicationManager.getApplication()
-      .replaceService(
-        ActionManager::class.java,
-        mockActionManager,
-        projectRule.testRootDisposable,
-      )
+      .replaceService(ActionManager::class.java, actionManager, projectRule.testRootDisposable)
   }
 
   @Test
@@ -266,7 +266,7 @@ class WearHealthServicesPanelTest {
     val eventsButton = fakeUi.triggerEventsButton()
     assertThat(eventsButton).isNotNull()
 
-    eventsButton.doClick()
+    eventsButton.click()
 
     val eventTriggerGroups = fakePopup.getActions().mapNotNull { it as? DropDownAction }
     assertThat(eventTriggerGroups).hasSize(EVENT_TRIGGER_GROUPS.size)
@@ -656,6 +656,54 @@ class WearHealthServicesPanelTest {
       stateManager.ongoingExercise.waitForValue(false)
       fakeUi.waitForDescendant<JCheckBox> { it.hasLabel("Heart rate") }
     }
+
+  @Test
+  fun `reset and reapply buttons are enabled during an exercise if at least one capability is enabled`():
+    Unit = runBlocking {
+    stateManager.setCapabilityEnabled(stateManager.capabilitiesList.first(), true)
+    stateManager.capabilitiesList.drop(1).forEach { stateManager.setCapabilityEnabled(it, false) }
+    stateManager.applyChanges()
+
+    val fakeUi = FakeUi(createWhsPanel().component)
+    val resetButton =
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reset") }
+    val reapplyButton =
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reapply") }
+
+    assertThat(resetButton.isEnabled).isTrue()
+    assertThat(reapplyButton.isEnabled).isTrue()
+
+    deviceManager.activeExercise = true
+    stateManager.ongoingExercise.waitForValue(true)
+
+    assertThat(resetButton.isEnabled).isTrue()
+    assertThat(reapplyButton.isEnabled).isTrue()
+  }
+
+  // Regression test for b/371285068
+  @Test
+  fun `reset and reapply buttons are disabled during an exercise if no capabilities are enabled`():
+    Unit = runBlocking {
+    stateManager.capabilitiesList.forEach { stateManager.setCapabilityEnabled(it, false) }
+    stateManager.applyChanges()
+
+    val fakeUi = FakeUi(createWhsPanel().component)
+    val resetButton =
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reset") }
+    val reapplyButton =
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reapply") }
+
+    assertThat(resetButton.isEnabled).isTrue()
+    assertThat(reapplyButton.isEnabled).isTrue()
+
+    deviceManager.activeExercise = true
+    stateManager.ongoingExercise.waitForValue(true)
+
+    retryUntilPassing(2.seconds) {
+      assertThat(resetButton.isEnabled).isFalse()
+      assertThat(reapplyButton.isEnabled).isFalse()
+    }
+  }
 
   private fun FakeUi.waitForCheckbox(text: String, selected: Boolean) =
     waitForDescendant<JCheckBox> { checkbox ->

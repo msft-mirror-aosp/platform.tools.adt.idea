@@ -186,6 +186,11 @@ class ProjectStructureConfigurable(private val myProject: Project) : SearchableC
       if (detailsContent == null) {
         detailsContent = toSelect.createComponent()
         myConfigurables[toSelect] = detailsContent
+        (toSelect as? Disposable)?.let { configurableDisposable ->
+          Disposer.register(configurableDisposable) {
+            if (mySelectedConfigurable === toSelect) mySelectedConfigurable = null
+          }
+        }
       }
       myDetails.setContent(detailsContent)
       myUiState.lastEditedConfigurable = toSelect.displayName
@@ -381,11 +386,7 @@ class ProjectStructureConfigurable(private val myProject: Project) : SearchableC
   }
 
   private fun initSidePanel() {
-
     mySidePanel = SidePanel(this, myHistory)
-
-    if (myDisposable.disposed) myDisposable = MyDisposable()
-
     addConfigurables()
   }
 
@@ -405,6 +406,11 @@ class ProjectStructureConfigurable(private val myProject: Project) : SearchableC
 
   private fun addConfigurable(configurable: Configurable) {
     myConfigurables[configurable] = null
+    (configurable as? Disposable)?.let { configurableDisposable ->
+      Disposer.register(configurableDisposable) {
+        myConfigurables.remove(configurable)
+      }
+    }
     (configurable as? Place.Navigator)?.setHistory(myHistory)
     val counterDisplayConfigurable = configurable as? CounterDisplayConfigurable
     val validationDisplayConfigurable = configurable as? ValidationAggregateDisplayConfigurable
@@ -440,7 +446,7 @@ class ProjectStructureConfigurable(private val myProject: Project) : SearchableC
 
   override fun reset() {
     HeavyProcessLatch.INSTANCE.performOperation(HeavyProcessLatch.Type.Processing, "Resetting Project Structure") {
-      val configurables = myConfigurables.keys
+      val configurables = myConfigurables.keys.toList()
 
       for (each in configurables) {
         each.disposeUIResources()
@@ -468,13 +474,14 @@ class ProjectStructureConfigurable(private val myProject: Project) : SearchableC
     try {
       myUiState.proportion = mySplitter!!.proportion
       (mySelectedConfigurable as? MasterDetailsComponent)?.saveSideProportion()
-      myConfigurables.keys.forEach(Consumer<Configurable> { it.disposeUIResources() })
+      myConfigurables.keys.toList().forEach(Consumer<Configurable> { it.disposeUIResources() })
 
       myUiState.save(myProject)
 
       Disposer.dispose(myDisposable)
     }
     finally {
+      myDisposable = MyDisposable()
       myConfigurables.clear()
       mySelectedConfigurable = null
       mySidePanel?.clear()

@@ -17,51 +17,39 @@ package com.android.tools.idea.imports
 
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.sdk.IdeSdks
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.extensions.ExtensionNotApplicableException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
-import com.intellij.openapi.util.Disposer
-import java.nio.file.Path
+import com.intellij.util.application
 import java.nio.file.Paths
-import java.time.Duration
+import kotlinx.coroutines.CoroutineScope
 
 /** Key used in cache directories to locate the gmaven.index network cache. */
 private const val GMAVEN_INDEX_CACHE_DIR_KEY = "gmaven.index"
 
-/** Scheduled refreshment interval for local disk cache. */
-private val REFRESH_INTERVAL: Duration = Duration.ofDays(1)
-
 /**
- * An application service responsible for downloading index from network and populating the corresponding Maven
- * class registry. [getMavenClassRegistry] returns the the best effort of Maven class registry when asked.
+ * An application service responsible for downloading index from network and populating the
+ * corresponding Maven class registry. [getMavenClassRegistry] returns the the best effort of Maven
+ * class registry when asked.
  */
-class MavenClassRegistryManager : Disposable {
-  private val gMavenIndexRepository: GMavenIndexRepository
+@Service
+class MavenClassRegistryManager(coroutineScope: CoroutineScope) {
+  private val gMavenIndexRepository =
+    GMavenIndexRepository(
+      BASE_URL,
+      Paths.get(PathManager.getSystemPath(), GMAVEN_INDEX_CACHE_DIR_KEY),
+      coroutineScope,
+    )
 
-  init {
-    gMavenIndexRepository = GMavenIndexRepository(BASE_URL, getCacheDir(), REFRESH_INTERVAL)
-    Disposer.register(this, gMavenIndexRepository)
-  }
-
-  /**
-   * Returns [MavenClassRegistry] extracted from [gMavenIndexRepository].
-   */
-  fun getMavenClassRegistry(): MavenClassRegistry {
-    return gMavenIndexRepository.getMavenClassRegistry()
-  }
-
-  private fun getCacheDir(): Path {
-    return Paths.get(PathManager.getSystemPath(), GMAVEN_INDEX_CACHE_DIR_KEY)
-  }
-
-  override fun dispose() {}
+  /** Returns [MavenClassRegistry] extracted from [gMavenIndexRepository]. */
+  fun getMavenClassRegistry() = gMavenIndexRepository.getMavenClassRegistry()
 
   companion object {
-    @JvmStatic
-    fun getInstance(): MavenClassRegistryManager = ApplicationManager.getApplication().getService(MavenClassRegistryManager::class.java)
+    @JvmStatic fun getInstance(): MavenClassRegistryManager = application.service()
   }
 }
 
@@ -72,12 +60,15 @@ class AutoRefresherForMavenClassRegistry : ProjectActivity {
       throw ExtensionNotApplicableException.create()
     }
   }
+
   override suspend fun execute(project: Project) {
-    if (!IdeInfo.getInstance().isAndroidStudio
-        && !IdeSdks.getInstance().hasConfiguredAndroidSdk()) {
+    if (
+      !IdeInfo.getInstance().isAndroidStudio && !IdeSdks.getInstance().hasConfiguredAndroidSdk()
+    ) {
       // IDE must not hit network on startup
       return
     }
+
     // Start refresher in GMavenIndexRepository at project start-up.
     MavenClassRegistryManager.getInstance()
   }

@@ -7,6 +7,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="jetbrains.kotlinx.coroutines.test" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
@@ -28,6 +29,7 @@
     <orderEntry type="module" module-name="intellij.android.artwork" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.adb.ui" />
 </module>

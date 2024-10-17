@@ -61,6 +61,13 @@ internal fun ConfigureDevicePanel(
       "Configure virtual device",
       fontWeight = FontWeight.SemiBold,
       fontSize = LocalTextStyle.current.fontSize * 1.2,
+      modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
+    )
+    Text(
+      "Select the system image you'd like to use with the device profile you selected. You can " +
+        "also change additional settings that affect the emulated device.",
+      color = JewelTheme.globalColors.text.info,
+      modifier = Modifier.padding(bottom = Padding.LARGE),
     )
     Tabs(
       configureDevicePanelState,
@@ -163,6 +170,7 @@ internal constructor(
   device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
   image: ISystemImage?,
+  mode: Mode,
 ) {
   internal var device by mutableStateOf(device)
 
@@ -170,7 +178,14 @@ internal constructor(
     private set
 
   internal val systemImageTableSelectionState = TableSelectionState(image)
-  internal val storageGroupState = StorageGroupState(device)
+  internal val storageGroupState = StorageGroupState(device, mode)
+
+  internal val isValid
+    get() =
+      device.internalStorage != null &&
+        device.ram != null &&
+        device.vmHeapSize != null &&
+        validity.isValid
 
   internal var validity by mutableStateOf(Validity())
     private set
@@ -190,6 +205,10 @@ internal constructor(
 
   internal fun setSystemImageSelection(systemImage: ISystemImage) {
     systemImageTableSelectionState.selection = systemImage
+
+    validity =
+      validity.copy(isExpandedStorageValid = device.expandedStorage.isValid(hasPlayStore()))
+
     updatePreferredAbiValidity()
   }
 
@@ -231,9 +250,15 @@ internal constructor(
     return skin
   }
 
-  internal fun setExpandedStorage(expandedStorage: ExpandedStorage) {
-    device = device.copy(expandedStorage = expandedStorage)
-    validity = validity.copy(isExpandedStorageValid = expandedStorage.isValid())
+  internal fun setExpandedStorage(expandedStorage: ExpandedStorage?) {
+    if (expandedStorage != null) {
+      device = device.copy(expandedStorage = expandedStorage)
+    }
+
+    validity =
+      validity.copy(
+        isExpandedStorageValid = expandedStorage != null && expandedStorage.isValid(hasPlayStore())
+      )
   }
 
   internal fun resetPlayStoreFields(skin: Path) {
@@ -242,7 +267,7 @@ internal constructor(
     device =
       device.copy(
         skin = getSkin(skin),
-        expandedStorage = Custom(storageGroupState.custom.withMaxUnit()),
+        expandedStorage = Custom(checkNotNull(storageGroupState.custom).withMaxUnit()),
         cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
         graphicsMode = GraphicsMode.AUTO,
         ram = EmulatedProperties.defaultRamSize(device.device).toStorageCapacity(),
@@ -251,18 +276,23 @@ internal constructor(
   }
 }
 
+internal enum class Mode {
+  ADD,
+  EDIT,
+}
+
 internal data class Validity
 internal constructor(
+  private val isDeviceNameValid: Boolean = true,
   private val isSystemImageTableSelectionValid: Boolean = true,
   internal val isExpandedStorageValid: Boolean = true,
-  private val isDeviceNameValid: Boolean = true,
   val isPreferredAbiValid: Boolean = true,
 ) {
   internal val isValid
     get() =
-      isSystemImageTableSelectionValid &&
+      isDeviceNameValid &&
+        isSystemImageTableSelectionValid &&
         isExpandedStorageValid &&
-        isDeviceNameValid &&
         isPreferredAbiValid
 }
 

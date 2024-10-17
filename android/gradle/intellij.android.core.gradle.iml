@@ -9,6 +9,7 @@
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="module" module-name="intellij.android.core" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
@@ -46,5 +47,6 @@
     </orderEntry>
     <orderEntry type="library" scope="TEST" name="agp-version" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-JUnit" level="project" />
+    <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
   </component>
 </module>

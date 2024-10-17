@@ -58,10 +58,7 @@ import com.android.tools.idea.projectsystem.TestComponentType
 import com.android.tools.idea.projectsystem.createSourceProvidersForLegacyModule
 import com.android.tools.idea.projectsystem.emptySourceProvider
 import com.android.tools.idea.projectsystem.getAndroidFacets
-import com.android.tools.idea.projectsystem.getAndroidTestModule
-import com.android.tools.idea.projectsystem.getMainModule
 import com.android.tools.idea.projectsystem.getProjectSystem
-import com.android.tools.idea.projectsystem.isAndroidTestModule
 import com.android.tools.idea.projectsystem.scopeTypeByName
 import com.android.tools.idea.res.AndroidInnerClassFinder
 import com.android.tools.idea.res.AndroidManifestClassPsiElementFinder

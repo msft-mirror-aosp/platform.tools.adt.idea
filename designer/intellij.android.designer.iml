@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
- <component name="FacetManager">
-<facet type="kotlin-language" name="Kotlin">
+  <component name="FacetManager">
+    <facet type="kotlin-language" name="Kotlin">
       <configuration version="5" platform="JVM 17" allPlatforms="JVM [17]" useProjectSettings="false">
         <compilerSettings>
           <option name="additionalArguments" value="-version -Xjvm-default=all-compatibility -Xsam-conversions=class -Xcontext-receivers" />
@@ -15,7 +15,7 @@
           <arrayArguments>
             <arrayArg name="pluginClasspaths">
               <args>
-                <arg>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/androidx/compose/compiler/compiler-hosted/1.5.7/compiler-hosted-1.5.7.jar</arg>
+                <arg>$MODULE_DIR$/../../../../prebuilts/tools/common/m2/repository/org/jetbrains/kotlin/kotlin-compose-compiler-plugin/2.0.21/kotlin-compose-compiler-plugin-2.0.21.jar</arg>
               </args>
             </arrayArg>
           </arrayArguments>
@@ -52,6 +52,7 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" />
+    <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.layout-ui" />
     <orderEntry type="module" module-name="intellij.android.wizardTemplate.plugin" />

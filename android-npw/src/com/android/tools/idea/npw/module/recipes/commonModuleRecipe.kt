@@ -23,8 +23,6 @@ import com.android.tools.idea.npw.module.recipes.androidModule.buildGradle
 import com.android.tools.idea.npw.module.recipes.androidModule.res.values.androidModuleColors
 import com.android.tools.idea.npw.module.recipes.androidModule.res.values.androidModuleStrings
 import com.android.tools.idea.npw.module.recipes.androidModule.res.values.androidModuleThemes
-import com.android.tools.idea.wizard.template.BytecodeLevel
-import com.android.tools.idea.wizard.template.Category
 import com.android.tools.idea.wizard.template.CppStandardType
 import com.android.tools.idea.wizard.template.Language
 import com.android.tools.idea.wizard.template.ModuleTemplateData
@@ -34,7 +32,7 @@ enum class IconsGenerationStyle {
   ALL,
   MIPMAP_ONLY,
   MIPMAP_SQUARE_ONLY,
-  NONE;
+  NONE,
 }
 
 fun RecipeExecutor.generateCommonModule(
@@ -45,17 +43,22 @@ fun RecipeExecutor.generateCommonModule(
   generateGenericLocalTests: Boolean = false,
   generateGenericInstrumentedTests: Boolean = false,
   iconsGenerationStyle: IconsGenerationStyle = IconsGenerationStyle.ALL,
-  themesXml: String? = androidModuleThemes(data.projectTemplateData.androidXSupport, data.apis.minApi, data.themesData.main.name),
+  themesXml: String? =
+    androidModuleThemes(
+      data.projectTemplateData.androidXSupport,
+      data.apis.minApi,
+      data.themesData.main.name,
+    ),
   themesXmlNight: String? = null,
   colorsXml: String? = androidModuleColors(),
   addLintOptions: Boolean = false,
   enableCpp: Boolean = false,
   cppStandard: CppStandardType = CppStandardType.`Toolchain Default`,
-  bytecodeLevel: BytecodeLevel = BytecodeLevel.default,
   noKtx: Boolean = false,
-  useVersionCatalog: Boolean
+  useVersionCatalog: Boolean,
 ) {
-  val (projectData, srcOut, resOut, manifestOut, instrumentedTestOut, localTestOut, _, moduleOut) = data
+  val (projectData, srcOut, resOut, manifestOut, instrumentedTestOut, localTestOut, _, moduleOut) =
+    data
   val (useAndroidX, agpVersion) = projectData
   val language = projectData.language
   val isLibraryProject = data.isLibrary
@@ -84,9 +87,9 @@ fun RecipeExecutor.generateCommonModule(
       addLintOptions = addLintOptions,
       enableCpp = enableCpp,
       cppStandard = cppStandard,
-      useVersionCatalog = useVersionCatalog
+      useVersionCatalog = useVersionCatalog,
     ),
-    moduleOut.resolve(buildFile)
+    moduleOut.resolve(buildFile),
   )
 
   // Note: com.android.* needs to be applied before kotlin
@@ -96,7 +99,7 @@ fun RecipeExecutor.generateCommonModule(
     else -> applyPlugin("com.android.application", projectData.agpVersion)
   }
   addKotlinIfNeeded(projectData, targetApi = apis.targetApi.api, noKtx = noKtx)
-  requireJavaVersion(bytecodeLevel.versionString, data.projectTemplateData.language == Language.Kotlin)
+  setJavaKotlinCompileOptions(data.projectTemplateData.language == Language.Kotlin)
 
   save(manifestXml, manifestOut.resolve(FN_ANDROID_MANIFEST_XML))
   save(gitignore(), moduleOut.resolve(".gitignore"))

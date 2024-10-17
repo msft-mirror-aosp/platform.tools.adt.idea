@@ -17,7 +17,7 @@ package org.jetbrains.android.uipreview
 
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
-import com.android.tools.idea.projectsystem.getHolderModule
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.rendering.AndroidFacetRenderModelModule
 import com.android.tools.idea.rendering.StudioModuleRenderContext
 import com.android.tools.idea.util.androidFacet
@@ -65,15 +65,21 @@ private fun throwIfNotUnitTest(e: Exception) =
 private class ModuleClassLoaderProjectHelperService(val project: Project) :
   ProjectSystemBuildManager.BuildListener, Disposable {
   init {
-    try {
-      ProjectSystemService.getInstance(project)
-        .projectSystem
-        .getBuildManager()
-        .addBuildListener(this, this)
-    } catch (e: IllegalStateException) {
-      throwIfNotUnitTest(e)
-    } catch (e: UnsupportedOperationException) {
-      throwIfNotUnitTest(e)
+    // IntelliJ might sometimes create project services even when the project is in the
+    // process of being disposed.
+    if (!project.isDisposed) {
+      try {
+        ProjectSystemService.getInstance(project)
+          .projectSystem
+          .getBuildManager()
+          .addBuildListener(this, this)
+      }
+      catch (e: IllegalStateException) {
+        throwIfNotUnitTest(e)
+      }
+      catch (e: UnsupportedOperationException) {
+        throwIfNotUnitTest(e)
+      }
     }
   }
 
@@ -129,7 +135,11 @@ class StudioModuleClassLoaderManager :
     else WeakMultiMap.createWithWeakValues()
 
   override fun dispose() {
-    holders.keySet().mapNotNull { it.module }.forEach { clearCache(it) }
+    val iterator = holders.keySet().iterator()
+    for (key in iterator) {
+      iterator.remove()
+      key.module?.let { m -> clearModuleData(m) }
+    }
   }
 
   @TestOnly
@@ -184,7 +194,7 @@ class StudioModuleClassLoaderManager :
 
     if (moduleClassLoader == null) {
       // Make sure the helper service is initialized
-      moduleRenderContext.module
+      module
         ?.project
         ?.getService(ModuleClassLoaderProjectHelperService::class.java)
       if (LOG.isDebugEnabled) {
@@ -193,7 +203,7 @@ class StudioModuleClassLoaderManager :
         }
       }
       val preloadedClassLoader: StudioModuleClassLoader? =
-        moduleRenderContext.module
+        module
           ?.getOrCreateHatchery()
           ?.requestClassLoader(
             parent,
@@ -240,7 +250,8 @@ class StudioModuleClassLoaderManager :
     additionalNonProjectTransformation: ClassTransform  = ClassTransform.identity,
   ): ModuleClassLoaderManager.Reference<StudioModuleClassLoader> {
     // Make sure the helper service is initialized
-    moduleRenderContext.module
+    val module: Module? = moduleRenderContext.module
+    module
       ?.project
       ?.getService(ModuleClassLoaderProjectHelperService::class.java)
 
@@ -249,7 +260,7 @@ class StudioModuleClassLoaderManager :
     val combinedNonProjectTransformations =
       combine(NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS, additionalNonProjectTransformation)
     val preloadedClassLoader: StudioModuleClassLoader? =
-      moduleRenderContext.module
+      module
         ?.getOrCreateHatchery()
         ?.requestClassLoader(
           parent,
@@ -276,17 +287,21 @@ class StudioModuleClassLoaderManager :
   fun createCopy(mcl: StudioModuleClassLoader): StudioModuleClassLoader? =
     mcl.copy(createDiagnostics())
 
+  private fun clearModuleData(module: Module) {
+    module.removeUserData(PRELOADER)?.dispose()
+    module.getUserData(HATCHERY)?.destroy()
+  }
+
   @Synchronized
   override fun clearCache(module: Module) {
-    holders
+    val modules = holders
       .keySet()
       .toList()
-      .filter { it.module?.getHolderModule() == module.getHolderModule() }
-      .forEach { holders.remove(it) }
-    setOf(module.getHolderModule(), module).forEach { mdl ->
-      mdl.removeUserData(PRELOADER)?.dispose()
-      mdl.getUserData(HATCHERY)?.destroy()
-    }
+      .mapNotNull { it.module?.let { m -> m to it } }
+      .filter { it.first.getModuleSystem().getHolderModule() == module.getModuleSystem().getHolderModule() }
+      .onEach { holders.remove(it.second) }
+      .mapTo(mutableSetOf()) { it.first }
+    modules.forEach(::clearModuleData)
   }
 
   @Synchronized
