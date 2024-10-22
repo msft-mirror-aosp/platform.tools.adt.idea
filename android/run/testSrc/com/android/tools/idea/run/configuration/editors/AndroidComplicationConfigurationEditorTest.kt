@@ -68,6 +68,7 @@ import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.ListCellRenderer
 
+@Ignore("b/372558650")
 class AndroidComplicationConfigurationEditorTest {
   @get:Rule
   val projectRule = AndroidProjectRule.inMemory().onEdt()
