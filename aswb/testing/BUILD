@@ -18,18 +18,14 @@ java_library(
         "src/**/*.java",
         "studio/**/*.java",
         "cidr/**/*.java",
-    ]) + glob([
-        "testcompat/v233/com/google/idea/cidr/**/*.java",
-        "testcompat/v233/com/google/idea/sdkcompat/**/*.java",
-        "testcompat/v233/com/google/idea/testing/**/*.java",
     ]),
     exports = ["//tools/adt/idea/aswb/testing/src/com/google/idea/testing/runfiles"],
     deps = [
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
+        "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-        "//tools/vendor/google/aswb/third_party/java/junit",
         "@maven//:com.google.guava.guava",
     ],
 )

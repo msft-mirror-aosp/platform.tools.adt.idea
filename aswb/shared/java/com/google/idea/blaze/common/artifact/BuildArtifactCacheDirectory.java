@@ -80,7 +80,8 @@ import javax.annotation.Nullable;
  * <p>This class will ensure that a clean request is never active while we are fetching new
  * artifacts into the cache.
  */
-class BuildArtifactCacheDirectory implements BuildArtifactCache {
+@VisibleForTesting
+public class BuildArtifactCacheDirectory implements BuildArtifactCache {
 
   private static final Logger logger =
       Logger.getLogger(BuildArtifactCacheDirectory.class.getName());
@@ -268,13 +269,13 @@ class BuildArtifactCacheDirectory implements BuildArtifactCache {
 
         // Fetch absent artifacts
         ListenableFuture<?> fetch = startFetch(artifactsByPresence.get(false), accessTime, context);
-        fetch.addListener(() -> unmarkAsActive(artifactsByPresence.get(false)), directExecutor());
         context.addCancellationHandler(() -> fetch.cancel(false));
 
         // mark the  artifacts as being actively fetched. If they are requested in the meantime,
         // the future will be used to wait until the fetch is complete.
         // They are unmarked by the future listener above.
         markAsActive(artifactsByPresence.get(false), fetch);
+        fetch.addListener(() -> unmarkAsActive(artifactsByPresence.get(false)), directExecutor());
 
         // Update metadata for present artifacts
         ListenableFuture<?> metadataUpdate =

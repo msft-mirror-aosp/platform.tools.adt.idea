@@ -19,11 +19,15 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSetMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
@@ -34,6 +38,7 @@ import com.google.idea.blaze.common.artifact.BuildArtifactCache;
 import com.google.idea.blaze.common.artifact.CachedArtifact;
 import com.google.idea.blaze.common.proto.ProtoStringInterner;
 import com.google.idea.blaze.exception.BuildException;
+import com.google.idea.blaze.qsync.artifacts.ArtifactMetadata;
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact;
 import com.google.idea.blaze.qsync.artifacts.DigestMap;
 import com.google.idea.blaze.qsync.artifacts.DigestMapImpl;
@@ -59,6 +64,7 @@ import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -77,7 +83,10 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
   private static final Logger logger = Logger.getLogger(NewArtifactTracker.class.getName());
 
   private final BuildArtifactCache artifactCache;
-  private final Function<TargetBuildInfo, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata>> targetToMetadataFn;
+  private final Function<
+      TargetBuildInfo, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata.Extractor<?>>>
+      targetToMetadataFn;
+  private final ArtifactMetadata.Factory metadataFactory;
   private final Executor executor;
   private final Path stateFile;
 
@@ -95,10 +104,13 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
   public NewArtifactTracker(
       Path projectDirectory,
       BuildArtifactCache artifactCache,
-      Function<TargetBuildInfo, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata>> targetToMetadataFn,
+      Function<TargetBuildInfo, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata.Extractor<?>>>
+          targetToMetadataFn,
+      ArtifactMetadata.Factory metadataFactory,
       Executor executor) {
     this.artifactCache = artifactCache;
     this.targetToMetadataFn = targetToMetadataFn;
+    this.metadataFactory = metadataFactory;
     this.stateFile = projectDirectory.resolve("artifact_state");
     this.executor = executor;
     loadState();
@@ -125,9 +137,7 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
     saveState();
   }
 
-  record LabelMetadataKey(Label target, Path artifactPath, String extractorKey) {
-
-  }
+  record MetadataKey(BuildArtifact artifact, Class<? extends ArtifactMetadata> mdClass) {}
 
   private static ImmutableCollection<TargetBuildInfo> getTargetBuildInfo(
       OutputInfo outputInfo, DigestMap digestMap) {
@@ -165,16 +175,15 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
     return toolchainList.build();
   }
 
-  private ImmutableMap<LabelMetadataKey, String> extractArtifactMetadata(
+  private ImmutableMap<Label, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata>>
+  extractArtifactMetadata(
       Iterable<TargetBuildInfo> targetBuildInfo, DigestMap digestMap, String buildId)
       throws BuildException {
-    Map<LabelMetadataKey, ListenableFuture<String>> metadataFutures = Maps.newHashMap();
+    Map<MetadataKey, ListenableFuture<ArtifactMetadata>> metadataFutures = Maps.newHashMap();
     for (TargetBuildInfo targetInfo : targetBuildInfo) {
-      for (Map.Entry<BuildArtifact, ArtifactMetadata> entry :
+      for (Map.Entry<BuildArtifact, ArtifactMetadata.Extractor<?>> entry :
           targetToMetadataFn.apply(targetInfo).entries()) {
-        LabelMetadataKey key =
-            new LabelMetadataKey(
-                targetInfo.label(), entry.getKey().artifactPath(), entry.getValue().key());
+        MetadataKey key = new MetadataKey(entry.getKey(), entry.getValue().metadataClass());
         if (metadataFutures.containsKey(key)) {
           // this metadata has already been requested.
           continue;
@@ -191,7 +200,7 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
                                 entry.getKey().artifactPath(),
                                 targetInfo.label(),
                                 buildId,
-                                entry.getValue().key())));
+                                entry.getValue().getClass().getName())));
         ListenableFuture<CachedArtifact> artifact =
             artifactCache
                 .get(digest)
@@ -205,31 +214,36 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
                                 entry.getKey().artifactPath(),
                                 targetInfo.label(),
                                 buildId,
-                                entry.getValue().key())));
-        ListenableFuture<String> transformed =
+                                entry.getValue().metadataClass().getName())));
+        ListenableFuture<ArtifactMetadata> transformed =
             Futures.transformAsync(
                 artifact,
-                a -> Futures.immediateFuture(entry.getValue().extract(a, entry.getKey())),
+                a -> Futures.immediateFuture(entry.getValue().extractFrom(a, entry.getKey())),
                 executor);
         metadataFutures.put(key, transformed);
       }
     }
 
-    ImmutableMap.Builder<LabelMetadataKey, String> metadata = ImmutableMap.builder();
+    Map<Label, ImmutableSetMultimap.Builder<BuildArtifact, ArtifactMetadata>> metadata =
+        Maps.newHashMap();
 
     List<BuildException> failures = Lists.newArrayList();
-    for (Map.Entry<LabelMetadataKey, ListenableFuture<String>> entry : metadataFutures.entrySet()) {
+    for (Map.Entry<MetadataKey, ListenableFuture<ArtifactMetadata>> entry :
+        metadataFutures.entrySet()) {
       try {
-        metadata.put(entry.getKey(), Uninterruptibles.getUninterruptibly(entry.getValue()));
+        metadata.putIfAbsent(entry.getKey().artifact.target(), ImmutableSetMultimap.builder());
+        metadata
+            .get(entry.getKey().artifact.target())
+            .put(entry.getKey().artifact, Uninterruptibles.getUninterruptibly(entry.getValue()));
       } catch (ExecutionException e) {
         failures.add(
             new BuildException(
                 String.format(
                     "Failed to extract metadata '%s' from artifact '%s' (from %s, produced by build"
                         + " %s)",
-                    entry.getKey().extractorKey,
-                    entry.getKey().artifactPath,
-                    entry.getKey().target,
+                    entry.getKey().mdClass.getName(),
+                    entry.getKey().artifact.artifactPath(),
+                    entry.getKey().artifact.target(),
                     buildId),
                 e));
       }
@@ -241,13 +255,93 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
       failures.forEach(e::addSuppressed);
       throw e;
     }
-    return metadata.build();
+    return ImmutableMap.copyOf(Maps.transformValues(metadata, ImmutableSetMultimap.Builder::build));
+  }
+
+  /**
+   * Gets unique {@link TargetBuildInfo}s per target.
+   *
+   * <p>In some cases, the aspect can return slightly different target infos for the same target,
+   * due to the way that file-to-target mapping happens inside the aspect:
+   *
+   * <ul>
+   *   <li>The aspect uses the bazel {@code File.owner} API to determine which target built a
+   *       target.
+   *   <li>Depending on the dependency chain, the set of files returned for a specific target can
+   *       differ.
+   * </ul>
+   *
+   * A specific example:
+   *
+   * <p>The proto rules can yield classes jars for default (immutable) java classes, or mutable
+   * versions of the same classes. Consider the rules:
+   *
+   * <ul>
+   *   <li>{@code :my_proto} - the proto rule itself
+   *   <li>{@code :my_java_proto} - generates java classes for the above
+   *   <li>{@code :my_mutable_java_proto} - generated mutable java classes for the above
+   * </ul>
+   *
+   * In this case, all the generated jars are attributed to the {@code :my_proto} target by the
+   * Bazel {@code File.owner} API.
+   *
+   * <p>Now, if we have two project targets that transitively depend on the {@code :my_java_proto}
+   * and {@code my_mutable_java_proto} respectively, then the {@link JavaArtifacts} generated for
+   * each target will contain entries for {@code :my_proto} that differ in their jars: one will
+   * contain {@code libmy_proto.jar} or similar, and the other {@code libmy_proto_mutable.jar} or
+   * similar. The output for the target should be identical in all other respects.
+   *
+   * <p>We resolve this here by building sets of distinct {@link TargetBuildInfo} objects per
+   * target. In most cases there will only be one. In cases such as the above, they will be
+   * identical in all respects other than the set of jar files. So we assert that, and then combine
+   * the jar files to produce a single {@link TargetBuildInfo} per target.
+   */
+  private static Map<Label, TargetBuildInfo> getUniqueTargetBuildInfos(
+      ImmutableCollection<TargetBuildInfo> allTargets) throws BuildException {
+    ImmutableListMultimap<Label, TargetBuildInfo> targetInfoByTarget =
+        Multimaps.index(allTargets, TargetBuildInfo::label);
+    Map<Label, TargetBuildInfo> uniqueTargetInfo = Maps.newHashMap();
+    for (Label t : targetInfoByTarget.keySet()) {
+      Set<TargetBuildInfo> targetInfos = Sets.newHashSet(targetInfoByTarget.get(t));
+      if (targetInfos.size() == 1) {
+        uniqueTargetInfo.put(t, Iterables.getOnlyElement(targetInfos));
+      } else {
+        TargetBuildInfo first = Iterables.get(targetInfos, 0);
+        if (targetInfos.stream().skip(1).allMatch(first::equalsIgnoringJavaCompileJars)) {
+          JavaArtifactInfo.Builder combinedJava =
+              first.javaInfo().map(JavaArtifactInfo::toBuilder).orElse(null);
+          if (combinedJava != null) {
+            targetInfos.stream()
+                .skip(1)
+                .map(TargetBuildInfo::javaInfo)
+                .flatMap(Optional::stream)
+                .map(JavaArtifactInfo::jars)
+                .forEach(combinedJava.jarsBuilder()::addAll);
+            uniqueTargetInfo.put(t, first.toBuilder().javaInfo(combinedJava.build()).build());
+          } else {
+            uniqueTargetInfo.put(t, first);
+          }
+        } else {
+          throw new BuildException(
+              String.format(
+                  "Multiple conflicting target info for target %s:\n  %s",
+                  t,
+                  targetInfos.stream().map(Object::toString).collect(Collectors.joining("\n  "))));
+        }
+      }
+    }
+    return uniqueTargetInfo;
   }
 
   @Override
   public void update(Set<Label> targets, OutputInfo outputInfo, C context) throws BuildException {
     ListenableFuture<?> artifactsCached =
         artifactCache.addAll(outputInfo.getOutputGroups().values(), context);
+    try {
+      Object unused = Uninterruptibles.getUninterruptibly(Futures.allAsList(artifactsCached));
+    } catch (ExecutionException e) {
+      throw new BuildException("Failed to cache build artifacts", e);
+    }
 
     DigestMap digestMap =
         new DigestMapImpl(
@@ -258,25 +352,20 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
             outputInfo.getTargetsWithErrors());
 
     Map<Label, TargetBuildInfo> newTargetInfo =
-        Maps.newHashMap(
-            Maps.uniqueIndex(getTargetBuildInfo(outputInfo, digestMap), TargetBuildInfo::label));
+        getUniqueTargetBuildInfos(getTargetBuildInfo(outputInfo, digestMap));
+
     ImmutableList<CcToolchain> newToolchains = getCcToolchains(outputInfo);
 
     // extract required metadata from the build artifacts
-    ImmutableMap<LabelMetadataKey, String> metadata =
+    ImmutableMap<Label, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata>> metadata =
         extractArtifactMetadata(
             newTargetInfo.values(), digestMap, outputInfo.getBuildContext().buildId());
 
     // insert this metadata into newTargetInfo
-    for (Map.Entry<LabelMetadataKey, String> entry : metadata.entrySet()) {
-      TargetBuildInfo.Builder builder = newTargetInfo.get(entry.getKey().target()).toBuilder();
-      builder
-          .artifactMetadataBuilder()
-          .put(
-              new TargetBuildInfo.MetadataKey(
-                  entry.getKey().extractorKey, entry.getKey().artifactPath),
-              entry.getValue());
-      newTargetInfo.put(entry.getKey().target(), builder.build());
+    for (Map.Entry<Label, ImmutableSetMultimap<BuildArtifact, ArtifactMetadata>> entry :
+        metadata.entrySet()) {
+      newTargetInfo.put(
+          entry.getKey(), newTargetInfo.get(entry.getKey()).withMetadata(entry.getValue()));
     }
 
     synchronized (stateLock) {
@@ -303,12 +392,6 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
       saveState();
     } catch (IOException e) {
       throw new BuildException("Failed to write artifact state", e);
-    }
-
-    try {
-      Object unused = Uninterruptibles.getUninterruptibly(Futures.allAsList(artifactsCached));
-    } catch (ExecutionException e) {
-      throw new BuildException("Failed to cache build artifacts", e);
     }
   }
 
@@ -352,7 +435,8 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
       return;
     }
 
-    ArtifactTrackerStateDeserializer deserializer = new ArtifactTrackerStateDeserializer();
+    ArtifactTrackerStateDeserializer deserializer =
+        new ArtifactTrackerStateDeserializer(metadataFactory);
     deserializer.visit(state);
 
     synchronized (stateLock) {
