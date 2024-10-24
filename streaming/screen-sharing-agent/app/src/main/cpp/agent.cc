@@ -106,7 +106,7 @@ void WriteVideoChannelHeader(const string& codec_name, int socket_fd) {
     buf.insert(buf.end(), ' ');
   }
   SocketWriter writer(socket_fd, "video");
-  auto res = writer.Write(buf.c_str(), buf_size, /*timout_micros=*/ 10000000);
+  auto res = writer.Write(buf.c_str(), buf_size, /*timeout_micros=*/ 10000000);
   if (res == SocketWriter::Result::TIMEOUT) {
     Log::Fatal(SOCKET_IO_ERROR, "Timed out writing video channel header");
   } else if (res == SocketWriter::Result::DISCONNECTED) {
@@ -335,7 +335,7 @@ DisplayInfo Agent::GetDisplayInfo(int32_t display_id) {
 }
 
 void Agent::InitializeSessionEnvironment() {
-  ServiceManager::GetService(Jvm::GetJni(), "settings");  // Wait for the "settings" service to initialize.
+  ServiceManager::GetService(Jvm::GetJni(), "settings", true);  // Wait for the "settings" service to initialize.
   unique_lock lock(environment_mutex_);
   session_environment_ = new SessionEnvironment((flags_ & TURN_OFF_DISPLAY_WHILE_MIRRORING) != 0);
 }

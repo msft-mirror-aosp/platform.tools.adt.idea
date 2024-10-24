@@ -27,9 +27,11 @@ import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.streaming.DEFAULT_SNAPSHOT_AUTO_DELETION_POLICY
 import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.EmulatorSettings.SnapshotAutoDeletionPolicy
+import com.android.tools.idea.streaming.core.StreamingLoadingPanel
 import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.emulator.FakeEmulator
+import com.android.tools.idea.streaming.emulator.FakeEmulator.Companion.DEFAULT_CALL_FILTER
 import com.android.tools.idea.streaming.emulator.actions.findManageSnapshotDialog
 import com.google.common.truth.Truth.assertThat
 import com.intellij.diagnostic.ThreadDumper
@@ -45,6 +47,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.ui.AnActionButton
 import com.intellij.ui.CommonActionsPanel
+import com.intellij.ui.components.JBLoadingPanelListener
 import com.intellij.ui.table.TableView
 import com.intellij.util.ui.UIUtil
 import org.junit.Assert
@@ -271,6 +274,42 @@ class ManageSnapshotsDialogTest {
     assertThat(closeButton.text).isEqualTo("Close")
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testDialogClosedWhileSavingSnapshot() {
+    var snapshotSavingPopupVisible = false
+    val loadingPanel = StreamingLoadingPanel(testRootDisposable)
+    loadingPanel.addListener(object : JBLoadingPanelListener {
+
+      override fun onLoadingStart() {
+        snapshotSavingPopupVisible = true
+      }
+
+      override fun onLoadingFinish() {
+        snapshotSavingPopupVisible = false
+      }
+    })
+
+    loadingPanel.add(emulatorView)
+    val dialog = showManageSnapshotsDialog()
+    val ui = FakeUi(dialog.rootPane)
+    val table = ui.getComponent<TableView<SnapshotInfo>>()
+    waitForCondition(4.seconds) { table.items.isNotEmpty() } // Wait for the snapshot list to be populated.
+    emulator.pauseGrpc()
+    val takeSnapshotButton = ui.getComponent<JButton> { it.text == "Create Snapshot" }
+    ui.clickOn(takeSnapshotButton)
+    assertThat(snapshotSavingPopupVisible).isTrue()
+    dialog.close(CLOSE_EXIT_CODE)
+    emulator.resumeGrpc()
+    var call = emulator.getNextGrpcCall(2.seconds,
+                                        DEFAULT_CALL_FILTER
+                                            .or("android.emulation.control.EmulatorController/streamClipboard")
+                                            .or("android.emulation.control.EmulatorController/setClipboard")
+                                            .or("android.emulation.control.SnapshotService/ListSnapshots"))
+    assertThat(call.methodName).isEqualTo("android.emulation.control.SnapshotService/SaveSnapshot")
+    waitForCondition(2.seconds) { call.completion.isDone }
+    waitForCondition(2.seconds) { !snapshotSavingPopupVisible } // The "Saving state..." popup should disappear.
   }
 
   @Test

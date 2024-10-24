@@ -339,6 +339,11 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
   public void update(Set<Label> targets, OutputInfo outputInfo, C context) throws BuildException {
     ListenableFuture<?> artifactsCached =
         artifactCache.addAll(outputInfo.getOutputGroups().values(), context);
+    try {
+      Object unused = Uninterruptibles.getUninterruptibly(Futures.allAsList(artifactsCached));
+    } catch (ExecutionException e) {
+      throw new BuildException("Failed to cache build artifacts", e);
+    }
 
     DigestMap digestMap =
         new DigestMapImpl(
@@ -390,18 +395,6 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
     } catch (IOException e) {
       throw new BuildException("Failed to write artifact state", e);
     }
-
-    try {
-      Object unused = Uninterruptibles.getUninterruptibly(Futures.allAsList(artifactsCached));
-    } catch (ExecutionException e) {
-      throw new BuildException("Failed to cache build artifacts", e);
-    }
-  }
-
-  @Override
-  public Optional<ImmutableSet<Path>> getCachedFiles(Label target) {
-    // TODO(b/323346056) this is only used to find built AARs for a target. Refactor that code.
-    return Optional.empty();
   }
 
   @Override

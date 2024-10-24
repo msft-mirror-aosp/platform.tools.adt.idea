@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.android.tools.adtui.compose.IntUiPaletteDefaults
 import com.android.tools.adtui.compose.rememberColor
 import icons.StudioIconsCompose
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -114,34 +115,26 @@ private object BannerUi {
       @Composable
       get() =
         rememberColor(
-          key = "Banner.Warning.borderColor",
+          key = "Banner.warningBorderColor",
           darkFallbackKey = "ColorPalette.Yellow3",
-          darkDefault = JewelTheme.colorPalette.yellow(3),
+          darkDefault = Color(IntUiPaletteDefaults.Dark.Yellow3),
           lightFallbackKey = "ColorPalette.Yellow9",
-          lightDefault = JewelTheme.colorPalette.yellow(9),
+          lightDefault = Color(IntUiPaletteDefaults.Light.Yellow9),
         )
 
     override val background: Color
       @Composable
       get() =
         rememberColor(
-          key = "Banner.Warning.background",
-          darkFallbackKey = "ColorPalette.Warning1",
-          darkDefault = JewelTheme.colorPalette.yellow(1),
-          lightFallbackKey = "ColorPalette.Warning10",
-          lightDefault = JewelTheme.colorPalette.yellow(10),
+          key = "Banner.warningBackground",
+          darkFallbackKey = "ColorPalette.Yellow1",
+          darkDefault = Color(IntUiPaletteDefaults.Dark.Yellow1),
+          lightFallbackKey = "ColorPalette.Yellow10",
+          lightDefault = Color(IntUiPaletteDefaults.Light.Yellow10),
         )
 
     override val foreground: Color
-      @Composable
-      get() =
-        rememberColor(
-          key = "Banner.Error.foreground",
-          darkFallbackKey = "ColorPalette.Gray12",
-          darkDefault = JewelTheme.globalColors.text.normal,
-          lightFallbackKey = "ColorPalette.Gray1",
-          lightDefault = JewelTheme.globalColors.text.normal,
-        )
+      @Composable get() = JewelTheme.globalColors.text.normal
   }
 
   object Error : Colors() {
@@ -149,7 +142,7 @@ private object BannerUi {
       @Composable
       get() =
         rememberColor(
-          key = "Banner.Error.borderColor",
+          key = "Banner.errorBorderColor",
           darkFallbackKey = "ColorPalette.Red3",
           darkDefault = JewelTheme.colorPalette.red(3),
           lightFallbackKey = "ColorPalette.Red9",
@@ -160,7 +153,7 @@ private object BannerUi {
       @Composable
       get() =
         rememberColor(
-          key = "Banner.Error.background",
+          key = "Banner.errorBackground",
           darkFallbackKey = "ColorPalette.Red1",
           darkDefault = JewelTheme.colorPalette.red(1),
           lightFallbackKey = "ColorPalette.Red12",
@@ -168,15 +161,7 @@ private object BannerUi {
         )
 
     override val foreground: Color
-      @Composable
-      get() =
-        rememberColor(
-          key = "Banner.Error.foreground",
-          darkFallbackKey = "ColorPalette.Gray12",
-          darkDefault = JewelTheme.globalColors.text.normal,
-          lightFallbackKey = "ColorPalette.Gray1",
-          lightDefault = JewelTheme.globalColors.text.normal,
-        )
+      @Composable get() = JewelTheme.globalColors.text.normal
   }
 }
 

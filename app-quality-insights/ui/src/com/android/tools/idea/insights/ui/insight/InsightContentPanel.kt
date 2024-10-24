@@ -15,16 +15,19 @@
  */
 package com.android.tools.idea.insights.ui.insight
 
+import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.experiments.AppInsightsExperimentFetcher
+import com.android.tools.idea.insights.experiments.Experiment
+import com.android.tools.idea.insights.experiments.ExperimentGroup
 import com.android.tools.idea.insights.mapReady
 import com.android.tools.idea.insights.ui.AppInsightsStatusText
 import com.android.tools.idea.insights.ui.EMPTY_STATE_LINK_FORMAT
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TEXT_FORMAT
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TITLE_FORMAT
 import com.android.tools.idea.insights.ui.InsightPermissionDeniedHandler
-import com.android.tools.idea.studiobot.StudioBot as Gemini
 import com.google.gct.login2.LoginFeature
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
@@ -40,6 +43,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons.StudioBot
 import java.awt.BorderLayout
@@ -54,7 +58,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import org.jdesktop.swingx.VerticalLayout
 import org.jetbrains.annotations.VisibleForTesting
 
 private const val CONTENT_CARD = "content"
@@ -82,13 +85,19 @@ class InsightContentPanel(
 
   private val insightTextPane = InsightTextPane()
 
-  private val insightBottomPanel =
-    InsightBottomPanel(controller, scope, currentInsightFlow) { onRefresh(it) }
+  private val insightBottomPanel = InsightBottomPanel(controller, scope, currentInsightFlow)
 
   private val insightPanel =
-    JPanel(VerticalLayout()).apply {
+    JPanel(VerticalLayout(JBUI.scale(8))).apply {
+      if (
+        AppInsightsExperimentFetcher.instance.getCurrentExperiment(ExperimentGroup.CODE_CONTEXT) !=
+          Experiment.UNKNOWN
+      ) {
+        add(InsightDisclaimerPanel(scope, currentInsightFlow, onRefresh))
+      }
       add(insightTextPane)
-      add(InsightDisclaimerPanel(scope, currentInsightFlow))
+
+      border = JBUI.Borders.empty(15)
     }
 
   private val insightScrollPanel =
@@ -157,7 +166,9 @@ class InsightContentPanel(
       override fun update(e: AnActionEvent) {
         // This action is never visible
         e.presentation.isEnabledAndVisible = false
-        if (emptyStateText.text == GEMINI_NOT_AVAILABLE && Gemini.getInstance().isAvailable()) {
+        if (
+          emptyStateText.text == GEMINI_NOT_AVAILABLE && GeminiPluginApi.getInstance().isAvailable()
+        ) {
           controller.refreshInsight(false)
         }
       }

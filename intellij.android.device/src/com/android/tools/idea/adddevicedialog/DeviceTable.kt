@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
@@ -43,8 +45,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.intellij.icons.AllIcons
 import icons.StudioIconsCompose
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
@@ -54,7 +56,6 @@ import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
-import org.jetbrains.jewel.ui.icon.PathIconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -64,11 +65,13 @@ fun <DeviceT : DeviceProfile> DeviceTable(
   columns: List<TableColumn<DeviceT>>,
   filterContent: @Composable () -> Unit,
   modifier: Modifier = Modifier,
+  showDetailsState: DeviceTableShowDetailsState = remember { DeviceTableShowDetailsState() },
+  lazyListState: LazyListState = rememberLazyListState(),
+  tableSortState: TableSortState<DeviceT> = remember { TableSortState() },
   tableSelectionState: TableSelectionState<DeviceT> = remember { TableSelectionState() },
   filterState: DeviceFilterState<DeviceT> = remember { DeviceFilterState() },
   onRowSecondaryClick: (DeviceT, Offset) -> Unit = { _, _ -> },
 ) {
-  var showDetails by remember { mutableStateOf(false) }
   val textState = rememberTextFieldState(filterState.textFilter.searchText)
   LaunchedEffect(Unit) {
     snapshotFlow { textState.text.toString() }.collect { filterState.textFilter.searchText = it }
@@ -106,11 +109,11 @@ fun <DeviceT : DeviceProfile> DeviceTable(
           )
           Tooltip(tooltip = { Text("Show device details") }) {
             IconButton(
-              onClick = { showDetails = !showDetails },
+              onClick = { showDetailsState.visible = !showDetailsState.visible },
               Modifier.align(Alignment.CenterVertically).padding(2.dp),
             ) {
               Icon(
-                key = PathIconKey("actions/previewDetails.svg", AllIcons::class.java),
+                AllIconsKeys.Actions.PreviewDetails,
                 contentDescription = "Details",
                 modifier = Modifier.size(20.dp),
               )
@@ -137,16 +140,25 @@ fun <DeviceT : DeviceProfile> DeviceTable(
               filteredDevices,
               { it },
               modifier = Modifier.weight(1f),
+              lazyListState = lazyListState,
+              tableSortState = tableSortState,
               tableSelectionState = tableSelectionState,
               onRowSecondaryClick = onRowSecondaryClick,
             )
-            if (showDetails) {
+            if (showDetailsState.visible) {
               Divider(orientation = Orientation.Vertical)
               when (
                 val selection = tableSelectionState.selection?.takeIf { filterState.apply(it) }
               ) {
                 null -> EmptyStatePanel("Select a device", Modifier.width(200.dp).fillMaxHeight())
-                else -> DeviceDetails(selection, modifier = Modifier.width(200.dp).fillMaxHeight())
+                else ->
+                  DeviceDetails(
+                    selection,
+                    modifier =
+                      Modifier.width(200.dp)
+                        .padding(vertical = 12.dp, horizontal = 8.dp)
+                        .fillMaxHeight(),
+                  )
               }
             }
           }
@@ -160,6 +172,10 @@ fun <DeviceT : DeviceProfile> DeviceTable(
   )
 
   LaunchedEffect(Unit) { searchFieldFocusRequester.requestFocus() }
+}
+
+class DeviceTableShowDetailsState {
+  var visible by mutableStateOf(false)
 }
 
 object DeviceTableColumns {
@@ -178,6 +194,25 @@ object DeviceTableColumns {
       "API",
       attribute = { it.apiRange.lowerEndpoint() },
     )
+
+  private val minApiComparator: Comparator<DeviceProfile> = compareBy {
+    it.apiRange.let { if (it.hasLowerBound()) it.lowerEndpoint() else 1 }
+  }
+  private val maxApiComparator: Comparator<DeviceProfile> = compareBy {
+    it.apiRange.let { if (it.hasUpperBound()) it.upperEndpoint() else Int.MAX_VALUE }
+  }
+  val apiRangeAscendingOrder = minApiComparator.then(maxApiComparator)
+  val apiRangeDescendingOrder = maxApiComparator.then(minApiComparator).reversed()
+
+  val apiRange =
+    TableColumn(
+      "API",
+      width = TableColumnWidth.Weighted(1f),
+      comparator = apiRangeAscendingOrder,
+      reverseComparator = apiRangeDescendingOrder,
+      rowContent = { Text(it.apiRange.firstAndLastApiLevel()) },
+    )
+
   val width =
     DefaultSortableTableColumn<DeviceProfile, Int>("Width", attribute = { it.resolution.width })
   val height =
@@ -195,7 +230,12 @@ object DeviceTableColumns {
     )
 }
 
+/**
+ * A panel to be used when there is no data to show. Displays text in the center in a lighter color.
+ */
 @Composable
-private fun EmptyStatePanel(text: String, modifier: Modifier = Modifier) {
-  Box(modifier) { Text(text, Modifier.align(Alignment.Center)) }
+fun EmptyStatePanel(text: String, modifier: Modifier = Modifier) {
+  Box(modifier) {
+    Text(text, Modifier.align(Alignment.Center), color = JewelTheme.globalColors.text.info)
+  }
 }

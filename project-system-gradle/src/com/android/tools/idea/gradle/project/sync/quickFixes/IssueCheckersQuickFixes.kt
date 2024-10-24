@@ -16,14 +16,13 @@
 package com.android.tools.idea.gradle.project.sync.quickFixes
 
 import com.android.SdkConstants
-import com.android.ide.common.repository.AgpVersion
 import com.android.repository.Revision
 import com.android.repository.api.RepoManager
 import com.android.repository.impl.meta.RepositoryPackages
 import com.android.sdklib.repository.meta.DetailsTypes
 import com.android.tools.idea.Projects
 import com.android.tools.idea.Projects.getBaseDirPath
-import com.android.tools.idea.gradle.plugin.AgpVersions
+import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
@@ -40,7 +39,6 @@ import com.android.tools.idea.sdk.StudioSettingsController
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.progress.StudioProgressRunner
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
-import com.android.tools.idea.studiobot.StudioBot
 import com.android.tools.idea.studiobot.StudioBotBundle
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.GradleSyncStats
@@ -59,7 +57,6 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.net.HttpProxyConfigurable
-import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.settings.DistributionType
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import java.io.File
@@ -343,21 +340,21 @@ class OpenStudioBotBuildIssueQuickFix(private val gradleErrorContext: GradleErro
   override val description: String = StudioBotBundle.message("studiobot.ask.text")
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
-    val studioBot = StudioBot.getInstance()
-    studioBot.sendChatQueryIfContextAllowed(project, gradleErrorContext, StudioBot.RequestSource.BUILD)
+    val geminiPluginApi = GeminiPluginApi.getInstance()
+    geminiPluginApi.sendChatQueryIfContextAllowed(project, gradleErrorContext, GeminiPluginApi.RequestSource.BUILD)
     return CompletableFuture.completedFuture(null)
   }
 }
 
 /** Sends chat query if context is allowed, otherwise stages it. */
-fun StudioBot.sendChatQueryIfContextAllowed(
+fun GeminiPluginApi.sendChatQueryIfContextAllowed(
   project: Project,
   gradleErrorContext: GradleErrorContext,
-  requestSource: StudioBot.RequestSource,
+  requestSource: GeminiPluginApi.RequestSource,
 ) {
   if (isContextAllowed(project)) {
-    chat(project).sendChatQuery(gradleErrorContext.toPrompt(project), requestSource)
+    sendChatQuery(project, gradleErrorContext.toPrompt(project), null, requestSource)
   } else {
-    chat(project).stageChatQuery(gradleErrorContext.toQuery(), requestSource)
+    stageChatQuery(project, gradleErrorContext.toQuery(), requestSource)
   }
 }

@@ -17,13 +17,11 @@ package com.android.tools.idea.uibuilder.layout.option
 
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.layout.positionable.PositionableContent
-import com.android.tools.idea.common.layout.positionable.margin
-import com.android.tools.idea.common.layout.positionable.scaledContentSize
-import com.android.tools.idea.common.model.scaleOf
 import com.android.tools.idea.common.surface.SurfaceScale
 import com.android.tools.idea.common.surface.ZoomConstants.DEFAULT_MAX_SCALE
 import com.android.tools.idea.common.surface.ZoomConstants.DEFAULT_MIN_SCALE
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.uibuilder.layout.padding.DEFAULT_LAYOUT_PADDING
 import com.android.tools.idea.uibuilder.layout.padding.OrganizationPadding
 import com.android.tools.idea.uibuilder.layout.positionable.GridLayoutGroup
 import com.android.tools.idea.uibuilder.layout.positionable.HeaderPositionableContent
@@ -31,14 +29,11 @@ import com.android.tools.idea.uibuilder.layout.positionable.PositionableGroup
 import com.android.tools.idea.uibuilder.layout.positionable.content
 import com.android.tools.idea.uibuilder.surface.layout.MAX_ITERATION_TIMES
 import com.android.tools.idea.uibuilder.surface.layout.SCALE_UNIT
-import com.android.tools.idea.uibuilder.surface.layout.horizontal
-import com.android.tools.idea.uibuilder.surface.layout.vertical
 import com.intellij.ui.scale.JBUIScale
 import java.awt.Dimension
 import java.awt.Point
 import kotlin.math.max
 import kotlinx.coroutines.flow.MutableStateFlow
-import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
@@ -50,9 +45,8 @@ import org.jetbrains.annotations.VisibleForTesting
  *
  * TODO(b/321949200) Add tests
  */
-@ApiStatus.Experimental
 class GridLayoutManager(
-  private val padding: OrganizationPadding,
+  private val padding: OrganizationPadding = DEFAULT_LAYOUT_PADDING,
   override val transform: (Collection<PositionableContent>) -> List<PositionableGroup>,
 ) : GroupedSurfaceLayoutManager(padding.previewPaddingProvider) {
 
@@ -62,6 +56,13 @@ class GridLayoutManager(
     this.cachedLayoutGroups = cachedLayoutGroups
   }
 
+  /**
+   * Special case of single content (non-header) is handled differently. Returns this single content
+   * or null.
+   */
+  private fun Collection<PositionableContent>.singleContentOrNull() =
+    this.singleOrNull().takeIf { it !is HeaderPositionableContent }
+
   /** Get the total required size to layout the [content] with the given conditions. */
   override fun getSize(
     content: Collection<PositionableContent>,
@@ -70,8 +71,16 @@ class GridLayoutManager(
     availableWidth: Int,
     dimension: Dimension?,
   ): Dimension {
-    val groups = createLayoutGroups(transform(content), scaleFunc, availableWidth, sizeFunc)
-    val groupSizes = groups.map { group -> getGroupSize(group, sizeFunc, scaleFunc) }
+    // Special case for single content
+    content.singleContentOrNull()?.let {
+      val previewSize = it.sizeForScale(it.scaleFunc())
+      return Dimension(
+        previewSize.width + padding.canvasSinglePadding * 2,
+        previewSize.height + padding.canvasSinglePadding * 2,
+      )
+    }
+    val groups = createLayoutGroups(transform(content), scaleFunc, availableWidth)
+    val groupSizes = groups.map { group -> getGroupSize(group, scaleFunc) }
     val requiredWidth = groupSizes.maxOfOrNull { it.width } ?: 0
     val requiredHeight = groupSizes.sumOf { it.height }
     return Dimension(
@@ -89,7 +98,6 @@ class GridLayoutManager(
     groups: List<PositionableGroup>,
     scaleFunc: PositionableContent.() -> Double,
     availableWidth: Int,
-    sizeFunc: PositionableContent.() -> Dimension,
   ): List<GridLayoutGroup> {
     val cachedGroups = cachedLayoutGroups?.value
     // We skip creating a new layout group if the content hasn't changed, in this way we keep the
@@ -103,8 +111,7 @@ class GridLayoutManager(
     return if (canUseCachedGroups && cachedGroups != null) {
       cachedGroups
     } else {
-      val newGroup =
-        groups.map { calculateNewLayout(it, scaleFunc, availableWidth) { sizeFunc().width } }
+      val newGroup = groups.map { calculateNewLayout(it, scaleFunc, availableWidth) }
       cachedLayoutGroups?.value = newGroup
       newGroup
     }
@@ -113,17 +120,14 @@ class GridLayoutManager(
   /** Get the total required size of the [PositionableContent]s in grid layout. */
   private fun getGroupSize(
     layoutGroup: GridLayoutGroup,
-    sizeFunc: PositionableContent.() -> Dimension,
     scaleFunc: PositionableContent.() -> Double,
   ): Dimension {
     var groupRequiredWidth = 0
     var groupRequiredHeight = 0
     layoutGroup.header?.let {
-      // Header doesn't need to calculate additional margins (check
-      // SceneViewHeader). Headers aren't affected by scale change.
       val scale = it.scaleFunc()
-      val padding = padding.previewBottomPadding(scale, it)
-      groupRequiredHeight = it.contentSize.height + padding
+      val bottomPadding = padding.previewBottomPadding(scale, it)
+      groupRequiredHeight += it.sizeForScale(scale).height + bottomPadding
     }
 
     for (row in layoutGroup.rows) {
@@ -131,24 +135,15 @@ class GridLayoutManager(
       var currentHeight = 0
       for (view in row) {
         val scale = view.scaleFunc()
-        val scaledSize = view.sizeFunc()
-        val margin = view.getMargin(scale)
+        val scaledSize = view.sizeForScale(scale)
         // What we need to take into account to calculate the width:
-        // * the scaled width of the view.
-        // * the horizontal margin (left + right).
+        // * the total scaled width of the view.
         // * the bottom padding.
-        rowX += scaledSize.width + margin.horizontal + padding.previewRightPadding(scale, view)
+        rowX += scaledSize.width + padding.previewRightPadding(scale, view)
         // To calculate the height that we might add in addition to currentHeight:
-        // * The height with its vertical margins: vertical margins (top panel and bottom panel)
-        //   aren't affected by scale change like its content, to prevent this, we use
-        //   [calculateHeightWithVerticalMargins] to find the right height for the given scale
-        //   with the right margins count.
-        // * The bottom padding.
-        // * The padding taken for the frame of the preview (top + bottom).
-        val newHeight =
-          view.contentSize.scaleOf(scale).height +
-            margin.vertical +
-            padding.previewBottomPadding(scale, view)
+        // * the total scaled height of the view.
+        // * the right padding.
+        val newHeight = scaledSize.height + padding.previewBottomPadding(scale, view)
         currentHeight = max(currentHeight, newHeight)
       }
       groupRequiredWidth = max(groupRequiredWidth, rowX)
@@ -173,11 +168,10 @@ class GridLayoutManager(
     // paddings of every content.
     val rawSizes =
       content.map {
-        val contentSize = it.contentSize
-        val margin = it.getMargin(1.0)
+        val viewSize = it.sizeForScale(1.0)
         Dimension(
-          contentSize.width + margin.horizontal + padding.previewRightPadding(1.0, it),
-          contentSize.height + margin.vertical + padding.previewBottomPadding(1.0, it),
+          viewSize.width + padding.previewRightPadding(1.0, it),
+          viewSize.height + padding.previewBottomPadding(1.0, it),
         )
       }
 
@@ -239,7 +233,15 @@ class GridLayoutManager(
     }
     val scale = (min + max) / 2
     // We get the sizes of the content with the new scale applied.
-    val dim = getSize(content, { contentSize.scaleOf(scale) }, { scale }, width, null)
+    val dim =
+      getSize(
+        content,
+        /** Unused. */
+        { Dimension() },
+        { scale },
+        width,
+        null,
+      )
     return if (dim.height <= height && dim.width <= width) {
       // We want the resulting content fitting into the height we try to lower the scale
       getMaxZoomToFitScale(content, scale, max, width, height, depth + 1)
@@ -259,7 +261,6 @@ class GridLayoutManager(
     group: PositionableGroup,
     scaleFunc: PositionableContent.() -> Double,
     @SwingCoordinate availableWidth: Int,
-    @SwingCoordinate widthFunc: PositionableContent.() -> Int,
   ): GridLayoutGroup {
     if (group.content.isEmpty()) {
       return GridLayoutGroup(group.header, emptyList())
@@ -272,19 +273,22 @@ class GridLayoutManager(
     // The current column in the layout.
     var columnList = mutableListOf<PositionableContent>()
 
+    // Actual width to fill is less as there is also canvas and group paddings.
+    val widthToFill =
+      availableWidth -
+        padding.canvasLeftPadding -
+        if (group.hasHeader) padding.groupLeftPadding else 0
+
     // Once we have initialized columnList and nextX for the first preview, we can proceed checking
     // all the remaining content.
     group.content.forEach { view ->
       val scale = view.scaleFunc()
-      val width = view.widthFunc()
+      val scaledWidth = view.sizeForScale(scale).width
       // The next space occupied in the row is represented by:
-      //    * the left frame padding of the view.
-      //    * The width of the view.
-      //    * The horizontal margin of the view (it changes when scale changes).
-      //    * The right frame padding of the view.
-      val nextViewWidth =
-        width + view.getMargin(scale).horizontal + padding.previewRightPadding(scale, view)
-      if (nextX + nextViewWidth > availableWidth && columnList.isNotEmpty()) {
+      //    * The total scaled width of the view.
+      //    * The right preview padding of the view.
+      val nextViewWidth = scaledWidth + padding.previewRightPadding(scale, view)
+      if (nextX + nextViewWidth > widthToFill && columnList.isNotEmpty()) {
         // If the current calculated width and the one we have calculated in the previous iterations
         // is exceeding the available space, we reset the column and nextX so we can add the view on
         // a new line.
@@ -313,30 +317,32 @@ class GridLayoutManager(
     }
 
     //    Special case - position one element at the center
+    //    (1) canvasSinglePadding
+    //
     //     ←------------            availableWidth        ------------→
     //
     //     ___________________________________________________________
     //     | surface                                                  |     ↑
-    //     |                                                          |     |
+    //     |                         (1) ↕                            |     |
     //     |                  _________________                       |     |
-    //     |                  | preview        |                      |     |
-    //     |                  |                |                      |     | availableHeight
+    //     |  (1)             | preview        |    (1)               |     |
+    //     |   ↔              |                |     ↔                |     | availableHeight
     //     |                  |                |                      |     |
     //     |                  |________________|                      |     |
-    //     |                                                          |     |
+    //     |                        (1) ↕                             |     |
     //     |                                                          |     |
     //     ------------------------------------------------------------     ↓
 
-    if (content.size == 1 && content.first() !is HeaderPositionableContent) {
-      val singleContent = content.single()
+    content.singleContentOrNull()?.let { singleContent ->
       // When there is only one visible preview, centralize it as a special case.
-      val point = getSingleContentPosition(singleContent, availableWidth, availableHeight)
-
-      return mapOf(singleContent to point)
+      val previewSize = singleContent.sizeForScale(singleContent.scale)
+      // Try to centralize the content.
+      val x = maxOf((availableWidth - previewSize.width) / 2, padding.canvasSinglePadding)
+      val y = maxOf((availableHeight - previewSize.height) / 2, padding.canvasSinglePadding)
+      return mapOf(singleContent to getContentPosition(singleContent, x, y))
     }
 
-    val groups =
-      createLayoutGroups(transform(content), { scale }, availableWidth, { scaledContentSize })
+    val groups = createLayoutGroups(transform(content), { scale }, availableWidth)
     var nextY = padding.canvasTopPadding
     var nextX = 0
     var maxYInRow = 0
@@ -347,7 +353,8 @@ class GridLayoutManager(
     //     (3) previewBottomPadding                   Y1 - maxYInRow for 1st row
     //     (4) groupLeftPadding
     //
-    //    Each (preview) includes PositionableContent.margin + PositionableContent.scaledContentSize
+    //    Each (preview) includes PositionableContent.getMargin(scale) +
+    // PositionableContent.contentSize * scale
     //    - which is the total size of the PositionableContent for currently set scale.
     //
     //    -------------------------------------(X)----------------------------------------→
@@ -427,12 +434,9 @@ class GridLayoutManager(
         positionMap[view] = getContentPosition(view, nextX, nextY)
         val previewRightPadding = padding.previewRightPadding(view.scale, view)
         val previewBottomPadding = padding.previewBottomPadding(view.scale, view)
-        nextX += view.scaledContentSize.width + view.margin.horizontal + previewRightPadding
-        maxYInRow =
-          max(
-            maxYInRow,
-            nextY + view.margin.vertical + view.scaledContentSize.height + previewBottomPadding,
-          )
+        val scaledSize = view.sizeForScale(view.scale)
+        nextX += scaledSize.width + previewRightPadding
+        maxYInRow = max(maxYInRow, nextY + scaledSize.height + previewBottomPadding)
       }
       layoutGroup.header?.let {
         nextX = padding.canvasLeftPadding

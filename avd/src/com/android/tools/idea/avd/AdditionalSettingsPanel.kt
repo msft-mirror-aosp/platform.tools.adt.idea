@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -115,7 +116,12 @@ internal fun AdditionalSettingsPanel(
         state.storageGroupState.expandedStorageFlow.collect(state::setExpandedStorage)
       }
 
-      EmulatedPerformanceGroup(state.device, hasPlayStore, state::device::set)
+      EmulatedPerformanceGroup(
+        state.device,
+        state.emulatedPerformanceGroupState,
+        hasPlayStore,
+        state::device::set,
+      )
 
       PreferredAbiGroup(
         state.device.preferredAbi,
@@ -290,7 +296,7 @@ private val BOOTS = enumValues<Boot>().asIterable().toImmutableList()
 @Composable
 private fun StorageGroup(
   device: VirtualDevice,
-  storageGroupState: StorageGroupState,
+  state: StorageGroupState,
   hasPlayStore: Boolean,
   isExistingImageValid: Boolean,
   onDeviceChange: (VirtualDevice) -> Unit,
@@ -302,11 +308,18 @@ private fun StorageGroup(
       Text("Internal storage", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
       StorageCapacityField(
-        device.internalStorage,
-        validateInternalStorage(device.internalStorage, hasPlayStore),
-        onValueChange = { onDeviceChange(device.copy(internalStorage = it)) },
+        state.internalStorage,
+        validateInternalStorage(state.internalStorage, hasPlayStore),
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
+
+      @Suppress("NAME_SHADOWING") val device by rememberUpdatedState(device)
+
+      LaunchedEffect(Unit) {
+        state.internalStorage.storageCapacity.collect {
+          onDeviceChange(device.copy(internalStorage = it))
+        }
+      }
 
       InfoOutlineIcon(
         "The amount of non-removable space available to store data on the AVD",
@@ -330,23 +343,19 @@ private fun StorageGroup(
     Row {
       RadioButtonRow(
         RadioButton.CUSTOM,
-        storageGroupState.selectedRadioButton,
-        onClick = { storageGroupState.selectedRadioButton = RadioButton.CUSTOM },
+        state.selectedRadioButton,
+        onClick = { state.selectedRadioButton = RadioButton.CUSTOM },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("CustomRadioButton"),
         !hasPlayStore,
       )
 
-      val enabled = storageGroupState.selectedRadioButton == RadioButton.CUSTOM
-
-      val errorMessage =
-        validateCustomExpandedStorage(storageGroupState.custom, hasPlayStore, enabled)
-
-      val isWarningVisible = storageGroupState.isCustomChangedWarningVisible(errorMessage == null)
+      val enabled = state.selectedRadioButton == RadioButton.CUSTOM
+      val errorMessage = validateCustomExpandedStorage(state.custom, hasPlayStore, enabled)
+      val isWarningVisible = state.isCustomChangedWarningVisible(errorMessage == null)
 
       StorageCapacityField(
-        storageGroupState.custom,
+        state.custom,
         errorMessage,
-        onValueChange = { storageGroupState.custom = it },
         Modifier.alignByBaseline(),
         enabled,
         when {
@@ -371,15 +380,15 @@ private fun StorageGroup(
     Row {
       RadioButtonRow(
         RadioButton.EXISTING_IMAGE,
-        storageGroupState.selectedRadioButton,
-        onClick = { storageGroupState.selectedRadioButton = RadioButton.EXISTING_IMAGE },
+        state.selectedRadioButton,
+        onClick = { state.selectedRadioButton = RadioButton.EXISTING_IMAGE },
         Modifier.alignByBaseline().padding(end = Padding.SMALL).testTag("ExistingImageRadioButton"),
         !hasPlayStore,
       )
 
       ExistingImageField(
-        storageGroupState.existingImage,
-        storageGroupState.selectedRadioButton == RadioButton.EXISTING_IMAGE && !hasPlayStore,
+        state.existingImage,
+        state.selectedRadioButton == RadioButton.EXISTING_IMAGE && !hasPlayStore,
         isExistingImageValid,
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
       )
@@ -387,39 +396,49 @@ private fun StorageGroup(
 
     RadioButtonRow(
       RadioButton.NONE,
-      storageGroupState.selectedRadioButton,
-      onClick = { storageGroupState.selectedRadioButton = RadioButton.NONE },
+      state.selectedRadioButton,
+      onClick = { state.selectedRadioButton = RadioButton.NONE },
       enabled = !hasPlayStore,
     )
   }
 }
 
-private fun validateInternalStorage(storage: StorageCapacity?, hasPlayStore: Boolean) =
-  when {
-    storage == null -> "Specify an internal storage value"
-    storage < VirtualDevice.MIN_INTERNAL_STORAGE ->
-      if (hasPlayStore) {
-        "Internal storage for Play Store devices must be at least ${VirtualDevice.MIN_INTERNAL_STORAGE}"
-      } else {
-        "Internal storage must be at least ${VirtualDevice.MIN_INTERNAL_STORAGE}"
-      }
+private fun validateInternalStorage(
+  storage: StorageCapacityFieldState,
+  hasPlayStore: Boolean,
+): String? {
+  val capacity = storage.toStorageCapacity()
+
+  return when {
+    storage.valueIsEmpty() -> "Specify an internal storage value"
+    storage.willOverflow() -> "Internal storage is too large"
+    requireNotNull(capacity) < VirtualDevice.MIN_INTERNAL_STORAGE && hasPlayStore ->
+      "Internal storage for Play Store devices must be at least ${VirtualDevice.MIN_INTERNAL_STORAGE}"
+    capacity < VirtualDevice.MIN_INTERNAL_STORAGE ->
+      "Internal storage must be at least ${VirtualDevice.MIN_INTERNAL_STORAGE}"
     else -> null
   }
+}
 
 private fun validateCustomExpandedStorage(
-  storage: StorageCapacity?,
+  storage: StorageCapacityFieldState,
   hasPlayStore: Boolean,
   customRadioButtonEnabled: Boolean,
-) =
-  when {
+): String? {
+  val capacity = storage.toStorageCapacity()
+
+  return when {
     !customRadioButtonEnabled -> null
-    storage == null -> "Specify an SD card size"
-    hasPlayStore && storage < VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE_FOR_PLAY_STORE ->
+    storage.valueIsEmpty() -> "Specify an SD card size"
+    storage.willOverflow() -> "SD card size is too large"
+    requireNotNull(capacity) < VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE_FOR_PLAY_STORE &&
+      hasPlayStore ->
       "The SD card for Play Store devices must be at least ${VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE_FOR_PLAY_STORE}"
-    !hasPlayStore && storage < VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE ->
+    capacity < VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE ->
       "The SD card must be at least ${VirtualDevice.MIN_CUSTOM_EXPANDED_STORAGE}"
     else -> null
   }
+}
 
 @Composable
 private fun <E : Enum<E>> RadioButtonRow(
@@ -496,6 +515,7 @@ private fun chooseFile(parent: Component, project: Project?): Path? {
 @Composable
 private fun EmulatedPerformanceGroup(
   device: VirtualDevice,
+  state: EmulatedPerformanceGroupState,
   hasGooglePlayStore: Boolean,
   onDeviceChange: (VirtualDevice) -> Unit,
 ) {
@@ -536,16 +556,21 @@ private fun EmulatedPerformanceGroup(
       )
     }
 
+    @Suppress("NAME_SHADOWING") val device by rememberUpdatedState(device)
+
     Row {
       Text("RAM", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
       StorageCapacityField(
-        device.ram,
-        validateRam(device.ram),
-        onValueChange = { onDeviceChange(device.copy(ram = it)) },
+        state.ram,
+        validateRam(state.ram),
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
         !hasGooglePlayStore || device.formFactor == FormFactors.AUTO,
       )
+
+      LaunchedEffect(Unit) {
+        state.ram.storageCapacity.collect { onDeviceChange(device.copy(ram = it)) }
+      }
 
       InfoOutlineIcon(
         "The amount of RAM on the AVD. This RAM is allocated from the host system while the AVD is running. Larger amounts of RAM will " +
@@ -558,12 +583,15 @@ private fun EmulatedPerformanceGroup(
       Text("VM heap size", Modifier.alignByBaseline().padding(end = Padding.SMALL))
 
       StorageCapacityField(
-        device.vmHeapSize,
-        validateVmHeapSize(device.vmHeapSize),
-        onValueChange = { onDeviceChange(device.copy(vmHeapSize = it)) },
+        state.vmHeapSize,
+        validateVmHeapSize(state.vmHeapSize),
         Modifier.alignByBaseline().padding(end = Padding.MEDIUM),
         !hasGooglePlayStore,
       )
+
+      LaunchedEffect(Unit) {
+        state.vmHeapSize.storageCapacity.collect { onDeviceChange(device.copy(vmHeapSize = it)) }
+      }
 
       InfoOutlineIcon(
         "The amount of RAM available to the Java virtual machine (VM) to allocate to running apps on the AVD. A larger VM heap allows " +
@@ -574,18 +602,25 @@ private fun EmulatedPerformanceGroup(
   }
 }
 
-private fun validateRam(ram: StorageCapacity?) =
+internal class EmulatedPerformanceGroupState internal constructor(device: VirtualDevice) {
+  internal val ram = StorageCapacityFieldState(requireNotNull(device.ram))
+  internal val vmHeapSize = StorageCapacityFieldState(requireNotNull(device.vmHeapSize))
+}
+
+private fun validateRam(ram: StorageCapacityFieldState) =
   when {
-    ram == null -> "Specify a RAM value"
-    ram < VirtualDevice.MIN_RAM ->
+    ram.valueIsEmpty() -> "Specify a RAM value"
+    ram.willOverflow() -> "RAM value is too large"
+    requireNotNull(ram.toStorageCapacity()) < VirtualDevice.MIN_RAM ->
       "RAM must be at least ${VirtualDevice.MIN_RAM}. Recommendation is ${StorageCapacity(1, StorageCapacity.Unit.GB)}."
     else -> null
   }
 
-private fun validateVmHeapSize(size: StorageCapacity?) =
+private fun validateVmHeapSize(size: StorageCapacityFieldState) =
   when {
-    size == null -> "Specify a VM heap size"
-    size < VirtualDevice.MIN_VM_HEAP_SIZE ->
+    size.valueIsEmpty() -> "Specify a VM heap size"
+    size.willOverflow() -> "VM heap size is too large"
+    requireNotNull(size.toStorageCapacity()) < VirtualDevice.MIN_VM_HEAP_SIZE ->
       "VM heap must be at least ${VirtualDevice.MIN_VM_HEAP_SIZE}"
     else -> null
   }
@@ -613,21 +648,17 @@ private fun PreferredAbiGroup(
   }
 }
 
-internal class StorageGroupState
-internal constructor(device: VirtualDevice, private val mode: Mode) {
+internal class StorageGroupState internal constructor(private val device: VirtualDevice) {
+  internal val internalStorage = StorageCapacityFieldState(requireNotNull(device.internalStorage))
   internal var selectedRadioButton by mutableStateOf(RadioButton.valueOf(device.expandedStorage))
-  internal var custom by mutableStateOf<StorageCapacity?>(customValue(device))
+  internal val custom = StorageCapacityFieldState(customValue(device))
   internal val existingImage = TextFieldState(device.expandedStorage.toTextFieldValue())
-
-  /** The initial value of Expanded storage - Custom before any edits */
-  private val oldCustom =
-    if (device.expandedStorage is Custom) device.expandedStorage.withMaxUnit() else null
 
   val expandedStorageFlow = snapshotFlow {
     when (selectedRadioButton) {
       RadioButton.CUSTOM -> {
-        val custom = custom
-        if (custom == null) null else Custom(custom.withMaxUnit())
+        val value = custom.toStorageCapacity()
+        if (value == null) null else Custom(value.withMaxUnit())
       }
       RadioButton.EXISTING_IMAGE -> ExistingImage(existingImage.text.toString())
       RadioButton.NONE -> None
@@ -636,13 +667,12 @@ internal constructor(device: VirtualDevice, private val mode: Mode) {
 
   internal fun isCustomChangedWarningVisible(isValid: Boolean) =
     when {
-      mode != Mode.EDIT -> false
       selectedRadioButton != RadioButton.CUSTOM -> false
       !isValid -> false
-      else -> {
-        val value = custom
-        value != null && oldCustom != Custom(value.withMaxUnit())
-      }
+      device.existingCustomExpandedStorage == null -> false
+      else ->
+        device.existingCustomExpandedStorage !=
+          Custom(checkNotNull(custom.toStorageCapacity()).withMaxUnit())
     }
 
   private companion object {

@@ -16,11 +16,14 @@
 package com.android.tools.idea.avd
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.isPopup
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -58,6 +61,13 @@ class LocalVirtualDeviceSourceTest {
     createLocalSystemImage(
       "google_apis",
       listOf(SystemImageTags.GOOGLE_APIS_TAG),
+      AndroidVersion(34),
+    )
+
+  private fun SdkFixture.api34Play() =
+    createLocalSystemImage(
+      "google_apis_playstore",
+      listOf(SystemImageTags.PLAY_STORE_TAG),
       AndroidVersion(34),
     )
 
@@ -141,16 +151,16 @@ class LocalVirtualDeviceSourceTest {
     val sdkFixture =
       SdkFixture().apply { repoPackages.setLocalPkgInfos(listOf(api34(), api34ext8())) }
     with(ConfigurationPageFixture(sdkFixture)) {
-      composeTestRule.onNodeWithText("34").assertIsSelected()
+      composeTestRule.onNodeWithClickableText("34").assertIsSelected()
 
-      composeTestRule.onNodeWithText("Show SDK extension system images").performClick()
-      composeTestRule.onNodeWithText("34-ext8").performClick()
+      composeTestRule.onNodeWithText("Show system images with SDK extensions").performClick()
+      composeTestRule.onNodeWithClickableText("34-ext8").performClick()
 
-      composeTestRule.onNodeWithText("Show SDK extension system images").performClick()
+      composeTestRule.onNodeWithText("Show system images with SDK extensions").performClick()
       composeTestRule.waitForIdle()
       assertThat(wizard.finishAction.action).isNull()
 
-      composeTestRule.onNodeWithText("Show SDK extension system images").performClick()
+      composeTestRule.onNodeWithText("Show system images with SDK extensions").performClick()
       composeTestRule.waitForIdle()
       assertThat(wizard.finishAction.action).isNotNull()
     }
@@ -169,19 +179,19 @@ class LocalVirtualDeviceSourceTest {
 
       with(ConfigurationPageFixture(this)) {
         // The name defaults to "Pixel 8 (2)" since Pixel 8 already exists
-        composeTestRule.onNodeWithText("Pixel 8 (2)").performTextReplacement("Pixel 8")
+        composeTestRule.onNodeWithEditableText("Pixel 8 (2)").performTextReplacement("Pixel 8")
         composeTestRule.waitForIdle()
 
         // We can't use Pixel 8 because it already exists
         assertThat(wizard.finishAction.action).isNull()
 
-        composeTestRule.onNodeWithText("Pixel 8").performTextReplacement("My Pixel!")
+        composeTestRule.onNodeWithEditableText("Pixel 8").performTextReplacement("My Pixel!")
         composeTestRule.waitForIdle()
 
         // We can't use "My Pixel!" because ! is not allowed in device names
         assertThat(wizard.finishAction.action).isNull()
 
-        composeTestRule.onNodeWithText("My Pixel!").performTextReplacement("My Pixel")
+        composeTestRule.onNodeWithEditableText("My Pixel!").performTextReplacement("My Pixel")
         composeTestRule.waitForIdle()
 
         // Create "My Pixel"
@@ -209,14 +219,14 @@ class LocalVirtualDeviceSourceTest {
 
         // Select RISC-V preferred ABI
         composeTestRule.onNodeWithText("Optimal").performScrollTo().performClick()
-        composeTestRule.onNodeWithText(SdkConstants.ABI_RISCV64).performClick()
+        composeTestRule.onNodeWithClickableText(SdkConstants.ABI_RISCV64).performClick()
 
         // We should have no validation error
         composeTestRule.waitForIdle()
         assertThat(wizard.finishAction.action).isNotNull()
 
         // Select a different system image without RISC-V
-        composeTestRule.onNodeWithText("Device").performClick()
+        composeTestRule.onNodeWithClickableText("Device").performClick()
         composeTestRule.onNodeWithText(api34Image.displayName).performClick()
 
         // We get an error banner and cannot proceed
@@ -231,7 +241,7 @@ class LocalVirtualDeviceSourceTest {
         // Change the preferred ABI to something we have
         composeTestRule.onNodeWithText("Additional settings").performClick()
         composeTestRule.onNodeWithText(SdkConstants.ABI_RISCV64).performScrollTo().performClick()
-        composeTestRule.onNodeWithText(recommendedAbiForHost()).performClick()
+        composeTestRule.onNodeWithClickableText(recommendedAbiForHost()).performClick()
 
         // We should be able to finish the edit
         composeTestRule
@@ -244,6 +254,45 @@ class LocalVirtualDeviceSourceTest {
         // The preferred ABI is written to disk
         assertThat(Files.readString(avdRoot.resolve("Pixel_8.avd").resolve("user-settings.ini")))
           .contains("${UserSettingsKey.PREFERRED_ABI}=${recommendedAbiForHost()}")
+      }
+    }
+  }
+
+  @Test
+  fun configurationPage_deviceDetails() {
+    with(SdkFixture()) {
+      val api34Image = api34()
+      val api34PlayImage = api34Play()
+      repoPackages.setLocalPkgInfos(listOf(api34Image, api34PlayImage))
+
+      with(ConfigurationPageFixture(this)) {
+        // The Play image should be selected by default, and present in the device details
+        composeTestRule.onNodeWithText(api34PlayImage.displayName).assertIsSelected()
+        composeTestRule.onAllNodes(hasText("System Image") and isHeading()).assertCountEquals(2)
+        composeTestRule.onNodeWithText("Google Play").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("34").assertCountEquals(2)
+
+        // Switch to Google APIs
+        composeTestRule.onNodeWithText("Google Play Store").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNode(hasText("Google APIs") and hasAnyAncestor(isPopup())).performClick()
+
+        // Device details no longer includes system image
+        composeTestRule.onAllNodes(hasText("System Image") and isHeading()).assertCountEquals(1)
+        composeTestRule.onNodeWithText("Google Play").assertDoesNotExist()
+        composeTestRule.onAllNodesWithText("34").assertCountEquals(1)
+
+        // Switch back to Google Play
+        composeTestRule.onNodeWithText("Google APIs").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule
+          .onNode(hasText("Google Play Store") and hasAnyAncestor(isPopup()))
+          .performClick()
+
+        // Back where we started
+        composeTestRule.onNodeWithText(api34PlayImage.displayName).assertIsSelected()
+        composeTestRule.onNodeWithText("Google Play").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("34").assertCountEquals(2)
       }
     }
   }
@@ -293,7 +342,7 @@ class LocalVirtualDeviceSourceTest {
         composeTestRule.onNodeWithText("Loading system images...").assertDoesNotExist()
 
         // We should be able to select Google Play now under Services
-        composeTestRule.onNodeWithText("Google APIs").performClick()
+        composeTestRule.onNodeWithClickableText("Google APIs").performClick()
         composeTestRule.waitForIdle()
         composeTestRule
           .onNode(hasText("Google Play Store") and hasAnyAncestor(isPopup()))

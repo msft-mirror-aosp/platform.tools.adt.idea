@@ -17,15 +17,14 @@ package com.android.tools.idea.avd
 
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextReplacement
-import com.android.testutils.MockitoKt
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import org.junit.AfterClass
+import org.junit.Assert.assertNull
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import org.mockito.Mockito
 
 @RunWith(JUnit4::class)
 class StorageCapacityFieldTest {
@@ -51,11 +50,8 @@ class StorageCapacityFieldTest {
   @Test
   fun replaceValueWithMaxValuePlus1() {
     // Arrange
-    val onValueChange = MockitoKt.mock<(StorageCapacity?) -> Unit>()
-
-    rule.setContent {
-      StorageCapacityField(StorageCapacity(2_048, StorageCapacity.Unit.MB), null, onValueChange)
-    }
+    val state = StorageCapacityFieldState(StorageCapacity(2_048, StorageCapacity.Unit.MB))
+    rule.setContent { StorageCapacityField(state, null) }
 
     // Act
     rule
@@ -63,6 +59,6 @@ class StorageCapacityFieldTest {
       .performTextReplacement("9223372036854775808")
 
     // Assert
-    Mockito.verify(onValueChange).invoke(null)
+    assertNull(state.toStorageCapacity())
   }
 }

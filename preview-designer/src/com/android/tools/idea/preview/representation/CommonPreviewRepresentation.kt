@@ -85,6 +85,7 @@ import com.android.tools.idea.rendering.isErrorResult
 import com.android.tools.idea.rendering.setupBuildListener
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentation
+import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationState
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
@@ -249,7 +250,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
               delegate = NavigatingInteractionHandler(it, navigationHandler)
             }
           }
-          .shouldZoomOnFirstComponentResize(false)
+          .waitForRenderBeforeRestoringZoom(true)
           .setDelegateDataProvider {
             when (it) {
               PREVIEW_VIEW_MODEL_STATUS.name -> previewViewModel
@@ -401,6 +402,14 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       delegateRefresh = ::invalidateAndRefresh,
     )
 
+  private val stateManager =
+    CommonPreviewStateManager(
+      surfaceProvider = { surface },
+      currentGroupFilterProvider = { previewFlowManager.getCurrentFilterAsGroup() },
+      previewFlowManager = previewFlowManager,
+      previewModeManager = previewModeManager,
+    )
+
   @VisibleForTesting
   var currentAnimationPreview: AnimationPreview<*>? = null
     private set
@@ -441,6 +450,10 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     invalidated.set(true)
   }
 
+  override fun getState() = stateManager.getState()
+
+  override fun setState(state: PreviewRepresentationState) = stateManager.setState(state)
+
   private fun onInit() {
     LOG.debug("onInit")
     if (Disposer.isDisposed(this)) {
@@ -472,6 +485,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
           element
         }
       } ?: return
+
+    stateManager.restoreState()
 
     if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
 
@@ -680,8 +695,12 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   }
 
   private fun onAfterRender() {
-    surface.sceneManagers.forEach { onAfterRender(it) }
-    previewViewModel.afterPreviewsRefreshed()
+    try {
+      surface.sceneManagers.forEach { onAfterRender(it) }
+    } finally {
+      // this should be run even if an onAfterRender throws an exception
+      previewViewModel.afterPreviewsRefreshed()
+    }
   }
 
   private fun configureLayoutlibSceneManager(

@@ -15,9 +15,11 @@
  */
 package com.android.tools.studio.labs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -25,7 +27,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.StudioComposePanel
+import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.flags.StudioFlags
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.STUDIO_LABS_EVENT
+import com.google.wireless.android.sdk.stats.StudioLabsEvent
+import com.google.wireless.android.sdk.stats.StudioLabsEvent.PageInteraction
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.options.BoundSearchableConfigurable
 import com.intellij.openapi.options.Configurable.Promo
@@ -33,6 +40,7 @@ import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.panel
 import icons.StudioIcons
 import javax.swing.Icon
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 class StudioLabsSettingsConfigurable :
@@ -43,33 +51,21 @@ class StudioLabsSettingsConfigurable :
   ),
   Promo,
   Disposable {
-  private val panelList =
-    listOf(
-      StudioLabsFeaturePanelUi(
-        flag = StudioFlags.STUDIOBOT_PROMPT_LIBRARY_ENABLED,
-        heading = "Prompt Library",
-        description =
-          "Allows to store frequently used prompts for quick access." +
-            " Optionally share prompts with other people working on a same project.",
-        imageSourceDefault = "images/studio_labs/prompt-library-settings.png",
-        imageSourceDark = "images/studio_labs/prompt-library-settings_dark.png",
-        imageDescription = "Prompt Library settings",
-      )
-    )
 
-  override fun createPanel(): DialogPanel = panel {
-    row { cell(StudioComposePanel { StudioLabsPanel() }) }
+  override fun createPanel(): DialogPanel {
+    log(PageInteraction.OPENED)
+    return panel { row { cell(StudioComposePanel { StudioLabsPanel() }) } }
   }
 
   @Composable
   fun StudioLabsPanel() {
     val scrollState = rememberScrollState()
-    Column {
+    Column(modifier = Modifier.background(JewelTheme.globalColors.panelBackground)) {
       Text("Opt in to Studio Labs to get early access to experimental features.")
       Column(modifier = Modifier.verticalScroll(scrollState)) {
         Spacer(modifier = Modifier.size(12.dp))
-        panelList.chunked(2).forEach { item ->
-          Row {
+        PANEL_LIST.chunked(2).forEach { item ->
+          Row(modifier = Modifier.padding(bottom = 8.dp)) {
             item.forEach {
               it.PanelContent()
               Spacer(modifier = Modifier.size(8.dp))
@@ -85,16 +81,46 @@ class StudioLabsSettingsConfigurable :
   }
 
   override fun isModified(): Boolean {
-    return panelList.any { it.isModified() }
+    return PANEL_LIST.any { it.isModified() }
   }
 
   override fun apply() {
-    panelList.forEach { it.apply() }
+    // Handles both apply and Ok button clicks
+    log(PageInteraction.APPLY_BUTTON_CLICKED)
+    PANEL_LIST.forEach { it.apply() }
   }
 
   override fun reset() {
-    panelList.forEach { it.reset() }
+    PANEL_LIST.forEach { it.reset() }
   }
 
   override fun dispose() {}
+
+  companion object {
+    private val PANEL_LIST =
+      listOf(
+        StudioLabsFeaturePanelUi(
+          flag = StudioFlags.STUDIOBOT_PROMPT_LIBRARY_ENABLED,
+          heading = "Prompt Library",
+          description =
+            "Allows to store frequently used prompts for quick access." +
+              " Optionally share prompts with other people working on a same project.",
+          imageSourceDefault = "images/studio_labs/prompt-library-settings.png",
+          imageSourceDark = "images/studio_labs/prompt-library-settings_dark.png",
+          imageDescription = "Prompt Library settings",
+        )
+      )
+
+    fun isThereAnyFeatureInLabs(): Boolean {
+      return PANEL_LIST.isNotEmpty()
+    }
+
+    private fun log(pageInteraction: PageInteraction) {
+      UsageTracker.log(
+        AndroidStudioEvent.newBuilder()
+          .setKind(STUDIO_LABS_EVENT)
+          .setStudioLabsEvent(StudioLabsEvent.newBuilder().setPageInteraction(pageInteraction))
+      )
+    }
+  }
 }

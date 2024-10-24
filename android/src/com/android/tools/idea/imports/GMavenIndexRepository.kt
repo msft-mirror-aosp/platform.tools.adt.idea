@@ -17,7 +17,18 @@ package com.android.tools.idea.imports
 
 import com.android.annotations.concurrency.Slow
 import com.android.io.CancellableFileIo
+import com.android.tools.idea.IdeInfo
+import com.android.tools.idea.sdk.IdeSdks
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.extensions.ExtensionNotApplicableException
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.util.EventDispatcher
+import com.intellij.util.application
 import com.intellij.util.io.HttpRequests
 import com.intellij.util.io.outputStream
 import java.io.IOException
@@ -29,11 +40,12 @@ import java.net.UnknownHostException
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.text.SimpleDateFormat
+import java.util.EventListener
 import java.util.Locale
 import java.util.Properties
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.exists
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -43,6 +55,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.annotations.TestOnly
 
 /** Network connection timeout in milliseconds. */
 private const val NETWORK_TIMEOUT_MILLIS = 3000
@@ -66,28 +79,40 @@ private const val ETAG_KEY = "etag"
 
 private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT)
 
+/** Key used in cache directories to locate the gmaven.index network cache. */
+private const val GMAVEN_INDEX_CACHE_DIR_KEY = "gmaven.index"
+
 /**
  * A repository provides Maven class registry generated from loading local disk cache, which is
  * actively refreshed from network request on GMaven indices on [baseUrl]/[RELATIVE_PATH], on a
  * scheduled basis (daily).
  *
- * [getMavenClassRegistry] returns the last known [MavenClassRegistry] if possible.
- *
  * The underlying [lastComputedMavenClassRegistry] is for storing the last known value for instant
  * query. The freshness is guaranteed by the [scheduler].
  */
-class GMavenIndexRepository(
+@Service
+class GMavenIndexRepository
+@TestOnly
+internal constructor(
   private val baseUrl: String,
   private val cacheDir: Path,
   coroutineScope: CoroutineScope,
-  coroutineDispatcher: CoroutineDispatcher = Dispatchers.Default,
+  coroutineDispatcher: CoroutineDispatcher,
 ) {
 
-  private class ValueWithETag(val data: ByteArray, val eTag: String)
+  constructor(
+    coroutineScope: CoroutineScope
+  ) : this(
+    BASE_URL,
+    Paths.get(PathManager.getSystemPath(), GMAVEN_INDEX_CACHE_DIR_KEY),
+    coroutineScope,
+    Dispatchers.Default,
+  )
 
   private val relativeCachePath =
     if (RELATIVE_PATH.endsWith(GZ_EXT)) RELATIVE_PATH.dropLast(GZ_EXT.length) else RELATIVE_PATH
-  private var lastComputedMavenClassRegistry = AtomicReference<MavenClassRegistry?>()
+
+  private val listeners = EventDispatcher.create(GMavenIndexRepositoryListener::class.java)
 
   init {
     coroutineScope.launch(coroutineDispatcher) {
@@ -106,14 +131,8 @@ class GMavenIndexRepository(
     }
   }
 
-  /**
-   * Returns the last known [MavenClassRegistry] if possible.
-   *
-   * Or new Maven class registry is created in the calling thread.
-   */
-  fun getMavenClassRegistry(): MavenClassRegistry {
-    return lastComputedMavenClassRegistry.get()
-      ?: MavenClassRegistry.createFrom(this).apply { lastComputedMavenClassRegistry.set(this) }
+  internal fun addListener(listener: GMavenIndexRepositoryListener, parentDisposable: Disposable) {
+    listeners.addListener(listener, parentDisposable)
   }
 
   /**
@@ -141,19 +160,7 @@ class GMavenIndexRepository(
   @Slow
   private fun refresh(url: String): RefreshStatus {
     val status = refreshDiskCache(url)
-
-    if (status == RefreshStatus.UPDATED) {
-      lastComputedMavenClassRegistry.getAndUpdate {
-        if (it == null) {
-          null
-        } else {
-          val mavenClassRegistry = MavenClassRegistry.createFrom(this)
-          // TODO: make it `debug` instead of `info` once it's stable.
-          thisLogger().info("Updated in-memory Maven class registry.")
-          mavenClassRegistry
-        }
-      }
-    }
+    if (status == RefreshStatus.UPDATED) listeners.multicaster.onIndexUpdated()
 
     return status
   }
@@ -305,5 +312,38 @@ class GMavenIndexRepository(
 
     /** Errors happen when refreshing. */
     ERROR,
+  }
+
+  private class ValueWithETag(val data: ByteArray, val eTag: String)
+
+  companion object {
+    fun getInstance(): GMavenIndexRepository = application.service()
+  }
+}
+
+/** Listener for events related to the [GMavenIndexRepository] service. */
+internal fun interface GMavenIndexRepositoryListener : EventListener {
+  fun onIndexUpdated()
+}
+
+/**
+ * Post-startup activity that kicks of the GMaven index refresh logic in [GMavenIndexRepository].
+ */
+class AutoRefresherForMavenClassRegistry : ProjectActivity {
+  init {
+    if (application.isUnitTestMode || application.isHeadlessEnvironment)
+      throw ExtensionNotApplicableException.create()
+  }
+
+  override suspend fun execute(project: Project) {
+    if (
+      !IdeInfo.getInstance().isAndroidStudio && !IdeSdks.getInstance().hasConfiguredAndroidSdk()
+    ) {
+      // IDE must not hit network on startup
+      return
+    }
+
+    // Start refresher in GMavenIndexRepository at project start-up.
+    GMavenIndexRepository.getInstance()
   }
 }

@@ -32,6 +32,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.android.dom.inspections.AndroidUnresolvableTagInspection
 import org.junit.After
 import org.junit.Before
@@ -86,6 +87,9 @@ class MavenImportUtilsKtTest {
 
     projectRule.fixture.configureFromExistingVirtualFile(psiFile.virtualFile)
 
+    // Fetch the registry early to pre-load it, so that `isAvailable` below doesn't return early.
+    val registry = runBlocking { MavenClassRegistryManager.getInstance().getMavenClassRegistry() }
+
     val action = AndroidMavenImportIntentionAction()
     val element = projectRule.fixture.moveCaret("PreviewView|")
     val available = action.isAvailable(projectRule.project, projectRule.fixture.editor, element)
@@ -93,7 +97,13 @@ class MavenImportUtilsKtTest {
     assertThat(action.text)
       .isEqualTo("Add dependency on androidx.camera:camera-view (alpha) and import")
 
-    action.perform(projectRule.project, projectRule.fixture.editor, element, false)
+    AndroidMavenImportIntentionAction.invoke(
+      projectRule.project,
+      projectRule.fixture.editor,
+      element,
+      registry,
+      sync = false,
+    )
     verify("androidx.camera:camera-view")
   }
 

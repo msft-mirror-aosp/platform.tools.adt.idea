@@ -15,11 +15,13 @@
  */
 package com.android.tools.idea.avd
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTextReplacement
 import com.android.repository.testframework.FakeProgressIndicator
 import com.android.sdklib.AndroidVersion
@@ -78,7 +80,7 @@ class EditVirtualDeviceDialogTest {
 
       composeTestRule.waitUntilDoesNotExist(hasText("Loading"))
 
-      composeTestRule.onNodeWithText("Pixel 7").performTextReplacement("Large Pages")
+      composeTestRule.onNodeWithEditableText("Pixel 7").performTextReplacement("Large Pages")
       composeTestRule.onNodeWithText("16 KB Page Size", substring = true).performClick()
 
       wizard.performAction(wizard.finishAction)
@@ -131,13 +133,16 @@ class EditVirtualDeviceDialogTest {
       composeTestRule.waitUntilDoesNotExist(hasText("Loading"))
 
       // We can't change the name to the AVD that it was cloned from
-      composeTestRule.onNodeWithText("Pixel 7 (2)").performTextReplacement("Pixel 7")
+      composeTestRule.onNodeWithEditableText("Pixel 7 (2)").performMouseInput {
+        moveTo(Offset(5f, 5f))
+      }
+      composeTestRule.onNodeWithEditableText("Pixel 7 (2)").performTextReplacement("Pixel 7")
       composeTestRule.waitForIdle()
       composeTestRule.onNodeWithText("already exists", substring = true).assertIsDisplayed()
       assertThat(wizard.finishAction.enabled).isFalse()
 
       // Change it back
-      composeTestRule.onNodeWithText("Pixel 7").performTextReplacement("Pixel 7 (2)")
+      composeTestRule.onNodeWithEditableText("Pixel 7").performTextReplacement("Pixel 7 (2)")
       composeTestRule.waitForIdle()
       wizard.performAction(wizard.finishAction)
       wizard.awaitClose()

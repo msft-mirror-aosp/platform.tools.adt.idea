@@ -15,61 +15,113 @@
  */
 package com.android.tools.idea.imports
 
-import com.android.tools.idea.IdeInfo
-import com.android.tools.idea.sdk.IdeSdks
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.extensions.ExtensionNotApplicableException
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.ProjectActivity
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.util.application
-import java.nio.file.Paths
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-
-/** Key used in cache directories to locate the gmaven.index network cache. */
-private const val GMAVEN_INDEX_CACHE_DIR_KEY = "gmaven.index"
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.TestOnly
 
 /**
  * An application service responsible for downloading index from network and populating the
- * corresponding Maven class registry. [getMavenClassRegistry] returns the the best effort of Maven
- * class registry when asked.
+ * corresponding Maven class registry. [getMavenClassRegistry] returns the most up-to-date Maven
+ * class registry available.
  */
 @Service
-class MavenClassRegistryManager(coroutineScope: CoroutineScope) {
-  private val gMavenIndexRepository =
-    GMavenIndexRepository(
-      BASE_URL,
-      Paths.get(PathManager.getSystemPath(), GMAVEN_INDEX_CACHE_DIR_KEY),
-      coroutineScope,
-    )
+class MavenClassRegistryManager
+@TestOnly
+internal constructor(
+  private val coroutineScope: CoroutineScope,
+  private val defaultDispatcher: CoroutineDispatcher,
+  private val ioDispatcher: CoroutineDispatcher,
+) : Disposable.Default {
 
-  /** Returns [MavenClassRegistry] extracted from [gMavenIndexRepository]. */
-  fun getMavenClassRegistry() = gMavenIndexRepository.getMavenClassRegistry()
+  constructor(
+    coroutineScope: CoroutineScope
+  ) : this(coroutineScope, Dispatchers.Default, Dispatchers.IO)
+
+  /**
+   * Job that returns a [MavenClassRegistry].
+   *
+   * This is initially set to an unlaunched Job, so that the registry is only initialized if some
+   * consumer needs it. At the time it runs, it also registers a listener for updates whenever the
+   * underlying index is changed.
+   *
+   * After any updates, this will be replaced with a newly completed Job that returns the new
+   * [MavenClassRegistry].
+   */
+  @Volatile
+  private var registryJob =
+    coroutineScope.async(defaultDispatcher, CoroutineStart.LAZY) {
+      // Register for index updates only now that we're initializing the registry; any index updates
+      // before initialization can be ignored, since there's no registry to be updated.
+      val gmavenIndexRepository = GMavenIndexRepository.getInstance()
+      gmavenIndexRepository.addListener(::onIndexUpdated, this@MavenClassRegistryManager)
+
+      withContext(ioDispatcher) {
+        MavenClassRegistry.createFrom { gmavenIndexRepository.loadIndexFromDisk() }
+      }
+    }
+
+  /**
+   * Returns a [MavenClassRegistry]. Blocks for disk IO if the registry hasn't been initialized yet.
+   */
+  @OptIn(ExperimentalCoroutinesApi::class)
+  @Deprecated("Use tryGetMavenClassRegistry or getMavenClassRegistry instead.")
+  fun getMavenClassRegistryBlocking(): MavenClassRegistry {
+    val job = registryJob
+    if (job.isCompleted) return job.getCompleted()
+
+    return runBlocking { job.await() }
+  }
+
+  /**
+   * Returns [MavenClassRegistry] if it has been initialized. Otherwise, kicks off initialization in
+   * the background and immediately returns null.
+   */
+  @OptIn(ExperimentalCoroutinesApi::class)
+  fun tryGetMavenClassRegistry(): MavenClassRegistry? {
+    val job = registryJob
+    if (job.isCompleted) return job.getCompleted()
+
+    job.start()
+    return null
+  }
+
+  /**
+   * Returns a [MavenClassRegistry]. Suspends for disk IO if the registry hasn't been initialized
+   * yet.
+   */
+  suspend fun getMavenClassRegistry(): MavenClassRegistry {
+    return registryJob.await()
+  }
+
+  private fun onIndexUpdated() {
+    coroutineScope.launch(defaultDispatcher) {
+      val job =
+        coroutineScope.async(ioDispatcher) {
+          MavenClassRegistry.createFrom { GMavenIndexRepository.getInstance().loadIndexFromDisk() }
+        }
+
+      // Only store the new job in [registryJob] after it's finished initialization in the
+      // background. This allows any consumers to continue to use the older index while the new one
+      // is being created.
+      job.join()
+      registryJob = job
+      thisLogger().info("Updated in-memory Maven class registry.")
+    }
+  }
 
   companion object {
     @JvmStatic fun getInstance(): MavenClassRegistryManager = application.service()
-  }
-}
-
-class AutoRefresherForMavenClassRegistry : ProjectActivity {
-  init {
-    val app = ApplicationManager.getApplication()
-    if (app.isUnitTestMode || app.isHeadlessEnvironment) {
-      throw ExtensionNotApplicableException.create()
-    }
-  }
-
-  override suspend fun execute(project: Project) {
-    if (
-      !IdeInfo.getInstance().isAndroidStudio && !IdeSdks.getInstance().hasConfiguredAndroidSdk()
-    ) {
-      // IDE must not hit network on startup
-      return
-    }
-
-    // Start refresher in GMavenIndexRepository at project start-up.
-    MavenClassRegistryManager.getInstance()
   }
 }

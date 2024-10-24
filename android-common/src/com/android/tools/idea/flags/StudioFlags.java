@@ -1049,11 +1049,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS = new BooleanFlag(
     EMBEDDED_EMULATOR, "ui.settings.debug.layout", "Show Debug Layout in UI settings",
     "Enables Debug Layout in Device UI Shortcuts to display layout bounds",
-    false);
+    ChannelDefault.enabledUpTo(CANARY));
   public static final Flag<Boolean> EMBEDDED_EMULATOR_GESTURE_NAVIGATION_IN_UI_SETTINGS = new BooleanFlag(
     EMBEDDED_EMULATOR, "ui.settings.gesture.navigation", "Show Gesture Navigation in Device UI Shortcuts",
     "Enables Gesture Navigation setting in Device UI Shortcuts",
-    false);
+    ChannelDefault.enabledUpTo(CANARY));
   //endregion
 
   //region Device Mirroring
@@ -1243,7 +1243,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> ENABLE_SCREENSHOT_TESTING = new BooleanFlag(
     TESTING, "screenshot.testing", "Run screenshot tests",
-    "If enabled, a screenshotTest source set will be added for running screenshot tests",
+    "If enabled, preview screenshot tests can be run from Studio and test results will be displayed in the test matrix",
     false
   );
 
@@ -1457,12 +1457,6 @@ public final class StudioFlags {
     COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
     "If enabled, multiple previews associated with composable will be grouped. Please invalidates file caches after " +
     "enabling or disabling (File -> Invalidate Caches...)", ChannelDefault.enabledUpTo(CANARY));
-
-  public static final Flag<Boolean> PREVIEW_DYNAMIC_ZOOM_TO_FIT = new BooleanFlag(
-    COMPOSE, "preview.dynamic.zoom.to.fit", "Enable dynamic Zoom to Fit in preview",
-    "If enabled, Zoom to Fit action will take into account the number of previews and minimum size for each preview. " +
-    "Not applicable in organization layout.",
-    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = new BooleanFlag(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
@@ -1710,6 +1704,14 @@ public final class StudioFlags {
       "The URL for FTL Direct Access to monitor quota usage and limit.",
       "monitoring.googleapis.com"
     );
+
+  public static final Flag<Boolean> SHOW_OEM_LAB_DEVICES =
+    new BooleanFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.show.oem.lab.devices",
+      "Show OEM lab devices",
+      "OEM lab devices are available to users.",
+      false);
 
   // endregion Firebase Test Lab
 
@@ -2080,7 +2082,7 @@ public final class StudioFlags {
   // region STUDIO_LABS
   private static final FlagGroup STUDIO_LABS = new FlagGroup(FLAGS, "studiolabs", "Studio Labs");
   public static final Flag<Boolean> STUDIO_LABS_SETTINGS_ENABLED =
-    new BooleanFlag(STUDIO_LABS, "enabled", "Enable Studio Labs in settings", "Enables studio labs in settings.", ChannelDefault.enabledUpTo(CANARY));
+    new BooleanFlag(STUDIO_LABS, "enabled", "Enable Studio Labs in settings", "Enables studio labs in settings.", ChannelDefault.enabledUpTo(DEV));
   // endregion STUDIO_LABS
 
   // region WEAR_RUN_CONFIGS_AUTOCREATE

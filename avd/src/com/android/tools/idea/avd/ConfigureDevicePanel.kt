@@ -16,7 +16,9 @@
 package com.android.tools.idea.avd
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.internal.avd.EmulatedProperties
-import com.android.tools.idea.adddevicedialog.AndroidVersionSelection
+import com.android.tools.idea.adddevicedialog.DeviceDetails
 import com.android.tools.idea.adddevicedialog.TableSelectionState
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
@@ -41,6 +43,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
+import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.TabData
 import org.jetbrains.jewel.ui.component.TabStrip
 import org.jetbrains.jewel.ui.component.Text
@@ -56,27 +60,39 @@ internal fun ConfigureDevicePanel(
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
   onImportButtonClick: () -> Unit,
 ) {
-  Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-    Text(
-      "Configure virtual device",
-      fontWeight = FontWeight.SemiBold,
-      fontSize = LocalTextStyle.current.fontSize * 1.2,
-      modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
-    )
-    Text(
-      "Select the system image you'd like to use with the device profile you selected. You can " +
-        "also change additional settings that affect the emulated device.",
-      color = JewelTheme.globalColors.text.info,
-      modifier = Modifier.padding(bottom = Padding.LARGE),
-    )
-    Tabs(
-      configureDevicePanelState,
-      initialSystemImage,
-      images,
-      deviceNameValidator,
-      onDownloadButtonClick,
-      onSystemImageTableRowClick,
-      onImportButtonClick,
+  Row {
+    Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
+      Text(
+        "Configure virtual device",
+        fontWeight = FontWeight.SemiBold,
+        fontSize = LocalTextStyle.current.fontSize * 1.2,
+        modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
+      )
+      Text(
+        "Select the system image you'd like to use with the device profile you selected. You can " +
+          "also change additional settings that affect the emulated device.",
+        color = JewelTheme.globalColors.text.info,
+        modifier = Modifier.padding(bottom = Padding.LARGE),
+      )
+      Tabs(
+        configureDevicePanelState,
+        initialSystemImage,
+        images,
+        deviceNameValidator,
+        onDownloadButtonClick,
+        onSystemImageTableRowClick,
+        onImportButtonClick,
+      )
+    }
+
+    Divider(Orientation.Vertical)
+    DeviceDetails(
+      configureDevicePanelState.device.device.toVirtualDeviceProfile(),
+      systemImage =
+        configureDevicePanelState.systemImageTableSelectionState.selection?.takeIf {
+          configureDevicePanelState.validity.isSystemImageTableSelectionValid
+        },
+      modifier = Modifier.width(200.dp).padding(vertical = 12.dp, horizontal = 8.dp),
     )
   }
 }
@@ -170,7 +186,6 @@ internal constructor(
   device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
   image: ISystemImage?,
-  mode: Mode,
 ) {
   internal var device by mutableStateOf(device)
 
@@ -178,7 +193,8 @@ internal constructor(
     private set
 
   internal val systemImageTableSelectionState = TableSelectionState(image)
-  internal val storageGroupState = StorageGroupState(device, mode)
+  internal val storageGroupState = StorageGroupState(device)
+  internal val emulatedPerformanceGroupState = EmulatedPerformanceGroupState(device)
 
   internal val isValid
     get() =
@@ -267,7 +283,8 @@ internal constructor(
     device =
       device.copy(
         skin = getSkin(skin),
-        expandedStorage = Custom(checkNotNull(storageGroupState.custom).withMaxUnit()),
+        expandedStorage =
+          Custom(checkNotNull(storageGroupState.custom.toStorageCapacity()).withMaxUnit()),
         cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
         graphicsMode = GraphicsMode.AUTO,
         ram = EmulatedProperties.defaultRamSize(device.device).toStorageCapacity(),
@@ -276,15 +293,10 @@ internal constructor(
   }
 }
 
-internal enum class Mode {
-  ADD,
-  EDIT,
-}
-
 internal data class Validity
 internal constructor(
   private val isDeviceNameValid: Boolean = true,
-  private val isSystemImageTableSelectionValid: Boolean = true,
+  internal val isSystemImageTableSelectionValid: Boolean = true,
   internal val isExpandedStorageValid: Boolean = true,
   val isPreferredAbiValid: Boolean = true,
 ) {

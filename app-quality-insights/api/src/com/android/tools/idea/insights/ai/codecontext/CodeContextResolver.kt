@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.insights.ai.codecontext
 
+import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.insights.StacktraceGroup
 import com.android.tools.idea.insights.experiments.AppInsightsExperimentFetcher
 import com.android.tools.idea.insights.experiments.Experiment
 import com.android.tools.idea.insights.experiments.ExperimentGroup
-import com.android.tools.idea.studiobot.StudioBot
 import com.intellij.execution.filters.ExceptionInfoCache
 import com.intellij.execution.filters.ExceptionWorker.parseExceptionLine
 import com.intellij.openapi.application.readAction
@@ -31,7 +31,12 @@ import com.intellij.psi.search.ProjectScope
 
 data class CodeContextData(val codeContext: List<CodeContext>, val experimentType: Experiment) {
   companion object {
-    val EMPTY = CodeContextData(emptyList(), Experiment.CONTROL)
+    /**
+     * The default experiment state for users who disable context sharing settings or for whatever
+     * reason not assigned to an experiment
+     */
+    val UNASSIGNED = CodeContextData(emptyList(), Experiment.UNKNOWN)
+    val CONTROL = CodeContextData(emptyList(), Experiment.CONTROL)
   }
 }
 
@@ -65,8 +70,8 @@ class CodeContextResolverImpl(private val project: Project) : CodeContextResolve
         Experiment.TOP_SOURCE -> 1
         Experiment.TOP_THREE_SOURCES -> 3
         Experiment.ALL_SOURCES -> Integer.MAX_VALUE
-        Experiment.CONTROL,
-        Experiment.UNKNOWN -> return CodeContextData.EMPTY
+        Experiment.CONTROL -> return CodeContextData.CONTROL
+        Experiment.UNKNOWN -> return CodeContextData.UNASSIGNED
       }
     return CodeContextData(getSource(stack, limit), experiment)
   }
@@ -90,8 +95,7 @@ class CodeContextResolverImpl(private val project: Project) : CodeContextResolve
             resolve.classes.keys.firstOrNull {
               index.isInSource(it) || index.isInGeneratedSources(it)
             } ?: return@readAction null
-          if (StudioBot.getInstance().aiExcludeService(project).isFileExcluded(file))
-            return@readAction null
+          if (GeminiPluginApi.getInstance().isFileExcluded(project, file)) return@readAction null
           val language =
             file.extension?.let { Language.fromExtension(it) } ?: return@readAction null
           CodeContext(className, file.path, file.readText(), language)

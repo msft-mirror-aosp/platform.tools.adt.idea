@@ -18,6 +18,7 @@ package com.android.tools.idea.avd
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,11 +36,13 @@ import com.android.tools.idea.adddevicedialog.DeviceGridPage
 import com.android.tools.idea.adddevicedialog.DeviceLoadingPage
 import com.android.tools.idea.adddevicedialog.DeviceTable
 import com.android.tools.idea.adddevicedialog.DeviceTableColumns
+import com.android.tools.idea.adddevicedialog.DeviceTableShowDetailsState
 import com.android.tools.idea.adddevicedialog.FormFactor
 import com.android.tools.idea.adddevicedialog.SingleSelectionRadioButtons
 import com.android.tools.idea.adddevicedialog.TableColumn
 import com.android.tools.idea.adddevicedialog.TableColumnWidth
 import com.android.tools.idea.adddevicedialog.TableSelectionState
+import com.android.tools.idea.adddevicedialog.TableSortState
 import com.android.tools.idea.adddevicedialog.TableTextColumn
 import com.android.tools.idea.adddevicedialog.WizardAction
 import com.android.tools.idea.adddevicedialog.WizardButton
@@ -57,6 +60,7 @@ import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.JBMenuItem
 import com.intellij.openapi.ui.JBPopupMenu
+import com.intellij.util.ui.JBUI
 import icons.StudioIconsCompose
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
@@ -74,7 +78,9 @@ internal class AddDeviceWizard(
 ) {
 
   fun createDialog(): ComposeWizard {
-    return ComposeWizard(project, "Add Device") { DeviceGridPage() }
+    return ComposeWizard(project, "Add Device", minimumSize = DEVICE_DIALOG_MIN_SIZE) {
+      DeviceGridPage()
+    }
   }
 
   @Composable
@@ -87,6 +93,9 @@ internal class AddDeviceWizard(
       withContext(AndroidDispatchers.workerThread) { accelerationError = accelerationCheck() }
     }
 
+    val deviceTableShowDetailsState = getOrCreateState { DeviceTableShowDetailsState() }
+    val lazyListState = getOrCreateState { LazyListState() }
+    val tableSortState = getOrCreateState { TableSortState<VirtualDeviceProfile>() }
     val filterState = getOrCreateState { VirtualDeviceFilterState() }
     val selectionState = getOrCreateState { TableSelectionState<VirtualDeviceProfile>() }
 
@@ -157,13 +166,19 @@ internal class AddDeviceWizard(
                 FormFactor.uniqueValuesOf(profiles),
                 filterState.formFactorFilter,
               )
-              Divider(orientation = Orientation.Horizontal, Modifier.padding(16.dp))
+              Divider(
+                orientation = Orientation.Horizontal,
+                Modifier.padding(vertical = 16.dp, horizontal = 2.dp),
+              )
               CheckboxRow(
                 "Show obsolete device profiles",
                 checked = filterState.showDeprecated,
                 onCheckedChange = { filterState.showDeprecated = it },
               )
             },
+            showDetailsState = deviceTableShowDetailsState,
+            lazyListState = lazyListState,
+            tableSortState = tableSortState,
             tableSelectionState = selectionState,
             filterState = filterState,
             onRowSecondaryClick = { device, offset ->
@@ -203,7 +218,7 @@ private class VirtualDeviceFilterState : DeviceFilterState<VirtualDeviceProfile>
 private val virtualDeviceName =
   TableTextColumn<VirtualDeviceProfile>(
     "Name",
-    TableColumnWidth.Weighted(2f),
+    TableColumnWidth.Weighted(3f),
     attribute = { if (it.isDeprecated) it.name + " (Obsolete)" else it.name },
     maxLines = 2,
   )
@@ -225,5 +240,8 @@ private val playColumn =
 
 private val avdColumns =
   with(DeviceTableColumns) {
-    persistentListOf(icon, virtualDeviceName, playColumn, width, height, density)
+    persistentListOf(icon, virtualDeviceName, playColumn, apiRange, width, height, density)
   }
+
+internal val DEVICE_DIALOG_MIN_SIZE
+  get() = JBUI.size(750, 550)

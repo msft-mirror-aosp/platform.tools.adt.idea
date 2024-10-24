@@ -16,7 +16,6 @@
 package com.android.tools.idea.templates.recipe
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.testutils.MockitoKt
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.lint.common.getModuleDir
@@ -26,12 +25,14 @@ import com.intellij.openapi.application.ApplicationManager
 import org.jetbrains.annotations.SystemDependent
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import java.io.File
 
 class DefaultRecipeExecutorWithGradleModelTest : GradleFileModelTestCase("tools/adt/idea/android-templates/testData/recipe") {
 
-  private val mockProjectTemplateData = MockitoKt.mock<ProjectTemplateData>()
-  private val mockModuleTemplateData = MockitoKt.mock<ModuleTemplateData>()
+  private val mockProjectTemplateData = mock<ProjectTemplateData>()
+  private val mockModuleTemplateData = mock<ModuleTemplateData>()
 
   private val EMPTY_SETTINGS_CONTENT = """
      pluginManagement {
@@ -57,8 +58,8 @@ class DefaultRecipeExecutorWithGradleModelTest : GradleFileModelTestCase("tools/
 
   @Before
   fun init() {
-    MockitoKt.whenever(mockModuleTemplateData.projectTemplateData).thenReturn(mockProjectTemplateData)
-    MockitoKt.whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("8.0.0"))
+    whenever(mockModuleTemplateData.projectTemplateData).thenReturn(mockProjectTemplateData)
+    whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("8.0.0"))
   }
 
   private fun deleteVersionCatalogFile() {
