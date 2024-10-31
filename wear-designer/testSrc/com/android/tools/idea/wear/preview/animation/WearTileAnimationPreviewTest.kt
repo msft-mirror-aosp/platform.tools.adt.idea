@@ -65,6 +65,7 @@ class WearTileAnimationPreviewTest {
       whenever(this.sourceFile).thenReturn(mock(PsiFile::class.java))
       whenever(this.logger).thenReturn(RenderLogger())
       whenever(this.renderResult).thenReturn(Status.SUCCESS.createResult())
+      whenever(this.module).doAnswer { projectRule.module }
     }
 
   private val wearTilePreviewElement: PsiWearTilePreviewElement =

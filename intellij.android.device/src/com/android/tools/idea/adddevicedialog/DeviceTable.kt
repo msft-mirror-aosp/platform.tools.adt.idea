@@ -51,9 +51,9 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.HorizontalSplitLayout
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.component.ToggleableIconButton
 import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.rememberSplitLayoutState
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -82,7 +82,7 @@ fun <DeviceT : DeviceProfile> DeviceTable(
     first = { DeviceFiltersPanel { filterContent() } },
     second = {
       Column {
-        Row(Modifier.padding(horizontal = 4.dp)) {
+        Row(Modifier.padding(start = 4.dp, end = 4.dp, top = 6.dp)) {
           TextField(
             textState,
             leadingIcon = {
@@ -108,9 +108,10 @@ fun <DeviceT : DeviceProfile> DeviceTable(
             modifier = Modifier.weight(1f).padding(2.dp).focusRequester(searchFieldFocusRequester),
           )
           Tooltip(tooltip = { Text("Show device details") }) {
-            IconButton(
-              onClick = { showDetailsState.visible = !showDetailsState.visible },
-              Modifier.align(Alignment.CenterVertically).padding(2.dp),
+            ToggleableIconButton(
+              showDetailsState.visible,
+              onValueChange = { showDetailsState.visible = it },
+              Modifier.align(Alignment.CenterVertically).padding(4.dp),
             ) {
               Icon(
                 AllIconsKeys.Actions.PreviewDetails,
@@ -192,6 +193,7 @@ object DeviceTableColumns {
   val api =
     DefaultSortableTableColumn<DeviceProfile, Int>(
       "API",
+      width = TableColumnWidth.ToFit("API", extraPadding = 16.dp),
       attribute = { it.apiRange.lowerEndpoint() },
     )
 
@@ -207,19 +209,31 @@ object DeviceTableColumns {
   val apiRange =
     TableColumn(
       "API",
-      width = TableColumnWidth.Weighted(1f),
+      width = TableColumnWidth.ToFit("30-35", extraPadding = 8.dp),
       comparator = apiRangeAscendingOrder,
       reverseComparator = apiRangeDescendingOrder,
       rowContent = { Text(it.apiRange.firstAndLastApiLevel()) },
     )
 
+  // Make it just big enough to fit the header plus the sort icon.
+  private val widthHeightColumnWidth = TableColumnWidth.ToFit("Height", extraPadding = 16.dp)
+
   val width =
-    DefaultSortableTableColumn<DeviceProfile, Int>("Width", attribute = { it.resolution.width })
+    DefaultSortableTableColumn<DeviceProfile, Int>(
+      "Width",
+      width = widthHeightColumnWidth,
+      attribute = { it.resolution.width },
+    )
   val height =
-    DefaultSortableTableColumn<DeviceProfile, Int>("Height", attribute = { it.resolution.height })
+    DefaultSortableTableColumn<DeviceProfile, Int>(
+      "Height",
+      width = widthHeightColumnWidth,
+      attribute = { it.resolution.height },
+    )
   val density =
     TableTextColumn<DeviceProfile>(
       "Density",
+      width = TableColumnWidth.ToFit("Density", extraPadding = 16.dp),
       attribute = { "${it.displayDensity} dpi" },
       comparator = compareBy { it.displayDensity },
     )

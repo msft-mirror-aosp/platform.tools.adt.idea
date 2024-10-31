@@ -26,10 +26,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.sdklib.ISystemImage
 import com.android.sdklib.devices.Device
+import com.android.sdklib.internal.avd.AvdInfo
+import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.adddevicedialog.ComposeWizard
 import com.android.tools.idea.adddevicedialog.DeviceFilterState
 import com.android.tools.idea.adddevicedialog.DeviceGridPage
@@ -49,6 +55,9 @@ import com.android.tools.idea.adddevicedialog.WizardButton
 import com.android.tools.idea.adddevicedialog.WizardPageScope
 import com.android.tools.idea.adddevicedialog.uniqueValuesOf
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
+import com.android.tools.idea.avdmanager.checkAcceleration
+import com.android.tools.idea.avdmanager.ui.AvdOptionsModel
+import com.android.tools.idea.avdmanager.ui.AvdWizardUtils
 import com.android.tools.idea.avdmanager.ui.CloneDeviceAction
 import com.android.tools.idea.avdmanager.ui.CreateDeviceAction
 import com.android.tools.idea.avdmanager.ui.DeleteDeviceAction
@@ -57,6 +66,11 @@ import com.android.tools.idea.avdmanager.ui.EditDeviceAction
 import com.android.tools.idea.avdmanager.ui.ExportDeviceAction
 import com.android.tools.idea.avdmanager.ui.ImportDevicesAction
 import com.android.tools.idea.concurrency.AndroidDispatchers
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
+import com.android.tools.idea.flags.StudioFlags
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.google.wireless.android.sdk.stats.DeviceManagerEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.JBMenuItem
 import com.intellij.openapi.ui.JBPopupMenu
@@ -71,10 +85,51 @@ import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 
+/**
+ * Shows either the new or old AVD creation dialog, depending on
+ * [StudioFlags.DEVICE_CATALOG_ENABLED].
+ *
+ * @return the AvdInfo of the created AVD, or null if the dialog was cancelled.
+ */
+suspend fun showAddDeviceDialog(project: Project?): AvdInfo? {
+  if (StudioFlags.DEVICE_CATALOG_ENABLED.get()) {
+    val source = withContext(workerThread) { LocalVirtualDeviceSource.create() }
+    return withContext(uiThread) {
+      var avdInfo: AvdInfo? = null
+      val wizard =
+        AddDeviceWizard(
+          source,
+          project,
+          accelerationCheck = { checkAcceleration(source.sdkHandler) },
+          onAdd = { avdInfo = it },
+        )
+      val created = wizard.createDialog().showAndGet()
+      if (created) {
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .setKind(AndroidStudioEvent.EventKind.DEVICE_MANAGER)
+            .setDeviceManagerEvent(
+              DeviceManagerEvent.newBuilder()
+                .setKind(DeviceManagerEvent.EventKind.VIRTUAL_CREATE_ACTION)
+            )
+        )
+      }
+      avdInfo
+    }
+  } else {
+    val avdOptionsModel = AvdOptionsModel(null)
+    withContext(uiThread) {
+      AvdWizardUtils.createAvdWizard(null, project, avdOptionsModel).showAndGet()
+    }
+    return avdOptionsModel.createdAvd.orElse(null)
+  }
+}
+
 internal class AddDeviceWizard(
   val source: LocalVirtualDeviceSource,
   val project: Project?,
   val accelerationCheck: () -> AccelerationErrorCode,
+  val onAdd: (AvdInfo) -> Unit = {},
 ) {
 
   fun createDialog(): ComposeWizard {
@@ -99,7 +154,8 @@ internal class AddDeviceWizard(
     val filterState = getOrCreateState { VirtualDeviceFilterState() }
     val selectionState = getOrCreateState { TableSelectionState<VirtualDeviceProfile>() }
 
-    DeviceLoadingPage(source) { profiles ->
+    val profilesFlow = remember { source.profiles }
+    DeviceLoadingPage(profilesFlow) { profiles ->
       // Holds a Device that should be selected as a result of a DeviceUiAction; e.g. when a new
       // Device is created, we select it automatically.
       var dialogSelectedDevice by remember { mutableStateOf<Device?>(null) }
@@ -156,7 +212,7 @@ internal class AddDeviceWizard(
         DeviceGridPage(
           filterState = filterState,
           selectionState = selectionState,
-          onSelectionUpdated = { with(source) { selectionUpdated(it) } },
+          onSelectionUpdated = { with(source) { selectionUpdated(it, ::finish) } },
         ) {
           DeviceTable(
             profiles,
@@ -206,6 +262,17 @@ internal class AddDeviceWizard(
       }
     }
   }
+
+  private suspend fun finish(device: VirtualDevice, image: ISystemImage): Boolean {
+    val avdInfo =
+      withContext(AndroidDispatchers.diskIoThread) {
+        VirtualDevices(source.avdManager).add(device, image)
+      }
+    if (avdInfo != null) {
+      onAdd(avdInfo)
+    }
+    return true
+  }
 }
 
 private class VirtualDeviceFilterState : DeviceFilterState<VirtualDeviceProfile>() {
@@ -226,14 +293,18 @@ private val virtualDeviceName =
 private val playColumn =
   TableColumn<VirtualDeviceProfile>(
     "Play",
-    TableColumnWidth.Fixed(45.dp),
+    TableColumnWidth.ToFit(
+      "Play",
+      textStyle = TextStyle.Default.copy(fontWeight = FontWeight.Bold),
+      extraPadding = 16.dp,
+    ),
     comparator = compareBy { it.isGooglePlaySupported },
   ) {
     if (it.isGooglePlaySupported) {
       Icon(
         StudioIconsCompose.Avd.DevicePlayStore,
         contentDescription = "Play Store supported",
-        modifier = Modifier.size(16.dp),
+        modifier = Modifier.align(Alignment.Center).padding(end = 16.dp).size(16.dp),
       )
     }
   }

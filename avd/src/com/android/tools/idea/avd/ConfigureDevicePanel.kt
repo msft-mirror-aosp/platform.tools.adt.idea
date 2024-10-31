@@ -48,6 +48,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.TabData
 import org.jetbrains.jewel.ui.component.TabStrip
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 
 @Composable
@@ -58,22 +59,23 @@ internal fun ConfigureDevicePanel(
   deviceNameValidator: DeviceNameValidator,
   onDownloadButtonClick: (String) -> Unit,
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
-  onImportButtonClick: () -> Unit,
 ) {
-  Row {
-    Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp)) {
-      Text(
-        "Configure virtual device",
-        fontWeight = FontWeight.SemiBold,
-        fontSize = LocalTextStyle.current.fontSize * 1.2,
-        modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
-      )
-      Text(
-        "Select the system image you'd like to use with the device profile you selected. You can " +
-          "also change additional settings that affect the emulated device.",
-        color = JewelTheme.globalColors.text.info,
-        modifier = Modifier.padding(bottom = Padding.LARGE),
-      )
+  Row(Modifier.padding(top = Padding.LARGE)) {
+    Column(Modifier.weight(1f)) {
+      Column(Modifier.padding(horizontal = Padding.EXTRA_LARGE)) {
+        Text(
+          "Configure virtual device",
+          fontWeight = FontWeight.SemiBold,
+          fontSize = LocalTextStyle.current.fontSize * 1.2,
+          modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
+        )
+        Text(
+          "Select the system image you'd like to use with the device profile you selected. You can " +
+            "also change additional settings that affect the emulated device.",
+          color = JewelTheme.globalColors.text.info,
+          modifier = Modifier.padding(bottom = Padding.SMALL),
+        )
+      }
       Tabs(
         configureDevicePanelState,
         initialSystemImage,
@@ -81,18 +83,17 @@ internal fun ConfigureDevicePanel(
         deviceNameValidator,
         onDownloadButtonClick,
         onSystemImageTableRowClick,
-        onImportButtonClick,
       )
     }
 
     Divider(Orientation.Vertical)
     DeviceDetails(
       configureDevicePanelState.device.device.toVirtualDeviceProfile(),
+      Modifier.padding(horizontal = Padding.SMALL_MEDIUM).width(200.dp),
       systemImage =
         configureDevicePanelState.systemImageTableSelectionState.selection?.takeIf {
           configureDevicePanelState.validity.isSystemImageTableSelectionValid
         },
-      modifier = Modifier.width(200.dp).padding(vertical = 12.dp, horizontal = 8.dp),
     )
   }
 }
@@ -105,7 +106,6 @@ private fun Tabs(
   deviceNameValidator: DeviceNameValidator,
   onDownloadButtonClick: (String) -> Unit,
   onSystemImageTableRowClick: (ISystemImage) -> Unit,
-  onImportButtonClick: () -> Unit,
 ) {
   var selectedTab by remember { mutableStateOf(Tab.DEVICE) }
 
@@ -118,7 +118,8 @@ private fun Tabs(
         closable = false,
       )
     },
-    style = JewelTheme.defaultTabStyle,
+    JewelTheme.defaultTabStyle,
+    Modifier.padding(start = Padding.EXTRA_LARGE),
   )
 
   val servicesSet =
@@ -131,17 +132,19 @@ private fun Tabs(
   val devicePanelState = remember {
     if (initialSystemImage == null) {
       DevicePanelState(
-        AndroidVersionSelection(
-          androidVersions.firstOrNull { !it.isPreview } ?: AndroidVersion.DEFAULT
-        ),
-        servicesSet.firstOrNull(),
+        selectedApi =
+          AndroidVersionSelection(
+            androidVersions.firstOrNull { !it.isPreview } ?: AndroidVersion.DEFAULT
+          ),
+        selectedServices = servicesSet.firstOrNull(),
       )
     } else {
       DevicePanelState(
-        AndroidVersionSelection(AndroidVersion(initialSystemImage.androidVersion.apiLevel)),
-        initialSystemImage.getServices(),
-        !initialSystemImage.androidVersion.isBaseExtension,
-        initialSystemImage.isRecommended(),
+        selectedApi =
+          AndroidVersionSelection(AndroidVersion(initialSystemImage.androidVersion.apiLevel)),
+        selectedServices = initialSystemImage.getServices(),
+        showSdkExtensionSystemImages = !initialSystemImage.androidVersion.isBaseExtension,
+        showUnsupportedSystemImages = !initialSystemImage.isSupported(),
       )
     }
   }
@@ -157,14 +160,22 @@ private fun Tabs(
         deviceNameValidator,
         onDownloadButtonClick,
         onSystemImageTableRowClick,
-        Modifier.padding(Padding.SMALL),
+        Modifier.padding(horizontal = Padding.EXTRA_LARGE, vertical = Padding.SMALL_MEDIUM),
       )
-    Tab.ADDITIONAL_SETTINGS ->
-      AdditionalSettingsPanel(
-        configureDevicePanelState,
-        onImportButtonClick,
-        Modifier.padding(Padding.SMALL),
-      )
+    Tab.ADDITIONAL_SETTINGS -> {
+      if (configureDevicePanelState.hasPlayStore()) {
+        WarningBanner(
+          "Some device settings cannot be configured when using a Google Play Store image"
+        )
+      }
+
+      VerticallyScrollableContainer {
+        AdditionalSettingsPanel(
+          configureDevicePanelState,
+          Modifier.padding(horizontal = Padding.EXTRA_LARGE, vertical = Padding.SMALL_MEDIUM),
+        )
+      }
+    }
   }
 }
 
@@ -283,8 +294,7 @@ internal constructor(
     device =
       device.copy(
         skin = getSkin(skin),
-        expandedStorage =
-          Custom(checkNotNull(storageGroupState.custom.toStorageCapacity()).withMaxUnit()),
+        expandedStorage = Custom(storageGroupState.custom.valid().storageCapacity.withMaxUnit()),
         cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
         graphicsMode = GraphicsMode.AUTO,
         ram = EmulatedProperties.defaultRamSize(device.device).toStorageCapacity(),

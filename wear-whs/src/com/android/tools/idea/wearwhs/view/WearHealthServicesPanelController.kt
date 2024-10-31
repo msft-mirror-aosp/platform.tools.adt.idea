@@ -128,44 +128,54 @@ internal class WearHealthServicesPanelController(
     balloon.show(position, Balloon.Position.above)
   }
 
-  private fun notifyUser(message: String, type: MessageType) {
+  private fun notifyUserInPanelIfOpen(message: String, type: MessageType) {
     uiScope.launch {
       val isBalloonShowing = currentBalloon != null
       if (isBalloonShowing) {
         userInformationFlow.value = PanelInformation.TemporaryMessage(message)
       } else {
-        userInformationFlow.value = PanelInformation.EmptyMessage
-        Notifications.Bus.notify(
-          Notification(NOTIFICATION_GROUP_ID, message, type.toNotificationType())
-        )
+        notifyWithBalloon(message, type)
       }
     }
+  }
+
+  private fun notifyWithBalloon(message: String, type: MessageType) {
+    userInformationFlow.value = PanelInformation.EmptyMessage
+    Notifications.Bus.notify(
+      Notification(NOTIFICATION_GROUP_ID, message, type.toNotificationType())
+    )
   }
 
   private fun reset() {
     workerScope.launch {
       stateManager
         .reset()
-        .onSuccess { notifyUser(message("wear.whs.panel.reset.success"), MessageType.INFO) }
-        .onFailure { notifyUser(message("wear.whs.panel.reset.failure"), MessageType.ERROR) }
+        .onSuccess {
+          notifyUserInPanelIfOpen(message("wear.whs.panel.reset.success"), MessageType.INFO)
+        }
+        .onFailure {
+          notifyUserInPanelIfOpen(message("wear.whs.panel.reset.failure"), MessageType.ERROR)
+        }
     }
   }
 
   private fun applyChanges() {
     currentBalloon?.hide()
     workerScope.launch {
-      val applyType = if (stateManager.hasUserChanges.value) "apply" else "reapply"
       val changesApplied =
         if (stateManager.ongoingExercise.value) "sensor.values" else "capabilities"
 
       stateManager
         .applyChanges()
         .onSuccess {
-          notifyUser(message("wear.whs.panel.$applyType.$changesApplied.success"), MessageType.INFO)
+          notifyWithBalloon(
+            message("wear.whs.panel.apply.$changesApplied.success"),
+            MessageType.INFO,
+          )
         }
         .onFailure {
-          notifyUser(
-            message("wear.whs.panel.$applyType.$changesApplied.failure"),
+          notifyWithBalloon(
+            message("wear.whs.panel.apply.$changesApplied.failure"),
             MessageType.ERROR,
           )
         }
@@ -177,8 +187,12 @@ internal class WearHealthServicesPanelController(
     workerScope.launch {
       stateManager
         .triggerEvent(eventTrigger)
-        .onSuccess { notifyUser(message("wear.whs.event.trigger.success"), MessageType.INFO) }
-        .onFailure { notifyUser(message("wear.whs.event.trigger.failure"), MessageType.ERROR) }
+        .onSuccess {
+          notifyWithBalloon(message("wear.whs.event.trigger.success"), MessageType.INFO)
+        }
+        .onFailure {
+          notifyWithBalloon(message("wear.whs.event.trigger.failure"), MessageType.ERROR)
+        }
     }
   }
 }

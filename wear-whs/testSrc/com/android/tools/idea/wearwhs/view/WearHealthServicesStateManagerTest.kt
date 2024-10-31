@@ -253,32 +253,6 @@ class WearHealthServicesStateManagerTest {
   }
 
   @Test
-  fun `test reset loads 'all' preset, removes overrides and invokes device manager`() =
-    runBlocking {
-      stateManager.loadPreset(Preset.STANDARD).join()
-      stateManager.setOverrideValue(locationCapability, 3f)
-
-      assertEquals(0, deviceManager.clearContentProviderInvocations)
-
-      stateManager.reset()
-
-      stateManager
-        .getState(stepsCapability)
-        .mapState { it.upToDateState.enabled }
-        .waitForValue(true)
-      stateManager
-        .getState(locationCapability)
-        .mapState { it.upToDateState.overrideValue }
-        .waitForValue(WhsDataType.LOCATION.noValue())
-      stateManager
-        .getState(heartRateBpmCapability)
-        .mapState { it is UpToDateCapabilityUIState }
-        .waitForValue(true)
-
-      assertEquals(1, deviceManager.clearContentProviderInvocations)
-    }
-
-  @Test
   fun `when an exercise is ongoing reset only clears the overridden values`(): Unit = runBlocking {
     stateManager.loadPreset(Preset.STANDARD).join()
     stateManager.setOverrideValue(heartRateBpmCapability, 3f)
@@ -655,25 +629,47 @@ class WearHealthServicesStateManagerTest {
     stateManager.isStateStale.waitForValue(false)
   }
 
+  // Regression test for b/375476862
   @Test
-  fun `user changes are notified with a flow`(): Unit = runBlocking {
-    assertThat(stateManager.hasUserChanges.value).isFalse()
+  fun `reset button enables all sensors when ALL preset is selected`() =
+    runBlocking<Unit> {
+      stateManager.loadPreset(Preset.ALL).join()
+      capabilities.forEach {
+        stateManager.setCapabilityEnabled(it, false)
+        stateManager.getState(it).mapState { it.currentState.enabled }.waitForValue(false)
+      }
+      stateManager.applyChanges()
 
-    stateManager.setCapabilityEnabled(heartRateBpmCapability, false)
-    stateManager.hasUserChanges.waitForValue(true)
+      stateManager.reset()
 
-    stateManager.applyChanges()
-    stateManager.hasUserChanges.waitForValue(false)
+      stateManager.preset.waitForValue(Preset.ALL)
+      capabilities.forEach {
+        stateManager
+          .getState(it)
+          .mapState { (it as UpToDateCapabilityUIState).currentState.enabled }
+          .waitForValue(true)
+      }
+    }
 
-    stateManager.setCapabilityEnabled(heartRateBpmCapability, true)
-    stateManager.hasUserChanges.waitForValue(true)
+  // Regression test for b/375476862
+  @Test
+  fun `reset button only enables standard sensors when STANDARD preset is selected`() =
+    runBlocking<Unit> {
+      stateManager.loadPreset(Preset.STANDARD).join()
+      capabilities.forEach {
+        stateManager.setCapabilityEnabled(it, false)
+        stateManager.getState(it).mapState { it.currentState.enabled }.waitForValue(false)
+      }
+      stateManager.applyChanges()
 
-    deviceManager.activeExercise = true
-    // when there is an ongoing exercise, the capability availability changes are not considered as
-    // pending user changes
-    stateManager.hasUserChanges.waitForValue(false)
+      stateManager.reset()
 
-    stateManager.setOverrideValue(heartRateBpmCapability, 30)
-    stateManager.hasUserChanges.waitForValue(true)
-  }
+      stateManager.preset.waitForValue(Preset.STANDARD)
+      capabilities.forEach {
+        stateManager
+          .getState(it)
+          .mapState { (it as UpToDateCapabilityUIState).currentState.enabled }
+          .waitForValue(it.isStandardCapability)
+      }
+    }
 }

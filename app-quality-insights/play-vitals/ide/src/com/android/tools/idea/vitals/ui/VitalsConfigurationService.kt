@@ -24,7 +24,9 @@ import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.OfflineStatusManagerImpl
 import com.android.tools.idea.insights.VITALS_KEY
-import com.android.tools.idea.insights.ai.GeminiToolkitImpl
+import com.android.tools.idea.insights.ai.AiInsightToolkitImpl
+import com.android.tools.idea.insights.ai.GeminiAiInsightsOnboardingProvider
+import com.android.tools.idea.insights.ai.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.analytics.AppInsightsTrackerImpl
 import com.android.tools.idea.insights.client.AppConnection
@@ -238,7 +240,12 @@ class VitalsConfigurationManager(
               )
             },
             defaultFilters = createVitalsFilters(),
-            geminiToolkit = GeminiToolkitImpl(project),
+            aiInsightToolkit =
+              AiInsightToolkitImpl(
+                project,
+                GeminiAiInsightsOnboardingProvider(project),
+                CodeContextResolverImpl(project),
+              ),
             cache = cache,
           )
         controllerDeferred.complete(vitalsController)

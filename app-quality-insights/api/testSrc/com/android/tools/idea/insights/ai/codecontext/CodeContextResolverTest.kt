@@ -37,6 +37,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
+// lines 14, characters 344
 private val ANDROID_LIBRARY_CLASS_CONTENT =
   """
    package com.example.mylibrary;
@@ -56,6 +57,7 @@ private val ANDROID_LIBRARY_CLASS_CONTENT =
                              """
     .trimIndent()
 
+// lines 7, characters 174
 private val MAIN_ACTIVITY_CONTENT =
   """
   package com.example.myapp
@@ -67,6 +69,7 @@ private val MAIN_ACTIVITY_CONTENT =
   }
 """
     .trimIndent()
+// lines 18, characters 527
 private val PARTIAL_ACTIVITY_CONTENT =
   """
   package com.example.myapp
@@ -89,6 +92,7 @@ private val PARTIAL_ACTIVITY_CONTENT =
   }
 """
     .trimIndent()
+// lines 7, characters 176
 private val CIRCLE_ACTIVITY_CONTENT =
   """
   package com.example.myapp
@@ -96,6 +100,13 @@ private val CIRCLE_ACTIVITY_CONTENT =
   class CircleActivity : ComponentActivity() {
      override fun onCreate(savedInstanceState: Bundle?) {
          super.onCreate(savedInstanceState)
+         Foo().bar()
+     }
+  }
+
+  private class Foo {
+     fun bar() {
+        // Do something fun
      }
   }
 """
@@ -170,10 +181,20 @@ private val STACKTRACE =
                   blame = Blames.NOT_BLAMED,
                 ),
                 Frame(
+                  line = 6,
+                  file = "CircleActivity.kt",
+                  rawSymbol = "com.example.myapp.CircleActivity.onCreate(CircleActivity.kt:6)",
+                  symbol = "com.example.myapp.CircleActivity.onCreate",
+                  offset = 31,
+                  address = 0,
+                  library = "com.example.mylibrary.debug",
+                  blame = Blames.NOT_BLAMED,
+                ),
+                Frame(
                   line = 5,
                   file = "CircleActivity.kt",
-                  rawSymbol = "com.example.myapp.CircleActivity.onCreate(CircleActivity.kt:5)",
-                  symbol = "com.example.myapp.CircleActivity.onCreate",
+                  rawSymbol = "com.example.myapp.CircleActivity.Foo.bar(CircleActivity.kt:12)",
+                  symbol = "com.example.myapp.CircleActivity.Foo.bar",
                   offset = 31,
                   address = 0,
                   library = "com.example.mylibrary.debug",
@@ -283,11 +304,24 @@ class CodeContextResolverTest(private val experiment: Experiment) {
   private val fixture: CodeInsightTestFixture
     get() = projectRule.fixture
 
+  private lateinit var fakeGeminiPluginApi: FakeGeminiPluginApi
+
   companion object {
     @Suppress("unused") // Used by JUnit via reflection
     @JvmStatic
     @get:Parameterized.Parameters(name = "{0}")
     val modes = ExperimentGroup.CODE_CONTEXT.experiments
+
+    fun expectedCodeContextTrackingInfoByExperiment(
+      experiment: Experiment
+    ): CodeContextTrackingInfo =
+      when (experiment) {
+        Experiment.UNKNOWN,
+        Experiment.CONTROL -> CodeContextTrackingInfo.EMPTY
+        Experiment.TOP_SOURCE -> CodeContextTrackingInfo(1, 14, 344)
+        Experiment.TOP_THREE_SOURCES -> CodeContextTrackingInfo(3, 39, 1047)
+        Experiment.ALL_SOURCES -> CodeContextTrackingInfo(4, 46, 1221)
+      }
   }
 
   @Before
@@ -300,6 +334,14 @@ class CodeContextResolverTest(private val experiment: Experiment) {
     fixture.addFileToProject("src/com/example/myapp/PartialActivity.kt", PARTIAL_ACTIVITY_CONTENT)
     fixture.addFileToProject("src/com/example/myapp/CircleActivity.kt", CIRCLE_ACTIVITY_CONTENT)
     fixture.addFileToProject("src/com/example/myapp/ExcludedActivity.kt", EXCLUDED_ACTIVITY_CONTENT)
+
+    fakeGeminiPluginApi = FakeGeminiPluginApi()
+    fakeGeminiPluginApi.excludedFilePaths = setOf(EXCLUDED_ACTIVITY_CONTEXT.filePath)
+    ExtensionTestUtil.maskExtensions(
+      GeminiPluginApi.EP_NAME,
+      listOf(fakeGeminiPluginApi),
+      projectRule.testRootDisposable,
+    )
 
     projectRule.replaceService(
       AppInsightsExperimentFetcher::class.java,
@@ -317,14 +359,6 @@ class CodeContextResolverTest(private val experiment: Experiment) {
    */
   @Test
   fun `resolve code context based on assigned experiment`() = runBlocking {
-    val fakeGeminiPluginApi = FakeGeminiPluginApi()
-    fakeGeminiPluginApi.excludedFilePaths = setOf(EXCLUDED_ACTIVITY_CONTEXT.filePath)
-    ExtensionTestUtil.maskExtensions(
-      GeminiPluginApi.EP_NAME,
-      listOf(fakeGeminiPluginApi),
-      projectRule.testRootDisposable,
-    )
-
     val resolver = CodeContextResolverImpl(projectRule.project)
     val contexts = resolver.getSource(STACKTRACE)
 
@@ -333,7 +367,11 @@ class CodeContextResolverTest(private val experiment: Experiment) {
         Experiment.UNKNOWN -> CodeContextData.UNASSIGNED
         Experiment.CONTROL -> CodeContextData.CONTROL
         Experiment.TOP_SOURCE ->
-          CodeContextData(listOf(EXPECTED_ANDROID_LIBRARY_CLASS_CONTEXT), experiment)
+          CodeContextData(
+            listOf(EXPECTED_ANDROID_LIBRARY_CLASS_CONTEXT),
+            experiment,
+            expectedCodeContextTrackingInfoByExperiment(experiment),
+          )
         Experiment.TOP_THREE_SOURCES ->
           CodeContextData(
             listOf(
@@ -342,6 +380,7 @@ class CodeContextResolverTest(private val experiment: Experiment) {
               EXPECTED_CIRCLE_ACTIVITY_CONTEXT,
             ),
             experiment,
+            expectedCodeContextTrackingInfoByExperiment(experiment),
           )
         Experiment.ALL_SOURCES ->
           CodeContextData(
@@ -352,6 +391,7 @@ class CodeContextResolverTest(private val experiment: Experiment) {
               EXPECTED_MAIN_ACTIVITY_CONTEXT,
             ),
             experiment,
+            expectedCodeContextTrackingInfoByExperiment(experiment),
           )
       }
 

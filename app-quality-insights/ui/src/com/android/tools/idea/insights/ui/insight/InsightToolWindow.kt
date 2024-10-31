@@ -24,6 +24,7 @@ import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.ui.AppInsightsToolWindowContext
 import com.android.tools.idea.insights.ui.InsightPermissionDeniedHandler
 import com.intellij.openapi.Disposable
+import com.intellij.util.ui.JBUI
 import icons.StudioIcons
 import java.awt.BorderLayout
 import javax.swing.JPanel
@@ -33,7 +34,6 @@ object InsightToolWindow {
     projectController: AppInsightsProjectLevelController,
     parentDisposable: Disposable,
     permissionDeniedHandler: InsightPermissionDeniedHandler,
-    enableInsightHandler: () -> Unit,
   ): ToolWindowDefinition<AppInsightsToolWindowContext> {
     return ToolWindowDefinition(
       "Insights",
@@ -42,16 +42,11 @@ object InsightToolWindow {
       Side.RIGHT,
       Split.TOP,
       AutoHide.DOCKED,
-      ToolWindowDefinition.DEFAULT_SIDE_WIDTH,
+      JBUI.scale(400),
       ToolWindowDefinition.DEFAULT_BUTTON_SIZE,
       ToolWindowDefinition.ALLOW_BASICS,
     ) {
-      InsightToolWindowContent(
-        projectController,
-        parentDisposable,
-        permissionDeniedHandler,
-        enableInsightHandler,
-      )
+      InsightToolWindowContent(projectController, parentDisposable, permissionDeniedHandler)
     }
   }
 }
@@ -60,18 +55,12 @@ private class InsightToolWindowContent(
   projectController: AppInsightsProjectLevelController,
   parentDisposable: Disposable,
   permissionDeniedHandler: InsightPermissionDeniedHandler,
-  enableInsightHandler: () -> Unit,
 ) : ToolContent<AppInsightsToolWindowContext> {
   private val component = JPanel(BorderLayout())
 
   init {
     component.add(
-      InsightMainPanel(
-        projectController,
-        parentDisposable,
-        permissionDeniedHandler,
-        enableInsightHandler,
-      ),
+      InsightMainPanel(projectController, parentDisposable, permissionDeniedHandler),
       BorderLayout.CENTER,
     )
   }

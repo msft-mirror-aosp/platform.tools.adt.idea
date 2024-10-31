@@ -43,6 +43,7 @@ import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.util.removeUserData
 import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.util.application
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.containers.MultiMap
 import org.jetbrains.android.uipreview.StudioModuleClassLoader.NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS
 import org.jetbrains.android.uipreview.StudioModuleClassLoader.PROJECT_DEFAULT_TRANSFORMS
@@ -83,18 +84,29 @@ private class ModuleClassLoaderProjectHelperService(val project: Project) :
     }
   }
 
+  @RequiresBackgroundThread
+  private fun clearCaches() {
+    ModuleManager.getInstance(project).modules.forEach {
+      StudioModuleClassLoaderManager.get().clearCache(it)
+    }
+  }
+
   override fun beforeBuildCompleted(result: ProjectSystemBuildManager.BuildResult) {
     if (
       result.status == ProjectSystemBuildManager.BuildStatus.SUCCESS &&
         result.mode == ProjectSystemBuildManager.BuildMode.COMPILE_OR_ASSEMBLE
     ) {
-      ModuleManager.getInstance(project).modules.forEach {
-        StudioModuleClassLoaderManager.get().clearCache(it)
-      }
+      clearCaches()
     }
   }
 
-  override fun dispose() {}
+  override fun dispose() {
+    // Dispose usually runs on the EDT thread. Calling clearCaches on it can cause a deadlock
+    // since the StudioModuleClassLoaderManager might hold the lock and try to acquire the read lock.
+    ApplicationManager.getApplication().executeOnPooledThread {
+      clearCaches()
+    }
+  }
 }
 
 private val PRELOADER: Key<StudioPreloader> =
@@ -166,7 +178,7 @@ class StudioModuleClassLoaderManager :
     additionalNonProjectTransformation: ClassTransform = ClassTransform.identity,
     onNewModuleClassLoader: Runnable = Runnable {},
   ): ModuleClassLoaderManager.Reference<StudioModuleClassLoader> {
-    val module: Module? = moduleRenderContext.module
+    val module: Module? = moduleRenderContext.buildTargetReference.moduleIfNotDisposed
     var moduleClassLoader = module?.getUserData(PRELOADER)?.getClassLoader()
     val combinedProjectTransformations: ClassTransform by lazy {
       combine(PROJECT_DEFAULT_TRANSFORMS, additionalProjectTransformation)
@@ -250,7 +262,7 @@ class StudioModuleClassLoaderManager :
     additionalNonProjectTransformation: ClassTransform  = ClassTransform.identity,
   ): ModuleClassLoaderManager.Reference<StudioModuleClassLoader> {
     // Make sure the helper service is initialized
-    val module: Module? = moduleRenderContext.module
+    val module: Module? = moduleRenderContext.buildTargetReference.moduleIfNotDisposed
     module
       ?.project
       ?.getService(ModuleClassLoaderProjectHelperService::class.java)

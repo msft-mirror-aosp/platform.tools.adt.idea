@@ -22,7 +22,6 @@ import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.ui.FakeActionPopupMenu
-import com.android.tools.idea.wearwhs.WHS_CAPABILITIES
 import com.android.tools.idea.wearwhs.WearWhsBundle.message
 import com.android.tools.idea.wearwhs.communication.FakeDeviceManager
 import com.google.common.truth.Truth.assertThat
@@ -74,11 +73,13 @@ class WearHealthServicesPanelControllerTest {
 
   private val fakeUi: FakeUi
     get() =
-      FakeUi(
+      checkNotNull(
         fakePopupRule.fakePopupFactory
           .getBalloon(fakePopupRule.fakePopupFactory.balloonCount - 1)
-          .component
-      )
+          .ui
+      ) {
+        "expected fake ui to be created"
+      }
 
   @Before
   fun setup() {
@@ -117,102 +118,50 @@ class WearHealthServicesPanelControllerTest {
   }
 
   @Test
-  fun `test successful apply and reapply shows in information label when panel is showing`(): Unit =
-    runBlocking {
+  fun `test user is notified of successful apply when panel is showing`(): Unit = runBlocking {
+    showWhsPopup()
 
-      // without user changes
-      run {
-        showWhsPopup()
+    fakeUi.clickOnApplyButton()
+    // show popup again as clicking on the apply button closes it
+    showWhsPopup()
 
-        fakeUi.clickOnApplyButton()
-        // show popup again as clicking on the apply button closes it
-        showWhsPopup()
-
-        fakeUi.waitForDescendant<JLabel> {
-          it.text == message("wear.whs.panel.reapply.capabilities.success")
-        }
-      }
-
-      // with user changes
-      run {
-        showWhsPopup()
-        stateManager.setCapabilityEnabled(WHS_CAPABILITIES[0], false)
-
-        fakeUi.clickOnApplyButton()
-        // show popup again as clicking on the apply button closes it
-        showWhsPopup()
-
-        fakeUi.waitForDescendant<JLabel> {
-          it.text == message("wear.whs.panel.apply.capabilities.success")
-        }
+    waitForCondition(2, TimeUnit.SECONDS) {
+      notifications.any {
+        it.content == message("wear.whs.panel.apply.capabilities.success") &&
+          it.type == NotificationType.INFORMATION
       }
     }
+  }
 
   @Test
-  fun `test failed apply changes shows in information label when panel is showing`(): Unit =
-    runBlocking {
-      deviceManager.failState = true
+  fun `test user is notified of failed apply changes when panel is showing`(): Unit = runBlocking {
+    deviceManager.failState = true
 
-      // without user changes
-      run {
-        showWhsPopup()
-        fakeUi.clickOnApplyButton()
+    showWhsPopup()
+    fakeUi.clickOnApplyButton()
 
-        // show popup again as clicking on the apply button closes it
-        showWhsPopup()
+    // show popup again as clicking on the apply button closes it
+    showWhsPopup()
 
-        fakeUi.waitForDescendant<JLabel> {
-          it.text == message("wear.whs.panel.reapply.capabilities.failure")
-        }
-      }
-
-      // with user changes
-      run {
-        showWhsPopup()
-        stateManager.setCapabilityEnabled(WHS_CAPABILITIES[0], false)
-
-        fakeUi.clickOnApplyButton()
-
-        // show popup again as clicking on the apply button closes it
-        showWhsPopup()
-
-        fakeUi.waitForDescendant<JLabel> {
-          it.text == message("wear.whs.panel.apply.capabilities.failure")
-        }
+    waitForCondition(2, TimeUnit.SECONDS) {
+      notifications.any {
+        it.content == message("wear.whs.panel.apply.capabilities.failure") &&
+          it.type == NotificationType.ERROR
       }
     }
+  }
 
   @Test
   fun `test user is notified of successful apply changes when panel is not showing`(): Unit =
     runBlocking {
+      showWhsPopup()
 
-      // without user changes
-      run {
-        showWhsPopup()
+      fakeUi.clickOnApplyButton()
 
-        fakeUi.clickOnApplyButton()
-
-        waitForCondition(2, TimeUnit.SECONDS) {
-          notifications.any {
-            it.content == message("wear.whs.panel.reapply.capabilities.success") &&
-              it.type == NotificationType.INFORMATION
-          }
-        }
-      }
-
-      // with user changes
-      run {
-        stateManager.setCapabilityEnabled(WHS_CAPABILITIES[0], false)
-
-        showWhsPopup()
-
-        fakeUi.clickOnApplyButton()
-
-        waitForCondition(2, TimeUnit.SECONDS) {
-          notifications.any {
-            it.content == message("wear.whs.panel.apply.capabilities.success") &&
-              it.type == NotificationType.INFORMATION
-          }
+      waitForCondition(2, TimeUnit.SECONDS) {
+        notifications.any {
+          it.content == message("wear.whs.panel.apply.capabilities.success") &&
+            it.type == NotificationType.INFORMATION
         }
       }
     }
@@ -222,73 +171,25 @@ class WearHealthServicesPanelControllerTest {
     runBlocking {
       deviceManager.failState = true
 
-      // without user changes
-      run {
-        showWhsPopup()
-
-        fakeUi.clickOnApplyButton()
-
-        waitForCondition(2, TimeUnit.SECONDS) {
-          notifications.any {
-            it.content == message("wear.whs.panel.reapply.capabilities.failure") &&
-              it.type == NotificationType.ERROR
-          }
-        }
-      }
-
-      // with user changes
-      run {
-        stateManager.setCapabilityEnabled(WHS_CAPABILITIES[0], false)
-
-        showWhsPopup()
-
-        fakeUi.clickOnApplyButton()
-
-        waitForCondition(2, TimeUnit.SECONDS) {
-          notifications.any {
-            it.content == message("wear.whs.panel.apply.capabilities.failure") &&
-              it.type == NotificationType.ERROR
-          }
-        }
-      }
-    }
-
-  @Test
-  fun `test apply and reapply notifies about sensor value changes when there is an ongoing exercise`():
-    Unit = runBlocking {
-    deviceManager.activeExercise = true
-    stateManager.ongoingExercise.waitForValue(true)
-
-    // without user changes
-    run {
       showWhsPopup()
 
-      deviceManager.failState = false
       fakeUi.clickOnApplyButton()
 
       waitForCondition(2, TimeUnit.SECONDS) {
         notifications.any {
-          it.content == message("wear.whs.panel.reapply.sensor.values.success") &&
-            it.type == NotificationType.INFORMATION
-        }
-      }
-
-      showWhsPopup()
-      deviceManager.failState = true
-      fakeUi.clickOnApplyButton()
-
-      waitForCondition(2, TimeUnit.SECONDS) {
-        notifications.any {
-          it.content == message("wear.whs.panel.reapply.sensor.values.failure") &&
+          it.content == message("wear.whs.panel.apply.capabilities.failure") &&
             it.type == NotificationType.ERROR
         }
       }
     }
 
-    // with user changes
-    run {
+  @Test
+  fun `test apply notifies about sensor value changes when there is an ongoing exercise`(): Unit =
+    runBlocking {
+      deviceManager.activeExercise = true
+      stateManager.ongoingExercise.waitForValue(true)
+
       showWhsPopup()
-      stateManager.setOverrideValue(WHS_CAPABILITIES[0], 50)
 
       deviceManager.failState = false
       fakeUi.clickOnApplyButton()
@@ -300,9 +201,8 @@ class WearHealthServicesPanelControllerTest {
         }
       }
 
-      stateManager.setOverrideValue(WHS_CAPABILITIES[0], 60)
-      deviceManager.failState = true
       showWhsPopup()
+      deviceManager.failState = true
       fakeUi.clickOnApplyButton()
 
       waitForCondition(2, TimeUnit.SECONDS) {
@@ -312,7 +212,6 @@ class WearHealthServicesPanelControllerTest {
         }
       }
     }
-  }
 
   @Test
   fun `test successful reset shows in information label when panel is showing`(): Unit =
@@ -375,7 +274,7 @@ class WearHealthServicesPanelControllerTest {
   }
 
   @Test
-  fun `test successful trigger event shows in information label when panel is showing`(): Unit =
+  fun `test user is notified of successful trigger event when panel is showing`(): Unit =
     runBlocking {
       showWhsPopup()
 
@@ -384,22 +283,30 @@ class WearHealthServicesPanelControllerTest {
       // show popup again as clicking on the trigger event button closes it
       showWhsPopup()
 
-      fakeUi.waitForDescendant<JLabel> { it.text == message("wear.whs.event.trigger.success") }
+      waitForCondition(2, TimeUnit.SECONDS) {
+        notifications.any {
+          it.content == message("wear.whs.event.trigger.success") &&
+            it.type == NotificationType.INFORMATION
+        }
+      }
     }
 
   @Test
-  fun `test failed trigger event shows in information label when panel is showing`(): Unit =
-    runBlocking {
-      deviceManager.failState = true
+  fun `test user is notified of failed trigger event when panel is showing`(): Unit = runBlocking {
+    deviceManager.failState = true
 
-      showWhsPopup()
+    showWhsPopup()
 
-      fakeUi.clickOnTriggerEvent({ fakePopup })
-      // show popup again as clicking on the trigger event button closes it
-      showWhsPopup()
+    fakeUi.clickOnTriggerEvent({ fakePopup })
+    // show popup again as clicking on the trigger event button closes it
+    showWhsPopup()
 
-      fakeUi.waitForDescendant<JLabel> { it.text == message("wear.whs.event.trigger.failure") }
+    waitForCondition(2, TimeUnit.SECONDS) {
+      notifications.any {
+        it.content == message("wear.whs.event.trigger.failure") && it.type == NotificationType.ERROR
+      }
     }
+  }
 
   @Test
   fun `test user is notified of successful trigger event when panel is not showing`(): Unit =
@@ -431,6 +338,17 @@ class WearHealthServicesPanelControllerTest {
             it.type == NotificationType.ERROR
         }
       }
+    }
+
+  // Regression test for b/373397938
+  @Test
+  fun `the apply button should be set as default`() =
+    runBlocking<Unit> {
+      showWhsPopup()
+
+      val applyButton =
+        fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.apply") }
+      assertThat(applyButton.isDefaultButton).isTrue()
     }
 
   private fun showWhsPopup() {

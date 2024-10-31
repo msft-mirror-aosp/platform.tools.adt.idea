@@ -19,8 +19,10 @@ import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.LlmPrompt
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
-internal class FakeGeminiPluginApi : GeminiPluginApi {
+class FakeGeminiPluginApi : GeminiPluginApi {
   var available = true
   var contextAllowed = true
   var excludedFilePaths = setOf<String>()
@@ -28,7 +30,7 @@ internal class FakeGeminiPluginApi : GeminiPluginApi {
   var receivedPrompt: LlmPrompt? = null
   var generateResponse: String = ""
 
-  override val MAX_QUERY_CHARS = Int.MAX_VALUE
+  override var MAX_QUERY_CHARS = Int.MAX_VALUE
 
   override fun isAvailable() = available
 
@@ -52,8 +54,8 @@ internal class FakeGeminiPluginApi : GeminiPluginApi {
     requestSource: GeminiPluginApi.RequestSource,
   ) {}
 
-  override suspend fun generate(project: Project, prompt: LlmPrompt): String {
+  override fun generate(project: Project, prompt: LlmPrompt): Flow<String> {
     receivedPrompt = prompt
-    return generateResponse
+    return flowOf(generateResponse)
   }
 }

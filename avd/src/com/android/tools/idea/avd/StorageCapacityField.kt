@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.toImmutableList
 import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.TextField
@@ -52,37 +53,51 @@ internal fun StorageCapacityField(
       )
     }
 
-    Dropdown(state.unit, UNITS, state::unit::set, enabled = enabled)
+    Dropdown(state.selectedUnit, state.units, state::selectedUnit::set, enabled = enabled)
   }
 }
 
-internal class StorageCapacityFieldState internal constructor(value: StorageCapacity) {
+internal class StorageCapacityFieldState
+internal constructor(
+  value: StorageCapacity,
+  internal val units: ImmutableCollection<StorageCapacity.Unit> =
+    enumValues<StorageCapacity.Unit>().asIterable().toImmutableList(),
+) {
   internal val value = TextFieldState(value.value.toString())
-  internal var unit by mutableStateOf(value.unit)
-  internal val storageCapacity = snapshotFlow { toStorageCapacity() }
+  internal var selectedUnit by mutableStateOf(value.unit)
+  internal val storageCapacity = snapshotFlow { result().storageCapacity }
 
-  internal fun valueIsEmpty() = value.text.isEmpty()
+  internal fun valid() = result() as Valid
 
-  internal fun willOverflow() =
-    try {
-      assert(!valueIsEmpty())
-      StorageCapacity(value.text.toString().toLong(), unit)
-      false
-    } catch (exception: NumberFormatException) {
-      // value.text.toString().toLong() overflowed
-      true
-    } catch (exception: ArithmeticException) {
-      // StorageCapacity(value.text.toString().toLong(), unit) can't be expressed in bytes
-      true
+  internal fun result() =
+    if (value.text.isEmpty()) {
+      Empty
+    } else {
+      try {
+        Valid(StorageCapacity(value.text.toString().toLong(), selectedUnit))
+      } catch (exception: NumberFormatException) {
+        // value.text.toString().toLong() overflowed
+        Overflow
+      } catch (exception: ArithmeticException) {
+        // StorageCapacity(value.text.toString().toLong(), unit) can't be expressed in bytes
+        Overflow
+      }
     }
 
-  internal fun toStorageCapacity() =
-    try {
-      StorageCapacity(value.text.toString().toLong(), unit)
-    } catch (exception: RuntimeException) {
-      null
-    }
+  internal object Empty : Result() {
+    override val storageCapacity = null
+  }
+
+  internal class Valid internal constructor(override val storageCapacity: StorageCapacity) :
+    Result()
+
+  internal object Overflow : Result() {
+    override val storageCapacity = null
+  }
+
+  internal sealed class Result {
+    internal abstract val storageCapacity: StorageCapacity?
+  }
 }
 
 private val STORAGE_CAPACITY_VALUE_REGEX = Regex("\\d*")
-private val UNITS = enumValues<StorageCapacity.Unit>().asIterable().toImmutableList()

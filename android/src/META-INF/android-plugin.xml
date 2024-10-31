@@ -192,8 +192,7 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <titleInfoProvider implementation="com.intellij.android.safemode.SafeMode$TitleProvider"/>
-    <postStartupActivity implementation="com.android.tools.idea.res.AndroidPsiTreeChangeListener$MyStartupActivity"/>
-    <projectService serviceImplementation="com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild" />
+    <postStartupActivity implementation="com.android.tools.idea.res.AndroidPsiTreeChangeListener$MyProjectActivity"/>
     <postStartupActivity implementation="com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild$MyStartupActivity"/>
     <applicationInitializedListener implementation="com.android.tools.idea.progress.StudioProgressManagerAdapter$Installer" />
     <fileBasedIndex implementation="com.android.tools.idea.model.AndroidManifestIndex"/>
@@ -230,11 +229,9 @@
     <applicationService serviceImplementation="com.android.tools.idea.project.AndroidRunConfigurations"/>
     <applicationService serviceImplementation="com.android.tools.idea.project.CustomProjectTypeImporter$MainImporter"/>
     <applicationService serviceImplementation="com.android.tools.idea.gradle.util.EmbeddedDistributionPaths"/>
-    <applicationService serviceImplementation="com.android.tools.idea.gradle.util.GradleLocalCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.res.AarResourceRepositoryCache"/>
     <applicationService serviceImplementation="com.android.tools.idea.run.DeploymentApplicationServiceImpl"
                         serviceInterface="com.android.tools.idea.run.DeploymentApplicationService"/>
-    <applicationService serviceImplementation="com.android.tools.idea.gradle.repositories.RepositoryUrlManager"/>
     <applicationService serviceImplementation="org.jetbrains.android.uipreview.AndroidEditorSettings"/>
     <applicationService serviceInterface="org.jetbrains.android.facet.AndroidFacetConfiguration$EditorTabProvider"
                         serviceImplementation="org.jetbrains.android.facet.AndroidFacetEditorTab$Provider"/>
@@ -434,7 +431,8 @@
       <category>Android</category>
     </intentionAction>
 
-    <daemon.intentionActionFilter implementation="org.jetbrains.android.intentions.AndroidIntentionActionFilter" />
+    <daemon.intentionActionFilter implementation="org.jetbrains.android.intentions.AndroidLightOrGeneratedClassIntentionActionFilter"/>
+    <daemon.intentionActionFilter implementation="org.jetbrains.android.intentions.AndroidFindJarFixIntentionActionFilter"/>
 
     <localInspection language="JAVA" shortName="AndroidNonConstantResIdsInSwitch" bundle="messages.AndroidBundle"
                      key="android.inspections.non.constant.res.ids.in.switch.name" groupKey="android.inspections.group.name"
@@ -580,8 +578,6 @@
 
     <virtualFileSystem key="android-dummy" implementationClass="com.android.tools.idea.editors.AndroidFakeFileSystem"/>
     <virtualFileSystem key="apk" implementationClass="com.android.tools.idea.apk.viewer.ApkFileSystem"/>
-    <codeInsight.unresolvedReferenceQuickFixProvider
-        implementation="com.android.tools.idea.gradle.quickfix.AndroidUnresolvedReferenceQuickFixProvider"/>
 
     <!-- Translations Editor -->
     <editorNotificationProvider implementation="com.android.tools.idea.editors.strings.StringResourceEditorNotificationProvider"/>

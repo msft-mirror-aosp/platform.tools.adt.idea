@@ -32,8 +32,8 @@ import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
-import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.flags.overrides.MendelOverrides;
+import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.android.tools.idea.util.StudioPathManager;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
@@ -464,6 +464,16 @@ public final class StudioFlags {
     " build are still verified by ART regardless of this flag.",
     ChannelDefault.enabledUpTo(CANARY));
 
+
+  public static final Flag<Boolean> INSTALL_WITH_ASSUME_VERIFIED_ON_DEFAULT = new BooleanFlag(
+    RUNDEBUG,
+    "install.with.assume.verified.on.default",
+    "Turn on ART assume-verified compiler filter for API 35+ deployment by default in all run configurations",
+    "When deploying to API 35+ device for debuggable deployment, the deployment pipeline will leverage the assume-verified" +
+    " compiler filter in ART to avoid bytecode verification when possible. This would speed up development cycles. Note that all release" +
+    " build are still verified by ART regardless of this flag. This flag turns on this feature for all run configurations.",
+    ChannelDefault.enabledUpTo(CANARY));
+
   public static final Flag<Boolean> APPLY_CHANGES_STRUCTURAL_DEFINITION = new BooleanFlag(
     RUNDEBUG,
     "applychanges.structuralredefinition",
@@ -529,6 +539,14 @@ public final class StudioFlags {
     "Use adblib instead of ddmlib to track and implement `IDevice` instances. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
     true);
+
+  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_ADB_DELEGATE = new BooleanFlag(
+    RUNDEBUG,
+    "adblib.migration.ddmlib.androiddebugbridgedelegate",
+    "Use adblib version of `AndroidDebugBridgeDelegate`",
+    "Use adblib version of `AndroidDebugBridgeDelegate` in `AndroidDebugBridge` class. " +
+    "Note: Changing the value of this flag requires restarting Android Studio.",
+    false);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_USAGE_TRACKER = new BooleanFlag(
     RUNDEBUG,
@@ -1054,6 +1072,10 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "ui.settings.gesture.navigation", "Show Gesture Navigation in Device UI Shortcuts",
     "Enables Gesture Navigation setting in Device UI Shortcuts",
     ChannelDefault.enabledUpTo(CANARY));
+  public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
+    EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
+    "Hides the name of the Running Devices window when it contains any device tabs",
+    ChannelDefault.enabledUpTo(CANARY));
   //endregion
 
   //region Device Mirroring
@@ -1529,7 +1551,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> WEAR_TILE_ANIMATION_INSPECTOR = new BooleanFlag(
     WEAR_SURFACES, "wear.tile.preview.animation.inspector.enabled", "Enable Wear Tile Preview Animation Inspector",
     "If enabled, a Wear Tile Animation Inspector functionality is available in Preview",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   // endregion
 
   // region Wear Health Services
@@ -1539,7 +1561,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> WEAR_HEALTH_SERVICES_PANEL = new BooleanFlag(
     WEAR_HEALTH_SERVICES, "enable.panel", "Enable Wear Health Services panel",
     "If enabled, a button to display panel for modifying emulator sensors will appear",
-    ChannelDefault.enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Long> WEAR_HEALTH_SERVICES_POLLING_INTERVAL_MS = new LongFlag(
@@ -1761,6 +1783,7 @@ public final class StudioFlags {
       ChannelDefault.enabledUpTo(CANARY)
     );
 
+  // Must re-enable firebase onboarding flow should this be set to true.
   public static final Flag<Boolean> CRASHLYTICS_TITAN_INSIGHT_PROVIDER = new BooleanFlag(
     APP_INSIGHTS,
     "crashlytics.titan.insight.provider",
@@ -1821,11 +1844,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> JSON_GENERATION =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.json.generation", "App Links Assistant JSON generation",
                     "JSON generation (i.e. automated assistance with fixing web issues) in the App Links Assistant",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
   public static final Flag<Boolean> PLAY_DYNAMIC_FILTERS =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.play.dynamic.filters", "App Links Assistant Play Dynamic Filters support",
                     "Support for apps that opted in to using Play Dynamic Filters to manage their app links",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
   // endregion App Links Assistant
 
   // region NEW_COLLECT_LOGS_DIALOG
@@ -1931,19 +1954,19 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.ai.transforms.enabled",
                     "Enable the transform actions.",
                     "When enabled, the transform actions (document, comment, the custom transform action, etc.) are enabled.",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
   public static final Flag<Boolean> STUDIOBOT_CUSTOM_TRANSFORM_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
                     "Enable the custom transform action in the editor.",
                     "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
   public static final Flag<Boolean> STUDIOBOT_TRANSFORM_HISTORY_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.history.enabled",
                     "Enable the transform history in the transform diff.",
                     "When enabled, allows the user to navigate transform history in the diff view.",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
   public static final Flag<Boolean> STUDIOBOT_SHOW_TRANSFORM_HISTORY_FORWARD_BACK =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.show.history.forward.back",
@@ -1997,7 +2020,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
                     "Use ML model to suggest commit messages",
                     "Enables the \"Suggest Commit Message\" button in the Commit tool window",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
   public static final Flag<Boolean> README_GENERATION =
     new BooleanFlag(STUDIOBOT, "readme.generation",
@@ -2016,14 +2039,14 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "ai.rethink.action",
                     "Use AI to suggest better variable names",
                     "Enables AI to provide better variable renaming functionalities",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
 
   public static final Flag<Boolean> AI_RENAME_ACTION =
     new BooleanFlag(STUDIOBOT, "ai.rename.action",
                     "Use AI to suggest a better identifier name",
                     "Enables AI rename suggestion functionality",
-                    ChannelDefault.enabledUpTo(CANARY));
+                    true);
 
 
   public static final Flag<Boolean> STUDIOBOT_ATTACHMENTS =
@@ -2083,6 +2106,8 @@ public final class StudioFlags {
   private static final FlagGroup STUDIO_LABS = new FlagGroup(FLAGS, "studiolabs", "Studio Labs");
   public static final Flag<Boolean> STUDIO_LABS_SETTINGS_ENABLED =
     new BooleanFlag(STUDIO_LABS, "enabled", "Enable Studio Labs in settings", "Enables studio labs in settings.", ChannelDefault.enabledUpTo(DEV));
+  public static final Flag<Boolean> STUDIO_LABS_SETTINGS_FAKE_FEATURE_ENABLED =
+    new BooleanFlag(STUDIO_LABS, "fakefeature", "Enable fake feature in StudioLabs.", "Enable this for testing.", ChannelDefault.enabledUpTo(DEV));
   // endregion STUDIO_LABS
 
   // region WEAR_RUN_CONFIGS_AUTOCREATE

@@ -1,5 +1,4 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
-load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 
 # managed by go/iml_to_build
 iml_module(
@@ -45,6 +44,10 @@ iml_module(
         "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
         "//tools/base/build-system:gradle-distrib",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
+        "@maven//:androidx.compose.runtime.runtime-android_1.7.1",
+        "@maven//:androidx.compose.runtime.runtime-saveable-android_1.7.1",
+        "@maven//:androidx.compose.ui.ui-android_1.7.1",
+        "@maven//:androidx.compose.ui.ui-graphics-android_1.7.1",
     ],
     test_friends = ["//tools/adt/idea/compose-ide-plugin:intellij.android.compose-ide-plugin"],
     test_srcs = ["testSrc"],

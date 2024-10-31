@@ -18,12 +18,11 @@ package com.android.tools.compose.analysis
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.openapi.util.text.StringUtil
-import org.jetbrains.android.compose.stubComposeRuntime
-import org.jetbrains.android.compose.stubKotlinStdlib
+import org.jetbrains.android.compose.addComposeRuntimeDep
 import org.junit.Rule
 
 abstract class AbstractComposeDiagnosticsTest {
-  @get:Rule val androidProject = AndroidProjectRule.inMemory().withKotlin()
+  @get:Rule val androidProject = AndroidProjectRule.onDisk().withKotlin()
 
   protected fun doTest(
     expectedText: String,
@@ -32,8 +31,7 @@ abstract class AbstractComposeDiagnosticsTest {
     androidProject.fixture.run {
       setUpCompilerArgumentsForComposeCompilerPlugin(project)
 
-      stubComposeRuntime()
-      stubKotlinStdlib()
+      addComposeRuntimeDep()
 
       val file =
         addFileToProject(

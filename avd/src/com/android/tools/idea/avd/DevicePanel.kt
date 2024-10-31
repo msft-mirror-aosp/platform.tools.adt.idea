@@ -96,14 +96,12 @@ internal fun DevicePanel(
         }
     }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(Padding.MEDIUM_LARGE)) {
-      ErrorTooltip(nameError) {
-        TextField(
-          nameState,
-          Modifier.padding(bottom = Padding.MEDIUM_LARGE).alignByBaseline(),
-          outline = if (nameError == null) Outline.None else Outline.Error,
-        )
-      }
+    ErrorTooltip(nameError) {
+      TextField(
+        nameState,
+        Modifier.padding(bottom = Padding.MEDIUM_LARGE),
+        outline = if (nameError == null) Outline.None else Outline.Error,
+      )
     }
 
     Text(
@@ -120,7 +118,7 @@ internal fun DevicePanel(
       modifier = Modifier.padding(bottom = Padding.SMALL_MEDIUM),
     )
 
-    Row(horizontalArrangement = Arrangement.spacedBy(Padding.MEDIUM_LARGE)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Padding.LARGE)) {
       ApiFilter(
         androidVersions,
         devicePanelState.selectedApi,
@@ -175,9 +173,9 @@ internal fun DevicePanel(
     )
 
     CheckboxRow(
-      "Show only recommended system images",
-      devicePanelState.showOnlyRecommendedSystemImages,
-      devicePanelState::setShowOnlyRecommendedSystemImages,
+      "Show unsupported system images",
+      devicePanelState.showUnsupportedSystemImages,
+      devicePanelState::setShowUnsupportedSystemImages,
     )
   }
 }
@@ -233,15 +231,25 @@ private fun SystemImageTable(
   onIsSystemImageTableSelectionValidChange(selectionState.selection in images)
 
   val sortedImages = images.sortedWith(SystemImageComparator)
-  val starredImage by rememberUpdatedState(sortedImages.last().takeIf { it.isRecommended() })
+  val starredImage by rememberUpdatedState(sortedImages.last().takeIf { it.isSupported() })
   val starColumn = remember {
     TableColumn("", TableColumnWidth.Fixed(16.dp), comparator = SystemImageComparator) {
       if (it == starredImage) {
-        Icon(
-          AllIconsKeys.Nodes.Favorite,
-          contentDescription = "Recommended",
-          modifier = Modifier.size(16.dp),
-        )
+        @OptIn(ExperimentalFoundationApi::class)
+        Tooltip(
+          tooltip = {
+            Text(
+              "This is the recommended system image for your workstation and selected device configuration.",
+              Modifier.widthIn(max = 300.dp),
+            )
+          }
+        ) {
+          Icon(
+            AllIconsKeys.Nodes.Favorite,
+            contentDescription = "Recommended",
+            modifier = Modifier.size(16.dp),
+          )
+        }
       } else {
         val warnings = it.imageWarnings()
         if (warnings.isNotEmpty()) {

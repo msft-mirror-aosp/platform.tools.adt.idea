@@ -33,14 +33,14 @@ import com.android.SdkConstants
 import com.android.repository.testframework.FakePackage.FakeLocalPackage
 import com.android.repository.testframework.FakePackage.FakeRemotePackage
 import com.android.sdklib.AndroidVersion
+import com.android.sdklib.ISystemImage
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.internal.avd.UserSettingsKey
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
-import com.android.tools.idea.adddevicedialog.DeviceProfile
-import com.android.tools.idea.adddevicedialog.DeviceSource
 import com.android.tools.idea.adddevicedialog.LoadingState
 import com.android.tools.idea.adddevicedialog.TestComposeWizard
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
+import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import java.nio.file.Files
@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.Rule
 import org.junit.Test
 
@@ -123,7 +124,7 @@ class LocalVirtualDeviceSourceTest {
 
   @OptIn(ExperimentalTestApi::class)
   internal inner class ConfigurationPageFixture(
-    sdkFixture: SdkFixture,
+    val sdkFixture: SdkFixture,
     initialSystemImageState: SystemImageState = sdkFixture.systemImageState(),
   ) {
     val wizard: TestComposeWizard
@@ -136,13 +137,20 @@ class LocalVirtualDeviceSourceTest {
         val profiles = runBlocking { source.profilesWhenReady() }
         val pixel8 = profiles.first { it.name == "Pixel 8" }
 
-        wizard = TestComposeWizard { with(source) { selectionUpdated(pixel8) } }
+        wizard = TestComposeWizard { with(source) { selectionUpdated(pixel8, finish = ::finish) } }
 
         composeTestRule.setContentWithSdkLocals { wizard.Content() }
 
         wizard.performAction(wizard.nextAction)
         composeTestRule.waitForIdle()
       }
+    }
+
+    private suspend fun finish(device: VirtualDevice, image: ISystemImage): Boolean {
+      withContext(AndroidDispatchers.diskIoThread) {
+        VirtualDevices(sdkFixture.avdManager).add(device, image)
+      }
+      return true
     }
   }
 
@@ -400,8 +408,8 @@ class LocalVirtualDeviceSourceTest {
   }
 }
 
-private suspend fun <T : DeviceProfile> DeviceSource<T>.profilesWhenReady(): List<T> =
-  profiles.filterIsInstance<LoadingState.Ready<List<T>>>().first().value
+private suspend fun LocalVirtualDeviceSource.profilesWhenReady(): List<VirtualDeviceProfile> =
+  profiles.filterIsInstance<LoadingState.Ready<List<VirtualDeviceProfile>>>().first().value
 
 internal fun SdkFixture.createLocalVirtualDeviceSource(
   systemImageStateFlow: StateFlow<SystemImageState> = MutableStateFlow(systemImageState())

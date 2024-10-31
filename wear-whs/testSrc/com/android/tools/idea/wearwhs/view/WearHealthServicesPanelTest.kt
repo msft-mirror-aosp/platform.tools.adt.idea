@@ -46,7 +46,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
-import com.intellij.ui.components.ActionLink
 import icons.StudioIcons
 import java.awt.Dimension
 import java.awt.event.KeyEvent
@@ -419,7 +418,7 @@ class WearHealthServicesPanelTest {
 
     val label =
       fakeUi.waitForDescendant<JLabel> {
-        it.icon == StudioIcons.Common.INFO && it.text == message("wear.whs.panel.exercise.inactive")
+        it.icon == AllIcons.Empty && it.text == message("wear.whs.panel.exercise.inactive")
       }
 
     // once the syncs start failing, then the state will eventually become stale
@@ -432,8 +431,7 @@ class WearHealthServicesPanelTest {
     // when the sync succeeds again, then the state will no longer be warned as stale
     deviceManager.failState = false
     waitForCondition(5.seconds) {
-      label.icon == StudioIcons.Common.INFO &&
-        label.toolTipText != message("wear.whs.panel.stale.data")
+      label.icon == AllIcons.Empty && label.toolTipText != message("wear.whs.panel.stale.data")
     }
   }
 
@@ -443,7 +441,7 @@ class WearHealthServicesPanelTest {
 
     deviceManager.activeExercise = false
     val applyButton =
-      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reapply") }
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.apply") }
     assertThat(applyButton.toolTipText)
       .isEqualTo(message("wear.whs.panel.apply.tooltip.no.exercise"))
 
@@ -451,23 +449,6 @@ class WearHealthServicesPanelTest {
     waitForCondition(5.seconds) {
       applyButton.toolTipText == message("wear.whs.panel.apply.tooltip.during.exercise")
     }
-  }
-
-  @Test
-  fun `the apply button has the label 'Reapply' when there no pending user changes and 'Apply' when there are`():
-    Unit = runBlocking {
-    val fakeUi = FakeUi(createWhsPanel().component)
-
-    val applyButton =
-      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reapply") }
-
-    stateManager.setCapabilityEnabled(WHS_CAPABILITIES[0], false)
-
-    waitForCondition(1.seconds) { applyButton.text == message("wear.whs.panel.apply") }
-
-    // Once the changes are applied, the label should go back to "Reapply"
-    stateManager.applyChanges()
-    waitForCondition(1.seconds) { applyButton.text == message("wear.whs.panel.reapply") }
   }
 
   @Test
@@ -483,17 +464,11 @@ class WearHealthServicesPanelTest {
         }
 
       waitForCondition(5.seconds) {
-        val siblingComponents = locationLabel.parent.components
-        siblingComponents
-          .filterIsInstance<JPanel>()
-          .single()
-          .components
-          .filterIsInstance<JLabel>()
-          .any {
-            it.icon == AllIcons.General.Note &&
-              it.toolTipText == message("wear.whs.capability.override.not.supported") &&
-              it.isVisible
-          }
+        (locationLabel.labelFor as JPanel).components.filterIsInstance<JLabel>().any {
+          it.icon == AllIcons.General.Note &&
+            it.toolTipText == message("wear.whs.capability.override.not.supported") &&
+            it.isVisible
+        }
       }
     }
 
@@ -514,11 +489,11 @@ class WearHealthServicesPanelTest {
   }
 
   @Test
-  fun `has learn more link`(): Unit = runBlocking {
+  fun `has learn more button`(): Unit = runBlocking {
     val fakeUi = FakeUi(createWhsPanel().component)
 
-    val learnMoreLink =
-      fakeUi.waitForDescendant<ActionLink> { it.text == message("wear.whs.panel.learn.more") }
+    val learnMoreButton =
+      fakeUi.waitForDescendant<JButton> { it.toolTipText == message("wear.whs.panel.learn.more") }
     mockStatic(BrowserUtil::class.java).use { browserUtil ->
       val url = CompletableDeferred<String>()
       browserUtil
@@ -528,7 +503,7 @@ class WearHealthServicesPanelTest {
           Unit
         }
 
-      learnMoreLink.doClick()
+      learnMoreButton.doClick()
 
       assertEquals(LEARN_MORE_URL, url.await())
     }
@@ -655,7 +630,7 @@ class WearHealthServicesPanelTest {
     }
 
   @Test
-  fun `reset and reapply buttons are enabled during an exercise if at least one capability is enabled`():
+  fun `reset and apply buttons are enabled during an exercise if at least one capability is enabled`():
     Unit = runBlocking {
     stateManager.setCapabilityEnabled(stateManager.capabilitiesList.first(), true)
     stateManager.capabilitiesList.drop(1).forEach { stateManager.setCapabilityEnabled(it, false) }
@@ -664,22 +639,22 @@ class WearHealthServicesPanelTest {
     val fakeUi = FakeUi(createWhsPanel().component)
     val resetButton =
       fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reset") }
-    val reapplyButton =
-      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reapply") }
+    val applyButton =
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.apply") }
 
     assertThat(resetButton.isEnabled).isTrue()
-    assertThat(reapplyButton.isEnabled).isTrue()
+    assertThat(applyButton.isEnabled).isTrue()
 
     deviceManager.activeExercise = true
     stateManager.ongoingExercise.waitForValue(true)
 
     assertThat(resetButton.isEnabled).isTrue()
-    assertThat(reapplyButton.isEnabled).isTrue()
+    assertThat(applyButton.isEnabled).isTrue()
   }
 
   // Regression test for b/371285068
   @Test
-  fun `reset and reapply buttons are disabled during an exercise if no capabilities are enabled`():
+  fun `reset and apply buttons are disabled during an exercise if no capabilities are enabled`():
     Unit = runBlocking {
     stateManager.capabilitiesList.forEach { stateManager.setCapabilityEnabled(it, false) }
     stateManager.applyChanges()
@@ -687,18 +662,18 @@ class WearHealthServicesPanelTest {
     val fakeUi = FakeUi(createWhsPanel().component)
     val resetButton =
       fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reset") }
-    val reapplyButton =
-      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.reapply") }
+    val applyButton =
+      fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.apply") }
 
     assertThat(resetButton.isEnabled).isTrue()
-    assertThat(reapplyButton.isEnabled).isTrue()
+    assertThat(applyButton.isEnabled).isTrue()
 
     deviceManager.activeExercise = true
     stateManager.ongoingExercise.waitForValue(true)
 
     retryUntilPassing(2.seconds) {
       assertThat(resetButton.isEnabled).isFalse()
-      assertThat(reapplyButton.isEnabled).isFalse()
+      assertThat(applyButton.isEnabled).isFalse()
     }
   }
 
@@ -715,6 +690,18 @@ class WearHealthServicesPanelTest {
       val heartRateTextField =
         fakeUi.waitForDescendant<JTextField> { it.isVisible && !it.isEnabled }
       assertThat(heartRateTextField.text).isEmpty()
+    }
+
+  // Regression test for b/373397938
+  @Test
+  fun `the apply button should be set as default`() =
+    runBlocking<Unit> {
+      val panel = createWhsPanel()
+      val fakeUi = FakeUi(panel.component, createFakeWindow = true)
+      val applyButton =
+        fakeUi.waitForDescendant<JButton> { it.text == message("wear.whs.panel.apply") }
+
+      assertThat(applyButton.isDefaultButton).isTrue()
     }
 
   private fun FakeUi.waitForCheckbox(text: String, selected: Boolean) =

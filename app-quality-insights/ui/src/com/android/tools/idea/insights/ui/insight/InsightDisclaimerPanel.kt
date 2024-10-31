@@ -16,28 +16,51 @@
 package com.android.tools.idea.insights.ui.insight
 
 import com.android.tools.adtui.stdui.CommonHyperLinkLabel
+import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.mapReadyOrDefault
 import com.intellij.openapi.ui.MessageDialogBuilder
+import com.intellij.openapi.ui.messages.MessagesService
+import com.intellij.ui.ColorUtil
 import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.util.ui.JBFont
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
+import com.intellij.util.ui.UIUtil
 import java.awt.CardLayout
 import java.awt.Container
 import java.awt.Dimension
+import java.io.File
 import javax.swing.JLabel
 import javax.swing.JPanel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val WITHOUT_CODE = "without_code"
 private const val WITH_CODE = "with_code"
 
+private const val CODE_CONTEXT_TITLE = "Confirm Context Sharing"
+
+private val CODE_CONTEXT_DIALOG_MESSAGE_FORMAT =
+  """
+    <html>Android Studio needs to send code context from your project to enhance the insight for this issue.<br>Would you like to continue?%s
+    <p style="color:${ColorUtil.toHtmlColor(NamedColorUtil.getInactiveTextColor())};margin-top:5px;">You can change your context sharing preference from Settings > Tools > Gemini.</p></html>
+  """
+    .trimIndent()
+
+private const val NO_CONTEXT_TITLE = "No Context to Share"
+
+private const val NO_CONTEXT_MESSAGE =
+  "Android Studio attempted to find relevant files to improve this insight but found none. Please try again at a later time."
+
 class InsightDisclaimerPanel(
+  private val controller: AppInsightsProjectLevelController,
   scope: CoroutineScope,
   currentInsightFlow: Flow<LoadingState<AiInsight?>>,
   private val onEnhanceInsight: (Boolean) -> Unit,
@@ -65,18 +88,7 @@ class InsightDisclaimerPanel(
     CommonHyperLinkLabel().apply {
       text = "Regenerate with context"
       font = JBFont.label()
-      hyperLinkListeners.add {
-        val dialogBuilder =
-          MessageDialogBuilder.okCancel(
-            "Confirm Context Sharing",
-            "<html>Android Studio needs to send code and context from " +
-              "your project to enhance the insight for this issue.<br>" +
-              "Would you like to continue?</html>",
-          )
-        if (dialogBuilder.ask(this)) {
-          onEnhanceInsight(true)
-        }
-      }
+      hyperLinkListeners.add { scope.launch { askUserForCodeContext() } }
     }
   private val withoutCodePanel =
     JPanel(VerticalLayout(JBUI.scale(3))).apply {
@@ -86,6 +98,8 @@ class InsightDisclaimerPanel(
     }
 
   private val withCodeDisclaimer = DisclaimerLabel("This insight was generated with code context.")
+  private val selectedIssueStateFlow =
+    controller.state.map { it.selectedIssue }.stateIn(scope, SharingStarted.Eagerly, null)
 
   init {
     layout = cardLayout
@@ -105,6 +119,53 @@ class InsightDisclaimerPanel(
             cardLayout.show(this@InsightDisclaimerPanel, WITHOUT_CODE)
           }
         }
+    }
+  }
+
+  private suspend fun askUserForCodeContext() {
+    val fileBlock = getFileBlock()
+    if (fileBlock.isEmpty()) {
+      showNoContextDialog()
+    } else {
+      if (showContextDialog(fileBlock)) {
+        onEnhanceInsight(true)
+      }
+    }
+  }
+
+  private fun showNoContextDialog() =
+    @Suppress("UnstableApiUsage")
+    MessagesService.getInstance()
+      .showMessageDialog(
+        project = null,
+        parentComponent = this,
+        message = NO_CONTEXT_MESSAGE,
+        title = NO_CONTEXT_TITLE,
+        icon = UIUtil.getInformationIcon(),
+        options = arrayOf("Ok"),
+        doNotAskOption = null,
+        helpId = null,
+        alwaysUseIdeaUI = true,
+      )
+
+  private fun showContextDialog(fileBlock: String) =
+    MessageDialogBuilder.okCancel(
+        CODE_CONTEXT_TITLE,
+        CODE_CONTEXT_DIALOG_MESSAGE_FORMAT.format(fileBlock),
+      )
+      .ask(this)
+
+  private suspend fun getFileBlock(): String {
+    val selectedIssue = selectedIssueStateFlow.value ?: return ""
+    val stackTrace = selectedIssue.sampleEvent.stacktraceGroup
+    // User has not actually overridden the code context but to get the list of files we assume the
+    // user overrides it.
+    val codeContextData =
+      controller.aiInsightToolkit.getSource(stackTrace, true, overrideSourceLimit = true)
+    return if (codeContextData.codeContext.isEmpty()) {
+      ""
+    } else {
+      "<br><b>Files to be shared</b>: ${codeContextData.codeContext.joinToString { File(it.filePath).name }}"
     }
   }
 

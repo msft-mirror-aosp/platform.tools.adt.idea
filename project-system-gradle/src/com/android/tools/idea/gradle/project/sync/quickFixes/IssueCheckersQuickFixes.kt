@@ -23,6 +23,7 @@ import com.android.sdklib.repository.meta.DetailsTypes
 import com.android.tools.idea.Projects
 import com.android.tools.idea.Projects.getBaseDirPath
 import com.android.tools.idea.gemini.GeminiPluginApi
+import com.android.tools.idea.gradle.GradleProjectSystemBundle
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
@@ -32,14 +33,13 @@ import com.android.tools.idea.gradle.project.sync.requestProjectSync
 import com.android.tools.idea.gradle.util.GradleProjectSettingsFinder
 import com.android.tools.idea.gradle.util.GradleWrapper
 import com.android.tools.idea.gradle.util.LocalProperties
+import com.android.tools.idea.progress.StudioLoggerProgressIndicator
+import com.android.tools.idea.progress.StudioProgressRunner
 import com.android.tools.idea.projectsystem.AndroidProjectSettingsService
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
-import com.android.tools.idea.progress.StudioLoggerProgressIndicator
-import com.android.tools.idea.progress.StudioProgressRunner
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
-import com.android.tools.idea.studiobot.StudioBotBundle
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.GradleSyncStats
 import com.intellij.build.FilePosition
@@ -337,14 +337,21 @@ class SelectJdkFromFileSystemQuickFix : DescribedBuildIssueQuickFix {
 
 class OpenStudioBotBuildIssueQuickFix(private val gradleErrorContext: GradleErrorContext) : DescribedBuildIssueQuickFix {
   override val id: String = "open.plugin.studio.bot"
-  override val description: String = StudioBotBundle.message("studiobot.ask.text")
+  override val description: String = GradleProjectSystemBundle.message("studiobot.ask.text")
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val geminiPluginApi = GeminiPluginApi.getInstance()
-    geminiPluginApi.sendChatQueryIfContextAllowed(project, gradleErrorContext, GeminiPluginApi.RequestSource.BUILD)
+    geminiPluginApi.sendChatQueryIfContextAllowed(project, gradleErrorContext, gradleErrorContext.toGeminiApiRequestSource())
     return CompletableFuture.completedFuture(null)
   }
 }
+
+fun GradleErrorContext.toGeminiApiRequestSource(): GeminiPluginApi.RequestSource =
+  when (source) {
+    GradleErrorContext.Source.BUILD -> GeminiPluginApi.RequestSource.BUILD
+    GradleErrorContext.Source.SYNC -> GeminiPluginApi.RequestSource.SYNC
+    null -> GeminiPluginApi.RequestSource.OTHER
+  }
 
 /** Sends chat query if context is allowed, otherwise stages it. */
 fun GeminiPluginApi.sendChatQueryIfContextAllowed(
