@@ -132,9 +132,6 @@ public class ProjectLoader {
     ImmutableSet<String> handledRules = getHandledRuleKinds();
     Optional<BlazeVcsHandler> vcsHandler =
         Optional.ofNullable(BlazeVcsHandlerProvider.vcsHandlerForProject(project));
-    DependencyBuilder dependencyBuilder =
-        createDependencyBuilder(
-            workspaceRoot, latestProjectDef, buildSystem, vcsHandler, handledRules);
     RenderJarBuilder renderJarBuilder = createRenderJarBuilder(workspaceRoot, buildSystem);
     AppInspectorBuilder appInspectorBuilder = createAppInspectorBuilder(buildSystem);
 
@@ -151,6 +148,10 @@ public class ProjectLoader {
             createArtifactFetcher(),
             executor,
             QuerySyncManager.getInstance(project).cacheCleanRequest());
+
+    DependencyBuilder dependencyBuilder =
+      createDependencyBuilder(
+        workspaceRoot, latestProjectDef, buildSystem, vcsHandler, artifactCache, handledRules);
 
     ArtifactTracker<BlazeContext> artifactTracker;
     RenderJarArtifactTracker renderJarArtifactTracker;
@@ -264,9 +265,10 @@ public class ProjectLoader {
       ProjectDefinition projectDefinition,
       BuildSystem buildSystem,
       Optional<BlazeVcsHandler> vcsHandler,
+      BuildArtifactCache buildArtifactCache,
       ImmutableSet<String> handledRuleKinds) {
     return new BazelDependencyBuilder(
-        project, buildSystem, projectDefinition, workspaceRoot, vcsHandler, handledRuleKinds);
+      project, buildSystem, projectDefinition, workspaceRoot, vcsHandler, buildArtifactCache, handledRuleKinds);
   }
 
   protected RenderJarBuilder createRenderJarBuilder(
