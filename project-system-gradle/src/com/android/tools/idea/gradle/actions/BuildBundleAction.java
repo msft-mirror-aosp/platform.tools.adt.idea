@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.actions;
 
 import static com.intellij.notification.NotificationType.ERROR;
 
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.project.AndroidNotification;
@@ -31,10 +32,10 @@ import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class GenerateBundleAction extends DumbAwareAction {
-  private static final String ACTION_TEXT = "Generate Bundle(s)";
+public class BuildBundleAction extends DumbAwareAction {
+  private static final String ACTION_TEXT = "Build Bundle(s)";
 
-  public GenerateBundleAction() {
+  public BuildBundleAction() {
     super(ACTION_TEXT);
   }
 

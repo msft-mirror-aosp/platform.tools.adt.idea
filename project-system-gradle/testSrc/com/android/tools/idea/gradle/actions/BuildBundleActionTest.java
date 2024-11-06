@@ -47,12 +47,12 @@ import java.io.File;
 import org.mockito.Mock;
 
 /**
- * Tests for {@link GenerateApkAction}.
+ * Tests for {@link BuildApkAction}.
  */
 public class BuildBundleActionTest extends HeavyPlatformTestCase {
   @Mock private GradleBuildInvoker myBuildInvoker;
   @Mock private AndroidNotification myAndroidNotification;
-  private GenerateBundleAction myAction;
+  private BuildBundleAction myAction;
 
   @Override
   protected void setUp() throws Exception {
@@ -61,7 +61,7 @@ public class BuildBundleActionTest extends HeavyPlatformTestCase {
 
     new IdeComponents(myProject).replaceProjectService(GradleBuildInvoker.class, myBuildInvoker);
     new IdeComponents(myProject).replaceProjectService(AndroidNotification.class, myAndroidNotification);
-    myAction = new GenerateBundleAction();
+    myAction = new BuildBundleAction();
   }
 
   public void testActionPerformed() {

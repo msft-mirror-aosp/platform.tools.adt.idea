@@ -108,9 +108,7 @@ class GradleTaskFinderWorker private constructor(
 
     return when (androidProject.projectType) {
       IdeAndroidProjectType.PROJECT_TYPE_APP ->
-        // AGP does not bring in app's Dynamic Features when running app android test, so no need to expand here
-        if (!this.module.isHolderModule() && !this.module.isMainModule()) return emptyList()
-        else androidProject
+        androidProject
           .dynamicFeatures
           .mapNotNull { GradleSourceSetProjectPath(buildRoot, it, IdeModuleWellKnownSourceSet.MAIN).toModuleAndMode(buildMode) }
 
@@ -132,9 +130,10 @@ class GradleTaskFinderWorker private constructor(
           .baseFeature
           ?.let {
             listOfNotNull(
-              // We should get the baseFeature (APP) and also expand it so we can pull out other dynamic features too that will be needed
-              // for build.
-              GradleSourceSetProjectPath(buildRoot, it, IdeModuleWellKnownSourceSet.MAIN).toModuleAndMode(buildMode, true)
+              GradleHolderProjectPath(buildRoot, it)
+                .toModuleAndMode(
+                  buildMode = buildMode
+                )
             )
           }
           .orEmpty()
@@ -259,10 +258,9 @@ class GradleTaskFinderWorker private constructor(
     (this as? IdeAndroidArtifact)?.privacySandboxSdkInfo?.taskLegacy
 
   private fun GradleProjectPath.toModuleAndMode(
-    buildMode: BuildMode,
-    expandModule: Boolean = false
+    buildMode: BuildMode
   ): ModuleAndMode? =
-    resolveIn(project)?.let { ModuleAndMode(it, buildMode = buildMode, expandModule = expandModule) }
+    resolveIn(project)?.let { ModuleAndMode(it, buildMode = buildMode) }
 }
 
 private data class RootedTask(val root: Path, val taskPath: String)

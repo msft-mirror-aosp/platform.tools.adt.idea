@@ -40,15 +40,15 @@ import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 /**
- * Tests for {@link AssembleGradleModuleAction}.
+ * Tests for {@link MakeGradleModuleAction}.
  */
-public class AssembleGradleModuleActionTest extends HeavyPlatformTestCase {
+public class MakeGradleModuleActionTest extends HeavyPlatformTestCase {
   @Mock private Info myInfo;
   @Mock private GradleBuildInvoker myBuildInvoker;
   @Mock private AnActionEvent myActionEvent;
   @Mock private DataContext myDataContext;
 
-  private AssembleGradleModuleAction myAction;
+  private MakeGradleModuleAction myAction;
 
   @Override
   protected void setUp() throws Exception {
@@ -72,7 +72,7 @@ public class AssembleGradleModuleActionTest extends HeavyPlatformTestCase {
 
     when(myActionEvent.getDataContext()).thenReturn(myDataContext);
 
-    myAction = new AssembleGradleModuleAction();
+    myAction = new MakeGradleModuleAction();
   }
 
   public void testDoPerform() {

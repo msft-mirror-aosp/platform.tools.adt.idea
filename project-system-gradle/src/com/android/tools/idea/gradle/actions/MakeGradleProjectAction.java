@@ -19,14 +19,15 @@ import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.compiler.CompilerManager;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import org.jetbrains.annotations.NotNull;
 
-public class AssembleGradleProjectAction extends AndroidStudioGradleAction {
-  public AssembleGradleProjectAction() {
-    super("Assemble Project", "Build Entire Project", AllIcons.Actions.Compile);
+public class MakeGradleProjectAction extends AndroidStudioGradleAction {
+  public MakeGradleProjectAction() {
+    super("Make Project", "Build Entire Project", AllIcons.Actions.Compile);
   }
 
   @Override
