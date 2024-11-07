@@ -17,7 +17,6 @@ package com.android.tools.idea.compose.preview
 
 import com.android.flags.junit.FlagRule
 import com.android.testutils.delayUntilCondition
-import com.android.testutils.retryUntilPassing
 import com.android.testutils.waitForCondition
 import com.android.tools.analytics.AnalyticsSettings
 import com.android.tools.idea.common.TestPannable
@@ -88,6 +87,7 @@ import com.intellij.openapi.diagnostic.LogLevel
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.fileEditor.FileEditorProvider
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.fileEditor.impl.FileEditorManagerImpl
@@ -168,6 +168,11 @@ class ComposePreviewRepresentationTest {
 
   private var composePreviewEssentialsModeEnabled: Boolean = false
     set(value) {
+      if (
+        field == value &&
+          AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled == value
+      )
+        return
       runWriteActionAndWait {
         AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = value
         ApplicationManager.getApplication()
@@ -390,7 +395,8 @@ class ComposePreviewRepresentationTest {
     )
 
     // Change the scale of the surface
-    mainSurface.zoomController.setScale(originalScale + 0.5)
+    val scaleUpdate = originalScale + 0.5
+    mainSurface.zoomController.setScale(scaleUpdate)
 
     // Check that the UI Check tab has been created
     assertEquals(2, contentManager.contents.size)
@@ -406,8 +412,8 @@ class ComposePreviewRepresentationTest {
       DEFAULT_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
-    // Check that the surface zooms to fit when exiting UI check mode.
-    assertEquals(1.0, mainSurface.zoomController.scale, 0.001)
+    // Check that the surface zoom stays unchanged when exiting UI check mode.
+    assertEquals(scaleUpdate, mainSurface.zoomController.scale, 0.001)
 
     preview.renderedPreviewElementsInstancesFlowForTest().awaitStatus(
       "Failed stop uiCheckMode",
@@ -568,7 +574,7 @@ class ComposePreviewRepresentationTest {
   @Test
   fun testRerunUiCheckAction() {
     // Use the real FileEditorManager
-    project.putUserData(FileEditorManagerImpl.ALLOW_IN_LIGHT_PROJECT, true)
+    project.putUserData(FileEditorManagerKeys.ALLOW_IN_LIGHT_PROJECT, true)
     project.replaceService(
       FileEditorManager::class.java,
       FileEditorManagerImpl(project, project.coroutineScope),
@@ -741,10 +747,10 @@ class ComposePreviewRepresentationTest {
       assertEquals(30, preview.interactiveManager.fpsLimit)
 
       composePreviewEssentialsModeEnabled = true
-      retryUntilPassing(5.seconds) { assertEquals(10, preview.interactiveManager.fpsLimit) }
+      delayUntilCondition(delayPerIterationMs = 500) { preview.interactiveManager.fpsLimit == 10 }
 
       composePreviewEssentialsModeEnabled = false
-      retryUntilPassing(5.seconds) { assertEquals(30, preview.interactiveManager.fpsLimit) }
+      delayUntilCondition(delayPerIterationMs = 500) { preview.interactiveManager.fpsLimit == 30 }
     }
 
   @Test
@@ -988,10 +994,10 @@ class ComposePreviewRepresentationTest {
     init {
       mainSurface.addListener(
         object : DesignSurfaceListener {
-          override fun modelChanged(surface: DesignSurface<*>, model: NlModel?) {
+          override fun modelsChanged(surface: DesignSurface<*>, models: List<NlModel?>) {
             val id = UUID.randomUUID().toString().substring(0, 5)
             logger.info("modelChanged ($id)")
-            newModelAddedLatch.countDown()
+            repeat(models.size) { newModelAddedLatch.countDown() }
           }
         }
       )

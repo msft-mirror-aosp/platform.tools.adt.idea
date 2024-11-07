@@ -53,7 +53,7 @@ import com.android.tools.idea.gradle.plugin.AgpVersions;
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker;
 import com.android.tools.idea.gradle.project.sync.issues.SyncIssues;
 import com.android.tools.idea.gradle.project.sync.setup.post.ProjectStructureUsageTrackerManager;
-import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths;
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.gradle.util.GradleProperties;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.gradle.util.LocalProperties;
@@ -545,7 +545,7 @@ public class AndroidGradleTests {
    */
   public static void createGradleWrapper(@NotNull File projectRoot, @NotNull String gradleVersion) throws IOException {
     GradleWrapper wrapper = GradleWrapper.create(projectRoot, null);
-    File path = EmbeddedDistributionPaths.getInstance().findEmbeddedGradleDistributionFile(gradleVersion);
+    File path = GradleProjectSystemUtil.findEmbeddedGradleDistributionFile(gradleVersion);
     if (path != null) {
       assertAbout(file()).that(path).named("Gradle distribution path").isFile();
       wrapper.updateDistributionUrl(path);

@@ -114,8 +114,6 @@ import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
-import java.util.concurrent.atomic.AtomicBoolean
-import javax.swing.JComponent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -126,6 +124,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.psi.KtFile
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.swing.JComponent
 
 private val modelUpdater: NlModelUpdaterInterface = DefaultModelUpdater()
 val PREVIEW_ELEMENT_INSTANCE = DataKey.create<PsiPreviewElementInstance>("PreviewElement")
@@ -350,19 +350,16 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   private val previewElementModelAdapter =
     object : DelegatingPreviewElementModelAdapter<T, NlModel>(previewElementModelAdapterDelegate) {
       override fun createDataContext(previewElement: T) =
-        CustomizedDataContext.withProvider(
+        CustomizedDataContext.withSnapshot(
           previewElementModelAdapterDelegate.createDataContext(previewElement)
-        ) { dataId ->
-          when (dataId) {
-            PREVIEW_ELEMENT_INSTANCE.name -> previewElement
-            CommonDataKeys.PROJECT.name -> project
-            PreviewModeManager.KEY.name -> this@CommonPreviewRepresentation
-            PreviewGroupManager.KEY.name,
-            PreviewFlowManager.KEY.name -> previewFlowManager
-            FastPreviewSurface.KEY.name -> this@CommonPreviewRepresentation
-            PreviewInvalidationManager.KEY.name -> this@CommonPreviewRepresentation
-            else -> null
-          }
+        ) { sink ->
+          sink[PREVIEW_ELEMENT_INSTANCE] = previewElement
+          sink[CommonDataKeys.PROJECT] = project
+          sink[PreviewModeManager.KEY] = this@CommonPreviewRepresentation
+          sink[PreviewGroupManager.KEY] = previewFlowManager
+          sink[PreviewFlowManager.KEY] = previewFlowManager
+          sink[FastPreviewSurface.KEY] = this@CommonPreviewRepresentation
+          sink[PreviewInvalidationManager.KEY] = this@CommonPreviewRepresentation
         }
     }
 
@@ -488,8 +485,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
 
     stateManager.restoreState()
 
-    if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
-
     val showingPreviewElements =
       surface.updatePreviewsAndRefresh(
         tryReusingModels = true,
@@ -507,8 +502,6 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
         refreshEventBuilder,
       )
 
-    if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
-
     if (showingPreviewElements.size >= filePreviewElements.size) {
       previewFlowManager.updateRenderedPreviews(filePreviewElements)
     } else {
@@ -524,7 +517,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     refreshProgressIndicator: BackgroundableProcessIndicator,
     invalidateIfCancelled: AtomicBoolean,
   ) =
-    launchWithProgress(refreshProgressIndicator, uiThread) {
+    launchWithProgress(refreshProgressIndicator, workerThread) {
       val requestLogger = LoggerWithFixedInfo(LOG, mapOf("requestId" to request.requestId))
 
       if (DumbService.isDumb(project)) {
@@ -589,7 +582,8 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
           doRefreshSync(filePreviewElements, refreshProgressIndicator, request.refreshEventBuilder)
         }
       } catch (t: Throwable) {
-        requestLogger.warn("Request failed", t)
+        // Make sure to propagate cancellations
+        if (t is CancellationException) throw t else requestLogger.warn("Request failed", t)
       } finally {
         previewViewModel.refreshFinished()
       }

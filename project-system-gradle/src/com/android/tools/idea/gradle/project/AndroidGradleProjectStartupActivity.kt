@@ -79,7 +79,9 @@ import com.intellij.platform.PlatformProjectOpenProcessor
 import com.intellij.workspaceModel.ide.JpsProjectLoadingManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
@@ -99,24 +101,31 @@ import java.io.File
 class AndroidGradleProjectStartupActivity : ProjectActivity {
 
   @Service(Service.Level.PROJECT)
-  class StartupService : AndroidGradleProjectStartupService<Unit>()
+  class StartupService(private val project: Project) : AndroidGradleProjectStartupService<Unit>() {
+
+    suspend fun performStartupActivity() {
+      runInitialization {
+        // Need to wait for both JpsProjectLoadingManager and ExternalProjectsManager, as well as the completion of
+        // AndroidNewProjectInitializationStartupActivity.  In old-skool thread
+        // programming I'd probably use an atomic integer and wait for the count to reach 3.
+        coroutineScope {
+          val myJob = currentCoroutineContext().job
+          val externalProjectsJob = CompletableDeferred<Unit>(parent = myJob)
+          val jpsProjectJob = CompletableDeferred<Unit>(parent = myJob)
+          val newProjectStartupJob = async { project.service<AndroidNewProjectInitializationStartupActivity.StartupService>().awaitInitialization() }
+
+          ExternalProjectsManager.getInstance(project).runWhenInitializedInBackground { externalProjectsJob.complete(Unit) }
+          whenAllModulesLoaded(project) { jpsProjectJob.complete(Unit) }
+          awaitAll(newProjectStartupJob, externalProjectsJob, jpsProjectJob)
+        }
+
+        performActivity(project)
+      }
+    }
+  }
 
   override suspend fun execute(project: Project) {
-    project.service<StartupService>().runInitialization {
-      // Need to wait for both JpsProjectLoadingManager and ExternalProjectsManager, as well as the completion of
-      // AndroidNewProjectInitializationStartupActivity.  In old-skool thread
-      // programming I'd probably use an atomic integer and wait for the count to reach 3.
-      val myJob = currentCoroutineContext().job
-      val externalProjectsJob = CompletableDeferred<Unit>(parent = myJob)
-      val jpsProjectJob = CompletableDeferred<Unit>(parent = myJob)
-      val newProjectStartupJob = project.service<AndroidNewProjectInitializationStartupActivity.StartupService>().deferred
-
-      ExternalProjectsManager.getInstance(project).runWhenInitializedInBackground { externalProjectsJob.complete(Unit) }
-      whenAllModulesLoaded(project) { jpsProjectJob.complete(Unit) }
-      awaitAll(newProjectStartupJob, externalProjectsJob, jpsProjectJob)
-
-      performActivity(project)
-    }
+    project.service<StartupService>().performStartupActivity()
   }
 }
 

@@ -34,11 +34,11 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.core.AbstractDisplayView
+import com.android.tools.idea.streaming.core.AbstractDisplayView.Companion.ANDROID_SCROLL_ADJUSTMENT_FACTOR
 import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN_AND_UP
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_UP
-import com.android.tools.idea.streaming.device.DeviceView.Companion.ANDROID_SCROLL_ADJUSTMENT_FACTOR
 import com.android.tools.idea.streaming.executeStreamingAction
 import com.android.tools.idea.streaming.extractText
 import com.android.tools.idea.testing.AndroidExecutorsRule
@@ -94,6 +94,7 @@ import com.intellij.util.ConcurrencyUtil
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap
 import kotlinx.coroutines.runBlocking
 import org.apache.http.entity.mime.MultipartEntityBuilder
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -184,6 +185,7 @@ internal class DeviceViewTest {
     focusManager = FakeKeyboardFocusManager(testRootDisposable)
   }
 
+  @After
   fun tearDown() {
     BitRateManager.getInstance().clear()
   }

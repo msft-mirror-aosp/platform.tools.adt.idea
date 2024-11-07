@@ -36,31 +36,36 @@ import org.jetbrains.android.util.AndroidBundle.message
 class AndroidNewProjectInitializationStartupActivity : ProjectActivity {
 
   @Service(Service.Level.PROJECT)
-  class StartupService : AndroidGradleProjectStartupService<Unit>()
+  class StartupService(private val project: Project) : AndroidGradleProjectStartupService<Unit>() {
 
-  override suspend fun execute(project: Project) {
-    project.service<StartupService>().runInitialization {
-      val initializationRunnable = project.getUserData(INITIALIZER_KEY)
-      if (initializationRunnable != null) {
-        log.info("Scheduling new project initialization.")
+    suspend fun performStartupActivity() {
+      runInitialization {
+        val initializationRunnable = project.getUserData(INITIALIZER_KEY)
+        if (initializationRunnable != null) {
+          log.info("Scheduling new project initialization.")
 
-        // This runs on EDT and it needs to be blocking, but our new project generation requires background thread.
-        // We should try to migrate this not to be an activity; tracked in http://b/287942576.
-        runModalTask(
-          title = message("android.compile.messages.generating.r.java.content.name"), project = project, cancellable = false
-        ) { initializationRunnable() }
-        project.removeUserData(INITIALIZER_KEY)
+          // This runs on EDT and it needs to be blocking, but our new project generation requires background thread.
+          // We should try to migrate this not to be an activity; tracked in http://b/287942576.
+          runModalTask(
+            title = message("android.compile.messages.generating.r.java.content.name"), project = project, cancellable = false
+          ) { initializationRunnable() }
+          project.removeUserData(INITIALIZER_KEY)
+        }
       }
     }
-  }
 
-  companion object {
-    fun setProjectInitializer(project: Project, initializer: () -> Unit) {
+    fun setProjectInitializer(initializer: () -> Unit) {
       assert(project.getUserData(INITIALIZER_KEY) == null)
       project.putUserData(INITIALIZER_KEY, initializer)
     }
 
-    private val INITIALIZER_KEY = Key.create<() -> Unit>("ANDROID_INIT")
-    private val log = logger<AndroidNewProjectInitializationStartupActivity>()
+    companion object {
+      private val log = logger<AndroidNewProjectInitializationStartupActivity>()
+      private val INITIALIZER_KEY = Key.create<() -> Unit>("ANDROID_INIT")
+    }
+  }
+
+  override suspend fun execute(project: Project) {
+    project.service<StartupService>().performStartupActivity()
   }
 }

@@ -47,7 +47,6 @@ import com.android.tools.idea.appinspection.test.TEST_JAR
 import com.android.tools.idea.appinspection.test.TestAppInspectorCommandHandler
 import com.android.tools.idea.appinspection.test.createCreateInspectorResponse
 import com.android.tools.idea.appinspection.test.mockMinimumArtifactCoordinate
-import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.transport.faketransport.FakeGrpcServer
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.commands.CommandHandler
@@ -57,11 +56,10 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
 import com.intellij.util.concurrency.EdtExecutorService
-import java.nio.file.Path
-import java.nio.file.Paths
-import java.util.concurrent.ArrayBlockingQueue
-import javax.swing.JPanel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +76,10 @@ import kotlinx.coroutines.withContext
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.RuleChain
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.util.concurrent.ArrayBlockingQueue
+import javax.swing.JPanel
 
 class TestAppInspectorTabProvider1 :
   AppInspectorTabProvider by StubTestAppInspectorTabProvider(INSPECTOR_ID)
@@ -101,7 +102,9 @@ class AppInspectionViewTest {
     FakeGrpcServer.createFakeGrpcServer("AppInspectionViewTest", transportService)
   private val appInspectionServiceRule =
     AppInspectionServiceRule(timer, transportService, grpcServerRule)
-  private val projectRule = AndroidProjectRule.inMemory().initAndroid(false)
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+  private val disposable get() = disposableRule.disposable
 
   private class TestIdeServices : AppInspectionIdeServicesAdapter() {
     class NotificationData(
@@ -126,8 +129,7 @@ class AppInspectionViewTest {
   private val ideServices = TestIdeServices()
 
   @get:Rule
-  val ruleChain =
-    RuleChain.outerRule(grpcServerRule).around(appInspectionServiceRule)!!.around(projectRule)!!
+  val ruleChain = RuleChain(projectRule, disposableRule, grpcServerRule, appInspectionServiceRule)
 
   @Before
   fun setup() {
@@ -139,7 +141,7 @@ class AppInspectionViewTest {
 
   @Test
   fun selectProcessInAppInspectionView_twoTabProvidersAddTwoTabs() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
 
       val tabsAdded = CompletableDeferred<Unit>()
@@ -154,7 +156,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
 
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(2)
@@ -174,7 +176,7 @@ class AppInspectionViewTest {
 
   @Test
   fun selectProcessInAppInspectionView_tabNotAddedForDisabledTabProvider() =
-    runBlocking<Unit> {
+    runBlocking {
       // Disable Inspector2 and only one tab should be added.
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabsAdded = CompletableDeferred<Unit>()
@@ -191,7 +193,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
           tabsAdded.complete(Unit)
@@ -210,7 +212,7 @@ class AppInspectionViewTest {
 
   @Test
   fun disposeInspectorWhenSelectionChanges() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
 
       lateinit var tabs: List<AppInspectorTab>
@@ -225,7 +227,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
 
         inspectionView.tabsChangedFlow.take(2).collectIndexed { i, _ ->
           if (i == 0) {
@@ -268,7 +270,7 @@ class AppInspectionViewTest {
 
   @Test
   fun receivesInspectorDisposedEvent() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val fakeDevice =
         FakeTransportService.FAKE_DEVICE.toBuilder()
@@ -301,7 +303,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
 
         // Test initial tabs added.
         inspectionView.tabsChangedFlow.first {
@@ -339,7 +341,7 @@ class AppInspectionViewTest {
 
   @Test
   fun inspectorTabsAreDisposed_whenUiIsRefreshed() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabDisposedDeferred = CompletableDeferred<Unit>()
       val offlineTabDisposedDeferred = CompletableDeferred<Unit>()
@@ -406,8 +408,8 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
-        var previousTabs = mutableListOf<AppInspectorTabShell>()
+        Disposer.register(disposable, inspectionView)
+        val previousTabs = mutableListOf<AppInspectorTabShell>()
         inspectionView.tabsChangedFlow.take(3).collectIndexed { i, _ ->
           when (i) {
             0 -> {
@@ -467,7 +469,7 @@ class AppInspectionViewTest {
 
   @Test
   fun inspectorCrashNotification() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val fakeDevice =
         FakeTransportService.FAKE_DEVICE.toBuilder()
@@ -491,7 +493,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
 
         // Test initial tabs added.
         inspectionView.tabsChangedFlow.first {
@@ -551,7 +553,7 @@ class AppInspectionViewTest {
 
   @Test
   fun inspectorRestartNotificationShownOnLaunchError() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
 
       val fakeDevice =
@@ -601,7 +603,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
 
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
@@ -675,7 +677,7 @@ class AppInspectionViewTest {
         ) {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
-      Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+      Disposer.register(disposable, inspectionView)
 
       inspectionView.tabsChangedFlow.first {
         assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
@@ -730,7 +732,7 @@ class AppInspectionViewTest {
         ) {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
-      Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+      Disposer.register(disposable, inspectionView)
       inspectionView.tabsChangedFlow.take(2).collectIndexed { i, _ ->
         if (i == 0) {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(3)
@@ -786,7 +788,7 @@ class AppInspectionViewTest {
         ) {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
-      Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+      Disposer.register(disposable, inspectionView)
       inspectionView.tabsChangedFlow.take(2).collectIndexed { i, _ ->
         if (i == 0) {
           assertThat(inspectionView.inspectorTabs).hasSize(3)
@@ -826,7 +828,7 @@ class AppInspectionViewTest {
 
   @Test
   fun launchInspectorFailsDueToIncompatibleVersion_emptyMessageAdded() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabsAdded = CompletableDeferred<Unit>()
       val provider = TestAppInspectorTabProvider2()
@@ -843,7 +845,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
           val tab = inspectionView.inspectorTabs[0]
@@ -889,7 +891,7 @@ class AppInspectionViewTest {
 
   @Test
   fun launchInspectorFailsDueToAppProguarded_emptyMessageAdded() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabsAdded = CompletableDeferred<Unit>()
       val provider = TestAppInspectorTabProvider2()
@@ -906,7 +908,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
           val tab = inspectionView.inspectorTabs[0]
@@ -942,7 +944,7 @@ class AppInspectionViewTest {
 
   @Test
   fun launchInspectorFailsDueToServiceError() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabsAdded = CompletableDeferred<Unit>()
       launch(uiDispatcher) {
@@ -958,7 +960,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
           val tab = inspectionView.inspectorTabs[0]
@@ -998,7 +1000,7 @@ class AppInspectionViewTest {
 
   @Test
   fun launchInspectorFailsBecauseProcessNoLongerExists() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabsAdded = CompletableDeferred<Unit>()
 
@@ -1024,7 +1026,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs).isEmpty()
           val statePanel = inspectionView.inspectorPanel.getComponent(0)
@@ -1047,7 +1049,7 @@ class AppInspectionViewTest {
 
   @Test
   fun launchInspectorFailsDueToMissingLibrary_emptyMessageAdded() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val tabsAdded = CompletableDeferred<Unit>()
       val provider = TestAppInspectorTabProvider2()
@@ -1064,7 +1066,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(1)
           val tab = inspectionView.inspectorTabs[0]
@@ -1123,7 +1125,7 @@ class AppInspectionViewTest {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
       }
-    Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+    Disposer.register(disposable, inspectionView)
 
     val firstProcessReadyDeferred = CompletableDeferred<Unit>()
     val deadProcessAddedDeferred = CompletableDeferred<Unit>()
@@ -1157,7 +1159,7 @@ class AppInspectionViewTest {
 
   @Test
   fun launchLibraryInspectors() =
-    runBlocking<Unit> {
+    runBlocking {
       val uiDispatcher = EdtExecutorService.getInstance().asCoroutineDispatcher()
       val resolvedInspector =
         object : StubTestAppInspectorTabProvider(INSPECTOR_ID) {
@@ -1213,7 +1215,7 @@ class AppInspectionViewTest {
           ) {
             it.name == FakeTransportService.FAKE_PROCESS_NAME
           }
-        Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+        Disposer.register(disposable, inspectionView)
         inspectionView.tabsChangedFlow.first {
           assertThat(inspectionView.inspectorTabs.size).isEqualTo(3)
           inspectionView.inspectorTabs.forEach { inspectorTab ->
@@ -1307,7 +1309,7 @@ class AppInspectionViewTest {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
       }
-    Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+    Disposer.register(disposable, inspectionView)
 
     assertThat(inspectionView.autoConnects).isTrue()
 
@@ -1333,7 +1335,7 @@ class AppInspectionViewTest {
     transportService.addProcess(fakeDevice, fakeProcesses[0])
 
     // Verify auto connected to initial process
-    withContext(Dispatchers.Default) {
+    withContext(Dispatchers.Unconfined) {
       // Note: We need to wait for process changes here (and below) on a non-test thread that's
       // *not* the UI thread, so we
       // don't block the test thread *and* we give the UI thread a chance to respond to the change
@@ -1346,7 +1348,7 @@ class AppInspectionViewTest {
     }
 
     // Verify auto connect to new process
-    withContext(Dispatchers.Default) {
+    withContext(Dispatchers.Unconfined) {
       inspectionView.stopInspectors()
       selectedProcessChangedQueue.take()
       timer.currentTimeNs += 1
@@ -1362,7 +1364,7 @@ class AppInspectionViewTest {
     // Process stop still handled, even if auto connect enabled is set to false
     withContext(uiDispatcher) { inspectionView.autoConnects = false }
 
-    withContext(Dispatchers.Default) {
+    withContext(Dispatchers.Unconfined) {
       inspectionView.stopInspectors()
       selectedProcessChangedQueue.take()
     }
@@ -1377,10 +1379,10 @@ class AppInspectionViewTest {
       assertThat(inspectionView.currentProcess!!.isRunning).isFalse()
     }
 
-    // New process is ignored (as expected) if autoconnection isn't enabled
+    // New process is ignored (as expected) if auto-connection isn't enabled
     withContext(uiDispatcher) { inspectionView.autoConnects = false }
 
-    withContext(Dispatchers.Default) {
+    withContext(Dispatchers.Unconfined) {
       timer.currentTimeNs += 1
       transportService.addProcess(fakeDevice, fakeProcesses[2])
       selectedProcessChangedQueue.take()
@@ -1418,7 +1420,7 @@ class AppInspectionViewTest {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
       }
-    Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+    Disposer.register(disposable, inspectionView)
 
     launch(uiDispatcher) {
       inspectionView.tabsChangedFlow.take(3).collectIndexed { i, _ ->
@@ -1474,7 +1476,7 @@ class AppInspectionViewTest {
           it.name == FakeTransportService.FAKE_PROCESS_NAME
         }
       }
-    Disposer.register(projectRule.fixture.testRootDisposable, inspectionView)
+    Disposer.register(disposable, inspectionView)
 
     launch(uiDispatcher) {
       inspectionView.tabsChangedFlow.first()

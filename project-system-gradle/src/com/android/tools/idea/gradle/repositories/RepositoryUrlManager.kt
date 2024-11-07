@@ -25,8 +25,8 @@ import com.android.ide.common.repository.MavenRepositories
 import com.android.ide.common.repository.SdkMavenRepository
 import com.android.io.CancellableFileIo
 import com.android.sdklib.repository.AndroidSdkHandler
-import com.android.tools.idea.gradle.util.EmbeddedDistributionPaths
 import com.android.tools.idea.gradle.util.GradleLocalCache
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.lint.common.LintIdeSupport
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.lint.checks.GradleDetector.Companion.getLatestVersionFromRemoteRepo
@@ -107,7 +107,7 @@ class RepositoryUrlManager @NonInjectable @VisibleForTesting constructor(
 
     if (useEmbeddedStudioRepo) {
       // Try the repo embedded in AS.
-      val embeddedVersion = EmbeddedDistributionPaths.getInstance().findAndroidStudioLocalMavenRepoPaths()
+      val embeddedVersion = GradleProjectSystemUtil.findAndroidStudioLocalMavenRepoPaths()
         .filter { it?.isDirectory == true }
         .firstNotNullOfOrNull {
           val repoPath = fileSystem.getPath(it.path)

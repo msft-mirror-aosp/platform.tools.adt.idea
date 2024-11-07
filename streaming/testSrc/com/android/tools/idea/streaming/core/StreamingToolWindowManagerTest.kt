@@ -134,7 +134,7 @@ class StreamingToolWindowManagerTest {
   private val project get() = agentRule.project
   private val testRootDisposable get() = agentRule.disposable
   private val dataContext = DataContext {
-    when(it) {
+    when (it) {
       CommonDataKeys.PROJECT.name -> project
       PlatformDataKeys.TOOL_WINDOW.name -> toolWindow
       else -> null
@@ -146,6 +146,7 @@ class StreamingToolWindowManagerTest {
     val mockUIThemeLookAndFeelInfo = mock<UIThemeLookAndFeelInfoImpl>()
     whenever(mockUIThemeLookAndFeelInfo.name).thenReturn("IntelliJ Light")
     val mockLafManager = mock<LafManager>()
+    @Suppress("UnstableApiUsage")
     whenever(mockLafManager.currentUIThemeLookAndFeel).thenReturn(mockUIThemeLookAndFeelInfo)
     ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, testRootDisposable)
     deviceMirroringSettings.confirmationDialogShown = true
@@ -426,6 +427,7 @@ class StreamingToolWindowManagerTest {
     val provisionerService: DeviceProvisionerService = mock()
     whenever(provisionerService.deviceProvisioner).thenReturn(provisionerRule.deviceProvisioner)
     project.replaceService(DeviceProvisionerService::class.java, provisionerService, agentRule.disposable)
+    waitForCondition(2.seconds) { provisionerService.deviceProvisioner.devices.value.isNotEmpty() }
 
     toolWindow.show()
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }

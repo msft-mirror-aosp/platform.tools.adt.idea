@@ -79,6 +79,7 @@ import com.intellij.psi.xml.XmlTag
 import com.intellij.ui.EditorNotifications
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.concurrency.EdtExecutorService
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.containers.toArray
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
@@ -589,14 +590,14 @@ abstract class DesignSurface<T : SceneManager>(
     }
   }
 
-  private fun notifyModelChanged(model: NlModel) {
+  private fun notifyModelsChanged(models: List<NlModel?>) {
     val listeners = getSurfaceListeners()
     for (listener in listeners) {
-      runInEdt { listener.modelChanged(this, model) }
+      runInEdt { listener.modelsChanged(this, models) }
     }
   }
 
-  private fun notifySelectionChanged(newSelection: List<NlComponent?>) {
+  private fun notifySelectionChanged(newSelection: List<NlComponent>) {
     val listeners = getSurfaceListeners()
     for (listener in listeners) {
       listener.componentSelectionChanged(this, newSelection)
@@ -611,11 +612,38 @@ abstract class DesignSurface<T : SceneManager>(
   private val readyToRestoreZoomMask = AtomicInteger(0)
 
   /**
-   * Notify to [DesignSurface] that we can now try to restore the zoom. Note: this function works
-   * only if [DesignSurface.waitForRenderBeforeRestoringZoom] is enabled.
+   * Notify to [DesignSurface] that we can now try to restore the zoom or apply zoom to fit if no
+   * zoom has been stored before.
+   *
+   * This is used for when we need to wait for events external to [DesignSurface] (such as Rendering
+   * of the content) before trying to restore the zoom.
+   *
+   * Note: if [waitForRenderBeforeRestoringZoom] flag is enabled, it waits [DesignSurface] to be
+   * resized before restoring the zoom.
    */
+  @UiThread
   fun notifyRestoreZoom() {
     checkIfReadyToRestoreZoom(NOTIFY_RESTORE_ZOOM_INT_MASK)
+  }
+
+  /**
+   * Resets the bitwise mask responsible to check weather restoring zoom or waiting for
+   * [notifyRestoreZoom]. Resetting will allow DesignSurface to call
+   * [waitForRenderBeforeRestoringZoom] as if it happens for the first time.
+   *
+   * This is useful when we switch modes or layouts.
+   *
+   * Note: if [waitForRenderBeforeRestoringZoom] is enabledit will wait [notifyRestoreZoom] to be
+   * performed at least once before trying to restore the zoom.
+   */
+  fun resetRestoreZoomNotifier() {
+    if (readyToRestoreZoomMask.get() == RESTORE_ZOOM_DONE_INT_MASK && height > 0 && width > 0) {
+      // If we have performed already the first [DesignSurface.waitForRenderBeforeRestoringZoom]
+      // we can just set the bitwise map with the NOTIFY_RESTORE_ZOOM_INT_MASK flag.
+      readyToRestoreZoomMask.set(NOTIFY_RESTORE_ZOOM_INT_MASK)
+    } else {
+      readyToRestoreZoomMask.set(0)
+    }
   }
 
   @TestOnly
@@ -629,8 +657,12 @@ abstract class DesignSurface<T : SceneManager>(
    * when the sizes of the content to show and the sizes of [DesignSurface] aren't yet synchronized
    * causing a wrong fitScale value.
    *
-   * Note: this function works only if [DesignSurface.waitForRenderBeforeRestoringZoom] is enabled.
+   * Note: if [waitForRenderBeforeRestoringZoom] is enabled it will wait
+   * DesignSurface.notifyRestoreZoom() to be performed at least once. if
+   * [waitForRenderBeforeRestoringZoom] is disabled it will directly perform
+   * restoreZoomOrZoomToFit()
    */
+  @UiThread
   private fun checkIfReadyToRestoreZoom(bitwiseNumber: Int): Boolean {
     val newMask =
       readyToRestoreZoomMask.updateAndGet {
@@ -805,7 +837,8 @@ abstract class DesignSurface<T : SceneManager>(
    * @return whether zoom-to-fit or zoom restore has happened, which won't happen if there is no
    *   model.
    */
-  fun restoreZoomOrZoomToFit(): Boolean {
+  @UiThread
+  private fun restoreZoomOrZoomToFit(): Boolean {
     val model = model ?: return false
     if (!restorePreviousScale(model)) {
       zoomController.zoomToFit()
@@ -1165,14 +1198,14 @@ abstract class DesignSurface<T : SceneManager>(
         revalidateScrollArea()
       }
 
-      notifyModelChanged(newModel)
+      notifyModelsChanged(listOf(newModel))
     }
   }
 
   /**
    * Add an [NlModel] to DesignSurface and return the created [SceneManager]. If it is added before
    * then it just returns the associated [SceneManager] which created before. In this function, the
-   * scene views are not updated and [DesignSurfaceListener.modelChanged] callback is triggered
+   * scene views are not updated and [DesignSurfaceListener.modelsChanged] callback is triggered
    * immediately.
    *
    * Note that the order of the addition might be important for the rendering order.
@@ -1189,11 +1222,25 @@ abstract class DesignSurface<T : SceneManager>(
       .whenCompleteAsync(
         { _, _ ->
           if (project.isDisposed || modelToAdd.isDisposed) return@whenCompleteAsync
-          notifyModelChanged(modelToAdd)
+          notifyModelsChanged(listOf(modelToAdd))
           reactivateGuiInputHandler()
         },
         EdtExecutorService.getInstance(),
       )
+  }
+
+  /**
+   * Bulk version of [addModelWithoutRender].
+   *
+   * This method is expected to be called in the background thread, and it will schedule the
+   * corresponding call to [DesignSurfaceListener.modelsChanged] in EDT for later.
+   */
+  @RequiresBackgroundThread
+  fun addModelsWithoutRender(models: List<NlModel>): List<T> {
+    val sceneManagers = models.map { addModel(it) }
+    notifyModelsChanged(models)
+    reactivateGuiInputHandler()
+    return sceneManagers
   }
 
   private var lintIssueProvider: LintIssueProvider? = null

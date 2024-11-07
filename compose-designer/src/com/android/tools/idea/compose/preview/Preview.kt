@@ -790,11 +790,7 @@ class ComposePreviewRepresentation(
 
   private suspend fun updateLayoutManager(mode: PreviewMode) {
     withContext(uiThread) {
-      val isZoomToFitInMode = !surface.zoomController.canZoomToFit()
       surface.layoutManagerSwitcher?.currentLayout?.value = mode.layoutOption
-      if (isZoomToFitInMode) {
-        surface.zoomController.zoomToFit()
-      }
     }
   }
 
@@ -1034,7 +1030,7 @@ class ComposePreviewRepresentation(
 
       // We can now notify to DesignSurface that Preview has rendered for the first time, and we can
       // now attempt to restore the zoom.
-      surface.notifyRestoreZoom()
+      launch(uiThread) { surface.notifyRestoreZoom() }
     }
   }
 
@@ -1090,8 +1086,6 @@ class ComposePreviewRepresentation(
     // Restore
     stateManager.restoreState()
 
-    if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
-
     val showingPreviewElements =
       composeWorkBench.updatePreviewsAndRefresh(
         !quickRefresh,
@@ -1105,7 +1099,6 @@ class ComposePreviewRepresentation(
         this::configureLayoutlibSceneManagerForPreviewElement,
         refreshEventBuilder,
       )
-    if (progressIndicator.isCanceled) return // Return early if user has cancelled the refresh
 
     composePreviewFlowManager.updateRenderedPreviews(showingPreviewElements)
     if (showingPreviewElements.size < numberOfPreviewsToRender) {
@@ -1237,7 +1230,7 @@ class ComposePreviewRepresentation(
     var invalidateIfCancelled = false
 
     val refreshJob =
-      launchWithProgress(refreshProgressIndicator, uiThread) {
+      launchWithProgress(refreshProgressIndicator, workerThread) {
         refreshTriggers.forEach {
           requestLogger.debug("Refresh triggered (inside launchWithProgress scope)", it)
         }
@@ -1314,10 +1307,8 @@ class ComposePreviewRepresentation(
             )
           }
         } catch (t: Throwable) {
-          // It's normal for refreshes to get cancelled by the refreshManager, so log the
-          // CancellationExceptions as 'debug' to avoid being too noisy.
-          if (t is CancellationException) requestLogger.debug("Request cancelled", t)
-          else requestLogger.warn("Request failed", t)
+          // Make sure to propagate cancellations
+          if (t is CancellationException) throw t else requestLogger.warn("Request failed", t)
         } finally {
           // Force updating toolbar icons after refresh
           ActivityTracker.getInstance().inc()
@@ -1427,12 +1418,12 @@ class ComposePreviewRepresentation(
   }
 
   override fun registerShortcuts(applicableTo: JComponent) {
-    psiFilePointer.element?.let {
-      BuildAndRefresh { it }
-        .registerCustomShortcutSet(getBuildAndRefreshShortcut(), applicableTo, this)
-    }
+    val psiFile = SlowOperations.knownIssue("IDEA-359563").use {
+      runReadAction { psiFilePointer.element }
+    } ?: return
+    BuildAndRefresh { psiFile }
+      .registerCustomShortcutSet(getBuildAndRefreshShortcut(), applicableTo, this)
   }
-
   private val delegateFastPreviewSurface =
     CommonFastPreviewSurface(
       parentDisposable = this,
@@ -1468,14 +1459,7 @@ class ComposePreviewRepresentation(
       is PreviewMode.Default -> {
         sceneComponentProvider.enabled = true
         invalidateAndRefresh()
-        withContext(uiThread) {
-          surface.repaint()
-          // In this stage on the first opening of Preview we are still loading the items meaning we
-          // might calculate the wrong zoom-to-fit value.
-          // If we are entering from a different Preview mode such as Ui Check, we want instead
-          // clear up the previous stored zoom and apply zoom-to-fit
-          surface.zoomToFitIfStorageNotEmpty()
-        }
+        withContext(uiThread) { surface.repaint() }
       }
       is PreviewMode.Interactive -> {
         startInteractivePreview(mode.selected as ComposePreviewElementInstance)
@@ -1518,9 +1502,15 @@ class ComposePreviewRepresentation(
         withContext(uiThread) {
           composeWorkBench.galleryMode = GalleryMode(composeWorkBench.mainSurface)
         }
+        resetFirstRendering()
       }
     }
     surface.background = mode.backgroundColor
+  }
+
+  private fun resetFirstRendering() {
+    hasRenderedAtLeastOnce.set(false)
+    surface.resetRestoreZoomNotifier()
   }
 
   /** Performs cleanup for [mode] when leaving this mode to go to a mode of a different class. */
@@ -1547,6 +1537,7 @@ class ComposePreviewRepresentation(
         withContext(uiThread) { composeWorkBench.galleryMode = null }
       }
     }
+    resetFirstRendering()
   }
 
   private fun createAnimationPreviewPanel(

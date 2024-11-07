@@ -52,6 +52,7 @@ import com.intellij.ui.table.TableView
 import com.intellij.util.ui.UIUtil
 import org.junit.Assert
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.Timeout
@@ -278,18 +279,9 @@ class ManageSnapshotsDialogTest {
 
   @Test
   fun testDialogClosedWhileCreatingSnapshot() {
-    var snapshotCreationPopupVisible = false
+    val loadingPanelListener = LoadingPanelListener()
     val loadingPanel = StreamingLoadingPanel(testRootDisposable)
-    loadingPanel.addListener(object : JBLoadingPanelListener {
-
-      override fun onLoadingStart() {
-        snapshotCreationPopupVisible = true
-      }
-
-      override fun onLoadingFinish() {
-        snapshotCreationPopupVisible = false
-      }
-    })
+    loadingPanel.addListener(loadingPanelListener)
 
     loadingPanel.add(emulatorView)
     val dialog = showManageSnapshotsDialog()
@@ -299,29 +291,20 @@ class ManageSnapshotsDialogTest {
     emulator.pauseGrpc()
     val createSnapshotButton = ui.getComponent<JButton> { it.text == "Create Snapshot" }
     ui.clickOn(createSnapshotButton)
-    assertThat(snapshotCreationPopupVisible).isTrue()
+    assertThat(loadingPanelListener.popupVisible).isTrue()
     dialog.close(CLOSE_EXIT_CODE)
     emulator.resumeGrpc()
     val call = emulator.getNextGrpcCall(2.seconds, GRPC_CALL_FILTER)
     assertThat(call.methodName).isEqualTo("android.emulation.control.SnapshotService/SaveSnapshot")
     waitForCondition(2.seconds) { call.completion.isDone }
-    waitForCondition(2.seconds) { !snapshotCreationPopupVisible } // The "Saving state..." popup should disappear.
+    waitForCondition(2.seconds) { !loadingPanelListener.popupVisible } // The "Saving state..." popup should disappear.
   }
 
   @Test
   fun testDialogClosedWhileLoadingSnapshot() {
-    var snapshotLoadingPopupVisible = false
+    val loadingPanelListener = LoadingPanelListener()
     val loadingPanel = StreamingLoadingPanel(testRootDisposable)
-    loadingPanel.addListener(object : JBLoadingPanelListener {
-
-      override fun onLoadingStart() {
-        snapshotLoadingPopupVisible = true
-      }
-
-      override fun onLoadingFinish() {
-        snapshotLoadingPopupVisible = false
-      }
-    })
+    loadingPanel.addListener(loadingPanelListener)
 
     loadingPanel.add(emulatorView)
     val dialog = showManageSnapshotsDialog()
@@ -341,13 +324,13 @@ class ManageSnapshotsDialogTest {
     emulator.pauseGrpc()
     val actionsPanel = ui.getComponent<CommonActionsPanel>()
     performAction(getLoadSnapshotAction(actionsPanel))
-    assertThat(snapshotLoadingPopupVisible).isTrue()
+    assertThat(loadingPanelListener.popupVisible).isTrue()
     dialog.close(CLOSE_EXIT_CODE)
     emulator.resumeGrpc()
     call = emulator.getNextGrpcCall(2.seconds, GRPC_CALL_FILTER)
     assertThat(call.methodName).isEqualTo("android.emulation.control.SnapshotService/LoadSnapshot")
     waitForCondition(2.seconds) { call.completion.isDone }
-    waitForCondition(2.seconds) { !snapshotLoadingPopupVisible } // The "Loading snapshot..." popup should disappear.
+    waitForCondition(2.seconds) { !loadingPanelListener.popupVisible } // The "Loading snapshot..." popup should disappear.
   }
 
   @Test
@@ -588,6 +571,19 @@ class ManageSnapshotsDialogTest {
     // The image is slightly taller on Mac due to a slight layout difference.
     val platformSuffix = if (UIUtil.isRetina()) "_Mac" else ""
     return TestUtils.resolveWorkspacePathUnchecked("$GOLDEN_FILE_PATH/$name$platformSuffix.png")
+  }
+}
+
+private class LoadingPanelListener : JBLoadingPanelListener {
+
+  var popupVisible: Boolean = false
+
+  override fun onLoadingStart() {
+    popupVisible = true
+  }
+
+  override fun onLoadingFinish() {
+    popupVisible = false
   }
 }
 

@@ -346,11 +346,6 @@ public final class StudioFlags {
     "Allows floating attached tool windows (partly broken).",
     false);
 
-  public static final Flag<Boolean> NELE_SYSTEM_UI_OPTIONS = new BooleanFlag(
-    NELE, "system.ui.options", "Enable system UI options",
-    "Enable an action to customize the system UI for previews.",
-    false);
-
   public static final Flag<Boolean> NELE_BACKGROUND_DISPLAY_LIST = new BooleanFlag(
     NELE, "background.displaylist", "Enable Display List background creation",
     "When enabled, the scene display list is created in the background.",
@@ -1201,20 +1196,6 @@ public final class StudioFlags {
     "If enabled, calls out reads of variables of type State inside @Composable functions.",
     ChannelDefault.enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> SKIP_NAV_INFO_DUMB_MODE_CHECK = new BooleanFlag(
-    EDITOR, "skip.nav.info.dumb.mode.check",
-    "Skip check for dumb mode in NavInfoFetcher.kt",
-    "When true, NavInfoFetched.kt does not check for dumb mode, and instead allows a caller to handle an IndexNotReadyException.",
-    true
-  );
-
-  public static final Flag<Boolean> ENABLE_SDK_DOCUMENTATION_TARGET_PROVIDER = new BooleanFlag(
-    EDITOR, "enable.sdk.documentation.target.provider",
-    "Enable SDK Documentation Target Provider",
-    "When true, javadocs for Android Framework SDK classes will be served using a new supported extension point.",
-    true
-  );
-
   //endregion
 
   //region Essentials Mode
@@ -1522,7 +1503,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
     COMPOSE, "ui.check.mode.wear", "Enable UI Check mode for Compose preview for Wear OS",
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Boolean> COMPOSE_UI_CHECK_AI_QUICK_FIX = new BooleanFlag(
     COMPOSE, "ui.check.mode.ai.quickfix", "Enable AI-powered quick fix action for UI Check",
@@ -1861,7 +1842,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
   public static final Flag<Boolean> TSDKVUA_API_35 = new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", true);
-  public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(TSDKVUA, "omg76167", "Mitigate omg/76167", "Mitigate omg/76167 by hiding part of API 35's 'secured background activity launches' step", false);
+  public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(TSDKVUA, "omg76167", "Do NOT mitigate omg/76167", "Mitigating omg/76167 requires hiding part of API 35's 'secured background activity launches' step", false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR
@@ -2173,20 +2154,31 @@ public final class StudioFlags {
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.notes", "Show notes from SDK developer",
     "Whether or not SDK Index critical issues should include notes from developer",
     // The default should match GooglePlaySdkIndex.DEFAULT_SHOW_NOTES_FROM_DEVELOPER so the behavior of Android Studio and CLI is consistent
-    ChannelDefault.enabledUpTo(CANARY)
+    true
   );
   public static final Flag<Boolean> SHOW_SDK_INDEX_RECOMMENDED_VERSIONS = new BooleanFlag(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.recommended.versions", "Show SDK recommended versions",
     "Whether or not to display recommended versions on SDK Index issues",
     // The default should match GooglePlaySdkIndex.DEFAULT_SHOW_RECOMMENDED_VERSIONS so the behavior of Android Studio and CLI is consistent
-    ChannelDefault.enabledUpTo(CANARY)
+    true
   );
   public static final Flag<Boolean> SHOW_SUMMARY_NOTIFICATION = new BooleanFlag(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.summary.notification", "Show a notification for SDK Index issues",
     "Show a notification after initial sync when there are blocking SDK Index issues",
-    ChannelDefault.enabledUpTo(CANARY)
+    true
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
+
+  // region DEV_SERVICES_DEPRECATION_SUPPORT
+  // See go/android-studio-developer-services-compat-policy and go/as-kill-feature-past-deadline
+  // These flags are mostly meant to be changed via server flags.
+  private static final FlagGroup DEV_SERVICES_SLA = new FlagGroup(FLAGS, "gservices", "Dev Services Support SLA");
+
+  public static final Flag<Boolean> DEV_SERVICES_SUPPORTED_V1 = new BooleanFlag(
+    DEV_SERVICES_SLA, "supported.v1", "Dev Services Supported", "Dev Services Supported", true);
+  public static final Flag<Boolean> DEV_SERVICES_DEPRECATED_V1 = new BooleanFlag(
+    DEV_SERVICES_SLA, "deprecated.v1", "Dev Services Supported", "Dev Services Deprecated", false);
+  // endregion DEV_SERVICES_DEPRECATION_SUPPORT
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.

@@ -24,9 +24,6 @@ import com.intellij.psi.PsiElement;
 public interface DeclarativeFactory extends DeclarativeEntry, DeclarativeIdentifierOwner, DeclarativeValue, DeclarativeAbstractFactory {
 
   @Nullable
-  DeclarativeArgumentsList getArgumentsList();
-
-  @NotNull
-  DeclarativeIdentifier getIdentifier();
+  DeclarativeFactory getReceiver();
 
 }

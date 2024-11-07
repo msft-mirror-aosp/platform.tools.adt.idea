@@ -52,6 +52,10 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
+/**
+ * A panel showing a summary of a [DeviceProfile] and (optionally) a system image. Contains a
+ * diagram of the screen, along with various metadata in a tabular format.
+ */
 @Composable
 fun DeviceDetails(
   device: DeviceProfile,
@@ -100,7 +104,7 @@ fun DeviceDetails(
 
       if (systemImage != null) {
         Header("System Image")
-        LabeledValue("API Level", systemImage.androidVersion.apiLevel.toString())
+        LabeledValue("API Level", systemImage.androidVersion.getApiStringWithExtension())
         LabeledValue("Services", systemImage.services)
         LabeledValue("ABI", systemImage.abiTypes.joinToString(", "))
         if (systemImage.translatedAbiTypes.isNotEmpty()) {

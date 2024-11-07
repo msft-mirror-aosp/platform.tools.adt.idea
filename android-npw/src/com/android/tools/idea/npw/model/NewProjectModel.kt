@@ -56,6 +56,7 @@ import com.intellij.ide.impl.ProjectUtil
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.diagnostic.thisLogger
@@ -127,7 +128,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
         this@NewProjectModel.project = newProject
 
-        AndroidNewProjectInitializationStartupActivity.setProjectInitializer(newProject) {
+        newProject.service<AndroidNewProjectInitializationStartupActivity.StartupService>().setProjectInitializer {
           logger.info("Rendering a new project.")
           NonProjectFileWritingAccessProvider.disableChecksDuring {
             renderer(newProject)

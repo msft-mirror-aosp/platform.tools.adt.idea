@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List, Set, Dict
 import json
 import re
 import sys
@@ -33,8 +34,8 @@ class IntelliJ:
   major: str
   minor: str
   platform: str = ""
-  platform_jars: set[str] = field(default_factory=lambda: set())
-  plugin_jars: dict[str, set[str]] = field(default_factory=lambda: dict())
+  platform_jars: Set[str] = field(default_factory=lambda: set())
+  plugin_jars: Dict[str, Set[str]] = field(default_factory=lambda: dict())
 
   def version(self):
     return self.major, self.minor
@@ -76,9 +77,6 @@ def read_platform_jars(ide_home: Path, product_info):
   # Extract the runtime classpath from product-info.json.
   bootClassPath = product_info["launch"][0]["bootClassPathJarNames"]
   jars = ["/lib/" + jar for jar in bootClassPath]
-  # Hide JUnit4 in preparation for its removal in IntelliJ 2024.3 (b/373450755).
-  if "/lib/junit4.jar" in jars:
-    jars.remove("/lib/junit4.jar")
   return set(jars)
 
 
@@ -236,7 +234,7 @@ def _resolve_includes(elem, external_xmls, cwd, index):
     i = i + 1
 
 
-def load_plugin_xml(files: list[Path], external_xmls, xml_name = "META-INF/plugin.xml"):
+def load_plugin_xml(files: List[Path], external_xmls, xml_name = "META-INF/plugin.xml"):
   xmls = {}
   index = {}
   jars = [zipfile.ZipFile(f) for f in files if f.suffix == ".jar"]

@@ -34,12 +34,12 @@ import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.DeviceMirroringSettingsListener
 import com.android.tools.idea.streaming.core.PRIMARY_DISPLAY_ID
 import com.android.tools.idea.util.StudioPathManager
+import com.android.utils.TraceUtils.simpleId
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.DeviceMirroringAbnormalAgentTermination
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.PluginPathManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.project.modules
@@ -135,15 +135,15 @@ internal class DeviceClient(
 ) : Disposable {
 
   val deviceName: String = deviceConfig.deviceName
-  @Volatile var videoDecoder: VideoDecoder? = null
-    private set
-  @Volatile var audioDecoder: AudioDecoder? = null
-    private set
-  @Volatile var deviceController: DeviceController? = null
-    private set
   val streamingSessionTracker: DeviceStreamingSessionTracker = DeviceStreamingSessionTracker(deviceConfig)
   private val clientScope = AndroidCoroutineScope(this)
-  private val connectionState = AtomicReference<CompletableDeferred<Unit>>()
+  private val connectionHolder = AtomicReference<Connection>()
+  val deviceController: DeviceController?
+    get() = connectionHolder.get()?.deviceController
+  val videoDecoder: VideoDecoder?
+    get() = connectionHolder.get()?.videoDecoder
+  private val audioDecoder: AudioDecoder?
+    get() = connectionHolder.get()?.audioDecoder
   private val agentTerminationListeners = createLockFreeCopyOnWriteList<AgentTerminationListener>()
   /**
    * Contains entries for all active video streams. Keyed by display IDs. The values represent
@@ -164,23 +164,28 @@ internal class DeviceClient(
    */
   suspend fun establishAgentConnection(
       maxVideoSize: Dimension, initialDisplayOrientation: Int, startVideoStream: Boolean, project: Project) {
+    logger.info("$simpleId.establishAgentConnection($maxVideoSize, $initialDisplayOrientation, $startVideoStream, ${project.name})")
     streamingSessionTracker.streamingStarted()
-    val completion = CompletableDeferred<Unit>()
-    val connection = connectionState.compareAndExchange(null, completion) ?: completion
-    if (connection === completion) {
+    val newConnection = Connection(this)
+    val connection = connectionHolder.compareAndExchange(null, newConnection) ?: newConnection
+    if (connection === newConnection) {
       try {
         startAgentAndConnect(maxVideoSize, initialDisplayOrientation, startVideoStream, project)
-        connection.complete(Unit)
+        connection.established.complete(Unit)
       }
       catch (e: Throwable) {
-        connectionState.set(null)
+        connectionHolder.set(null)
         AdbLibApplicationService.instance.session.throwIfCancellationOrDeviceDisconnected(e)
-        connection.completeExceptionally(e)
+        connection.established.completeExceptionally(e)
       }
     }
-    connection.await()
+    else {
+      Disposer.dispose(newConnection)
+    }
+    connection.established.await()
 
-    if (connection !== completion && startVideoStream) {
+    logger.info("$simpleId.establishAgentConnection: connection=$connection, completion=$newConnection, startVideoStream=$startVideoStream")
+    if (connection !== newConnection && startVideoStream) {
       startVideoStream(project, PRIMARY_DISPLAY_ID, maxVideoSize)
     }
   }
@@ -190,7 +195,7 @@ internal class DeviceClient(
    * if the connection hasn't been attempted yet or the connection attempt failed.
    */
   suspend fun waitUntilConnected() {
-    connectionState.get()?.await()
+    connectionHolder.get()?.established?.await()
   }
 
   /**
@@ -223,19 +228,25 @@ internal class DeviceClient(
         // Port forwarding can be removed since the already established connections will continue to work without it.
       }
       channels?.let { channels ->
-        try {
-          deviceController = DeviceController(this, channels.controlChannel)
-        }
-        catch (e: IncorrectOperationException) {
-          return // Already disposed.
-        }
-        videoDecoder = VideoDecoder(channels.videoChannel, clientScope, deviceConfig.deviceProperties, streamingSessionTracker)
-            .apply { start(startVideoStream) }
-        audioDecoder = channels.audioChannel?.let { AudioDecoder(it, clientScope).apply { start(isAudioStreamingEnabled()) } }
+        val connection = connectionHolder.get()
+        if (connection != null) {
+          try {
+            connection.deviceController = DeviceController(connection, channels.controlChannel)
+            connection.videoDecoder =
+                VideoDecoder(connection, channels.videoChannel, clientScope, deviceConfig.deviceProperties, streamingSessionTracker)
+                    .apply { start(startVideoStream) }
+            connection.audioDecoder =
+                channels.audioChannel?.let { AudioDecoder(connection, it, clientScope).apply { start(isAudioStreamingEnabled()) } }
+          }
+          catch (e: IncorrectOperationException) {
+            return // Connection already disposed.
+          }
 
-        if (isAudioStreamingSupported() && !isRemoteDevice()) {
-          val messageBusConnection = project.messageBus.connect(this)
-          messageBusConnection.subscribe(DeviceMirroringSettingsListener.TOPIC, DeviceMirroringSettingsListener { updateAudioStreaming() })
+          if (isAudioStreamingSupported() && !isRemoteDevice()) {
+            val messageBusConnection = project.messageBus.connect(this)
+            messageBusConnection.subscribe(
+                DeviceMirroringSettingsListener.TOPIC, DeviceMirroringSettingsListener { updateAudioStreaming() })
+          }
         }
       }
     }
@@ -256,6 +267,7 @@ internal class DeviceClient(
   }
 
   fun startVideoStream(requester: Any, displayId: Int, maxOutputSize: Dimension) {
+    logger.info("$simpleId.startVideoStream(${requester.simpleId}, $displayId, $maxOutputSize)")
     synchronized(videoStreams) {
       val arbiter = videoStreams.computeIfAbsent(displayId, IntFunction { d -> VideoStreamArbiter(d) })
       arbiter.startVideoStream(requester, maxOutputSize)
@@ -263,6 +275,7 @@ internal class DeviceClient(
   }
 
   fun stopVideoStream(requester: Any, displayId: Int) {
+    logger.info("$simpleId.stopVideoStream(${requester.simpleId}, $displayId)")
     synchronized(videoStreams) {
       videoStreams[displayId]?.let { arbiter ->
         arbiter.stopVideoStream(requester)
@@ -396,7 +409,7 @@ internal class DeviceClient(
 
   private val isEmulator = deviceSerialNumber.startsWith("emulator-") || deviceConfig.deviceProperties.isVirtual == true
 
-  private suspend fun startAgent(
+  private fun startAgent(
       deviceSelector: DeviceSelector,
       adbSession: AdbSession,
       socketName: String,
@@ -548,14 +561,8 @@ internal class DeviceClient(
     }
   }
 
-  private suspend fun onDisconnection() {
-    deviceController?.let { Disposer.dispose(it) }
-    deviceController = null
-    videoDecoder?.closeChannel()
-    videoDecoder = null
-    audioDecoder?.closeChannel()
-    audioDecoder = null
-    connectionState.set(null)
+  private fun onDisconnection() {
+    connectionHolder.getAndSet(null)?.let { Disposer.dispose(it) }
   }
 
   private suspend fun AdbSession.pushFile(device: DeviceSelector, file: Path, remoteFilePath: String, permissions: RemoteFileMode) {
@@ -614,7 +621,7 @@ internal class DeviceClient(
           channel.close()
         }
         catch (e: IOException) {
-          thisLogger().warn(e)
+          logger.warn(e)
         }
       }
     }
@@ -683,6 +690,8 @@ internal class DeviceClient(
     }
 
     fun startVideoStream(requester: Any, maxOutputSize: Dimension) {
+      logger.info("${this@DeviceClient.simpleId}.VideoStreamArbiter.startVideoStream(${requester.simpleId}, $maxOutputSize):" +
+                  " requestedVideoResolutions=$requestedVideoResolutions")
       if (requestedVideoResolutions.isEmpty()) {
         requestedVideoResolutions[requester] = maxOutputSize
         currentSize.size = maxOutputSize
@@ -697,6 +706,7 @@ internal class DeviceClient(
     }
 
     fun stopVideoStream(requester: Any) {
+      logger.info("${this@DeviceClient.simpleId}.VideoStreamArbiter.stopVideoStream(${requester.simpleId})")
       requestedVideoResolutions.remove(requester)
       if (requestedVideoResolutions.isEmpty()) {
         currentSize.setSize(0, 0)
@@ -742,6 +752,21 @@ internal class DeviceClient(
 
     fun isEmpty(): Boolean =
         requestedVideoResolutions.isEmpty()
+  }
+
+  private class Connection(disposableParent: Disposable) : Disposable {
+
+    val established = CompletableDeferred<Unit>()
+    @Volatile var deviceController: DeviceController? = null
+    @Volatile var videoDecoder: VideoDecoder? = null
+    @Volatile var audioDecoder: AudioDecoder? = null
+
+    init {
+      Disposer.register(disposableParent, this)
+    }
+
+    override fun dispose() {
+    }
   }
 }
 

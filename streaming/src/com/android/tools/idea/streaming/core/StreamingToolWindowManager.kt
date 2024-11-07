@@ -71,8 +71,9 @@ import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.EdtNoGetDataProvider
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.Separator
@@ -80,7 +81,7 @@ import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -569,7 +570,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private fun reportDuplicatePanel(content: Content) {
-    thisLogger().error("An attempt to add a duplicate panel ${content.simpleId} ${content.displayName}")
+    logger.error("An attempt to add a duplicate panel ${content.simpleId} ${content.displayName}")
   }
 
   private fun removeEmulatorPanel(emulator: EmulatorController): Boolean {
@@ -1201,6 +1202,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       get() = MirroringState.INACTIVE
 
     override fun toggleMirroring() {
+      logger.info("$simpleId.toggleMirroring")
       activateMirroring(device)
     }
 
@@ -1215,6 +1217,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       get() = MirroringState.ACTIVE
 
     override fun toggleMirroring() {
+      logger.info("$simpleId.toggleMirroring")
       deactivateMirroring(serialNumber)
     }
 
@@ -1226,6 +1229,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   private class DeviceDescription(val deviceName: String, val serialNumber: String, val handle: DeviceHandle,
                                   val config: DeviceConfiguration)
 }
+
+private val logger = Logger.getInstance(StreamingToolWindowManager::class.java)
 
 private class ConnectedDevice(val handle: DeviceHandle, val state: DeviceState.Connected)
 
@@ -1284,9 +1289,7 @@ private val DeviceState.Connected.serialNumber: String
     get() = connectedDevice.serialNumber
 
 private fun ContentManager.addSelectedPanelDataProvider() {
-  (selectedContent?.component as? DataProvider)?.let {
-    addDataProvider(it)
-  }
+  addDataProvider(EdtNoGetDataProvider { sink -> DataSink.uiDataSnapshot(sink, selectedContent?.component) })
 }
 
 private val ContentManager.placeholderContent: Content?

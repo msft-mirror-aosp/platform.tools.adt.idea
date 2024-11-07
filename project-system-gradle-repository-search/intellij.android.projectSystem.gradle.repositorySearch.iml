@@ -13,5 +13,6 @@
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
+    <orderEntry type="module" module-name="intellij.android.gmaven" />
   </component>
 </module>

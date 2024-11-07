@@ -55,7 +55,8 @@ iml_module(
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
             "test_filter": "com.android.tools.idea.npw.module.AddNewModulesToAppTest",
             # b/192102820 flaky on windows, taking longer than 15 minutes
-            "tags": ["noci:studio-win"],
+            # b/376923937 flaky on linux, taking longer than 15 minutes
+            "tags": ["noci:studio-win", "noci:studio-linux"],
         },
         "BenchmarkModuleTest": {
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
@@ -82,6 +83,11 @@ iml_module(
                 "//prebuilts/studio/sdk:platforms/android-32",
                 "//prebuilts/studio/sdk:platforms/android-33",
             ],
+        },
+        "ModuleModelTest": {
+            "test_filter": "com.android.tools.idea.npw.module.ModuleModelTest",
+            # b/377654633 times out on Windows
+            "tags": ["noci:studio-win"],
         },
         "other": {
             "shard_count": 10,
@@ -204,7 +210,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.24",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib_" + KGP_VERSION_FOR_TESTS,
         "@maven//:org.jetbrains.kotlin.kotlin-test-junit_1.9.24",
-        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_2.0.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_2.1.0-Beta2",
         "@maven//:org.jetbrains.kotlin.kotlin-test_1.9.24",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
     ],
