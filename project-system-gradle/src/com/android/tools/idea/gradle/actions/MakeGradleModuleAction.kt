@@ -35,10 +35,10 @@ import icons.StudioIcons
 import org.jetbrains.kotlin.idea.base.util.isGradleModule
 
 /** Action added to the "Build" menu. If the new UI is used, it is also added to the toolbar. */
-class AssembleGradleModuleAction : AbstractAssembleGradleModuleAction()
+class MakeGradleModuleAction : AbstractMakeGradleModuleAction()
 
 /** If the new UI is not used, this action is added to the toolbar in the split button. */
-class AssembleGradleModuleActionFromGroupAction : AbstractAssembleGradleModuleAction() {
+class MakeGradleModuleActionFromGroupAction : AbstractMakeGradleModuleAction() {
 
   private var moduleNamesToBuildFromGroupAction: List<String>? = null
 
@@ -58,8 +58,8 @@ class AssembleGradleModuleActionFromGroupAction : AbstractAssembleGradleModuleAc
   }
 }
 
-abstract class AbstractAssembleGradleModuleAction :
-  AndroidStudioGradleAction("Assemble Module(s)", "Build selected modules", StudioIcons.Shell.Toolbar.BUILD_MODULE) {
+abstract class AbstractMakeGradleModuleAction :
+  AndroidStudioGradleAction("Make Module(s)", "Build selected modules", StudioIcons.Shell.Toolbar.BUILD_MODULE) {
 
   private var previouslySelectedModules: List<String> = emptyList()
 
@@ -148,13 +148,13 @@ abstract class AbstractAssembleGradleModuleAction :
       presentation.isEnabled = moduleCount > 0 && !isCompilationActive
       val presentationText: String
       if (moduleCount > 0) {
-        var text = StringBuilder("Assemble Module")
+        var text = StringBuilder("Make Module")
         if (moduleCount > 1) {
           text.append("s")
         }
         for (i in 0 until moduleCount) {
           if (text.length > 30) {
-            text = StringBuilder("Assemble Selected Modules")
+            text = StringBuilder("Make Selected Modules")
             break
           }
           val toMake = moduleNames[i]
@@ -165,7 +165,7 @@ abstract class AbstractAssembleGradleModuleAction :
         }
         presentationText = text.toString()
       } else {
-        presentationText = "Assemble (No Modules Selected)"
+        presentationText = "Make (No Modules Selected)"
       }
       presentation.text = presentationText
       presentation.isVisible = moduleCount > 0 || ActionPlaces.PROJECT_VIEW_POPUP != e.place

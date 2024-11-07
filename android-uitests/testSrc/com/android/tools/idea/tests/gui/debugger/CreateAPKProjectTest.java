@@ -157,7 +157,7 @@ public class CreateAPKProjectTest extends DebuggerTestBase {
   private File buildApkLocally(@NotNull String apkProjectToImport) throws IOException {
     IdeFrameFixture ideFrame = guiTest.importProjectAndWaitForProjectSyncToFinish(apkProjectToImport, Wait.seconds(120));
 
-    ideFrame.invokeAndWaitForBuildAction("Build", "Generate Bundle(s) / APK(s)", "Generate APK(s)");
+    ideFrame.invokeAndWaitForBuildAction("Build", "Build Bundle(s) / APK(s)", "Build APK(s)");
 
     File projectRoot = ideFrame.getProjectPath();
 

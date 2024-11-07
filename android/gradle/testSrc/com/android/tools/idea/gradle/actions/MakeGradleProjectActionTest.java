@@ -26,11 +26,11 @@ import com.intellij.testFramework.TestActionEvent;
 import org.mockito.Mock;
 
 /**
- * Tests for {@link AssembleGradleProjectWithTestsAction}.
+ * Tests for {@link MakeGradleProjectAction}.
  */
-public class AssembleGradleProjectWithTestsActionTest extends HeavyPlatformTestCase {
+public class MakeGradleProjectActionTest extends HeavyPlatformTestCase {
   @Mock private GradleBuildInvoker myBuildInvoker;
-  private AssembleGradleProjectWithTestsAction myAction;
+  private MakeGradleProjectAction myAction;
 
   @Override
   protected void setUp() throws Exception {
@@ -40,7 +40,7 @@ public class AssembleGradleProjectWithTestsActionTest extends HeavyPlatformTestC
     Project project = getProject();
     ServiceContainerUtil.replaceService(project, GradleBuildInvoker.class, myBuildInvoker, getTestRootDisposable());
 
-    myAction = new AssembleGradleProjectWithTestsAction();
+    myAction = new MakeGradleProjectAction();
   }
 
   public void testDoPerform() {
@@ -48,6 +48,6 @@ public class AssembleGradleProjectWithTestsActionTest extends HeavyPlatformTestC
     myAction.doPerform(TestActionEvent.createTestEvent(), getProject());
 
     // Verify.
-    verify(myBuildInvoker).assembleWithTests();
+    verify(myBuildInvoker).assemble();
   }
 }

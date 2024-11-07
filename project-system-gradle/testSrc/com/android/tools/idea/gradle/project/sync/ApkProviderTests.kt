@@ -399,6 +399,8 @@ internal val APK_PROVIDER_TESTS: List<ProviderTestDefinition> =
               ApplicationId: google.simpleapplication
               Files:
                 simpleApplication.app -> project/app/build/outputs/apk/debug/app-debug.apk
+                simpleApplication.dependsOnFeature1 -> project/dependsOnFeature1/build/outputs/apk/debug/dependsOnFeature1-debug.apk
+                simpleApplication.feature1 -> project/feature1/build/outputs/apk/debug/feature1-debug.apk
               RequiredInstallationOptions: []
               
               ApplicationId: google.simpleapplication.test
@@ -410,6 +412,8 @@ internal val APK_PROVIDER_TESTS: List<ProviderTestDefinition> =
               ApplicationId: google.simpleapplication
               Files:
                 simpleApplication.app -> project/app/build/intermediates/apk/debug/app-debug.apk
+                simpleApplication.dependsOnFeature1 -> project/dependsOnFeature1/build/intermediates/apk/debug/dependsOnFeature1-debug.apk
+                simpleApplication.feature1 -> project/feature1/build/intermediates/apk/debug/feature1-debug.apk
               RequiredInstallationOptions: []
 
               ApplicationId: google.simpleapplication.test
