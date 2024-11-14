@@ -142,7 +142,7 @@ class ActionDispatcher(
           val result = appInsightsClient.updateIssueState(connection, action.id, IssueState.OPEN)
         ) {
           is LoadingState.Failure -> {
-            onErrorAction("Unable to open issue: ${result.cause?.message ?: ""}", null)
+            onErrorAction("Unable to open issue: ${result.getCauseMessageOrDefault()}", null)
             eventEmitter(IssueToggled(action.id, IssueState.CLOSED, isUndo = true))
           }
           else -> {
@@ -160,7 +160,7 @@ class ActionDispatcher(
           val result = appInsightsClient.updateIssueState(connection, action.id, IssueState.CLOSED)
         ) {
           is LoadingState.Failure -> {
-            onErrorAction("Unable to close issue: ${result.cause?.message ?: ""}", null)
+            onErrorAction("Unable to close issue: ${result.getCauseMessageOrDefault()}", null)
             eventEmitter(IssueToggled(action.id, IssueState.OPEN, isUndo = true))
           }
           else -> {
@@ -196,7 +196,7 @@ class ActionDispatcher(
           }
           is LoadingState.Failure -> {
             onErrorAction(
-              "Unable to post this note: ${result.cause?.message ?: result.message ?: "Unknown failure."}" +
+              "Unable to post this note: ${result.getCauseMessageOrDefault()}" +
                 "<br><a href=\"copy\">Copy note to clipboard</a>",
               HyperlinkListener {
                 val clipboard = Toolkit.getDefaultToolkit().systemClipboard
@@ -221,10 +221,7 @@ class ActionDispatcher(
             eventEmitter(NoteDeleted(action.noteId))
           }
           is LoadingState.Failure -> {
-            onErrorAction(
-              "Unable to delete this note: ${result.cause?.message ?: result.message ?: "Unknown failure."}",
-              null,
-            )
+            onErrorAction("Unable to delete this note: ${result.getCauseMessageOrDefault()}", null)
             eventEmitter(RollbackDeleteNoteRequest(action.noteId, result))
             if (result is LoadingState.NetworkFailure) {
               eventEmitter(EnterOfflineMode)
@@ -363,10 +360,7 @@ class ActionDispatcher(
               val timeFilter =
                 state.filters.timeInterval.selected ?: state.filters.timeInterval.items.last()
               val codeContextData =
-                aiInsightToolkit.getSource(
-                  action.event.stacktraceGroup,
-                  action.contextSharingOverride,
-                )
+                aiInsightToolkit.getSource(action.event.stacktraceGroup, action.forceFetch)
               appInsightsClient.fetchInsight(
                 connection,
                 action.id,
@@ -374,7 +368,7 @@ class ActionDispatcher(
                 action.event,
                 timeFilter,
                 codeContextData,
-                action.contextSharingOverride || action.forceFetch,
+                action.forceFetch,
               )
             }
           }

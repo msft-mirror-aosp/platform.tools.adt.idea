@@ -34,6 +34,7 @@ import com.android.tools.idea.gradle.dsl.model.GradleBlockModelMap;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.PropertyTransform;
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
+import com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt;
 import com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement;
 import com.android.tools.idea.gradle.dsl.parser.ext.ElementSort;
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
@@ -822,14 +823,19 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
   }
 
   @Override
-  @Nullable
-  public GradleDslElement requestAnchor(@NotNull GradleDslElement element) {
+  @NotNull
+  public GradleDslAnchor requestAnchor(@NotNull GradleDslElement element) {
     // We need to find the element before `element` in my properties. The last one that has a psiElement, has the same name scheme as
     // the given element (to ensure that they should be placed in the same block) and must have a state of EXISTING, TO_BE_ADDED or MOVED.
-    GradleDslElement lastElement = null;
+    GradleDslAnchor anchor = new GradleDslAnchor.Start(this);
     for (ElementList.ElementItem item : myProperties.myElements) {
       if (item.myElement == element) {
-        return lastElement;
+        if (item.myElementState == EXISTING && SharedParserUtilsKt.findLastPsiElementIn(item.myElement) != null) {
+          return new GradleDslAnchor.After(item.myElement);
+        }
+        else {
+          return anchor;
+        }
       }
 
       if (item.myElementState.isPhysicalInFile()) {
@@ -846,16 +852,16 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
         // with relevant properties.
         // TODO(xof): there should be something similar for ExtDslElement in KotlinScript
         if (currentElement instanceof ApplyDslElement) {
-          lastElement = currentElement.requestAnchor(element);
+          anchor = currentElement.requestAnchor(element);
         }
         else {
-          lastElement = item.myElement;
+          anchor = new GradleDslAnchor.After(currentElement);
         }
       }
     }
 
     // The element is not in this list, we can't provide an anchor. Default to adding it at the end.
-    return lastElement;
+    return anchor;
   }
 
   @Override

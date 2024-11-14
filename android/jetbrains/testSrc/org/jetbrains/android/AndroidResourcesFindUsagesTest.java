@@ -1,27 +1,31 @@
 
 /*
- * Copyright 2000-2009 JetBrains s.r.o.
+ * Copyright (C) 2024 The Android Open Source Project
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.jetbrains.android;
 
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_LIBRARY;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.actionSystem.DataContext;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.testFramework.TreeNodeTester;
@@ -1016,8 +1020,12 @@ public class AndroidResourcesFindUsagesTest extends AndroidTestCase {
 
   public static Collection<UsageInfo> findUsages(VirtualFile file, JavaCodeInsightTestFixture fixture, GlobalSearchScope scope) {
     fixture.configureFromExistingVirtualFile(file);
-    final UsageTarget[] targets = UsageTargetUtil.findUsageTargets(
-      dataId -> ((EditorEx)fixture.getEditor()).getDataContext().getData(dataId));
+    DataContext dataContext = ((EditorEx)fixture.getEditor()).getDataContext();
+    Editor editor = CommonDataKeys.EDITOR.getData(dataContext);
+    PsiFile psiFile = CommonDataKeys.PSI_FILE.getData(dataContext);
+    PsiElement psiElement = CommonDataKeys.PSI_ELEMENT.getData(dataContext);
+
+    UsageTarget[] targets = UsageTargetUtil.findUsageTargets(editor, psiFile, psiElement);
     assert targets != null && targets.length > 0 && targets[0] instanceof PsiElementUsageTarget;
     return ((CodeInsightTestFixtureImpl)fixture).findUsages(((PsiElementUsageTarget)targets[0]).getElement(), scope);
   }
@@ -1032,11 +1040,15 @@ public class AndroidResourcesFindUsagesTest extends AndroidTestCase {
   /**
    * Generates the text representation of the UsageView. We previously used CodeInsideTestFixture.getUsageViewTreeTextRepresentation(),
    * except that wouldn't provide UsageTargets to the UsageTypeProviders.
-   * @param usages
    */
   @NotNull
   public String getUsageViewTreeTextRepresentation(@NotNull final Collection<? extends UsageInfo> usages) {
-    UsageTarget[] target = UsageTargetUtil.findUsageTargets(dataId -> ((EditorEx)myFixture.getEditor()).getDataContext().getData(dataId));
+    DataContext dataContext = ((EditorEx)myFixture.getEditor()).getDataContext();
+    Editor editor = CommonDataKeys.EDITOR.getData(dataContext);
+    PsiFile psiFile = CommonDataKeys.PSI_FILE.getData(dataContext);
+    PsiElement psiElement = CommonDataKeys.PSI_ELEMENT.getData(dataContext);
+
+    UsageTarget[] target = UsageTargetUtil.findUsageTargets(editor, psiFile, psiElement);
     target = target == null ? UsageTarget.EMPTY_ARRAY : Arrays.stream(target).limit(1).toArray(UsageTarget[]::new);
     UsageViewImpl usageView = (UsageViewImpl)UsageViewManager
       .getInstance(getProject())

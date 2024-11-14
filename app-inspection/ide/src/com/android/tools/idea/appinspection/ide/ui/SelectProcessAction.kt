@@ -21,6 +21,7 @@ import com.android.tools.idea.appinspection.api.process.ProcessesModel
 import com.android.tools.idea.appinspection.ide.model.AppInspectionBundle
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -180,8 +181,7 @@ class SelectProcessAction(
     // For consistency, always add a stop action, but only enable it if there's a current process
     // that can actually be stopped.
     val stopInspectionAction =
-      object :
-        AnAction(stopPresentation.text, stopPresentation.desc, StudioIcons.Shell.Toolbar.STOP) {
+      object : AnAction(stopPresentation.text, stopPresentation.desc, AllIcons.Run.Stop) {
 
         override fun getActionUpdateThread() = BGT
 

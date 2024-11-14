@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.streaming.core
 
-import com.android.tools.adtui.common.AdtUiUtils.updateToolbars
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.adtui.ui.NotificationHolderPanel
+import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBScrollBar
@@ -39,7 +39,6 @@ import javax.swing.JLayeredPane
 import javax.swing.JPanel
 import javax.swing.JScrollBar
 import javax.swing.JScrollPane
-import javax.swing.ScrollPaneConstants
 import javax.swing.border.Border
 import javax.swing.plaf.ScrollBarUI
 
@@ -116,11 +115,6 @@ abstract class AbstractDisplayPanel<T : AbstractDisplayView>(
     addToCenter(centerPanel)
   }
 
-  fun showLongRunningOperationIndicator(text: String) {
-    loadingPanel.setLoadingText(text)
-    loadingPanel.startLoading()
-  }
-
   final override fun dispose() {
   }
 
@@ -128,7 +122,7 @@ abstract class AbstractDisplayPanel<T : AbstractDisplayView>(
     val sizeChanged = width != this.width || height != this.height
     super.setBounds(x, y, width, height)
     if (sizeChanged && zoomToolbarVisible) {
-      updateToolbars(floatingToolbar)
+      ActivityTracker.getInstance().inc() // Trigger toolbar update.
     }
   }
 
@@ -163,8 +157,8 @@ abstract class AbstractDisplayPanel<T : AbstractDisplayView>(
 
     init {
       setupCorners()
-      verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-      horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+      verticalScrollBarPolicy = VERTICAL_SCROLLBAR_AS_NEEDED
+      horizontalScrollBarPolicy = HORIZONTAL_SCROLLBAR_AS_NEEDED
       viewport.background = background
     }
 

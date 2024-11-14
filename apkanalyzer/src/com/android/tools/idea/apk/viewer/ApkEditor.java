@@ -31,14 +31,11 @@ import com.android.tools.idea.apk.viewer.dex.DexFileViewer;
 import com.android.tools.idea.apk.viewer.diff.ApkDiffPanel;
 import com.android.tools.idea.log.LogWrapper;
 import com.android.utils.FileUtils;
-import com.intellij.codeHighlighting.BackgroundEditorHighlighter;
-import com.intellij.ide.structureView.StructureViewBuilder;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileEditor.FileEditor;
-import com.intellij.openapi.fileEditor.FileEditorLocation;
 import com.intellij.openapi.fileEditor.FileEditorProvider;
 import com.intellij.openapi.fileEditor.FileEditorState;
 import com.intellij.openapi.fileEditor.ex.FileEditorProviderManager;
@@ -50,11 +47,11 @@ import com.intellij.openapi.ui.DialogBuilder;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.UserDataHolderBase;
 import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.openapi.util.io.FileUtilRt;
 import com.intellij.openapi.vfs.JarFileSystem;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
+import com.intellij.openapi.vfs.limits.FileSizeLimit;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.ui.JBSplitter;
@@ -68,17 +65,18 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.JComponent;
-import javax.swing.JPanel;
 import javax.swing.LayoutFocusTraversalPolicy;
 import kotlin.io.FilesKt;
 import kotlin.text.Charsets;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkViewPanel.Listener {
   private final Project myProject;
   private final VirtualFile myBaseFile;
   private final VirtualFile myRoot;
+  private final AndroidApplicationInfoProvider myApplicationInfoProvider;
   private ApkViewPanel myApkViewPanel;
   private ArchiveContext myArchiveContext;
 
@@ -86,10 +84,15 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
   private ApkFileEditorComponent myCurrentEditor;
   private ProguardMappings myProguardMapping;
 
-  public ApkEditor(@NotNull Project project, @NotNull VirtualFile baseFile, @NotNull VirtualFile root) {
+  public ApkEditor(
+    @NotNull Project project,
+    @NotNull VirtualFile baseFile,
+    @NotNull VirtualFile root,
+    @NotNull AndroidApplicationInfoProvider applicationInfoProvider) {
     myProject = project;
     myBaseFile = baseFile;
     myRoot = root;
+    myApplicationInfoProvider = applicationInfoProvider;
 
     DISABLE_GENERATED_FILE_NOTIFICATION_KEY.set(this, true);
 
@@ -134,7 +137,7 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
     });
 
     refreshApk(myBaseFile);
-    mySplitter.setSecondComponent(new JPanel());
+    mySplitter.setSecondComponent(new EmptyPanel().getComponent());
   }
 
   private static String safeReadContents(Path path) {
@@ -163,8 +166,10 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
           myArchiveContext = Archives.open(copyOfApk, new LogWrapper(getLog()));
           // TODO(b/244771241) ApkViewPanel should be created on the UI thread
           myProguardMapping = myArchiveContext.getArchive().loadProguardMapping();
-          myApkViewPanel = withChecksDisabledForSupplier(() ->
-              new ApkViewPanel(ApkEditor.this.myProject, new ApkParser(myArchiveContext, ApkSizeCalculator.getDefault()), apkVirtualFile.getName()));
+          myApkViewPanel = withChecksDisabledForSupplier(() -> new ApkViewPanel(
+            new ApkParser(myArchiveContext, ApkSizeCalculator.getDefault()),
+            apkVirtualFile.getName(),
+            myApplicationInfoProvider));
           myApkViewPanel.setListener(ApkEditor.this);
           ApplicationManager.getApplication().invokeLater(() -> {
             mySplitter.setFirstComponent(myApkViewPanel.getContainer());
@@ -184,7 +189,7 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
    * Changes the editor displayed based on the path selected in the tree.
    */
   @Override
-  public void selectionChanged(@Nullable ArchiveTreeNode[] entries) {
+  public void selectionChanged(ArchiveTreeNode @Nullable [] entries) {
     if (myCurrentEditor != null) {
       Disposer.dispose(myCurrentEditor);
       // Null out the field immediately after disposal, in case an exception is thrown later in the method.
@@ -251,37 +256,11 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
   }
 
   @Override
-  public void selectNotify() {
-  }
-
-  @Override
-  public void deselectNotify() {
-  }
-
-  @Override
   public void addPropertyChangeListener(@NotNull PropertyChangeListener listener) {
   }
 
   @Override
   public void removePropertyChangeListener(@NotNull PropertyChangeListener listener) {
-  }
-
-  @Nullable
-  @Override
-  public BackgroundEditorHighlighter getBackgroundHighlighter() {
-    return null;
-  }
-
-  @Nullable
-  @Override
-  public FileEditorLocation getCurrentLocation() {
-    return null;
-  }
-
-  @Nullable
-  @Override
-  public StructureViewBuilder getStructureViewBuilder() {
-    return null;
   }
 
   @Override
@@ -316,8 +295,9 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
     }
   }
 
+  @VisibleForTesting
   @NotNull
-  private ApkFileEditorComponent getEditor(@Nullable ArchiveTreeNode[] nodes) {
+  ApkFileEditorComponent getEditor(ArchiveTreeNode @Nullable [] nodes) {
     if (nodes == null || nodes.length == 0) {
       return new EmptyPanel();
     }
@@ -363,10 +343,6 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
       return new ArscViewer(arscContent);
     }
 
-    if (p.toString().endsWith(SdkConstants.EXT_DEX)) {
-      return new DexFileViewer(myProject, new Path[]{p}, myBaseFile.getParent(), myProguardMapping);
-    }
-
     // Attempting to view these kinds of files is going to trigger the Kotlin metadata decompilers, which all assume the .class files
     // accompanying them can be found next to them. But in our case the class files have been dexed, so the Kotlin compiler backend is going
     // to attempt code generation, and that will fail with some rather cryptic errors.
@@ -376,23 +352,12 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
 
     VirtualFile file = createVirtualFile(n.getData().getArchive(), p);
     Optional<FileEditorProvider> providers = getFileEditorProviders(file);
-    if (!providers.isPresent()) {
+    if (providers.isEmpty()) {
       return new EmptyPanel();
     }
     else if (file != null) {
       FileEditor editor = providers.get().createEditor(myProject, file);
-      return new ApkFileEditorComponent() {
-        @NotNull
-        @Override
-        public JComponent getComponent() {
-          return editor.getComponent();
-        }
-
-        @Override
-        public void dispose() {
-          Disposer.dispose(editor);
-        }
-      };
+      return new FileEditorComponent(editor);
     } else {
       return new EmptyPanel();
     }
@@ -439,7 +404,8 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
     }
 
     if (archive.isBaselineProfile(p, content)) {
-      String text = getPrettyPrintedBaseline(myBaseFile, content, p, FileUtilRt.LARGE_FOR_CONTENT_LOADING);
+      @SuppressWarnings("UnstableApiUsage")
+      String text = getPrettyPrintedBaseline(myBaseFile, content, p, FileSizeLimit.getContentLoadLimit(myBaseFile.getExtension()));
       if (text != null) {
         return ApkVirtualFile.createText(p, text);
       }
@@ -471,19 +437,18 @@ public class ApkEditor extends UserDataHolderBase implements FileEditor, ApkView
       StringBuilder truncated = new StringBuilder(100000);
       int length = text.getBytes(Charsets.UTF_8).length;
       truncated.append(
-          "The contents of this baseline file is too large to show by default.\n" +
-          "You can increase the maximum buffer size by setting the property\n" +
-          "    idea.max.content.load.filesize=")
+          """
+            The contents of this baseline file is too large to show by default.
+            You can increase the maximum buffer size by setting the property
+                idea.max.content.load.filesize=""")
         .append(length)
-        .append(
-          "\n" +
-          "(or higher)\n\n");
+        .append("\n(or higher)\n\n");
 
       try {
         File file = File.createTempFile("baseline", ".txt");
         FilesKt.writeText(file, text, Charsets.UTF_8);
         truncated.append(
-            "Alternatively, the full contents have been written to the following\n" + "temp file:\n")
+            "Alternatively, the full contents have been written to the following\ntemp file:\n")
           .append(file.getPath())
           .append("\n\n");
       }

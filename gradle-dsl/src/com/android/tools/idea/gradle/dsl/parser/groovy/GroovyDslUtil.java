@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslAnchor;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslClosure;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionList;
@@ -549,7 +550,7 @@ public final class GroovyDslUtil {
    * Creates a literal expression map enclosed with brackets "[]" from the given {@link GradleDslExpressionMap}.
    */
   static PsiElement createDerivedMap(@NotNull GradleDslExpressionMap expressionMap) {
-    PsiElement parentPsiElement = getParentPsi(expressionMap);
+    PsiElement parentPsiElement = getParentPsi(expressionMap.getParent());
     if (parentPsiElement == null) {
       return null;
     }
@@ -864,17 +865,9 @@ public final class GroovyDslUtil {
   }
 
   @Nullable
-  static PsiElement getParentPsi(@NotNull GradleDslElement element) {
-    GradleDslElement parent = element.getParent();
-    if (parent == null) {
-      return null;
-    }
-
-    GroovyPsiElement parentPsiElement = ensureGroovyPsi(parent.create());
-    if (parentPsiElement == null) {
-      return null;
-    }
-    return parentPsiElement;
+  static PsiElement getParentPsi(@Nullable GradleDslElement parent) {
+    if (parent == null) return null;
+    return ensureGroovyPsi(parent.create());
   }
 
   /**
@@ -958,10 +951,10 @@ public final class GroovyDslUtil {
                                                @NotNull PsiElement parentPsiElement,
                                                @NotNull PsiElement newElement) {
     PsiElement added;
-    GradleDslElement anchor = parentDslElement.requestAnchor(dslElement);
-    if (shouldAddToListInternal(dslElement) && anchor != null) {
+    GradleDslAnchor anchor = parentDslElement.requestAnchor(dslElement);
+    if (shouldAddToListInternal(dslElement) && anchor instanceof GradleDslAnchor.After after) {
       // Get the anchor
-      PsiElement anchorPsi = anchor.getPsiElement();
+      PsiElement anchorPsi = after.getDslElement().getPsiElement();
       assert anchorPsi != null;
 
       emplaceElementIntoList(anchorPsi, parentPsiElement, newElement);
@@ -1098,8 +1091,17 @@ public final class GroovyDslUtil {
   }
 
   @Nullable
-  static PsiElement getPsiElementForAnchor(@NotNull PsiElement parent, @Nullable GradleDslElement dslAnchor) {
-    PsiElement anchorAfter = dslAnchor == null ? null : findLastPsiElementIn(dslAnchor);
+  static PsiElement getPsiElementForAnchor(@NotNull PsiElement parent, @NotNull GradleDslAnchor dslAnchor) {
+    PsiElement anchorAfter;
+    if (dslAnchor instanceof GradleDslAnchor.Start) {
+      anchorAfter = null;
+    }
+    else if (dslAnchor instanceof GradleDslAnchor.After dslAnchorAfter) {
+      anchorAfter = findLastPsiElementIn(dslAnchorAfter.getDslElement());
+    }
+    else {
+      throw new IllegalStateException("dslAnchor neither a Start nor an After anchor");
+    }
     if (anchorAfter == null && parent instanceof GrClosableBlock) {
       return adjustForCloseableBlock((GrClosableBlock)parent);
     }
@@ -1132,8 +1134,7 @@ public final class GroovyDslUtil {
     return element == null ? null : element.getPrevSibling();
   }
 
-  static boolean needToCreateParent(@NotNull GradleDslElement element) {
-    GradleDslElement parent = element.getParent();
+  static boolean needToCreateParent(@Nullable GradleDslElement parent) {
     return parent != null && parent.getPsiElement() == null && !(parent instanceof ProjectPropertiesDslElement);
   }
 

@@ -17,6 +17,9 @@ package com.android.tools.idea.avd
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.assertCountEquals
@@ -27,6 +30,7 @@ import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTextReplacement
 import com.android.resources.ScreenOrientation
@@ -39,10 +43,11 @@ import com.android.testutils.file.createInMemoryFileSystem
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.adddevicedialog.LocalProject
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.jewel.bridge.LocalComponent
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,139 +55,237 @@ import org.junit.runners.JUnit4
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 @RunWith(JUnit4::class)
 class StorageGroupTest {
-  private var device = pixel6()
-  @get:Rule val rule = createStudioComposeTestRule()
+  private var device by mutableStateOf(pixel6())
+  private val state = StorageGroupState(device, createInMemoryFileSystem())
+
+  @get:Rule val composeRule = createStudioComposeTestRule()
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun internalStorageIsValid() {
     // Arrange
-    setContent {
-      StorageGroup(
-        device,
-        StorageGroupState(device),
-        hasPlayStore = false,
-        isExistingImageValid = true,
-        onDeviceChange = { device = it },
-      )
-    }
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
 
     // Act
-    rule.onInternalStorageTextField().performTextReplacement("3")
+    composeRule.onInternalStorageTextField().performTextReplacement("3")
 
     @OptIn(ExperimentalTestApi::class)
-    rule.onInternalStorageTextField().performMouseInput { moveTo(center) }
+    composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
-
-    // Assert there are no tooltips
-    rule.onNode(isPopup()).onChildren().assertCountEquals(0)
-
+    composeRule.onTooltips().assertCountEquals(0)
     assertEquals(device.copy(internalStorage = StorageCapacity(3, StorageCapacity.Unit.GB)), device)
   }
 
   @Test
   fun internalStorageIsEmpty() {
     // Arrange
-    setContent {
-      StorageGroup(
-        device,
-        StorageGroupState(device),
-        hasPlayStore = false,
-        isExistingImageValid = true,
-        onDeviceChange = { device = it },
-      )
-    }
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
 
     // Act
-    rule.onInternalStorageTextField().performTextReplacement("")
+    composeRule.onInternalStorageTextField().performTextReplacement("")
 
     @OptIn(ExperimentalTestApi::class)
-    rule.onInternalStorageTextField().performMouseInput { moveTo(center) }
+    composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
-    rule.onNodeWithText("Specify an internal storage value").assertIsDisplayed()
-    assertNull(device.internalStorage)
+    composeRule.onNodeWithText("Specify an internal storage value").assertIsDisplayed()
+    assertEquals(device.copy(internalStorage = null), device)
   }
 
   @Test
   fun internalStorageIsLessThanMinAndHasPlayStore() {
     // Arrange
-    setContent {
-      StorageGroup(
-        device,
-        StorageGroupState(device),
-        hasPlayStore = true,
-        isExistingImageValid = true,
-        onDeviceChange = { device = it },
-      )
-    }
+    setContent { StorageGroup(device, state, true, onDeviceChange = { device = it }) }
 
     // Act
-    rule.onInternalStorageTextField().performTextReplacement("1")
+    composeRule.onInternalStorageTextField().performTextReplacement("1")
 
     @OptIn(ExperimentalTestApi::class)
-    rule.onInternalStorageTextField().performMouseInput { moveTo(center) }
+    composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
-    rule
+    composeRule
       .onNodeWithText("Internal storage for Play Store devices must be at least 2G")
       .assertIsDisplayed()
 
-    assertNull(device.internalStorage)
+    assertEquals(device.copy(internalStorage = null), device)
   }
 
   @Test
   fun internalStorageIsLessThanMin() {
     // Arrange
-    setContent {
-      StorageGroup(
-        device,
-        StorageGroupState(device),
-        hasPlayStore = false,
-        isExistingImageValid = true,
-        onDeviceChange = { device = it },
-      )
-    }
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
 
     // Act
-    rule.onInternalStorageTextField().performTextReplacement("1")
+    composeRule.onInternalStorageTextField().performTextReplacement("1")
 
     @OptIn(ExperimentalTestApi::class)
-    rule.onInternalStorageTextField().performMouseInput { moveTo(center) }
+    composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
-    rule.onNodeWithText("Internal storage must be at least 2G").assertIsDisplayed()
-    assertNull(device.internalStorage)
+    composeRule.onNodeWithText("Internal storage must be at least 2G").assertIsDisplayed()
+    assertEquals(device.copy(internalStorage = null), device)
   }
 
   @Test
   fun internalStorageIsOverflow() {
     // Arrange
-    setContent {
-      StorageGroup(
-        device,
-        StorageGroupState(device),
-        hasPlayStore = false,
-        isExistingImageValid = true,
-        onDeviceChange = { device = it },
-      )
-    }
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
 
     // Act
-    rule.onInternalStorageTextField().performTextReplacement("8589934592")
+    composeRule.onInternalStorageTextField().performTextReplacement("8589934592")
 
     @OptIn(ExperimentalTestApi::class)
-    rule.onInternalStorageTextField().performMouseInput { moveTo(center) }
+    composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
-    rule.onNodeWithText("Internal storage is too large").assertIsDisplayed()
-    assertNull(device.internalStorage)
+    composeRule.onNodeWithText("Internal storage is too large").assertIsDisplayed()
+    assertEquals(device.copy(internalStorage = null), device)
+  }
+
+  @Test
+  fun onCustomRadioButtonClick() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onNodeWithText("Existing image").performClick()
+    composeRule.onNodeWithText("Custom").performClick()
+    composeRule.waitForIdle()
+
+    // Assert
+    assertEquals(ExpandedStorageRadioButton.CUSTOM, state.selectedRadioButton)
+
+    assertEquals(
+      device.copy(expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB))),
+      device,
+    )
+  }
+
+  @Test
+  fun onExistingImageRadioButtonClick() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onNodeWithText("Existing image").performClick()
+
+    @OptIn(ExperimentalTestApi::class)
+    composeRule.onNodeWithTag("ExistingImageField").performMouseInput { moveTo(center) }
+
+    // Assert
+    assertEquals(ExpandedStorageRadioButton.EXISTING_IMAGE, state.selectedRadioButton)
+    composeRule.onNodeWithText("The specified image must be a valid file").assertIsDisplayed()
+    assertEquals(device.copy(expandedStorage = null), device)
+  }
+
+  @Test
+  fun onNoneRadioButtonClick() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onNodeWithText("None").performClick()
+    composeRule.waitForIdle()
+
+    // Assert
+    assertEquals(ExpandedStorageRadioButton.NONE, state.selectedRadioButton)
+    assertEquals(device.copy(expandedStorage = None), device)
+  }
+
+  @Test
+  fun customIsValid() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onCustomTextField().performTextReplacement("513")
+
+    @OptIn(ExperimentalTestApi::class)
+    composeRule.onCustomTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    composeRule.onTooltips().assertCountEquals(0)
+
+    assertEquals(
+      device.copy(expandedStorage = Custom(StorageCapacity(513, StorageCapacity.Unit.MB))),
+      device,
+    )
+  }
+
+  @Test
+  fun customIsEmpty() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onCustomTextField().performTextReplacement("")
+
+    @OptIn(ExperimentalTestApi::class)
+    composeRule.onCustomTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    composeRule.onNodeWithText("Specify an SD card size").assertIsDisplayed()
+    assertEquals(device.copy(expandedStorage = null), device)
+  }
+
+  @Test
+  fun customIsLessThanMinAndHasPlayStore() {
+    // Arrange
+    setContent { StorageGroup(device, state, true, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onCustomTextField().performTextReplacement("99")
+
+    @OptIn(ExperimentalTestApi::class)
+    composeRule.onCustomTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    composeRule
+      .onNodeWithText("The SD card for Play Store devices must be at least 100M")
+      .assertIsDisplayed()
+
+    assertEquals(device.copy(expandedStorage = null), device)
+  }
+
+  @Test
+  fun customIsLessThanMin() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onCustomTextField().performTextReplacement("9")
+
+    @OptIn(ExperimentalTestApi::class)
+    composeRule.onCustomTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    composeRule.onNodeWithText("The SD card must be at least 10M").assertIsDisplayed()
+    assertEquals(device.copy(expandedStorage = null), device)
+  }
+
+  @Test
+  fun customIsOverflow() {
+    // Arrange
+    setContent { StorageGroup(device, state, false, onDeviceChange = { device = it }) }
+
+    // Act
+    composeRule.onCustomTextField().performTextReplacement("8796093022208")
+
+    @OptIn(ExperimentalTestApi::class)
+    composeRule.onCustomTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    composeRule.onNodeWithText("SD card size is too large").assertIsDisplayed()
+    assertEquals(device.copy(expandedStorage = null), device)
   }
 
   private fun setContent(composable: @Composable () -> Unit) {
-    rule.setContent {
+    composeRule.setContent {
       CompositionLocalProvider(
         @OptIn(ExperimentalJewelApi::class) LocalComponent provides mock(),
         LocalProject provides mock(),
@@ -226,5 +329,10 @@ class StorageGroupTest {
 
     private fun SemanticsNodeInteractionsProvider.onInternalStorageTextField() =
       onNodeWithTag("InternalStorageRow").onChildren().filterToOne(hasSetTextAction())
+
+    private fun SemanticsNodeInteractionsProvider.onCustomTextField() =
+      onNodeWithTag("CustomRow").onChildren().filterToOne(hasSetTextAction())
+
+    private fun SemanticsNodeInteractionsProvider.onTooltips() = onNode(isPopup()).onChildren()
   }
 }

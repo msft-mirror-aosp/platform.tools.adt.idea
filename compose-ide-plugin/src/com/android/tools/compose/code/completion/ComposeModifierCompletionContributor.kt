@@ -124,32 +124,38 @@ class ComposeModifierCompletionContributor : CompletionContributor() {
         asFqName(it.returnType)?.asString() == COMPOSE_MODIFIER_FQN
       }
     val importStrategyDetector =
-      ImportStrategyDetector(nameExpression.containingKtFile, nameExpression.project)
+      ImportStrategyDetector(
+        originalKtFile = nameExpression.containingKtFile,
+        project = nameExpression.project,
+      )
 
     val isNewModifier =
       !isMethodCalledOnImportedModifier &&
         originalPosition.parentOfType<KtDotQualifiedExpression>() == null
     // Prioritise functions that return Modifier over other extension function.
-    resultSet.addAllElements(
-      toLookupElements(
-        returnsModifier,
-        KotlinFirLookupElementFactory,
-        importStrategyDetector,
-        2.0,
-        insertModifier = isNewModifier,
-      )
-    )
-    // If user didn't type Modifier don't suggest extensions that doesn't return Modifier.
-    if (isMethodCalledOnImportedModifier) {
-      resultSet.addAllElements(
-        toLookupElements(
-          others,
-          KotlinFirLookupElementFactory,
-          importStrategyDetector,
-          0.0,
+    for (symbol in returnsModifier) {
+      resultSet.addElement(
+        toLookupElement(
+          symbol = symbol,
+          importStrategyDetector = importStrategyDetector,
+          weight = 2.0,
           insertModifier = isNewModifier,
         )
       )
+    }
+
+    // If user didn't type Modifier don't suggest extensions that doesn't return Modifier.
+    if (isMethodCalledOnImportedModifier) {
+      for (symbol in others) {
+        resultSet.addElement(
+          toLookupElement(
+            symbol = symbol,
+            importStrategyDetector = importStrategyDetector,
+            weight = 0.0,
+            insertModifier = false,
+          )
+        )
+      }
     }
 
     ProgressManager.checkCanceled()
@@ -310,22 +316,23 @@ class ComposeModifierCompletionContributor : CompletionContributor() {
   }
 
   @Suppress("UnstableApiUsage")
-  private fun KaSession.toLookupElements(
-    functionSymbols: List<KaCallableSymbol>,
-    lookupElementFactory: KotlinFirLookupElementFactory,
+  private fun KaSession.toLookupElement(
+    symbol: KaCallableSymbol,
     importStrategyDetector: ImportStrategyDetector,
     weight: Double,
     insertModifier: Boolean,
-  ) =
-    functionSymbols.map { symbol ->
-      with(lookupElementFactory) {
-        val lookupElement = createLookupElement(symbol as KaNamedSymbol, importStrategyDetector)
-        PrioritizedLookupElement.withPriority(
-          ModifierLookupElement(lookupElement, insertModifier),
-          weight,
-        )
-      }
-    }
+  ): LookupElement {
+    val lookupElement =
+      KotlinFirLookupElementFactory.createLookupElement(
+        symbol = symbol as KaNamedSymbol,
+        importStrategyDetector = importStrategyDetector,
+      )
+
+    return PrioritizedLookupElement.withPriority(
+      ModifierLookupElement(lookupElement, insertModifier),
+      weight,
+    )
+  }
 
   /**
    * Creates LookupElementFactory that is similar to the one kotlin-plugin uses during completion

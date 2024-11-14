@@ -19,16 +19,16 @@ import com.android.tools.adtui.TreeWalker
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
-import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CustomShortcutSet
-import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.CustomizedDataContext
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
-import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.fileEditor.FileEditor
@@ -129,19 +129,14 @@ abstract class SplitEditor<P : FileEditor>(
     get() = previewViewAction
 
   private fun getFakeActionEvent() =
-    AnActionEvent(
-      null,
-      DataContext {
-        if (PlatformCoreDataKeys.FILE_EDITOR.`is`(it)) {
-          return@DataContext this
-        } else {
-          return@DataContext DataManager.getInstance().getDataContext(component).getData(it)
-        }
+    AnActionEvent.createEvent(
+      CustomizedDataContext.withSnapshot(DataManager.getInstance().getDataContext(component)) { sink ->
+        sink[PlatformCoreDataKeys.FILE_EDITOR] = this
       },
-      "",
-      Presentation(),
-      ActionManager.getInstance(),
-      0,
+      null,
+      ActionPlaces.UNKNOWN,
+      ActionUiKind.NONE,
+      null
     )
 
   // TODO(b/143210506): Review the current APIs for selecting and checking the current mode to be

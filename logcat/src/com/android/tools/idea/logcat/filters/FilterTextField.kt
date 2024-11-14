@@ -35,6 +35,7 @@ import com.google.wireless.android.sdk.stats.LogcatUsageEvent
 import com.google.wireless.android.sdk.stats.LogcatUsageEvent.Type.FILTER_ADDED_TO_HISTORY
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.ui.DarculaTextBorder
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionButtonComponent
 import com.intellij.openapi.actionSystem.ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
@@ -76,7 +77,6 @@ import com.intellij.util.ui.components.BorderLayoutPanel
 import icons.StudioIcons.Logcat.Input.FAVORITE_FILLED
 import icons.StudioIcons.Logcat.Input.FAVORITE_OUTLINE
 import icons.StudioIcons.Logcat.Input.FILTER_HISTORY
-import icons.StudioIcons.Logcat.Input.FILTER_HISTORY_DELETE
 import java.awt.Component
 import java.awt.Font
 import java.awt.Graphics
@@ -164,7 +164,7 @@ internal class FilterTextField(
   private val logcatPresenter: LogcatPresenter,
   private val filterParser: LogcatFilterParser,
   initialText: String,
-  matchCase: Boolean,
+  matchCase: Boolean?,
   androidProjectDetector: AndroidProjectDetector = AndroidProjectDetectorImpl(),
 ) : BorderLayoutPanel() {
   private val filterHistory = AndroidLogcatFilterHistory.getInstance()
@@ -174,13 +174,14 @@ internal class FilterTextField(
   private val favoriteButton = FavoriteButton()
   private val matchCaseButton = MatchCaseButton()
   private val separator = JSeparator(VERTICAL)
-  private var filter: LogcatFilter? = filterParser.parse(initialText, matchCase)
-
-  var matchCase = matchCase
+  var matchCase = matchCase ?: PropertiesComponent.getInstance().getBoolean(MATCH_CASE_PROPERTY)
     set(value) {
       field = value
+      PropertiesComponent.getInstance().setValue(MATCH_CASE_PROPERTY, value)
       filterUpdateChannel.trySend(FilterUpdated(text, matchCase))
     }
+
+  private var filter: LogcatFilter? = filterParser.parse(initialText, this.matchCase)
 
   private var isFavorite: Boolean = false
     set(value) {
@@ -233,10 +234,10 @@ internal class FilterTextField(
       addDocumentListener(
         object : DocumentListener {
           override fun documentChanged(event: DocumentEvent) {
-            filter = filterParser.parse(text, matchCase)
+            filter = filterParser.parse(text, this@FilterTextField.matchCase)
             isFavorite = filterHistory.favorites.contains(text)
             filterHistory.mostRecentlyUsed = textField.text
-            filterUpdateChannel.trySend(FilterUpdated(text, matchCase))
+            filterUpdateChannel.trySend(FilterUpdated(text, this@FilterTextField.matchCase))
             updateButtons()
           }
         }
@@ -741,7 +742,7 @@ internal class FilterTextField(
             else -> blankIcon
           }
 
-        deleteLabel.icon = if (isSelected) FILTER_HISTORY_DELETE else blankIcon
+        deleteLabel.icon = if (isSelected) AllIcons.General.Delete else blankIcon
 
         countLabel.text =
           when (count) {
@@ -941,6 +942,10 @@ internal class FilterTextField(
     companion object {
       val TOPIC = Topic(FilterStatusChanged::class.java)
     }
+  }
+
+  companion object {
+    @VisibleForTesting const val MATCH_CASE_PROPERTY = "LogcatFilterMatchCase"
   }
 }
 

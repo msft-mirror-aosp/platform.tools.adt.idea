@@ -595,7 +595,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     val panel = try {
       EmptyStatePanel(project, this)
     }
-    catch (e: IncorrectOperationException) {
+    catch (_: IncorrectOperationException) {
       // This object has been disposed already.
       return
     }
@@ -609,7 +609,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       contentManager.setSelectedContent(content)
       showToolWindowName()
     }
-    catch (e: IncorrectOperationException) {
+    catch (_: IncorrectOperationException) {
       // Content manager has been disposed already.
       Disposer.dispose(content)
     }
@@ -1202,7 +1202,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       get() = MirroringState.INACTIVE
 
     override fun toggleMirroring() {
-      logger.info("$simpleId.toggleMirroring")
+      logger.info("$simpleId.toggleMirroring") // b/364541401
       activateMirroring(device)
     }
 
@@ -1217,7 +1217,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       get() = MirroringState.ACTIVE
 
     override fun toggleMirroring() {
-      logger.info("$simpleId.toggleMirroring")
+      logger.info("$simpleId.toggleMirroring") // b/364541401
       deactivateMirroring(serialNumber)
     }
 

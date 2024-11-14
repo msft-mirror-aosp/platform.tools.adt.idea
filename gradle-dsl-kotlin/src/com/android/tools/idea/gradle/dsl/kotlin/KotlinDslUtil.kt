@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement
 import com.android.tools.idea.gradle.dsl.parser.configurations.ConfigurationDslElement
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement
 import com.android.tools.idea.gradle.dsl.parser.dependencies.DependenciesDslElement.KTS_KNOWN_CONFIGURATIONS
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslAnchor
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslClosure
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
@@ -342,10 +343,10 @@ internal fun KtCallExpression.name() : String? {
   }
 }
 
-internal fun getParentPsi(dslElement : GradleDslElement) : PsiElement? {
+internal fun getParentPsi(parentDslElement : GradleDslElement?) : PsiElement? {
   // For extra block, we don't have a psiElement for the dslElement because in Kotlin we don't use the extra block, so we need to add
   // elements straight to the ExtDslElement' parent.
-  return if (dslElement.parent is ExtDslElement) dslElement.parent?.parent?.create() else dslElement.parent?.create()
+  return if (parentDslElement is ExtDslElement) parentDslElement.parent?.create() else parentDslElement?.create()
 }
 
 internal fun GradleDslElement.getBlockParent() : GradleDslElement? {
@@ -356,8 +357,11 @@ internal fun GradleDslElement.getBlockParent() : GradleDslElement? {
   }
 }
 
-internal fun getPsiElementForAnchor(parent : PsiElement, dslAnchor : GradleDslElement?) : PsiElement? {
-  var anchorAfter = if (dslAnchor == null) null else findLastPsiElementIn(dslAnchor)
+internal fun getPsiElementForAnchor(parent : PsiElement, dslAnchor : GradleDslAnchor) : PsiElement? {
+  var anchorAfter = when(dslAnchor) {
+    is GradleDslAnchor.Start -> null
+    is GradleDslAnchor.After -> findLastPsiElementIn(dslAnchor.dslElement)
+  }
   if (anchorAfter == null && parent is KtBlockExpression) {
     return adjustForKtBlockExpression(parent)?.prevSibling
   }
@@ -380,9 +384,7 @@ internal fun getPsiElementForAnchor(parent : PsiElement, dslAnchor : GradleDslEl
   }
 }
 
-internal fun needToCreateParent(element: GradleDslElement): Boolean {
-  val parent = element.parent
-  // If the parent is an extra block dslElement, we never create a psiElement for it because we don't use it in kotlin.
+internal fun needToCreateParent(parent: GradleDslElement?): Boolean {
   return parent != null && (parent.psiElement == null && parent !is ExtDslElement && parent !is ProjectPropertiesDslElement)
 }
 
@@ -867,10 +869,10 @@ internal fun createPsiElementInsideList(parentDslElement : GradleDslElement,
 
   // If the dslElement has an anchor that is not null and that the list is not empty, we add it to the list after the anchor ;
   // otherwise, we add it at the beginning of the list.
-  if (parentPsiElement.arguments.isNotEmpty() && anchor != null) {
+  if (parentPsiElement.arguments.isNotEmpty() && anchor is GradleDslAnchor.After) {
     val anchorPsi =
-      anchor.psiElement as? KtValueArgument ?:
-      getNextValidParentPsiElement(anchor.psiElement, KtValueArgument::class) as? KtValueArgument ?: return null
+      anchor.dslElement.psiElement as? KtValueArgument ?:
+      getNextValidParentPsiElement(anchor.dslElement.psiElement, KtValueArgument::class) as? KtValueArgument ?: return null
 
     return parentPsiElement.addArgumentAfter(argument, anchorPsi)
   }

@@ -25,7 +25,7 @@ import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8
 
 const val GRADLE_SNAPSHOT_VERSION = "8.11-20241103012446+0000"
 // For available versions: https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
-const val KOTLIN_SNAPSHOT_VERSION = "2.1.0-dev-9026"
+const val KOTLIN_SNAPSHOT_VERSION = "2.1.20-dev-2943"
 
 /**
  * An AGP Version definition to be used in AGP integration tests.
@@ -55,7 +55,7 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   /**
    * The compileSdk to use in this test. `null` means the project default.
    */
-  override val compileSdk: String? = null,
+  override val compileSdk: String,
 
   /**
    * Builder model version to query.
@@ -87,10 +87,10 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   AGP_81(agpVersion = "8.1.0", gradleVersion = "8.0", jdkVersion = JDK_17, modelVersion = ModelVersion.V2, compileSdk = "34"),
   AGP_82(agpVersion = "8.2.0", gradleVersion = "8.2", jdkVersion = JDK_17, modelVersion = ModelVersion.V2, compileSdk = "34"),
 
-  AGP_LATEST_KOTLIN_SNAPSHOT(agpVersion = null, gradleVersion = null, kotlinVersion = KOTLIN_SNAPSHOT_VERSION),
-  AGP_LATEST_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_SNAPSHOT_VERSION),
+  AGP_LATEST_KOTLIN_SNAPSHOT(agpVersion = null, gradleVersion = null, kotlinVersion = KOTLIN_SNAPSHOT_VERSION, compileSdk = "34"),
+  AGP_LATEST_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_SNAPSHOT_VERSION, compileSdk = "34"),
   // Must be last to represent the newest version.
-  AGP_LATEST(null, gradleVersion = null);
+  AGP_LATEST(null, gradleVersion = null, compileSdk = "34");
   override fun toString(): String {
     return "Agp($agpVersion, g=$gradleVersion, k=$kotlinVersion, m=$modelVersion)"
   }

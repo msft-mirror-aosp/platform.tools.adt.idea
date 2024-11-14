@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.actions
 
+import com.android.tools.idea.actions.enableRichTooltip
 import com.android.tools.idea.streaming.core.DeviceId
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -45,7 +46,7 @@ internal class StreamingHardwareInputAction : ToggleAction(), DumbAware {
 
   override fun update(event: AnActionEvent) {
     super.update(event)
-    enableRichTooltip(event.presentation)
+    event.presentation.enableRichTooltip(this)
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
