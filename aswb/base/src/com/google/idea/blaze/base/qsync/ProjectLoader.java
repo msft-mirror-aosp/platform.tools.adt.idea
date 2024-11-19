@@ -62,6 +62,7 @@ import com.google.idea.blaze.qsync.java.PackageStatementParser;
 import com.google.idea.blaze.qsync.java.ParallelPackageReader;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
 import com.google.idea.blaze.qsync.project.ProjectPath;
+import com.google.idea.common.experiments.BoolExperiment;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.SimpleModificationTracker;
@@ -77,6 +78,8 @@ import org.jetbrains.annotations.Nullable;
  * <p>This class also manages injection of external (to querysync) dependencies.
  */
 public class ProjectLoader {
+
+  public final static BoolExperiment runQueryInWorkspace = new BoolExperiment("query.sync.run.query.in.workspace", true);
 
   private final ListeningExecutorService executor;
   private final SimpleModificationTracker projectModificationTracker;
@@ -132,9 +135,6 @@ public class ProjectLoader {
     ImmutableSet<String> handledRules = getHandledRuleKinds();
     Optional<BlazeVcsHandler> vcsHandler =
         Optional.ofNullable(BlazeVcsHandlerProvider.vcsHandlerForProject(project));
-    DependencyBuilder dependencyBuilder =
-        createDependencyBuilder(
-            workspaceRoot, latestProjectDef, buildSystem, vcsHandler, handledRules);
     RenderJarBuilder renderJarBuilder = createRenderJarBuilder(workspaceRoot, buildSystem);
     AppInspectorBuilder appInspectorBuilder = createAppInspectorBuilder(buildSystem);
 
@@ -151,6 +151,10 @@ public class ProjectLoader {
             createArtifactFetcher(),
             executor,
             QuerySyncManager.getInstance(project).cacheCleanRequest());
+
+    DependencyBuilder dependencyBuilder =
+      createDependencyBuilder(
+        workspaceRoot, latestProjectDef, buildSystem, vcsHandler, artifactCache, handledRules);
 
     ArtifactTracker<BlazeContext> artifactTracker;
     RenderJarArtifactTracker renderJarArtifactTracker;
@@ -192,7 +196,8 @@ public class ProjectLoader {
         new ProjectRefresher(
             vcsHandler.map(BlazeVcsHandler::getVcsStateDiffer).orElse(VcsStateDiffer.NONE),
             workspaceRoot.path(),
-            graph::getCurrent);
+            graph::getCurrent,
+            runQueryInWorkspace::getValue);
     SnapshotBuilder snapshotBuilder =
         new SnapshotBuilder(
             executor,
@@ -264,9 +269,10 @@ public class ProjectLoader {
       ProjectDefinition projectDefinition,
       BuildSystem buildSystem,
       Optional<BlazeVcsHandler> vcsHandler,
+      BuildArtifactCache buildArtifactCache,
       ImmutableSet<String> handledRuleKinds) {
     return new BazelDependencyBuilder(
-        project, buildSystem, projectDefinition, workspaceRoot, vcsHandler, handledRuleKinds);
+      project, buildSystem, projectDefinition, workspaceRoot, vcsHandler, buildArtifactCache, handledRuleKinds);
   }
 
   protected RenderJarBuilder createRenderJarBuilder(

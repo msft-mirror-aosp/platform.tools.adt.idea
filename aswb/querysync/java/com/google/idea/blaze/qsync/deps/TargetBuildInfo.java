@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableSetMultimap;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.qsync.artifacts.ArtifactMetadata;
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact;
-import java.nio.file.Path;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
@@ -30,8 +29,6 @@ public abstract class TargetBuildInfo {
 
   public static final TargetBuildInfo EMPTY =
       builder().buildContext(DependencyBuildContext.NONE).build();
-
-  public record MetadataKey(String metadataId, Path artifactPath) {}
 
   public abstract Optional<JavaArtifactInfo> javaInfo();
 
@@ -50,13 +47,13 @@ public abstract class TargetBuildInfo {
    *
    * <p>See {@link NewArtifactTracker#getUniqueTargetBuildInfos} to understand why this exists.
    * */
-  public boolean equalsIgnoringJavaCompileJars(TargetBuildInfo that) {
+  public boolean equalsIgnoringJarsAndGenSrcsAndConfigurationDifferences(TargetBuildInfo that) {
     if (this.toBuilder().javaInfo(null).build().equals(that.toBuilder().javaInfo(null).build())
         && this.javaInfo().isEmpty() == that.javaInfo().isEmpty()) {
       if (this.javaInfo().isEmpty()) {
         return true;
       }
-      return this.javaInfo().get().equalsIgnoringJars(that.javaInfo().get());
+      return this.javaInfo().get().equalsIgnoringJarsAndGenSrcsAndConfigurationDifferences(that.javaInfo().get());
     }
     return false;
   }

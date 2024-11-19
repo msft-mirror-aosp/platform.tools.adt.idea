@@ -28,6 +28,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.google.common.io.ByteSource;
+import com.google.common.io.MoreFiles;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
@@ -307,7 +309,7 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
         uniqueTargetInfo.put(t, Iterables.getOnlyElement(targetInfos));
       } else {
         TargetBuildInfo first = Iterables.get(targetInfos, 0);
-        if (targetInfos.stream().skip(1).allMatch(first::equalsIgnoringJavaCompileJars)) {
+        if (targetInfos.stream().skip(1).allMatch(first::equalsIgnoringJarsAndGenSrcsAndConfigurationDifferences)) {
           JavaArtifactInfo.Builder combinedJava =
               first.javaInfo().map(JavaArtifactInfo::toBuilder).orElse(null);
           if (combinedJava != null) {
@@ -396,14 +398,8 @@ public class NewArtifactTracker<C extends Context<C>> implements ArtifactTracker
   }
 
   @Override
-  public Optional<ImmutableSet<Path>> getCachedFiles(Label target) {
-    // TODO(b/323346056) this is only used to find built AARs for a target. Refactor that code.
-    return Optional.empty();
-  }
-
-  @Override
-  public Iterable<Path> getBugreportFiles() {
-    return ImmutableList.of(stateFile);
+  public ImmutableMap<String, ByteSource> getBugreportFiles() {
+    return ImmutableMap.of(stateFile.getFileName().toString(), MoreFiles.asByteSource(stateFile));
   }
 
   private void saveState() throws IOException {

@@ -52,8 +52,8 @@ public class ProjectRefresherTest {
   }
 
   private ProjectRefresher createRefresher(
-      VcsStateDiffer vcsDiffer, Optional<QuerySyncProjectSnapshot> existingSnapshot) {
-    return new ProjectRefresher(vcsDiffer, Path.of("/"), Suppliers.ofInstance(existingSnapshot));
+    VcsStateDiffer vcsDiffer, Optional<QuerySyncProjectSnapshot> existingSnapshot) {
+    return new ProjectRefresher(vcsDiffer, Path.of("/"), Suppliers.ofInstance(existingSnapshot), () -> true);
   }
 
   @Test
