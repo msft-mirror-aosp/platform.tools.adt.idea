@@ -15,6 +15,6 @@
  */
 package com.android.tools.idea.gradle.dcl.lang.psi
 
-interface DeclarativeIdentifierOwner {
+interface DeclarativeIdentifierOwner: DeclarativeElement {
   val identifier: DeclarativeIdentifier?
 }

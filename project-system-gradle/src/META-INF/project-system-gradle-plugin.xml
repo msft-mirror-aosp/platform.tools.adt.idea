@@ -339,16 +339,21 @@
       <action id="LibraryProperties" class="com.android.tools.idea.gradle.actions.LibraryPropertiesAction"/>
       <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="RevealIn"/>
     </group>
-    <action id="CleanGradleProject" class="com.android.tools.idea.gradle.actions.CleanProjectAction">
-    </action>
-    <action internal="true" id="Android.StopGradleDaemons" class="com.android.tools.idea.gradle.actions.StopGradleDaemonsAction" />
-    <group>
-      <separator/>
-      <action id="SelectBuildVariant" class="com.android.tools.idea.gradle.actions.SelectBuildVariantAction"/>
+    <group id="RebuildCleanProject">
       <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="com.android.build.attribution.ui.OpenBuildAnalyzerAction"/>
       <separator/>
+      <action id="CleanGradleProject" class="com.android.tools.idea.gradle.actions.CleanProjectAction"/>
+      <action id="RebuildGradleProject" class="com.android.tools.idea.gradle.actions.RebuildGradleProjectAction"/>
+      <separator/>
     </group>
-    <group id="Android.BuildApkOrBundle" class="com.android.tools.idea.gradle.actions.BuildApkOrBundleActionGroup" text="Generate App Bundle(s) / APK(s)" popup="true">
+    <action internal="true" id="Android.StopGradleDaemons" class="com.android.tools.idea.gradle.actions.StopGradleDaemonsAction" />
+    <group>
+      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="RebuildCleanProject"/>
+      <separator/>
+      <action id="SelectBuildVariant" class="com.android.tools.idea.gradle.actions.SelectBuildVariantAction"/>
+      <separator/>
+    </group>
+    <group id="Android.BuildApkOrBundle" class="com.android.tools.idea.gradle.actions.BuildApkOrBundleActionGroup" text="Generate App Bundles / APKs" popup="true">
       <add-to-group group-id="BuildMenu" anchor="last"/>
       <action id="Android.BuildApk" class="com.android.tools.idea.gradle.actions.GenerateApkAction"/>
       <action id="Android.BuildBundle" class="com.android.tools.idea.gradle.actions.GenerateBundleAction"/>

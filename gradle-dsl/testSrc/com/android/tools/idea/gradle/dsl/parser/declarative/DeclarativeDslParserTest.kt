@@ -177,9 +177,17 @@ class DeclarativeDslParserTest : LightPlatformTestCase() {
       }
     """.trimIndent()
     val expected = mapOf("plugins" to listOf(
-      mapOf("version" to "1", "id" to "org.example"),
-      mapOf("version" to "2", "id" to "org.other"))
+      mapOf("id" to "org.example", "version" to "1", ),
+      mapOf("id" to "org.other", "version" to "2"))
     )
+    doSettingsTest(file, expected)
+  }
+
+  fun testAssignment(){
+    val file = """
+      rootProject.name = "someName"
+    """.trimIndent()
+    val expected = mapOf("rootProject.name" to "someName")
     doSettingsTest(file, expected)
   }
 

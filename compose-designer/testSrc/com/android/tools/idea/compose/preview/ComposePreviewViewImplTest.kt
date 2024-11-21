@@ -17,6 +17,8 @@ package com.android.tools.idea.compose.preview
 
 import com.android.SdkConstants
 import com.android.flags.junit.FlagRule
+import com.android.testutils.delayUntilCondition
+import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.instructions.HyperlinkInstruction
 import com.android.tools.adtui.instructions.InstructionsPanel
 import com.android.tools.adtui.instructions.NewRowInstruction
@@ -61,6 +63,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
@@ -72,6 +75,7 @@ import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JLabel
 import javax.swing.JPanel
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -334,22 +338,21 @@ class ComposePreviewViewImplTest {
   @Test
   fun `empty preview state when generate all previews is disabled`() {
     StudioFlags.COMPOSE_PREVIEW_GENERATE_ALL_PREVIEWS_FILE.override(false)
-    ApplicationManager.getApplication().invokeAndWait {
-      previewView.hasRendered = true
-      previewView.hasContent = false
-      previewView.updateVisibilityAndNotifications()
-      fakeUi.root.validate()
-    }
+    previewView.hasRendered = true
+    previewView.hasContent = false
+    runBlocking { previewView.updateVisibilityAndNotifications() }
 
-    assertEquals(
+    retryUntilPassing(2.seconds) {
+      assertEquals(
+        """
+        No preview found.
+        Add preview by annotating Composables with @Preview
+        [Using the Compose preview]
       """
-      No preview found.
-      Add preview by annotating Composables with @Preview
-      [Using the Compose preview]
-    """
-        .trimIndent(),
-      (fakeUi.findComponent<InstructionsPanel> { it.isShowing })!!.toDisplayText(),
-    )
+          .trimIndent(),
+        (fakeUi.findComponent<InstructionsPanel> { it.isShowing })?.toDisplayText(),
+      )
+    }
   }
 
   @Test
@@ -365,53 +368,53 @@ class ComposePreviewViewImplTest {
   private fun checkEmptyPreviewState(contextSharingEnabled: Boolean) {
     StudioFlags.COMPOSE_PREVIEW_GENERATE_ALL_PREVIEWS_FILE.override(true)
     geminiPluginApi.contextAllowed = contextSharingEnabled
-    ApplicationManager.getApplication().invokeAndWait {
-      previewView.hasRendered = true
-      previewView.hasContent = false
-      previewView.updateVisibilityAndNotifications()
-      fakeUi.root.validate()
-    }
 
-    assertEquals(
+    previewView.hasRendered = true
+    previewView.hasContent = false
+    runBlocking { previewView.updateVisibilityAndNotifications() }
+
+    retryUntilPassing(2.seconds) {
+      assertEquals(
+        """
+        No preview found.
+        Add preview by annotating Composables with @Preview
+        [Using the Compose preview]
+        ${if (contextSharingEnabled) "[Auto-generate Compose Previews for this file]" else ""}
       """
-      No preview found.
-      Add preview by annotating Composables with @Preview
-      [Using the Compose preview]
-      ${if (contextSharingEnabled) "[Auto-generate Compose Previews for this file]" else ""}
-    """
-        .trimIndent()
-        .trim(),
-      (fakeUi.findComponent<InstructionsPanel> { it.isShowing })!!.toDisplayText(),
-    )
+          .trimIndent()
+          .trim(),
+        (fakeUi.findComponent<InstructionsPanel> { it.isShowing })?.toDisplayText(),
+      )
+    }
   }
 
   @Test
   fun `test compilation error state`() {
-    ApplicationManager.getApplication().invokeAndWait {
-      previewView.hasRendered = true
-      previewView.hasContent = false
-      statusManager.statusFlow.value = RenderingBuildStatus.NeedsBuild
-      previewView.updateVisibilityAndNotifications()
-      fakeUi.root.validate()
-    }
+    previewView.hasRendered = true
+    previewView.hasContent = false
+    statusManager.statusFlow.value = RenderingBuildStatus.NeedsBuild
 
-    val shortcutRegEx = Regex("\\(.+.\\)")
-    val instructionsText =
-      (fakeUi.findComponent<InstructionsPanel> { it.isShowing })!!
-        .toDisplayText()
-        .replace(shortcutRegEx, "(shortcut)")
-    assertEquals(
+    runBlocking { previewView.updateVisibilityAndNotifications() }
+
+    retryUntilPassing(2.seconds) {
+      val shortcutRegEx = Regex("\\(.+.\\)")
+      val instructionsText =
+        (fakeUi.findComponent<InstructionsPanel> { it.isShowing })
+          ?.toDisplayText()
+          ?.replace(shortcutRegEx, "(shortcut)")
+      assertEquals(
+        """
+        A successful build is needed before the preview can be displayed
+        [Build & Refresh... (shortcut)]
       """
-      A successful build is needed before the preview can be displayed
-      [Build & Refresh... (shortcut)]
-    """
-        .trimIndent(),
-      instructionsText,
-    )
+          .trimIndent(),
+        instructionsText,
+      )
+    }
   }
 
   @Test
-  fun `create compose view with two elements`() {
+  fun `create compose view with two elements`() = runBlocking {
     val composePreviewManager = TestComposePreviewManager()
     val previews =
       listOf(
@@ -431,6 +434,7 @@ class ComposePreviewViewImplTest {
       previewView.mainSurface.zoomController.zoomToFit()
       fakeUi.root.validate()
     }
+    delayUntilCondition(100, 1.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().size == 2 }
 
     assertEquals(2, fakeUi.findAllComponents<SceneViewPeerPanel>() { it.isShowing }.size)
     assertTrue(fakeUi.findComponent<JLabel> { it.text == "Display1" }!!.isShowing)
@@ -479,10 +483,11 @@ class ComposePreviewViewImplTest {
       previewView.onRefreshCancelledByTheUser()
       fakeUi.root.validate()
     }
+    val shortcut = if (SystemInfo.isMac) "⌥⇧⌘R" else "Ctrl+Shift+F5"
     assertEquals(
       """
       Refresh was cancelled and needs to be completed before the preview can be displayed
-      [Build & Refresh... (Ctrl+Shift+F5)]
+      [Build & Refresh... ($shortcut)]
     """
         .trimIndent(),
       (fakeUi.findComponent<InstructionsPanel> { it.isShowing })!!.toDisplayText(),

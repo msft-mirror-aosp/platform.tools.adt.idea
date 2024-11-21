@@ -15,27 +15,23 @@
  */
 package com.android.tools.idea.avd
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
-import com.android.sdklib.internal.avd.AvdCamera
-import com.android.sdklib.internal.avd.EmulatedProperties
+import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.testutils.file.createInMemoryFileSystem
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
-import com.android.tools.idea.adddevicedialog.LocalFileSystem
-import com.android.tools.idea.adddevicedialog.LocalProject
-import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
+import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import com.google.common.truth.Truth.assertThat
 import java.nio.file.Files
 import kotlinx.collections.immutable.toImmutableList
-import org.jetbrains.jewel.bridge.LocalComponent
-import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,33 +41,150 @@ import org.mockito.kotlin.whenever
 
 @RunWith(JUnit4::class)
 class AdditionalSettingsPanelTest {
+  private val fileSystem = createInMemoryFileSystem()
   @get:Rule val rule = createStudioComposeTestRule()
+
+  @Test
+  fun deviceSkinDropdownOnSelectedItemChange() {
+    // Arrange
+    val device = TestDevices.pixel9Pro()
+
+    val state =
+      ConfigureDevicePanelState(
+        device,
+        listOf(NoSkin.INSTANCE, device.skin).toImmutableList(),
+        null,
+        fileSystem,
+      )
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onNodeWithTag("DeviceSkinDropdown").performClick()
+    rule.onNodeWithText("No Skin").performClick()
+
+    // Assert
+    assertThat(state.device).isEqualTo(device.copy(skin = NoSkin.INSTANCE))
+  }
+
+  @Test
+  fun deviceSkinDropdownIsEnabledHasPlayStoreAndIsFoldable() {
+    // Arrange
+    val image = mock<ISystemImage>()
+    whenever(image.hasPlayStore()).thenReturn(true)
+
+    val state =
+      ConfigureDevicePanelState(
+        TestDevices.pixel9ProFold(),
+        emptyList<Skin>().toImmutableList(),
+        image,
+        fileSystem,
+      )
+
+    // Act
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Assert
+    rule.onNodeWithTag("DeviceSkinDropdown").assertIsNotEnabled()
+  }
+
+  @Test
+  fun deviceSkinDropdownIsEnabledHasPlayStoreAndIsntFoldable() {
+    // Arrange
+    val image = mock<ISystemImage>()
+    whenever(image.hasPlayStore()).thenReturn(true)
+
+    val state =
+      ConfigureDevicePanelState(
+        TestDevices.pixel9Pro(),
+        emptyList<Skin>().toImmutableList(),
+        image,
+        fileSystem,
+      )
+
+    // Act
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Assert
+    rule.onNodeWithTag("DeviceSkinDropdown").assertIsNotEnabled()
+  }
+
+  @Test
+  fun deviceSkinDropdownIsEnabledDoesntHavePlayStoreAndIsFoldable() {
+    // Arrange
+    val state =
+      ConfigureDevicePanelState(
+        TestDevices.pixel9ProFold(),
+        emptyList<Skin>().toImmutableList(),
+        null,
+        fileSystem,
+      )
+
+    // Act
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Assert
+    rule.onNodeWithTag("DeviceSkinDropdown").assertIsNotEnabled()
+  }
+
+  @Test
+  fun deviceSkinDropdownIsEnabledDoesntHavePlayStoreAndIsntFoldable() {
+    // Arrange
+    val state =
+      ConfigureDevicePanelState(
+        TestDevices.pixel9Pro(),
+        emptyList<Skin>().toImmutableList(),
+        null,
+        fileSystem,
+      )
+
+    // Act
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Assert
+    rule.onNodeWithTag("DeviceSkinDropdown").assertIsEnabled()
+  }
+
+  @Test
+  fun speedDropdownOnSelectedItemChange() {
+    // Arrange
+    val device = TestDevices.pixel9Pro()
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onNodeWithText("Full").performClick()
+    rule.onNodeWithText("LTE").performClick()
+
+    // Assert
+    assertThat(state.device).isEqualTo(device.copy(speed = AvdNetworkSpeed.LTE))
+  }
+
+  @Test
+  fun orientationDropdownOnClick() {
+    // Arrange
+    val device = TestDevices.pixel9Pro()
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onNodeWithText("Portrait").performClick()
+    rule.onNodeWithText("Landscape").performClick()
+
+    // Assert
+    assertThat(state.device).isEqualTo(device.copy(orientation = ScreenOrientation.LANDSCAPE))
+  }
 
   @Test
   fun radioButtonRowOnClicksChangeDevice() {
     // Arrange
-    val fileSystem = createInMemoryFileSystem()
-    val home = System.getProperty("user.home")
-
-    val device =
-      VirtualDevice(
-        device = readTestDevices().first { it.id == "pixel_8" },
-        name = "Pixel 8 API 34",
-        skin = DefaultSkin(fileSystem.getPath(home, "Android", "Sdk", "skins", "pixel_8")),
-        frontCamera = AvdCamera.EMULATED,
-        rearCamera = AvdCamera.VIRTUAL_SCENE,
-        speed = EmulatedProperties.DEFAULT_NETWORK_SPEED,
-        latency = EmulatedProperties.DEFAULT_NETWORK_LATENCY,
-        orientation = ScreenOrientation.PORTRAIT,
-        defaultBoot = Boot.QUICK,
-        internalStorage = StorageCapacity(2_048, StorageCapacity.Unit.MB),
-        expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
-        cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
-        graphicsMode = GraphicsMode.AUTO,
-        ram = StorageCapacity(2_048, StorageCapacity.Unit.MB),
-        vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB),
-        preferredAbi = null,
-      )
+    val device = TestDevices.pixel6()
 
     val image = mock<ISystemImage>()
     whenever(image.androidVersion).thenReturn(AndroidVersion(34, null, 7, true))
@@ -79,18 +192,9 @@ class AdditionalSettingsPanelTest {
     val state =
       ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), image, fileSystem)
 
-    rule.setContent {
-      CompositionLocalProvider(
-        LocalFileSystem provides fileSystem,
-        @OptIn(ExperimentalJewelApi::class) LocalComponent provides mock(),
-        LocalProject provides null,
-      ) {
-        Column { AdditionalSettingsPanel(state) }
-      }
-    }
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
-    val mySdCardFileImg = fileSystem.getPath(home, "mySdCardFile.img")
-
+    val mySdCardFileImg = fileSystem.getPath(System.getProperty("user.home"), "mySdCardFile.img")
     Files.createDirectories(mySdCardFileImg.parent)
     Files.createFile(mySdCardFileImg)
 
@@ -109,5 +213,23 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     assertThat(state.device).isEqualTo(device)
+  }
+
+  @Test
+  fun cpuCoresDropdownOnClick() {
+    // Arrange
+    val device = TestDevices.pixel9Pro()
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem, 4)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onNodeWithText("4").performClick()
+    rule.onNodeWithText("3").performClick()
+
+    // Assert
+    assertThat(state.device).isEqualTo(device.copy(cpuCoreCount = 3))
   }
 }

@@ -22,8 +22,6 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui[module]",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose[module]",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model[module]",
-        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[module]",
-        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[module]",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
         "//tools/base/flags:studio.android.sdktools.flags[module]",
         "//tools/adt/idea/android-common:intellij.android.common[module]",
@@ -78,7 +76,7 @@ iml_module(
         },
         # Can probably be grouped into gradle-other once flakiness is fixed: b/261126651, b/272048512
         "RenderErrorTest": {
-            "shard_count": 3,
+            "shard_count": 4,
             "test_filter": "com.android.tools.idea.compose.gradle.preview.RenderErrorTest",
         },
         "gradle-other": {

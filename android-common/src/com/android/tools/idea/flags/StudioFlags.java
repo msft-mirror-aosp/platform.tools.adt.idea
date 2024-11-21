@@ -467,7 +467,7 @@ public final class StudioFlags {
     "When deploying to API 35+ device for debuggable deployment, the deployment pipeline will leverage the assume-verified" +
     " compiler filter in ART to avoid bytecode verification when possible. This would speed up development cycles. Note that all release" +
     " build are still verified by ART regardless of this flag. This flag turns on this feature for all run configurations.",
-    ChannelDefault.enabledUpTo(CANARY));
+    false);
 
   public static final Flag<Boolean> APPLY_CHANGES_STRUCTURAL_DEFINITION = new BooleanFlag(
     RUNDEBUG,
@@ -1322,6 +1322,11 @@ public final class StudioFlags {
     "If enabled, Gallery view will only have dropdown selector instead of tabs.",
     false);
 
+  public static final Flag<Boolean> VIEW_IN_GALLERY = new BooleanFlag(
+    PREVIEW_COMMON, "view.preview.in.gallery", "View preview in Gallery mode",
+    "If enabled, shows a menu item to open the selected preview in Gallery mode.",
+    ChannelDefault.enabledUpTo(CANARY));
+
   //endregion
 
   //region Compose
@@ -1353,20 +1358,6 @@ public final class StudioFlags {
     "Enable live edit deploy settings menu",
     "If enabled, advanced Live Edit settings menu will be visible",
     false
-  );
-
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CLASS_DIFFER = new BooleanFlag(
-    COMPOSE, "deploy.live.edit.deploy.differ",
-    "LiveEdit: Resolve changed classes and group IDs with the class differ.",
-    "If enabled, the class differ will be used inside of the LE compiler",
-    true
-  );
-
-  public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_BYTECODE_ANALYSIS = new BooleanFlag(
-    COMPOSE, "deploy.live.edit.deploy.bytecode.analysis",
-    "LiveEdit: Determine which group IDs to invalidate using bytecode analysisr.",
-    "If enabled, compiler output in LE will be analyzed with ASM during the group selection step",
-    true
   );
 
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_CONFINED_ANALYSIS = new BooleanFlag(
@@ -1502,6 +1493,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_ALL_PREVIEWS_FILE = new BooleanFlag(
     COMPOSE, "preview.generate.previews.file.action", "Enable editor action for generating all Compose Previews for a file",
     "Enable a context-menu action that can generate Compose Previews corresponding to the @Composable functions of a file",
+    ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_EXTRA_PARAMETER_CONTEXT = new BooleanFlag(
+    COMPOSE, "preview.generate.extra.parameter.context", "Enable additional parameter context when generating Compose Previews",
+    "Enables an experiment of adding extra context when generating Compose Previews. The extra context will include information that should help instantiate parameters required by the Composable method used in the preview.",
     ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_UI_CHECK_FOR_WEAR = new BooleanFlag(
@@ -1741,6 +1737,15 @@ public final class StudioFlags {
       "Fetch real insights",
       "Fetch actual insights from AiInsightClient",
       true
+    );
+
+  public static final Flag<Integer> CODE_CONTEXT_EXPERIMENT_OVERRIDE =
+    new IntFlag(
+      APP_INSIGHTS,
+      "code.context.experiment.override",
+      "Code context experiment override",
+      "Overrides Studio's assigned experiment with this flag's value",
+      0
     );
 
   public static final Flag<String> CRASHLYTICS_GRPC_SERVER =
@@ -2121,7 +2126,7 @@ public final class StudioFlags {
   // TODO(b/341816638): delete in L
   public static final Flag<Boolean> SHOW_CLOUD_DEPRECATION_MESSAGES =
     new BooleanFlag(CLOUD_INTEGRATION, "enabled", "Show bundled cloud plugin deprecation messages",
-                    "When enabled, deprecation messages will show when using functionality from the bundled cloud plugin.", false);
+                    "When enabled, deprecation messages will show when using functionality from the bundled cloud plugin.", true);
 
   // endregion Cloud Integration
 

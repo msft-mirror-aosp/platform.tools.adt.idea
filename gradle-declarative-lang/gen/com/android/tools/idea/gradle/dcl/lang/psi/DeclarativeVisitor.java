@@ -33,6 +33,19 @@ public class DeclarativeVisitor extends PsiElementVisitor {
     visitElement(o);
   }
 
+  public void visitAssignableBare(@NotNull DeclarativeAssignableBare o) {
+    visitAssignableProperty(o);
+  }
+
+  public void visitAssignableProperty(@NotNull DeclarativeAssignableProperty o) {
+    visitContributedReferenceHost(o);
+    // visitReceiverPrefixed(o);
+  }
+
+  public void visitAssignableQualified(@NotNull DeclarativeAssignableQualified o) {
+    visitAssignableProperty(o);
+  }
+
   public void visitAssignment(@NotNull DeclarativeAssignment o) {
     visitEntry(o);
     // visitIdentifierOwner(o);
@@ -60,6 +73,7 @@ public class DeclarativeVisitor extends PsiElementVisitor {
     // visitIdentifierOwner(o);
     // visitValue(o);
     // visitAbstractFactory(o);
+    // visitReceiverPrefixed(o);
   }
 
   public void visitIdentifier(@NotNull DeclarativeIdentifier o) {
@@ -74,6 +88,7 @@ public class DeclarativeVisitor extends PsiElementVisitor {
   public void visitProperty(@NotNull DeclarativeProperty o) {
     visitValue(o);
     // visitContributedReferenceHost(o);
+    // visitReceiverPrefixed(o);
   }
 
   public void visitQualified(@NotNull DeclarativeQualified o) {
@@ -97,6 +112,10 @@ public class DeclarativeVisitor extends PsiElementVisitor {
   }
 
   public void visitValue(@NotNull DeclarativeValue o) {
+    visitElement(o);
+  }
+
+  public void visitContributedReferenceHost(@NotNull ContributedReferenceHost o) {
     visitElement(o);
   }
 

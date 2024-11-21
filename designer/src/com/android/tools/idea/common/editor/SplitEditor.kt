@@ -19,6 +19,7 @@ import com.android.tools.adtui.TreeWalker
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
+import com.intellij.ide.ui.UISettings
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -37,6 +38,7 @@ import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
 import com.intellij.ui.NewUI
 import com.intellij.util.containers.orNull
@@ -78,7 +80,9 @@ abstract class SplitEditor<P : FileEditor>(
     }
 
   override val isShowFloatingToolbar: Boolean
-    get() = false
+    // If there are no editor tabs, we should show the split controls as a floating
+    // toolbar, so the user can still switch between modes.
+    get() = UISettings.instanceOrNull?.editorTabPlacement == UISettings.TABS_NONE
 
   private val navigateRightAction =
     object : AnAction() {
@@ -94,9 +98,11 @@ abstract class SplitEditor<P : FileEditor>(
 
   override fun getComponent(): JComponent {
     val thisComponent = super.getComponent()
-    // If displaying the split controls in the editor tabs, we should make sure the legacy toolbar
-    // is not visible.
-    if (isShowActionsInTabs) {
+    // If displaying the split controls in the editor tabs, i.e. when using the new UI but not
+    // when editor tabs are hidden, we should make sure the legacy toolbar is not visible.
+    if (
+      NewUI.isEnabled() && UISettings.instanceOrNull?.editorTabPlacement != UISettings.TABS_NONE
+    ) {
       TreeWalker(thisComponent)
         .descendantStream()
         .filter { it is SplitEditorToolbar }
@@ -111,7 +117,7 @@ abstract class SplitEditor<P : FileEditor>(
     return thisComponent
   }
 
-  override fun getFile() = myEditor.file
+  override fun getFile(): VirtualFile? = myEditor.file
 
   override fun getEditor() = myEditor.editor
 
@@ -128,16 +134,18 @@ abstract class SplitEditor<P : FileEditor>(
   override val showPreviewAction: SplitEditorAction
     get() = previewViewAction
 
-  private fun getFakeActionEvent() =
-    AnActionEvent.createEvent(
-      CustomizedDataContext.withSnapshot(DataManager.getInstance().getDataContext(component)) { sink ->
+  private fun getFakeActionEvent(): AnActionEvent {
+    val parentContext = DataManager.getInstance().getDataContext(component)
+    return AnActionEvent.createEvent(
+      CustomizedDataContext.withSnapshot(parentContext) { sink ->
         sink[PlatformCoreDataKeys.FILE_EDITOR] = this
       },
       null,
       ActionPlaces.UNKNOWN,
       ActionUiKind.NONE,
-      null
+      null,
     )
+  }
 
   // TODO(b/143210506): Review the current APIs for selecting and checking the current mode to be
   // backed by an enum.

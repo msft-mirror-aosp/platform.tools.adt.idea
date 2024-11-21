@@ -16,7 +16,6 @@
 package com.android.tools.idea.avd
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -33,32 +32,20 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTextReplacement
-import com.android.resources.ScreenOrientation
-import com.android.sdklib.devices.Device
-import com.android.sdklib.devices.Hardware
-import com.android.sdklib.internal.avd.AvdCamera
-import com.android.sdklib.internal.avd.AvdNetworkLatency
-import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.testutils.file.createInMemoryFileSystem
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
-import com.android.tools.idea.adddevicedialog.LocalProject
-import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
-import org.jetbrains.jewel.bridge.LocalComponent
-import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 
 @RunsInEdt
 @RunWith(JUnit4::class)
 class StorageGroupTest {
-  private var device by mutableStateOf(pixel6())
+  private var device by mutableStateOf(TestDevices.pixel6())
   private val state = StorageGroupState(device, createInMemoryFileSystem())
 
   @get:Rule val composeRule = createStudioComposeTestRule()
@@ -284,49 +271,36 @@ class StorageGroupTest {
     assertEquals(device.copy(expandedStorage = null), device)
   }
 
-  private fun setContent(composable: @Composable () -> Unit) {
-    composeRule.setContent {
-      CompositionLocalProvider(
-        @OptIn(ExperimentalJewelApi::class) LocalComponent provides mock(),
-        LocalProject provides mock(),
-      ) {
-        composable()
-      }
-    }
-  }
+  @Test
+  fun existingCustomExpandedStorageDoesntEqualState() {
+    // Arrange
+    device =
+      device.copy(
+        existingCustomExpandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB))
+      )
 
-  private companion object {
-    private fun pixel6(): VirtualDevice {
-      val hardware = mock<Hardware>()
-      whenever(hardware.screen).thenReturn(mock())
-
-      val device = mock<Device>()
-      whenever(device.defaultHardware).thenReturn(hardware)
-
-      return VirtualDevice(
-        name = "Pixel 6",
-        device = device,
-        skin =
-          DefaultSkin(
-            createInMemoryFileSystem()
-              .getPath(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_6")
-          ),
-        frontCamera = AvdCamera.EMULATED,
-        rearCamera = AvdCamera.VIRTUAL_SCENE,
-        speed = AvdNetworkSpeed.FULL,
-        latency = AvdNetworkLatency.NONE,
-        orientation = ScreenOrientation.PORTRAIT,
-        defaultBoot = Boot.QUICK,
-        internalStorage = StorageCapacity(2, StorageCapacity.Unit.GB),
-        expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
-        cpuCoreCount = 4,
-        graphicsMode = GraphicsMode.AUTO,
-        ram = StorageCapacity(2, StorageCapacity.Unit.GB),
-        vmHeapSize = StorageCapacity(228, StorageCapacity.Unit.MB),
-        preferredAbi = null,
+    setContent {
+      StorageGroup(
+        device,
+        StorageGroupState(device, createInMemoryFileSystem()),
+        false,
+        onDeviceChange = { device = it },
       )
     }
 
+    // Act
+    composeRule.onCustomTextField().performTextReplacement("513")
+    composeRule.waitForIdle()
+
+    // Assert
+    composeRule.onNodeWithText("Modifying storage size erases existing content").assertIsDisplayed()
+  }
+
+  private fun setContent(composable: @Composable () -> Unit) {
+    composeRule.setContent { provideCompositionLocals { composable() } }
+  }
+
+  private companion object {
     private fun SemanticsNodeInteractionsProvider.onInternalStorageTextField() =
       onNodeWithTag("InternalStorageRow").onChildren().filterToOne(hasSetTextAction())
 

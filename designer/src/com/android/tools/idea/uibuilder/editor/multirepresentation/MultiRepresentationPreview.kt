@@ -45,10 +45,8 @@ import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
-import com.intellij.util.SlowOperations
 import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.util.xmlb.annotations.MapAnnotation
 import com.intellij.util.xmlb.annotations.Tag
@@ -127,11 +125,7 @@ open class MultiRepresentationPreview(
   private val instanceId = psiFile.virtualFile.presentableName
 
   private val project = psiFile.project
-  private val psiFilePointer = runReadAction {
-    SlowOperations.allowSlowOperations(
-      ThrowableComputable { SmartPointerManager.createPointer(psiFile) }
-    )
-  }
+  private val psiFilePointer = runReadAction { SmartPointerManager.createPointer(psiFile) }
   private var shortcutsApplicableComponent: JComponent? = null
 
   private var representationNeverShown = true
@@ -293,12 +287,8 @@ open class MultiRepresentationPreview(
         return
       }
       shortcutsApplicableComponent?.let {
-        launch(uiThread) {
-          SlowOperations.allowSlowOperations(
-            ThrowableComputable {
-              if (!Disposer.isDisposed(representation)) representation.registerShortcuts(it)
-            }
-          )
+        launch(workerThread) {
+          if (!Disposer.isDisposed(representation)) representation.registerShortcuts(it)
         }
       }
       newRepresentations[provider.displayName] = representation

@@ -23,11 +23,11 @@ import com.intellij.psi.PsiElement;
 
 public interface DeclarativeAssignment extends DeclarativeEntry, DeclarativeIdentifierOwner {
 
+  @NotNull
+  DeclarativeAssignableProperty getAssignableProperty();
+
   @Nullable
   DeclarativeFactory getFactory();
-
-  @NotNull
-  DeclarativeIdentifier getIdentifier();
 
   @Nullable
   DeclarativeLiteral getLiteral();
@@ -37,5 +37,8 @@ public interface DeclarativeAssignment extends DeclarativeEntry, DeclarativeIden
 
   @Nullable
   DeclarativeValue getValue();
+
+  @NotNull
+  DeclarativeIdentifier getIdentifier();
 
 }

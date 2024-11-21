@@ -56,8 +56,6 @@ import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager
 import com.android.tools.idea.uibuilder.graphics.NlConstants
 import com.android.tools.idea.uibuilder.layout.option.GridLayoutManager
 import com.android.tools.idea.uibuilder.layout.option.GridSurfaceLayoutManager
-import com.android.tools.idea.uibuilder.layout.option.GroupedListSurfaceLayoutManager
-import com.android.tools.idea.uibuilder.layout.option.ListLayoutManager
 import com.android.tools.idea.uibuilder.model.getViewHandler
 import com.android.tools.idea.uibuilder.model.h
 import com.android.tools.idea.uibuilder.model.w
@@ -75,18 +73,13 @@ import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.impl.BackgroundableProcessIndicator
 import com.intellij.openapi.project.Project
-import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.scale.JBUIScale.sysScale
 import com.intellij.util.ui.UIUtil
-import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
 import java.util.function.Supplier
 import java.util.stream.Collectors
-import javax.swing.JLayeredPane
-import javax.swing.JPanel
-import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.launch
 
@@ -130,32 +123,13 @@ internal constructor(
   ),
   NlDiagnosticKey {
 
-  /**
-   * [EditorNotificationPanel] to indicate List mode is deprecated. It should only be visible if
-   * List is selected.
-   *
-   * TODO(b/369564706): remove this banner when List mode is removed
-   */
-  private val listDeprecationBanner =
-    object : EditorNotificationPanel(Status.Warning) {
-      init {
-        text = "List mode will be deprecated in the next release. Please use Grid mode if possible."
-        isVisible = false
-      }
-    }
-
   init {
-    val deprecationBannerPanel =
-      JPanel(BorderLayout()).apply {
-        add(listDeprecationBanner, BorderLayout.NORTH)
-        isOpaque = false
-      }
-    layeredPane.add(deprecationBannerPanel, JLayeredPane.DEFAULT_LAYER)
     viewport.addChangeListener {
       val scroller = viewportScroller
       viewportScroller = null
       scroller?.scroll(viewport)
     }
+    scope.launch { sceneViewPanel.organizationState.collect { notifyPanningChanged() } }
   }
 
   var screenViewProvider: ScreenViewProvider = loadPreferredMode()
@@ -233,11 +207,6 @@ internal constructor(
     setSceneViewAlignment(layoutOption.sceneViewAlignment)
     setScrollPosition(0, 0)
     revalidateScrollArea()
-  }
-
-  @UiThread
-  fun updateLayoutDeprecationBannerVisibility(visible: Boolean) {
-    listDeprecationBanner.isVisible = visible
   }
 
   /** Triggers a re-inflation and re-render, but it doesn't wait for it to finish. */
@@ -559,22 +528,11 @@ internal constructor(
 
     val layoutManager = sceneViewLayoutManager.currentLayout.value.layoutManager
 
-    // If layout is a vertical list layout
-    val isGroupedListLayout =
-      layoutManager is GroupedListSurfaceLayoutManager || layoutManager is ListLayoutManager
     // If layout is grouped grid layout.
     val isGroupedGridLayout =
       layoutManager is GroupedGridSurfaceLayoutManager || layoutManager is GridLayoutManager
 
-    if (isGroupedListLayout) {
-      viewportScroller =
-        createScrollerForGroupedSurfaces(
-          port,
-          update,
-          scrollPosition,
-          Point(scrollPosition.x, max(0.0, focusPoint.y.toDouble()).toInt()),
-        )
-    } else if (isGroupedGridLayout && StudioFlags.SCROLLABLE_ZOOM_ON_GRID.get()) {
+    if (isGroupedGridLayout && StudioFlags.SCROLLABLE_ZOOM_ON_GRID.get()) {
       viewportScroller =
         createScrollerForGroupedSurfaces(port, update, scrollPosition, scrollPosition)
     } else if (layoutManager !is GridSurfaceLayoutManager) {

@@ -7,10 +7,11 @@ load(
     "ANDROID_IDE_INFO",
     "ZIP_TOOL_LABEL",
     _ide_cc_not_validated = "IDE_CC",
+    _ide_java_not_validated = "IDE_JAVA",
     _ide_kotlin_not_validated = "IDE_KOTLIN",
 )
 
-ALWAYS_BUILD_RULES = "java_proto_library,java_lite_proto_library,java_mutable_proto_library,kt_proto_library_helper,_java_grpc_library,_java_lite_grpc_library,kt_grpc_library_helper,java_stubby_library,kt_stubby_library_helper,aar_import,java_import"
+ALWAYS_BUILD_RULES = "java_proto_library,java_lite_proto_library,java_mutable_proto_library,kt_proto_library_helper,_java_grpc_library,_java_lite_grpc_library,kt_grpc_library_helper,java_stubby_library,kt_stubby_library_helper,aar_import,java_import, j2kt_native_import"
 
 PROTO_RULE_KINDS = [
     "java_proto_library",
@@ -19,7 +20,13 @@ PROTO_RULE_KINDS = [
     "kt_proto_library_helper",
 ]
 
-def _rule_function(rule):
+def _rule_function(
+        rule):  # @unused
+    return []
+
+def _target_rule_function(
+        target,  # @unused
+        rule):  # @unused
     return []
 
 def _unique(values):
@@ -33,6 +40,14 @@ def _validate_ide(unvalidated, template):
         elif type(getattr(unvalidated, a)) != type(getattr(template, a)):
             fail("attribute type mismatch: ", a, type(getattr(unvalidated, a)), type(getattr(template, a)))
     return struct(**{a: getattr(unvalidated, a) for a in dir(template) if a not in dir(struct())})
+
+IDE_JAVA = _validate_ide(
+    _ide_java_not_validated,
+    template = struct(
+        srcs_attributes = [],  # Additional srcs like attributes.
+        get_java_info = _target_rule_function,  # A function that takes a rule and returns a JavaInfo like structure (or the provider itself).
+    ),
+)
 
 IDE_KOTLIN = _validate_ide(
     _ide_kotlin_not_validated,
@@ -56,8 +71,7 @@ IDE_CC = _validate_ide(
     ),
 )
 
-JAVA_SRC_ATTRS = ["srcs", "java_srcs", "java_test_srcs"]
-JVM_SRC_ATTRS = _unique(JAVA_SRC_ATTRS + IDE_KOTLIN.srcs_attributes)
+JVM_SRC_ATTRS = _unique(["srcs"] + IDE_JAVA.srcs_attributes + IDE_KOTLIN.srcs_attributes)
 
 def _package_dependencies_impl(target, ctx):
     java_info_file = _write_java_target_info(target, ctx)
@@ -389,10 +403,14 @@ def _target_within_project_scope(label, include, exclude):
     package = label.package
     result = False
     if include:
-        for inc in [Label(i) for i in include.split(",")]:
-            if _get_repo_name(inc) == repo and _package_prefix_match(package, inc.package):
-                result = True
-                break
+        if include == "//":
+            # when workspace root is included
+            result = True
+        else:
+            for inc in [Label(i) for i in include.split(",")]:
+                if _get_repo_name(inc) == repo and _package_prefix_match(package, inc.package):
+                    result = True
+                    break
     if result and len(exclude) > 0:
         for exc in [Label(i) for i in exclude.split(",")]:
             if _get_repo_name(exc) == repo and _package_prefix_match(package, exc.package):
@@ -453,6 +471,8 @@ def _collect_own_java_artifacts(
     own_srcjar_files = []
     resource_package = ""
 
+    java_info = IDE_JAVA.get_java_info(target, ctx.rule)
+
     if must_build_main_artifacts:
         # For rules that we do not follow dependencies of (either because they don't
         # have further dependencies with JavaInfo or do so in attributes we don't care)
@@ -461,11 +481,11 @@ def _collect_own_java_artifacts(
         # This is done primarily for rules like proto, whose toolchain classes
         # are collected via attribute traversal, but still requires jars for any
         # proto deps of the underlying proto_library.
-        if JavaInfo in target:
+        if java_info:
             if can_follow_dependencies:
-                own_jar_depsets.append(target[JavaInfo].compile_jars)
+                own_jar_depsets.append(java_info.compile_jars)
             else:
-                own_jar_depsets.append(target[JavaInfo].transitive_compile_time_jars)
+                own_jar_depsets.append(java_info.transitive_compile_time_jars)
 
         if declares_android_resources(target, ctx):
             ide_aar = _get_ide_aar_file(target, ctx)
@@ -507,8 +527,8 @@ def _collect_own_java_artifacts(
 
         # Add generated java_outputs (e.g. from annotation processing)
         generated_class_jars = []
-        if JavaInfo in target:
-            for java_output in target[JavaInfo].java_outputs:
+        if java_info:
+            for java_output in java_info.java_outputs:
                 # Prefer source jars if they exist and are requested:
                 if use_generated_srcjars and java_output.generated_source_jar:
                     own_gensrc_files.append(java_output.generated_source_jar)
