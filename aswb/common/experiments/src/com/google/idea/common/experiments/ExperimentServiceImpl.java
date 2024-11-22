@@ -48,7 +48,7 @@ public class ExperimentServiceImpl implements ApplicationComponent, ExperimentSe
   private final Alarm alarm =
       new Alarm(ThreadToUse.POOLED_THREAD, ApplicationManager.getApplication());
   private final List<ExperimentLoader> services;
-  private final Supplier<String> channelSupplier;
+  private final Supplier<String> buildSupplier;
   private final AtomicInteger experimentScopeCounter = new AtomicInteger(0);
 
   private volatile Map<String, String> experiments = ImmutableMap.of();
@@ -56,18 +56,18 @@ public class ExperimentServiceImpl implements ApplicationComponent, ExperimentSe
   private final Map<String, Experiment> queriedExperiments = new ConcurrentHashMap<>();
 
   ExperimentServiceImpl() {
-    this(MorePlatformUtils::getIdeChannel, ExperimentLoader.EP_NAME.getExtensions());
+    this(MorePlatformUtils::getIdeAbBuildNumber, ExperimentLoader.EP_NAME.getExtensions());
   }
 
   @VisibleForTesting
   ExperimentServiceImpl(ExperimentLoader... loaders) {
-    this(MorePlatformUtils::getIdeChannel, loaders);
+    this(MorePlatformUtils::getIdeAbBuildNumber, loaders);
   }
 
   @VisibleForTesting
-  ExperimentServiceImpl(Supplier<String> channelSupplier, ExperimentLoader... loaders) {
+  ExperimentServiceImpl(Supplier<String> buildSupplier, ExperimentLoader... loaders) {
     services = ImmutableList.copyOf(loaders);
-    this.channelSupplier = channelSupplier;
+    this.buildSupplier = buildSupplier;
     if (ApplicationManager.getApplication().isUnitTestMode()) {
       refreshExperiments();
     }
@@ -88,12 +88,12 @@ public class ExperimentServiceImpl implements ApplicationComponent, ExperimentSe
   @Nullable
   private String getExperiment(Experiment experiment) {
     queriedExperiments.putIfAbsent(experiment.getKey(), experiment);
+    String buildKey = buildSupplier.get() + "." + experiment.getKey();
+    if (experiments.containsKey(buildKey)) {
+      return experiments.get(buildKey);
+    }
     if (experiments.containsKey(experiment.getKey())) {
       return experiments.get(experiment.getKey());
-    }
-    String channelKey = channelSupplier.get() + "." + experiment.getKey();
-    if (experiments.containsKey(channelKey)) {
-      return experiments.get(channelKey);
     }
     return null;
   }
