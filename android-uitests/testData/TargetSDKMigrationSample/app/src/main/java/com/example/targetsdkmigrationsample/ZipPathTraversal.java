@@ -17,13 +17,13 @@ package com.example.targetsdkmigrationsample;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.io.*;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
-
-
 
 /**
  * This class provides functionality to traverse and process entries within a ZIP file.
@@ -31,7 +31,6 @@ import java.util.zip.ZipInputStream;
  * through the contents of a ZIP archive.
  */
 public class ZipPathTraversal{
-
 
     /**
      * Verified behavior changes in API 34 for Zip path traversal.More details below
@@ -64,5 +63,17 @@ public class ZipPathTraversal{
         System.out.println("Validated UUID: " + uuid);
     }
 
+    /**
+     * Verified behavior changes in API 35 related to OpenJDK. More details in below link
+     * <a href="https://developer.android.com/about/versions/15/behavior-changes-15#openjdk-api-changes">...</a>
+     */
+    public static void openJDKAPI35Changes(){
+        int number1 = 10;
+        int number2 = 5;
+        String message = String.format("The number is: %0$03d", number1,number2);
+        String[] elements = (String[]) Arrays.asList("one", "two").toArray();
+        Random random = new Random();
+        random.ints();
+    }
 }
 

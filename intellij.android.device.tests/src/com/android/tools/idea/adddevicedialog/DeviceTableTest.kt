@@ -21,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.KeyInjectionScope
 import androidx.compose.ui.test.MouseButton
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
@@ -41,6 +40,7 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import com.android.sdklib.deviceprovisioner.Resolution
+import com.android.tools.adtui.compose.keyPress
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.google.common.collect.Range
 import com.google.common.truth.Truth.assertThat
@@ -366,9 +366,4 @@ class DeviceTableTest {
       .containsExactly(api26Plus, api24Plus, api24To34, api25To30, apiUpTo30)
       .inOrder()
   }
-}
-
-private fun KeyInjectionScope.keyPress(key: Key) {
-  keyDown(key)
-  keyUp(key)
 }

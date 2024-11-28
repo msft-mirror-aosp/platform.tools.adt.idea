@@ -15,12 +15,12 @@
  */
 package com.android.tools.idea.editing.documentation
 
-import com.android.mockito.kotlin.getTypedArgument
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.TestUtils
 import com.android.tools.idea.downloads.UrlFileCache
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.Sdks
+import com.android.tools.idea.testing.moveCaret
 import com.google.common.truth.Truth.assertThat
 import com.intellij.lang.Language
 import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
@@ -31,20 +31,24 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.backend.documentation.AsyncDocumentation
 import com.intellij.platform.backend.documentation.DocumentationData
+import com.intellij.platform.backend.documentation.DocumentationResult.Documentation
 import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiMethod
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.replaceService
 import com.intellij.util.application
-import java.io.ByteArrayInputStream
-import java.io.File
-import java.io.FileOutputStream
+import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.reflect.KClass
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -52,46 +56,52 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 
 private const val TEST_DATA_DIR =
   "tools/adt/idea/android/editing/documentation/testData/androidSdkDocumentationTargetProvider"
-private const val ACTIVITY_DOC_URL =
-  "http://developer.android.com/reference/android/app/Activity.html"
+private const val TEXT_VIEW_DOC_URL =
+  "http://developer.android.com/reference/android/widget/TextView.html"
+// The contents here don't really matter.
+private const val SIMPLE_HTML = "<html><body>Yo, this is HTML.</body></html>"
+
+private fun CharSequence.collapseSpaces() =
+  replace(Regex(" {2,}"), " ").replace(Regex("^ +", RegexOption.MULTILINE), "")
 
 @RunWith(Parameterized::class)
-class AndroidSdkDocumentationTargetProviderTest(private val language: Language) {
-
+class AndroidSdkDocumentationTargetProviderTest(private val testConfig: TestConfig) {
   @get:Rule val projectRule = AndroidProjectRule.withSdk(AndroidVersion(34))
 
   private val fixture by lazy { projectRule.fixture }
   private val project by lazy { projectRule.project }
 
-  private val documentationContentFromServer by lazy {
-    Files.readString(TestUtils.resolveWorkspacePath("$TEST_DATA_DIR/BitmapShader.html"))
+  private val simpleHtmlPath by lazy { fixture.createFile("simple.html", SIMPLE_HTML).toNioPath() }
+
+  private val docUrl = TEXT_VIEW_DOC_URL + testConfig.urlSuffix
+
+  private val preFilteringPath by lazy {
+    TestUtils.resolveWorkspacePath("$TEST_DATA_DIR/TextView.html")
   }
 
-  private val mockUrlFileCache: UrlFileCache = mock {
-    on { get(eq(ACTIVITY_DOC_URL), any(), isNull(), any()) } doAnswer
-      { invocationOnMock ->
-        val fileToReturn = File(fixture.tempDirPath, "serverContent.tmp")
-        if (!fileToReturn.exists()) {
-          ByteArrayInputStream(documentationContentFromServer.toByteArray()).use {
-            serverContentStream ->
-            val filter: (InputStream) -> InputStream = invocationOnMock.getTypedArgument(3)
-            filter.invoke(serverContentStream).use { filteredStream ->
-              FileOutputStream(fileToReturn).use { it.write(filteredStream.readAllBytes()) }
-            }
-          }
-        }
-        CompletableDeferred(fileToReturn.toPath())
-      }
+  private val postFilteringPath by lazy {
+    TestUtils.resolveWorkspacePath(
+      "$TEST_DATA_DIR/TextView.${testConfig.targetType.simpleName}.Rendered.html"
+    )
   }
+
+  private val documentationContentAfterFiltering by lazy {
+    Files.readString(postFilteringPath).collapseSpaces()
+  }
+
+  private val transformCaptor = argumentCaptor<(InputStream) -> InputStream>()
+
+  private val mockUrlFileCache: UrlFileCache = mock()
 
   @Before
   fun setUp() {
@@ -99,70 +109,130 @@ class AndroidSdkDocumentationTargetProviderTest(private val language: Language) 
   }
 
   @Test
-  fun checkDocumentation() {
-    val documentationContentAfterFiltering =
-      Files.readString(TestUtils.resolveWorkspacePath("$TEST_DATA_DIR/BitmapShader.Rendered.html"))
+  fun checkDocumentation_fast() {
+    whenever(mockUrlFileCache.get(eq(docUrl), any(), isNull(), any()))
+      .thenReturn(
+        // This one is already completed.
+        CompletableDeferred(simpleHtmlPath)
+      )
 
-    setUpCursorForActivity()
+    setUpCursor()
+    val doc = getDocsAtCursor().single()
+
+    val documentation = runReadAction { doc.computeDocumentation() }
+    assertThat(documentation).isInstanceOf(Documentation::class.java)
+
+    val documentationData = runBlocking { (documentation as Documentation) }
+    assertThat(documentationData).isInstanceOf(DocumentationData::class.java)
+    assertThat((documentationData as DocumentationData).html).isEqualTo(SIMPLE_HTML)
+
+    // Independently check that the passed-in filter is doing the right thing.
+    @Suppress("DeferredResultUnused")
+    verify(mockUrlFileCache).get(eq(docUrl), any(), isNull(), transformCaptor.capture())
+
+    val filterOutput =
+      FileInputStream(preFilteringPath.toFile())
+        .use { inputStream ->
+          String(transformCaptor.firstValue.invoke(inputStream).readAllBytes())
+        }
+        .collapseSpaces()
+
+    assertThat(filterOutput).isEqualTo(documentationContentAfterFiltering)
+  }
+
+  @Test
+  fun checkDocumentation_slow() {
+    val completableDeferred = CompletableDeferred<Path>()
+    whenever(mockUrlFileCache.get(eq(docUrl), any(), isNull(), any()))
+      .thenReturn(completableDeferred)
+
+    setUpCursor()
     val doc = getDocsAtCursor().single()
 
     val documentation = runReadAction { doc.computeDocumentation() }
     assertThat(documentation).isInstanceOf(AsyncDocumentation::class.java)
 
+    // Actually complete the Deferred so we can get the result.
+    completableDeferred.complete(simpleHtmlPath)
+
     val documentationData = runBlocking { (documentation as AsyncDocumentation).supplier() }
     assertThat(documentationData).isInstanceOf(DocumentationData::class.java)
-    assertThat((documentationData as DocumentationData).html)
-      .isEqualTo(documentationContentAfterFiltering)
+    assertThat((documentationData as DocumentationData).html).isEqualTo(SIMPLE_HTML)
+
+    // Independently check that the passed-in filter is doing the right thing.
+    @Suppress("DeferredResultUnused")
+    verify(mockUrlFileCache).get(eq(docUrl), any(), isNull(), transformCaptor.capture())
+
+    val filterOutput =
+      FileInputStream(preFilteringPath.toFile())
+        .use { inputStream ->
+          String(transformCaptor.firstValue.invoke(inputStream).readAllBytes())
+        }
+        .collapseSpaces()
+    assertThat(filterOutput).isEqualTo(documentationContentAfterFiltering)
   }
 
   @Test
   fun checkDocumentationWhenServerUnavailable() {
-    whenever(mockUrlFileCache.get(eq(ACTIVITY_DOC_URL), any(), isNull(), any()))
-      .thenReturn(CompletableDeferred<Nothing>().apply { completeExceptionally(IOException()) })
+    val completableDeferred = CompletableDeferred<Nothing>()
+    whenever(mockUrlFileCache.get(eq(docUrl), any(), isNull(), any()))
+      .thenReturn(completableDeferred)
 
-    setUpCursorForActivity()
+    setUpCursor()
     val doc = getDocsAtCursor().single()
 
     val documentation = runReadAction { doc.computeDocumentation() }
     assertThat(documentation).isInstanceOf(AsyncDocumentation::class.java)
+
+    completableDeferred.completeExceptionally(IOException())
 
     val documentationData = runBlocking { (documentation as AsyncDocumentation).supplier() }
     assertThat(documentationData).isInstanceOf(DocumentationData::class.java)
     val html = (documentationData as DocumentationData).html
 
-    assertThat(html).contains("android.app")
+    assertThat(html).contains("android.widget")
     assertThat(html).contains("public")
     assertThat(html).contains("class")
-    assertThat(html).contains("Activity")
+    assertThat(html).contains("TextView")
   }
 
   @Test
   fun checkDocumentationHint() {
-    setUpCursorForActivity()
+    setUpCursor()
     val doc = getDocsAtCursor().single()
 
     val documentationHint = runReadAction { doc.computeDocumentationHint() }
-    assertThat(documentationHint).contains("android.app")
-    assertThat(documentationHint).contains("public")
-    assertThat(documentationHint).contains("class")
-    assertThat(documentationHint).contains("Activity")
+    for (hintString in testConfig.hintStrings) {
+      assertThat(documentationHint).contains(hintString)
+    }
 
     verifyNoInteractions(mockUrlFileCache)
   }
 
   @Test
   fun checkNavigable() {
-    setUpCursorForActivity()
+    setUpCursor()
     val doc = getDocsAtCursor().single()
 
     val navigatable = doc.navigatable
-    assertThat(navigatable).isInstanceOf(PsiClass::class.java)
-    assertThat((navigatable as PsiClass).qualifiedName).isEqualTo("android.app.Activity")
+    assertThat(navigatable).isInstanceOf(testConfig.targetType.java)
+    when (navigatable) {
+      is PsiClass -> assertThat(navigatable.qualifiedName).isEqualTo("android.widget.TextView")
+      is PsiField -> {
+        assertThat(navigatable.containingClass?.qualifiedName).isEqualTo("android.widget.TextView")
+        assertThat(navigatable.name).isEqualTo("AUTO_SIZE_TEXT_TYPE_NONE")
+      }
+      is PsiMethod -> {
+        assertThat(navigatable.containingClass?.qualifiedName).isEqualTo("android.widget.TextView")
+        assertThat(navigatable.name).isEqualTo("addTextChangedListener")
+      }
+      else -> fail("Unexpected type: ${testConfig.targetType}")
+    }
   }
 
   @Test
   fun pointerCreatesEquivalentDoc() {
-    setUpCursorForActivity()
+    setUpCursor()
     val doc = getDocsAtCursor().single()
 
     val docFromPointer = runReadAction { doc.createPointer().dereference() }
@@ -174,7 +244,10 @@ class AndroidSdkDocumentationTargetProviderTest(private val language: Language) 
 
   @Test
   fun noRemoteDocumentationWhenLocalSourcesArePresent() {
-    setUpCursorForActivity()
+    whenever(mockUrlFileCache.get(eq(docUrl), any(), isNull(), any()))
+      .thenReturn(CompletableDeferred(postFilteringPath))
+
+    setUpCursor()
     val docWithNoSources = getDocsAtCursor().single()
 
     // SDK 34 was already added by the project rule above. This call will not add another version,
@@ -201,45 +274,51 @@ class AndroidSdkDocumentationTargetProviderTest(private val language: Language) 
     assertThat(docWithSources.javaClass).isNotEqualTo(docWithNoSources.javaClass)
   }
 
-  private fun setUpCursorForActivity() {
+  private fun setUpCursor() {
     val psiFile =
-      when (language) {
+      when (testConfig.language) {
         JavaLanguage.INSTANCE ->
           fixture.addFileToProject(
-            "src/MyJavaActivity.java",
+            "src/com/example/MyGreatClass.java",
             // language=Java
             """
             package com.example;
 
-            import android.app.Acti<caret>vity;
-            import android.os.Bundle;
+            import android.text.TextWatcher;
+            import android.widget.TextView;
 
-            public class MyJavaActivity extends Activity {
-              @Override
-              public void onCreate(Bundle savedInstanceState) {}
+            public class MyGreatClass {
+              public void foo(TextView textView, TextWatcher textWatcher) {
+                int bar = TextView.AUTO_SIZE_TEXT_TYPE_NONE;
+                textView.addTextChangedListener(textWatcher);
+              }
             }
             """
               .trimIndent(),
           )
         KotlinLanguage.INSTANCE ->
           fixture.addFileToProject(
-            "src/MyKotlinActivity.kt",
+            "src/com/example/MyGreatClass.kt",
             // language=kotlin
             """
             package com.example
 
-            import android.app.Acti<caret>vity
-            import android.os.Bundle
+            import android.text.TextWatcher
+            import android.widget.TextView
 
-            class MyKotlinActivity : Activity() {
-              override fun onCreate(savedInstanceState: Bundle?) {}
+            class MyGreatClass {
+              fun foo(textView: TextView, textWatcher: TextWatcher) {
+                val bar = TextView.AUTO_SIZE_TEXT_TYPE_NONE
+                textView.addTextChangedListener(textWatcher)
+              }
             }
             """
               .trimIndent(),
           )
-        else -> throw IllegalArgumentException("Unrecognized: $language")
+        else -> throw IllegalArgumentException("Unrecognized: ${testConfig.language}")
       }
     fixture.configureFromExistingVirtualFile(psiFile.virtualFile)
+    application.invokeAndWait { fixture.moveCaret(testConfig.cursorWindow) }
   }
 
   private fun getDocsAtCursor(): List<DocumentationTarget> {
@@ -249,9 +328,46 @@ class AndroidSdkDocumentationTargetProviderTest(private val language: Language) 
     }
   }
 
+  data class TestConfig(
+    val language: Language,
+    val targetType: KClass<*>,
+    val urlSuffix: String,
+    val cursorWindow: String,
+    val hintStrings: List<String>,
+  ) {
+    override fun toString() = "${language.displayName} ${targetType.simpleName}"
+  }
+
   companion object {
+    private val JAVA_CONFIGS =
+      listOf(
+        TestConfig(
+          JavaLanguage.INSTANCE,
+          PsiClass::class,
+          urlSuffix = "",
+          cursorWindow = "Text|View.",
+          hintStrings = listOf("android.widget", "public", "class", "TextView"),
+        ),
+        TestConfig(
+          JavaLanguage.INSTANCE,
+          PsiField::class,
+          urlSuffix = "#AUTO_SIZE_TEXT_TYPE_NONE",
+          cursorWindow = "AUTO_SIZE_TE|XT_TYPE_NONE",
+          hintStrings = listOf("android.widget.TextView", "AUTO_SIZE_TEXT_TYPE_NONE", "int"),
+        ),
+        TestConfig(
+          JavaLanguage.INSTANCE,
+          PsiMethod::class,
+          urlSuffix = "#addTextChangedListener(android.text.TextWatcher)",
+          cursorWindow = "addText|ChangedListener",
+          hintStrings =
+            listOf("android.widget.TextView", "addTextChangedListener", "TextWatcher", "void"),
+        ),
+      )
+
     @JvmStatic
     @Parameters(name = "{0}")
-    fun data(): List<Language> = listOf(JavaLanguage.INSTANCE, KotlinLanguage.INSTANCE)
+    fun data(): List<TestConfig> =
+      JAVA_CONFIGS + JAVA_CONFIGS.map { it.copy(language = KotlinLanguage.INSTANCE) }
   }
 }

@@ -1070,7 +1070,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   public static final Flag<Boolean> RUNNING_DEVICES_WRAP_TOOLBAR = new BooleanFlag(
     EMBEDDED_EMULATOR, "wrap.toolbar", "Enable Toolbar Wrapping",
     "Wraps the toolbar when all buttons don't fit into the available width",
@@ -1456,6 +1456,11 @@ public final class StudioFlags {
     "If enabled, multiple previews associated with composable will be grouped. Please invalidates file caches after " +
     "enabling or disabling (File -> Invalidate Caches...)", ChannelDefault.enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_UI_CHECK_GROUP_LAYOUT = new BooleanFlag(
+    COMPOSE, "preview.uicheck.group.layout", "Enable organization of Compose Preview in UI Check",
+    "If enabled, multiple previews associated with composable will be grouped in UI Check. Please invalidates file caches after " +
+    "enabling or disabling (File -> Invalidate Caches...)", ChannelDefault.enabledUpTo(CANARY));
+
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = new BooleanFlag(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
     "If enabled, the project will be treated as a Compose project, showing Previews if available and enhancing the Compose editing",
@@ -1820,7 +1825,7 @@ public final class StudioFlags {
   private static final FlagGroup APP_LINKS_ASSISTANT = new FlagGroup(FLAGS, "app.links.assistant", "App Links Assistant");
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     new BooleanFlag(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
-                "Improvements to Website Association Generator.", false);
+                "Improvements to Website Association Generator.", ChannelDefault.enabledUpTo(CANARY));
   public static final Flag<String> DEEPLINKS_GRPC_SERVER =
     new StringFlag(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
                 "Deep links gRPC server address. Use a non-default value for testing purposes.",
@@ -1831,14 +1836,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> IMPACT_TRACKING =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.impact.tracking", "App Links Assistant impact tracking",
                 "Impact tracking for the App Links Assistant", false);
-  public static final Flag<Boolean> JSON_GENERATION =
-    new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.json.generation", "App Links Assistant JSON generation",
-                    "JSON generation (i.e. automated assistance with fixing web issues) in the App Links Assistant",
-                    true);
-  public static final Flag<Boolean> PLAY_DYNAMIC_FILTERS =
-    new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.play.dynamic.filters", "App Links Assistant Play Dynamic Filters support",
-                    "Support for apps that opted in to using Play Dynamic Filters to manage their app links",
-                    true);
   // endregion App Links Assistant
 
   // region NEW_COLLECT_LOGS_DIALOG

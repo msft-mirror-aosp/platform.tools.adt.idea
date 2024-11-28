@@ -16,18 +16,16 @@
 package com.android.tools.idea.avd
 
 import com.android.resources.ScreenOrientation
-import com.android.sdklib.devices.Device
+import com.android.sdklib.devices.CameraLocation
 import com.android.sdklib.devices.DeviceParser
-import com.android.sdklib.devices.Hardware
-import com.android.sdklib.devices.Screen
 import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
-import com.android.testutils.file.createInMemoryFileSystem
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import java.io.ByteArrayInputStream
+import java.nio.file.FileSystem
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 
 fun readTestDevices() =
   DeviceParser.parse(ByteArrayInputStream(testDeviceXml.encodeToByteArray())).values().toList()
@@ -111,15 +109,17 @@ private const val testDeviceXml =
 """
 
 internal object TestDevices {
-  internal fun pixel6() =
-    VirtualDevice(
+  internal fun pixel6(fileSystem: FileSystem): VirtualDevice {
+    val skin =
+      DefaultSkin(
+        fileSystem.getPath(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_6")
+      )
+
+    return VirtualDevice(
       name = "Pixel 6",
-      device = mockDevice(),
-      skin =
-        DefaultSkin(
-          createInMemoryFileSystem()
-            .getPath(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_6")
-        ),
+      device = mock(),
+      skin = skin,
+      defaultSkin = skin,
       frontCamera = AvdCamera.EMULATED,
       rearCamera = AvdCamera.VIRTUAL_SCENE,
       speed = AvdNetworkSpeed.FULL,
@@ -133,17 +133,29 @@ internal object TestDevices {
       ram = StorageCapacity(2, StorageCapacity.Unit.GB),
       vmHeapSize = StorageCapacity(228, StorageCapacity.Unit.MB),
       preferredAbi = null,
+      isFoldable = false,
+      cameraLocations = listOf(CameraLocation.BACK, CameraLocation.FRONT),
+      formFactor = FormFactors.PHONE,
     )
+  }
 
-  internal fun pixel9Pro() =
-    VirtualDevice(
+  internal fun pixel9Pro(fileSystem: FileSystem): VirtualDevice {
+    val skin =
+      DefaultSkin(
+        fileSystem.getPath(
+          System.getProperty("user.home"),
+          "Android",
+          "Sdk",
+          "skins",
+          "pixel_9_pro",
+        )
+      )
+
+    return VirtualDevice(
       name = "Pixel 9 Pro",
-      device = mockDevice(hasPlayStore = true),
-      skin =
-        DefaultSkin(
-          createInMemoryFileSystem()
-            .getPath(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_9_pro")
-        ),
+      device = mock(),
+      skin = skin,
+      defaultSkin = skin,
       frontCamera = AvdCamera.EMULATED,
       rearCamera = AvdCamera.VIRTUAL_SCENE,
       speed = AvdNetworkSpeed.FULL,
@@ -157,17 +169,30 @@ internal object TestDevices {
       ram = StorageCapacity(2, StorageCapacity.Unit.GB),
       vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB),
       preferredAbi = null,
+      hasPlaystore = true,
+      isFoldable = false,
+      cameraLocations = listOf(CameraLocation.BACK, CameraLocation.FRONT),
+      formFactor = FormFactors.PHONE,
     )
+  }
 
-  internal fun pixel9ProFold() =
-    VirtualDevice(
+  internal fun pixel9ProFold(fileSystem: FileSystem): VirtualDevice {
+    val skin =
+      DefaultSkin(
+        fileSystem.getPath(
+          System.getProperty("user.home"),
+          "Android",
+          "Sdk",
+          "skins",
+          "pixel_9_pro_fold",
+        )
+      )
+
+    return VirtualDevice(
       name = "Pixel 9 Pro Fold",
-      device = mockDevice(isFoldable = true, hasPlayStore = true),
-      skin =
-        DefaultSkin(
-          createInMemoryFileSystem()
-            .getPath(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_9_pro_fold")
-        ),
+      device = mock(),
+      skin = skin,
+      defaultSkin = skin,
       frontCamera = AvdCamera.EMULATED,
       rearCamera = AvdCamera.VIRTUAL_SCENE,
       speed = AvdNetworkSpeed.FULL,
@@ -181,19 +206,10 @@ internal object TestDevices {
       ram = StorageCapacity(2, StorageCapacity.Unit.GB),
       vmHeapSize = StorageCapacity(288, StorageCapacity.Unit.MB),
       preferredAbi = null,
+      hasPlaystore = true,
+      isFoldable = true,
+      cameraLocations = listOf(CameraLocation.BACK, CameraLocation.FRONT),
+      formFactor = FormFactors.PHONE,
     )
-
-  private fun mockDevice(isFoldable: Boolean = false, hasPlayStore: Boolean = false): Device {
-    val screen = mock<Screen>()
-    whenever(screen.isFoldable).thenReturn(isFoldable)
-
-    val hardware = mock<Hardware>()
-    whenever(hardware.screen).thenReturn(screen)
-
-    val device = mock<Device>()
-    whenever(device.defaultHardware).thenReturn(hardware)
-    whenever(device.hasPlayStore()).thenReturn(hasPlayStore)
-
-    return device
   }
 }

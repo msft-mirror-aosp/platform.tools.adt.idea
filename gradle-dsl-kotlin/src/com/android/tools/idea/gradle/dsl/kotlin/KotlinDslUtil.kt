@@ -50,6 +50,7 @@ import com.android.tools.idea.gradle.dsl.parser.files.GradleScriptFile
 import com.android.tools.idea.gradle.dsl.parser.files.GradleVersionCatalogFile
 import com.android.tools.idea.gradle.dsl.parser.findLastPsiElementIn
 import com.android.tools.idea.gradle.dsl.parser.getNextValidParent
+import com.android.tools.idea.gradle.dsl.parser.isDomainObjectConfiguratorMethodName
 import com.android.tools.idea.gradle.dsl.parser.removePsiIfInvalid
 import com.android.tools.idea.gradle.dsl.parser.settings.ProjectPropertiesDslElement
 import com.intellij.openapi.diagnostic.Logger
@@ -101,12 +102,12 @@ import kotlin.reflect.KClass
 
 private val LOG = Logger.getInstance("KotlinDslUtil")
 
-internal fun String.addQuotes(forExpression : Boolean) = if (forExpression) "\"$this\"" else "'$this'"
+internal fun String.addQuotes() = "\"$this\""
 
 internal fun KtCallExpression.isBlockElement(converter: GradleDslNameConverter, parent: GradlePropertiesDslElement): Boolean {
   val zeroOrOneClosures = lambdaArguments.size < 2
-  val argumentsList = (valueArgumentList as? KtValueArgumentList)?.arguments
-  val namedDomainBlockReference = argumentsList?.let { it.size == 1 && isValidBlockName(this.name()) } ?: false
+  val argumentsList = valueArgumentList?.arguments
+  val namedDomainBlockReference = parent is GradleDslNamedDomainContainer && argumentsList?.let { it.size == 1 && isDomainObjectConfiguratorMethodName(this.name()) } ?: false
   val zeroArguments = argumentsList == null || argumentsList.size == 0
   val knownBlockForParent = zeroArguments &&
                             (listOf("allprojects", APPLY_BLOCK_NAME, EXT.name).contains(this.name()) ||
@@ -308,8 +309,6 @@ internal fun convertToExternalTextValue(dslReference: GradleDslElement,
   }
 }
 
-internal fun isValidBlockName(blockName : String?) =
-  blockName != null && blockName in listOf("configure", "create", "maybeCreate", "register", "getByName")
 /**
  * Check if the caller psiElement is a transitive parent for the given psiElement.
  */
@@ -427,10 +426,10 @@ internal fun createLiteral(context: GradleDslSimpleExpression, applyContext : Gr
       var valueText : String?
       if (StringUtil.isQuotedString(value)) {
         val unquoted = StringUtil.unquoteString(value)
-        valueText = StringUtil.escapeCharCharacters(unquoted).addQuotes(true)
+        valueText = StringUtil.escapeCharCharacters(unquoted).addQuotes()
       }
       else {
-        valueText = StringUtil.escapeCharCharacters(value).addQuotes(true)
+        valueText = StringUtil.escapeCharCharacters(value).addQuotes()
       }
       return KtPsiFactory(applyContext.dslFile.project).createExpression(valueText)
     }
@@ -452,7 +451,7 @@ internal fun createLiteral(context: GradleDslSimpleExpression, applyContext : Gr
           builder.append(externalText ?: interpolation.referenceItem!!.referredElement!!.fullName)
         }
       }
-      return KtPsiFactory(applyContext.dslFile.project).createExpressionIfPossible(builder.toString().addQuotes(true))
+      return KtPsiFactory(applyContext.dslFile.project).createExpressionIfPossible(builder.toString().addQuotes())
     }
     is RawText -> return KtPsiFactory(applyContext.dslFile.project).createExpressionIfPossible(value.ktsText)
     else -> {
@@ -465,7 +464,7 @@ internal fun createLiteral(context: GradleDslSimpleExpression, applyContext : Gr
 // Check if this is a block with a methodCall as name, and get the name... e.g. getByName("release") -> "release"
 internal fun methodCallBlockName(expression: KtCallExpression): String? {
   val callName = expression.name()
-  if (!isValidBlockName(callName)) return null
+  if (!isDomainObjectConfiguratorMethodName(callName)) return null
   val arguments = expression.valueArgumentList?.arguments ?: return null
   if (arguments.size != 1) return null
   // TODO(xof): we should handle injections / resolving here:
@@ -616,7 +615,7 @@ internal fun findInjections(
       else -> noInjections
     }
     is KtCallExpression -> return when {
-      isValidBlockName(psiElement.name()) -> {
+      isDomainObjectConfiguratorMethodName(psiElement.name()) -> {
         val name = context.dslFile.parser.convertReferencePsi(context, psiElement)
         val element = context.resolveInternalSyntaxReference(name, true)
         mutableListOf(GradleReferenceInjection(context, element, injectionPsiElement, name))
@@ -791,10 +790,10 @@ internal fun createMapElement(expression : GradleDslSettableExpression) : PsiEle
   val psiFactory = KtPsiFactory(parentPsiElement.project)
   val expressionRightValue =
     if (expressionValue is KtConstantExpression || expressionValue is KtNameReferenceExpression) expressionValue.text
-    else StringUtil.unquoteString(expressionValue.text).addQuotes(true)
+    else StringUtil.unquoteString(expressionValue.text).addQuotes()
   val argumentStringExpression = when {
     parent.asNamedArgs -> "${expression.name}=$expressionRightValue"
-    else -> "${expression.name.addQuotes(true)} to $expressionRightValue"
+    else -> "${expression.name.addQuotes()} to $expressionRightValue"
   }
 
   val mapArgument = psiFactory.createExpression(argumentStringExpression)
@@ -931,7 +930,7 @@ internal fun maybeUpdateName(element : GradleDslElement, writer: KotlinDslWriter
         STRING_TEMPLATE -> when {
           element.parent is DependenciesDslElement && KTS_KNOWN_CONFIGURATIONS.contains(newName) ->
             factory.createExpressionIfPossible(newName)
-          else -> factory.createExpressionIfPossible(StringUtil.unquoteString(newName).addQuotes(true))
+          else -> factory.createExpressionIfPossible(StringUtil.unquoteString(newName).addQuotes())
         }
         ARRAY_ACCESS_EXPRESSION -> when {
           newName.startsWith("ext.") -> {
@@ -944,7 +943,7 @@ internal fun maybeUpdateName(element : GradleDslElement, writer: KotlinDslWriter
         }
         else -> when {
           element.parent is DependenciesDslElement && !KTS_KNOWN_CONFIGURATIONS.contains(newName) ->
-            factory.createExpressionIfPossible(StringUtil.unquoteString(newName).addQuotes(true))
+            factory.createExpressionIfPossible(StringUtil.unquoteString(newName).addQuotes())
           else -> factory.createExpressionIfPossible(newName)
         }
       } ?: return

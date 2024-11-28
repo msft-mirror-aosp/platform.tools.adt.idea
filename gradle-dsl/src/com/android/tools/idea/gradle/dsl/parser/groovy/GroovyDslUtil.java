@@ -17,7 +17,11 @@ package com.android.tools.idea.gradle.dsl.parser.groovy;
 
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.findLastPsiElementIn;
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.getNextValidParent;
+import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.isDomainObjectConfiguratorMethodName;
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.removePsiIfInvalid;
+import static com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement.APPLY_BLOCK_NAME;
+import static com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement.EXT;
+import static com.intellij.psi.util.PsiTreeUtil.findChildOfType;
 import static com.intellij.psi.util.PsiTreeUtil.getChildOfType;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOLON;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mCOMMA;
@@ -28,8 +32,10 @@ import com.android.tools.idea.gradle.dsl.api.ext.InterpolatedText;
 import com.android.tools.idea.gradle.dsl.api.ext.RawText;
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo;
+import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement;
+import com.android.tools.idea.gradle.dsl.parser.configurations.ConfigurationDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslAnchor;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslClosure;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
@@ -37,9 +43,11 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionList
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslInfixExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainContainer;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSettableExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSimpleExpression;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
+import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement;
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleScriptFile;
@@ -102,6 +110,29 @@ import org.jetbrains.plugins.groovy.lang.psi.util.GrStringUtil;
 
 public final class GroovyDslUtil {
   private static final Logger LOG = Logger.getInstance(GroovyDslUtil.class);
+
+  static boolean isBlockElement(
+    @NotNull GrMethodCallExpression methodCall,
+    @NotNull GradleDslNameConverter converter,
+    @NotNull GradlePropertiesDslElement parent
+  ) {
+    GrReferenceExpression referenceExpression = findChildOfType(methodCall, GrReferenceExpression.class);
+    if (referenceExpression == null) return false;
+    String name = referenceExpression.getReferenceName();
+    if (name == null) return false;
+    boolean zeroOrOneClosures = methodCall.getClosureArguments().length < 2;
+    GrExpression[] expressions = methodCall.getExpressionArguments();
+    boolean namedDomainBlockReference = parent instanceof GradleDslNamedDomainContainer &&
+                                        ((expressions.length == 0) ||
+                                         (expressions.length == 1 && isDomainObjectConfiguratorMethodName(name)));
+    List<String> specialCases = Arrays.asList("allprojects", APPLY_BLOCK_NAME, EXT.name);
+    boolean knownBlockForParent = expressions.length == 0 &&
+                                  (specialCases.contains(name) ||
+                                   parent instanceof ConfigurationDslElement ||
+                                   parent.getChildPropertiesElementDescription(converter, name) != null);
+    return zeroOrOneClosures && (namedDomainBlockReference || knownBlockForParent);
+  }
+
   @Nullable
   static GroovyPsiElement ensureGroovyPsi(@Nullable PsiElement element) {
     if (element == null) {
@@ -136,27 +167,6 @@ public final class GroovyDslUtil {
 
     Project project = psiElement.getProject();
     return GroovyPsiElementFactory.getInstance(project);
-  }
-
-  static String getGradleNameForPsiElement(@NotNull PsiElement element) {
-    StringBuilder gradleName = new StringBuilder();
-
-    GroovyPsiElementVisitor visitor = new GroovyPsiElementVisitor(new GroovyElementVisitor() {
-      @Override
-      public void visitMethodCallExpression(@NotNull GrMethodCallExpression e) {
-        if (e.getText().startsWith("project") && e.getArgumentList().getAllArguments().length == 1 &&
-            e.getArgumentList().getAllArguments()[0] instanceof GrLiteral) {
-          // TODO(karimai): Add interpolation handling when these are supported.
-          gradleName.append(e.getText().replaceAll("\\s", "").replace("\"", "'"));
-        }
-      }
-    });
-
-    for (PsiElement child = element.getFirstChild(); child != null; child = child.getNextSibling()) {
-      if (child instanceof GrMethodCallExpression) child.accept(visitor);
-      else gradleName.append(child.getText());
-    }
-    return (gradleName.length() == 0) ? element.getText() : gradleName.toString();
   }
 
   static void maybeDeleteIfEmpty(@Nullable PsiElement element, @NotNull GradleDslElement dslElement) {
@@ -501,6 +511,23 @@ public final class GroovyDslUtil {
     else return false;
   }
 
+  static @Nullable String methodCallBlockName(@NotNull GrMethodCallExpression methodCallExpression) {
+    GrReferenceExpression referenceExpression = findChildOfType(methodCallExpression, GrReferenceExpression.class);
+    if (referenceExpression == null) return null;
+    String callName = referenceExpression.getReferenceName();
+    if (callName == null) return null;
+    if (!isDomainObjectConfiguratorMethodName(callName)) return null;
+    GrExpression[] arguments = methodCallExpression.getExpressionArguments();
+    if (arguments.length != 1) return null;
+    GrExpression argument = arguments[0];
+    if (isStringLiteral(argument)) {
+      StringBuilder sb = new StringBuilder();
+      boolean result = decodeStringLiteral(argument, sb);
+      if (result) return sb.toString();
+    }
+    return null;
+  }
+
   public static String gradleNameFor(GrExpression expression) {
     final boolean[] allValid = {true};
     StringBuilder result = new StringBuilder();
@@ -519,6 +546,29 @@ public final class GroovyDslUtil {
         }
         else {
           allValid[0] = false;
+        }
+      }
+
+      @Override
+      public void visitMethodCallExpression(@NotNull GrMethodCallExpression e) {
+        if (e.getText().startsWith("project") && e.getArgumentList().getAllArguments().length == 1 &&
+            e.getArgumentList().getAllArguments()[0] instanceof GrLiteral) {
+          // TODO(karimai): Add interpolation handling when these are supported.
+          result.append(e.getText().replaceAll("\\s", "").replace("\"", "'"));
+        }
+        else {
+          String name = methodCallBlockName(e);
+          if (name == null) {
+            allValid[0] = false;
+          }
+          else {
+            GrReferenceExpression referenceExpression = findChildOfType(e, GrReferenceExpression.class); // known not-null
+            if (referenceExpression.isQualified()) {
+              referenceExpression.getQualifierExpression().accept(this);
+              result.append(".");
+            }
+            result.append(GradleNameElement.escape(name));
+          }
         }
       }
 

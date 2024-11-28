@@ -49,6 +49,7 @@ import static org.junit.runners.Parameterized.Parameters;
 import com.android.testutils.TestUtils;
 import com.android.tools.idea.gradle.dsl.TestFileName;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
+import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeBuildModel;
 import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeSettingsModel;
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel;
 import com.android.tools.idea.gradle.dsl.api.PluginModel;
@@ -515,6 +516,14 @@ public abstract class GradleFileModelTestCase extends HeavyPlatformTestCase {
   }
 
   @NotNull
+  protected GradleDeclarativeBuildModel getGradleDeclarativeBuildModel() {
+    ProjectBuildModel projectBuildModel = getProjectBuildModel();
+    GradleDeclarativeBuildModel buildModel = projectBuildModel.getDeclarativeModuleBuildModel(myModule);
+    assertNotNull(buildModel);
+    return buildModel;
+  }
+
+  @NotNull
   protected GradleBuildModel getSubModuleGradleBuildModel() {
     ProjectBuildModel projectBuildModel = getProjectBuildModel();
     GradleBuildModel buildModel = projectBuildModel.getModuleBuildModel(mySubModule);
@@ -590,6 +599,10 @@ public abstract class GradleFileModelTestCase extends HeavyPlatformTestCase {
     assertEquals(propertyText, propertyModel.getValue(STRING_TYPE));
     assertEquals(propertyFilePath, propertyModel.getGradleFile().getPath());
     assertEquals(propertyName, propertyModel.getFullyQualifiedName());
+  }
+
+  public static void assertEquals(@NotNull String expected, @NotNull GradlePropertyModel actual) {
+    assertEquals(expected, expected, actual);
   }
 
   public static void assertEquals(@NotNull String message, @Nullable String expected, @NotNull GradlePropertyModel actual) {

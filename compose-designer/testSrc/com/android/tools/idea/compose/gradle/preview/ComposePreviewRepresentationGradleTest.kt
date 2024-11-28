@@ -20,6 +20,7 @@ import com.android.testutils.delayUntilCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.compile.fast.isSuccess
+import com.android.tools.idea.common.surface.SceneViewPanel
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.compose.gradle.ComposePreviewFakeUiGradleRule
 import com.android.tools.idea.compose.gradle.getPsiFile
@@ -147,7 +148,14 @@ class ComposePreviewRepresentationGradleTest {
   }
 
   @Test
-  fun `panel renders correctly first time`() {
+  fun `panel renders correctly first time`() = runBlocking {
+    withContext(uiThread) { fakeUi.layoutAndDispatchEvents() }
+    delayUntilCondition(100, 5.seconds) {
+      fakeUi.findAllComponents<SceneViewPeerPanel>().count() == 5
+    }
+
+    val output = fakeUi.render()
+
     assertEquals(
       """
         DefaultPreview
@@ -162,8 +170,6 @@ class ComposePreviewRepresentationGradleTest {
         .filter { it.isShowing }
         .joinToString("\n") { it.displayName },
     )
-
-    val output = fakeUi.render()
 
     val defaultPreviewSceneViewPeerPanel =
       fakeUi.findComponent<SceneViewPeerPanel> { it.displayName == "DefaultPreview" }!!
@@ -242,8 +248,8 @@ class ComposePreviewRepresentationGradleTest {
         FileDocumentManager.getInstance().saveAllDocuments()
       }
     }
-    withContext(uiThread) { fakeUi.root.validate() }
-    delayUntilCondition(100, 1.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().size == 4 }
+    fakeUi.findComponent<SceneViewPanel>()?.doLayout()
+    delayUntilCondition(100, 2.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().size == 4 }
 
     assertEquals(
       listOf("DefaultPreview", "MyPreviewWithInline", "OnlyATextNavigation", "TwoElementsPreview"),
@@ -286,6 +292,11 @@ class ComposePreviewRepresentationGradleTest {
 
       projectRule.validate()
 
+      withContext(uiThread) { fakeUi.layoutAndDispatchEvents() }
+      delayUntilCondition(100, 5.seconds) {
+        fakeUi.findAllComponents<SceneViewPeerPanel>().count() == 6
+      }
+
       assertEquals(
         """
         DefaultPreview - MyAnnotation 1
@@ -315,6 +326,11 @@ class ComposePreviewRepresentationGradleTest {
       }
 
       projectRule.validate()
+      withContext(uiThread) { fakeUi.layoutAndDispatchEvents() }
+      delayUntilCondition(100, 5.seconds) {
+        "DefaultPreview - newName" ==
+          fakeUi.findAllComponents<SceneViewPeerPanel>().first().displayName
+      }
 
       assertEquals(
         """

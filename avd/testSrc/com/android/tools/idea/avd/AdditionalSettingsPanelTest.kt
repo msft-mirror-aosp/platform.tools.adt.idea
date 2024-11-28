@@ -15,11 +15,24 @@
  */
 package com.android.tools.idea.avd
 
-import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.filterToOne
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
+import androidx.compose.ui.test.onChild
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTextReplacement
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.AndroidVersion
@@ -47,7 +60,7 @@ class AdditionalSettingsPanelTest {
   @Test
   fun deviceSkinDropdownOnSelectedItemChange() {
     // Arrange
-    val device = TestDevices.pixel9Pro()
+    val device = TestDevices.pixel9Pro(fileSystem)
 
     val state =
       ConfigureDevicePanelState(
@@ -61,60 +74,18 @@ class AdditionalSettingsPanelTest {
 
     // Act
     rule.onNodeWithTag("DeviceSkinDropdown").performClick()
-    rule.onNodeWithText("No Skin").performClick()
+    rule.onNodeWithText("[None]").performClick()
 
     // Assert
     assertThat(state.device).isEqualTo(device.copy(skin = NoSkin.INSTANCE))
   }
 
   @Test
-  fun deviceSkinDropdownIsEnabledHasPlayStoreAndIsFoldable() {
-    // Arrange
-    val image = mock<ISystemImage>()
-    whenever(image.hasPlayStore()).thenReturn(true)
-
-    val state =
-      ConfigureDevicePanelState(
-        TestDevices.pixel9ProFold(),
-        emptyList<Skin>().toImmutableList(),
-        image,
-        fileSystem,
-      )
-
-    // Act
-    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
-
-    // Assert
-    rule.onNodeWithTag("DeviceSkinDropdown").assertIsNotEnabled()
-  }
-
-  @Test
-  fun deviceSkinDropdownIsEnabledHasPlayStoreAndIsntFoldable() {
-    // Arrange
-    val image = mock<ISystemImage>()
-    whenever(image.hasPlayStore()).thenReturn(true)
-
-    val state =
-      ConfigureDevicePanelState(
-        TestDevices.pixel9Pro(),
-        emptyList<Skin>().toImmutableList(),
-        image,
-        fileSystem,
-      )
-
-    // Act
-    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
-
-    // Assert
-    rule.onNodeWithTag("DeviceSkinDropdown").assertIsNotEnabled()
-  }
-
-  @Test
-  fun deviceSkinDropdownIsEnabledDoesntHavePlayStoreAndIsFoldable() {
+  fun deviceSkinDropdownIsEnabledIsFoldable() {
     // Arrange
     val state =
       ConfigureDevicePanelState(
-        TestDevices.pixel9ProFold(),
+        TestDevices.pixel9ProFold(fileSystem),
         emptyList<Skin>().toImmutableList(),
         null,
         fileSystem,
@@ -125,30 +96,12 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithTag("DeviceSkinDropdown").assertIsNotEnabled()
-  }
-
-  @Test
-  fun deviceSkinDropdownIsEnabledDoesntHavePlayStoreAndIsntFoldable() {
-    // Arrange
-    val state =
-      ConfigureDevicePanelState(
-        TestDevices.pixel9Pro(),
-        emptyList<Skin>().toImmutableList(),
-        null,
-        fileSystem,
-      )
-
-    // Act
-    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
-
-    // Assert
-    rule.onNodeWithTag("DeviceSkinDropdown").assertIsEnabled()
   }
 
   @Test
   fun speedDropdownOnSelectedItemChange() {
     // Arrange
-    val device = TestDevices.pixel9Pro()
+    val device = TestDevices.pixel9Pro(fileSystem)
 
     val state =
       ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
@@ -166,7 +119,7 @@ class AdditionalSettingsPanelTest {
   @Test
   fun orientationDropdownOnClick() {
     // Arrange
-    val device = TestDevices.pixel9Pro()
+    val device = TestDevices.pixel9Pro(fileSystem)
 
     val state =
       ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
@@ -184,7 +137,7 @@ class AdditionalSettingsPanelTest {
   @Test
   fun radioButtonRowOnClicksChangeDevice() {
     // Arrange
-    val device = TestDevices.pixel6()
+    val device = TestDevices.pixel6(fileSystem)
 
     val image = mock<ISystemImage>()
     whenever(image.androidVersion).thenReturn(AndroidVersion(34, null, 7, true))
@@ -218,7 +171,7 @@ class AdditionalSettingsPanelTest {
   @Test
   fun cpuCoresDropdownOnClick() {
     // Arrange
-    val device = TestDevices.pixel9Pro()
+    val device = TestDevices.pixel9Pro(fileSystem)
 
     val state =
       ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem, 4)
@@ -231,5 +184,204 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     assertThat(state.device).isEqualTo(device.copy(cpuCoreCount = 3))
+  }
+
+  @Test
+  fun graphicsAccelerationDropdownOnSelectedItemChange() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onNodeWithText("Automatic").performClick()
+    rule.onNodeWithText("Hardware").performClick()
+
+    // Assert
+    assertThat(state.device).isEqualTo(device.copy(graphicsMode = GraphicsMode.HARDWARE))
+  }
+
+  @Test
+  fun ramIsValid() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onRamTextField().performTextReplacement("3")
+    @OptIn(ExperimentalTestApi::class) rule.onRamTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onTooltips().assertCountEquals(0)
+
+    assertThat(state.device)
+      .isEqualTo(device.copy(ram = StorageCapacity(3, StorageCapacity.Unit.GB)))
+  }
+
+  @Test
+  fun ramIsEmpty() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onRamTextField().performTextReplacement("")
+    @OptIn(ExperimentalTestApi::class) rule.onRamTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onNodeWithText("Specify a RAM value").assertIsDisplayed()
+    assertThat(state.device).isEqualTo(device.copy(ram = null))
+  }
+
+  @Test
+  fun ramIsLessThanMin() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onRamDropdown().performClick()
+    rule.onRamDropdownPopupChildren().filterToOne(hasText("MB")).performClick()
+    @OptIn(ExperimentalTestApi::class) rule.onRamTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onNodeWithText("RAM must be at least 128M. Recommendation is 1G.").assertIsDisplayed()
+    assertThat(state.device).isEqualTo(device.copy(ram = null))
+  }
+
+  @Test
+  fun ramIsOverflow() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onRamTextField().performTextReplacement("8589934592")
+    @OptIn(ExperimentalTestApi::class) rule.onRamTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onNodeWithText("RAM value is too large").assertIsDisplayed()
+    assertThat(state.device).isEqualTo(device.copy(ram = null))
+  }
+
+  @Test
+  fun vmHeapSizeIsValid() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onVMHeapSizeTextField().performTextReplacement("229")
+
+    @OptIn(ExperimentalTestApi::class)
+    rule.onVMHeapSizeTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onTooltips().assertCountEquals(0)
+
+    assertThat(state.device)
+      .isEqualTo(device.copy(vmHeapSize = StorageCapacity(229, StorageCapacity.Unit.MB)))
+  }
+
+  @Test
+  fun vmHeapSizeIsEmpty() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onVMHeapSizeTextField().performTextReplacement("")
+
+    @OptIn(ExperimentalTestApi::class)
+    rule.onVMHeapSizeTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onNodeWithText("Specify a VM heap size").assertIsDisplayed()
+    assertThat(state.device).isEqualTo(device.copy(vmHeapSize = null))
+  }
+
+  @Test
+  fun vmHeapSizeIsLessThanMin() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onVMHeapSizeTextField().performTextReplacement("15")
+
+    @OptIn(ExperimentalTestApi::class)
+    rule.onVMHeapSizeTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onNodeWithText("VM heap must be at least 16M").assertIsDisplayed()
+    assertThat(state.device).isEqualTo(device.copy(vmHeapSize = null))
+  }
+
+  @Test
+  fun vmHeapSizeIsOverflow() {
+    // Arrange
+    val device = TestDevices.pixel6(fileSystem)
+
+    val state =
+      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null, fileSystem)
+
+    rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
+
+    // Act
+    rule.onVMHeapSizeTextField().performTextReplacement("8796093022208")
+
+    @OptIn(ExperimentalTestApi::class)
+    rule.onVMHeapSizeTextField().performMouseInput { moveTo(center) }
+
+    // Assert
+    rule.onNodeWithText("VM heap size is too large").assertIsDisplayed()
+    assertThat(state.device).isEqualTo(device.copy(vmHeapSize = null))
+  }
+
+  private companion object {
+    private fun SemanticsNodeInteractionsProvider.onRamTextField() =
+      onNodeWithTag("RamRow").onChildren().filterToOne(hasSetTextAction())
+
+    private fun SemanticsNodeInteractionsProvider.onRamDropdown() =
+      onNodeWithTag("RamRow")
+        .onChildren()
+        .filterToOne(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+
+    private fun SemanticsNodeInteractionsProvider.onRamDropdownPopupChildren() =
+      onNode(isPopup()).onChild().onChildren()
+
+    private fun SemanticsNodeInteractionsProvider.onVMHeapSizeTextField() =
+      onNodeWithTag("VMHeapSizeRow").onChildren().filterToOne(hasSetTextAction())
   }
 }

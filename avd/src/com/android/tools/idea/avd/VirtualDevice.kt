@@ -18,6 +18,7 @@ package com.android.tools.idea.avd
 import androidx.compose.runtime.Immutable
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.ISystemImage
+import com.android.sdklib.devices.Camera
 import com.android.sdklib.devices.CameraLocation
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.Storage
@@ -48,6 +49,15 @@ internal constructor(
   val name: String,
   val device: Device,
   internal val skin: Skin,
+  /**
+   * The value of the [skin] property after it is initialized by [ConfigurationPage] via
+   * [ConfigureDevicePanelState]. [ConfigureDevicePanelState] uses this to reset [skin] to the
+   * default when a user selects a Play system image. It also uses this to generate the restricted
+   * list of skins for the skin drop down for Play.
+   *
+   * It's its own property for ease of testing, like [VirtualDevice.hasPlaystore], [isFoldable], etc
+   */
+  internal val defaultSkin: Skin,
   internal val frontCamera: AvdCamera,
   internal val rearCamera: AvdCamera,
   internal val speed: AvdNetworkSpeed,
@@ -62,15 +72,17 @@ internal constructor(
   internal val ram: StorageCapacity?,
   internal val vmHeapSize: StorageCapacity?,
   internal val preferredAbi: String?,
+  private val hasPlaystore: Boolean = device.hasPlayStore(),
+  internal val isFoldable: Boolean = device.defaultHardware.screen.isFoldable,
+  internal val cameraLocations: Collection<CameraLocation> =
+    device.defaultHardware.cameras.map(Camera::getLocation),
+  internal val formFactor: String = device.formFactor,
 ) {
-  internal val isFoldable = device.defaultHardware.screen.isFoldable
-  internal val formFactor = device.formFactor
-
   internal val isValid =
     internalStorage != null && expandedStorage != null && ram != null && vmHeapSize != null
 
   internal fun hasPlayStore(image: ISystemImage) =
-    device.hasPlayStore() && image.getServices() == Services.GOOGLE_PLAY_STORE
+    hasPlaystore && image.getServices() == Services.GOOGLE_PLAY_STORE
 
   companion object {
     internal val MIN_INTERNAL_STORAGE = StorageCapacity(2, StorageCapacity.Unit.GB)
@@ -87,6 +99,7 @@ internal constructor(
         name = device.displayName,
         device = device,
         skin = NoSkin.INSTANCE,
+        defaultSkin = NoSkin.INSTANCE,
         frontCamera = if (device.hasFrontCamera()) AvdCamera.EMULATED else AvdCamera.NONE,
         rearCamera = if (device.hasRearCamera()) AvdCamera.VIRTUAL_SCENE else AvdCamera.NONE,
         speed = EmulatedProperties.DEFAULT_NETWORK_SPEED,

@@ -26,6 +26,7 @@ import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.editor.zoomActionPlace
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.common.surface.ZoomControlsPolicy
 import com.android.tools.idea.rendering.AndroidBuildTargetReference
 import com.android.tools.idea.rendering.RenderTestUtil
@@ -53,13 +54,6 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
-import java.awt.BorderLayout
-import java.awt.EventQueue
-import java.awt.event.KeyEvent
-import java.nio.file.Paths
-import javax.swing.JPanel
-import kotlin.math.abs
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.android.facet.AndroidFacet
@@ -70,6 +64,14 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
+import java.awt.BorderLayout
+import java.awt.EventQueue
+import java.awt.event.KeyEvent
+import java.nio.file.Paths
+import javax.swing.JPanel
+import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class NlDesignSurfaceZoomControlsTest {
   private val androidProjectRule = AndroidProjectRule.withSdk()
@@ -128,10 +130,10 @@ class NlDesignSurfaceZoomControlsTest {
 
     val model =
       NlModel.Builder(
-          androidProjectRule.testRootDisposable,
-          AndroidBuildTargetReference.gradleOnly(facet),
-          layout.virtualFile,
-          configuration,
+        androidProjectRule.testRootDisposable,
+        AndroidBuildTargetReference.gradleOnly(facet),
+        layout.virtualFile,
+        configuration,
         )
         .withComponentRegistrar(NlComponentRegistrar)
         .build()
@@ -159,6 +161,10 @@ class NlDesignSurfaceZoomControlsTest {
         updateToolbars()
         layoutAndDispatchEvents()
       }
+    }
+
+    delayUntilCondition(100, 2.seconds) {
+      fakeUi.findAllComponents<SceneViewPeerPanel>().count() == 2
     }
 
     // Create VisualLintService early to avoid it being created at the time of project disposal
@@ -189,9 +195,7 @@ class NlDesignSurfaceZoomControlsTest {
     val zoomOutAction = zoomActionsToolbar.actions.filterIsInstance<ZoomOutAction>().single()
     val zoomToFitAction = zoomActionsToolbar.actions.filterIsInstance<ZoomToFitAction>().single()
 
-    val dataContext =
-      DataManager.getInstance().customizeDataContext(DataContext.EMPTY_CONTEXT, surface)
-    val event = TestActionEvent.createTestEvent(dataContext)
+    val event = TestActionEvent.createTestEvent(DataManager.getInstance().customizeDataContext(DataContext.EMPTY_CONTEXT, surface))
     zoomToFitAction.actionPerformed(event)
     val zoomToFitScale = surface.zoomController.scale
 

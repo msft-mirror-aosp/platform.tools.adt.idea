@@ -25,7 +25,6 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -45,8 +44,9 @@ import org.junit.runners.JUnit4
 @RunsInEdt
 @RunWith(JUnit4::class)
 class StorageGroupTest {
-  private var device by mutableStateOf(TestDevices.pixel6())
-  private val state = StorageGroupState(device, createInMemoryFileSystem())
+  private val fileSystem = createInMemoryFileSystem()
+  private var device by mutableStateOf(TestDevices.pixel6(fileSystem))
+  private val state = StorageGroupState(device, fileSystem)
 
   @get:Rule val composeRule = createStudioComposeTestRule()
   @get:Rule val edtRule = EdtRule()
@@ -306,7 +306,5 @@ class StorageGroupTest {
 
     private fun SemanticsNodeInteractionsProvider.onCustomTextField() =
       onNodeWithTag("CustomRow").onChildren().filterToOne(hasSetTextAction())
-
-    private fun SemanticsNodeInteractionsProvider.onTooltips() = onNode(isPopup()).onChildren()
   }
 }

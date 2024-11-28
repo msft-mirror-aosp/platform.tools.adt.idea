@@ -32,10 +32,13 @@ import org.jetbrains.annotations.VisibleForTesting
 
 /** Guidelines for the model to provide context and fine tune the response. */
 @VisibleForTesting
-const val GEMINI_PREAMBLE =
+private val GEMINI_PREAMBLE =
   """
+    Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+    For headings, use H3 only. Initial explanation should not be under a heading.
     Begin with the explanation directly. Do not add fillers at the start of response.
   """
+    .trimIndent()
 
 private val GEMINI_INSIGHT_PROMPT_FORMAT =
   """
@@ -57,10 +60,6 @@ private val GEMINI_INSIGHT_WITH_CODE_CONTEXT_PROMPT_FORMAT =
     ```
   """
     .trimIndent()
-
-private const val ANDROID_NATIVE_CRASH_HEADER =
-  "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
-private val PID_REGEX = Regex("^pid: (\\d+), tid: (\\d+) >>> (.+?) <<<$")
 
 // Extra space reserved for system preamble
 private const val CONTEXT_WINDOW_PADDING = 150
@@ -153,7 +152,4 @@ private fun Event.prettyStackTrace() =
     }
     .trim()
 
-private fun String.shouldTakeException() = startsWith("Caused by") || isNativeCrashHeader()
-
-private fun String.isNativeCrashHeader() =
-  equals(ANDROID_NATIVE_CRASH_HEADER) || contains(PID_REGEX) || startsWith("backtrace:")
+private fun String.shouldTakeException() = startsWith("Caused by")

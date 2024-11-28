@@ -17,13 +17,7 @@ package com.android.tools.idea.insights.client
 
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.formatForTests
-import com.android.tools.idea.insights.Caption
-import com.android.tools.idea.insights.Event
-import com.android.tools.idea.insights.ExceptionStack
-import com.android.tools.idea.insights.Frame
 import com.android.tools.idea.insights.ISSUE1
-import com.android.tools.idea.insights.Stacktrace
-import com.android.tools.idea.insights.StacktraceGroup
 import com.android.tools.idea.insights.ai.FakeGeminiPluginApi
 import com.android.tools.idea.insights.ai.InsightSource
 import com.android.tools.idea.insights.ai.codecontext.CodeContext
@@ -77,9 +71,9 @@ class GeminiAiInsightClientTest {
     expectedPromptText =
       """
       |SYSTEM
-      |
-      |    Begin with the explanation directly. Do not add fillers at the start of response.
-      |  
+      |Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+      |For headings, use H3 only. Initial explanation should not be under a heading.
+      |Begin with the explanation directly. Do not add fillers at the start of response.
       |
       |USER
       |Explain this exception from my app running on DeviceName with Android version ApiLevel:
@@ -144,9 +138,9 @@ class GeminiAiInsightClientTest {
     expectedPromptText =
       """
       |SYSTEM
-      |
-      |    Begin with the explanation directly. Do not add fillers at the start of response.
-      |  
+      |Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+      |For headings, use H3 only. Initial explanation should not be under a heading.
+      |Begin with the explanation directly. Do not add fillers at the start of response.
       |
       |USER
       |Explain this exception from my app running on DeviceName with Android version ApiLevel.
@@ -224,9 +218,9 @@ class GeminiAiInsightClientTest {
     expectedPromptText =
       """
       |SYSTEM
-      |
-      |    Begin with the explanation directly. Do not add fillers at the start of response.
-      |  
+      |Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+      |For headings, use H3 only. Initial explanation should not be under a heading.
+      |Begin with the explanation directly. Do not add fillers at the start of response.
       |
       |USER
       |Explain this exception from my app running on Google Pixel 4a with Android version 12.
@@ -252,65 +246,5 @@ class GeminiAiInsightClientTest {
 
     assertThat(insight.rawInsight).isEqualTo("TextContent start. This is added after FunctionCall")
     assertThat(insight.insightSource).isEqualTo(InsightSource.STUDIO_BOT)
-  }
-
-  @Test
-  fun `test something`() = runBlocking {
-    val client = GeminiAiInsightClient.create(projectRule.project)
-    val stackTraceGroup =
-      StacktraceGroup(
-        listOf(
-          ExceptionStack(
-            Stacktrace(Caption("*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***")),
-            "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***",
-            "",
-            "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***",
-          ),
-          ExceptionStack(
-            Stacktrace(Caption("pid", "0, tid: 2526 >>> com.android.vending <<<")),
-            "pid",
-            "0, tid: 2526 >>> com.android.vending <<<",
-            "pid: 0, tid: 2526 >>> com.android.vending <<<",
-          ),
-          ExceptionStack(
-            Stacktrace(
-              Caption("backtrace", ")"),
-              frames =
-                listOf(
-                  Frame(
-                    rawSymbol = "#00  pc 0x00000000001f4cdc",
-                    symbol = "#00  pc 0x00000000001f4cdc",
-                  )
-                ),
-            ),
-            type = "backtrace",
-            rawExceptionMessage = "backtrace:",
-          ),
-        )
-      )
-    val event = Event(stacktraceGroup = stackTraceGroup)
-
-    val request = createGeminiInsightRequest(event, CodeContextData.UNASSIGNED)
-    client.fetchCrashInsight("", request)
-
-    val expectedPromptText =
-      """
-      |SYSTEM
-      |
-      |    Begin with the explanation directly. Do not add fillers at the start of response.
-      |  
-      |
-      |USER
-      |Explain this exception from my app running on   with Android version :
-      |Exception:
-      |```
-      |*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
-      |pid: 0, tid: 2526 >>> com.android.vending <<<
-      |backtrace:
-      |${'\t'}#00  pc 0x00000000001f4cdc
-      |```
-      """
-        .trimMargin()
-    assertThat(fakeGeminiPluginApi.receivedPrompt?.formatForTests()).isEqualTo(expectedPromptText)
   }
 }

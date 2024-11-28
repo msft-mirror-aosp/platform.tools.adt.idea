@@ -56,14 +56,22 @@ class StudioFirstRunWelcomeScreen(private val mode: FirstRunWizardMode) : Welcom
 
     // TODO(qumeric): Add more steps and check witch steps to add for each different FirstRunWizardMode
     modelWizard = ModelWizard.Builder().apply {
-      addStep(FirstRunWelcomeStep(model))
-      if (model.installationType.get() != FirstRunModel.InstallationType.CUSTOM) {
-        addStep(InstallationTypeWizardStep(model))
+      if (mode == FirstRunWizardMode.NEW_INSTALL) {
+        addStep(FirstRunWelcomeStep(model))
+
+        if (model.installationType.get() != FirstRunModel.InstallationType.CUSTOM) {
+          addStep(InstallationTypeWizardStep(model))
+        }
       }
+
       if (mode == FirstRunWizardMode.MISSING_SDK) {
         addStep(MissingSdkAlertStep())
       }
-      addStep(SdkComponentsStep(model))
+
+      val licenseAgreementStep = LicenseAgreementStep(LicenseAgreementModel(model.sdkLocation.toPath()), listOf())
+
+      addStep(SdkComponentsStep(model, null, mode, licenseAgreementStep,this@StudioFirstRunWelcomeScreen))
+
       if (mode != FirstRunWizardMode.INSTALL_HANDOFF) {
         val supplier = Supplier<Collection<RemotePackage>?> {
           val components: Iterable<InstallableComponent> = model.componentTree.childrenToInstall
@@ -84,12 +92,11 @@ class StudioFirstRunWelcomeScreen(private val mode: FirstRunWizardMode) : Welcom
       }
 
       if (mode != FirstRunWizardMode.INSTALL_HANDOFF) {
-        addStep(LicenseAgreementStep(LicenseAgreementModel(model.sdkLocation.toPath()), listOf()))
+        addStep(licenseAgreementStep)
       }
 
       // TODO: addStep(ProgressStep(model))
     }.build()
-
 
     // Note: We create a ModelWizardDialog, but we are only interested in its Content Panel
     // This is a bit of a hack, but it's the simplest way to reuse logic from ModelWizardDialog

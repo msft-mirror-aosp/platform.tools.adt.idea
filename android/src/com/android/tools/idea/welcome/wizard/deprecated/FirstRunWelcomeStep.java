@@ -15,11 +15,8 @@
  */
 package com.android.tools.idea.welcome.wizard.deprecated;
 
-import com.intellij.ui.components.JBScrollPane;
-import icons.StudioIllustrations;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -29,17 +26,12 @@ import org.jetbrains.annotations.NotNull;
  */
 @Deprecated
 public final class FirstRunWelcomeStep extends FirstRunWizardStep {
-  private JBScrollPane myRoot;
-  private JLabel myIcons;
-  private JPanel myExistingSdkMessage;
-  private JPanel myNewSdkMessage;
+  private final FirstRunWelcomeStepForm myForm;
 
   public FirstRunWelcomeStep(boolean sdkExists) {
     super("Welcome", "Android Studio");
-    myIcons.setIcon(StudioIllustrations.Common.DEVICES_LINEUP_LARGE);
-    myExistingSdkMessage.setVisible(sdkExists);
-    myNewSdkMessage.setVisible(!sdkExists);
-    setComponent(myRoot);
+    myForm = new FirstRunWelcomeStepForm(sdkExists);
+    setComponent(myForm.getRoot());
   }
 
   @Override
@@ -56,6 +48,6 @@ public final class FirstRunWelcomeStep extends FirstRunWizardStep {
   @Override
   public JComponent getPreferredFocusedComponent() {
     // Doesn't matter
-    return myIcons;
+    return myForm.getRoot();
   }
 }
