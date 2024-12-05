@@ -3,11 +3,8 @@
 load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "generate_old_agp_tests_from_list")
 
 COMMON_DATA = [
-    "//prebuilts/studio/layoutlib:build.prop",
+    "//prebuilts/studio/layoutlib:runtime",
     "//prebuilts/studio/layoutlib/data:framework_res.jar",
-    "//prebuilts/studio/layoutlib/data:native_libs",
-    "//prebuilts/studio/layoutlib/data/fonts",
-    "//prebuilts/studio/layoutlib/data/icu",
     "//prebuilts/studio/sdk:cmake",
     "//prebuilts/studio/sdk:docs",
     "//prebuilts/studio/sdk:licenses",

@@ -15,38 +15,51 @@
  */
 package com.android.tools.idea.welcome.wizard
 
-import com.android.sdklib.AndroidVersion
-import com.android.testutils.TestUtils
+import com.android.repository.api.License
+import com.android.repository.api.RemotePackage
+import com.android.repository.api.RepoManager
+import com.android.repository.impl.meta.RepositoryPackages
+import com.android.repository.testframework.FakePackage.FakeRemotePackage
+import com.android.repository.testframework.FakeRepoManager
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.idea.avdmanager.HardwareAccelerationCheck
+import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.testing.Sdks
+import com.android.tools.idea.testing.TestMessagesDialog
+import com.android.tools.idea.util.toIoFile
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
 import com.android.tools.idea.welcome.config.InstallerData
 import com.android.tools.idea.welcome.config.installerData
+import com.android.tools.idea.welcome.install.ComponentInstaller
 import com.android.tools.idea.welcome.install.FirstRunWizardDefaults
-import com.android.tools.idea.welcome.wizard.deprecated.FirstRunWizardHost
 import com.google.common.truth.Truth.assertThat
-import com.intellij.openapi.application.WriteAction
-import com.intellij.openapi.projectRoots.ProjectJdkTable
+import com.intellij.openapi.editor.impl.EditorComponentImpl
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Pair
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.components.JBLoadingPanel
+import com.intellij.ui.components.JBLoadingPanelListener
+import com.intellij.ui.components.JBRadioButton
 import com.intellij.ui.components.fields.ExtendableTextField
 import com.intellij.ui.table.JBTable
-import junit.framework.Assert.assertFalse
-import junit.framework.TestCase
+import com.intellij.ui.treeStructure.Tree
+import org.jetbrains.eval4j.checkNull
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -55,13 +68,21 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameter
 import org.junit.runners.Parameterized.Parameters
+import org.mockito.MockedStatic
+import org.mockito.Mockito.CALLS_REAL_METHODS
+import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockStatic
 import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.whenever
 import java.io.File
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JRadioButton
+import javax.swing.JTextPane
 import kotlin.test.assertNull
 
 @RunsInEdt
@@ -86,27 +107,39 @@ class WelcomeScreenWizardTest {
   @get:Rule
   val chain = RuleChain(projectRule, HeadlessDialogRule(), EdtRule()) // AndroidProjectRule must get initialized off the EDT thread
 
+  private lateinit var sdkPath: File
+  private lateinit var mockFirstRunWizardDefaults: MockedStatic<FirstRunWizardDefaults>
+  private lateinit var mockAndroidSdkHandler: MockedStatic<AndroidSdkHandler>
+  private lateinit var fakeRepoManager: RepoManager
+
   @Before
   fun setUp() {
     StudioFlags.NPW_FIRST_RUN_WIZARD.override(!isTestingLegacyWizard!!)
+
+    val dialog = TestMessagesDialog(Messages.OK)
+    TestDialogManager.setTestDialog(dialog)
+
+    sdkPath = FileUtil.createTempDirectory("sdk", null)
+    mockFirstRunWizardDefaults = mockStatic(FirstRunWizardDefaults::class.java)
+    `when`(FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.NEW_INSTALL)).thenReturn(sdkPath)
+
+    mockAndroidSdkHandler = mockStatic(AndroidSdkHandler::class.java, CALLS_REAL_METHODS)
+    fakeRepoManager = FakeRepoManager(RepositoryPackages(emptyList(), listOf(
+      createFakeRemotePackageWithLicense("build-tools;33.0.1"), createFakeRemotePackageWithLicense("platforms;android-35"))))
+    val sdkHandler = AndroidSdkHandler(sdkPath.toPath(), null, fakeRepoManager)
+    whenever(AndroidSdkHandler.getInstance(any(), eq(sdkPath.toPath()))).thenReturn(sdkHandler)
   }
 
   @After
   fun tearDown() {
     StudioFlags.NPW_FIRST_RUN_WIZARD.clearOverride()
-  }
 
-  @Test
-  fun welcomeStep_shownWhenInstallTypeNewInstall() {
-    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
-
-    val welcomeLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Once the setup wizard completes") })
-    assertTrue(fakeUi.isShowing(welcomeLabel))
+    mockFirstRunWizardDefaults.close()
+    mockAndroidSdkHandler.close()
   }
 
   @Test
   fun welcomeStep_showsWelcomeMessageForUsersWithNoExistingSdks() {
-    deleteSdks()
     val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
 
     val welcomeLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Welcome! This wizard will set up") })
@@ -115,6 +148,7 @@ class WelcomeScreenWizardTest {
 
   @Test
   fun welcomeStep_showsWelcomeBackMessageForExistingUsers() {
+    `when`(FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.NEW_INSTALL)).thenReturn(getExistingSdkPath())
     val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
 
     val welcomeLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Welcome back! This setup wizard will") })
@@ -128,7 +162,7 @@ class WelcomeScreenWizardTest {
     checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    val installTypeLabel = checkNotNull(fakeUi.findComponent<JLabel>{ it.text.equals("Install Type") })
+    val installTypeLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.equals("Install Type") })
     assertTrue(fakeUi.isShowing(installTypeLabel))
   }
 
@@ -144,7 +178,7 @@ class WelcomeScreenWizardTest {
     checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    val sdkComponentsLabel = fakeUi.findComponent<JLabel>{ it.text.equals("SDK Components Setup") }
+    val sdkComponentsLabel = fakeUi.findComponent<JLabel> { it.text.equals("SDK Components Setup") }
     assertNull(sdkComponentsLabel)
   }
 
@@ -161,7 +195,7 @@ class WelcomeScreenWizardTest {
     checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    val sdkComponentsLabel = checkNotNull(fakeUi.findComponent<JLabel>{ it.text.equals("SDK Components Setup") })
+    val sdkComponentsLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.equals("SDK Components Setup") })
     assertTrue(fakeUi.isShowing(sdkComponentsLabel))
   }
 
@@ -194,107 +228,242 @@ class WelcomeScreenWizardTest {
 
   @Test
   fun sdkComponentsStep_sdkPathPointsToExistingSdk() {
-    val sdkPath = TestUtils.getSdk().toFile()
-    createLatestSdk(sdkPath)
-    mockStatic(FirstRunWizardDefaults::class.java).use {
-      val mode = FirstRunWizardMode.NEW_INSTALL
-      `when`(FirstRunWizardDefaults.getInitialSdkLocation(mode)).thenReturn(sdkPath)
+    val existingSdkPath = getExistingSdkPath()
+    `when`(FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.NEW_INSTALL)).thenReturn(existingSdkPath)
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+    navigateToSdkComponentsStep(fakeUi)
 
-      val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
-      navigateToSdkComponentsStep(fakeUi)
+    val warningLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("An existing Android SDK was detected") })
+    assertTrue(fakeUi.isShowing(warningLabel))
 
-      val warningLabel = checkNotNull(fakeUi.findComponent<JLabel>{ it.text.contains("An existing Android SDK was detected") })
-      assertTrue(fakeUi.isShowing(warningLabel))
-
-      val sdkPathLabel = checkNotNull(fakeUi.findComponent<ExtendableTextField>{ it.text.equals(sdkPath.absolutePath) })
-      assertTrue(fakeUi.isShowing(sdkPathLabel))
-    }
+    val sdkPathLabel = checkNotNull(fakeUi.findComponent<ExtendableTextField> { it.text.equals(existingSdkPath.absolutePath) })
+    assertTrue(fakeUi.isShowing(sdkPathLabel))
   }
 
   @Test
   fun sdkComponentsStep_sdkPathWarning() {
-    val sdkPath = TestUtils.getSdk().toFile()
-    createLatestSdk(sdkPath)
-    mockStatic(FirstRunWizardDefaults::class.java).use {
-      `when`(FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.NEW_INSTALL)).thenReturn(sdkPath)
-      val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
-      navigateToSdkComponentsStep(fakeUi)
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+    navigateToSdkComponentsStep(fakeUi)
 
-      val sdkPathLabel = checkNotNull(fakeUi.findComponent<TextFieldWithBrowseButton>{ it.text == sdkPath.absolutePath })
-      val pathWithWhitespace = FileUtil.createTempDirectory("sdk dir", null)
-      sdkPathLabel.text = pathWithWhitespace.absolutePath
+    val sdkPathLabel = checkNotNull(fakeUi.findComponent<TextFieldWithBrowseButton>{ it.text == sdkPath.absolutePath })
+    val pathWithWhitespace = FileUtil.createTempDirectory("sdk dir", null)
+    sdkPathLabel.text = pathWithWhitespace.absolutePath
 
-      val warningLabel = checkNotNull(fakeUi.findComponent<JLabel>{ it.text.contains("should not contain whitespace, as this can cause problems with the NDK tools.") })
-      assertTrue(fakeUi.isShowing(warningLabel))
-    }
+    val warningLabel = checkNotNull(fakeUi.findComponent<JLabel>{ it.text.contains("should not contain whitespace, as this can cause problems with the NDK tools.") })
+    assertTrue(fakeUi.isShowing(warningLabel))
   }
 
   @Test
   fun sdkComponentsStep_sdkPathChanged() {
-    val sdkPath = TestUtils.getSdk().toFile()
-    createLatestSdk(sdkPath)
-    mockStatic(FirstRunWizardDefaults::class.java).use {
-      val mode = FirstRunWizardMode.NEW_INSTALL
-      `when`(FirstRunWizardDefaults.getInitialSdkLocation(mode)).thenReturn(sdkPath)
+    val existingSdkPath = getExistingSdkPath()
+    `when`(FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.NEW_INSTALL)).thenReturn(existingSdkPath)
 
-      val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
-      navigateToSdkComponentsStep(fakeUi)
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+    navigateToSdkComponentsStep(fakeUi)
 
-      val warningLabel = checkNotNull(fakeUi.findComponent<JLabel>{ it.text.contains("An existing Android SDK was detected") })
-      assertTrue(fakeUi.isShowing(warningLabel))
+    val warningLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("An existing Android SDK was detected") })
+    assertTrue(fakeUi.isShowing(warningLabel))
 
-      val sdkPathLabel = checkNotNull(fakeUi.findComponent<TextFieldWithBrowseButton>{ it.text == sdkPath.absolutePath })
-      assertTrue(fakeUi.isShowing(sdkPathLabel))
+    val sdkPathLabel = checkNotNull(fakeUi.findComponent<TextFieldWithBrowseButton> { it.text == existingSdkPath.absolutePath })
+    assertTrue(fakeUi.isShowing(sdkPathLabel))
 
-      // Add listener to the loading panel to allow us to wait for loading to complete
-      val loadingPanel = checkNotNull(fakeUi.findComponent<JBLoadingPanel>())
-      val nextButton = checkNotNull(fakeUi.findComponent<JButton>{it.text.contains("Next") })
+    // Add listener to the loading panel to allow us to wait for loading to complete
+    val loadingPanel = checkNotNull(fakeUi.findComponent<JBLoadingPanel>())
+    val loadingFinished = CompletableFuture<Boolean>()
+    loadingPanel.addListener(object : JBLoadingPanelListener.Adapter() {
+      override fun onLoadingFinish() {
+        loadingFinished.complete(true)
+      }
+    })
 
-      // Change path
-      val newSdkPath = FileUtil.createTempDirectory("sdk", null)
-      sdkPathLabel.text = newSdkPath.absolutePath
+    val nextButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") })
 
-      waitForCondition(2, TimeUnit.SECONDS) { loadingPanel.isLoading }
-      assertFalse(nextButton.isEnabled)
+    // Change path
+    sdkPathLabel.text = sdkPath.absolutePath
 
-      waitForCondition(10, TimeUnit.SECONDS) { !loadingPanel.isLoading }
-      assertTrue(nextButton.isEnabled)
+    waitForCondition(2, TimeUnit.SECONDS) { loadingPanel.isLoading }
+    assertFalse(nextButton.isEnabled)
+
+    waitForCondition(10, TimeUnit.SECONDS) { !loadingPanel.isLoading }
+    assertTrue(nextButton.isEnabled)
+  }
+
+  @Test
+  fun installSummaryStep_showsSummary() {
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+    navigateToInstallSummaryStep(fakeUi)
+
+    val title = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Verify Settings") })
+    assertTrue(fakeUi.isShowing(title))
+
+    val summarySection = checkNotNull(fakeUi.findComponent<JTextPane> { it.text.contains("Setup Type:") })
+    assertTrue(fakeUi.isShowing(summarySection))
+    assertTrue(summarySection.text.contains("Custom"))
+    assertTrue(summarySection.text.contains("SDK Folder:"))
+    assertTrue(summarySection.text.contains(sdkPath.absolutePath))
+    assertTrue(summarySection.text.contains("SDK Components to Download:"))
+
+    val nextButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") })
+    assertTrue(fakeUi.isShowing(nextButton))
+    assertTrue(nextButton.isEnabled)
+  }
+
+  @Test
+  fun licenseAgreementStep_licensesMustBeAcceptedBeforeProceeding() {
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+    navigateToLicenseAgreementStep(fakeUi)
+
+    val title = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("License Agreement") })
+    assertTrue(fakeUi.isShowing(title))
+
+    val proceedButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) })
+    assertTrue(fakeUi.isShowing(proceedButton))
+    assertFalse(proceedButton.isEnabled)
+
+    // Click accept on all licenses
+    val tree = checkNotNull(fakeUi.findComponent<Tree>())
+    val acceptButton = checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
+    for (i in 0..< tree.rowCount) {
+      tree.setSelectionRow(i)
+      acceptButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     }
+
+    assertTrue(proceedButton.isEnabled)
   }
 
   @Test
   fun licenseStep_refreshedWhenSdkPathChanged() {
-    // TODO - will implement when migrating the license step
-  }
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+    navigateToLicenseAgreementStep(fakeUi)
 
-  private fun deleteSdks() {
-    val sdks = AndroidSdks.getInstance().allAndroidSdks
-    for (sdk in sdks) {
-      WriteAction.runAndWait<RuntimeException> {
-        ProjectJdkTable.getInstance().removeJdk(sdk!!)
-      }
+    // Click accept on all licenses
+    val tree = checkNotNull(fakeUi.findComponent<Tree>())
+    val acceptButton = checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
+    for (i in 0..< tree.rowCount) {
+      tree.setSelectionRow(i)
+      acceptButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     }
+
+    // Navigate back
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Previous") }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Previous") }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Change SDK location - need to wait for loading to finish
+    val loadingPanel = checkNotNull(fakeUi.findComponent<JBLoadingPanel>())
+    val loadingFinished = CompletableFuture<Boolean>()
+    loadingPanel.addListener(object : JBLoadingPanelListener.Adapter() {
+      override fun onLoadingFinish() {
+        loadingFinished.complete(true)
+      }
+    })
+    val sdkPathLabel = checkNotNull(fakeUi.findComponent<TextFieldWithBrowseButton>())
+    val newSdkPath = FileUtil.createTempDirectory("sdk", null)
+
+    // Ensure we return a new mocked sdk - otherwise the licenses won't be refreshed
+    val sdkHandler = AndroidSdkHandler(newSdkPath.toPath(), null, fakeRepoManager)
+    whenever(AndroidSdkHandler.getInstance(any(), eq(newSdkPath.toPath()))).thenReturn(sdkHandler)
+
+    sdkPathLabel.text = newSdkPath.absolutePath
+    pumpEventsAndWaitForFuture(loadingFinished, 5, TimeUnit.SECONDS)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Navigate back to license step
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Check that none of the licenses are 'accepted'
+    for (i in 0..< tree.rowCount) {
+      tree.setSelectionRow(i)
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+      assertFalse(acceptButton.isSelected)
+    }
+
+    val proceedButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) })
+    assertFalse(proceedButton.isEnabled)
   }
 
-  private fun createLatestSdk(sdkPath: File) {
-    createSdk(sdkPath, Sdks.getLatestAndroidPlatform())
+  @Test
+  fun progressStep_cancelInstallationAndFinish() {
+    val mockInstaller = mock(ComponentInstaller::class.java)
+    val remotePackage = createFakeRemotePackageWithLicense("platforms;android-35")
+    whenever(mockInstaller.getPackagesToInstall(any())).thenReturn(listOf(remotePackage))
+
+    val installerStarted = CompletableFuture<Boolean>()
+    val cancelTriggered = CompletableFuture<Boolean>()
+    whenever(mockInstaller.installPackages(any(), any(), any())).then {
+      // Pause the installer to allow us to check the UI and to cancel the task
+      installerStarted.complete(true)
+
+      // Resume once cancel has been triggered
+      cancelTriggered.get()
+    }
+    val mockInstallerProvider = mock(ComponentInstallerProvider::class.java)
+    whenever(mockInstallerProvider.getComponentInstaller(any())).thenReturn(mockInstaller)
+
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL, componentInstallerProvider = mockInstallerProvider)
+    navigateToProgressStep(fakeUi)
+
+    val progressLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
+    assertTrue(fakeUi.isShowing(progressLabel))
+
+    // Details hidden by default
+    fakeUi.findComponent<EditorComponentImpl>().checkNull()
+
+    // Click 'More details' button
+    val showDetailsButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Show Details") })
+    assertTrue(fakeUi.isShowing(showDetailsButton))
+    showDetailsButton.doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Check that console output is showing
+    val consoleOutput = checkNotNull(fakeUi.findComponent<EditorComponentImpl>())
+    assertTrue(fakeUi.isShowing(consoleOutput))
+
+    // Check that the finish button is not enabled
+    val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
+    assertTrue(fakeUi.isShowing(finishButton))
+    assertFalse(finishButton.isEnabled)
+
+    // Wait for install task to start
+    installerStarted.get()
+
+    // Check that the license has been accepted
+    assertTrue(remotePackage.license!!.checkAccepted(sdkPath.toPath()))
+
+    // Click 'Cancel' button
+    val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Cancel") })
+    assertTrue(fakeUi.isShowing(cancelButton))
+    assertTrue(cancelButton.isEnabled)
+    cancelButton.doClick()
+    cancelTriggered.complete(true)
+    PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Click 'Finish'
+    assertTrue(finishButton.isEnabled)
+    finishButton.doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
   }
 
-  private fun createSdk(sdkPath: File, version: AndroidVersion) {
-    Sdks.allowAccessToSdk(projectRule.testRootDisposable)
-    val target = Sdks.findAndroidTarget(sdkPath, version)
-
-    val sdk  = AndroidSdks.getInstance().create(target, sdkPath, "Test SDK", true /* add roots */)
-    TestCase.assertNotNull(sdk)
-    IdeSdks.removeJdksOn(projectRule.testRootDisposable)
+  private fun getExistingSdkPath(): File {
+    return AndroidSdks.getInstance().allAndroidSdks.firstOrNull()?.homeDirectory?.toIoFile()!!
   }
 
-  private fun createWizard(wizardMode: FirstRunWizardMode, sdkPath: File? = null): FakeUi {
+  private fun createWizard(wizardMode: FirstRunWizardMode, sdkPath: File? = null, componentInstallerProvider: ComponentInstallerProvider? = null): FakeUi {
     installerData = InstallerData(sdkPath ?: IdeSdks.getInstance().getAndroidSdkPath(), true, "timestamp", "1234")
 
-    val welcomeScreen = if (isTestingLegacyWizard == true) FirstRunWizardHost(wizardMode) else StudioFirstRunWelcomeScreen(wizardMode)
+    val installer = componentInstallerProvider ?: ComponentInstallerProvider()
+    val welcomeScreen = AndroidStudioWelcomeScreenProvider().createWelcomeScreen(useNewWizard = !isTestingLegacyWizard!!, wizardMode, installer)
     Disposer.register(projectRule.testRootDisposable, welcomeScreen)
-    return FakeUi(welcomeScreen.welcomePanel, createFakeWindow = true)
+
+    val welcomePanel = welcomeScreen.welcomePanel
+    return FakeUi(welcomePanel, createFakeWindow = true)
   }
 
   private fun navigateToSdkComponentsStep(fakeUi: FakeUi) {
@@ -306,5 +475,66 @@ class WelcomeScreenWizardTest {
     checkNotNull(fakeUi.findComponent<JRadioButton> { it.text.contains("Custom") }).doClick()
     checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+  }
+
+  private fun navigateToInstallSummaryStep(fakeUi: FakeUi) {
+    navigateToSdkComponentsStep(fakeUi)
+
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+  }
+
+  private fun navigateToLicenseAgreementStep(fakeUi: FakeUi) {
+    navigateToInstallSummaryStep(fakeUi)
+
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+  }
+
+  private fun navigateToProgressStep(fakeUi: FakeUi) {
+    navigateToLicenseAgreementStep(fakeUi)
+
+    // Accept all licenses
+    val tree = checkNotNull(fakeUi.findComponent<Tree>())
+    val acceptButton = checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
+    for (i in 0..< tree.rowCount) {
+      tree.setSelectionRow(i)
+      acceptButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    }
+
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) }).doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    if (willShowKvmStep()) {
+      checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getKvmStepNextText()) }).doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    }
+  }
+
+  private fun getLicenseStepNextText(): String {
+    if (willShowKvmStep()) {
+      return "Next"
+    }
+    // TODO - get the new wizard to show 'Finish' instead of 'Next'
+    return if (isTestingLegacyWizard == true) "Finish" else "Next"
+  }
+
+  private fun willShowKvmStep() = SystemInfo.isLinux && !HardwareAccelerationCheck.isChromeOSAndIsNotHWAccelerated()
+
+  private fun getKvmStepNextText(): String {
+    // TODO - get the new wizard to show 'Finish' instead of 'Next'
+    return if (isTestingLegacyWizard == true) "Finish" else "Next"
+  }
+
+  private fun createFakeRemotePackageWithLicense(path: String): RemotePackage {
+    val remotePackage = FakeRemotePackage(path)
+    remotePackage.setCompleteUrl("http://www.example.com/package.zip")
+
+    val factory = RepoManager.getCommonModule().createLatestFactory()
+    val license: License = factory.createLicenseType("some license text", "license1")
+    remotePackage.license = license
+
+    return remotePackage
   }
 }

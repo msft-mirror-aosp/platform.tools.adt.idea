@@ -18,12 +18,11 @@ package com.android.tools.idea.wear.preview
 import com.android.SdkConstants
 import com.android.annotations.concurrency.Slow
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
+import com.android.tools.idea.preview.AnnotationPreviewNameHelper
 import com.android.tools.idea.preview.FilePreviewElementFinder
 import com.android.tools.idea.preview.annotations.NodeInfo
 import com.android.tools.idea.preview.annotations.UAnnotationSubtreeInfo
 import com.android.tools.idea.preview.annotations.findAllAnnotationsInGraph
-import com.android.tools.idea.preview.buildParameterName
-import com.android.tools.idea.preview.buildPreviewName
 import com.android.tools.idea.preview.findPreviewDefaultValues
 import com.android.tools.idea.preview.qualifiedName
 import com.android.tools.idea.preview.toSmartPsiPointer
@@ -38,9 +37,9 @@ import com.android.utils.cache.ChangeTracker
 import com.android.utils.cache.ChangeTrackerCachedValue
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.openapi.application.readAction
-import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
@@ -55,13 +54,14 @@ import com.intellij.psi.impl.java.stubs.index.JavaAnnotationIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.concurrency.annotations.RequiresReadLock
 import com.intellij.util.text.nullize
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
@@ -128,7 +128,7 @@ internal class WearTilePreviewElementFinder(
           project.javaKotlinAndDumbChangeTrackers(),
         ) {
           findUMethodsWithTilePreviewSignature(project, vFile, findMethods).any {
-            it.findAllTilePreviewAnnotations().any()
+            it.findAllTilePreviewAnnotations().firstOrNull() != null
           }
         }
       }
@@ -159,8 +159,7 @@ internal class WearTilePreviewElementFinder(
             .flatMap { method ->
               ProgressManager.checkCanceled()
               method
-                .findAllAnnotationsInGraph { it.isTilePreviewAnnotation() }
-                .asFlow()
+                .findAllTilePreviewAnnotations()
                 .mapNotNull { it.asTilePreviewNode(method) }
                 .toList()
             }
@@ -178,18 +177,32 @@ internal class WearTilePreviewElementFinder(
  * Returns true if a [UMethod] or [UAnnotation] is not null is annotated with a Tile Preview
  * annotation, either directly or through a Multi-Preview annotation.
  */
+@RequiresBackgroundThread
 fun UElement?.hasTilePreviewAnnotation(): Boolean {
   assert(this is UMethod? || this is UAnnotation?) {
     "The UElement should be either a UMethod or a UAnnotation"
   }
-  return this?.findAllAnnotationsInGraph { it.isTilePreviewAnnotation() }?.any() ?: false
+  // TODO(b/381827960): avoid using runBlockingCancellable
+  return runBlockingCancellable {
+    this@hasTilePreviewAnnotation?.findAllTilePreviewAnnotations()?.firstOrNull() != null
+  }
 }
 
-internal fun UAnnotation.isTilePreviewAnnotation() = runReadAction {
+/**
+ * Checks if a [UAnnotation] is a Wear Tile `@Preview` annotation.
+ *
+ * This method must be called under a read lock.
+ */
+@RequiresReadLock
+internal fun UAnnotation.isTilePreviewAnnotation() =
   this.qualifiedName == TILE_PREVIEW_ANNOTATION_FQ_NAME
-}
 
-/** Returns true if the [UElement] is a `@Preview` annotation */
+/**
+ * Returns true if the [UElement] is a `@Preview` annotation.
+ *
+ * This method must be called under a read lock.
+ */
+@RequiresReadLock
 private fun UElement?.isWearTilePreviewAnnotation() =
   (this as? UAnnotation)?.isTilePreviewAnnotation() == true
 
@@ -198,7 +211,7 @@ private suspend fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(
   uMethod: UMethod
 ): PsiWearTilePreviewElement? {
   val annotation = element as UAnnotation
-  if (!annotation.isTilePreviewAnnotation()) return null
+  if (readAction { !annotation.isTilePreviewAnnotation() }) return null
   val defaultValues = readAction { annotation.findPreviewDefaultValues() }
 
   val name = readAction {
@@ -208,19 +221,15 @@ private suspend fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(
     annotation.findAttributeValue(PARAMETER_GROUP)?.evaluateString()?.nullize()
   }
   val methodName = readAction { uMethod.name }
+  val nameHelper =
+    AnnotationPreviewNameHelper.create(this, methodName) {
+      readAction { isWearTilePreviewAnnotation() }
+    }
   val displaySettings =
     PreviewDisplaySettings(
-      buildPreviewName(
-        methodName = methodName,
-        nameParameter = name,
-        isPreviewAnnotation = UElement?::isWearTilePreviewAnnotation,
-      ),
+      name = nameHelper.buildPreviewName(name),
       baseName = methodName,
-      parameterName =
-        buildParameterName(
-          nameParameter = name,
-          isPreviewAnnotation = UElement?::isWearTilePreviewAnnotation,
-        ),
+      parameterName = nameHelper.buildParameterName(name),
       group = group,
       showDecoration = false,
       showBackground = true,
@@ -295,8 +304,8 @@ private suspend fun findUMethodsWithTilePreviewSignatureNonCached(
     .mapNotNull { smartReadAction(project) { it.element.toUElement(UMethod::class.java) } }
 }
 
-private fun UMethod.findAllTilePreviewAnnotations() = findAllAnnotationsInGraph {
-  it.isTilePreviewAnnotation()
+private fun UElement.findAllTilePreviewAnnotations() = findAllAnnotationsInGraph {
+  readAction { it.isTilePreviewAnnotation() }
 }
 
 /**

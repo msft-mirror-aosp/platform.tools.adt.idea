@@ -2,7 +2,6 @@ load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
-load("//tools/base/common:version.bzl", "LAST_STABLE_BUILD_VERSION")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
 app_icon(
@@ -55,7 +54,6 @@ studio_plugin(
         "//prebuilts/tools/common/m2:trace-perfetto-library",
         "//prebuilts/tools/common/m2:oauth2",
         "//prebuilts/tools/common/m2:jewel-ide",
-        "//prebuilts/tools/common/m2:commonmark-0.22.0",
         "//prebuilts/tools/common/m2:compose-desktop",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
@@ -388,6 +386,7 @@ studio_plugin(
             "//tools/base/app-inspection/inspectors/network:bundle",
             "//tools/base/app-inspection/inspectors/database:bundle",
             "//tools/base/dynamic-layout-inspector/agent/appinspection:bundle",
+            "//prebuilts/tools/common/app-inspection/androidx/compose/ui:bundle",  # TODO(b/381887363): remove after release of compose 1.8.0
             "//tools/base/process-monitor/process-tracker-agent:bundle",
             "//tools/base/profiler/transform:profilers-transform",
             "//tools/base/profiler/app:perfa",
@@ -796,12 +795,6 @@ android_studio(
         ":com.google.targetsdkversionassistant",
         ":com.android.tools.gradle.dcl",
     ],
-    properties = select({
-        "//conditions:default": [],
-        "//tools/adt/idea/studio:nightly-build": [
-            "gradle.ide.agp.version.to.use=" + LAST_STABLE_BUILD_VERSION,
-        ],
-    }),
     searchable_options = "//tools/adt/idea/searchable-options",
     selector = "AndroidStudio",
     update_message_template = ":update_message.html",

@@ -48,7 +48,12 @@ def debugger_test(
         module = "kotlin.jvm-debugger.test",
         tags = art_tags,
         test_suite = "com.android.tools.test.ModuleTestSuite",
-        runtime_deps = [":attacher"],
+        runtime_deps = [
+            ":attacher",
+            "//prebuilts/r8",
+            "//tools/adt/idea/android-kotlin:android-dexer",
+            "//tools/adt/idea/debuggers:android-field-visibility-provider",
+        ],
         deps = [
             ":kotlin.jvm-debugger.test_lib",
             ":test_repo.zip",

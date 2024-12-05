@@ -54,6 +54,7 @@ import com.android.tools.idea.avdmanager.emulatorcommand.DefaultEmulatorCommandB
 import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilder
 import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilderFactory
 import com.android.tools.idea.concurrency.AndroidDispatchers
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.AndroidSdks
@@ -81,14 +82,6 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.net.HttpConfigurable
-import java.io.File
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.StandardOpenOption
-import java.util.OptionalLong
-import java.util.WeakHashMap
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +90,14 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.ide.PooledThreadExecutor
+import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.util.OptionalLong
+import java.util.WeakHashMap
+import java.util.concurrent.TimeUnit
 
 /**
  * A wrapper class for communicating with [AvdManager] and exposing helper functions for dealing
@@ -584,16 +585,12 @@ constructor(
     return null
   }
 
-  open fun findAvd(avdId: String): AvdInfo? {
-    return avdManager?.getAvd(avdId, false)
+  open fun findAvd(avdName: String): AvdInfo? {
+    return avdManager?.getAvd(avdName, false)
   }
 
-  fun avdExists(candidate: String): Boolean {
-    return findAvd(candidate) != null
-  }
-
-  fun reloadAvd(avdId: String): AvdInfo? {
-    val avd = findAvd(avdId)
+  fun reloadAvd(avdName: String): AvdInfo? {
+    val avd = findAvd(avdName)
     if (avd != null) {
       return avdManager?.reloadAvd(avd)
     }
@@ -632,6 +629,10 @@ constructor(
 
   fun findAvdWithDisplayName(name: String): Boolean {
     return avdManager?.findAvdWithDisplayName(name) != null
+  }
+
+  fun findAvdWithFolder(avdFolder: Path): AvdInfo? {
+    return avdManager?.findAvdWithFolder(avdFolder)
   }
 
   /**
@@ -701,7 +702,8 @@ constructor(
     /** Checks whether the emulator can be launched in the Running Device tool window. */
     private fun canLaunchInToolWindow(avd: AvdInfo, project: Project?): Boolean {
       return project != null &&
-        ToolWindowManager.getInstance(project).getToolWindow("Running Devices") != null
+        ToolWindowManager.getInstance(project).getToolWindow("Running Devices") != null  &&
+             (StudioFlags.EMBEDDED_EMULATOR_ALLOW_XR_AVD.get() || !avd.isXrDevice());
     }
 
     @JvmStatic

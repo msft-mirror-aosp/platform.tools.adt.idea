@@ -28,6 +28,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ToggleAction
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.ex.ToolbarLabelAction
 import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
@@ -51,6 +52,7 @@ import org.jetbrains.annotations.VisibleForTesting
  * @param selectionListener is called when new [Key] is selected. [GalleryView] insures
  *   [selectionListener] is not called twice if same [Key] set twice.
  */
+@Deprecated("b/344884593")
 internal class GalleryView<Key : TitledKey>(
   private val root: JComponent,
   private val selectedProvider: (DataContext) -> Key?,
@@ -130,8 +132,6 @@ internal class GalleryView<Key : TitledKey>(
 
     var popup: ListPopup? = null
 
-    override fun displayTextInToolbar() = true
-
     override fun actionPerformed(e: AnActionEvent) {
       popup?.let {
         it.cancel()
@@ -160,6 +160,7 @@ internal class GalleryView<Key : TitledKey>(
 
     override fun update(e: AnActionEvent) {
       e.presentation.isVisible = true
+      e.presentation.putClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR, true)
       e.dataContext.let {
         e.presentation.text =
           selectedProvider(it)?.title?.truncate() ?: message("action.gallery.select.preview")

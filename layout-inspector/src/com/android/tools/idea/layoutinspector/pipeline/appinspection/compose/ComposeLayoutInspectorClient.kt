@@ -135,6 +135,7 @@ class ComposeLayoutInspectorClient(
   private val messenger: AppInspectorMessenger,
   private val capabilities: EnumSet<Capability>,
   private val launchMonitor: InspectorClientLaunchMonitor,
+  val composeVersion: String?,
 ) {
 
   companion object {
@@ -249,6 +250,7 @@ class ComposeLayoutInspectorClient(
       val project = model.project
       var requiredCompatibility: LibraryCompatibility? = null
 
+      var composeVersion: String? = null
       val jar =
         if (StudioFlags.APP_INSPECTION_USE_DEV_JAR.get()) {
           // This dev jar is used for:
@@ -280,7 +282,7 @@ class ComposeLayoutInspectorClient(
               listOf(EXPECTED_CLASS_IN_COMPOSE_LIBRARY),
             )
 
-          val version =
+          composeVersion =
             when (token) {
               null ->
                 handleCompatibilityAndComputeVersion(
@@ -299,24 +301,39 @@ class ComposeLayoutInspectorClient(
             }
 
           val appInspectorJar =
-            when (token) {
-              null ->
-                getAppInspectorJar(
-                  project,
-                  version,
-                  notificationModel,
-                  logErrorToMetrics,
-                  isRunningFromSourcesInTests,
-                )
-              else ->
-                token.getAppInspectorJar(
-                  projectSystem,
-                  version,
-                  notificationModel,
-                  logErrorToMetrics,
-                  isRunningFromSourcesInTests,
-                )
-            } ?: return null
+            if (
+              composeVersion != null &&
+                Version.parse(composeVersion) == Version.parse("1.8.0-alpha06")
+            ) {
+              Logger.getInstance(ComposeLayoutInspectorClient::class.java)
+                .info("Project is using compose-ui-1.8.0-alpha06. Using bundled compose inspector.")
+              AppInspectorJar(
+                "compose-ui-inspection.jar",
+                developmentDirectory =
+                  StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_COMPOSE_UI_INSPECTION_DEVELOPMENT_FOLDER
+                    .get(),
+                releaseDirectory = "plugins/android/resources/app-inspection/",
+              )
+            } else {
+              when (token) {
+                null ->
+                  getAppInspectorJar(
+                    project,
+                    composeVersion,
+                    notificationModel,
+                    logErrorToMetrics,
+                    isRunningFromSourcesInTests,
+                  )
+                else ->
+                  token.getAppInspectorJar(
+                    projectSystem,
+                    composeVersion,
+                    notificationModel,
+                    logErrorToMetrics,
+                    isRunningFromSourcesInTests,
+                  )
+              } ?: return null
+            }
 
           requiredCompatibility =
             token?.getRequiredCompatibility() ?: COMPOSE_INSPECTION_COMPATIBILITY
@@ -339,7 +356,14 @@ class ComposeLayoutInspectorClient(
       return try {
         val messenger = apiServices.launchInspector(params)
         val client =
-          ComposeLayoutInspectorClient(model, treeSettings, messenger, capabilities, launchMonitor)
+          ComposeLayoutInspectorClient(
+              model,
+              treeSettings,
+              messenger,
+              capabilities,
+              launchMonitor,
+              composeVersion,
+            )
             .apply { updateSettings() }
         logDiagnostics(
           ComposeLayoutInspectorClient::class.java,

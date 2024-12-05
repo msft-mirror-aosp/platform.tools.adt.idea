@@ -15,12 +15,13 @@
  */
 package com.android.tools.idea.gradle.project.build.output
 
-import com.android.tools.idea.gemini.GeminiPluginApi
-import com.android.tools.idea.gemini.LlmPrompt
-import com.android.tools.idea.gemini.formatForTests
+
+import com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext
+import com.android.tools.idea.gradle.project.build.events.studiobot.StudioBotQuickFixProvider
 import com.android.tools.idea.gradle.project.sync.quickFixes.OpenStudioBotBuildIssueQuickFix
 import com.android.tools.idea.testing.AndroidGradleProjectRule
-import com.android.utils.FileUtils
+import com.android.tools.idea.testing.TemporaryDirectoryRule
+import com.android.tools.idea.util.toIoFile
 import com.google.common.truth.Truth.assertThat
 import com.intellij.build.FilePosition
 import com.intellij.build.events.BuildIssueEvent
@@ -45,57 +46,41 @@ import org.junit.rules.TemporaryFolder
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
 
-private class FakeGeminiPluginApi : GeminiPluginApi {
-  override val MAX_QUERY_CHARS: Int = Int.MAX_VALUE
-  var available = true
-  var contextAllowed = true
-
-  var sentPrompt: LlmPrompt? = null
-  var displayedText: String? = null
-  var requestSource: GeminiPluginApi.RequestSource? = null
-
-  var stagedPrompt: String? = null
-
-  override fun isAvailable() = available
-  override fun isContextAllowed(project: Project) = contextAllowed
-
-  override fun isFileExcluded(project: Project, file: VirtualFile) = false
-
-  override fun sendChatQuery(project: Project, prompt: LlmPrompt, displayText: String?, requestSource: GeminiPluginApi.RequestSource) {
-    sentPrompt = prompt
-    displayedText = displayText
-    this.requestSource = requestSource
-  }
-
-  override fun stageChatQuery(project: Project, prompt: String, requestSource: GeminiPluginApi.RequestSource) {
-    stagedPrompt = prompt
-    this.requestSource = requestSource
-  }
-}
-
 class BuildOutputParserWrapperTest {
-
   @get:Rule
   val temporaryFolder = TemporaryFolder()
 
   @get:Rule
-  val projectRule = AndroidGradleProjectRule()
+  val tempDirRule = TemporaryDirectoryRule()
 
+  @get:Rule
+  val projectRule = AndroidGradleProjectRule()
+  private val fakeStudioBotQuickFixProvider = FakeStudioBotQuickFixProvider()
   private lateinit var myParserWrapper: BuildOutputParserWrapper
   private lateinit var messageEvent: MessageEvent
-  private lateinit var fakeGeminiPluginApi: FakeGeminiPluginApi
+
+  private class FakeStudioBotQuickFixProvider: StudioBotQuickFixProvider {
+    var sentContext: GradleErrorContext? = null
+    var sentProject: Project? = null
+    var available = true
+    override fun askGemini(context: GradleErrorContext, project: Project) {
+      sentContext  = context
+      sentProject = project
+    }
+    override fun isAvailable(): Boolean {
+      return available
+    }
+  }
 
   @Before
-  fun setUp() {
+  fun setup() {
     val parser = BuildOutputParser { _, _, messageConsumer ->
       messageConsumer?.accept(messageEvent)
       true
     }
     myParserWrapper = BuildOutputParserWrapper(parser, ID)
     whenever(ID.type).thenReturn(ExternalSystemTaskType.REFRESH_TASKS_LIST)
-
-    fakeGeminiPluginApi = FakeGeminiPluginApi()
-    ApplicationManager.getApplication().registerExtension(GeminiPluginApi.EP_NAME, fakeGeminiPluginApi, projectRule.project)
+    ApplicationManager.getApplication().registerExtension(StudioBotQuickFixProvider.EP_NAME, fakeStudioBotQuickFixProvider, projectRule.project)
   }
 
   @Test
@@ -146,22 +131,21 @@ class BuildOutputParserWrapperTest {
   }
 
   @Test
-  fun `test when StudioBot is not available, 'Ask Gemini' links is not added for ERROR MessageEvent`() {
-    fakeGeminiPluginApi.available = false
-    messageEvent = createMessageEvent(ERROR)
+  fun `test when StudioBotQuickFixProvider is not available, 'Ask Gemini' link is not added for ERROR MessageEvent`() {
+    fakeStudioBotQuickFixProvider.available = false
 
+    messageEvent = createMessageEvent(ERROR)
     myParserWrapper.parse(null, null) { event ->
 
+      // MessageEvent is not converted into a BuildIssueEvent which holds the link.
       assertThat(event).isNotInstanceOf(BuildIssueEvent::class.java)
     }
   }
 
   @Test
-  fun `test 'Ask Gemini' quick fix sends query to ChatService when context allowed`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = true
-    whenever(ID.type).thenReturn(ExternalSystemTaskType.RESOLVE_PROJECT)
-    messageEvent = createMessageEvent(ERROR)
+  fun `test 'Ask Gemini' quick fix sends context without gradle command when not available`() {
+    whenever(ID.type).thenReturn(ExternalSystemTaskType.REFRESH_TASKS_LIST)
+    messageEvent = createMessageEvent(ERROR, "", "", "")
 
     myParserWrapper.parse(null, null) { event ->
 
@@ -170,74 +154,16 @@ class BuildOutputParserWrapperTest {
       quickFixes.first().runQuickFix(projectRule.project) { }
 
       val expected = """
-            USER
-            I'm getting the following error while syncing my project. The error is: !!some error message!!
-            ```
-            Detailed error message
-            ```
-            How do I fix this?
+            GradleErrorContext:
         """.trimIndent()
-      assertThat(fakeGeminiPluginApi.sentPrompt!!.formatForTests()).isEqualTo(expected)
-    }
-  }
-
-  @Test
-  fun `test 'Ask Gemini' quick fix sends query to ChatService without gradle command`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = true
-    whenever(ID.type).thenReturn(ExternalSystemTaskType.EXECUTE_TASK)
-    messageEvent = createMessageEvent(ERROR)
-
-    myParserWrapper.parse(null, null) { event ->
-
-      val quickFixes = (event as BuildIssueEvent).issue.quickFixes
-      assertThat(quickFixes.first()).isInstanceOf(OpenStudioBotBuildIssueQuickFix::class.java)
-      quickFixes.first().runQuickFix(projectRule.project) { }
-
-      val expected = """
-            USER
-            I'm getting the following error while building my project. The error is: !!some error message!!
-            ```
-            Detailed error message
-            ```
-            How do I fix this?
-        """.trimIndent()
-      assertThat(fakeGeminiPluginApi.sentPrompt!!.formatForTests()).isEqualTo(expected)
-    }
-  }
-
-
-  @Test
-  fun `test 'Ask Gemini' quick fix stages query to ChatService when context not allowed`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = false
-    whenever(ID.type).thenReturn(ExternalSystemTaskType.EXECUTE_TASK)
-    messageEvent = createMessageEvent(ERROR)
-
-    myParserWrapper.parse(null, null) { event ->
-
-      val quickFixes = (event as BuildIssueEvent).issue.quickFixes
-      assertThat(quickFixes.first()).isInstanceOf(OpenStudioBotBuildIssueQuickFix::class.java)
-      quickFixes.first().runQuickFix(projectRule.project) { }
-
-      val expected = """
-        I'm getting the following error while building my project. The error is: !!some error message!!
-        ```
-        Detailed error message
-        ```
-        How do I fix this?
-        """.trimIndent()
-      assertThat(fakeGeminiPluginApi.stagedPrompt!!).isEqualTo(expected)
+      assertThat(fakeStudioBotQuickFixProvider.sentContext!!.formatForTests()).isEqualTo(expected)
     }
   }
 
   @Test
   fun `test 'Ask Gemini' quick fix parses Gradle command from projectId`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = false
-
-    whenever(ID.type).thenReturn(ExternalSystemTaskType.EXECUTE_TASK)
-    messageEvent = createMessageEvent(ERROR, id = "[-4474:2441] > [Task :app:compileDebugJavaWithJavac]")
+    whenever(ID.type).thenReturn(ExternalSystemTaskType.REFRESH_TASKS_LIST)
+    messageEvent = createMessageEvent(ERROR, id = "[-4474:2441] > [Task :app:compileDebugJavaWithJavac]", group = "", message = "", detailedMessage = "")
 
     myParserWrapper.parse(null, null) { event ->
 
@@ -247,23 +173,17 @@ class BuildOutputParserWrapperTest {
 
       val expected =
         """
-        I'm getting the following error while building my project. The error is: !!some error message!!
-        ```
-        ${'$'} ./gradlew :app:compileDebugJavaWithJavac
-        Detailed error message
-        ```
-        How do I fix this?
+        GradleErrorContext:
+        gradleTask: :app:compileDebugJavaWithJavac
         """.trimIndent()
-      assertThat(fakeGeminiPluginApi.stagedPrompt!!).isEqualTo(expected)
+      assertThat(fakeStudioBotQuickFixProvider.sentContext!!.formatForTests()).isEqualTo(expected)
     }
   }
 
 
   @Test
   fun `test 'Ask Gemini' quick fix sets RequestSource as BUILD for EXECUTE_TASK`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = false
-    messageEvent = createMessageEvent(ERROR, id = "some id")
+    messageEvent = createMessageEvent(ERROR, "", "", "")
 
     whenever(ID.type).thenReturn(ExternalSystemTaskType.EXECUTE_TASK)
 
@@ -272,15 +192,18 @@ class BuildOutputParserWrapperTest {
       assertThat(quickFixes.first()).isInstanceOf(OpenStudioBotBuildIssueQuickFix::class.java)
       quickFixes.first().runQuickFix(projectRule.project) { }
 
-      assertThat(fakeGeminiPluginApi.requestSource!!).isEqualTo(GeminiPluginApi.RequestSource.BUILD)
+      val expected =
+        """
+        GradleErrorContext:
+        source: build
+        """.trimIndent()
+      assertThat(fakeStudioBotQuickFixProvider.sentContext!!.formatForTests()).isEqualTo(expected)
     }
   }
 
   @Test
   fun `test 'Ask Gemini' quick fix sets RequestSource as SYNC for RESOLVE_PROJECT`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = false
-    messageEvent = createMessageEvent(ERROR, id = "some id")
+    messageEvent = createMessageEvent(ERROR, "", "", "")
 
     whenever(ID.type).thenReturn(ExternalSystemTaskType.RESOLVE_PROJECT)
 
@@ -289,24 +212,67 @@ class BuildOutputParserWrapperTest {
       assertThat(quickFixes.first()).isInstanceOf(OpenStudioBotBuildIssueQuickFix::class.java)
       quickFixes.first().runQuickFix(projectRule.project) { }
 
-      assertThat(fakeGeminiPluginApi.requestSource!!).isEqualTo(GeminiPluginApi.RequestSource.SYNC)
+      val expected =
+        """
+        GradleErrorContext:
+        source: sync
+        """.trimIndent()
+      assertThat(fakeStudioBotQuickFixProvider.sentContext!!.formatForTests()).isEqualTo(expected)
     }
   }
 
   @Test
-  fun `test 'Ask Gemini' quick fix sets RequestSource as OTHER for REFRESH_TASKS_LIST`() {
-    fakeGeminiPluginApi.available = true
-    fakeGeminiPluginApi.contextAllowed = false
-    messageEvent = createMessageEvent(ERROR, id = "some id")
+  fun `test 'Ask Gemini' quick fix sends query with file contents for FileMessageEvent`() {
+    whenever(ID.type).thenReturn(ExternalSystemTaskType.EXECUTE_TASK)
+    val file = tempDirRule.createVirtualFile(
+      "MyFile.kt",
+      """
+        class MyClass {
+          println("Hello") return
+        }
+      """
+        .trimIndent()
+    )
 
-    whenever(ID.type).thenReturn(ExternalSystemTaskType.REFRESH_TASKS_LIST)
+    messageEvent = createFileMessageEvent(ERROR, file = file)
 
     myParserWrapper.parse(null, null) { event ->
+
       val quickFixes = (event as BuildIssueEvent).issue.quickFixes
       assertThat(quickFixes.first()).isInstanceOf(OpenStudioBotBuildIssueQuickFix::class.java)
       quickFixes.first().runQuickFix(projectRule.project) { }
 
-      assertThat(fakeGeminiPluginApi.requestSource!!).isEqualTo(GeminiPluginApi.RequestSource.OTHER)
+      assertThat(fakeStudioBotQuickFixProvider.sentContext!!.sourceFiles).isEqualTo(listOf(file))
+      assertThat(fakeStudioBotQuickFixProvider.sentContext!!.formatForTests()).isEqualTo("""
+            GradleErrorContext:
+            errorMessage: !!some error message!!
+            fullErrorDetails: Detailed error message
+            source: build
+            Source files included:
+            ${file.name}
+      """.trimIndent())
+    }
+  }
+
+  private fun GradleErrorContext.formatForTests() = buildString {
+    append("GradleErrorContext:")
+    if (!gradleTask.isNullOrEmpty()) {
+      append("\ngradleTask: $gradleTask")
+    }
+    if (!errorMessage.isNullOrEmpty()) {
+      append("\nerrorMessage: $errorMessage")
+    }
+    if (!fullErrorDetails.isNullOrEmpty()) {
+      append("\nfullErrorDetails: $fullErrorDetails")
+    }
+    if (source != null) {
+      append("\nsource: $source")
+    }
+    if (sourceFiles.isNotEmpty()) {
+      append("\nSource files included:")
+      sourceFiles.forEach {
+        append("\n${it.name}")
+      }
     }
   }
 
@@ -331,6 +297,7 @@ class BuildOutputParserWrapperTest {
     message: String = "!!some error message!!",
     detailedMessage: String = "Detailed error message",
     id: Any = ID,
+    file: VirtualFile = tempDirRule.createVirtualFile("Main.kt"),
   ): FileMessageEvent {
     val folder = temporaryFolder.newFolder("test")
     return FileMessageEventImpl(
@@ -339,7 +306,7 @@ class BuildOutputParserWrapperTest {
       group,
       message,
       detailedMessage,
-      FilePosition(FileUtils.join(folder, "main", "src", "main.java"),1, 1))
+      FilePosition(file.toIoFile(),1, 1))
   }
 
   companion object {

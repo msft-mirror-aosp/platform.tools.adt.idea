@@ -16,16 +16,16 @@
 package com.android.tools.idea.gradle.project.sync.issues;
 
 import static com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext.Source.SYNC;
-import static com.android.tools.idea.gradle.project.sync.quickFixes.IssueCheckersQuickFixesKt.sendChatQueryIfContextAllowed;
 import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.getGradleBuildFile;
 
-import com.android.tools.idea.gemini.GeminiPluginApi;
 import com.android.tools.idea.gradle.GradleProjectSystemBundle;
 import com.android.tools.idea.gradle.model.IdeSyncIssue;
 import com.android.tools.idea.gradle.project.build.events.studiobot.GradleErrorContext;
+import com.android.tools.idea.gradle.project.build.events.studiobot.StudioBotQuickFixProvider;
 import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessages;
 import com.android.tools.idea.project.messages.SyncMessage;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
@@ -137,10 +137,10 @@ public class SyncIssuesReporter {
     }
     final var gradleSyncMessages = GradleSyncMessages.getInstance(project);
 
-    GeminiPluginApi geminiPluginApi = GeminiPluginApi.Companion.getInstance();
-    if (geminiPluginApi.isAvailable()) {
+    StudioBotQuickFixProvider provider = StudioBotQuickFixProvider.Companion.getInstance();
+    if (provider.isAvailable()) {
       // this only covers sync warning, but sync errors are handled by AndroidGradleExecutionConsoleManager
-      addIssueExplanationLinks(geminiPluginApi, syncMessages);
+      addIssueExplanationLinks(syncMessages);
     }
 
     for (SyncMessage syncMessage : syncMessages) {
@@ -158,22 +158,27 @@ public class SyncIssuesReporter {
     }
   }
 
-  private static void addIssueExplanationLinks(@NotNull GeminiPluginApi geminiPluginApi, @NotNull List<SyncMessage> syncMessages) {
+  private static void addIssueExplanationLinks(@NotNull List<SyncMessage> syncMessages) {
     for (SyncMessage syncMessage : syncMessages) {
       final var message = syncMessage.getText();
-      syncMessage.add(new SyncIssueNotificationHyperlink(
-        "explain.issue",
-        consoleLinkUnderlinedText,
-        AndroidStudioEvent.GradleSyncQuickFix.UNKNOWN_GRADLE_SYNC_QUICK_FIX
-      ) {
+      syncMessage.add(new SyncIssueNotificationHyperlink("explain.issue", consoleLinkUnderlinedText,
+                                                         AndroidStudioEvent.GradleSyncQuickFix.UNKNOWN_GRADLE_SYNC_QUICK_FIX) {
         @Override
         protected void execute(@NotNull Project project) {
-          sendChatQueryIfContextAllowed(geminiPluginApi, project,
-                                        new GradleErrorContext(/* gradleTask = */ null, message, /* fullErrorDetails = */ null, SYNC),
-                                        GeminiPluginApi.RequestSource.SYNC);
+          StudioBotQuickFixProvider provider = StudioBotQuickFixProvider.Companion.getInstance();
+          provider.askGemini(new GradleErrorContext(
+                               /* gradleTask = */ null, message, /* fullErrorDetails = */ null, SYNC, /* sourceFiles = */ getErrorSourceFiles(syncMessage)),
+                             project);
         }
       });
     }
+  }
+
+  private static List<VirtualFile> getErrorSourceFiles(SyncMessage syncMessage) {
+    if (syncMessage.getPosition() == null) {
+      return ImmutableList.of();
+    }
+    return ImmutableList.of(syncMessage.getPosition().file);
   }
 
   @VisibleForTesting

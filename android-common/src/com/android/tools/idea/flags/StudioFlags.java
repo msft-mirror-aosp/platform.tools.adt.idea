@@ -17,6 +17,7 @@ package com.android.tools.idea.flags;
 
 import static com.android.tools.idea.IdeChannel.Channel.CANARY;
 import static com.android.tools.idea.IdeChannel.Channel.DEV;
+import static com.android.tools.idea.IdeChannel.Channel.NIGHTLY;
 
 import com.android.flags.BooleanFlag;
 import com.android.flags.EnumFlag;
@@ -160,6 +161,12 @@ public final class StudioFlags {
     "Allows the GenAI template to be used.",
     true);
 
+  public static final Flag<Boolean> NPW_ENABLE_XR_TEMPLATE = new BooleanFlag(
+    NPW, "xr.template",
+    "Enable XR template",
+    "Allows the XR template to be used.",
+    ChannelDefault.enabledUpTo(CANARY));
+
   public static final Flag<Boolean> NPW_NEW_KOTLIN_MULTIPLATFORM_MODULE = new BooleanFlag(
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.",
@@ -294,6 +301,14 @@ public final class StudioFlags {
     "motion.editor.deprecation.warning",
     "Shows the Motion Editor deprecation warning",
     "Shows the Motion Editor deprecation warning.",
+    true
+  );
+
+  public static final Flag<Boolean> MOTION_EDITOR = new BooleanFlag(
+    DESIGN_TOOLS,
+    "motion.editor.enabled",
+    "Motion Editor enabled",
+    "When true, the Motion Editor will be enabled.",
     true
   );
   //endregion
@@ -542,6 +557,14 @@ public final class StudioFlags {
     "Use adblib version of `AndroidDebugBridgeDelegate` in `AndroidDebugBridge` class. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
     false);
+
+  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_ADB_DELEGATE_USAGE_TRACKER = new BooleanFlag(
+    RUNDEBUG,
+    "adblib.migration.ddmlib.androiddebugbridgedelegateusagetracker",
+    "Track usage stats for `AndroidDebugBridgeDelegate`",
+    "Track `AndroidDebugBridgeDelegate` method calls and success rates. " +
+    "Note: Changing the value of this flag requires restarting Android Studio.",
+    ChannelDefault.enabledUpTo(CANARY));
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_USAGE_TRACKER = new BooleanFlag(
     RUNDEBUG,
@@ -820,6 +843,12 @@ public final class StudioFlags {
     GRADLE_IDE, "forced.agp.update", "Disable forced Android Gradle plugin upgrades",
     "This option is only respected when running Android Studio internally.", false);
 
+  public static final Flag<Boolean> RECOMMEND_AGP_PATCH_RELEASES = new BooleanFlag(
+    GRADLE_IDE, "recommend.patch.releases", "Recommend upgrading to the latest patch release of AGP",
+    "While stable versions of Android Studio support importing projects of newer patch releases of the same major-minor series " +
+    "unless this is enabled, the upgrade assistant will not recommend those updates.",
+    false);
+
   public static final Flag<Boolean> SUPPORT_FUTURE_AGP_VERSIONS = new BooleanFlag(
     GRADLE_IDE, "support.future.agp.versions", "Support opening projects that use future AGPs",
     "Respect the Android Gradle plugin's minimum model consumer version (i.e. minimum required Studio version), " +
@@ -882,6 +911,17 @@ public final class StudioFlags {
     "selected. If unset, the latest AGP version and the latest Gradle version will be used.",
     ""
   );
+
+  public static final Flag<Boolean> USE_STABLE_AGP_VERSION_FOR_NEW_PROJECTS = new BooleanFlag(
+    GRADLE_IDE, "use.stable.agp.version.for.new.projects",
+    "Use the stable AGP version for new projects",
+    "Default to using the stable version of the Android Gradle plugin in new projects, rather than the " +
+    "latest that this version of Android Studio knows about. " +
+    "This is enabled by default in nightly versions as the corresponding -dev version of AGP is not published, " +
+    "outside of snapshot builds. " +
+    "This does not affect the behavior when running from sources from the tools/adt/idea idea project.",
+    ChannelDefault.enabledUpTo(NIGHTLY));
+
 
   public static final Flag<Boolean> GRADLE_SKIP_RUNTIME_CLASSPATH_FOR_LIBRARIES = new BooleanFlag(
     GRADLE_IDE,
@@ -1023,6 +1063,11 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.recomposition.parent.counts", "Enable or disable recomposition parent counts",
     "When this flag is enabled, the max recomposition count among the children of a node is displayed in a separate column.",
     ChannelDefault.enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_XR_INSPECTION = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.xr.inspection", "Enable or disable support for XR inspection",
+    "When this flag is enabled, xr inspection is enabled.",
+    ChannelDefault.enabledUpTo(CANARY));
   //endregion
 
   //region Embedded Emulator
@@ -1055,10 +1100,6 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery",
     false);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_SETTINGS_PICKER = new BooleanFlag(
-    EMBEDDED_EMULATOR, "settings.picker", "Show settings picker",
-    "Enables the settings picker to be shown for testing an application",
-    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS = new BooleanFlag(
     EMBEDDED_EMULATOR, "ui.settings.debug.layout", "Show Debug Layout in UI settings",
     "Enables Debug Layout in Device UI Shortcuts to display layout bounds",
@@ -1067,6 +1108,18 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "ui.settings.gesture.navigation", "Show Gesture Navigation in Device UI Shortcuts",
     "Enables Gesture Navigation setting in Device UI Shortcuts",
     ChannelDefault.enabledUpTo(CANARY));
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_AVD = new BooleanFlag(
+    EMBEDDED_EMULATOR, "allow.xr", "Allow XR AVD to run embedded",
+    "Enables running an XR AVD in the Running Devices tool window",
+    false);
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_TRACKING = new BooleanFlag(
+    EMBEDDED_EMULATOR, "xr.hand.tracking", "Enable hand tracking input mode for XR AVDs",
+    "Enables hand tracking input mode for XR AVDs",
+    false);
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_EYE_TRACKING = new BooleanFlag(
+    EMBEDDED_EMULATOR, "xr.eye.tracking", "Enable eye tracking input mode for XR AVDs",
+    "Enables eye tracking input mode for XR AVDs",
+    false);
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs",
@@ -1074,7 +1127,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_WRAP_TOOLBAR = new BooleanFlag(
     EMBEDDED_EMULATOR, "wrap.toolbar", "Enable Toolbar Wrapping",
     "Wraps the toolbar when all buttons don't fit into the available width",
-    ChannelDefault.enabledUpTo(CANARY));
+    true);
   //endregion
 
   //region Device Mirroring
@@ -1105,14 +1158,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "video.codec", "Video Codec Used for Mirroring of Physical Devices",
     "The name of a video codec, e.g. \"vp8\" or \"vp9\"; the default is \"vp8\"",
     "");
-  public static final Flag<Boolean> DEVICE_MIRRORING_AUTO_RESET_UI_SETTINGS = new BooleanFlag(
-    DEVICE_MIRRORING, "auto.reset", "The agent should reset all changed UI settings on disconnect",
-    "Enable the reset logic in the device agent for the UI settings picker",
-    true);
-  public static final Flag<Boolean> DEVICE_MIRRORING_REMOTE_TEMPLATES_IN_PLUS = new BooleanFlag(
-    DEVICE_MIRRORING, "remote.templates.in.plus", "Show remote device templates in plus action",
-    "Show and allow starting remote device from their templates through the plus action",
-    true);
   public static final Flag<Boolean> DEVICE_MIRRORING_USE_UINPUT = new BooleanFlag(
     DEVICE_MIRRORING, "use.uinput", "Use uinput module (https://kernel.org/doc/html/v4.12/input/uinput.html)",
     "Use uinput module ((https://kernel.org/doc/html/v4.12/input/uinput.html) for injecting input events",
@@ -1327,6 +1372,11 @@ public final class StudioFlags {
     "If enabled, shows a menu item to open the selected preview in Gallery mode.",
     ChannelDefault.enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> ADD_PREVIEW_IMAGE_TO_AI_REQUEST_FOR_CODE_GENERATION = new BooleanFlag(
+    PREVIEW_COMMON, "add.image.to.ai.request.for.preview",
+    "Add preview image to AI request for code generation",
+    "If enabled, adds current preview image to an AI request for code generation.",
+    true);
   //endregion
 
   //region Compose
@@ -2172,6 +2222,11 @@ public final class StudioFlags {
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.summary.notification", "Show a notification for SDK Index issues",
     "Show a notification after initial sync when there are blocking SDK Index issues",
     true
+  );
+  public static final Flag<Boolean> SHOW_SDK_INDEX_DEPRECATION_ISSUES = new BooleanFlag(
+    GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.deprecation.issues", "Show library deprecation issues",
+    "Show issues related to deprecated libraries from SDK Index in Lint and PSD",
+    ChannelDefault.enabledUpTo(CANARY)
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
 

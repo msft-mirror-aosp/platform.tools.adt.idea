@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.build.events.studiobot
 import com.android.tools.idea.gemini.LlmPrompt
 import com.android.tools.idea.gemini.buildLlmPrompt
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 
 /** Represents a Gradle error context.
  *  The following details are stored in the context:
@@ -25,80 +26,18 @@ import com.intellij.openapi.project.Project
  *  @param errorMessage The error message.
  *  @param fullErrorDetails The full error details/stack trace to include.
  *  @param source Whether it is a Build / Sync error
+ *  @param sourceFiles Source file(s) of the error.
  */
 data class GradleErrorContext(
-  private val gradleTask: String?,
-  private val errorMessage: String?,
-  private val fullErrorDetails: String?,
-  val source: Source?) {
+  val gradleTask: String?,
+  val errorMessage: String?,
+  val fullErrorDetails: String?,
+  val source: Source?,
+  val sourceFiles: List<VirtualFile> = emptyList()
+  ) {
   enum class Source(private val source: String) {
     BUILD("build"),
     SYNC("sync");
     override fun toString(): String = source
-  }
-
-  /**
-   * Converts context to a [LlmPrompt] object.
-   * @param project The project associated with the query.
-   * @return The [LlmPrompt] with the context information.
-   *
-   * NOTE: The method needs to ensure that the files
-   * used as context are allowed by .aiexclude before
-   * including it in the prompt.
-   */
-   fun toPrompt(project: Project): LlmPrompt {
-    return buildLlmPrompt (project) {
-      userMessage {
-      text(toQuery(), filesUsed = emptyList())
-    }}
-  }
-
-  /**
-   * Converts this query context to a plain text query string.
-   * @return The query string representation of this query context.
-   */
-   fun toQuery(): String {
-    return  buildString {
-      append(
-        if (source != null) {
-          "I'm getting the following error while ${source}ing my project."
-        } else {
-          "I'm getting the following error in my project."
-        }
-      )
-      errorMessage?.let {
-          append(" The error is: ${it.take(MAX_CHAR_LIMIT_ON_ERROR_MESSAGE)}")
-        }
-      appendLine()
-      appendLine("```")
-      gradleTask?.let {
-        appendLine("""
-          ${'$'} ./gradlew $it
-        """.trimIndent())
-      }
-      fullErrorDetails?.let { stackTrace ->
-        stackTrace.lines().take(MAX_STACK_TRACE_LINES_IN_CONTEXT).forEach { appendLine(it) }
-        // Find the root cause index.
-        val rootCauseIndex = stackTrace.lastIndexOf("Caused by:")
-        // Include 5 lines of root cause.
-        if(rootCauseIndex != -1) {
-          appendLine("...")
-          stackTrace.substring(rootCauseIndex).lines().take(MAX_ROOT_CAUSE_LINES_IN_CONTEXT).forEach { appendLine(it) }
-        }
-      }
-      appendLine("```")
-      append("How do I fix this?")
-    }
-  }
-
-  companion object {
-    // No.of stack trace lines to include in context is chosen to 10 arbitrarily.
-    // To be changed to a more appropriate value after analysing metrics.
-    private const val MAX_STACK_TRACE_LINES_IN_CONTEXT = 10;
-    // No.of root cause lines to include in context is chosen to 5 arbitrarily.
-    private const val MAX_ROOT_CAUSE_LINES_IN_CONTEXT = 5;
-    // No.of characters to allow in th error message. It is typically of a single line
-    // and 500 characters should be sufficient.
-    private const val MAX_CHAR_LIMIT_ON_ERROR_MESSAGE = 500;
   }
 }

@@ -26,6 +26,7 @@ import com.android.tools.idea.welcome.wizard.ComponentsTableModel;
 import com.android.tools.idea.wizard.WizardConstants;
 import com.android.tools.idea.wizard.dynamic.ScopedStateStore;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
@@ -67,13 +68,18 @@ public class SdkComponentsStep extends FirstRunWizardStep {
     ComponentsTableModel tableModel = new ComponentsTableModel(rootNode);
     myForm.setTableModel(tableModel);
 
-    SdkComponentsRenderer renderer = new SdkComponentsRenderer(tableModel, myForm.getComponentsTable()) {
+    myForm.setCellRenderer(new SdkComponentsRenderer(tableModel, myForm.getComponentsTable()) {
       @Override
       public void onCheckboxUpdated() {
         invokeUpdate(null);
       }
-    };
-    myForm.setRenderer(renderer);
+    });
+    myForm.setCellEditor(new SdkComponentsRenderer(tableModel, myForm.getComponentsTable()) {
+      @Override
+      public void onCheckboxUpdated() {
+        invokeUpdate(null);
+      }
+    });
 
     myController = new SdkComponentsStepController(project, mode, myRootNode, sdkHandlerProperty) {
       @Override
@@ -122,7 +128,7 @@ public class SdkComponentsStep extends FirstRunWizardStep {
     if (modified.contains(WizardConstants.KEY_SDK_INSTALL_LOCATION)) {
       String sdkPath = myState.get(WizardConstants.KEY_SDK_INSTALL_LOCATION);
       if (sdkPath != null) {
-        myController.onPathUpdated(sdkPath);
+        myController.onPathUpdated(sdkPath, ModalityState.stateForComponent(myForm.getContents()));
       }
     }
     myForm.setDiskSpace(getDiskSpace(myState.get(mySdkDownloadPathKey)));

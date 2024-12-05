@@ -16,6 +16,7 @@
 package com.android.tools.idea.welcome.wizard.deprecated;
 
 import com.android.tools.idea.welcome.config.FirstRunWizardMode;
+import com.android.tools.idea.welcome.wizard.ComponentInstallerProvider;
 import com.android.tools.idea.welcome.wizard.StudioFirstRunWelcomeScreen;
 import com.android.tools.idea.wizard.WizardConstants;
 import com.android.tools.idea.wizard.dynamic.DynamicWizard;
@@ -73,6 +74,7 @@ import org.jetbrains.annotations.Nullable;
 public class FirstRunWizardHost extends JPanel implements WelcomeScreen, DynamicWizardHost {
   private static final Insets BUTTON_MARGINS = new Insets(2, 16, 2, 16);
   @NotNull private final FirstRunWizardMode myMode;
+  @NotNull private final  ComponentInstallerProvider myComponentInstallerProvider;
 
   private Action myCancelAction = new CancelAction();
   private Action myPreviousAction = new PreviousAction();
@@ -93,9 +95,10 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
   private AtomicReference<ProgressIndicator> myCurrentProgressIndicator = Atomics.newReference();
   private boolean myIsActive;
 
-  public FirstRunWizardHost(@NotNull FirstRunWizardMode mode) {
+  public FirstRunWizardHost(@NotNull FirstRunWizardMode mode, @NotNull ComponentInstallerProvider componentInstallerProvider) {
     super(new BorderLayout());
     myMode = mode;
+    myComponentInstallerProvider = componentInstallerProvider;
     add(createSouthPanel(), BorderLayout.SOUTH);
   }
 
@@ -118,7 +121,7 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
 
   private void setupWizard() {
     ApplicationManager.getApplication().invokeAndWait(() -> {
-      DynamicWizard wizard = new FirstRunWizard(this, myMode);
+      DynamicWizard wizard = new FirstRunWizard(this, myMode, myComponentInstallerProvider);
       wizard.init();
       add(wizard.getContentPane(), BorderLayout.CENTER);
     }, ModalityState.any());
@@ -175,12 +178,20 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
   @Override
   public void close(@NotNull CloseAction action) {
     myIsActive = false;
-    myFrame.setVisible(false);
-    myFrame.dispose();
+
+    if (myFrame != null) {
+      myFrame.setVisible(false);
+      myFrame.dispose();
+    }
+
     if (action == CloseAction.FINISH || action == CloseAction.CANCEL) {
-      // If the user has not selected a Theme, we may have uninstalled ui components
-      LafManager.getInstance().updateUI();
-      WelcomeFrame.showNow();
+      if (ApplicationManager.getApplication().isHeadlessEnvironment()) {
+        // No UI should be shown when IDE is running in this mode.
+      } else {
+        // If the user has not selected a Theme, we may have uninstalled ui components
+        LafManager.getInstance().updateUI();
+        WelcomeFrame.showNow();
+      }
     }
     else if (action == CloseAction.EXIT) {
       ApplicationManager.getApplication().exit();
@@ -230,9 +241,13 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
     if (!myCurrentProgressIndicator.compareAndSet(null, progressIndicator)) {
       throw new IllegalStateException("Submitting an operation while another is in progress.");
     }
-    final JRootPane rootPane = myFrame.getRootPane();
-    final JButton defaultButton = rootPane.getDefaultButton();
-    rootPane.setDefaultButton(null);
+    JButton defaultButton = null;
+    if (myFrame != null) {
+      // There will be no JFrame when testing in headless mode
+      final JRootPane rootPane = myFrame.getRootPane();
+      defaultButton = rootPane.getDefaultButton();
+      rootPane.setDefaultButton(null);
+    }
     updateButtons(false, false, true, false);
     Task.Backgroundable task = new LongRunningOperationWrapper(operation, cancellable, defaultButton);
     ProgressManager.getInstance().runProcessWithProgressAsynchronously(task, progressIndicator);
@@ -440,9 +455,10 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
 
   private class LongRunningOperationWrapper extends Task.Backgroundable {
     private final Runnable myOperation;
+    @Nullable
     private final JButton myDefaultButton;
 
-    public LongRunningOperationWrapper(Runnable operation, boolean cancellable, JButton defaultButton) {
+    public LongRunningOperationWrapper(Runnable operation, boolean cancellable, @Nullable JButton defaultButton) {
       super(null, FirstRunWizardHost.this.myWizard.getWizardActionDescription(), cancellable);
       myOperation = operation;
       myDefaultButton = defaultButton;
@@ -452,7 +468,9 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
     public void onSuccess() {
       myCurrentProgressIndicator.set(null);
       updateButtons(false, false, false, true);
-      myFrame.getRootPane().setDefaultButton(myDefaultButton);
+      if (myFrame != null && myDefaultButton != null) {
+        myFrame.getRootPane().setDefaultButton(myDefaultButton);
+      }
     }
 
     @Override

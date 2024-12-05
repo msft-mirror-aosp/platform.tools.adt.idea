@@ -24,11 +24,6 @@ import com.android.tools.idea.avdmanager.ElevatedCommandLine
 import com.android.tools.idea.avdmanager.checkAcceleration
 import com.android.tools.idea.memorysettings.MemorySettingsUtil
 import com.android.tools.idea.sdk.AndroidSdks
-import com.android.tools.idea.welcome.wizard.deprecated.ProgressStep
-import com.android.tools.idea.welcome.wizard.deprecated.AehdInstallInfoStep
-import com.android.tools.idea.welcome.wizard.deprecated.AehdUninstallInfoStep
-import com.android.tools.idea.wizard.dynamic.ScopedStateStore
-import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Platform
 import com.intellij.execution.configurations.GeneralCommandLine
@@ -58,8 +53,7 @@ private val LOG: Logger
  * Google AEHD installable component
  */
 class Aehd(
-  @JvmField val installationIntention: InstallationIntention,
-  @JvmField val isCustomInstall: ScopedStateStore.Key<Boolean>
+  @JvmField val installationIntention: InstallationIntention
 ) : InstallableComponent("Performance (Android Emulator hypervisor visor})",
                          "Enables a hardware-assisted virtualization engine (hypervisor) to speed up " +
                          "Android app emulation on your development computer. (Recommended)",
@@ -97,26 +91,11 @@ class Aehd(
     fun isInstall(): Boolean = this == INSTALL_WITHOUT_UPDATES || this == INSTALL_WITH_UPDATES
   }
 
-  override val steps: Collection<ModelWizardStep<*>>
-    get() = setOf(if (installationIntention == InstallationIntention.UNINSTALL)
-           com.android.tools.idea.welcome.wizard.AehdUninstallInfoStep()
-      else com.android.tools.idea.welcome.wizard.AehdInstallInfoStep())
-
-  override fun createSteps() =
-    setOf(if (installationIntention === InstallationIntention.UNINSTALL) AehdUninstallInfoStep()
-          else AehdInstallInfoStep(isCustomInstall))
-
   var isInstallerSuccessfullyCompleted: Boolean = false
     private set
 
-  private lateinit var progressStep: ProgressStep
-
   public override val requiredSdkPackages
     get() = listOf("extras;google;Android_Emulator_Hypervisor_Driver")
-
-  override fun init(progressStep: ProgressStep) {
-    this.progressStep = progressStep
-  }
 
   /**
    * Create a platform-dependant command line for running the silent installer.
@@ -269,7 +248,7 @@ class Aehd(
           super.onTextAvailable(event, outputType)
         }
       })
-      progressStep.attachToProcess(process)
+      installContext.attachToProcess(process)
       val exitCode = process.runProcess().exitCode
       // More testing of bash scripts invocation with intellij process wrappers might be useful.
       if (exitCode != INSTALLER_EXIT_CODE_SUCCESS) {

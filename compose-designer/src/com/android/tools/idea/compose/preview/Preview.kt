@@ -150,9 +150,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
@@ -359,6 +361,13 @@ class ComposePreviewRepresentation(
    * the state of the preview.
    */
   private val hasRenderedAtLeastOnce = AtomicBoolean(false)
+
+  /**
+   * This field indicates whether the preview should restore its zoom level after rendering. Set it
+   * to true before operations like mode changes or layout adjustments causes a refresh or
+   * re-rendering of the previews, and where we want the previous zoom level to be preserved.
+   */
+  private val shouldRestoreZoomAfterRender = AtomicBoolean(true)
 
   @VisibleForTesting internal val composePreviewFlowManager = ComposePreviewFlowManager()
 
@@ -1026,14 +1035,20 @@ class ComposePreviewRepresentation(
     // with 0 previews, e.g. when the panel is initializing. hasRenderedAtLeastOnce is also checked
     // when updating the animation panel visibility and when looking for render errors, which can
     // only happen if at least one preview is (attempted to be) rendered.
-    if (previewsCount > 0 && !hasRenderedAtLeastOnce.getAndSet(true)) {
-      logComposePreviewLiteModeEvent(
-        ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.OPEN_AND_RENDER
-      )
-
-      // We can now notify to DesignSurface that Preview has rendered for the first time, and we can
-      // now attempt to restore the zoom.
-      launch(uiThread) { surface.notifyRestoreZoom() }
+    if (previewsCount > 0) {
+      if (!hasRenderedAtLeastOnce.getAndSet(true)) {
+        logComposePreviewLiteModeEvent(
+          ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.OPEN_AND_RENDER
+        )
+      }
+      // When changing mode and when [shouldRestoreZoomAfterRender] is true we notify to
+      // DesignSurface to restore the zoom by calling [notifyRestoreZoom].
+      if (shouldRestoreZoomAfterRender.getAndSet(false)) {
+        launch(uiThread) {
+          // We notify DesignSurface to try to restore the zoom
+          surface.notifyRestoreZoom()
+        }
+      }
     }
   }
 
@@ -1375,7 +1390,7 @@ class ComposePreviewRepresentation(
         COMPOSABLE_ANNOTATION_FQ_NAME,
         COMPOSABLE_ANNOTATION_NAME,
       ) { methods ->
-        methods.asSequence()
+        methods.asFlow()
       }
       .forEach { composableMethod ->
         if (composableMethod.hasPreviewElements()) {
@@ -1503,14 +1518,14 @@ class ComposePreviewRepresentation(
         withContext(uiThread) {
           composeWorkBench.galleryMode = GalleryMode(composeWorkBench.mainSurface)
         }
-        resetFirstRendering()
+        resetRestoreZoomOnAfterRender()
       }
     }
     surface.background = mode.backgroundColor
   }
 
-  private fun resetFirstRendering() {
-    hasRenderedAtLeastOnce.set(false)
+  private fun resetRestoreZoomOnAfterRender() {
+    shouldRestoreZoomAfterRender.set(true)
     surface.resetRestoreZoomNotifier()
   }
 
@@ -1538,7 +1553,7 @@ class ComposePreviewRepresentation(
         withContext(uiThread) { composeWorkBench.galleryMode = null }
       }
     }
-    resetFirstRendering()
+    resetRestoreZoomOnAfterRender()
   }
 
   private fun createAnimationPreviewPanel(

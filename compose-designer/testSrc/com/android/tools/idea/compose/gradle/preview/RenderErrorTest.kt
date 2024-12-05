@@ -66,6 +66,11 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.runInEdtAndGet
+import java.awt.BorderLayout
+import java.awt.Dimension
+import javax.swing.JPanel
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -77,11 +82,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.awt.BorderLayout
-import java.awt.Dimension
-import javax.swing.JPanel
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 class RenderErrorTest {
 
@@ -312,13 +312,73 @@ class RenderErrorTest {
     runVisualLintErrorsForModel("PreviewWithLongText")
   }
 
+  @Test
+  fun testSwitchLayoutWithoutRenderErrors() =
+    runBlocking(workerThread) {
+      lateinit var sceneViewPanelWithoutErrors: SceneViewPeerPanel
+
+      // We ensure we are starting from a non-Gallery mode.
+      assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Default)
+
+      // Render the Preview of the current mode.
+      withContext(uiThread) {
+        waitForRender(fakeUi.findAllComponents<SceneViewPeerPanel>().toSet(), timeout = 2.minutes)
+        fakeUi.root.validate()
+      }
+
+      // We ensure there are no render errors for the preview we want to open in Gallery mode
+      val previewToOpenInGalleryMode = "PreviewWithoutRenderErrors"
+      delayUntilCondition(delayPerIterationMs = 200, timeout = 30.seconds) {
+        panels
+          .firstOrNull { it.displayName == previewToOpenInGalleryMode }
+          ?.also { sceneViewPanelWithoutErrors = it } != null
+      }
+      assertFalse(sceneViewPanelWithoutErrors.sceneView.hasRenderErrors())
+
+      // We can now switch to Gallery mode selecting [previewToOpenInGalleryMode] and waiting for
+      // render and refresh.
+      setPreviewModeAndWaitForRefresh(previewToOpenInGalleryMode) { PreviewMode.Gallery(it) }
+
+      // Wait to render the selected preview that is now in Gallery mode.
+      // Notice Gallery Mode shows only one item per tab and we shouldn't have more than one item.
+      withContext(uiThread) {
+        waitForRender(setOf(sceneViewPanelWithoutErrors), timeout = 2.minutes)
+        fakeUi.root.validate()
+      }
+
+      // Update the sceneViewPanel.
+      delayUntilCondition(delayPerIterationMs = 200, timeout = 30.seconds) {
+        panels
+          .singleOrNull { it.displayName == previewToOpenInGalleryMode }
+          ?.also { sceneViewPanelWithoutErrors = it } != null
+      }
+
+      // Ensure we are in Gallery mode
+      assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Gallery)
+
+      // The selected sceneViewPanel shouldn't have render errors.
+      assertFalse(sceneViewPanelWithoutErrors.sceneView.hasRenderErrors())
+      delayUntilCondition(delayPerIterationMs = 200, timeout = 30.seconds) {
+        !composePreviewRepresentation.status().hasErrorsAndNeedsBuild
+      }
+      assertFalse(composePreviewRepresentation.status().hasErrorsAndNeedsBuild)
+    }
+
   private fun countVisibleActions(
     actions: List<AnAction>,
     sceneViewPeerPanel: SceneViewPeerPanel,
   ): Int {
-    val dataContext = runInEdtAndGet { IdeUiService.getInstance().createUiDataContext(sceneViewPeerPanel) }
-    val visibleActions = Utils.expandActionGroup(DefaultActionGroup(actions), PresentationFactory(),
-                                                 dataContext, ActionPlaces.UNKNOWN, ActionUiKind.TOOLBAR)
+    val dataContext = runInEdtAndGet {
+      IdeUiService.getInstance().createUiDataContext(sceneViewPeerPanel)
+    }
+    val visibleActions =
+      Utils.expandActionGroup(
+        DefaultActionGroup(actions),
+        PresentationFactory(),
+        dataContext,
+        ActionPlaces.UNKNOWN,
+        ActionUiKind.TOOLBAR,
+      )
     return visibleActions.size
   }
 
@@ -332,22 +392,9 @@ class RenderErrorTest {
       .toList()
 
   private suspend fun startUiCheckForModel(model: String) {
-    lateinit var uiCheckElement: ComposePreviewElementInstance<*>
-
-    delayUntilCondition(250, timeout = 1.minutes) {
-      previewView.mainSurface.models
-        .firstOrNull { it.displaySettings.modelDisplayName.value == model }
-        ?.dataContext
-        ?.previewElement()
-        ?.also { uiCheckElement = it } != null
+    setPreviewModeAndWaitForRefresh(model) {
+      PreviewMode.UiCheck(baseInstance = UiCheckInstance(it, isWearPreview = false))
     }
-
-    val onRefreshCompletable = previewView.getOnRefreshCompletable()
-
-    composePreviewRepresentation.setMode(
-      PreviewMode.UiCheck(baseInstance = UiCheckInstance(uiCheckElement, isWearPreview = false))
-    )
-    onRefreshCompletable.join()
 
     // Once we enable Ui Check we need to render again since we are now showing the selected preview
     // with the different analyzers of Ui Check (for example screen sizes, colorblind check etc).
@@ -355,6 +402,23 @@ class RenderErrorTest {
       waitForRender(fakeUi.findAllComponents<SceneViewPeerPanel>().toSet(), timeout = 2.minutes)
       fakeUi.root.validate()
     }
+  }
+
+  private suspend fun setPreviewModeAndWaitForRefresh(
+    modelName: String,
+    previewModeProvider: (ComposePreviewElementInstance<*>) -> PreviewMode,
+  ) {
+    lateinit var previewElement: ComposePreviewElementInstance<*>
+    delayUntilCondition(250, timeout = 1.minutes) {
+      previewView.mainSurface.models
+        .firstOrNull { it.displaySettings.modelDisplayName.value == modelName }
+        ?.dataContext
+        ?.previewElement()
+        ?.also { previewElement = it } != null
+    }
+    val onRefreshCompletable = previewView.getOnRefreshCompletable()
+    composePreviewRepresentation.setMode(previewModeProvider(previewElement))
+    onRefreshCompletable.join()
   }
 
   private suspend fun stopUiCheck() {

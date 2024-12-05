@@ -16,7 +16,8 @@ COMMON_DATA = [
     "//tools/adt/idea/android-uitests:aspects_baseline",
     "//tools/adt/idea/android-uitests:aspect_rules",
     "//tools/base/aspects_agent:aspects_agent",
-    "//prebuilts/studio/sdk:build-tools/latest",
+    "//prebuilts/studio/sdk:build-tools/34.0.0",
+    "//prebuilts/studio/sdk:build-tools/35.0.0",
     "//prebuilts/studio/sdk:cmake",
     "//prebuilts/studio/sdk:ndk",
     # TODO (b/378379062): Delete sdk 34 after migrating all test apps to API 35
@@ -144,9 +145,6 @@ maven_repository(
         "@maven//:androidx.activity.activity-ktx_1.8.0",
         "@maven//:androidx.annotation.annotation-jvm_1.6.0",
         "@maven//:androidx.annotation.annotation_1.6.0",
-        "@maven//:androidx.appcompat.appcompat_1.0.2",
-        "@maven//:androidx.appcompat.appcompat_1.3.0",
-        "@maven//:androidx.appcompat.appcompat_1.4.1",
         "@maven//:androidx.appcompat.appcompat_1.6.1",
         "@maven//:androidx.appcompat.appcompat_1.7.0",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.4",
@@ -198,16 +196,11 @@ maven_repository(
         "@maven//:androidx.constraintlayout.constraintlayout_1.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.4",
-        "@maven//:androidx.core.core-ktx_1.0.1",
         "@maven//:androidx.core.core-ktx_1.10.0",  # Compose Activity
         "@maven//:androidx.core.core-ktx_1.10.1",
         "@maven//:androidx.core.core-ktx_1.12.0",
         "@maven//:androidx.core.core-ktx_1.13.1",  # Needed for TemplateTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.core.core-ktx_1.15.0",
-        "@maven//:androidx.core.core-ktx_1.2.0",
-        "@maven//:androidx.core.core-ktx_1.3.0",
-        "@maven//:androidx.core.core-ktx_1.3.2",
-        "@maven//:androidx.core.core-ktx_1.6.0",
         "@maven//:androidx.core.core-ktx_1.9.0",
         "@maven//:androidx.core.core-splashscreen_1.0.1",
         "@maven//:androidx.core.core_1.5.0-rc02",
@@ -222,12 +215,16 @@ maven_repository(
         "@maven//:androidx.legacy.legacy-support-v4_1.0.0",
         "@maven//:androidx.lifecycle.lifecycle-common-java8_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-common-java8_2.8.3",
+        "@maven//:androidx.lifecycle.lifecycle-common_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-extensions_2.2.0",
         "@maven//:androidx.lifecycle.lifecycle-livedata-core_2.8.3",  # Needed for TemplateDiffTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.lifecycle.lifecycle-livedata-core_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-livedata-ktx_2.6.2",
+        "@maven//:androidx.lifecycle.lifecycle-livedata_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-livedata_2.8.3",  # Needed for TemplateDiffTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.lifecycle.lifecycle-livedata_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-process_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-process_2.6.2",
         "@maven//:androidx.lifecycle.lifecycle-process_2.8.3",  # Needed for TemplateDiffTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.lifecycle.lifecycle-process_2.8.7",
@@ -389,12 +386,8 @@ java_test(
     name = "LayoutEditorMemoryUseTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/LayoutTest/**"]) + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.LayoutEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
@@ -494,12 +487,8 @@ java_test(
     name = "NavEditorMemoryUseTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/Navigation/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.NavEditorMemoryUseTest"],
     tags = COMMON_TAGS + [
@@ -515,12 +504,8 @@ java_test(
     name = "VisualizationTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualizationTest"],
     tags = COMMON_TAGS + [
@@ -536,12 +521,8 @@ java_test(
     name = "ProblemsPanelTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/CodeGeneration/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.designTools.problemsPanel.ProblemsPanelTest"],
     tags = COMMON_TAGS + [
@@ -556,12 +537,8 @@ java_test(
     name = "SharedIssuePanelTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.SharedIssuePanelTest"],
     tags = COMMON_TAGS + [
@@ -577,12 +554,8 @@ java_test(
     name = "VisualLintTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/VisualLintApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualLintTest"],
     tags = COMMON_TAGS + [
@@ -598,12 +571,8 @@ java_test(
     name = "DownloadableFontTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.DownloadableFontTest"],
     tags = COMMON_TAGS + [
@@ -618,13 +587,10 @@ java_test(
     name = "ComposePreviewTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-    ] + glob(["testData/SimpleComposeApplication/**"]),
+        "//tools/adt/idea/compose-designer/testData:test_projects",
+    ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.ComposePreviewTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -639,13 +605,10 @@ java_test(
     name = "CustomViewPreviewTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-    ] + glob(["testData/SimpleComposeApplication/**"]),
+        "//tools/adt/idea/compose-designer/testData:test_projects",
+    ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.customview.CustomViewPreviewTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -721,12 +684,8 @@ java_test(
     size = "large",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1172,12 +1131,8 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_28.0.0",
     ] + glob([
@@ -1265,12 +1220,8 @@ java_test(
 java_test(
     name = "SideConstraintHandlingTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/LayoutTest/**",
     ]),
@@ -1285,12 +1236,8 @@ java_test(
 java_test(
     name = "BaselineConstraintHandlingTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/LayoutTest/**",
     ]),
@@ -1306,12 +1253,8 @@ java_test(
     name = "BasicLayoutEditTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -1329,12 +1272,8 @@ java_test(
 java_test(
     name = "ComponentSelectionSplitViewTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.ComponentSelectionSplitViewTest"],
     tags = COMMON_TAGS + [
@@ -1348,12 +1287,8 @@ java_test(
     name = "OpenCloseVisualizationToolTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -1371,12 +1306,8 @@ java_test(
     size = "enormous",
     timeout = "long",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleFlavoredApplication/**",
     ]),
@@ -1753,12 +1684,8 @@ java_test(
     size = "enormous",
     timeout = "long",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.naveditor.CreateNewActivityFromNavGraphTest"],
     tags = COMMON_TAGS + [
@@ -1790,12 +1717,8 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1816,12 +1739,8 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1842,12 +1761,8 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1868,12 +1783,8 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1889,12 +1800,8 @@ java_test(
     name = "CreateNavNIGraphTest",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1914,12 +1821,8 @@ java_test(
     timeout = "long",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -1939,12 +1842,8 @@ java_test(
     size = "large",
     data = COMMON_DATA + [
         # TODO: Remove the dependency on support-annotations once Bazel no longer requires support-annotations to build Android apps.
-        "//prebuilts/studio/layoutlib:build.prop",
-        "//prebuilts/studio/layoutlib/data/fonts",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
-        "//prebuilts/studio/layoutlib/data:native_libs",
         "@maven//:com.android.support.support-annotations_28.0.0",
         "@maven//:com.android.support.appcompat-v7_26.1.0",
     ] + glob([
@@ -2088,12 +1987,8 @@ java_test(
     size = "large",
     timeout = "long",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.AddComposeMultiPreviewTest"],
     tags = COMMON_TAGS + [
@@ -2108,12 +2003,8 @@ java_test(
     name = "CyclicMultiPreviewTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/ComposeMultiPreviewSample/**",
     ]),
@@ -2130,12 +2021,8 @@ java_test(
     name = "AddNewPreviewTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/ComposeMultiPreviewSample/**",
     ]),
@@ -2152,12 +2039,8 @@ java_test(
     name = "RemovePreviewTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.compose.RemovePreviewTest"],
     tags = COMMON_TAGS + [
@@ -2419,12 +2302,8 @@ java_test(
     name = "VerifyNpwAutomotiveTemplatesTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob(["testData/Navigation/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.npw.VerifyNpwAutomotiveTemplatesTest"],
     tags = COMMON_TAGS + [
@@ -2483,12 +2362,8 @@ java_test(
     name = "MultiModuleSearchTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/MultiAndroidModule/**",
     ]),
@@ -2505,12 +2380,8 @@ java_test(
     name = "ResourceExplorerTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/ResourceManagerApp/**",
     ]),
@@ -2526,12 +2397,8 @@ java_test(
     name = "OpenFileInResourceManagerTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/MultiAndroidModule/**",
     ]),
@@ -2548,12 +2415,8 @@ java_test(
     name = "DrawableResourceNavigationTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/DrawableResource/**",
     ]),
@@ -2570,12 +2433,8 @@ java_test(
     name = "ImageViewResourceTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ],
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.resourceexplorer.ImageViewResourceTest"],
     tags = COMMON_TAGS + [
@@ -2710,12 +2569,8 @@ java_test(
 java_test(
     name = "ThemeEditorTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -2731,12 +2586,8 @@ java_test(
     name = "ConstraintLayoutResizeHandleTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/LayoutTest/**",
     ]),
@@ -2753,12 +2604,8 @@ java_test(
     name = "ConstraintLayoutAnchorExemptionTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/LayoutTest/**",
     ]),
@@ -2774,12 +2621,8 @@ java_test(
 java_test(
     name = "ClearConstraintTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/LayoutTest/**",
     ]),
@@ -2797,12 +2640,8 @@ java_test(
 java_test(
     name = "CreateBaselineConnectionTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/LayoutTest/**",
     ]),
@@ -2818,12 +2657,8 @@ java_test(
 java_test(
     name = "AdaptiveIconsTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -2839,12 +2674,8 @@ java_test(
 java_test(
     name = "AndroidVectorDrawableToolTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -2860,12 +2691,8 @@ java_test(
 java_test(
     name = "ImageAssetGradleTest",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -2884,12 +2711,8 @@ java_test(
     name = "ImageAssetErrorCheckTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
         "testData/TestImages/**",
@@ -3647,12 +3470,8 @@ java_test(
     name = "AddLocaleTest",
     size = "large",
     data = COMMON_DATA + [
-        "//prebuilts/studio/layoutlib:build.prop",
+        "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/layoutlib/data:native_libs",
-        "//prebuilts/studio/layoutlib/data/fonts",
-        "//prebuilts/studio/layoutlib/data/icu",
-        "//prebuilts/studio/layoutlib/data/keyboards",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),

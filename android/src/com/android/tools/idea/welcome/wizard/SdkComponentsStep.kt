@@ -27,6 +27,7 @@ import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.android.tools.sdk.AndroidSdkData
 import com.android.tools.sdk.isValid
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
@@ -90,16 +91,20 @@ class SdkComponentsStep(
     form.path.textField.document.addDocumentListener(object : DocumentAdapter() {
       override fun textChanged(e: DocumentEvent) {
         validate()
-        controller.onPathUpdated(form.path.getText())
+        controller.onPathUpdated(form.path.getText(), ModalityState.stateForComponent(form.contents))
       }
     })
 
-    val renderer = object : SdkComponentsRenderer(tableModel, form.componentsTable) {
+    form.setCellRenderer(object : SdkComponentsRenderer(tableModel, form.componentsTable) {
       override fun onCheckboxUpdated() {
         updateDiskSizes()
       }
-    }
-    form.setRenderer(renderer)
+    })
+    form.setCellEditor(object : SdkComponentsRenderer(tableModel, form.componentsTable) {
+      override fun onCheckboxUpdated() {
+        updateDiskSizes()
+      }
+    })
   }
 
   override fun getComponent(): JComponent = form.contents

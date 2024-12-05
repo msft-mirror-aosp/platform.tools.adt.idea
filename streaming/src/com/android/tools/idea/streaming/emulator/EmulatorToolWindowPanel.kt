@@ -55,7 +55,6 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer
@@ -106,7 +105,7 @@ internal class EmulatorToolWindowPanel(
 
   override val icon: Icon
     get() {
-      val avd = AvdManagerConnection.getDefaultAvdManagerConnection().findAvd(emulatorId.avdId)
+      val avd = AvdManagerConnection.getDefaultAvdManagerConnection().findAvdWithFolder(emulatorId.avdFolder)
       val icon = avd?.icon ?: StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_PHONE
       return ExecutionUtil.getLiveIndicator(icon)
     }
@@ -149,7 +148,7 @@ internal class EmulatorToolWindowPanel(
    */
   override fun createContent(deviceFrameVisible: Boolean, savedUiState: UiState?) {
     if (contentDisposable != null) {
-      thisLogger().error(IllegalStateException("${title}: content already exists"))
+      LOG.error(IllegalStateException("$title: content already exists"))
       return
     }
 
