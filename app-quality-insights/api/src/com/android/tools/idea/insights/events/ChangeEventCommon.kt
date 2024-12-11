@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.insights.events
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsState
+import com.android.tools.idea.insights.CRASHLYTICS_KEY
 import com.android.tools.idea.insights.DynamicEventGallery
 import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.FailureType
@@ -25,6 +27,7 @@ import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.VITALS_KEY
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.events.actions.Action
+import com.intellij.openapi.diagnostic.Logger
 
 fun transitionEventForKey(key: InsightsProviderKey, event: Event) =
   if (useIssueSampleEvent(key)) {
@@ -41,12 +44,26 @@ fun actionsForSelectedIssue(
   forceFetch: Boolean,
 ) =
   Action.FetchDetails(id) and
-    Action.FetchInsight(id, fatality, event, forceFetch = forceFetch) and
+    if (shouldFetchInsightForKey(key)) {
+      Action.FetchInsight(id, fatality, event, forceFetch = forceFetch)
+    } else {
+      Action.NONE
+    } and
     if (key == VITALS_KEY) {
       Action.NONE
     } else {
       Action.FetchIssueVariants(id) and Action.FetchNotes(id) and Action.ListEvents(id, null, null)
     }
+
+private fun shouldFetchInsightForKey(key: InsightsProviderKey) =
+  when (key) {
+    VITALS_KEY -> StudioFlags.PLAY_VITALS_INSIGHT_IN_TOOLWINDOW.get()
+    CRASHLYTICS_KEY -> StudioFlags.CRASHLYTICS_INSIGHT_IN_TOOLWINDOW.get()
+    else -> {
+      Logger.getInstance("ChangeEventCommon").warn("Unknown InsightProviderKey: $key")
+      false
+    }
+  }
 
 private fun useIssueSampleEvent(key: InsightsProviderKey) = key == VITALS_KEY
 
