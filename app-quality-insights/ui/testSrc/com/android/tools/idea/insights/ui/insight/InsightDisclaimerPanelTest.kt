@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -138,6 +139,9 @@ class InsightDisclaimerPanelTest {
     }
   }
 
+  @Ignore(
+    "The disclaimer panel is not shown at all in this version. It is removed in the next version of Studio."
+  )
   @Test
   fun `check dialog popup content`() {
     createDisclaimerPanel()
