@@ -31,9 +31,4 @@ class EmulatorXrRecenterAction : AbstractEmulatorAction(configFilter = { it.devi
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
-
-  override fun update(event: AnActionEvent) {
-    super.update(event)
-    event.presentation.isEnabledAndVisible = getEmulatorConfig(event)?.deviceType == DeviceType.XR
-  }
 }

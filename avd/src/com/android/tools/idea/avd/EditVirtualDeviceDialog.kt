@@ -38,6 +38,7 @@ import com.android.tools.idea.sdk.IdeAvdManagers
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import java.awt.Component
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.StateFlow
@@ -98,18 +99,17 @@ internal class EditVirtualDeviceDialog(
         avdBuilder.avdFolder = avdManager.uniquifyAvdFolder(avdBuilder.avdName)
       }
     }
-    val newAvdInfo =
-      withContext(AndroidDispatchers.diskIoThread) {
-        when (mode) {
-          Mode.EDIT -> avdManager.editAvd(avdInfo, avdBuilder)
-          Mode.DUPLICATE -> avdManager.duplicateAvd(avdInfo, avdBuilder)
-        }
+    withContext(AndroidDispatchers.diskIoThread) {
+      when (mode) {
+        Mode.EDIT -> avdManager.editAvd(avdInfo, avdBuilder)
+        Mode.DUPLICATE -> avdManager.duplicateAvd(avdInfo, avdBuilder)
       }
-    return newAvdInfo != null
+    }
+    return true
   }
 
   companion object {
-    suspend fun show(project: Project?, avdInfo: AvdInfo, mode: Mode): Boolean {
+    suspend fun show(project: Project?, parent: Component?, avdInfo: AvdInfo, mode: Mode): Boolean {
       val skins =
         withContext(AndroidDispatchers.workerThread) {
           SkinComboBoxModel.merge(listOf(NoSkin.INSTANCE), SkinCollector.updateAndCollect())
@@ -122,7 +122,7 @@ internal class EditVirtualDeviceDialog(
       if (baseDevice == null) {
         withContext(AndroidDispatchers.uiThread) {
           Messages.showErrorDialog(
-            project,
+            parent,
             "The hardware profile for this device is no longer present. Please create a new device.",
             "Edit Device",
           )
@@ -135,7 +135,9 @@ internal class EditVirtualDeviceDialog(
       return withContext(AndroidDispatchers.uiThread) {
         val wizard =
           with(dialog) {
-            ComposeWizard(project, "Edit Device", minimumSize = DEVICE_DIALOG_MIN_SIZE) { Page() }
+            ComposeWizard(project, "Edit Device", parent, minimumSize = DEVICE_DIALOG_MIN_SIZE) {
+              Page()
+            }
           }
         wizard.showAndGet()
       }

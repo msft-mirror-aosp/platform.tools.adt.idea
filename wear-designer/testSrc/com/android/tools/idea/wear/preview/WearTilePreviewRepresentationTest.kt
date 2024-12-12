@@ -155,7 +155,7 @@ class WearTilePreviewRepresentationTest {
 
         val previewElements =
           preview.previewView.mainSurface.models.mapNotNull {
-            it.dataContext.getData(PREVIEW_ELEMENT_INSTANCE) as? WearTilePreviewElement
+            it.dataProvider?.getData(PREVIEW_ELEMENT_INSTANCE) as? WearTilePreviewElement
           }
         assertThat(previewElements).hasSize(1)
         assertThat(previewElements.map { it.methodFqn })
@@ -277,7 +277,7 @@ class WearTilePreviewRepresentationTest {
         val sceneViewWithNormalPreviewAnnotation =
           preview.previewView.mainSurface.sceneManagers
             .first {
-              it.model.dataContext.getData(PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.name ==
+              it.model.dataProvider?.getData(PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.name ==
                 "tilePreview3 - preview3"
             }
             .sceneViews
@@ -305,7 +305,7 @@ class WearTilePreviewRepresentationTest {
         val sceneViewWithMultiPreviewAnnotation =
           preview.previewView.mainSurface.sceneManagers
             .first {
-              it.model.dataContext.getData(PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.name ==
+              it.model.dataProvider?.getData(PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.name ==
                 "tilePreview3 - multipreview preview"
             }
             .sceneViews
@@ -368,25 +368,25 @@ class WearTilePreviewRepresentationTest {
       assertEquals(
         """
           TestKt.preview
-          PreviewDisplaySettings(name=preview, baseName=preview, parameterName=null, group=null, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=preview, baseName=preview, parameterName=null, group=null, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 1, baseName=multiPreview, parameterName=1, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 1, baseName=multiPreview, parameterName=1, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 2, baseName=multiPreview, parameterName=2, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 2, baseName=multiPreview, parameterName=2, group=2, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 3, baseName=multiPreview, parameterName=3, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 3, baseName=multiPreview, parameterName=3, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 4, baseName=multiPreview, parameterName=4, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 4, baseName=multiPreview, parameterName=4, group=3, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 5, baseName=multiPreview, parameterName=5, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 5, baseName=multiPreview, parameterName=5, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
           TestKt.multiPreview
-          PreviewDisplaySettings(name=multiPreview - 6, baseName=multiPreview, parameterName=6, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL)
+          PreviewDisplaySettings(name=multiPreview - 6, baseName=multiPreview, parameterName=6, group=1, showDecoration=false, showBackground=true, backgroundColor=#ff000000, displayPositioning=NORMAL, organizationGroup=null)
 
         """
           .trimIndent(),
@@ -407,7 +407,7 @@ class WearTilePreviewRepresentationTest {
 
     val previewElements =
       preview.previewView.mainSurface.models.mapNotNull {
-        it.dataContext.getData(PREVIEW_ELEMENT_INSTANCE) as? PsiWearTilePreviewElement
+        it.dataProvider?.getData(PREVIEW_ELEMENT_INSTANCE) as? PsiWearTilePreviewElement
       }
     assertThat(previewElements).containsExactly(previewElement)
     assertThat(preview.previewView.galleryMode).isNotNull()

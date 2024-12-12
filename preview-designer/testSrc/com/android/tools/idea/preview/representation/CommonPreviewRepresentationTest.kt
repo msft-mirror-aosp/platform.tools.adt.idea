@@ -22,6 +22,7 @@ import com.android.tools.analytics.AnalyticsSettings
 import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.compile.fast.isSuccess
 import com.android.tools.configurations.Configuration
+import com.android.tools.idea.common.model.NlDataProvider
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
@@ -75,7 +76,6 @@ import com.google.wireless.android.sdk.stats.PreviewRefreshEvent
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataKey
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteActionAndWait
@@ -143,11 +143,14 @@ private class TestPreviewElementModelAdapter :
 
   override fun modelToElement(model: NlModel): PsiTestPreviewElement? =
     if (!model.isDisposed) {
-      model.dataContext.getData(TEST_PREVIEW_ELEMENT_KEY)
+      model.dataProvider?.getData(TEST_PREVIEW_ELEMENT_KEY)
     } else null
 
-  override fun createDataContext(previewElement: PsiTestPreviewElement): DataContext =
-    SimpleDataContext.builder().add(TEST_PREVIEW_ELEMENT_KEY, previewElement).build()
+  override fun createDataProvider(previewElement: PsiTestPreviewElement): NlDataProvider =
+    object : NlDataProvider(TEST_PREVIEW_ELEMENT_KEY) {
+      override fun getData(dataId: String): Any? =
+        previewElement.takeIf { dataId == TEST_PREVIEW_ELEMENT_KEY.name }
+    }
 
   override fun toLogString(previewElement: PsiTestPreviewElement): String = ""
 
@@ -373,7 +376,7 @@ class CommonPreviewRepresentationTest {
         refreshManager.getTotalRequestsInQueueForTest() == 1
       }
       assertFalse(previewRepresentation.isInvalidatedForTest())
-      blockingRefresh.runningRefreshJob!!.cancel()
+      blockingRefresh.runningRefreshJob?.cancel()
     }
 
   @Test
@@ -426,6 +429,7 @@ class CommonPreviewRepresentationTest {
     } finally {
       PreviewRefreshTracker.cleanAfterTesting(previewRepresentation.previewView.mainSurface)
       AnalyticsSettings.optedIn = false
+      previewRepresentation.onDeactivateImmediately()
     }
   }
 
@@ -628,6 +632,8 @@ class CommonPreviewRepresentationTest {
       }
 
       val state = persistedPreviewRepresentation.getState()
+      // Deactivate now to avoid interfering with the other preview representation
+      persistedPreviewRepresentation.onDeactivateImmediately()
 
       val restoredPreviewRepresentation = createPreviewRepresentation()
       assertThat(restoredPreviewRepresentation.mode.value).isNotEqualTo(PreviewMode.Gallery(null))
@@ -644,7 +650,6 @@ class CommonPreviewRepresentationTest {
           .isEqualTo(GALLERY_LAYOUT_OPTION)
       }
 
-      persistedPreviewRepresentation.onDeactivateImmediately()
       restoredPreviewRepresentation.onDeactivateImmediately()
     }
 
@@ -672,6 +677,8 @@ class CommonPreviewRepresentationTest {
       }
 
       val state = persistedPreviewRepresentation.getState()
+      // Deactivate now to avoid interfering with the other preview representation
+      persistedPreviewRepresentation.onDeactivateImmediately()
 
       val restoredPreviewRepresentation = createPreviewRepresentation(previewElementProvider)
       restoredPreviewRepresentation.setState(state)
@@ -687,7 +694,6 @@ class CommonPreviewRepresentationTest {
           .isEqualTo(GALLERY_LAYOUT_OPTION)
       }
 
-      persistedPreviewRepresentation.onDeactivateImmediately()
       restoredPreviewRepresentation.onDeactivateImmediately()
     }
 
@@ -707,6 +713,8 @@ class CommonPreviewRepresentationTest {
         PreviewGroup.namedGroup("test group")
 
       val state = persistedPreviewRepresentation.getState()
+      // Deactivate now to avoid interfering with the other preview representation
+      persistedPreviewRepresentation.onDeactivateImmediately()
 
       val restoredPreviewRepresentation = createPreviewRepresentation(previewElementProvider)
       restoredPreviewRepresentation.setState(state)
@@ -714,7 +722,6 @@ class CommonPreviewRepresentationTest {
       assertThat(restoredPreviewRepresentation.groupManager.groupFilter)
         .isEqualTo(PreviewGroup.namedGroup("test group"))
 
-      persistedPreviewRepresentation.onDeactivateImmediately()
       restoredPreviewRepresentation.onDeactivateImmediately()
     }
 

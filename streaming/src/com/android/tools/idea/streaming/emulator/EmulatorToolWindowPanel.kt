@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.AnyThread
 import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.DisplayConfigurations
 import com.android.emulator.control.ExtendedControlsStatus
+import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
@@ -98,7 +99,15 @@ internal class EmulatorToolWindowPanel(
     get() = emulator.emulatorId
 
   override val title: String
-    get() = emulatorId.avdName
+    get() {
+      val avdName = emulatorId.avdName
+      if (avdName.contains(" API ")) {
+        return avdName
+      }
+      val avdManager = AvdManagerConnection.getDefaultAvdManagerConnection()
+      avdManager.findAvdWithFolder(emulatorId.avdFolder)?.let { return it.displayNameWithApi }
+      return if (emulator.connectionState == ConnectionState.CONNECTED) "$avdName API ${emulator.emulatorConfig.api}" else avdName
+    }
 
   override val description: String
     get() = "${emulatorId.avdName} ${"(${emulatorId.serialNumber})".htmlColored(JBColor.GRAY)}"
@@ -110,7 +119,9 @@ internal class EmulatorToolWindowPanel(
       return ExecutionUtil.getLiveIndicator(icon)
     }
 
-  override val isClosable: Boolean = true
+  /** Device type is available only after the connection to the emulator is established. */
+  override val deviceType: DeviceType
+    get() = emulator.emulatorConfig.deviceType
 
   override val preferredFocusableComponent: JComponent
     get() = primaryDisplayView ?: this

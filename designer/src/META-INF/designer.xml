@@ -85,6 +85,7 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <trafficLightRendererContributor implementation="com.android.tools.idea.uibuilder.editor.ResourceFileTrafficLightRendererContributor"/>
+    <moduleService serviceImplementation="com.android.tools.idea.uibuilder.palette.NlPaletteModel" />
   </extensions>
 
   <module-components>
@@ -208,9 +209,6 @@
 
     <action internal="true" id="Android.GenerateLayoutTestSkeletonAction" class="com.android.tools.idea.uibuilder.actions.GenerateLayoutTestSkeletonAction">
         <add-to-group group-id="Internal.Android" anchor="after" relative-to-action="Android.TerminateAdbAction"/>
-    </action>
-    <action internal="true" id="Android.ShowSceneViewToolbarAction" class="com.android.tools.idea.common.surface.ShowSceneViewToolbarAction">
-      <add-to-group group-id="Internal.Android" anchor="after" relative-to-action="Android.GenerateLayoutTestSkeletonAction"/>
     </action>
   </actions>
 

@@ -31,6 +31,7 @@ import com.android.sdklib.DeviceSystemImageMatcher
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.RemoteSystemImage
 import com.android.sdklib.SdkVersionInfo
+import com.android.sdklib.internal.avd.AvdManagerException
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.compose.LocalFileSystem
 import com.android.tools.adtui.compose.WizardAction
@@ -48,6 +49,7 @@ import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.ui.MessageDialogBuilder
+import com.intellij.openapi.ui.Messages
 import com.intellij.platform.ide.progress.ModalTaskOwner
 import com.intellij.platform.ide.progress.TaskCancellation
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
@@ -149,9 +151,7 @@ internal fun WizardPageScope.ConfigurationPage(
   updateSystemImageSelection(state.systemImageTableSelectionState, filteredImageState)
 
   @OptIn(ExperimentalJewelApi::class) val parent = LocalComponent.current
-
   val coroutineScope = rememberCoroutineScope()
-  val component = LocalComponent.current
 
   Column {
     if (!state.validity.isPreferredAbiValid) {
@@ -179,11 +179,11 @@ internal fun WizardPageScope.ConfigurationPage(
     if (state.isValid) {
       WizardAction {
         runWithModalProgressBlocking(
-          ModalTaskOwner.component(component),
+          ModalTaskOwner.component(parent),
           "Creating AVD",
           TaskCancellation.nonCancellable(),
         ) {
-          state.resetPlayStoreFields(resolveDefaultSkin(state.device, sdkHandler, fileSystem))
+          state.resetPlayStoreFields()
 
           withContext(AndroidDispatchers.uiThread) {
             finish(
@@ -245,8 +245,13 @@ private suspend fun WizardDialogScope.finish(
       message = "An error occurred while creating the AVD. See idea.log for details.",
       title = "Error Creating AVD",
     ) {
-      if (finish(device, sdkHandler.toLocalImage(image))) {
-        close()
+      try {
+        if (finish(device, sdkHandler.toLocalImage(image))) {
+          close()
+        }
+      } catch (e: AvdManagerException) {
+        logger<AvdConfigurationPage>().warn(e)
+        Messages.showErrorDialog(parent, e.message, "Error Creating AVD")
       }
     }
   }

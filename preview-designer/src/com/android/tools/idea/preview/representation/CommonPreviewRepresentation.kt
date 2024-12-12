@@ -17,6 +17,7 @@ package com.android.tools.idea.preview.representation
 
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.common.model.DefaultModelUpdater
+import com.android.tools.idea.common.model.NlDataProvider
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
@@ -94,7 +95,6 @@ import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.CustomizedDataContext
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runReadAction
@@ -219,7 +219,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   val navigationHandler =
     DefaultNavigationHandler { sceneView, _, _, _, _ ->
         val model = sceneView.sceneManager.model
-        val previewElement = model.dataContext.getData(PREVIEW_ELEMENT_INSTANCE)
+        val previewElement = model.dataProvider?.getData(PREVIEW_ELEMENT_INSTANCE)
 
         previewElement?.previewElementDefinition?.element?.navigationElement
           as? NavigatablePsiElement
@@ -341,18 +341,34 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
 
   private val previewElementModelAdapter =
     object : DelegatingPreviewElementModelAdapter<T, NlModel>(previewElementModelAdapterDelegate) {
-      override fun createDataContext(previewElement: T) =
-        CustomizedDataContext.withSnapshot(
-          previewElementModelAdapterDelegate.createDataContext(previewElement)
-        ) { sink ->
-          sink[PREVIEW_ELEMENT_INSTANCE] = previewElement
-          sink[CommonDataKeys.PROJECT] = project
-          sink[PreviewModeManager.KEY] = this@CommonPreviewRepresentation
-          sink[PreviewGroupManager.KEY] = previewFlowManager
-          sink[PreviewFlowManager.KEY] = previewFlowManager
-          sink[FastPreviewSurface.KEY] = this@CommonPreviewRepresentation
-          sink[PreviewInvalidationManager.KEY] = this@CommonPreviewRepresentation
+      override fun createDataProvider(previewElement: T): NlDataProvider {
+        val delegatedProvider =
+          previewElementModelAdapterDelegate.createDataProvider(previewElement)
+        val keys =
+          mutableSetOf(
+            PREVIEW_ELEMENT_INSTANCE,
+            CommonDataKeys.PROJECT,
+            PreviewModeManager.KEY,
+            PreviewGroupManager.KEY,
+            PreviewFlowManager.KEY,
+            FastPreviewSurface.KEY,
+            PreviewInvalidationManager.KEY,
+          )
+        delegatedProvider?.let { keys.addAll(it.keys) }
+        return object : NlDataProvider(keys) {
+          override fun getData(dataId: String): Any? =
+            when (dataId) {
+              PREVIEW_ELEMENT_INSTANCE.name -> previewElement
+              CommonDataKeys.PROJECT.name -> project
+              PreviewModeManager.KEY.name -> this@CommonPreviewRepresentation
+              PreviewGroupManager.KEY.name -> previewFlowManager
+              PreviewFlowManager.KEY.name -> previewFlowManager
+              FastPreviewSurface.KEY.name -> this@CommonPreviewRepresentation
+              PreviewInvalidationManager.KEY.name -> this@CommonPreviewRepresentation
+              else -> delegatedProvider?.getData(dataId)
+            }
         }
+      }
     }
 
   private val previewModeManager = CommonPreviewModeManager()
@@ -507,10 +523,10 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   private fun createRefreshJob(
     request: CommonPreviewRefreshRequest,
     refreshProgressIndicator: BackgroundableProcessIndicator,
-    invalidateIfCancelled: AtomicBoolean,
   ) =
     launchWithProgress(refreshProgressIndicator, workerThread) {
       val requestLogger = LoggerWithFixedInfo(LOG, mapOf("requestId" to request.requestId))
+      val invalidateIfCancelled = AtomicBoolean(false)
 
       if (DumbService.isDumb(project)) {
         return@launchWithProgress
@@ -574,8 +590,17 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
           doRefreshSync(filePreviewElements, refreshProgressIndicator, request.refreshEventBuilder)
         }
       } catch (t: Throwable) {
-        // Make sure to propagate cancellations
-        if (t is CancellationException) throw t else requestLogger.warn("Request failed", t)
+        if (t is CancellationException) {
+          // We want to make sure the next refresh invalidates if this invalidation didn't happen
+          // Careful though, this needs to be performed here and not in the invokeOnCompletion of
+          // the job that is returned as the invokeOnComplete is run concurrently with the next
+          // refresh request and there can be race conditions.
+          if (invalidateIfCancelled.get()) {
+            invalidate()
+          }
+          // Make sure to propagate cancellations
+          throw t
+        } else requestLogger.warn("Request failed", t)
       } finally {
         previewViewModel.refreshFinished()
       }
@@ -625,13 +650,9 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       }
     }
 
-    val invalidateIfCancelled = AtomicBoolean(false)
-    val refreshJob = createRefreshJob(request, refreshProgressIndicator, invalidateIfCancelled)
+    val refreshJob = createRefreshJob(request, refreshProgressIndicator)
     refreshJob.invokeOnCompletion {
       LOG.debug("Completed")
-      if (it is CancellationException && invalidateIfCancelled.get()) {
-        invalidate()
-      }
       // Progress indicators must be disposed in the ui thread
       launch(uiThread) { Disposer.dispose(refreshProgressIndicator) }
       previewViewModel.refreshCompleted(it is CancellationException, System.nanoTime() - startTime)

@@ -34,7 +34,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Step to show installation progress when installing components
  */
-public class InstallComponentsProgressStep extends ProgressStep {
+public class InstallComponentsProgressStep extends AbstractProgressStep<FirstRunWizardModel> {
   private final BoolProperty myIsBusyProperty = new BoolProperty() {
     private final AtomicBoolean myIsBusy = new AtomicBoolean(false);
 
@@ -50,7 +50,7 @@ public class InstallComponentsProgressStep extends ProgressStep {
   };
   private final LicenseAgreementModel licenseAgreementModel;
 
-  public InstallComponentsProgressStep(@NotNull FirstRunModel model, @NotNull LicenseAgreementModel licenseAgreementModel, @NotNull Disposable disposable) {
+  public InstallComponentsProgressStep(@NotNull FirstRunWizardModel model, @NotNull LicenseAgreementModel licenseAgreementModel, @NotNull Disposable disposable) {
     super(model, disposable, "Downloading Components");
     this.licenseAgreementModel = licenseAgreementModel;
   }

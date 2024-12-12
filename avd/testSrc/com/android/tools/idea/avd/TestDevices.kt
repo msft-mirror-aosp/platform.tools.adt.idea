@@ -23,8 +23,9 @@ import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
+import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import java.io.ByteArrayInputStream
-import java.nio.file.FileSystem
+import java.nio.file.Path
 import org.mockito.kotlin.mock
 
 fun readTestDevices() =
@@ -109,11 +110,43 @@ private const val testDeviceXml =
 """
 
 internal object TestDevices {
-  internal fun pixel6(fileSystem: FileSystem): VirtualDevice {
+  internal fun mediumPhone(): VirtualDevice {
+    val ram = StorageCapacity(2, StorageCapacity.Unit.GB)
+    val vmHeapSize = StorageCapacity(228, StorageCapacity.Unit.MB)
+
+    return VirtualDevice(
+      name = "Medium Phone",
+      device = mock(),
+      skin = NoSkin.INSTANCE,
+      defaultSkin = NoSkin.INSTANCE,
+      frontCamera = AvdCamera.EMULATED,
+      rearCamera = AvdCamera.VIRTUAL_SCENE,
+      speed = AvdNetworkSpeed.FULL,
+      latency = AvdNetworkLatency.NONE,
+      orientation = ScreenOrientation.PORTRAIT,
+      defaultBoot = Boot.QUICK,
+      internalStorage = StorageCapacity(2, StorageCapacity.Unit.GB),
+      expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
+      cpuCoreCount = 4,
+      graphicsMode = GraphicsMode.AUTO,
+      ram = ram,
+      defaultRam = ram,
+      vmHeapSize = vmHeapSize,
+      defaultVmHeapSize = vmHeapSize,
+      preferredAbi = null,
+      hasPlaystore = true,
+      isFoldable = false,
+      cameraLocations = listOf(CameraLocation.BACK, CameraLocation.FRONT),
+      formFactor = FormFactors.PHONE,
+    )
+  }
+
+  internal fun pixel6(): VirtualDevice {
     val skin =
-      DefaultSkin(
-        fileSystem.getPath(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_6")
-      )
+      DefaultSkin(Path.of(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_6"))
+
+    val ram = StorageCapacity(2, StorageCapacity.Unit.GB)
+    val vmHeapSize = StorageCapacity(228, StorageCapacity.Unit.MB)
 
     return VirtualDevice(
       name = "Pixel 6",
@@ -130,8 +163,10 @@ internal object TestDevices {
       expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
       cpuCoreCount = 4,
       graphicsMode = GraphicsMode.AUTO,
-      ram = StorageCapacity(2, StorageCapacity.Unit.GB),
-      vmHeapSize = StorageCapacity(228, StorageCapacity.Unit.MB),
+      ram = ram,
+      defaultRam = ram,
+      vmHeapSize = vmHeapSize,
+      defaultVmHeapSize = vmHeapSize,
       preferredAbi = null,
       isFoldable = false,
       cameraLocations = listOf(CameraLocation.BACK, CameraLocation.FRONT),
@@ -139,17 +174,14 @@ internal object TestDevices {
     )
   }
 
-  internal fun pixel9Pro(fileSystem: FileSystem): VirtualDevice {
+  internal fun pixel9Pro(): VirtualDevice {
     val skin =
       DefaultSkin(
-        fileSystem.getPath(
-          System.getProperty("user.home"),
-          "Android",
-          "Sdk",
-          "skins",
-          "pixel_9_pro",
-        )
+        Path.of(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_9_pro")
       )
+
+    val ram = StorageCapacity(2, StorageCapacity.Unit.GB)
+    val vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB)
 
     return VirtualDevice(
       name = "Pixel 9 Pro",
@@ -166,8 +198,10 @@ internal object TestDevices {
       expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
       cpuCoreCount = 4,
       graphicsMode = GraphicsMode.AUTO,
-      ram = StorageCapacity(2, StorageCapacity.Unit.GB),
-      vmHeapSize = StorageCapacity(256, StorageCapacity.Unit.MB),
+      ram = ram,
+      defaultRam = ram,
+      vmHeapSize = vmHeapSize,
+      defaultVmHeapSize = vmHeapSize,
       preferredAbi = null,
       hasPlaystore = true,
       isFoldable = false,
@@ -176,17 +210,14 @@ internal object TestDevices {
     )
   }
 
-  internal fun pixel9ProFold(fileSystem: FileSystem): VirtualDevice {
+  internal fun pixel9ProFold(): VirtualDevice {
     val skin =
       DefaultSkin(
-        fileSystem.getPath(
-          System.getProperty("user.home"),
-          "Android",
-          "Sdk",
-          "skins",
-          "pixel_9_pro_fold",
-        )
+        Path.of(System.getProperty("user.home"), "Android", "Sdk", "skins", "pixel_9_pro_fold")
       )
+
+    val ram = StorageCapacity(2, StorageCapacity.Unit.GB)
+    val vmHeapSize = StorageCapacity(288, StorageCapacity.Unit.MB)
 
     return VirtualDevice(
       name = "Pixel 9 Pro Fold",
@@ -203,13 +234,51 @@ internal object TestDevices {
       expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
       cpuCoreCount = 4,
       graphicsMode = GraphicsMode.AUTO,
-      ram = StorageCapacity(2, StorageCapacity.Unit.GB),
-      vmHeapSize = StorageCapacity(288, StorageCapacity.Unit.MB),
+      ram = ram,
+      defaultRam = ram,
+      vmHeapSize = vmHeapSize,
+      defaultVmHeapSize = vmHeapSize,
       preferredAbi = null,
       hasPlaystore = true,
       isFoldable = true,
       cameraLocations = listOf(CameraLocation.BACK, CameraLocation.FRONT),
       formFactor = FormFactors.PHONE,
+    )
+  }
+
+  internal fun wearOSSmallRound(): VirtualDevice {
+    val skin =
+      DefaultSkin(
+        Path.of(System.getProperty("user.home"), "Android", "Sdk", "skins", "wearos_small_round")
+      )
+
+    val ram = StorageCapacity(512, StorageCapacity.Unit.MB)
+    val vmHeapSize = StorageCapacity(48, StorageCapacity.Unit.MB)
+
+    return VirtualDevice(
+      name = "Wear OS Small Round",
+      device = mock(),
+      skin = skin,
+      defaultSkin = skin,
+      frontCamera = AvdCamera.NONE,
+      rearCamera = AvdCamera.NONE,
+      speed = AvdNetworkSpeed.FULL,
+      latency = AvdNetworkLatency.NONE,
+      orientation = ScreenOrientation.PORTRAIT,
+      defaultBoot = Boot.QUICK,
+      internalStorage = StorageCapacity(2, StorageCapacity.Unit.GB),
+      expandedStorage = Custom(StorageCapacity(512, StorageCapacity.Unit.MB)),
+      cpuCoreCount = 4,
+      graphicsMode = GraphicsMode.AUTO,
+      ram = ram,
+      defaultRam = ram,
+      vmHeapSize = vmHeapSize,
+      defaultVmHeapSize = vmHeapSize,
+      preferredAbi = null,
+      hasPlaystore = true,
+      isFoldable = false,
+      cameraLocations = emptyList(),
+      formFactor = FormFactors.WEAR,
     )
   }
 }

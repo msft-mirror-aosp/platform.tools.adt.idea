@@ -32,7 +32,6 @@ import com.android.tools.idea.avdmanager.AvdLaunchListener
 import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.concurrency.addCallback
 import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
@@ -45,6 +44,7 @@ import com.android.tools.idea.streaming.MirroringHandle
 import com.android.tools.idea.streaming.MirroringManager
 import com.android.tools.idea.streaming.MirroringState
 import com.android.tools.idea.streaming.RUNNING_DEVICES_TOOL_WINDOW_ID
+import com.android.tools.idea.streaming.actions.toolWindowContents
 import com.android.tools.idea.streaming.core.StreamingDevicePanel.UiState
 import com.android.tools.idea.streaming.device.DeviceClient
 import com.android.tools.idea.streaming.device.DeviceConfiguration
@@ -57,6 +57,8 @@ import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionSt
 import com.android.tools.idea.streaming.emulator.EmulatorId
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
+import com.android.tools.idea.streaming.emulator.actions.ToggleFloatingXrToolbarAction
+import com.android.tools.idea.streaming.emulator.displayNameWithApi
 import com.android.utils.TraceUtils.simpleId
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -115,7 +117,6 @@ import com.intellij.ui.popup.list.ListPopupImpl
 import com.intellij.util.Alarm
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.concurrency.AppExecutorUtil.createBoundedApplicationPoolExecutor
-import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.containers.ComparatorUtil.max
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.ui.UIUtil
@@ -125,7 +126,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
@@ -134,6 +134,7 @@ import java.awt.Component
 import java.awt.EventQueue
 import java.awt.event.KeyEvent
 import java.util.function.Supplier
+import javax.swing.JComponent
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -168,7 +169,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   private val project
     @AnyThread get() = toolWindow.project
-  private val properties = PropertiesComponent.getInstance(project)
+  private val projectProperties = PropertiesComponent.getInstance(project)
   private val emulatorSettings = EmulatorSettings.getInstance()
   private val deviceMirroringSettings = DeviceMirroringSettings.getInstance()
   private val deviceProvisioner
@@ -259,9 +260,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private var deviceFrameVisible
-    get() = properties.getBoolean(DEVICE_FRAME_VISIBLE_PROPERTY, DEVICE_FRAME_VISIBLE_DEFAULT)
+    get() = projectProperties.getBoolean(DEVICE_FRAME_VISIBLE_PROPERTY, DEVICE_FRAME_VISIBLE_DEFAULT)
     set(value) {
-      properties.setValue(DEVICE_FRAME_VISIBLE_PROPERTY, value, DEVICE_FRAME_VISIBLE_DEFAULT)
+      projectProperties.setValue(DEVICE_FRAME_VISIBLE_PROPERTY, value, DEVICE_FRAME_VISIBLE_DEFAULT)
       for (contentManager in contentManagers) {
         for (i in 0 until contentManager.contentCount) {
           (contentManager.getContent(i)?.component as? StreamingDevicePanel)?.setDeviceFrameVisible(value)
@@ -270,9 +271,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     }
 
   private var zoomToolbarIsVisible
-    get() = properties.getBoolean(ZOOM_TOOLBAR_VISIBLE_PROPERTY, ZOOM_TOOLBAR_VISIBLE_DEFAULT)
+    get() = projectProperties.getBoolean(ZOOM_TOOLBAR_VISIBLE_PROPERTY, ZOOM_TOOLBAR_VISIBLE_DEFAULT)
     set(value) {
-      properties.setValue(ZOOM_TOOLBAR_VISIBLE_PROPERTY, value, ZOOM_TOOLBAR_VISIBLE_DEFAULT)
+      projectProperties.setValue(ZOOM_TOOLBAR_VISIBLE_PROPERTY, value, ZOOM_TOOLBAR_VISIBLE_DEFAULT)
       for (contentManager in contentManagers) {
         for (i in 0 until contentManager.contentCount) {
           (contentManager.getContent(i)?.component as? StreamingDevicePanel)?.zoomToolbarVisible = value
@@ -358,14 +359,15 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     recentAttentionRequests.put(serialNumber, activation)
     alarm.addRequest(recentAttentionRequests::cleanUp, ATTENTION_REQUEST_EXPIRATION.inWholeMicroseconds)
     if (isLocalEmulator(serialNumber)) {
-      val future = RunningEmulatorCatalog.getInstance().updateNow()
-      future.addCallback(EdtExecutorService.getInstance(),
-                         success = { emulators ->
-                           if (emulators != null) {
-                             onEmulatorHeadsUp(serialNumber, emulators, activation)
-                           }
-                         },
-                         failure = {})
+      val deferred = RunningEmulatorCatalog.getInstance().updateNow()
+      toolWindowScope.launch(Dispatchers.EDT) {
+        try {
+          val emulators = deferred.await()
+          onEmulatorHeadsUp(serialNumber, emulators, activation)
+        }
+        catch (_: Exception) {
+        }
+      }
     }
   }
 
@@ -407,6 +409,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
       val actionGroup = DefaultActionGroup()
       actionGroup.addAction(ToggleZoomToolbarAction())
+      actionGroup.addAction(ToggleFloatingXrToolbarAction())
       actionGroup.addAction(ToggleDeviceFrameAction())
       toolWindow.setAdditionalGearActions(actionGroup)
       adoptContentManager(toolWindow.contentManager)
@@ -988,7 +991,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         add(Separator.getInstance())
       }
 
-      val avds = getStartableVirtualDevices().sortedBy { it.displayName }
+      val avds = getStartableVirtualDevices().sortedBy { it.displayNameWithApi }
       if (avds.isNotEmpty()) {
         add(Separator("Virtual Devices"))
         for (avd in avds) {
@@ -1069,6 +1072,18 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
     override fun setSelected(event: AnActionEvent, state: Boolean) {
       zoomToolbarIsVisible = state
+    }
+
+    override fun update(event: AnActionEvent) {
+      super.update(event)
+      // Enabled only for non-XR devices.
+      event.presentation.isEnabledAndVisible =
+          event.toolWindowContents.find { it.isSelected &&it.component.isNonXrDevicePanel() } != null
+    }
+
+    private fun JComponent.isNonXrDevicePanel(): Boolean {
+      this as? StreamingDevicePanel ?: return false
+      return deviceType != DeviceType.XR
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
@@ -1195,7 +1210,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   private inner class StartAvdAction(
     private val avd: AvdInfo,
     private val project: Project,
-  ) : DumbAwareAction(avd.displayName, null, avd.icon) {
+  ) : DumbAwareAction(avd.displayNameWithApi, null, avd.icon) {
 
     override fun actionPerformed(event: AnActionEvent) {
       val contentManager = event.contentManager
@@ -1292,7 +1307,7 @@ private suspend fun DeviceState.Connected.isMirrorable(): Boolean {
       if (!StudioFlags.DEVICE_MIRRORING_STANDALONE_EMULATORS.get()) {
         return false
       }
-      val emulators = RunningEmulatorCatalog.getInstance().updateNow().suspendingGet()
+      val emulators = RunningEmulatorCatalog.getInstance().updateNow().await()
       val emulator = emulators.find { "emulator-${it.emulatorId.serialPort}" == deviceSerialNumber }
       if (emulator == null || emulator.emulatorId.isEmbedded) {
         return false

@@ -23,6 +23,7 @@ import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
 import com.android.tools.idea.common.model.AccessibilityModelUpdater
 import com.android.tools.idea.common.model.DefaultModelUpdater
+import com.android.tools.idea.common.model.NlDataProvider
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
@@ -110,7 +111,6 @@ import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.application.ApplicationManager
@@ -154,7 +154,6 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
@@ -186,28 +185,41 @@ private val accessibilityModelUpdater: NlModelUpdaterInterface = AccessibilityMo
  * @param previewElement the [ComposePreviewElementInstance] associated to this model
  * @param fastPreviewSurface the [FastPreviewSurface] of the preview
  */
-private class PreviewElementDataContext(
-  private val project: Project,
-  private val composePreviewManager: ComposePreviewManager,
-  private val previewFlowManager: PreviewFlowManager<out ComposePreviewElementInstance<*>>,
-  private val previewElement: ComposePreviewElementInstance<*>,
-  private val fastPreviewSurface: FastPreviewSurface,
-) : DataContext {
-  override fun getData(dataId: String): Any? =
-    when (dataId) {
-      COMPOSE_PREVIEW_MANAGER.name,
-      PreviewModeManager.KEY.name -> composePreviewManager
-      PreviewGroupManager.KEY.name,
-      PreviewFlowManager.KEY.name -> previewFlowManager
-      PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name,
-      PREVIEW_ELEMENT_INSTANCE.name -> previewElement
-      CommonDataKeys.PROJECT.name -> project
-      PREVIEW_VIEW_MODEL_STATUS.name -> composePreviewManager.status()
-      FastPreviewSurface.KEY.name -> fastPreviewSurface
-      PreviewInvalidationManager.KEY.name -> composePreviewManager
-      else -> null
-    }
-}
+private fun createPreviewElementDataProvider(
+  project: Project,
+  composePreviewManager: ComposePreviewManager,
+  previewFlowManager: PreviewFlowManager<out ComposePreviewElementInstance<*>>,
+  previewElement: PsiComposePreviewElementInstance,
+  fastPreviewSurface: FastPreviewSurface,
+) =
+  object :
+    NlDataProvider(
+      COMPOSE_PREVIEW_MANAGER,
+      PreviewModeManager.KEY,
+      PreviewGroupManager.KEY,
+      PreviewFlowManager.KEY,
+      PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE,
+      PREVIEW_ELEMENT_INSTANCE,
+      CommonDataKeys.PROJECT,
+      PREVIEW_VIEW_MODEL_STATUS,
+      FastPreviewSurface.KEY,
+      PreviewInvalidationManager.KEY,
+    ) {
+    override fun getData(dataId: String): Any? =
+      when (dataId) {
+        COMPOSE_PREVIEW_MANAGER.name,
+        PreviewModeManager.KEY.name -> composePreviewManager
+        PreviewGroupManager.KEY.name,
+        PreviewFlowManager.KEY.name -> previewFlowManager
+        PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name,
+        PREVIEW_ELEMENT_INSTANCE.name -> previewElement
+        CommonDataKeys.PROJECT.name -> project
+        PREVIEW_VIEW_MODEL_STATUS.name -> composePreviewManager.status()
+        FastPreviewSurface.KEY.name -> fastPreviewSurface
+        PreviewInvalidationManager.KEY.name -> composePreviewManager
+        else -> null
+      }
+  }
 
 /**
  * Sets up the given [sceneManager] with the right values to work on the Compose Preview. Currently,
@@ -491,8 +503,8 @@ class ComposePreviewRepresentation(
 
   private val previewElementModelAdapter =
     object : ComposePreviewElementModelAdapter() {
-      override fun createDataContext(previewElement: PsiComposePreviewElementInstance) =
-        PreviewElementDataContext(
+      override fun createDataProvider(previewElement: PsiComposePreviewElementInstance) =
+        createPreviewElementDataProvider(
           project,
           this@ComposePreviewRepresentation,
           composePreviewFlowManager,
@@ -1325,8 +1337,15 @@ class ComposePreviewRepresentation(
             )
           }
         } catch (t: Throwable) {
-          // Make sure to propagate cancellations
-          if (t is CancellationException) throw t else requestLogger.warn("Request failed", t)
+          if (t is CancellationException) {
+            // We want to make sure the next refresh invalidates if this invalidation didn't happen
+            // Careful though, this needs to be performed here and not in the invokeOnCompletion of
+            // the job that is returned as the invokeOnComplete is run concurrently with the next
+            // refresh request and there can be race conditions.
+            if (invalidateIfCancelled) invalidate()
+            // Make sure to propagate cancellations
+            throw t
+          } else requestLogger.warn("Request failed", t)
         } finally {
           // Force updating toolbar icons after refresh
           ActivityTracker.getInstance().inc()
@@ -1337,7 +1356,6 @@ class ComposePreviewRepresentation(
       requestLogger.debug("Completed")
       launch(uiThread) { Disposer.dispose(refreshProgressIndicator) }
       if (it is CancellationException) {
-        if (invalidateIfCancelled) invalidate()
         composeWorkBench.onRefreshCancelledByTheUser()
       } else {
         if (it != null) invalidate()

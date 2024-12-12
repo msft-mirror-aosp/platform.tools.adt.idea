@@ -25,6 +25,7 @@ import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import java.nio.file.FileSystem
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.collections.contains
 import kotlin.math.max
@@ -36,7 +37,7 @@ internal constructor(
   device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
   image: ISystemImage?,
-  fileSystem: FileSystem,
+  fileSystem: FileSystem = FileSystems.getDefault(),
   internal val maxCpuCoreCount: Int = max(1, Runtime.getRuntime().availableProcessors() / 2),
 ) {
   internal var device by mutableStateOf(device)
@@ -102,7 +103,8 @@ internal constructor(
     device = device.copy(skin = if (skin !in skins()) device.defaultSkin else skin)
   }
 
-  internal fun skins() = if (hasPlayStore()) listOf(NoSkin.INSTANCE, device.defaultSkin) else skins
+  internal fun skins(): Iterable<Skin> =
+    if (hasPlayStore()) setOf(NoSkin.INSTANCE, device.defaultSkin) else skins
 
   private fun getSkin(path: Path): Skin {
     var skin = skins.firstOrNull { it.path() == path }
@@ -115,17 +117,16 @@ internal constructor(
     return skin
   }
 
-  internal fun resetPlayStoreFields(skin: Path) {
+  internal fun resetPlayStoreFields() {
     if (!hasPlayStore()) return
 
     device =
       device.copy(
-        skin = getSkin(skin),
         expandedStorage = Custom(storageGroupState.custom.valid().storageCapacity.withMaxUnit()),
         cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
         graphicsMode = GraphicsMode.AUTO,
-        ram = EmulatedProperties.defaultRamSize(device.device).toStorageCapacity(),
-        vmHeapSize = EmulatedProperties.defaultVmHeapSize(device.device).toStorageCapacity(),
+        ram = device.defaultRam,
+        vmHeapSize = device.defaultVmHeapSize,
       )
   }
 }

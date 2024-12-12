@@ -31,6 +31,7 @@ import com.android.sdklib.devices.Abi
 import com.android.sdklib.devices.Device
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdManager
+import com.android.sdklib.internal.avd.AvdManagerException
 import com.android.sdklib.internal.avd.AvdNames
 import com.android.sdklib.internal.avd.AvdNames.cleanAvdName
 import com.android.sdklib.internal.avd.ConfigKey
@@ -555,8 +556,10 @@ constructor(
         ScreenOrientation.LANDSCAPE.shortDisplayValue.lowercase()
     }
     if (currentInfo != null && avdName != currentInfo.name && removePrevious) {
-      val success = avdManager.moveAvd(currentInfo, avdName, currentInfo.dataFolderPath)
-      if (!success) {
+      try {
+        avdManager.moveAvd(currentInfo, avdName, currentInfo.dataFolderPath)
+      } catch (e: AvdManagerException) {
+        IJ_LOG.error("Could not move AVD ${currentInfo.name} to $avdName", e)
         return null
       }
     }
@@ -585,12 +588,8 @@ constructor(
     return null
   }
 
-  open fun findAvd(avdName: String): AvdInfo? {
-    return avdManager?.getAvd(avdName, false)
-  }
-
-  fun reloadAvd(avdName: String): AvdInfo? {
-    val avd = findAvd(avdName)
+  fun reloadAvd(avdFolder: Path): AvdInfo? {
+    val avd = findAvdWithFolder(avdFolder)
     if (avd != null) {
       return avdManager?.reloadAvd(avd)
     }
@@ -631,7 +630,7 @@ constructor(
     return avdManager?.findAvdWithDisplayName(name) != null
   }
 
-  fun findAvdWithFolder(avdFolder: Path): AvdInfo? {
+  open fun findAvdWithFolder(avdFolder: Path): AvdInfo? {
     return avdManager?.findAvdWithFolder(avdFolder)
   }
 
