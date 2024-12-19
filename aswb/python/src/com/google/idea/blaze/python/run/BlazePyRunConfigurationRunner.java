@@ -43,7 +43,7 @@ import com.google.idea.blaze.base.run.WithBrowserHyperlinkExecutionException;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandGenericRunConfigurationRunner.BlazeCommandRunProfileState;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
-import com.google.idea.blaze.base.sync.aspects.BuildResult;
+import com.google.idea.blaze.base.command.buildresult.BuildResult;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.util.ProcessGroupUtil;
 import com.google.idea.blaze.base.util.SaveUtil;
@@ -344,7 +344,7 @@ public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurati
         candidateFiles =
             LocalFileArtifact.getLocalFiles(
                 BuildResultParser.getBuildOutput(bepStream, Interners.STRING)
-                  .getDirectArtifactsForTarget(target, file -> true).asList())
+                  .getDirectArtifactsForTarget(target.toString(), file -> true).asList())
                 .stream()
                 .filter(File::canExecute)
                 .collect(Collectors.toList());

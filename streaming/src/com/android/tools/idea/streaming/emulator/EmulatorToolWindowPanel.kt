@@ -104,9 +104,7 @@ internal class EmulatorToolWindowPanel(
       if (avdName.contains(" API ")) {
         return avdName
       }
-      val avdManager = AvdManagerConnection.getDefaultAvdManagerConnection()
-      avdManager.findAvdWithFolder(emulatorId.avdFolder)?.let { return it.displayNameWithApi }
-      return if (emulator.connectionState == ConnectionState.CONNECTED) "$avdName API ${emulator.emulatorConfig.api}" else avdName
+      return "$avdName API ${emulator.emulatorConfig.androidVersion.apiStringWithoutExtension}"
     }
 
   override val description: String
@@ -119,7 +117,6 @@ internal class EmulatorToolWindowPanel(
       return ExecutionUtil.getLiveIndicator(icon)
     }
 
-  /** Device type is available only after the connection to the emulator is established. */
   override val deviceType: DeviceType
     get() = emulator.emulatorConfig.deviceType
 

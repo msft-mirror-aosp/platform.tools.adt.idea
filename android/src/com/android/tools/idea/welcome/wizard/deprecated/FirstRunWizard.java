@@ -24,7 +24,7 @@ import com.android.tools.idea.progress.StudioLoggerProgressIndicator;
 import com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData;
 import com.android.tools.idea.welcome.config.FirstRunWizardMode;
 import com.android.tools.idea.welcome.install.FirstRunWizardDefaults;
-import com.android.tools.idea.welcome.wizard.ComponentInstallerProvider;
+import com.android.tools.idea.welcome.wizard.SdkComponentInstallerProvider;
 import com.android.tools.idea.welcome.wizard.ConfirmFirstRunWizardCloseDialog;
 import com.android.tools.idea.welcome.wizard.StudioFirstRunWelcomeScreen;
 import com.android.tools.idea.wizard.dynamic.DynamicWizard;
@@ -33,7 +33,7 @@ import com.android.tools.idea.wizard.dynamic.ScopedStateStore;
 import com.android.tools.idea.wizard.dynamic.SingleStepPath;
 import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -47,20 +47,17 @@ public class FirstRunWizard extends DynamicWizard {
     ScopedStateStore.createKey("custom.install", ScopedStateStore.Scope.WIZARD, Boolean.class);
 
   @NotNull private final FirstRunWizardMode myMode;
-  /**
-   * On the first user click on finish button, we show progress step & perform setup.
-   * Second attempt will close the wizard.
-   */
-  private final AtomicInteger myFinishClicks = new AtomicInteger(0);
-  private final @NotNull ComponentInstallerProvider myComponentInstallerProvider;
+
+  private final AtomicBoolean myIsShowingProgressStep = new AtomicBoolean(false);
+  private final @NotNull SdkComponentInstallerProvider mySdkComponentInstallerProvider;
   private InstallComponentsPath myComponentsPath;
 
   public FirstRunWizard(@NotNull DynamicWizardHost host,
                         @NotNull FirstRunWizardMode mode,
-                        @NotNull ComponentInstallerProvider componentInstallerProvider) {
+                        @NotNull SdkComponentInstallerProvider sdkComponentInstallerProvider) {
     super(null, null, WIZARD_TITLE, host);
     myMode = mode;
-    myComponentInstallerProvider = componentInstallerProvider;
+    mySdkComponentInstallerProvider = sdkComponentInstallerProvider;
     setTitle(WIZARD_TITLE);
   }
 
@@ -82,11 +79,17 @@ public class FirstRunWizard extends DynamicWizard {
     }
 
     ConsolidatedProgressStep progressStep = new FirstRunProgressStep();
-    myComponentsPath = new InstallComponentsPath(myMode, initialSdkLocation, progressStep, myComponentInstallerProvider, true);
+    myComponentsPath = new InstallComponentsPath(myMode, initialSdkLocation, progressStep, mySdkComponentInstallerProvider, true);
     addPath(myComponentsPath);
     conditionallyAddEmulatorSettingsStep();
 
     addPath(new SingleStepPath(progressStep));
+
+    // If we have no steps to show then immediately show the progress step - this is required for INSTALL_HANDOFF mode
+    if (myPaths.stream().noneMatch(path -> path.getVisibleStepCount() > 0)) {
+      myIsShowingProgressStep.set(true);
+    }
+
     super.init();
   }
 
@@ -130,14 +133,17 @@ public class FirstRunWizard extends DynamicWizard {
     }
   }
 
-  // We need to show progress page before proceeding closing the wizard.
+  /**
+   * On the first user click on finish button, we show progress step & perform setup.
+   * Second attempt will close the wizard.
+   */
   @Override
   public void doFinishAction() {
-    if (myFinishClicks.incrementAndGet() == 1) {
+    if (!myIsShowingProgressStep.getAndSet(true)) {
       doNextAction();
     }
     else {
-      assert myFinishClicks.get() <= 2; // Should not take more then 2 clicks
+      assert myIsShowingProgressStep.get();
       super.doFinishAction();
     }
   }
@@ -170,7 +176,7 @@ public class FirstRunWizard extends DynamicWizard {
      */
     @Override
     public boolean isStepVisible() {
-      return myFinishClicks.get() == 1 && myComponentsPath.shouldDownloadingComponentsStepBeShown();
+      return myIsShowingProgressStep.get() && myComponentsPath.shouldDownloadingComponentsStepBeShown();
     }
   }
 }

@@ -19,6 +19,7 @@ import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.ThemingStyle
 import com.android.mockito.kotlin.whenever
+import com.android.sdklib.AndroidVersion
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
@@ -237,7 +238,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testWearToolbarActionsApi30() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 30)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(30))
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
 
@@ -298,7 +299,7 @@ class EmulatorToolWindowPanelTest {
   }
   @Test
   fun testWearToolbarActionsApi28() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 28)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(28))
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
 
@@ -331,7 +332,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testWearToolbarActionsApi26() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 26)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(26))
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
 
@@ -396,7 +397,6 @@ class EmulatorToolWindowPanelTest {
 
     // Check XR-specific actions.
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Reset View" }).isNotNull()
-    assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Show Taskbar" }).isNotNull()
 
     val xrInputController = EmulatorXrInputController.getInstance(project, emulatorView.emulator)
     assertThat(xrInputController.inputMode).isEqualTo(XrInputMode.HAND)
@@ -419,9 +419,6 @@ class EmulatorToolWindowPanelTest {
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
     assertThat(streamInputCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("xr_command { }")
-
-    ui.mouseClickOn(ui.getComponent<ActionButton> { it.action.templateText == "Show Taskbar" })
-    assertThat(shortDebugString(streamInputCall.request)).isEqualTo("xr_command { action: SHOW_TASKBAR }")
 
     val toggleAction = ToggleFloatingXrToolbarAction()
     toggleAction.actionPerformed(createTestEvent(emulatorView, project, ActionPlaces.TOOLWINDOW_POPUP))
@@ -634,7 +631,7 @@ class EmulatorToolWindowPanelTest {
 
   @Test
   fun testAutomotiveToolbarActions() {
-    val avdFolder = FakeEmulator.createAutomotiveAvd(emulatorRule.avdRoot, api = 32)
+    val avdFolder = FakeEmulator.createAutomotiveAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(32))
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
 
@@ -827,7 +824,7 @@ class EmulatorToolWindowPanelTest {
   /** Checks a large container size resulting in a scale greater than 1:1. */
   @Test
   fun testZoomLargeScale() {
-    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, api = 30)
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(30))
     val panel = createWindowPanel(avdFolder)
     val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
 

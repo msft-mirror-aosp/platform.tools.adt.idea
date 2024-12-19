@@ -20,10 +20,9 @@ import com.android.repository.api.Installer;
 import com.android.repository.api.PackageOperation;
 import com.android.repository.api.ProgressIndicator;
 import com.android.repository.api.Uninstaller;
-import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.sdk.wizard.AehdModelWizard;
 import com.android.tools.idea.sdk.wizard.AehdWizard;
-import com.android.tools.idea.welcome.install.AehdSdkComponent;
+import com.android.tools.idea.sdk.wizard.AehdWizardService;
+import com.android.tools.idea.welcome.install.AehdSdkComponentTreeNode;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,16 +51,8 @@ public class AehdInstallListener implements PackageOperation.StatusChangeListene
       ApplicationManager.getApplication().invokeAndWait(() -> {
         // Either we just installed the package and we need to "configure" it (run the installation script),
         // or we're about to uninstall it.
-        AehdSdkComponent.InstallationIntention installationIntention = op instanceof Uninstaller ? AehdSdkComponent.InstallationIntention.UNINSTALL : AehdSdkComponent.InstallationIntention.CONFIGURE_ONLY;
-        if (!StudioFlags.NPW_FIRST_RUN_WIZARD.get()) {
-          AehdWizard wizard =
-            new AehdWizard(installationIntention);
-          wizard.init();
-          result.set(wizard.showAndGet());
-        } else {
-          AehdModelWizard wizard = new AehdModelWizard(installationIntention);
-          result.set(wizard.showAndGet());
-        }
+        AehdSdkComponentTreeNode.InstallationIntention installationIntention = op instanceof Uninstaller ? AehdSdkComponentTreeNode.InstallationIntention.UNINSTALL : AehdSdkComponentTreeNode.InstallationIntention.CONFIGURE_ONLY;
+        result.set(AehdWizardService.getInstance().showAndGet(installationIntention));
       }, ModalityState.any());
       if (!result.get()) {
         throw new PackageOperation.StatusChangeListenerException("AEHD setup failed!");

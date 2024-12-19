@@ -48,9 +48,9 @@ import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.gallery.GalleryMode
 import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.modes.DEFAULT_LAYOUT_OPTION
-import com.android.tools.idea.preview.modes.GRID_NO_GROUP_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
+import com.android.tools.idea.preview.modes.UI_CHECK_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.UiCheckInstance
 import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
 import com.android.tools.idea.preview.mvvm.PreviewViewModelStatus
@@ -304,7 +304,7 @@ class ComposePreviewRepresentationTest {
       preview.uiCheckFilterFlow.value
     )
     delayUntilCondition(250) {
-      GRID_NO_GROUP_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
+      UI_CHECK_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
     assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })
@@ -446,7 +446,7 @@ class ComposePreviewRepresentationTest {
     setModeAndWaitForRefresh(
       PreviewMode.UiCheck(UiCheckInstance(uiCheckElement, isWearPreview = false))
     ) {
-      GRID_NO_GROUP_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
+      UI_CHECK_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
     }
 
     // Check that the UI Check tab is being reused
@@ -583,7 +583,10 @@ class ComposePreviewRepresentationTest {
     HeadlessDataManager.fallbackToProductionDataManager(projectRule.fixture.testRootDisposable)
 
     val testPsiFile = runWriteActionAndWait {
-      fixture.addFileToProjectAndInvalidate(
+      // Do not use addFileToProjectAndInvalidate(..) here. It generates/caches a document with null
+      // virtual file, which results in the inconsistency with the document for the PSI virtual file
+      // after updating PSI. See b/381432038 for further information.
+      fixture.addFileToProject(
         "Test.kt",
         // language=kotlin
         """
@@ -800,7 +803,7 @@ class ComposePreviewRepresentationTest {
         preview.uiCheckFilterFlow.value
       )
       delayUntilCondition(250) {
-        GRID_NO_GROUP_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
+        UI_CHECK_LAYOUT_OPTION == mainSurface.layoutManagerSwitcher?.currentLayout?.value
       }
 
       assertThat(preview.composePreviewFlowManager.availableGroupsFlow.value.map { it.displayName })

@@ -116,6 +116,7 @@ java_library(
     ),
     deps = [
         "//tools/adt/idea/aswb/base",
+        "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/command/buildresult/bepparser",
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/cpp",
         "//tools/adt/idea/aswb/java",
@@ -270,7 +271,6 @@ intellij_plugin(
         "//tools/adt/idea/aswb/dart:plugin_library",
         "//tools/adt/idea/aswb/java:plugin_library",
         "//tools/adt/idea/aswb/kotlin:plugin_library",
-        "//tools/adt/idea/aswb/plugin_dev:plugin_library",
         "//tools/adt/idea/aswb/skylark:plugin_library",
         "//tools/adt/idea/aswb/terminal:plugin_library",
     ],

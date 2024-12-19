@@ -15,19 +15,46 @@
  */
 package com.android.tools.idea.welcome.wizard
 
+import com.android.annotations.concurrency.AnyThread
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.progress.ProgressIndicator
 
 /**
- * This interface facilitates migration from the deprecated {@link com.android.tools.idea.welcome.wizard.deprecated.ProgressStep}
- * step to the new {@link com.android.tools.idea.welcome.wizard.ProgressStep} step. It can be removed once the migration is complete
- * and the deprecated class has been removed.
+ * This interface facilitates migration from the deprecated {@link
+ * com.android.tools.idea.welcome.wizard.deprecated.ProgressStep} step to the new {@link
+ * com.android.tools.idea.welcome.wizard.ProgressStep} step. It can be removed once the migration is
+ * complete and the deprecated class has been removed.
  */
 interface ProgressStep {
-  fun isCanceled(): Boolean
-  fun print(s: String, contentType: ConsoleViewContentType)
-  fun run(runnable: Runnable, progressPortion: Double)
-  fun attachToProcess(processHandler: ProcessHandler)
-  fun getProgressIndicator(): ProgressIndicator
+  /** Returns true if the operation associated with this progress step has been cancelled. */
+  @AnyThread fun isCanceled(): Boolean
+
+  /**
+   * Output text to the console pane.
+   *
+   * @param s The text to print
+   * @param contentType Attributes of the text to output
+   */
+  @AnyThread fun print(s: String, contentType: ConsoleViewContentType)
+
+  /**
+   * Executes a runnable under a progress indicator, allocating a specific portion of the overall
+   * progress to this runnable.
+   *
+   * @param runnable The code to execute.
+   * @param progressPortion The fraction of the overall progress bar to allocate to this runnable
+   *   (between 0.0 and 1.0).
+   */
+  @AnyThread fun run(runnable: Runnable, progressPortion: Double)
+
+  /**
+   * Will output process standard in and out to the console view.
+   *
+   * @param processHandler The process to track
+   */
+  @AnyThread fun attachToProcess(processHandler: ProcessHandler)
+
+  /** Returns the progress indicator that will report the progress to this wizard step. */
+  @AnyThread fun getProgressIndicator(): ProgressIndicator
 }

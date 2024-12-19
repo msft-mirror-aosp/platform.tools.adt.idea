@@ -25,7 +25,6 @@ import com.android.emulator.control.DisplayModeValue
 import com.android.emulator.control.ImageFormat
 import com.android.emulator.control.KeyboardEvent.KeyEventType
 import com.android.emulator.control.Posture.PostureValue
-import com.android.emulator.control.Rotation.SkinRotation
 import com.android.emulator.control.RotationRadian
 import com.android.emulator.control.Touch
 import com.android.emulator.control.Touch.EventExpiration.NEVER_EXPIRE
@@ -182,9 +181,6 @@ import com.android.emulator.control.InputEvent as InputEventMessage
 import com.android.emulator.control.MouseEvent as MouseEventMessage
 import com.android.emulator.control.Notification as EmulatorNotification
 
-/** Number of device pixels per single tick of the mouse wheel. */
-private const val MOUSE_WHEEL_FACTOR = 120
-
 /**
  * A view of the Emulator display optionally encased in the device frame.
  *
@@ -218,7 +214,7 @@ class EmulatorView(
   private val screenshotShape: DisplayShape
     get() = lastScreenshot?.displayShape ?: DisplayShape(0, 0, initialOrientation)
   private val initialOrientation: Int
-    get() = if (displayId == PRIMARY_DISPLAY_ID) emulatorConfig.initialOrientation.number else SkinRotation.PORTRAIT.number
+    get() = if (displayId == PRIMARY_DISPLAY_ID) emulatorConfig.initialOrientationQuadrants else 0
   private val deviceDisplayRegion: Rectangle
     get() = screenshotShape.activeDisplayRegion ?: Rectangle(deviceDisplaySize)
   internal val displayMode: DisplayMode?

@@ -36,8 +36,8 @@ import com.android.tools.idea.util.toIoFile
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
 import com.android.tools.idea.welcome.config.InstallerData
 import com.android.tools.idea.welcome.config.installerData
-import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.install.FirstRunWizardDefaults
+import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.wizard.deprecated.LinuxKvmInfoStepForm
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.editor.impl.EditorComponentImpl
@@ -78,6 +78,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import javax.swing.JButton
@@ -127,9 +128,14 @@ class WelcomeScreenWizardTest {
 
     mockAndroidSdkHandler = mockStatic(AndroidSdkHandler::class.java, CALLS_REAL_METHODS)
     fakeRepoManager = FakeRepoManager(RepositoryPackages(emptyList(), listOf(
-      createFakeRemotePackageWithLicense("build-tools;33.0.1"), createFakeRemotePackageWithLicense("platforms;android-35"))))
+      createFakeRemotePackageWithLicense("build-tools;33.0.1"),
+      createFakeRemotePackageWithLicense("platforms;android-35"),
+      createFakeRemotePackageWithLicense("system-images;android-35;google_apis_playstore;arm64-v8a")
+    )))
     val sdkHandler = AndroidSdkHandler(sdkPath.toPath(), null, fakeRepoManager)
     whenever(AndroidSdkHandler.getInstance(any(), eq(sdkPath.toPath()))).thenReturn(sdkHandler)
+
+    IdeSdks.removeJdksOn(projectRule.testRootDisposable)
   }
 
   @After
@@ -407,6 +413,34 @@ class WelcomeScreenWizardTest {
   }
 
   @Test
+  fun progressStep_notShownIfSdkPathIsReadOnly() {
+    mockStatic(Files::class.java, CALLS_REAL_METHODS).use {
+      val readOnlySdk = FileUtil.createTempDirectory("readonly", null)
+      `when`(FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.NEW_INSTALL)).thenReturn(readOnlySdk)
+      whenever(Files.isWritable(readOnlySdk.toPath())).thenReturn(false)
+
+      val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL)
+      navigateToLicenseAgreementStep(fakeUi)
+
+      // There will be no licenses to accept as there are no components to install
+
+      if (willShowKvmStep()) {
+        checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+      }
+
+      assertFalse(checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).isEnabled)
+
+      val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
+      assertTrue(finishButton.isEnabled)
+      finishButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+      assertNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
+    }
+  }
+
+  @Test
   fun progressStep_cancelInstallationAndFinish() {
     val mockInstaller = mock(SdkComponentInstaller::class.java)
     val remotePackage = createFakeRemotePackageWithLicense("platforms;android-35")
@@ -421,10 +455,10 @@ class WelcomeScreenWizardTest {
       // Resume once cancel has been triggered
       cancelTriggered.get()
     }
-    val mockInstallerProvider = mock(ComponentInstallerProvider::class.java)
+    val mockInstallerProvider = mock(SdkComponentInstallerProvider::class.java)
     whenever(mockInstallerProvider.getComponentInstaller(any())).thenReturn(mockInstaller)
 
-    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL, componentInstallerProvider = mockInstallerProvider)
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL, sdkComponentInstallerProvider = mockInstallerProvider)
     navigateToProgressStep(fakeUi)
 
     val progressLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
@@ -480,14 +514,66 @@ class WelcomeScreenWizardTest {
     assertTrue(fakeUi.isShowing(missingSdkLabel))
   }
 
+  @Test
+  fun installHandoffMode_skipsStraightToInstallingComponentsStepWhenSdkConfiguredInInstaller() {
+    val mockInstaller = mock(SdkComponentInstaller::class.java)
+    whenever(mockInstaller.getPackagesToInstall(any())).thenReturn(listOf(FakeRemotePackage("system-images;android-35;google_apis_playstore;arm64-v8a")))
+
+    val installerStarted = CompletableFuture<Boolean>()
+    val cancelTriggered = CompletableFuture<Boolean>()
+    whenever(mockInstaller.installPackages(any(), any(), any())).then {
+      // Pause the installer to allow us to check the UI and to cancel the task
+      installerStarted.complete(true)
+
+      // Resume once cancel has been triggered
+      cancelTriggered.get()
+    }
+
+    val mockInstallerProvider = mock(SdkComponentInstallerProvider::class.java)
+    whenever(mockInstallerProvider.getComponentInstaller(any())).thenReturn(mockInstaller)
+
+    val installHandoffData = InstallerData(sdkPath, true, "timestamp", "1234")
+    val fakeUi = createWizard(FirstRunWizardMode.INSTALL_HANDOFF, mockInstallerProvider, installHandoffData)
+
+    val progressLabel = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
+    assertTrue(fakeUi.isShowing(progressLabel))
+
+    installerStarted.get()
+
+    // Let's cancel the installation, otherwise the AndroidVirtualDeviceSdkComponent.configure step will run
+    // and throw an exception, since the component is not actually installed in this test
+    val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Cancel") })
+    cancelButton.doClick()
+
+    cancelTriggered.complete(true)
+
+    val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
+    waitForCondition(10, TimeUnit.SECONDS) { finishButton.isEnabled }
+  }
+
+  @Test
+  fun installHandoffMode_startsWithSdkComponentsStepWhenSdkNotConfiguredInInstaller() {
+    val installHandoffData = InstallerData(null, true, "timestamp", "1234")
+    val fakeUi = createWizard(FirstRunWizardMode.INSTALL_HANDOFF, installHandoffData = installHandoffData)
+
+    val title = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("SDK Components Setup") })
+    assertTrue(fakeUi.isShowing(title))
+  }
+
   private fun getExistingSdkPath(): File {
     return AndroidSdks.getInstance().allAndroidSdks.firstOrNull()?.homeDirectory?.toIoFile()!!
   }
 
-  private fun createWizard(wizardMode: FirstRunWizardMode, sdkPath: File? = null, componentInstallerProvider: ComponentInstallerProvider? = null): FakeUi {
-    installerData = InstallerData(sdkPath ?: IdeSdks.getInstance().getAndroidSdkPath(), true, "timestamp", "1234")
+  private fun createWizard(
+    wizardMode: FirstRunWizardMode,
+    sdkComponentInstallerProvider: SdkComponentInstallerProvider? = null,
+    installHandoffData: InstallerData? = null
+  ): FakeUi {
+    if (installHandoffData != null) {
+      installerData = installHandoffData
+    }
 
-    val installer = componentInstallerProvider ?: ComponentInstallerProvider()
+    val installer = sdkComponentInstallerProvider ?: SdkComponentInstallerProvider()
     val welcomeScreen = AndroidStudioWelcomeScreenProvider().createWelcomeScreen(useNewWizard = !isTestingLegacyWizard!!, wizardMode, installer)
     Disposer.register(projectRule.testRootDisposable, welcomeScreen)
 
@@ -553,14 +639,14 @@ class WelcomeScreenWizardTest {
     if (willShowKvmStep()) {
       return "Next"
     }
-    // TODO - get the new wizard to show 'Finish' instead of 'Next'
+    // This is a quirk of the old wizard - it shows 'Finish' on the penultimate step
     return if (isTestingLegacyWizard == true) "Finish" else "Next"
   }
 
   private fun willShowKvmStep() = SystemInfo.isLinux && !HardwareAccelerationCheck.isChromeOSAndIsNotHWAccelerated()
 
   private fun getKvmStepNextText(): String {
-    // TODO - get the new wizard to show 'Finish' instead of 'Next'
+    // This is a quirk of the old wizard - it shows 'Finish' on the penultimate step
     return if (isTestingLegacyWizard == true) "Finish" else "Next"
   }
 

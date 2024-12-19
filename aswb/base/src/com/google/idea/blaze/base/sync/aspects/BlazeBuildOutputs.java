@@ -24,10 +24,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.Sets;
-import com.google.idea.blaze.base.command.buildresult.BepArtifactData;
-import com.google.idea.blaze.base.command.buildresult.ParsedBepOutput;
-import com.google.idea.blaze.base.model.primitives.Label;
-import com.google.idea.blaze.base.sync.aspects.BuildResult.Status;
+import com.google.idea.blaze.base.command.buildresult.BuildResult;
+import com.google.idea.blaze.base.command.buildresult.BuildResult.Status;
+import com.google.idea.blaze.base.command.buildresult.bepparser.BepArtifactData;
+import com.google.idea.blaze.base.command.buildresult.bepparser.ParsedBepOutput;
 import com.google.idea.blaze.common.artifact.OutputArtifact;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -40,7 +40,7 @@ public class BlazeBuildOutputs {
 
   public static BlazeBuildOutputs noOutputs(BuildResult buildResult) {
     return new BlazeBuildOutputs(
-      buildResult, ImmutableMap.of(), ImmutableMap.of(), ImmutableSet.of(), 0L, ImmutableMap.of());
+      buildResult, ImmutableMap.of(), ImmutableMap.of(), ImmutableSet.of(), 0L);
   }
 
   @VisibleForTesting
@@ -50,12 +50,11 @@ public class BlazeBuildOutputs {
         ImmutableMap.of(),
         ImmutableMap.of(buildId, buildResult),
         ImmutableSet.of(),
-        0L,
-        ImmutableMap.of());
+        0L);
   }
 
   public static BlazeBuildOutputs fromParsedBepOutput(
-      BuildResult result, ParsedBepOutput parsedOutput) {
+    BuildResult result, ParsedBepOutput parsedOutput) {
     ImmutableMap<String, BuildResult> buildIdWithResult =
         parsedOutput.buildId != null
             ? ImmutableMap.of(parsedOutput.buildId, result)
@@ -67,17 +66,14 @@ public class BlazeBuildOutputs {
             : parsedOutput.getFullArtifactData(),
         buildIdWithResult,
         parsedOutput.getTargetsWithErrors(),
-        parsedOutput.getBepBytesConsumed(),
-        parsedOutput.getWorkspaceStatus());
+        parsedOutput.getBepBytesConsumed());
   }
 
-  public final BuildResult buildResult;
+  private final BuildResult buildResult;
   // Maps build id to the build result of individual shards
   private final ImmutableMap<String, BuildResult> buildShardResults;
-  private final ImmutableSet<Label> targetsWithErrors;
+  private final ImmutableSet<String> targetsWithErrors;
   public final long bepBytesConsumed;
-
-  public final ImmutableMap<String, String> workspaceStatus;
 
   /**
    * {@link BepArtifactData} by {@link OutputArtifact#getBazelOutRelativePath()} for all artifacts from a
@@ -92,15 +88,13 @@ public class BlazeBuildOutputs {
     BuildResult buildResult,
     Map<String, BepArtifactData> artifacts,
       ImmutableMap<String, BuildResult> buildShardResults,
-    ImmutableSet<Label> targetsWithErrors,
-    long bepBytesConsumed,
-    ImmutableMap<String, String> workspaceStatus) {
+    ImmutableSet<String> targetsWithErrors,
+    long bepBytesConsumed) {
     this.buildResult = buildResult;
     this.artifacts = ImmutableMap.copyOf(artifacts);
     this.buildShardResults = buildShardResults;
     this.targetsWithErrors = targetsWithErrors;
     this.bepBytesConsumed = bepBytesConsumed;
-    this.workspaceStatus = workspaceStatus;
 
     ImmutableSetMultimap.Builder<String, OutputArtifact> perTarget = ImmutableSetMultimap.builder();
     artifacts.values().forEach(a -> a.topLevelTargets.forEach(t -> perTarget.put(t, a.artifact)));
@@ -113,15 +107,23 @@ public class BlazeBuildOutputs {
   }
 
   @VisibleForTesting
-  public ImmutableList<OutputArtifact> getOutputGroupArtifacts(
-      Predicate<String> outputGroupFilter) {
+  public ImmutableList<OutputArtifact> getOutputGroupArtifacts(String outputGroup) {
     return artifacts.values().stream()
-        .filter(a -> a.outputGroups.stream().anyMatch(outputGroupFilter))
+        .filter(a -> a.outputGroups.contains(outputGroup))
         .map(a -> a.artifact)
         .collect(toImmutableList());
   }
 
-  public ImmutableSet<Label> getTargetsWithErrors() {
+  @VisibleForTesting
+  public ImmutableList<OutputArtifact> getOutputGroupArtifactsLegacySyncOnly(
+    Predicate<String> outputGroupFilter) {
+    return artifacts.values().stream()
+      .filter(a -> a.outputGroups.stream().anyMatch(outputGroupFilter))
+      .map(a -> a.artifact)
+      .collect(toImmutableList());
+  }
+
+  public ImmutableSet<String> getTargetsWithErrors() {
     return targetsWithErrors;
   }
 
@@ -162,7 +164,7 @@ public class BlazeBuildOutputs {
       }
     }
     return new BlazeBuildOutputs(
-        BuildResult.combine(buildResult, nextOutputs.buildResult),
+        BuildResult.combine(buildResult(), nextOutputs.buildResult()),
         combined,
         Stream.concat(
                 nextOutputs.buildShardResults.entrySet().stream(),
@@ -171,8 +173,7 @@ public class BlazeBuildOutputs {
                 // On duplicate buildIds, preserve most recent result
                 toImmutableMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1)),
       Sets.union(targetsWithErrors, nextOutputs.targetsWithErrors).immutableCopy(),
-      bepBytesConsumed + nextOutputs.bepBytesConsumed,
-      workspaceStatus);
+      bepBytesConsumed + nextOutputs.bepBytesConsumed);
   }
 
   public ImmutableList<String> getBuildIds() {
@@ -184,5 +185,9 @@ public class BlazeBuildOutputs {
     return !buildShardResults.isEmpty()
         && buildShardResults.values().stream()
             .allMatch(result -> result.status == Status.FATAL_ERROR);
+  }
+
+  public BuildResult buildResult() {
+    return buildResult;
   }
 }

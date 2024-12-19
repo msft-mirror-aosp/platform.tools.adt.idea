@@ -22,7 +22,7 @@ import com.android.tools.idea.sdk.wizard.LicenseAgreementStep
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
 import com.android.tools.idea.welcome.install.FirstRunWizardDefaults.getInitialSdkLocation
 import com.android.tools.idea.welcome.isWritable
-import com.android.tools.idea.welcome.wizard.ComponentInstallerProvider
+import com.android.tools.idea.welcome.wizard.SdkComponentInstallerProvider
 import com.android.tools.idea.welcome.wizard.FirstRunWizardModel
 import com.android.tools.idea.welcome.wizard.InstallComponentsProgressStep
 import com.android.tools.idea.welcome.wizard.InstallSummaryStep
@@ -91,7 +91,7 @@ class SetupSdkApplicationService : Disposable {
               FirstRunWizardMode.MISSING_SDK,
               sdkPath,
               progressStep,
-              ComponentInstallerProvider(),
+              SdkComponentInstallerProvider(),
               false,
             )
 
@@ -123,14 +123,14 @@ class SetupSdkApplicationService : Disposable {
   }
 
   private fun showNewWizard(sdkPath: File, sdkUpdatedCallback: SdkUpdatedCallback?) {
-    val model = FirstRunWizardModel(FirstRunWizardMode.MISSING_SDK, sdkPath.toPath(), installUpdates = false, ComponentInstallerProvider())
+    val model = FirstRunWizardModel(FirstRunWizardMode.MISSING_SDK, sdkPath.toPath(), installUpdates = false, SdkComponentInstallerProvider())
 
     val supplier = model.getPackagesToInstallSupplier()
     val licenseAgreementModel = LicenseAgreementModel(model.sdkInstallLocationProperty)
     val licenseAgreementStep = LicenseAgreementStep(licenseAgreementModel, supplier)
 
     val progressStep: InstallComponentsProgressStep =
-      object : InstallComponentsProgressStep(model, licenseAgreementModel, this) {
+      object : InstallComponentsProgressStep(model, licenseAgreementModel) {
 
         override fun shouldShow(): Boolean {
           val sdkInstallLocation = model.sdkInstallLocation
@@ -140,7 +140,7 @@ class SetupSdkApplicationService : Disposable {
 
     val builder = ModelWizard.Builder()
     builder.addStep(
-      SdkComponentsStep(model, null, FirstRunWizardMode.MISSING_SDK, licenseAgreementStep, this)
+      SdkComponentsStep(model, null, FirstRunWizardMode.MISSING_SDK, licenseAgreementStep)
     )
     builder.addStep(InstallSummaryStep(model, supplier))
     builder.addStep(licenseAgreementStep)

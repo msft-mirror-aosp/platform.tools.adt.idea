@@ -219,15 +219,10 @@ public class BazelDependencyBuilder implements DependencyBuilder {
       Instant buildTime = Instant.now();
       BlazeBuildOutputs outputs =
           invoker.getCommandRunner().run(project, builder, buildResultHelper, context);
-      buildDepsStatsBuilder.ifPresent(
-          stats -> {
-            stats.setBuildIds(outputs.getBuildIds());
-            stats.setBepByteConsumed(outputs.bepBytesConsumed);
-          });
 
       BazelExitCodeException.throwIfFailed(
           builder,
-          outputs.buildResult,
+          outputs.buildResult(),
           ThrowOption.ALLOW_PARTIAL_SUCCESS,
           ThrowOption.ALLOW_BUILD_FAILURE);
 
@@ -338,29 +333,21 @@ public class BazelDependencyBuilder implements DependencyBuilder {
       context.output(
         PrintOutput.log(String.format("Fetched and parsed artifact info files in %d ms", elapsed)));
     }
-    Optional<VcsState> vcsState = Optional.empty();
-    if (vcsHandler.isPresent()) {
-      try {
-        vcsState = vcsHandler.get().vcsStateForWorkspaceStatus(blazeBuildOutputs.workspaceStatus);
-      } catch (BuildException e) {
-        context.handleExceptionAsWarning("Failed to get VCS state", e);
-      }
-    }
     DependencyBuildContext buildContext =
         DependencyBuildContext.create(
             // getOnlyElement should be safe since we never shard querysync builds:
-            getOnlyElement(blazeBuildOutputs.getBuildIds()), buildTime, vcsState);
+            getOnlyElement(blazeBuildOutputs.getBuildIds()), buildTime);
 
     return OutputInfo.create(
-        allArtifacts,
-        artifactInfoFilesBuilder.build(),
-        ccInfoBuilder.build(),
-        blazeBuildOutputs.getTargetsWithErrors().stream()
+      allArtifacts,
+      artifactInfoFilesBuilder.build(),
+      ccInfoBuilder.build(),
+      blazeBuildOutputs.getTargetsWithErrors().stream()
             .map(Object::toString)
             .map(Label::of)
             .collect(toImmutableSet()),
-        blazeBuildOutputs.buildResult.exitCode,
-        buildContext);
+      blazeBuildOutputs.buildResult().exitCode,
+      buildContext);
   }
 
   @FunctionalInterface

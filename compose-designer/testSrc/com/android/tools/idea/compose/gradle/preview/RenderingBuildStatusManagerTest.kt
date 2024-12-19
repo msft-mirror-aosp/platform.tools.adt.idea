@@ -18,6 +18,7 @@ package com.android.tools.idea.compose.gradle.preview
 import com.android.tools.idea.compose.gradle.ComposeGradleProjectRule
 import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
 import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
+import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.build.RenderingBuildStatusManager
@@ -27,25 +28,19 @@ import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.editors.liveedit.LiveEditApplicationConfiguration
 import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.testing.waitForResourceRepositoryUpdates
-import com.intellij.openapi.application.WriteAction
-import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.writeText
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
-import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.IndexingTestUtil
-import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.utils.vfs.createFile
-import java.util.concurrent.Executor
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -54,7 +49,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class RenderingBuildStatusManagerTest {
-  @get:Rule val edtRule = EdtRule()
 
   @get:Rule val projectRule = ComposeGradleProjectRule(SIMPLE_COMPOSE_PROJECT_PATH)
 
@@ -74,28 +68,24 @@ class RenderingBuildStatusManagerTest {
     FastPreviewConfiguration.getInstance().resetDefault()
   }
 
-  @RunsInEdt
   @Test
   fun testProjectStatusManagerStates() = runBlocking {
     val projectRoot = projectRule.project.guessProjectDir()!!
     val mainFile =
       projectRoot.findFileByRelativePath(SimpleComposeAppPaths.APP_MAIN_ACTIVITY.path)!!
-    WriteAction.run<Throwable> { projectRule.fixture.openFileInEditor(mainFile) }
+
+    withContext(uiThread) { projectRule.fixture.openFileInEditor(mainFile) }
 
     IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project)
 
-    var onReadyCalled = false
     val statusManager =
       RenderingBuildStatusManager.create(
         projectRule.fixture.testRootDisposable,
         projectRule.fixture.file,
-        scope = CoroutineScope(Executor { command -> command.run() }.asCoroutineDispatcher()),
-        onReady = { onReadyCalled = true },
       )
     statusManager.statusFlow.awaitStatus("Ready state expected", 5.seconds) {
       it == RenderingBuildStatus.Ready
     }
-    assertTrue(onReadyCalled)
     assertTrue("Project must compile correctly", projectRule.build().isBuildSuccessful)
     statusManager.statusFlow.awaitStatus(
       "Builds status is not Ready after successful build",
@@ -103,21 +93,17 @@ class RenderingBuildStatusManagerTest {
     ) {
       it == RenderingBuildStatus.Ready
     }
-    val newVirtualFile = runWriteAction {
+    val newVirtualFile = writeAction {
       val newVirtualFile =
         projectRoot.createFile(SimpleComposeAppPaths.APP_SIMPLE_APPLICATION_DIR.path + "/newFile")
       newVirtualFile.writeText("")
       PsiDocumentManager.getInstance(project).commitAllDocuments()
       newVirtualFile
     }
-    val newFile = runReadAction { PsiManager.getInstance(project).findFile(newVirtualFile) }!!
+    val newFile = readAction { PsiManager.getInstance(project).findFile(newVirtualFile) }!!
 
     val newStatusManager =
-      RenderingBuildStatusManager.create(
-        projectRule.fixture.testRootDisposable,
-        newFile,
-        scope = CoroutineScope(Executor { command -> command.run() }.asCoroutineDispatcher()),
-      )
+      RenderingBuildStatusManager.create(projectRule.fixture.testRootDisposable, newFile)
     newStatusManager.statusFlow.awaitStatus("NeedsBuild state expected", 5.seconds) {
       it == RenderingBuildStatus.NeedsBuild
     }
@@ -134,7 +120,6 @@ class RenderingBuildStatusManagerTest {
         .insertString(0, "\n\nfun method() {}\n\n")
       documentManager.commitAllDocuments()
     }
-    FileDocumentManager.getInstance().saveAllDocuments()
     statusManager.statusFlow.awaitStatus("OutOfDate state expected", 5.seconds) {
       it is RenderingBuildStatus.OutOfDate
     }
@@ -152,7 +137,6 @@ class RenderingBuildStatusManagerTest {
     }
   }
 
-  @RunsInEdt
   @Test
   fun testProjectStatusManagerStatesFailureModes() = runBlocking {
     val mainFile =
@@ -171,13 +155,11 @@ class RenderingBuildStatusManagerTest {
       documentManager.getDocument(projectRule.fixture.file)!!.insertString(0, "<<Invalid>>")
       documentManager.commitAllDocuments()
     }
-    FileDocumentManager.getInstance().saveAllDocuments()
 
     val statusManager =
       RenderingBuildStatusManager.create(
         projectRule.fixture.testRootDisposable,
         projectRule.fixture.file,
-        scope = CoroutineScope(Executor { command -> command.run() }.asCoroutineDispatcher()),
       )
     statusManager.statusFlow.awaitStatus("NeedsBuild state expected", 5.seconds) {
       it == RenderingBuildStatus.NeedsBuild
@@ -192,7 +174,6 @@ class RenderingBuildStatusManagerTest {
       documentManager.getDocument(projectRule.fixture.file)!!.deleteString(0, "<<Invalid>>".length)
       documentManager.commitAllDocuments()
     }
-    FileDocumentManager.getInstance().saveAllDocuments()
     val facet = projectRule.androidFacet(":app")
     waitForResourceRepositoryUpdates(facet.module.getMainModule())
     statusManager.statusFlow.awaitStatus("NeedsBuild state expected", 5.seconds) {

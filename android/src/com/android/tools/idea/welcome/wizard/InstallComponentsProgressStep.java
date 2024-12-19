@@ -18,16 +18,17 @@ package com.android.tools.idea.welcome.wizard;
 import com.android.tools.idea.observable.core.BoolProperty;
 import com.android.tools.idea.observable.core.ObservableBool;
 import com.android.tools.idea.sdk.wizard.LicenseAgreementModel;
+import com.android.tools.idea.welcome.SdkLocationUtils;
 import com.android.tools.idea.welcome.install.WizardException;
 import com.android.tools.idea.wizard.model.ModelWizard;
 import com.intellij.execution.ui.ConsoleViewContentType;
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jetbrains.annotations.NotNull;
 
@@ -50,8 +51,8 @@ public class InstallComponentsProgressStep extends AbstractProgressStep<FirstRun
   };
   private final LicenseAgreementModel licenseAgreementModel;
 
-  public InstallComponentsProgressStep(@NotNull FirstRunWizardModel model, @NotNull LicenseAgreementModel licenseAgreementModel, @NotNull Disposable disposable) {
-    super(model, disposable, "Downloading Components");
+  public InstallComponentsProgressStep(@NotNull FirstRunWizardModel model, @NotNull LicenseAgreementModel licenseAgreementModel) {
+    super(model, "Downloading Components");
     this.licenseAgreementModel = licenseAgreementModel;
   }
 
@@ -59,6 +60,12 @@ public class InstallComponentsProgressStep extends AbstractProgressStep<FirstRun
   protected void onWizardStarting(ModelWizard.@NotNull Facade wizard) {
     super.onWizardStarting(wizard);
     wizard.updateNavigationProperties();
+  }
+
+  @Override
+  protected boolean shouldShow() {
+    Path sdkLocation = getModel().getSdkInstallLocation();
+    return sdkLocation != null && SdkLocationUtils.isWritable(sdkLocation);
   }
 
   @Override

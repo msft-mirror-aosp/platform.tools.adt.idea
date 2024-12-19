@@ -90,14 +90,14 @@ fun RecipeExecutor.generateAndroidModule(
   }
 }
 
-private fun getBackupRules() =
+fun getBackupRules() =
   """
 <?xml version="1.0" encoding="utf-8"?>
 <!--
    Sample backup rules file; uncomment and customize as necessary.
    See https://developer.android.com/guide/topics/data/autobackup
    for details.
-   Note: This file is ignored for devices older that API 31
+   Note: This file is ignored for devices older than API 31
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
@@ -108,7 +108,7 @@ private fun getBackupRules() =
 </full-backup-content>
 """
 
-private fun getDataExtractionRules() =
+fun getDataExtractionRules() =
   """
 <?xml version="1.0" encoding="utf-8"?>
 <!--

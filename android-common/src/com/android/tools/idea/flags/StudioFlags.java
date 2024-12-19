@@ -112,6 +112,21 @@ public final class StudioFlags {
     "Show the Welcome Wizard when Studio starts",
     false);
 
+  public static final Flag<Boolean> NPW_OFFLINE = new BooleanFlag(
+    NPW, "first.run.offline", "Start Welcome Wizard Offline",
+    "Start the welcome wizard without internet connection",
+    false);
+
+  public static final Flag<Boolean> NPW_ACCEPT_ALL_LICENSES = new BooleanFlag(
+    NPW,"first.run.accept.sdk.license", "Auto Accepts SDK license",
+    "Auto Accepts SDK license for testing",
+    false);
+
+  public static final Flag<String> NPW_CUSTOM_LOCAL_APP_DATA = new StringFlag(
+    NPW,"first.run.local.app.data", "Set custom local app data",
+    "Sets custom location for sdk install directory",
+    "");
+
   public static final Flag<Boolean> NPW_SHOW_FRAGMENT_GALLERY = new BooleanFlag(
     NPW, "show.fragment.gallery", "Show fragment gallery",
     "Show fragment gallery which contains fragment based templates",
@@ -1368,11 +1383,6 @@ public final class StudioFlags {
     "If enabled, Preview Essentials Mode will be enabled.",
     enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> GALLERY_PREVIEW = new BooleanFlag(
-    PREVIEW_COMMON, "preview.gallery.dropdown", "Enable new Gallery view with dropdown",
-    "If enabled, Gallery view will only have dropdown selector instead of tabs.",
-    false);
-
   public static final Flag<Boolean> VIEW_IN_GALLERY = new BooleanFlag(
     PREVIEW_COMMON, "view.preview.in.gallery", "View preview in Gallery mode",
     "If enabled, shows a menu item to open the selected preview in Gallery mode.",
@@ -1515,7 +1525,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_UI_CHECK_GROUP_LAYOUT = new BooleanFlag(
     COMPOSE, "preview.uicheck.group.layout", "Enable organization of Compose Preview in UI Check",
     "If enabled, multiple previews associated with composable will be grouped in UI Check. Please invalidates file caches after " +
-    "enabling or disabling (File -> Invalidate Caches...)", enabledUpTo(CANARY));
+    "enabling or disabling (File -> Invalidate Caches...)", true);
 
   public static final Flag<Boolean> COMPOSE_PROJECT_USES_COMPOSE_OVERRIDE = new BooleanFlag(
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
@@ -1977,6 +1987,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
                     "Enable sending additional file context with completion requests",
                     "When enabled, additional file context (eg, currently open files) are included in inline code completion requests.",
+                    enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_INCLUDES_LAST_ACTION =
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.include.last.action",
+                    "Include the last user action in the code completion request",
+                    "When enabled, the type of the last user action is included in inline code completion requests.",
                     enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =

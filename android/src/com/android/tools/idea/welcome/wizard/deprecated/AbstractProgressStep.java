@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.welcome.wizard.deprecated;
 
+import com.android.annotations.concurrency.AnyThread;
 import com.android.tools.idea.welcome.wizard.ProgressStep;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.ui.ConsoleViewContentType;
@@ -22,6 +23,7 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.util.Disposer;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import org.jetbrains.annotations.NotNull;
@@ -37,10 +39,11 @@ public abstract class AbstractProgressStep extends FirstRunWizardStep implements
   private final ProgressStepForm myForm;
   private ProgressIndicator myProgressIndicator;
 
-  public AbstractProgressStep(@NotNull Disposable parent, @NotNull String name) {
+  public AbstractProgressStep(@NotNull Disposable parentDisposable, @NotNull String name) {
     super(name);
-    myForm = new ProgressStepForm(parent);
+    myForm = new ProgressStepForm();
     setComponent(myForm.getRoot());
+    Disposer.register(parentDisposable, myForm);
   }
 
   @Override
@@ -68,8 +71,9 @@ public abstract class AbstractProgressStep extends FirstRunWizardStep implements
   }
 
   /**
-   * @return progress indicator that will report the progress to this wizard step.
+   * Returns the progress indicator that will report the progress to this wizard step.
    */
+  @AnyThread
   @Override
   @NotNull
   public synchronized ProgressIndicator getProgressIndicator() {
@@ -82,9 +86,10 @@ public abstract class AbstractProgressStep extends FirstRunWizardStep implements
   /**
    * Output text to the console pane.
    *
-   * @param s           text to print
-   * @param contentType attributes of the text to output
+   * @param s The text to print
+   * @param contentType Attributes of the text to output
    */
+  @AnyThread
   @Override
   public void print(@NotNull String s, @NotNull ConsoleViewContentType contentType) {
     myForm.print(s, contentType);
@@ -98,11 +103,16 @@ public abstract class AbstractProgressStep extends FirstRunWizardStep implements
    *
    * @param processHandler process to track
    */
+  @AnyThread
   @Override
   public void attachToProcess(@NotNull ProcessHandler processHandler) {
     myForm.attachToProcess(processHandler);
   }
 
+  /**
+   * Returns true if the operation associated with this progress step has been cancelled.
+   */
+  @AnyThread
   @Override
   public boolean isCanceled() {
     return getProgressIndicator().isCanceled();
@@ -116,8 +126,14 @@ public abstract class AbstractProgressStep extends FirstRunWizardStep implements
   }
 
   /**
-   * Runs the computable under progress manager but only gives a portion of the progress bar to it.
+   * Executes a runnable under a progress indicator, allocating a specific portion of the
+   * overall progress to this runnable.
+   *
+   * @param runnable The code to execute.
+   * @param progressPortion The fraction of the overall progress bar to allocate to this runnable
+   *   (between 0.0 and 1.0).
    */
+  @AnyThread
   @Override
   public void run(final @NotNull Runnable runnable, double progressPortion) {
     ProgressIndicator progress =
