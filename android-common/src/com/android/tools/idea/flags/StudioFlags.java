@@ -612,6 +612,14 @@ public final class StudioFlags {
     "Note: Changing the value of this flag requires restarting Android Studio.",
     false);
 
+  public static final Flag<Boolean> ADBLIB_USE_APP_INFO_IF_AVAILABLE = new BooleanFlag(
+    RUNDEBUG,
+    "adblib.use.app.info.if.available",
+    "Use the `app_info` feature if available on the device for discovering processes",
+    "Check the `app_info` feature for connected devices, and use it to track processes if available. " +
+    "Note: Changing the value of this flag requires restarting Android Studio.",
+    true);
+
   public static final Flag<Boolean> JDWP_TRACER = new BooleanFlag(
     RUNDEBUG,
     "adb.jdwp.tracer.enabled",
@@ -694,7 +702,7 @@ public final class StudioFlags {
     "riscv.support",
     "Support for RISC V",
     "Allow support for RISC V architecture and targeted architecture selection.",
-    enabledUpTo(CANARY)
+    true
   );
 
   //endregion
@@ -2023,12 +2031,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.ai.transforms.enabled",
                     "Enable the transform actions.",
                     "When enabled, the transform actions (document, comment, the custom transform action, etc.) are enabled.",
-                    true);
-
-  public static final Flag<Boolean> STUDIOBOT_CUSTOM_TRANSFORM_ENABLED =
-    new BooleanFlag(STUDIOBOT, "editor.ai.custom.transform.enabled",
-                    "Enable the custom transform action in the editor.",
-                    "When enabled, the custom transform action, which allows users to send custom prompts to modify and iterate on code, is enabled.",
                     true);
 
   public static final Flag<Boolean> STUDIOBOT_TRANSFORM_HISTORY_ENABLED =

@@ -65,7 +65,8 @@ import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.AnActionEvent.createEvent
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
@@ -198,13 +199,13 @@ class EmulatorToolWindowPanelTest {
     var action = ActionManager.getInstance().getAction("android.device.power.button")
     var keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
     val dataContext = DataManager.getInstance().getDataContext(panel.primaryDisplayView)
-    action.actionPerformed(AnActionEvent.createFromAnAction(action, keyEvent, ActionPlaces.KEYBOARD_SHORTCUT, dataContext))
+    action.actionPerformed(createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keypress key: \"Power\" }")
 
     // Check EmulatorPowerAndVolumeUpButtonAction invoked by a keyboard shortcut.
     action = ActionManager.getInstance().getAction("android.device.power.and.volume.up.button")
     keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK or SHIFT_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
-    action.actionPerformed(AnActionEvent.createFromAnAction(action, keyEvent, ActionPlaces.KEYBOARD_SHORTCUT, dataContext))
+    action.actionPerformed(createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { key: \"VolumeUp\" }")
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keypress key: \"Power\" }")
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keyup key: \"VolumeUp\" }")
@@ -496,36 +497,56 @@ class EmulatorToolWindowPanelTest {
     // Keys that are not used for navigation produce keypress events.
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keypress key: \"Enter\" }")
     ui.keyboard.release(VK_ENTER)
-    val keys = mapOf(
-      VK_W to "forward_held: true",
-      VK_A to "left_held: true",
-      VK_S to "backward_held: true",
-      VK_D to "right_held: true",
-      VK_Q to "down_held: true",
-      VK_E to "up_held: true",
-      VK_RIGHT to "rotate_right_held: true",
-      VK_LEFT to "rotate_left_held: true",
-      VK_UP to "rotate_up_held: true",
-      VK_DOWN to "rotate_down_held: true",
-      VK_PAGE_UP to "rotate_right_held: true rotate_up_held: true",
-      VK_PAGE_DOWN to "rotate_right_held: true rotate_up_held: true",
-      VK_HOME to "rotate_left_held: true rotate_up_held: true",
-      VK_END to "rotate_left_held: true rotate_up_held: true",
+    val velocityKeys = mapOf(
+      VK_W to "xr_head_velocity_event { z: -1.0 transition_time_sec: 1.0 }",
+      VK_A to "xr_head_velocity_event { x: -1.0 transition_time_sec: 1.0 }",
+      VK_S to "xr_head_velocity_event { z: 1.0 transition_time_sec: 1.0 }",
+      VK_D to "xr_head_velocity_event { x: 1.0 transition_time_sec: 1.0 }",
+      VK_Q to "xr_head_velocity_event { y: -1.0 transition_time_sec: 1.0 }",
+      VK_E to "xr_head_velocity_event { y: 1.0 transition_time_sec: 1.0 }",
     )
-    for ((k, event) in keys) {
+    for ((k, event) in velocityKeys) {
       ui.keyboard.press(k)
-      assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_input_event { nav_event { $event } }")
+      assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo(event)
       ui.keyboard.release(k)
-      assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_input_event { nav_event { } }")
+      assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_velocity_event { }")
+    }
+    val angularVelocityKeys = mapOf(
+      VK_RIGHT to "xr_head_angular_velocity_event { omega_y: -0.5235988 transition_time_sec: 1.0 }",
+      VK_LEFT to "xr_head_angular_velocity_event { omega_y: 0.5235988 transition_time_sec: 1.0 }",
+      VK_UP to "xr_head_angular_velocity_event { omega_x: 0.5235988 transition_time_sec: 1.0 }",
+      VK_DOWN to "xr_head_angular_velocity_event { omega_x: -0.5235988 transition_time_sec: 1.0 }",
+      VK_PAGE_UP to "xr_head_angular_velocity_event { omega_x: 0.5235988 omega_y: -0.5235988 transition_time_sec: 1.0 }",
+      VK_PAGE_DOWN to "xr_head_angular_velocity_event { omega_x: -0.5235988 omega_y: -0.5235988 transition_time_sec: 1.0 }",
+      VK_HOME to "xr_head_angular_velocity_event { omega_x: 0.5235988 omega_y: 0.5235988 transition_time_sec: 1.0 }",
+      VK_END to "xr_head_angular_velocity_event { omega_x: -0.5235988 omega_y: 0.5235988 transition_time_sec: 1.0 }",
+    )
+    for ((k, event) in angularVelocityKeys) {
+      ui.keyboard.press(k)
+      assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo(event)
+      ui.keyboard.release(k)
+      assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_angular_velocity_event { }")
     }
 
     // Two keys pressed together.
     ui.keyboard.press(VK_D)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { nav_event { right_held: true } }")
+        .isEqualTo("xr_head_velocity_event { x: 1.0 transition_time_sec: 1.0 }")
     ui.keyboard.press(VK_E)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { nav_event { right_held: true up_held: true } }")
+        .isEqualTo("xr_head_velocity_event { x: 1.0 y: 1.0 transition_time_sec: 1.0 }")
+    ui.keyboard.press(VK_A)
+    // D and A cancel each other out.
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_velocity_event { y: 1.0 }")
+    ui.keyboard.release(VK_D)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
+        .isEqualTo("xr_head_velocity_event { x: -1.0 y: 1.0 transition_time_sec: 1.0 }")
+    ui.keyboard.press(VK_Q)
+    // E and Q cancel each other out.
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_velocity_event { x: -1.0 }")
+    ui.keyboard.release(VK_E)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
+        .isEqualTo("xr_head_velocity_event { x: -1.0 y: -1.0 transition_time_sec: 1.0 }")
 
     // Switching to Hardware Input resets state of the navigation keys.
     val toolbar = ui.getComponent<FloatingToolbarContainer>()
@@ -536,9 +557,9 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
 
     ui.mouseClickOn(ui.getComponent<ActionButton> { it.action.templateText == "Hardware Input" })
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_input_event { nav_event { } }")
-    ui.keyboard.release(VK_D)
-    ui.keyboard.release(VK_E)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_velocity_event { }")
+    ui.keyboard.release(VK_A)
+    ui.keyboard.release(VK_Q)
   }
 
   @Test
@@ -565,16 +586,14 @@ class EmulatorToolWindowPanelTest {
     ui.mouse.press(100, 100)
     ui.mouse.dragTo(500, 100)
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { intent: XR_MOVE_EVENT_INTENT_VIEWPORT_ROTATE rel_x: 1707 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { y: -2.2642112 }")
     ui.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { intent: XR_MOVE_EVENT_INTENT_VIEWPORT_ROTATE rel_y: 1707 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { x: 2.2642112 y: -0.0 }")
     ui.mouse.dragTo(500, 10) // Exit the EmulatorView component.
     ui.mouse.dragTo(300, 35) // Enter the EmulatorView component in a different location.
     ui.mouse.dragTo(100, 435)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { intent: XR_MOVE_EVENT_INTENT_VIEWPORT_ROTATE rel_x: -853 rel_y: 1707 } }")
+        .isEqualTo("xr_head_rotation_event { x: 2.2642112 y: 1.1321056 }")
   }
 
   @Test
@@ -602,30 +621,27 @@ class EmulatorToolWindowPanelTest {
     ui.mouse.press(100, 100)
     ui.mouse.dragTo(500, 100)
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_input_event { move_event { rel_x: 1707 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_x: 3.6036036 }")
     ui.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_input_event { move_event { rel_y: 1707 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_y: 3.6036036 }")
     ui.mouse.dragTo(500, 10) // Exit the EmulatorView component.
     ui.mouse.dragTo(300, 35) // Enter the EmulatorView component in a different location.
     ui.mouse.dragTo(100, 435)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { rel_x: -853 rel_y: 1707 } }")
+        .isEqualTo("xr_head_movement_event { delta_x: -1.8018018 delta_y: 3.6036036 }")
     ui.mouse.release()
 
     // Moving forward and backward by rotating the mouse wheel.
     ui.mouse.wheel(10, 100, 1)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { intent: XR_MOVE_EVENT_INTENT_VIEWPORT_ZOOM rel_y: -512 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_z: -512.0 }")
     ui.mouse.wheel(10, 100, -3)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { intent: XR_MOVE_EVENT_INTENT_VIEWPORT_ZOOM rel_y: 1536 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_z: 1536.0 }")
 
     // Moving forward by dragging the mouse.
     xrInputController.inputMode = XrInputMode.LOCATION_IN_SPACE_Z
     ui.mouse.press(100, 100)
     ui.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_input_event { move_event { intent: XR_MOVE_EVENT_INTENT_VIEWPORT_ZOOM rel_y: 1707 } }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_z: 3.6036036 }")
     ui.mouse.release()
   }
 

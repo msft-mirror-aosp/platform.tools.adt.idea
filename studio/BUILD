@@ -115,7 +115,7 @@ studio_plugin(
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
     ],
-    licenses = [
+    license_files = [
         "//prebuilts/r8:license",
         "//prebuilts/tools/common/m2:ffmpeg-licenses",
         "//tools/adt/idea/android/lib:licenses",
@@ -266,6 +266,7 @@ studio_plugin(
             "//tools/adt/idea/completion:intellij.android.completion",
             "//tools/adt/idea/studio-labs:intellij.android.studio-labs",
             "//tools/adt/idea/gmaven:intellij.android.gmaven",
+            "//tools/adt/idea/settings-sync:intellij.android.settings-sync",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",
@@ -469,7 +470,7 @@ studio_plugin(
     libs = [
         "//tools/adt/idea/.idea/libraries:layoutlib",
     ],
-    licenses = [
+    license_files = [
         "//prebuilts/studio/layoutlib:licenses",
     ],
     modules = {
@@ -536,7 +537,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
     ],
-    licenses = [
+    license_files = [
         "//tools/vendor/google/firebase:licenses",
     ],
     modules = {"firebase.jar": ["//tools/vendor/google/firebase:firebase"]},
@@ -611,7 +612,7 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//prebuilts/tools/common/m2:google-api-services-sourcerepo",
     ],
-    licenses = [
+    license_files = [
         "//tools/studio/google/cloud/tools/android-studio-plugin/lib:licenses",
     ],
     modules = {
@@ -650,7 +651,7 @@ studio_plugin(
         "//tools/studio/google/cloud/testing/test-recorder/lib:uiautomatorviewer",
         "//tools/studio/google/cloud/testing/test-recorder/lib:swt",
     ],
-    licenses = [
+    license_files = [
         "//tools/studio/google/cloud/testing/test-recorder/lib:licenses",
     ],
     modules = {

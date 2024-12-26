@@ -22,7 +22,6 @@ import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
-import com.android.tools.idea.uibuilder.layout.option.GalleryLayoutManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -44,12 +43,18 @@ class ViewInGalleryAction(
 
   override fun update(e: AnActionEvent) {
     val surface = e.getData(DESIGN_SURFACE) as? NlDesignSurface
+    val modeManager = e.dataContext.findPreviewManager(PreviewModeManager.KEY)
+
     val sceneView = surface?.getSceneViewAt(x, y)
+    val isGallery: Boolean = modeManager?.mode?.value is PreviewMode.Gallery
+    val isDefault: Boolean = modeManager?.mode?.value is PreviewMode.Default
 
-    // The action is not visible if the open-to-gallery flag is disabled.
-    e.presentation.isVisible = StudioFlags.VIEW_IN_GALLERY.get()
+    // Hide completely the action if:
+    // * View-in-gallery flag is disabled
+    // * The selected preview mode is neither Default nor Gallery.
+    // When in Gallery mode, we want to show up the action, but disabled.
+    e.presentation.isVisible = StudioFlags.VIEW_IN_GALLERY.get() && (isDefault || isGallery)
 
-    val isGallery: Boolean = surface?.isLayoutGallery() ?: false
     val hasRendered: Boolean =
       (sceneView?.sceneManager as? LayoutlibSceneManager)?.renderResult != null
 
@@ -85,7 +90,4 @@ class ViewInGalleryAction(
     }
     modeManager.setMode(PreviewMode.Gallery(previewElementInstance))
   }
-
-  private fun NlDesignSurface.isLayoutGallery() =
-    layoutManagerSwitcher?.currentLayout?.value?.layoutManager is GalleryLayoutManager
 }

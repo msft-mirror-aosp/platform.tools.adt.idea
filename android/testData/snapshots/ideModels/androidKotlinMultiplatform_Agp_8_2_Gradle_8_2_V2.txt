@@ -937,8 +937,8 @@ MODULE                        : Kotlin_Multiplatform
                 buildFile                     : <ROOT>/kmpSecondLib/build.gradle.kts
                 externalSystemId              : GRADLE
                 sourceSetModel                : DefaultGradleSourceSetModel
-                    sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                    targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
+                    sourceCompatibility           : 11
+                    targetCompatibility           : 11
                     - taskArtifacts               : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
                     configurationArtifacts
@@ -1146,6 +1146,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
+        GenerateManifestClass         : false
     - basicVariant:               : typeoneModeoneDebug
         testApplicationId             : com.example.androidlib.test
         buildType                     : debug
@@ -1749,6 +1750,7 @@ MODULE                        : Kotlin_Multiplatform.app
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
+        GenerateManifestClass         : false
     - basicVariant:               : debug
         applicationId                 : com.example.app
         testApplicationId             : com.example.app.test
@@ -2199,6 +2201,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
+        GenerateManifestClass         : false
     - basicVariant:               : androidMain
         testApplicationId             : com.example.kmpfirstlib.test
     BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
@@ -2916,6 +2919,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
+        GenerateManifestClass         : false
     - basicVariant:               : androidMain
     BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
     DefaultSourceProvider
@@ -3093,7 +3097,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpSecondLib/build/classes/kotlin/jvm/main
                     jvmDefault                    : disable
-                    jvmTarget                     : 17
+                    jvmTarget                     : 1.8
                     moduleName                    : kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
@@ -3172,7 +3176,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     backendThreads                : 1
                     destination                   : <ROOT>/kmpSecondLib/build/classes/kotlin/jvm/test
                     jvmDefault                    : disable
-                    jvmTarget                     : 17
+                    jvmTarget                     : 1.8
                     moduleName                    : kmpSecondLib_test
                     noReflect                     : true
                     noStdlib                      : true

@@ -13,47 +13,129 @@ jps_library(
     ],
 )
 
-# Tests from inner classes of K1IdeK2CodeKotlinSteppingTestGenerated. Ordered as the appear in the class.
-
-debugger_test(
-    name = "stepping",
-    expected_to_fail_art = "stepping-art.txt",
-    expected_to_fail_jvm = "stepping-jvm.txt",
-    shard_count = 50,
-    test_include_filter = ["org.jetbrains.kotlin.idea.debugger.test.K1IdeK2CodeKotlinSteppingTestGenerated\\$"],
+jps_library(
+    name = "kotlin.jvm-debugger.test.k2_lib",
+    download_cache = "prebuilts/tools/jps-build-caches/kotlin.jvm-debugger.test_lib",
+    module = "kotlin.jvm-debugger.test.k2",
+    deps = [
+        "//prebuilts/tools/jps-build-caches:kotlin.jvm-debugger.test_lib",
+        "//tools/idea:idea_source",
+    ],
 )
 
+# 369 tests - 94 ART tests expected to fail
 debugger_test(
-    name = "evaluate-expression",
-    expected_to_fail_art = "evaluate-expression-art.txt",
-    expected_to_fail_jvm = "evaluate-expression-jvm.txt",
+    name = "stepping-k1-k2",
+    expected_to_fail_art = "stepping-k1-k2-art.txt",
+    expected_to_fail_jvm = "stepping-k1-k2-jvm.txt",
+    shard_count = 50,
+    test_include_filter = ["K1IdeK2CodeKotlinSteppingTestGenerated\\$"],
+)
+
+# 369 tests - 95 ART tests expected to fail
+debugger_test(
+    name = "stepping-k2-k2",
+    expected_to_fail_art = "stepping-k2-k2-art.txt",
+    expected_to_fail_jvm = "stepping-k2-k2-jvm.txt",
+    module = "kotlin.jvm-debugger.test.k2",
+    shard_count = 50,
+    test_include_filter = ["K2IdeK2CodeKotlinSteppingTestGenerated\\$"],
+)
+
+# 444 tests - 97 ART tests expected to fail
+debugger_test(
+    name = "evaluate-expression-k1-k2",
+    expected_to_fail_art = "evaluate-expression-k1-k2-art.txt",
+    expected_to_fail_jvm = "evaluate-expression-k1-k2-jvm.txt",
     shard_count = 50,
     test_exclude_filter = [
         # Flaky
+        "K1IdeK2CodeKotlinEvaluateExpressionTestGenerated.SingleBreakpoint.Coroutines.RunToCursor.testRunToCursorFromNonSuspendToSuspend",
         "K1IdeK2CodeKotlinEvaluateExpressionTestGenerated.SingleBreakpoint.Uncategorized.testAnnotationValue",
     ],
     test_include_filter = ["org.jetbrains.kotlin.idea.debugger.test.K1IdeK2CodeKotlinEvaluateExpressionTestGenerated\\$"],
 )
 
+test_suite(
+    name = "stepping-art",
+    tests = [
+        ":stepping-k1-k2-art",
+        ":stepping-k2-k2-art",
+    ],
+)
+
+test_suite(
+    name = "stepping-jvm",
+    tests = [
+        ":stepping-k1-k2-jvm",
+        ":stepping-k2-k2-jvm",
+    ],
+)
+
+test_suite(
+    name = "stepping",
+    tests = [":stepping-jvm"],
+)
+
+test_suite(
+    name = "evaluate-expression-art",
+    tests = [
+        ":evaluate-expression-k1-k2-art",
+    ],
+)
+
+test_suite(
+    name = "evaluate-expression-jvm",
+    tests = [
+        ":evaluate-expression-k1-k2-jvm",
+    ],
+)
+
+test_suite(
+    name = "evaluate-expression",
+    tests = [
+        ":evaluate-expression-art",
+        ":evaluate-expression-jvm",
+    ],
+)
+
+test_suite(
+    name = "art",
+    tests = [
+        ":evaluate-expression-art",
+        ":stepping-art",
+    ],
+)
+
+test_suite(
+    name = "jvm",
+    tests = [
+        ":evaluate-expression-jvm",
+        ":stepping-jvm",
+    ],
+)
+
+test_suite(
+    name = "all",
+    tests = [
+        ":art",
+        ":jvm",
+    ],
+)
+
 # A convenience target for running a single test for debugging. To use this, replace the filter
 # with whatever test desired.
 debugger_test(
-    name = "single",
-    test_include_filter = ["K1IdeK2CodeKotlinEvaluateExpressionTestGenerated.SingleBreakpoint.Uncategorized.testAnnotationValue"],
+    name = "single-k1-k2",
+    test_include_filter = ["K1IdeK2CodeKotlinEvaluateExpressionTestGenerated.SingleBreakpoint.Coroutines.RunToCursor.testRunToCursorFromNonSuspendToSuspend"],
 )
 
+# A convenience target for running a single k2 test for debugging. To use this, replace the filter
+# with whatever test desired.
 debugger_test(
-    name = "test-android-dexer",
-    test_include_filter = [
-        "org.jetbrains.kotlin.idea.debugger.test.K1IdeK2CodeKotlinEvaluateExpressionTestGenerated.SingleBreakpoint.CompilingEvaluator\\$",
-    ],
-)
-
-debugger_test(
-    name = "test-shadow-fields",
-    test_include_filter = [
-        "K1IdeK2CodeKotlinEvaluateExpressionTestGenerated.*testInlineLambdasInAnonymousObjects",
-    ],
+    name = "single-k2-k2",
+    module = "kotlin.jvm-debugger.test.k2",
+    test_include_filter = ["K2IdeK2CodeKotlinSteppingTestGenerated.Custom.testSmartStepIntoSuspendFunInterface"],
 )
 
 maven_repository(
