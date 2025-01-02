@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.base.command.buildresult.bepparser;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.stream.Collectors.groupingBy;
 
@@ -23,150 +22,162 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.Maps;
-import com.google.common.collect.SetMultimap;
 import com.google.idea.blaze.common.artifact.OutputArtifact;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+import org.jetbrains.annotations.TestOnly;
 
 /** A data class representing blaze's build event protocol (BEP) output for a build. */
-public final class ParsedBepOutput {
-
-  @VisibleForTesting
-  public static final ParsedBepOutput EMPTY =
-      new ParsedBepOutput(
-          "build-id",
-          null,
-          ImmutableMap.of(),
-          ImmutableSetMultimap.of(),
-          0,
-          0,
-          0,
-          ImmutableSet.of());
-
-  @Nullable public final String buildId;
-
-  /** A path to the local execroot */
-  @Nullable private final String localExecRoot;
-
-  /** A map from file set ID to file set, with the same ordering as the BEP stream. */
-  private final ImmutableMap<String, FileSet> fileSets;
-
-  /** The set of named file sets directly produced by each target. */
-  private final SetMultimap<String, String> targetFileSets;
-
-  final long syncStartTimeMillis;
-
-  private final int buildResult;
-  private final long bepBytesConsumed;
-  private final ImmutableSet<String> targetsWithErrors;
-
-  ParsedBepOutput(
-    @Nullable String buildId,
-    @Nullable String localExecRoot,
-    ImmutableMap<String, FileSet> fileSets,
-    ImmutableSetMultimap<String, String> targetFileSets,
-    long syncStartTimeMillis,
-    int buildResult,
-    long bepBytesConsumed,
-    ImmutableSet<String> targetsWithErrors) {
-    this.buildId = buildId;
-    this.localExecRoot = localExecRoot;
-    this.fileSets = fileSets;
-    this.targetFileSets = targetFileSets;
-    this.syncStartTimeMillis = syncStartTimeMillis;
-    this.buildResult = buildResult;
-    this.bepBytesConsumed = bepBytesConsumed;
-    this.targetsWithErrors = targetsWithErrors;
-  }
-
-  /** Returns the local execroot. */
-  @Nullable
-  public String getLocalExecRoot() {
-    return localExecRoot;
-  }
-
-  /** Returns the build result. */
-  public int getBuildResult() {
-    return buildResult;
-  }
-
-  public long getBepBytesConsumed() {
-    return bepBytesConsumed;
-  }
-
-  /** Returns all output artifacts of the build. */
-  public ImmutableSet<OutputArtifact> getAllOutputArtifacts(Predicate<String> pathFilter) {
-    return fileSets.values().stream()
-        .map(s -> s.parsedOutputs)
-        .flatMap(List::stream)
-        .filter(o -> pathFilter.test(o.getBazelOutRelativePath()))
-        .collect(toImmutableSet());
-  }
-
-  /** Returns the set of artifacts directly produced by the given target. */
-  public ImmutableSet<OutputArtifact> getDirectArtifactsForTarget(
-      String label, Predicate<String> pathFilter) {
-    return targetFileSets.get(label).stream()
-        .map(s -> fileSets.get(s).parsedOutputs)
-        .flatMap(List::stream)
-        .filter(o -> pathFilter.test(o.getBazelOutRelativePath()))
-        .collect(toImmutableSet());
-  }
-
-  public ImmutableList<OutputArtifact> getOutputGroupArtifacts(
-      String outputGroup, Predicate<String> pathFilter) {
-    return fileSets.values().stream()
-        .filter(f -> f.outputGroups.contains(outputGroup))
-        .map(f -> f.parsedOutputs)
-        .flatMap(List::stream)
-        .filter(o -> pathFilter.test(o.getBazelOutRelativePath()))
-        .distinct()
-        .collect(toImmutableList());
-  }
-
-  public ImmutableList<OutputArtifact> getOutputGroupArtifacts(String outputGroup) {
-    return getOutputGroupArtifacts(outputGroup, s -> true);
-  }
+public interface ParsedBepOutput {
+  /**
+   * The exit code of the Bazel build.
+   */
+  int buildResult();
 
   /**
-   * Returns a map from artifact key to {@link BepArtifactData} for all artifacts reported during
-   * the build.
+   * The total number of bytes in the build event protocol output.
    */
-  public ImmutableMap<String, BepArtifactData> getFullArtifactData() {
-    return ImmutableMap.copyOf(
-      Maps.transformValues(
-        fileSets.values().stream()
-          .flatMap(FileSet::toPerArtifactData)
-          .collect(groupingBy(d -> d.artifact.getBazelOutRelativePath(), toImmutableSet())),
-        BepArtifactData::combine));
-  }
+  long bepBytesConsumed();
 
-  /** Returns the set of build targets that had an error. */
-  public ImmutableSet<String> getTargetsWithErrors() {
-    return targetsWithErrors;
-  }
+  /**
+   * An obscure ID that can be used to identify the build in the external environment.
+   *
+   * <p><em>DO NOT</em> attempt to interpret or compare.
+   */
+  String idForLogging();
 
-  static class FileSet {
-    private final ImmutableList<OutputArtifact> parsedOutputs;
-    private final ImmutableSet<String> outputGroups;
-    private final ImmutableSet<String> targets;
+  /**
+   * A list of the artifacts outputted by the given target to the given output group.
+   *
+   * <p>Note that the same artifact may be outputted by multiple targets and into multiple output groups.
+   */
+  ImmutableList<OutputArtifact> getOutputGroupTargetArtifacts(String outputGroup, String label);
 
-    FileSet(
-      ImmutableList<OutputArtifact> parsedOutputs,
-        Set<String> outputGroups,
-        Set<String> targets) {
-      this.parsedOutputs = parsedOutputs;
-      this.outputGroups = ImmutableSet.copyOf(outputGroups);
-      this.targets = ImmutableSet.copyOf(targets);
+  /**
+   * A de-duplicated list of the artifacts outputted to the given output group.
+   *
+   * <p>Note that the same artifact may be outputted by multiple targets and into multiple output groups. Such artifacts are included in the
+   * resulting list only once.
+   */
+  ImmutableList<OutputArtifact> getOutputGroupArtifacts(String outputGroup);
+
+  /**
+   * Label of any targets that were not build because of build errors.
+   */
+  ImmutableSet<String> targetsWithErrors();
+
+  /**
+   * A de-duplicated list of all artifacts produced by the build.
+   */
+  @TestOnly
+  ImmutableList<OutputArtifact> getAllOutputArtifactsForTesting();
+
+  class Legacy {
+
+    @VisibleForTesting
+    public static final ParsedBepOutput.Legacy EMPTY =
+      new ParsedBepOutput.Legacy(
+        "build-id",
+        ImmutableMap.of(),
+        0,
+        0,
+        0,
+        ImmutableSet.of());
+
+    @Nullable public final String buildId;
+
+    /**
+     * A map from file set ID to file set, with the same ordering as the BEP stream.
+     */
+    @VisibleForTesting
+    public final ImmutableMap<String, FileSet> fileSets;
+
+    final long syncStartTimeMillis;
+
+    private final int buildResult;
+    private final long bepBytesConsumed;
+    private final ImmutableSet<String> targetsWithErrors;
+
+    Legacy(
+      @Nullable String buildId,
+      ImmutableMap<String, FileSet> fileSets,
+      long syncStartTimeMillis,
+      int buildResult,
+      long bepBytesConsumed,
+      ImmutableSet<String> targetsWithErrors) {
+      this.buildId = buildId;
+      this.fileSets = fileSets;
+      this.syncStartTimeMillis = syncStartTimeMillis;
+      this.buildResult = buildResult;
+      this.bepBytesConsumed = bepBytesConsumed;
+      this.targetsWithErrors = targetsWithErrors;
     }
 
-    private Stream<BepArtifactData> toPerArtifactData() {
-      return parsedOutputs.stream().map(a -> new BepArtifactData(a, outputGroups, targets));
+    /**
+     * Returns the build result.
+     */
+    public int getBuildResult() {
+      return buildResult;
+    }
+
+    public long getBepBytesConsumed() {
+      return bepBytesConsumed;
+    }
+
+    /**
+     * Returns all output artifacts of the build.
+     */
+    @TestOnly
+    public ImmutableSet<OutputArtifact> getAllOutputArtifactsForTesting() {
+      return fileSets.values().stream()
+        .map(s -> s.parsedOutputs)
+        .flatMap(List::stream)
+        .collect(toImmutableSet());
+    }
+
+    /**
+     * Returns a map from artifact key to {@link BepArtifactData} for all artifacts reported during
+     * the build.
+     */
+    public ImmutableMap<String, BepArtifactData> getFullArtifactData() {
+      return ImmutableMap.copyOf(
+        Maps.transformValues(
+          fileSets.values().stream()
+            .flatMap(FileSet::toPerArtifactData)
+            .collect(groupingBy(d -> d.artifact.getBazelOutRelativePath(), toImmutableSet())),
+          BepArtifactData::combine));
+    }
+
+    /**
+     * Returns the set of build targets that had an error.
+     */
+    public ImmutableSet<String> getTargetsWithErrors() {
+      return targetsWithErrors;
+    }
+
+    public static class FileSet {
+      @VisibleForTesting
+      public final ImmutableList<OutputArtifact> parsedOutputs;
+      @VisibleForTesting
+      public final ImmutableSet<String> outputGroups;
+      @VisibleForTesting
+      public final ImmutableSet<String> targets;
+
+      FileSet(
+        ImmutableList<OutputArtifact> parsedOutputs,
+        Set<String> outputGroups,
+        Set<String> targets) {
+        this.parsedOutputs = parsedOutputs;
+        this.outputGroups = ImmutableSet.copyOf(outputGroups);
+        this.targets = ImmutableSet.copyOf(targets);
+      }
+
+      private Stream<BepArtifactData> toPerArtifactData() {
+        return parsedOutputs.stream().map(a -> new BepArtifactData(a, outputGroups, targets));
+      }
     }
   }
 }

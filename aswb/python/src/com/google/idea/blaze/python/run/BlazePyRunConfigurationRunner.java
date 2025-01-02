@@ -44,6 +44,7 @@ import com.google.idea.blaze.base.run.confighandler.BlazeCommandGenericRunConfig
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.command.buildresult.BuildResult;
+import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.util.ProcessGroupUtil;
 import com.google.idea.blaze.base.util.SaveUtil;
@@ -89,6 +90,7 @@ import javax.annotation.Nullable;
 
 /** Python-specific run configuration runner. */
 public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurationRunner {
+  private static final String DEFAULT_OUTPUT_GROUP_NAME = "default";
 
   /** This inserts flags provided by any BlazePyDebugHelpers to the pydevd.py invocation */
 
@@ -340,14 +342,15 @@ public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurati
         throw new ExecutionException(e);
       }
       List<File> candidateFiles;
-      try(final var bepStream = buildResultHelper.getBepStream(Optional.empty())) {
+      try (final var bepStream = buildResultHelper.getBepStream(Optional.empty())) {
         candidateFiles =
-            LocalFileArtifact.getLocalFiles(
-                BuildResultParser.getBuildOutput(bepStream, Interners.STRING)
-                  .getDirectArtifactsForTarget(target.toString(), file -> true).asList())
-                .stream()
-                .filter(File::canExecute)
-                .collect(Collectors.toList());
+          LocalFileArtifact.getLocalFiles(
+              BlazeBuildOutputs.fromParsedBepOutput(
+                  BuildResultParser.getBuildOutput(bepStream, Interners.STRING))
+                .getOutputGroupTargetArtifacts(DEFAULT_OUTPUT_GROUP_NAME, target.toString()).asList())
+            .stream()
+            .filter(File::canExecute)
+            .collect(Collectors.toList());
       } catch (GetArtifactsException e) {
         throw new ExecutionException(
             String.format(
