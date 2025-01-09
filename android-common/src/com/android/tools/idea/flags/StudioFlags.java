@@ -2172,7 +2172,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
                     "Enable test scenario generation.",
                     "When enabled, generate test scenarios and corresponding function names for the selected code.",
-                    enabledUpTo(CANARY));
+                    true);
 
   // endregion STUDIO_BOT
 
