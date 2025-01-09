@@ -37,7 +37,6 @@ import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.ButtonSizeAn
 import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.TextFieldSizeAnalyzer
 import com.android.tools.preview.applyTo
 import com.android.tools.rendering.RenderResult
-import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.smartReadActionBlocking
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.util.PsiTreeUtil
@@ -125,11 +124,9 @@ class ComposeVisualLintSuppressTaskTest {
     NlModelHierarchyUpdater.updateHierarchy(renderResult, nlModel)
 
     val issueProvider = ComposeVisualLintIssueProvider(projectRule.fixture.testRootDisposable)
-    val buttonIssues =
-      ButtonSizeAnalyzer.analyze(renderResult, nlModel, HighlightSeverity.WARNING, false)
+    val buttonIssues = ButtonSizeAnalyzer.analyze(renderResult, nlModel)
     assertEquals(1, buttonIssues.size)
-    val textFieldIssues =
-      TextFieldSizeAnalyzer.analyze(renderResult, nlModel, HighlightSeverity.WARNING, false)
+    val textFieldIssues = TextFieldSizeAnalyzer.analyze(renderResult, nlModel)
     assertEquals(1, textFieldIssues.size)
     issueProvider.addAllIssues(buttonIssues)
     issueProvider.addAllIssues(textFieldIssues)
@@ -228,11 +225,9 @@ class ComposeVisualLintSuppressTaskTest {
     NlModelHierarchyUpdater.updateHierarchy(renderResult, nlModel)
 
     val issueProvider = ComposeVisualLintIssueProvider(projectRule.fixture.testRootDisposable)
-    val buttonIssues =
-      ButtonSizeAnalyzer.analyze(renderResult, nlModel, HighlightSeverity.WARNING, false)
+    val buttonIssues = ButtonSizeAnalyzer.analyze(renderResult, nlModel)
     assertEquals(1, buttonIssues.size)
-    val textFieldIssues =
-      TextFieldSizeAnalyzer.analyze(renderResult, nlModel, HighlightSeverity.WARNING, false)
+    val textFieldIssues = TextFieldSizeAnalyzer.analyze(renderResult, nlModel)
     assertEquals(1, textFieldIssues.size)
     issueProvider.addAllIssues(buttonIssues)
     issueProvider.addAllIssues(textFieldIssues)

@@ -20,20 +20,19 @@ import com.android.ide.common.rendering.api.ViewInfo
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintAnalyzer
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintErrorType
-import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintInspection
 import com.android.tools.rendering.RenderResult
 import com.android.utils.HtmlBuilder
 
 private const val MIN_ROUND_MARGIN_RATIO = 0.052
 private const val MIN_RECT_MARGIN_RATIO = 0.025
 
+private const val VIEW_CLASS_NAME = "android.view.View"
+private const val COMPOSE_VIEW_CLASS_NAME = "androidx.compose.ui.platform.ComposeView"
+
 /** [VisualLintAnalyzer] for issues where a view is too close to the side of a Wear OS device. */
 object WearMarginAnalyzer : VisualLintAnalyzer() {
   override val type: VisualLintErrorType
     get() = VisualLintErrorType.WEAR_MARGIN
-
-  override val backgroundEnabled: Boolean
-    get() = WearMarginAnalyzerInspection.wearMarginBackground
 
   override fun findIssues(
     renderResult: RenderResult,
@@ -90,11 +89,12 @@ object WearMarginAnalyzer : VisualLintAnalyzer() {
 
   /**
    * Decides whether a given view is relevant for margin analysis. Containers for example are not
-   * since they are not displaying anything themselves.
+   * since they are not displaying anything themselves. For Compose, such containers are represented
+   * by accessibility objects View or ComposeView.
    */
   private fun ViewInfo.isRelevant(): Boolean {
     return if (accessibilityObject != null) {
-      className != "android.view.View"
+      className != VIEW_CLASS_NAME && className != COMPOSE_VIEW_CLASS_NAME
     } else {
       viewObject !is ViewGroup
     }
@@ -106,10 +106,3 @@ data class ViewWithParentBounds(
   val absoluteParentLeft: Int,
   val absoluteParentRight: Int,
 )
-
-class WearMarginAnalyzerInspection :
-  VisualLintInspection(VisualLintErrorType.WEAR_MARGIN, "wearMarginBackground") {
-  companion object {
-    var wearMarginBackground = true
-  }
-}

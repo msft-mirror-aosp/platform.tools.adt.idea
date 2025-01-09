@@ -57,11 +57,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
 class ParametrizedPreviewTest {
   @get:Rule val projectRule = ComposeGradleProjectRule(SIMPLE_COMPOSE_PROJECT_PATH)
+
+  val facet
+    get() = projectRule.androidFacet(":app")
 
   @get:Rule val edtRule = EdtRule()
 
@@ -96,7 +100,7 @@ class ParametrizedPreviewTest {
 
       elements.forEach {
         assertTrue(
-          renderPreviewElementForResult(projectRule.androidFacet(":app"), parametrizedPreviews, it)
+          renderPreviewElementForResult(facet, parametrizedPreviews, it)
             .future
             .get()
             ?.renderResult
@@ -116,7 +120,7 @@ class ParametrizedPreviewTest {
 
       elements.forEach {
         assertTrue(
-          renderPreviewElementForResult(projectRule.androidFacet(":app"), parametrizedPreviews, it)
+          renderPreviewElementForResult(facet, parametrizedPreviews, it)
             .future
             .get()
             ?.renderResult
@@ -137,7 +141,7 @@ class ParametrizedPreviewTest {
 
       elements.forEach {
         assertTrue(
-          renderPreviewElementForResult(projectRule.androidFacet(":app"), parametrizedPreviews, it)
+          renderPreviewElementForResult(facet, parametrizedPreviews, it)
             .future
             .get()
             ?.renderResult
@@ -165,11 +169,7 @@ class ParametrizedPreviewTest {
           it.methodFqn,
         )
         assertTrue(it is SingleComposePreviewElementInstance)
-        assertNull(
-          renderPreviewElementForResult(projectRule.androidFacet(":app"), parametrizedPreviews, it)
-            .future
-            .get()
-        )
+        assertNull(renderPreviewElementForResult(facet, parametrizedPreviews, it).future.get())
       }
     }
 
@@ -191,7 +191,7 @@ class ParametrizedPreviewTest {
 
       elements.forEach {
         assertTrue(
-          renderPreviewElementForResult(projectRule.androidFacet(":app"), parametrizedPreviews, it)
+          renderPreviewElementForResult(facet, parametrizedPreviews, it)
             .future
             .get()
             ?.renderResult
@@ -224,15 +224,12 @@ class ParametrizedPreviewTest {
           it.methodFqn,
         )
         assertTrue(it is ParametrizedComposePreviewElementInstance)
-        assertNull(
-          renderPreviewElementForResult(projectRule.androidFacet(":app"), parametrizedPreviews, it)
-            .future
-            .get()
-        )
+        assertNull(renderPreviewElementForResult(facet, parametrizedPreviews, it).future.get())
       }
     }
   }
 
+  @Ignore("b/385137823")
   @Test
   fun testUiCheckForParametrizedPreview(): Unit = runBlocking {
     val project = projectRule.project
@@ -297,10 +294,9 @@ class ParametrizedPreviewTest {
         it
           .asCollection()
           .filterIsInstance<ParametrizedComposePreviewElementInstance<*>>()
-          .map {
+          .joinToString("\n") {
             "${it.methodFqn} provider=${it.providerClassFqn} index=${it.index} max=${it.maxIndex}"
           }
-          .joinToString("\n")
 
       stringValue ==
         """

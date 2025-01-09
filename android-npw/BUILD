@@ -101,8 +101,8 @@ iml_module(
     # keep sorted
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11",
-        "//prebuilts/studio/jdk/jdk17:jdk17_runtime_files",
+        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
+        "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
@@ -205,17 +205,12 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.24",
-        "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_2.0.21",
-        "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_" + KGP_VERSION_FOR_TESTS,  # ModuleModelTest.testKmpModuleCreationAndAssemble
-        "@maven//:org.jetbrains.kotlin.kotlin-native-prebuilt_2.0.21",
-        "@maven//:org.jetbrains.kotlin.kotlin-native-prebuilt_" + KGP_VERSION_FOR_TESTS,  # ModuleModelTest.testKmpModuleCreationAndAssemble
+        "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
+        "@maven//:org.jetbrains.kotlin.kotlin-native-prebuilt_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.24",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib_2.0.21",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib_" + KGP_VERSION_FOR_TESTS,  # ModuleModelTest.testKmpModuleCreationAndAssemble
-        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_2.0.21",
-        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_2.1.0",  # ModuleModelTest.testKmpModuleCreationAndAssemble
-        "@maven//:org.jetbrains.kotlin.kotlin-test_2.0.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
     ],
 )

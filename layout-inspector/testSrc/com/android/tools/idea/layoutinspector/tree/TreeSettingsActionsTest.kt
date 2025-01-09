@@ -78,6 +78,7 @@ class TreeSettingsActionsTest {
   private val appClient: AppInspectionInspectorClient = mock()
   private val snapshotClient: FileEditorInspectorClient = mock()
   private var currentClient: InspectorClient? = appClient
+  private val panel: JPanel = JPanel()
 
   @Test
   fun testFilterSystemNodeAction() {
@@ -268,7 +269,6 @@ class TreeSettingsActionsTest {
     val tree: Tree = mock()
     val component: JComponent = mock()
     val treePanel: LayoutInspectorTreePanel = mock()
-    val panel = JPanel()
     panel.putClientProperty(ToolContent.TOOL_CONTENT_KEY, treePanel)
     val inspector: LayoutInspector = mock()
     whenever(treePanel.tree).thenReturn(tree)

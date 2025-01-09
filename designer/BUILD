@@ -56,6 +56,7 @@ iml_module(
         "//tools/adt/idea/ml-api:intellij.android.ml-api[module]",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
         "//tools/adt/idea/avd:intellij.android.avd[module]",
+        "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api[module]",
     ],
 )
 
@@ -79,7 +80,7 @@ iml_module(
     test_class = "com.android.tools.idea.DesignerTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11",
+        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/latest",
