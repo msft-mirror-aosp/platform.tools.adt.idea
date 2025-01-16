@@ -27,11 +27,12 @@ import com.android.tools.idea.uibuilder.lint.getTextRange
 import com.android.tools.idea.uibuilder.visual.analytics.VisualLintOrigin
 import com.android.tools.idea.uibuilder.visual.analytics.VisualLintUsageTracker
 import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
-import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintAnalyzer.VisualLintIssueContent
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.describe
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.isLowContrast
 import com.android.tools.idea.validator.ValidatorData
 import com.android.tools.rendering.parsers.TagSnapshot
+import com.android.tools.visuallint.VisualLintAnalyzer.VisualLintIssueContent
+import com.android.tools.visuallint.VisualLintErrorType
+import com.android.tools.visuallint.analyzers.describe
+import com.android.tools.visuallint.analyzers.isLowContrast
 import com.android.utils.HtmlBuilder
 import com.intellij.codeInsight.daemon.HighlightDisplayKey
 import com.intellij.designer.model.EmptyXmlTag
@@ -52,8 +53,7 @@ private const val COLOR_BLIND_ISSUE_SUMMARY = "Insufficient color contrast for c
 private const val VISUAL_LINT_ISSUE_CATEGORY = "Visual Lint Issue"
 
 /** Lint issues that is generated from visual sources (e.g. Layout Validation) */
-class VisualLintRenderIssue private constructor(builder: Builder) :
-  Issue(), VisualLintHighlightingIssue {
+class VisualLintRenderIssue private constructor(builder: Builder) : Issue() {
   private val _models = builder.model?.let { mutableSetOf(it) } ?: mutableSetOf()
   private var isComponentSuppressed: (NlComponent) -> Boolean = { false }
   private val _components = builder.components!!
@@ -74,7 +74,12 @@ class VisualLintRenderIssue private constructor(builder: Builder) :
   override val category = VISUAL_LINT_ISSUE_CATEGORY
   override val hyperlinkListener = builder.hyperlinkListener
 
-  override fun shouldHighlight(model: NlModel): Boolean {
+  /**
+   * Returns true if the issue should be highlighting when selected.
+   *
+   * @param model Currently displaying model.
+   */
+  fun shouldHighlight(model: NlModel): Boolean {
     return components.map { it.model }.contains(model)
   }
 
@@ -295,7 +300,7 @@ class VisualLintRenderIssue private constructor(builder: Builder) :
         issueType = VisualLintErrorType.ATF_COLORBLIND
         summary = COLOR_BLIND_ISSUE_SUMMARY
         descriptionProvider = { count ->
-          colorBLindModeDescriptionProvider(content.atfIssue, model, count)
+          colorBLindModeDescriptionProvider(content.atfIssue!!, model, count)
         }
       }
       val component = componentFromViewInfo(content.view, model)

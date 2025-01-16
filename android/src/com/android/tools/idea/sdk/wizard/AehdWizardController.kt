@@ -16,7 +16,9 @@
 package com.android.tools.idea.sdk.wizard
 
 import com.android.repository.api.ProgressIndicator
+import com.android.repository.api.RemotePackage
 import com.android.repository.api.RepoManager
+import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.StudioDownloader
@@ -32,16 +34,28 @@ import com.android.tools.idea.welcome.install.InstallationCancelledException
 import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.install.WizardException
 import com.android.tools.idea.welcome.wizard.ProgressStep
+import com.android.tools.idea.welcome.wizard.StudioFirstRunWelcomeScreen
 import com.google.common.collect.Lists
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.PlatformUtils
 import java.io.File
 
-class AehdWizardController {
+class AehdWizardController(val sdkComponentInstaller: SdkComponentInstaller = SdkComponentInstaller()) {
+
+  fun getPackagesToInstall(sdkHandler: AndroidSdkHandler, aehdSdkComponentTreeNode: AehdSdkComponentTreeNode): Collection<RemotePackage> {
+    try {
+      return sdkComponentInstaller.getPackagesToInstall(sdkHandler, listOf(aehdSdkComponentTreeNode))
+    }
+    catch (e: SdkQuickfixUtils.PackageResolutionException) {
+      logger<StudioFirstRunWelcomeScreen>().warn(e)
+      return emptyList()
+    }
+  }
 
   fun setupAehd(aehdSdkComponentTreeNode: AehdSdkComponentTreeNode, progressStep: ProgressStep, progressIndicator: ProgressIndicator): Boolean {
     val tmpDir = FileUtil.createTempDirectory(PlatformUtils.getPlatformPrefix(), "AEHD", true)
@@ -54,7 +68,6 @@ class AehdWizardController {
         RepoManager.DEFAULT_EXPIRATION_PERIOD_MS, progressIndicator, StudioDownloader(), StudioSettingsController.getInstance())
     aehdSdkComponentTreeNode.updateState(sdkHandler)
 
-    val sdkComponentInstaller = SdkComponentInstaller(sdkHandler)
     val selectedComponents: Collection<InstallableSdkComponentTreeNode> = Lists.newArrayList(aehdSdkComponentTreeNode)
 
     var configureAehdProgressRatio = 1.0
@@ -70,7 +83,7 @@ class AehdWizardController {
     val opChain: InstallOperation<File, File>
     if (aehdSdkComponentTreeNode.installationIntention.isInstall()) {
       val install =
-        InstallSdkComponentsOperation(installContext, selectedComponents, sdkComponentInstaller, 0.5)
+        InstallSdkComponentsOperation(installContext, sdkHandler, selectedComponents, sdkComponentInstaller, 0.5)
       opChain = install.then(configureAehdOperation)
     }
     else {
@@ -87,10 +100,10 @@ class AehdWizardController {
       throw RuntimeException(e)
     }
     finally {
-      if (!aehdSdkComponentTreeNode.isInstallerSuccessfullyCompleted && aehdSdkComponentTreeNode.installationIntention != AehdSdkComponentTreeNode.InstallationIntention.UNINSTALL) {
+      if (!aehdSdkComponentTreeNode.isInstallerSuccessfullyCompleted && aehdSdkComponentTreeNode.installationIntention != InstallationIntention.UNINSTALL) {
         // The intention was to install AEHD, but the installation failed. Ensure we don't leave the SDK package behind
         sdkHandler.getSdkManager(progressIndicator).reloadLocalIfNeeded(progressIndicator)
-        sdkComponentInstaller.ensureSdkPackagesUninstalled(aehdSdkComponentTreeNode.requiredSdkPackages, progressIndicator)
+        sdkComponentInstaller.ensureSdkPackagesUninstalled(sdkHandler, aehdSdkComponentTreeNode.requiredSdkPackages, progressIndicator)
       }
     }
     installContext.print("Done", ConsoleViewContentType.NORMAL_OUTPUT)
@@ -101,13 +114,12 @@ class AehdWizardController {
   fun handleCancel(installationIntention: InstallationIntention, aehdSdkComponentTreeNode: AehdSdkComponentTreeNode, aClass: Class<*>, logger: Logger) {
     // The wizard was invoked to install, but installer invocation failed or was cancelled.
     // Have to ensure the SDK package is removed
-    if (installationIntention.isInstall()) {
+    if (installationIntention != InstallationIntention.UNINSTALL) {
       try {
         val sdkHandler = AndroidSdks.getInstance().tryToChooseSdkHandler()
-        val sdkComponentInstaller = SdkComponentInstaller(sdkHandler)
         val progress: ProgressIndicator = StudioLoggerProgressIndicator(aClass)
         sdkHandler.getSdkManager(progress).reloadLocalIfNeeded(progress)
-        sdkComponentInstaller.ensureSdkPackagesUninstalled(aehdSdkComponentTreeNode.requiredSdkPackages, progress)
+        sdkComponentInstaller.ensureSdkPackagesUninstalled(sdkHandler, aehdSdkComponentTreeNode.requiredSdkPackages, progress)
       }
       catch (e: Exception) {
         Messages.showErrorDialog(sdkPackageCleanupFailedMessage(), "Cleanup Error")

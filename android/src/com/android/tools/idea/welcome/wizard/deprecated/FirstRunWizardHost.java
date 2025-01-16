@@ -17,13 +17,15 @@ package com.android.tools.idea.welcome.wizard.deprecated;
 
 import com.android.annotations.concurrency.UiThread;
 import com.android.tools.idea.welcome.config.FirstRunWizardMode;
-import com.android.tools.idea.welcome.wizard.SdkComponentInstallerProvider;
+import com.android.tools.idea.welcome.install.SdkComponentInstaller;
+import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker;
 import com.android.tools.idea.welcome.wizard.StudioFirstRunWelcomeScreen;
 import com.android.tools.idea.wizard.WizardConstants;
 import com.android.tools.idea.wizard.dynamic.DynamicWizard;
 import com.android.tools.idea.wizard.dynamic.DynamicWizardHost;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Atomics;
+import com.google.wireless.android.sdk.stats.SetupWizardEvent;
 import com.intellij.ide.IdeBundle;
 import com.intellij.ide.ui.LafManager;
 import com.intellij.ide.ui.UISettings;
@@ -43,12 +45,10 @@ import com.intellij.util.ui.JBInsets;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,7 +75,8 @@ import org.jetbrains.annotations.Nullable;
 public class FirstRunWizardHost extends JPanel implements WelcomeScreen, DynamicWizardHost, CancelableWelcomeWizard {
   private static final Insets BUTTON_MARGINS = new Insets(2, 16, 2, 16);
   @NotNull private final FirstRunWizardMode myMode;
-  @NotNull private final SdkComponentInstallerProvider mySdkComponentInstallerProvider;
+  @NotNull private final SdkComponentInstaller mySdkComponentInstaller;
+  @NotNull private final FirstRunWizardTracker myTracker;
 
   private Action myCancelAction = new CancelAction();
   private Action myPreviousAction = new PreviousAction();
@@ -96,10 +97,12 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
   private AtomicReference<ProgressIndicator> myCurrentProgressIndicator = Atomics.newReference();
   private boolean myIsActive;
 
-  public FirstRunWizardHost(@NotNull FirstRunWizardMode mode, @NotNull SdkComponentInstallerProvider sdkComponentInstallerProvider) {
+  public FirstRunWizardHost(@NotNull FirstRunWizardMode mode, @NotNull SdkComponentInstaller sdkComponentInstaller,
+                            @NotNull FirstRunWizardTracker tracker) {
     super(new BorderLayout());
     myMode = mode;
-    mySdkComponentInstallerProvider = sdkComponentInstallerProvider;
+    mySdkComponentInstaller = sdkComponentInstaller;
+    myTracker = tracker;
     add(createSouthPanel(), BorderLayout.SOUTH);
   }
 
@@ -113,16 +116,19 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
 
   @Override
   public JComponent getWelcomePanel() {
+    myTracker.trackWizardStarted();
+
     if (myWizard == null) {
       setupWizard();
     }
     assert myWizard != null;
+
     return this;
   }
 
   private void setupWizard() {
     ApplicationManager.getApplication().invokeAndWait(() -> {
-      DynamicWizard wizard = new FirstRunWizard(this, myMode, mySdkComponentInstallerProvider);
+      DynamicWizard wizard = new FirstRunWizard(this, myMode, mySdkComponentInstaller, myTracker);
       wizard.init();
       add(wizard.getContentPane(), BorderLayout.CENTER);
     }, ModalityState.any());
@@ -178,6 +184,12 @@ public class FirstRunWizardHost extends JPanel implements WelcomeScreen, Dynamic
       myFrame.setVisible(false);
       myFrame.dispose();
     }
+
+    myTracker.trackWizardFinished(
+      action == CloseAction.FINISH ?
+      SetupWizardEvent.CompletionStatus.FINISHED :
+      SetupWizardEvent.CompletionStatus.CANCELED
+    );
 
     if (action == CloseAction.FINISH || action == CloseAction.CANCEL) {
       if (ApplicationManager.getApplication().isHeadlessEnvironment()) {

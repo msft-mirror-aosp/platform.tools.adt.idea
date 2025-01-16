@@ -21,12 +21,14 @@ import com.android.tools.idea.observable.core.ObjectValueProperty;
 import com.android.tools.idea.sdk.wizard.legacy.LicenseAgreementStep;
 import com.android.tools.idea.welcome.config.FirstRunWizardMode;
 import com.android.tools.idea.welcome.install.SdkComponentTreeNode;
+import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker;
 import com.android.tools.idea.welcome.wizard.SdkComponentsRenderer;
 import com.android.tools.idea.welcome.wizard.SdkComponentsStepController;
 import com.android.tools.idea.welcome.wizard.SdkComponentsStepUtils;
 import com.android.tools.idea.welcome.wizard.SdkComponentsTableModel;
 import com.android.tools.idea.wizard.WizardConstants;
 import com.android.tools.idea.wizard.dynamic.ScopedStateStore;
+import com.google.wireless.android.sdk.stats.SetupWizardEvent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.project.Project;
@@ -60,8 +62,9 @@ public class SdkComponentsStep extends FirstRunWizardStep {
                            @NotNull FirstRunWizardMode mode,
                            @NotNull ObjectValueProperty<AndroidSdkHandler> sdkHandlerProperty,
                            @Nullable LicenseAgreementStep licenseAgreementStep,
-                           @NotNull Disposable parent) {
-    super("SDK Components Setup");
+                           @NotNull Disposable parent,
+                           @NotNull FirstRunWizardTracker tracker) {
+    super("SDK Components Setup", tracker);
     Disposer.register(parent, myForm);
 
     myRootNode = rootNode;
@@ -144,7 +147,8 @@ public class SdkComponentsStep extends FirstRunWizardStep {
     if (modified.contains(WizardConstants.KEY_SDK_INSTALL_LOCATION)) {
       String sdkPath = myState.get(WizardConstants.KEY_SDK_INSTALL_LOCATION);
       if (sdkPath != null) {
-        myController.onPathUpdated(sdkPath, ModalityState.defaultModalityState());
+        boolean updated = myController.onPathUpdated(sdkPath, ModalityState.defaultModalityState());
+        if (updated) myTracker.trackSdkInstallLocationChanged();
       }
     }
     myForm.setDiskSpace(SdkComponentsStepUtils.getDiskSpace(myState.get(mySdkDownloadPathKey)));
@@ -185,5 +189,10 @@ public class SdkComponentsStep extends FirstRunWizardStep {
   @NotNull
   private String getPath() {
     return StringUtil.notNullize(myState.get(mySdkDownloadPathKey));
+  }
+
+  @Override
+  protected SetupWizardEvent.WizardStep.WizardStepKind getWizardStepKind() {
+    return SetupWizardEvent.WizardStep.WizardStepKind.SDK_COMPONENTS;
   }
 }

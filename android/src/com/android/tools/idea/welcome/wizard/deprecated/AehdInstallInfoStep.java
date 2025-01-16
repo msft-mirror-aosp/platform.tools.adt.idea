@@ -15,9 +15,11 @@
  */
 package com.android.tools.idea.welcome.wizard.deprecated;
 
-import com.intellij.openapi.util.SystemInfo;
+import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker;
+import com.google.wireless.android.sdk.stats.SetupWizardEvent;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -30,14 +32,9 @@ import org.jetbrains.annotations.Nullable;
 public class AehdInstallInfoStep extends FirstRunWizardStep {
   private final AehdInstallInfoStepForm myForm = new AehdInstallInfoStepForm();
 
-  public AehdInstallInfoStep() {
-    super("Installing Android Emulator hypervisor driver");
+  public AehdInstallInfoStep(@NotNull FirstRunWizardTracker tracker) {
+    super("Installing Android Emulator hypervisor driver", tracker);
     setComponent(myForm.getRoot());
-  }
-
-  @Override
-  public boolean isStepVisible() {
-    return SystemInfo.isWindows;
   }
 
   @Override
@@ -52,5 +49,10 @@ public class AehdInstallInfoStep extends FirstRunWizardStep {
   @Override
   public JComponent getPreferredFocusedComponent() {
     return myForm.getRoot();
+  }
+
+  @Override
+  protected SetupWizardEvent.WizardStep.WizardStepKind getWizardStepKind() {
+    return SetupWizardEvent.WizardStep.WizardStepKind.AEHD_INSTALL_INFO;
   }
 }

@@ -31,10 +31,8 @@ class FirstLaunchTest {
 
   @Test
   fun firstLaunchTest() {
-    system.installation.addVmOption("-Dnpw.first.run.wizard.show=true")
-    system.installation.addVmOption("-Dnpw.first.run.offline=true")
-    system.installation.addVmOption("-Dnpw.first.run.accept.sdk.license=true")
-    system.installation.addVmOption(String.format("-Dnpw.first.run.local.app.data=%s",system.installation.fileSystem.root))
+    system.installation.addVmOption("-Dwizard.migration.first.run.migrated.wizard.enabled=false")
+    configureWizardFlags(system)
 
     system.runStudioWithoutProject().use { studio ->
       studio.waitForComponentWithExactText("Welcome")
@@ -48,7 +46,7 @@ class FirstLaunchTest {
       studio.invokeComponent("Next")
       studio.waitForComponentWithExactText("License Agreement")
       Thread.sleep(1000)
-      if (!SystemInfo.isWindows) { //Windows doesn't have emulator setting page
+      if (SystemInfo.isLinux) { // The emulator settings step will only show on the Linux platform
         studio.invokeComponent("Next")
         studio.waitForComponentWithExactText("Emulator Settings")
         Thread.sleep(1000)
@@ -58,6 +56,33 @@ class FirstLaunchTest {
       Thread.sleep(1000)
       studio.invokeComponent("Finish")
 
+      val fileNames = getFileNamesInSdkDirectory(system)
+      val expectedFiles: List<String> =
+        ArrayList(
+          mutableListOf(
+            "build-tools",
+            "emulator",
+            "licenses",
+            "platforms",
+            "platform-tools",
+            "sources",
+          )
+        )
+      Truth.assertThat<String>(fileNames).asList().containsAllIn(expectedFiles)
+    }
+  }
+
+  companion object {
+    fun configureWizardFlags(system: AndroidSystem) {
+      system.installation.addVmOption("-Dnpw.first.run.wizard.show=true")
+      system.installation.addVmOption("-Dnpw.first.run.offline=true")
+      system.installation.addVmOption("-Dnpw.first.run.accept.sdk.license=true")
+      system.installation.addVmOption(
+        String.format("-Dnpw.first.run.local.app.data=%s", system.installation.fileSystem.root)
+      )
+    }
+
+    fun getFileNamesInSdkDirectory(system: AndroidSystem): Array<String?> {
       var directory = system.installation.fileSystem.root
       if (SystemInfo.isLinux) {
         directory = directory.resolve("home")
@@ -67,19 +92,8 @@ class FirstLaunchTest {
       }
       val files = Files.list(directory.resolve("Android").resolve("Sdk")).toList()
       val fileNames = arrayOfNulls<String>(files?.size ?: 0)
-      files?.mapIndexed { index, item ->
-        fileNames[index] = item?.name
-      }
-
-      val expectedFiles: List<String> = ArrayList(mutableListOf(
-        "build-tools",
-        "emulator",
-        "licenses",
-        "platforms",
-        "platform-tools",
-        "sources"
-      ))
-      Truth.assertThat<String>(fileNames).asList().containsAllIn(expectedFiles)
+      files?.mapIndexed { index, item -> fileNames[index] = item?.name }
+      return fileNames
     }
   }
 }

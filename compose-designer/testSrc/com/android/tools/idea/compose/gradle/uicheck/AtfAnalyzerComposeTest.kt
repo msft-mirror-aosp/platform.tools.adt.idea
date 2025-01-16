@@ -24,11 +24,11 @@ import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
 import com.android.tools.idea.testing.virtualFile
 import com.android.tools.idea.uibuilder.scene.NlModelHierarchyUpdater
 import com.android.tools.idea.uibuilder.scene.accessibilityBasedHierarchyParser
-import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintErrorType
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue.Companion.createVisualLintRenderIssue
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.AtfAnalyzer
 import com.android.tools.preview.SingleComposePreviewElementInstance
+import com.android.tools.visuallint.VisualLintErrorType
+import com.android.tools.visuallint.analyzers.AtfAnalyzer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
@@ -74,7 +74,10 @@ class AtfAnalyzerComposeTest {
     val facet = projectRule.androidFacet(":app")
     val visualLintPreviewFile =
       facet.virtualFile("src/main/java/google/simpleapplication/VisualLintPreview.kt")
-    val issues = collectIssuesFromRenders(uiCheckPreviews, facet, visualLintPreviewFile)
+    val issues =
+      collectIssuesFromRenders(uiCheckPreviews, facet, visualLintPreviewFile).filter {
+        it.type == VisualLintErrorType.ATF_COLORBLIND
+      }
 
     Assert.assertEquals(1, issues.size)
 
@@ -107,7 +110,10 @@ class AtfAnalyzerComposeTest {
     val facet = projectRule.androidFacet(":app")
     val visualLintPreviewFile =
       facet.virtualFile("src/main/java/google/simpleapplication/VisualLintPreview.kt")
-    val issues = collectIssuesFromRenders(uiCheckPreviews, facet, visualLintPreviewFile)
+    val issues =
+      collectIssuesFromRenders(uiCheckPreviews, facet, visualLintPreviewFile).filter {
+        it.type == VisualLintErrorType.ATF_COLORBLIND
+      }
 
     Assert.assertEquals(2, issues.size)
 
@@ -141,7 +147,10 @@ class AtfAnalyzerComposeTest {
     val facet = projectRule.androidFacet(":app")
     val visualLintPreviewFile =
       facet.virtualFile("src/main/java/google/simpleapplication/VisualLintPreview.kt")
-    val issues = collectIssuesFromRenders(uiCheckPreviews, facet, visualLintPreviewFile)
+    val issues =
+      collectIssuesFromRenders(uiCheckPreviews, facet, visualLintPreviewFile).filter {
+        it.type == VisualLintErrorType.ATF_COLORBLIND
+      }
 
     Assert.assertEquals(3, issues.size)
 
@@ -189,7 +198,7 @@ class AtfAnalyzerComposeTest {
       // We need to update the hierarchy with the render result so that ATF can link the result with
       // the NlModel
       NlModelHierarchyUpdater.updateHierarchy(renderResult.result!!, nlModel)
-      AtfAnalyzer.findIssues(renderResult.result, nlModel).map {
+      AtfAnalyzer.findIssues(renderResult.result, nlModel.configuration).map {
         createVisualLintRenderIssue(it, nlModel, VisualLintErrorType.ATF)
       }
     }

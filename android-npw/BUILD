@@ -200,17 +200,13 @@ maven_repository(
         "@maven//:com.android.tools.build.gradle_8.1.0",
         "@maven//:com.google.android.material.material_1.4.0",
         "@maven//:com.google.guava.guava_19.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.24",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_2.1.0",
         "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
         "@maven//:org.jetbrains.kotlin.kotlin-native-prebuilt_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
-        "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.24",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
-        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit_" + KGP_VERSION_FOR_TESTS,  # Used by ModuleModelTest.testKmpModuleCreationAndAssemble and AddKotlinMultiplatformLibraryModuleTest.addNewKotlinMultiplatformLibraryModuleTest
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.1",
     ],
 )

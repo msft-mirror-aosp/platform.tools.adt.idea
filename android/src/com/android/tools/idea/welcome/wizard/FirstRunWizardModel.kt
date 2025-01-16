@@ -35,6 +35,7 @@ import com.android.tools.idea.welcome.install.AndroidVirtualDeviceSdkComponentTr
 import com.android.tools.idea.welcome.install.InstallContext
 import com.android.tools.idea.welcome.install.InstallableSdkComponentTreeNode
 import com.android.tools.idea.welcome.install.SdkComponentCategoryTreeNode
+import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.install.SdkComponentTreeNode
 import com.android.tools.idea.welcome.install.WizardException
 import com.android.tools.idea.welcome.wizard.deprecated.InstallComponentsPath
@@ -53,7 +54,8 @@ class FirstRunWizardModel(
   private val mode: FirstRunWizardMode,
   initialSdkLocation: Path,
   installUpdates: Boolean,
-  private val sdkComponentInstallerProvider: SdkComponentInstallerProvider,
+  private val sdkComponentInstaller: SdkComponentInstaller,
+  private val tracker: FirstRunWizardTracker,
 ) : WizardModel() {
   enum class InstallationType {
     STANDARD,
@@ -98,9 +100,7 @@ class FirstRunWizardModel(
   fun getPackagesToInstallSupplier(): Supplier<Collection<RemotePackage>?> = Supplier {
     val components: Iterable<InstallableSdkComponentTreeNode> = componentTree.childrenToInstall
     try {
-      sdkComponentInstallerProvider
-        .getComponentInstaller(localHandler)
-        .getPackagesToInstall(components)
+      sdkComponentInstaller.getPackagesToInstall(localHandler, components)
     } catch (e: SdkQuickfixUtils.PackageResolutionException) {
       logger<StudioFirstRunWelcomeScreen>().warn(e)
       null
@@ -161,10 +161,14 @@ class FirstRunWizardModel(
   @Throws(WizardException::class)
   fun installComponents(progressStep: InstallComponentsProgressStep) {
     val sdkHandler = localHandler
-    InstallComponentsPath.installComponents(
+
+    tracker.trackSdkComponentsToInstall(
+      componentTree.childrenToInstall.map { it.sdkComponentsMetricKind() }
+    )
+
+    sdkComponentInstaller.installComponents(
       componentTree.childrenToInstall,
       InstallContext(InstallComponentsPath.createTempDir(), progressStep),
-      sdkComponentInstallerProvider.getComponentInstaller(sdkHandler),
       mode.installerTimestamp,
       ModalityState.stateForComponent(progressStep.component),
       sdkHandler,

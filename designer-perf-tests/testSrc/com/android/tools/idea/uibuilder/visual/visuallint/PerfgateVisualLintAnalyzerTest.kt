@@ -26,17 +26,19 @@ import com.android.tools.idea.rendering.RenderTestUtil
 import com.android.tools.idea.rendering.VISUAL_LINT_APPLICATION_PATH
 import com.android.tools.idea.rendering.measureOperation
 import com.android.tools.idea.uibuilder.model.NlComponentRegistrar
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.BottomAppBarAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.BottomNavAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.BoundsAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.ButtonSizeAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.LocaleAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.LongTextAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.OverlapAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.TextFieldSizeAnalyzer
 import com.android.tools.perflogger.Metric
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderTask
+import com.android.tools.visuallint.VisualLintAnalyzer
+import com.android.tools.visuallint.VisualLintBaseConfigIssues
+import com.android.tools.visuallint.analyzers.BottomAppBarAnalyzer
+import com.android.tools.visuallint.analyzers.BottomNavAnalyzer
+import com.android.tools.visuallint.analyzers.BoundsAnalyzer
+import com.android.tools.visuallint.analyzers.ButtonSizeAnalyzer
+import com.android.tools.visuallint.analyzers.LocaleAnalyzer
+import com.android.tools.visuallint.analyzers.LongTextAnalyzer
+import com.android.tools.visuallint.analyzers.OverlapAnalyzer
+import com.android.tools.visuallint.analyzers.TextFieldSizeAnalyzer
 import com.intellij.psi.xml.XmlFile
 import org.junit.Before
 import org.junit.Test
@@ -132,7 +134,7 @@ class PerfgateVisualLintAnalyzerTest : ComposeRenderTestBase(VISUAL_LINT_APPLICA
                         // HeapSnapshotMemoryUseMeasurement("android:designTools", null, Metric("${analyzer.type}_memory_use"))
       ),
       samplesCount = NUMBER_OF_SAMPLES) {
-      modelResultMap.forEach { (nlModel, renderResult) -> analyzer.findIssues(renderResult, nlModel) }
+      modelResultMap.forEach { (nlModel, renderResult) -> analyzer.findIssues(renderResult, nlModel.configuration) }
     }
   }
 }

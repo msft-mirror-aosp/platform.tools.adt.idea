@@ -21,7 +21,6 @@ import com.android.SdkConstants.GRADLE_API_CONFIGURATION
 import com.android.SdkConstants.GRADLE_IMPLEMENTATION_CONFIGURATION
 import com.android.SdkConstants.TOOLS_URI
 import com.android.ide.common.gradle.Dependency
-import com.android.ide.common.repository.AgpVersion
 import com.android.resources.ResourceFolderType
 import com.android.support.AndroidxNameUtils
 import com.android.tools.idea.gradle.dependencies.DependenciesHelper
@@ -138,10 +137,10 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
 
     val targetText =
       readTargetText(targetFile)
-        ?: run {
-          save(content, to)
-          return
-        }
+      ?: run {
+        save(content, to)
+        return
+      }
 
     val contents = mergeXmlUtil(context, content, targetText, targetFile)
 
@@ -159,15 +158,29 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     applyPluginInBuildModel(plugin, buildModel, revision, minRev)
   }
 
-  override fun applyPlugin(plugin: String, revision: AgpVersion) {
-    applyPlugin(plugin, revision.toString(), null)
+  override fun addPlugin(pluginId: String, classpathModule: String, version: String) {
+    referencesExecutor.addPlugin(pluginId, classpathModule, version)
+    val buildModel = moduleGradleBuildModel ?: return
+
+    applyPluginToProjectAndModule(pluginId, classpathModule, version, buildModel)
+  }
+
+  override fun applyPluginWithClasspathInModule(
+    pluginId: String,
+    module: Module,
+    classpathModule: String,
+    version: String
+  ) {
+    referencesExecutor.applyPluginInModule(pluginId, module, classpathModule, version)
+    val buildModel = projectBuildModel?.getModuleBuildModel(module) ?: return
+    applyPluginToProjectAndModule(pluginId, classpathModule, version, buildModel)
   }
 
   override fun addPlugin(plugin: String, classpath: String) {
     referencesExecutor.addPlugin(plugin, classpath)
     val buildModel = moduleGradleBuildModel ?: return
-
-    applyPluginToProjectAndModule(plugin, classpath, buildModel)
+    val dependency = Dependency.parse(classpath)
+    applyPluginToProjectAndModule(plugin, dependency.module.toString(), dependency.version.toString(), buildModel)
   }
 
   override fun applyPluginInModule(
@@ -182,18 +195,15 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     applyPluginInBuildModel(plugin, buildModel, revision, minRev)
   }
 
-  override fun applyPluginInModule(plugin: String, module: Module, revision: AgpVersion) {
-    applyPluginInModule(plugin, module, revision.toString(), null)
-  }
-
   private fun applyPluginToProjectAndModule(
     plugin: String,
-    classpath: String,
-    buildModel: GradleBuildModel,
+    classpathModule: String,
+    version: String,
+    buildModel: GradleBuildModel
   ) {
     val projectModel = projectBuildModel ?: return
     val dependenciesHelper = DependenciesHelper.withModel(projectModel)
-    dependenciesHelper.addPlugin(plugin, classpath, listOf(buildModel))
+    dependenciesHelper.addPluginOrClasspath(plugin, classpathModule, version, listOf(buildModel))
   }
 
   private fun applyPluginInBuildModel(
@@ -216,22 +226,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
       repositoryUrlManager.resolveDependency(Dependency.parse(pluginCoordinate), null, null)
     val resolvedVersion = component?.version?.toString() ?: minRev ?: revision
 
-    // applyFlag is either of false or null in this context because the gradle dsl
-    // [PluginsModel#applyPlugin]
-    // takes a nullable Boolean that means:
-    //  - The flag being false means "apply false" is appended at the end of the plugin declaration
-    //  - The flag being null means nothing is appended
-    maybeGetPluginsFromSettings()?.let {
-      dependenciesHelper.addPlugin(plugin, resolvedVersion, null, it, buildModel)
-    }
-      ?: maybeGetPluginsFromProject()?.let {
-        dependenciesHelper.addPlugin(plugin, resolvedVersion, false, it, buildModel)
-      }
-      ?: run {
-        // When the revision is specified, but plugins block isn't defined in the settings nor the
-        // project level build file, just apply the plugin without a revision.
-        dependenciesHelper.addPlugin(plugin, buildModel)
-      }
+    dependenciesHelper.findPlaceAndAddPlugin(plugin, resolvedVersion, listOf(buildModel))
   }
 
   override fun addClasspathDependency(
@@ -241,7 +236,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
   ) {
     if (
       !forceAdding &&
-        (maybeGetPluginsFromSettings() != null || maybeGetPluginsFromProject() != null)
+      (maybeGetPluginsFromSettings() != null || maybeGetPluginsFromProject() != null)
     ) {
       // If plugins are being declared on Settings or using plugins block in top-level build.gradle,
       // we skip this since all work is handled in [applyPlugin]
@@ -253,22 +248,10 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
 
     referencesExecutor.addClasspathDependency(resolvedCoordinate, minRev)
 
-    val toBeAddedDependency = ArtifactDependencySpec.create(resolvedCoordinate)
-    check(toBeAddedDependency != null) { "$resolvedCoordinate is not a valid classpath dependency" }
-
-    val buildModel = projectGradleBuildModel ?: return
-
-    val buildscriptDependencies = buildModel.buildscript().dependencies()
-    val targetDependencyModel =
-      buildscriptDependencies.artifacts(CLASSPATH_CONFIGURATION_NAME).firstOrNull {
-        toBeAddedDependency.equalsIgnoreVersion(it.spec)
-      }
     projectBuildModel?.let {
-      if (targetDependencyModel == null) {
         DependenciesHelper.withModel(it)
-          .addClasspathDependency(toBeAddedDependency.compactNotation())
+          .addClasspathDependency(resolvedCoordinate, listOf(), GroupNameDependencyMatcher(CLASSPATH_CONFIGURATION_NAME, resolvedCoordinate))
       }
-    }
   }
 
   private fun maybeGetPluginsFromSettings(): PluginsBlockModel? {
@@ -464,18 +447,18 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
 
     val srcDirsModel =
       with(sourceSet) {
-          when (type) {
-            SourceSetType.AIDL -> aidl()
-            SourceSetType.ASSETS -> assets()
-            SourceSetType.JAVA -> java()
-            SourceSetType.JNI -> jni()
-            SourceSetType.RENDERSCRIPT -> renderscript()
-            SourceSetType.RES -> res()
-            SourceSetType.RESOURCES -> resources()
-            SourceSetType.MANIFEST ->
-              throw RuntimeException("manifest should have been handled earlier")
-          }
+        when (type) {
+          SourceSetType.AIDL -> aidl()
+          SourceSetType.ASSETS -> assets()
+          SourceSetType.JAVA -> java()
+          SourceSetType.JNI -> jni()
+          SourceSetType.RENDERSCRIPT -> renderscript()
+          SourceSetType.RES -> res()
+          SourceSetType.RESOURCES -> resources()
+          SourceSetType.MANIFEST ->
+            throw RuntimeException("manifest should have been handled earlier")
         }
+      }
         .srcDirs()
 
     val dirExists = srcDirsModel.toList().orEmpty().any { it.toString() == relativeDir }
@@ -646,7 +629,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     fun updateCompatibility(current: LanguageLevelPropertyModel) {
       if (
         current.valueType == ValueType.NONE ||
-          current.toLanguageLevel()?.isAtLeast(languageLevel) != true
+        current.toLanguageLevel()?.isAtLeast(languageLevel) != true
       ) {
         current.setLanguageLevel(languageLevel)
       }
@@ -832,7 +815,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
       val parentDir = checkedCreateDirectoryIfMissing(to.parentFile)
       val vf =
         LocalFileSystem.getInstance().findFileByIoFile(to)
-          ?: parentDir.createChildData(requestor, to.name)
+        ?: parentDir.createChildData(requestor, to.name)
       vf.setBinaryContent(contents.toByteArray(Charsets.UTF_8), -1, -1, requestor)
 
       // ProjectBuildModel uses PSI, let's committed document, since it's illegal to modify PSI on

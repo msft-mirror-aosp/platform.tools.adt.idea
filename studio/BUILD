@@ -487,6 +487,7 @@ studio_plugin(
             "//tools/adt/idea/preview-designer:intellij.android.preview-designer",
             "//tools/adt/idea/wear-designer:intellij.android.wear-designer",
             "//tools/adt/idea/motion-editor:intellij.android.motion-editor",
+            "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         ],
     },
     resources = {
@@ -802,7 +803,6 @@ android_studio(
         ":com.google.targetsdkversionassistant",
         ":com.android.tools.gradle.dcl",
     ],
-    searchable_options = "//tools/adt/idea/searchable-options",
     selector = "AndroidStudio",
     update_message_template = ":update_message.html",
     version_code_name = STUDIO_CODENAME,

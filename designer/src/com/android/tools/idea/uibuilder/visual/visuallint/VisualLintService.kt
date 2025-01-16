@@ -29,19 +29,22 @@ import com.android.tools.idea.uibuilder.scene.NlModelHierarchyUpdater.updateHier
 import com.android.tools.idea.uibuilder.visual.WearDeviceModelsProvider
 import com.android.tools.idea.uibuilder.visual.WindowSizeModelsProvider
 import com.android.tools.idea.uibuilder.visual.analytics.VisualLintUsageTracker
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.AtfAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.BottomAppBarAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.BottomNavAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.BoundsAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.ButtonSizeAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.LocaleAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.LongTextAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.OverlapAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.TextFieldSizeAnalyzer
-import com.android.tools.idea.uibuilder.visual.visuallint.analyzers.WearMarginAnalyzer
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue.Companion.createVisualLintRenderIssue
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderService
+import com.android.tools.visuallint.VisualLintAnalyzer
+import com.android.tools.visuallint.VisualLintBaseConfigIssues
+import com.android.tools.visuallint.analyzers.AtfAnalyzer
+import com.android.tools.visuallint.analyzers.BottomAppBarAnalyzer
+import com.android.tools.visuallint.analyzers.BottomNavAnalyzer
+import com.android.tools.visuallint.analyzers.BoundsAnalyzer
+import com.android.tools.visuallint.analyzers.ButtonSizeAnalyzer
+import com.android.tools.visuallint.analyzers.LocaleAnalyzer
+import com.android.tools.visuallint.analyzers.LongTextAnalyzer
+import com.android.tools.visuallint.analyzers.OverlapAnalyzer
+import com.android.tools.visuallint.analyzers.TextFieldSizeAnalyzer
+import com.android.tools.visuallint.analyzers.WearMarginAnalyzer
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -298,7 +301,8 @@ class VisualLintService(val project: Project) : Disposable {
         if (runningInBackground && !inspection.runInBackground) {
           return@forEach
         }
-        val issues = analyzer.analyze(result, model)
+        val issues =
+          analyzer.analyze(result).map { createVisualLintRenderIssue(it, model, analyzer.type) }
         targetIssueProvider.addAllIssues(issues)
       }
   }

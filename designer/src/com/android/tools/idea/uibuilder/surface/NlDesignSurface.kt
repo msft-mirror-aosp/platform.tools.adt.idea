@@ -54,7 +54,6 @@ import com.android.tools.idea.common.surface.layout.DesignSurfaceViewport
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.uibuilder.analytics.NlAnalyticsManager
 import com.android.tools.idea.uibuilder.graphics.NlConstants
-import com.android.tools.idea.uibuilder.layout.option.GridLayoutManager
 import com.android.tools.idea.uibuilder.model.getViewHandler
 import com.android.tools.idea.uibuilder.model.h
 import com.android.tools.idea.uibuilder.model.w
@@ -76,6 +75,8 @@ import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
+import java.awt.image.BufferedImage
+import java.util.function.Consumer
 import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.math.min
@@ -156,6 +157,8 @@ internal constructor(
 
   /** The rotation degree of the surface to simulate the phone rotation. */
   var rotateSurfaceDegree: Float = Float.NaN
+
+  var colorBlindMode: ColorBlindMode = ColorBlindMode.NONE
 
   private val sceneViewLayoutManager: NlDesignSurfacePositionableContentLayoutManager
     get() = sceneViewPanel.layout as NlDesignSurfacePositionableContentLayoutManager
@@ -251,19 +254,6 @@ internal constructor(
       if (setAsDefault) savePreferredMode(it)
     }
     screenViewProvider = newScreenViewProvider
-  }
-
-  /**
-   * Update the color-blind mode in the [ScreenViewProvider] for this surface and make sure to
-   * update all the SceneViews in this surface to reflect the change.
-   */
-  fun setColorBlindMode(mode: ColorBlindMode) {
-    screenViewProvider.colorBlindFilter = mode
-    for (manager in sceneManagers) {
-      manager.updateSceneViews()
-      manager.requestRender()
-    }
-    revalidateScrollArea()
   }
 
   override fun shouldRenderErrorsPanel(): Boolean {
@@ -382,6 +372,13 @@ internal constructor(
 
   override val layoutManagerSwitcher: LayoutManagerSwitcher?
     get() = sceneViewPanel.layout as? LayoutManagerSwitcher
+
+  override val shouldStoreScale: Boolean
+    // Because Gallery LayoutType sets zoom-to-fit at every opening,
+    // there is no need to store the scale in the settings preferences.
+    get() =
+      sceneViewLayoutManager.currentLayoutOption.value.layoutType !=
+        SurfaceLayoutOption.LayoutType.Gallery
 
   override fun scrollToCenter(list: List<NlComponent>) {
     val view = focusedSceneView ?: return
@@ -527,10 +524,10 @@ internal constructor(
     val scrollPosition = pannable.scrollPosition
     var focusPoint = update.focusPoint
 
-    val layoutManager = sceneViewLayoutManager.currentLayout.value.layoutManager
-
     // If layout is grouped grid layout.
-    val isGroupedGridLayout = layoutManager is GridLayoutManager
+    val isGroupedGridLayout =
+      sceneViewLayoutManager.currentLayoutOption.value.layoutType ==
+        SurfaceLayoutOption.LayoutType.OrganizationGrid
 
     if (isGroupedGridLayout && StudioFlags.SCROLLABLE_ZOOM_ON_GRID.get()) {
       viewportScroller =
@@ -612,5 +609,16 @@ internal constructor(
     super.uiDataSnapshot(sink)
     sink[LAYOUT_PREVIEW_HANDLER_KEY] = layoutPreviewHandler
     DataSink.uiDataSnapshot(sink, delegateDataProvider)
+  }
+
+  fun getGlobalImageTransformation(): Consumer<BufferedImage>? {
+    return colorBlindMode.imageTransform
+  }
+
+  fun resetColorBlindMode() {
+    colorBlindMode = ColorBlindMode.NONE
+    for (manager in sceneManagers) {
+      manager.model.configuration.imageTransformation = null
+    }
   }
 }

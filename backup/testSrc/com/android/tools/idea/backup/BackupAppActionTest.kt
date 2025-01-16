@@ -16,7 +16,6 @@
 package com.android.tools.idea.backup
 
 import com.android.flags.junit.FlagRule
-import com.android.testutils.waitForCondition
 import com.android.tools.idea.backup.BackupManager.Source.BACKUP_APP_ACTION
 import com.android.tools.idea.backup.testing.FakeActionHelper
 import com.android.tools.idea.backup.testing.FakeDialogFactory
@@ -34,7 +33,6 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndWait
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -73,8 +71,6 @@ internal class BackupAppActionTest {
     val activityTracker = ActivityTracker.getInstance()
     val count = activityTracker.count
 
-    action.update(event)
-    waitForCondition(3.seconds) { action.updateState.get() != null }
     action.update(event)
 
     val presentation = event.presentation
@@ -135,7 +131,7 @@ internal class BackupAppActionTest {
     runInEdtAndWait {}
     verifyNoInteractions(mockBackupManager)
     assertThat(fakeDialogFactory.dialogs)
-      .containsExactly(DialogData("Cannot Backup Application", "Selected device is not running"))
+      .containsExactly(DialogData("Cannot Backup App Data", "Selected device is not running"))
   }
 
   @Test
@@ -149,7 +145,7 @@ internal class BackupAppActionTest {
     verifyNoInteractions(mockBackupManager)
     assertThat(fakeDialogFactory.dialogs)
       .containsExactly(
-        DialogData("Cannot Backup Application", "Action is not supported for multiple devices")
+        DialogData("Cannot Backup App Data", "Action is not supported for multiple devices")
       )
   }
 
@@ -164,7 +160,7 @@ internal class BackupAppActionTest {
     runInEdtAndWait {}
     verifyNoInteractions(mockBackupManager)
     assertThat(fakeDialogFactory.dialogs)
-      .containsExactly(DialogData("Cannot Backup Application", "Selected device is not running"))
+      .containsExactly(DialogData("Cannot Backup App Data", "Selected device is not running"))
   }
 }
 

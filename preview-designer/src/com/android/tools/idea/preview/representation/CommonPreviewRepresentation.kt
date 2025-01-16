@@ -220,9 +220,10 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     DefaultNavigationHandler { sceneView, _, _, _, _ ->
         val model = sceneView.sceneManager.model
         val previewElement = model.dataProvider?.getData(PREVIEW_ELEMENT_INSTANCE)
-
-        previewElement?.previewElementDefinition?.element?.navigationElement
-          as? NavigatablePsiElement
+        val navigatableElement =
+          previewElement?.previewElementDefinition?.element?.navigationElement
+            as? NavigatablePsiElement
+        listOf(navigatableElement)
       }
       .apply { Disposer.register(this@CommonPreviewRepresentation, this) }
 
@@ -914,7 +915,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
 
   private suspend fun updateLayoutManager(mode: PreviewMode) {
     withContext(uiThread) {
-      surface.layoutManagerSwitcher?.currentLayout?.value = mode.layoutOption
+      surface.layoutManagerSwitcher?.currentLayoutOption?.value = mode.layoutOption
     }
   }
 

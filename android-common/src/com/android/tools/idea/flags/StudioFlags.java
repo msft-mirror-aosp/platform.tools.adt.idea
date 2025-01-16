@@ -102,11 +102,6 @@ public final class StudioFlags {
   //region New Project Wizard
   private static final FlagGroup NPW = new FlagGroup(FLAGS, "npw", "New Project Wizard");
 
-  public static final Flag<Boolean> NPW_FIRST_RUN_WIZARD = new BooleanFlag(
-    NPW, "first.run.wizard", "Show new Welcome Wizard",
-    "Show new version of the Welcome Wizard when Studio starts",
-    false);
-
   public static final Flag<Boolean> NPW_FIRST_RUN_SHOW = new BooleanFlag(
     NPW, "first.run.wizard.show", "Show Welcome Wizard always",
     "Show the Welcome Wizard when Studio starts",
@@ -187,7 +182,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_NEW_KOTLIN_MULTIPLATFORM_MODULE = new BooleanFlag(
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.",
-    enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Integer> NPW_COMPILE_SDK_VERSION = new IntFlag(
     NPW, "new.project.compile.sdk", "New project Compile SDK version",
@@ -326,7 +321,7 @@ public final class StudioFlags {
     "motion.editor.enabled",
     "Motion Editor enabled",
     "When true, the Motion Editor will be enabled.",
-    true
+    false
   );
   //endregion
 
@@ -386,7 +381,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> FORCE_MONOCHROME_ADAPTIVE_ICON = new BooleanFlag(
     NELE, "force.monochrome.adaptive.icon", "Display monochrome preview of adaptive icon when none provided",
     "When enabled, the adaptive icon preview will automatically create a monochrome version if none is provided.",
-    false);
+    enabledUpTo(CANARY));
   //endregion
 
   //region Resource Repository
@@ -618,7 +613,7 @@ public final class StudioFlags {
     "Use the `app_info` feature if available on the device for discovering processes",
     "Check the `app_info` feature for connected devices, and use it to track processes if available. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    true);
+    false);
 
   public static final Flag<Boolean> JDWP_TRACER = new BooleanFlag(
     RUNDEBUG,
@@ -1132,11 +1127,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_DEBUG_LAYOUT_IN_UI_SETTINGS = new BooleanFlag(
     EMBEDDED_EMULATOR, "ui.settings.debug.layout", "Show Debug Layout in UI settings",
     "Enables Debug Layout in Device UI Shortcuts to display layout bounds",
-    enabledUpTo(CANARY));
+    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_GESTURE_NAVIGATION_IN_UI_SETTINGS = new BooleanFlag(
     EMBEDDED_EMULATOR, "ui.settings.gesture.navigation", "Show Gesture Navigation in Device UI Shortcuts",
     "Enables Gesture Navigation setting in Device UI Shortcuts",
-    enabledUpTo(CANARY));
+    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_AVD = new BooleanFlag(
     EMBEDDED_EMULATOR, "allow.xr", "Allow XR AVD to run embedded",
     "Enables running an XR AVD in the Running Devices tool window",
@@ -1489,6 +1484,13 @@ public final class StudioFlags {
     true
   );
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_RESIZING = new BooleanFlag(
+    COMPOSE, "preview.resizing",
+    "Enable resizing for Compose Preview",
+    "If enabled, the user can resize the Compose Preview",
+    false
+  );
+
   public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = new BooleanFlag(
     COMPOSE, "view.inspector",
     "Show the switch of view inspection tool in Compose",
@@ -1500,13 +1502,6 @@ public final class StudioFlags {
     COMPOSE, "view.filter",
     "Support filter the previews in Compose",
     "If enabled, the user can find the filter actions to filter the visible previews in compose preview",
-    false
-  );
-
-  public static final Flag<Boolean> COMPOSE_ZOOM_CONTROLS_DROPDOWN = new BooleanFlag(
-    COMPOSE, "preview.zoom.controls.dropdown",
-    "Include Zoom Controls in the Compose Preview dropdown action",
-    "If enabled, the zoom controls will also be displayed in the Compose Preview dropdown action, located on the top-left corner",
     false
   );
 
@@ -1523,11 +1518,6 @@ public final class StudioFlags {
     "If enabled, animation dragging will be available in Animation Inspector timeline.",
     false
   );
-
-  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_DAEMON_DEBUG = new BooleanFlag(
-    COMPOSE, "preview.fast.reload.debug.daemon", "Starts the Live Edit daemon in debug mode",
-    "If enabled, the compiler daemon will wait for a debugger to be attached.",
-    false);
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GROUP_LAYOUT = new BooleanFlag(
     COMPOSE, "preview.group.layout", "Enable organization of Compose Preview in groups",
@@ -1719,7 +1709,7 @@ public final class StudioFlags {
     "device.catalog.enabled",
     "Enable the Device Catalog for virtual device creation",
     "Enable new UI for creating AVDs",
-    enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Boolean> DIRECT_ACCESS_DEVICE_CATALOG_ENABLED = new BooleanFlag(
@@ -1727,7 +1717,7 @@ public final class StudioFlags {
     "direct.access.device.catalog.enabled",
     "Enable the Device Catalog for Direct Access devices",
     "Enable new UI for selecting Firebase devices",
-    enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Boolean> POST_MVP_VIRTUAL_DEVICE_DIALOG_FEATURES_ENABLED = new BooleanFlag(
@@ -1736,6 +1726,13 @@ public final class StudioFlags {
     "Post MVP Virtual Device Dialog Features Enabled",
     "Enable miscellaneous Add/Edit Device dialog features for post MVP",
     false);
+
+  public static final Flag<Boolean> XR_DEVICE_SUPPORT_ENABLED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "xr.device.support.enabled",
+      "XR Device Support Enabled",
+      "Enable the support of XR device in the device manager",
+    enabledUpTo(CANARY));
   // endregion
 
   //region DDMLIB
@@ -1860,7 +1857,7 @@ public final class StudioFlags {
       "crashlytics.show.insight.tool.window",
       "Show insight toolwindow in Crashlytics",
       "Show AI generated insights for Crashlytics issue in insight toolwindow",
-      enabledUpTo(CANARY)
+      true
     );
 
   // Must re-enable firebase onboarding flow should this be set to true.
@@ -1902,7 +1899,7 @@ public final class StudioFlags {
       "play.vitals.show.insight.tool.window",
       "Show insight toolwindow in Play Vitals",
       "Show AI generated insights for Play Vitals issue in insight toolwindow",
-      enabledUpTo(CANARY)
+      true
     );
   // endregion App Insights
 
@@ -2061,6 +2058,12 @@ public final class StudioFlags {
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
                     enabledUpTo(DEV));
 
+  public static final Flag<Boolean> STUDIOBOT_CONTEXT_ATTACHMENT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.enable.context.attachment",
+                    "Enable @file attachment and the context drawer.",
+                    "When enabled, @file can be used to attach text files as context. Also enables the context drawer for context management.",
+                    enabledUpTo(DEV));
+
   public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
                     "Suggest missing dependencies when inserting/pasting code snippets",
@@ -2172,7 +2175,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
                     "Enable test scenario generation.",
                     "When enabled, generate test scenarios and corresponding function names for the selected code.",
-                    enabledUpTo(CANARY));
+                    true);
 
   // endregion STUDIO_BOT
 
@@ -2283,6 +2286,36 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEV_SERVICES_DEPRECATED_V1 = new BooleanFlag(
     DEV_SERVICES_SLA, "deprecated.v1", "Dev Services Supported", "Dev Services Deprecated", false);
   // endregion DEV_SERVICES_DEPRECATION_SUPPORT
+
+  // region WIZARD_MIGRATION
+  private static final FlagGroup WIZARD_MIGRATION = new FlagGroup(
+    FLAGS,
+    "wizard.migration",
+    "Wizard Migration"
+  );
+
+  public static final Flag<Boolean> FIRST_RUN_MIGRATED_WIZARD_ENABLED = new BooleanFlag(
+    WIZARD_MIGRATION,
+    "first.run.migrated.wizard.enabled",
+    "Migrated First Run Wizard Enabled",
+    "Show the migrated version of the welcome wizard when Studio first starts",
+    enabledUpTo(CANARY)
+  );
+  public static final Flag<Boolean> SDK_SETUP_MIGRATED_WIZARD_ENABLED = new BooleanFlag(
+    WIZARD_MIGRATION,
+    "sdk.setup.migrated.wizard.enabled",
+    "Migrated SDK Setup Wizard Enabled",
+    "Show the migrated version of the SDK setup wizard",
+    enabledUpTo(CANARY)
+  );
+  public static final Flag<Boolean> AEHD_CONFIGURATION_MIGRATED_WIZARD_ENABLED = new BooleanFlag(
+    WIZARD_MIGRATION,
+    "aehd.configuration.migrated.wizard.enabled",
+    "Migrated AEHD Configuration Wizard Enabled",
+    "Show the migrated version fo the AEHD configuration wizard",
+    enabledUpTo(CANARY)
+  );
+  // endregion WIZARD_MIGRATION
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.

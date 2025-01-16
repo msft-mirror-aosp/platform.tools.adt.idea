@@ -58,8 +58,6 @@ class KtsBuildFileCompilationBrokenTest: AbstractSyncFailureIntegrationTest() {
         failure {
           error {
             exception: org.gradle.tooling.BuildActionFailureException
-              at: [1]kotlinx.coroutines.channels.BufferedChannel${'$'}BufferedChannelIterator#onClosedHasNext
-            exception: org.gradle.tooling.BuildActionFailureException
               at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
@@ -84,7 +82,12 @@ class KtsBuildFileCompilationBrokenTest: AbstractSyncFailureIntegrationTest() {
     runSyncAndCheckFailure(
       preparedProject = preparedProject,
       expectedErrorNodeNameVerifier = {
-        expect.that(it).isEqualTo("Unresolved reference: abcd")
+        // The message may have multiple lines, so check the first line only.
+        // Example:
+        //     Unresolved reference: abcd
+        //     Build 06caa169-39fa-46b1-befd-827d18fbb27e is started
+        //     Build 06caa169-39fa-46b1-befd-827d18fbb27e is closed
+        expect.that(it.lines().firstOrNull()).isEqualTo("Unresolved reference: abcd")
       }
     )
   }
@@ -99,7 +102,8 @@ class KtsBuildFileCompilationBrokenTest: AbstractSyncFailureIntegrationTest() {
     runSyncAndCheckFailure(
       preparedProject = preparedProject,
       expectedErrorNodeNameVerifier = {
-        expect.that(it).isEqualTo("Unresolved reference: abcd")
+        // The message may have multiple lines, so check the first line only
+        expect.that(it.lines().firstOrNull()).isEqualTo("Unresolved reference: abcd")
       }
     )
   }
@@ -114,7 +118,8 @@ class KtsBuildFileCompilationBrokenTest: AbstractSyncFailureIntegrationTest() {
     runSyncAndCheckFailure(
       preparedProject = preparedProject,
       expectedErrorNodeNameVerifier = {
-        expect.that(it).isEqualTo("Unresolved reference: abcd")
+        // The message may have multiple lines, so check the first line only
+        expect.that(it.lines().firstOrNull()).isEqualTo("Unresolved reference: abcd")
       }
     )
   }

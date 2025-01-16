@@ -226,7 +226,6 @@
       <module fileurl="file://$PROJECT_DIR$/android/res/intellij.android.core.res.iml" filepath="$PROJECT_DIR$/android/res/intellij.android.core.res.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/run/intellij.android.core.run.iml" filepath="$PROJECT_DIR$/android/run/intellij.android.core.run.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/sdk/intellij.android.core.sdk.iml" filepath="$PROJECT_DIR$/android/sdk/intellij.android.core.sdk.iml" />
-      <module fileurl="file://$PROJECT_DIR$/android/testartifacts/intellij.android.core.testartifacts.iml" filepath="$PROJECT_DIR$/android/testartifacts/intellij.android.core.testartifacts.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/intellij.android.core.tests.iml" filepath="$PROJECT_DIR$/android/intellij.android.core.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/ui/intellij.android.core.ui.iml" filepath="$PROJECT_DIR$/android/ui/intellij.android.core.ui.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/ui.designer.overlays/intellij.android.core.ui.designer.overlays.iml" filepath="$PROJECT_DIR$/android/ui.designer.overlays/intellij.android.core.ui.designer.overlays.iml" />
@@ -390,12 +389,14 @@
       <module fileurl="file://$PROJECT_DIR$/android-templates/intellij.android.templates.iml" filepath="$PROJECT_DIR$/android-templates/intellij.android.templates.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-templates/intellij.android.templates.tests.iml" filepath="$PROJECT_DIR$/android-templates/intellij.android.templates.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-test-framework/intellij.android.testFramework.iml" filepath="$PROJECT_DIR$/android-test-framework/intellij.android.testFramework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/testartifacts/intellij.android.testartifacts.tests.iml" filepath="$PROJECT_DIR$/testartifacts/intellij.android.testartifacts.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.iml" filepath="$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.iml" />
       <module fileurl="file://$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.tests.iml" filepath="$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-transport/intellij.android.transport.iml" filepath="$PROJECT_DIR$/android-transport/intellij.android.transport.iml" />
       <module fileurl="file://$PROJECT_DIR$/transport-database/intellij.android.transportDatabase.iml" filepath="$PROJECT_DIR$/transport-database/intellij.android.transportDatabase.iml" />
       <module fileurl="file://$PROJECT_DIR$/studio-updater/intellij.android.updater.studio-updater.iml" filepath="$PROJECT_DIR$/studio-updater/intellij.android.updater.studio-updater.iml" />
       <module fileurl="file://$PROJECT_DIR$/updater-ui/intellij.android.updater.ui.iml" filepath="$PROJECT_DIR$/updater-ui/intellij.android.updater.ui.iml" />
+      <module fileurl="file://$PROJECT_DIR$/visual-lint/intellij.android.visual-lint.iml" filepath="$PROJECT_DIR$/visual-lint/intellij.android.visual-lint.iml" />
       <module fileurl="file://$PROJECT_DIR$/wear-designer/intellij.android.wear-designer.iml" filepath="$PROJECT_DIR$/wear-designer/intellij.android.wear-designer.iml" />
       <module fileurl="file://$PROJECT_DIR$/wear-designer/intellij.android.wear-designer.tests.iml" filepath="$PROJECT_DIR$/wear-designer/intellij.android.wear-designer.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/wear-pairing/intellij.android.wear-pairing.iml" filepath="$PROJECT_DIR$/wear-pairing/intellij.android.wear-pairing.iml" />

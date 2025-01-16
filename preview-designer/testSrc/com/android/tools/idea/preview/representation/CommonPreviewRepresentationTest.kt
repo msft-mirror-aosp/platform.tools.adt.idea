@@ -445,12 +445,10 @@ class CommonPreviewRepresentationTest {
       val sceneView = preview.previewView.mainSurface.sceneManagers.first().sceneViews.first()
 
       withContext(uiThread) {
-        preview.navigationHandler.handleNavigateWithCoordinates(
-          sceneView,
-          sceneView.x,
-          sceneView.y,
-          false,
-        )
+        preview.navigationHandler
+          .findNavigatablesWithCoordinates(sceneView, sceneView.x, sceneView.y, false)
+          .firstOrNull()
+          ?.let { preview.navigationHandler.navigateTo(sceneView, it, false) }
       }
 
       runReadAction {
@@ -625,7 +623,7 @@ class CommonPreviewRepresentationTest {
       retryUntilPassing(1.seconds) {
         assertThat(
             persistedPreviewRepresentation.previewView.mainSurface.layoutManagerSwitcher
-              ?.currentLayout
+              ?.currentLayoutOption
               ?.value
           )
           .isEqualTo(GALLERY_LAYOUT_OPTION)
@@ -644,7 +642,7 @@ class CommonPreviewRepresentationTest {
       retryUntilPassing(1.seconds) {
         assertThat(
             restoredPreviewRepresentation.previewView.mainSurface.layoutManagerSwitcher
-              ?.currentLayout
+              ?.currentLayoutOption
               ?.value
           )
           .isEqualTo(GALLERY_LAYOUT_OPTION)
@@ -670,7 +668,7 @@ class CommonPreviewRepresentationTest {
       retryUntilPassing(1.seconds) {
         assertThat(
             persistedPreviewRepresentation.previewView.mainSurface.layoutManagerSwitcher
-              ?.currentLayout
+              ?.currentLayoutOption
               ?.value
           )
           .isEqualTo(GALLERY_LAYOUT_OPTION)
@@ -688,7 +686,7 @@ class CommonPreviewRepresentationTest {
       retryUntilPassing(1.seconds) {
         assertThat(
             restoredPreviewRepresentation.previewView.mainSurface.layoutManagerSwitcher
-              ?.currentLayout
+              ?.currentLayoutOption
               ?.value
           )
           .isEqualTo(GALLERY_LAYOUT_OPTION)

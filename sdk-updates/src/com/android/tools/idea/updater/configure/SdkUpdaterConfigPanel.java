@@ -32,14 +32,18 @@ import com.android.sdklib.devices.Storage;
 import com.android.sdklib.repository.meta.DetailsTypes;
 import com.android.tools.adtui.validation.Validator;
 import com.android.tools.analytics.UsageTracker;
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.observable.BindingsManager;
 import com.android.tools.idea.observable.adapters.AdapterProperty;
 import com.android.tools.idea.observable.core.OptionalValueProperty;
 import com.android.tools.idea.observable.ui.TextProperty;
 import com.android.tools.idea.progress.StudioProgressRunner;
 import com.android.tools.idea.sdk.IdeSdks;
+import com.android.tools.idea.sdk.wizard.SetupSdkApplicationService;
 import com.android.tools.idea.ui.ApplicationUtils;
 import com.android.tools.idea.ui.validation.validators.PathValidator;
+import com.android.tools.idea.welcome.install.SdkComponentInstaller;
+import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker;
 import com.android.tools.sdk.AndroidPlatform;
 import com.android.tools.sdk.AndroidSdkData;
 import com.android.utils.FileUtils;
@@ -52,6 +56,7 @@ import com.google.common.collect.TreeMultimap;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventCategory;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind;
+import com.google.wireless.android.sdk.stats.SetupWizardEvent;
 import com.intellij.facet.ProjectFacetManager;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
@@ -301,10 +306,17 @@ public class SdkUpdaterConfigPanel implements Disposable {
     myEditSdkLink.addHyperlinkListener(new HyperlinkAdapter() {
       @Override
       protected void hyperlinkActivated(@NotNull HyperlinkEvent e) {
-        SetupSdkApplicationService.getInstance().showSdkSetupWizard(mySdkLocationTextField.getText(), (sdkLocation) -> {
-          onSdkLocationUpdated(sdkLocation);
-          return null;
-        });
+        boolean useDeprecatedWizard = !StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED.get();
+        SetupSdkApplicationService.getInstance().showSdkSetupWizard(
+          mySdkLocationTextField.getText(),
+          (sdkLocation) -> {
+            onSdkLocationUpdated(sdkLocation);
+            return null;
+          },
+          new SdkComponentInstaller(),
+          new FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.SDK_SETUP, useDeprecatedWizard),
+          useDeprecatedWizard
+        );
       }
     });
     mySdkLocationTextField.setEditable(false);

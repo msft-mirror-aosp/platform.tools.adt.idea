@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.welcome.wizard;
 
+import static org.mockito.Mockito.mock;
+
 import com.android.prefs.AndroidLocationsSingleton;
 import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.testutils.TestUtils;
@@ -66,8 +68,9 @@ public final class FirstRunWizardTest extends AndroidTestBase {
         createKey(String.class),
         mode,
         new ObjectValueProperty<>(sdkHandler),
-        new LicenseAgreementStep(getTestRootDisposable(), ArrayList::new, () -> sdkHandler),
-        getTestRootDisposable()
+        new LicenseAgreementStep(getTestRootDisposable(), ArrayList::new, () -> sdkHandler, mock()),
+        getTestRootDisposable(),
+        mock()
       ), data, isComponentsStepVisible
     );
 

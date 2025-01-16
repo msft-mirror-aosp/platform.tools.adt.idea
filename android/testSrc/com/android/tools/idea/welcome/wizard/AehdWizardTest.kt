@@ -31,7 +31,7 @@ import com.android.tools.idea.sdk.wizard.AehdWizard
 import com.android.tools.idea.sdk.wizard.AehdWizardController
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.welcome.install.AehdSdkComponentTreeNode
-import com.intellij.openapi.util.SystemInfo
+import com.google.wireless.android.sdk.stats.SetupWizardEvent
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
@@ -55,9 +55,11 @@ import org.junit.runners.Parameterized.Parameters
 import org.mockito.MockedStatic
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.timeout
 import org.mockito.kotlin.whenever
 
@@ -83,6 +85,7 @@ class AehdWizardTest {
     ) // AndroidProjectRule must get initialized off the EDT thread
 
   private lateinit var mockAndroidSdksStatic: MockedStatic<AndroidSdks>
+  private lateinit var mockAehdWizardController: AehdWizardController
 
   @Before
   fun setUp() {
@@ -102,6 +105,11 @@ class AehdWizardTest {
 
     mockAndroidSdksStatic = mockStatic(AndroidSdks::class.java)
     whenever(AndroidSdks.getInstance()).thenReturn(mockAndroidSdks)
+
+    mockAehdWizardController = mock(AehdWizardController::class.java)
+    whenever(mockAehdWizardController.getPackagesToInstall(any(), any()))
+      .thenReturn(listOf(remotePackage))
+    whenever(mockAehdWizardController.setupAehd(any(), any(), any())).thenReturn(true)
   }
 
   @After
@@ -111,15 +119,7 @@ class AehdWizardTest {
 
   @Test
   fun navigatingThroughWizardInstallsAehd() {
-    // AEHD installation is only supported on Windows
-    if (!SystemInfo.isWindows) {
-      return
-    }
-
-    val mockAehdWizardController = mock(AehdWizardController::class.java)
-    whenever(mockAehdWizardController.setupAehd(any(), any(), any())).thenReturn(true)
-
-    showWizard(mockAehdWizardController) { fakeUi ->
+    showWizard(mockAehdWizardController, mock()) { fakeUi ->
       val infoStepTitle =
         checkNotNull(
           fakeUi.findComponent<JLabel> {
@@ -174,13 +174,12 @@ class AehdWizardTest {
 
   @Test
   fun cancellingWizardTriggersCleanup() {
-    // AEHD installation is only supported on Windows
-    if (!SystemInfo.isWindows) {
-      return
-    }
-
-    val mockAehdWizardController = mock(AehdWizardController::class.java)
-    showWizard(mockAehdWizardController) { fakeUi ->
+    val tracker =
+      FirstRunWizardTracker(
+        SetupWizardEvent.SetupWizardMode.AEHD_WIZARD,
+        isTestingLegacyWizard == true,
+      )
+    showWizard(mockAehdWizardController, tracker) { fakeUi ->
       val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.equals("Cancel") })
       assertTrue { fakeUi.isShowing(cancelButton) }
       cancelButton.doClick()
@@ -192,25 +191,93 @@ class AehdWizardTest {
     }
   }
 
+  @Test
+  fun usageMetricsTracked_wizardComplete() {
+    val mockTracker = mock(FirstRunWizardTracker::class.java)
+    showWizard(mockAehdWizardController, mockTracker) { fakeUi ->
+      val nextButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") })
+      nextButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+      // Accept all licenses
+      val tree = checkNotNull(fakeUi.findComponent<Tree>())
+      val acceptButton =
+        checkNotNull(fakeUi.findComponent<JBRadioButton> { it.text.contains("Accept") })
+      for (i in 0..<tree.rowCount) {
+        tree.setSelectionRow(i)
+        acceptButton.doClick()
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+      }
+
+      nextButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+      val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.equals("Finish") })
+      waitForCondition(2, TimeUnit.SECONDS) { finishButton.isEnabled }
+      finishButton.doClick()
+
+      inOrder(mockTracker).apply {
+        verify(mockTracker).trackWizardStarted()
+        verify(mockTracker)
+          .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.AEHD_INSTALL_INFO)
+        verify(mockTracker)
+          .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.LICENSE_AGREEMENT)
+        verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_SDK)
+        verify(mockTracker).trackWizardFinished(SetupWizardEvent.CompletionStatus.FINISHED)
+      }
+
+      verify(mockTracker, never()).trackInstallationMode(any())
+      verify(mockTracker, never()).trackSdkInstallLocationChanged()
+      verify(mockTracker)
+        .trackSdkComponentsToInstall(
+          listOf(SetupWizardEvent.SdkInstallationMetrics.SdkComponentKind.AEHD)
+        )
+      verify(mockTracker).trackInstallingComponentsStarted()
+      verify(mockTracker)
+        .trackInstallingComponentsFinished(
+          SetupWizardEvent.SdkInstallationMetrics.SdkInstallationResult.SUCCESS
+        )
+    }
+  }
+
+  @Test
+  fun usageMetricsTracked_wizardCancelled() {
+    val trackerMock = mock(FirstRunWizardTracker::class.java)
+    showWizard(mockAehdWizardController, trackerMock) {
+      val cancelButton = checkNotNull(it.findComponent<JButton> { it.text.equals("Cancel") })
+      cancelButton.doClick()
+
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+      inOrder(trackerMock).apply {
+        verify(trackerMock).trackWizardStarted()
+        verify(trackerMock).trackWizardFinished(SetupWizardEvent.CompletionStatus.CANCELED)
+      }
+    }
+  }
+
   private fun showWizard(
     aehdWizardController: AehdWizardController,
+    tracker: FirstRunWizardTracker,
     showCallback: (FakeUi) -> Unit,
   ) {
     if (isTestingLegacyWizard == true) {
-      showOldWizard(aehdWizardController, showCallback)
+      showOldWizard(aehdWizardController, showCallback, tracker)
     } else {
-      showNewWizard(aehdWizardController, showCallback)
+      showNewWizard(aehdWizardController, showCallback, tracker)
     }
   }
 
   private fun showOldWizard(
     aehdWizardController: AehdWizardController,
     showCallback: (FakeUi) -> Unit,
+    tracker: FirstRunWizardTracker,
   ) {
     val wizard =
       AehdWizard(
           AehdSdkComponentTreeNode.InstallationIntention.INSTALL_WITH_UPDATES,
           aehdWizardController,
+          tracker,
         )
         .apply { init() }
 
@@ -221,11 +288,13 @@ class AehdWizardTest {
   private fun showNewWizard(
     aehdWizardController: AehdWizardController,
     showCallback: (FakeUi) -> Unit,
+    tracker: FirstRunWizardTracker,
   ) {
     val wizard =
       AehdModelWizard(
         AehdSdkComponentTreeNode.InstallationIntention.INSTALL_WITH_UPDATES,
         aehdWizardController,
+        tracker,
       )
 
     createModalDialogAndInteractWithIt(dialogTrigger = { wizard.showAndGet() }) { dialogWrapper ->

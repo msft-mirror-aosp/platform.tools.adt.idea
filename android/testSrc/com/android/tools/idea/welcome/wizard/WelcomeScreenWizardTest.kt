@@ -40,6 +40,7 @@ import com.android.tools.idea.welcome.install.FirstRunWizardDefaults
 import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.wizard.deprecated.LinuxKvmInfoStepForm
 import com.google.common.truth.Truth.assertThat
+import com.google.wireless.android.sdk.stats.SetupWizardEvent
 import com.intellij.openapi.editor.impl.EditorComponentImpl
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TestDialogManager
@@ -88,6 +89,7 @@ import org.junit.runners.Parameterized.Parameter
 import org.junit.runners.Parameterized.Parameters
 import org.mockito.MockedStatic
 import org.mockito.Mockito.CALLS_REAL_METHODS
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockStatic
 import org.mockito.Mockito.never
@@ -133,7 +135,7 @@ class WelcomeScreenWizardTest {
 
   @Before
   fun setUp() {
-    StudioFlags.NPW_FIRST_RUN_WIZARD.override(!isTestingLegacyWizard!!)
+    StudioFlags.FIRST_RUN_MIGRATED_WIZARD_ENABLED.override(!isTestingLegacyWizard!!)
 
     val dialog = TestMessagesDialog(Messages.OK)
     TestDialogManager.setTestDialog(dialog)
@@ -167,7 +169,7 @@ class WelcomeScreenWizardTest {
 
   @After
   fun tearDown() {
-    StudioFlags.NPW_FIRST_RUN_WIZARD.clearOverride()
+    StudioFlags.FIRST_RUN_MIGRATED_WIZARD_ENABLED.clearOverride()
 
     mockFirstRunWizardDefaults.close()
     mockAndroidSdkHandler.close()
@@ -523,25 +525,19 @@ class WelcomeScreenWizardTest {
   fun progressStep_cancelInstallationAndFinish() {
     val mockInstaller = mock(SdkComponentInstaller::class.java)
     val remotePackage = createFakeRemotePackageWithLicense("platforms;android-35")
-    whenever(mockInstaller.getPackagesToInstall(any())).thenReturn(listOf(remotePackage))
+    whenever(mockInstaller.getPackagesToInstall(any(), any())).thenReturn(listOf(remotePackage))
 
     val installerStarted = CompletableFuture<Boolean>()
     val cancelTriggered = CompletableFuture<Boolean>()
-    whenever(mockInstaller.installPackages(any(), any(), any())).then {
+    whenever(mockInstaller.installComponents(any(), any(), anyOrNull(), any(), any(), any())).then {
       // Pause the installer to allow us to check the UI and to cancel the task
       installerStarted.complete(true)
 
       // Resume once cancel has been triggered
       cancelTriggered.get()
     }
-    val mockInstallerProvider = mock(SdkComponentInstallerProvider::class.java)
-    whenever(mockInstallerProvider.getComponentInstaller(any())).thenReturn(mockInstaller)
 
-    val fakeUi =
-      createWizard(
-        FirstRunWizardMode.NEW_INSTALL,
-        sdkComponentInstallerProvider = mockInstallerProvider,
-      )
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL, sdkComponentInstaller = mockInstaller)
     navigateToProgressStep(fakeUi)
 
     val progressLabel =
@@ -603,41 +599,17 @@ class WelcomeScreenWizardTest {
   @Test
   fun installHandoffMode_skipsStraightToInstallingComponentsStepWhenSdkConfiguredInInstaller() {
     val mockInstaller = mock(SdkComponentInstaller::class.java)
-    whenever(mockInstaller.getPackagesToInstall(any()))
+    whenever(mockInstaller.getPackagesToInstall(any(), any()))
       .thenReturn(
         listOf(FakeRemotePackage("system-images;android-35;google_apis_playstore;arm64-v8a"))
       )
 
-    val installerStarted = CompletableFuture<Boolean>()
-    val cancelTriggered = CompletableFuture<Boolean>()
-    whenever(mockInstaller.installPackages(any(), any(), any())).then {
-      // Pause the installer to allow us to check the UI and to cancel the task
-      installerStarted.complete(true)
-
-      // Resume once cancel has been triggered
-      cancelTriggered.get()
-    }
-
-    val mockInstallerProvider = mock(SdkComponentInstallerProvider::class.java)
-    whenever(mockInstallerProvider.getComponentInstaller(any())).thenReturn(mockInstaller)
-
     val installHandoffData = InstallerData(sdkPath, true, "timestamp", "1234")
-    val fakeUi =
-      createWizard(FirstRunWizardMode.INSTALL_HANDOFF, mockInstallerProvider, installHandoffData)
+    val fakeUi = createWizard(FirstRunWizardMode.INSTALL_HANDOFF, mockInstaller, installHandoffData)
 
     val progressLabel =
       checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("Downloading Components") })
     assertTrue(fakeUi.isShowing(progressLabel))
-
-    installerStarted.get()
-
-    // Let's cancel the installation, otherwise the AndroidVirtualDeviceSdkComponent.configure step
-    // will run
-    // and throw an exception, since the component is not actually installed in this test
-    val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Cancel") })
-    cancelButton.doClick()
-
-    cancelTriggered.complete(true)
 
     val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
     waitForCondition(10, TimeUnit.SECONDS) { finishButton.isEnabled }
@@ -664,6 +636,8 @@ class WelcomeScreenWizardTest {
       val mockFrame = configureFrameMock(listeners)
 
       val welcomeScreen = createWelcomeScreen(FirstRunWizardMode.NEW_INSTALL)
+      welcomeScreen
+        .welcomePanel // Need to access the welcome panel to ensure the wizard is initialised
       welcomeScreen.setupFrame(mockFrame)
 
       val listener = listeners[0]
@@ -686,6 +660,8 @@ class WelcomeScreenWizardTest {
       val mockFrame = configureFrameMock(listeners)
 
       val welcomeScreen = createWelcomeScreen(FirstRunWizardMode.NEW_INSTALL)
+      welcomeScreen
+        .welcomePanel // Need to access the welcome panel to ensure the wizard is initialised
       welcomeScreen.setupFrame(mockFrame)
 
       val listener = listeners[0]
@@ -708,6 +684,8 @@ class WelcomeScreenWizardTest {
       val mockFrame = configureFrameMock(listeners)
 
       val welcomeScreen = createWelcomeScreen(FirstRunWizardMode.NEW_INSTALL)
+      welcomeScreen
+        .welcomePanel // Need to access the welcome panel to ensure the wizard is initialised
       welcomeScreen.setupFrame(mockFrame)
 
       verify(mockFrame, never()).removeWindowListener(any())
@@ -730,6 +708,8 @@ class WelcomeScreenWizardTest {
       listeners[0] = welcomeFrameListenerSpy
 
       val welcomeScreen = createWelcomeScreen(FirstRunWizardMode.NEW_INSTALL)
+      welcomeScreen
+        .welcomePanel // Need to access the welcome panel to ensure the wizard is initialised
       welcomeScreen.setupFrame(mockFrame)
 
       val listener = listeners[0]
@@ -744,37 +724,183 @@ class WelcomeScreenWizardTest {
     }
   }
 
+  @Test
+  fun usageMetricsTracked_wizardFinishedAfterSuccessfullyInstallingComponents() {
+    val mockInstaller = mock(SdkComponentInstaller::class.java)
+    val remotePackage = createFakeRemotePackageWithLicense("platforms;android-35")
+    whenever(mockInstaller.getPackagesToInstall(any(), any())).thenReturn(listOf(remotePackage))
+
+    val mockTracker: FirstRunWizardTracker = mock()
+    val fakeUi =
+      createWizard(
+        FirstRunWizardMode.NEW_INSTALL,
+        sdkComponentInstaller = mockInstaller,
+        tracker = mockTracker,
+      )
+    navigateToProgressStep(fakeUi)
+
+    // Click 'Finish'
+    val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
+    waitForCondition(2, TimeUnit.SECONDS) { finishButton.isEnabled }
+    finishButton.doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    inOrder(mockTracker).apply {
+      verify(mockTracker).trackWizardStarted()
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.WELCOME)
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_TYPE)
+      verify(mockTracker)
+        .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.SDK_COMPONENTS)
+      verify(mockTracker)
+        .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_SUMMARY)
+      verify(mockTracker)
+        .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.LICENSE_AGREEMENT)
+      if (SystemInfo.isLinux) {
+        verify(mockTracker)
+          .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.LINUX_KVM_INFO)
+      }
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_SDK)
+      verify(mockTracker).trackWizardFinished(SetupWizardEvent.CompletionStatus.FINISHED)
+    }
+
+    verify(mockTracker, atLeastOnce())
+      .trackInstallationMode(SetupWizardEvent.InstallationMode.CUSTOM)
+    verify(mockTracker, never()).trackSdkInstallLocationChanged()
+    verify(mockTracker)
+      .trackSdkComponentsToInstall(
+        listOf(
+          SetupWizardEvent.SdkInstallationMetrics.SdkComponentKind.ANDROID_SDK,
+          SetupWizardEvent.SdkInstallationMetrics.SdkComponentKind.ANDROID_PLATFORM,
+        )
+      )
+    verify(mockTracker).trackInstallingComponentsStarted()
+    verify(mockTracker)
+      .trackInstallingComponentsFinished(
+        SetupWizardEvent.SdkInstallationMetrics.SdkInstallationResult.SUCCESS
+      )
+  }
+
+  @Test
+  fun usageMetricsTracked_wizardFinishedAfterCancelingInstallation() {
+    val mockInstaller = mock(SdkComponentInstaller::class.java)
+    val remotePackage = createFakeRemotePackageWithLicense("platforms;android-35")
+    whenever(mockInstaller.getPackagesToInstall(any(), any())).thenReturn(listOf(remotePackage))
+
+    val cancelTriggered = CompletableFuture<Boolean>()
+    whenever(mockInstaller.installComponents(any(), any(), anyOrNull(), any(), any(), any())).then {
+      // Resume once cancel has been triggered
+      cancelTriggered.get()
+    }
+
+    val mockTracker: FirstRunWizardTracker = mock()
+    val fakeUi =
+      createWizard(
+        FirstRunWizardMode.NEW_INSTALL,
+        sdkComponentInstaller = mockInstaller,
+        tracker = mockTracker,
+      )
+    navigateToProgressStep(fakeUi)
+
+    // Click 'Cancel' button
+    val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Cancel") })
+    cancelButton.doClick()
+    cancelTriggered.complete(true)
+    PlatformTestUtil.waitForAllBackgroundActivityToCalmDown()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Click 'Finish'
+    val finishButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Finish") })
+    finishButton.doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    inOrder(mockTracker).apply {
+      verify(mockTracker).trackWizardStarted()
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_SDK)
+      verify(mockTracker).trackInstallingComponentsStarted()
+      verify(mockTracker)
+        .trackInstallingComponentsFinished(
+          SetupWizardEvent.SdkInstallationMetrics.SdkInstallationResult.CANCELED
+        )
+      verify(mockTracker).trackWizardFinished(SetupWizardEvent.CompletionStatus.FINISHED)
+    }
+  }
+
+  @Test
+  fun usageMetricsTracked_wizardCanceled() {
+    mockStatic(ConfirmFirstRunWizardCloseDialog::class.java).use { confirmCloseDialog ->
+      whenever(ConfirmFirstRunWizardCloseDialog.show())
+        .thenReturn(ConfirmFirstRunWizardCloseDialog.Result.Skip)
+      val mockTracker: FirstRunWizardTracker = mock()
+      val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL, tracker = mockTracker)
+      navigateToSdkComponentsStep(fakeUi)
+
+      val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Cancel") })
+      cancelButton.doClick()
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+      inOrder(mockTracker).apply {
+        verify(mockTracker, atLeastOnce()).trackWizardStarted()
+        verify(mockTracker).trackWizardFinished(SetupWizardEvent.CompletionStatus.CANCELED)
+      }
+    }
+  }
+
+  @Test
+  fun usageMetricsTracked_bothForwardAndBackwardsNavigationTracked() {
+    val mockTracker: FirstRunWizardTracker = mock()
+    val fakeUi = createWizard(FirstRunWizardMode.NEW_INSTALL, tracker = mockTracker)
+    navigateToSdkComponentsStep(fakeUi)
+
+    val backButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Previous") })
+    backButton.doClick()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    inOrder(mockTracker).apply {
+      verify(mockTracker).trackWizardStarted()
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.WELCOME)
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_TYPE)
+      verify(mockTracker)
+        .trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.SDK_COMPONENTS)
+      verify(mockTracker).trackStepShowing(SetupWizardEvent.WizardStep.WizardStepKind.INSTALL_TYPE)
+    }
+  }
+
   private fun getExistingSdkPath(): File {
     return AndroidSdks.getInstance().allAndroidSdks.firstOrNull()?.homeDirectory?.toIoFile()!!
   }
 
   private fun createWizard(
     wizardMode: FirstRunWizardMode,
-    sdkComponentInstallerProvider: SdkComponentInstallerProvider? = null,
+    sdkComponentInstaller: SdkComponentInstaller? = null,
     installHandoffData: InstallerData? = null,
+    tracker: FirstRunWizardTracker = mock(),
   ): FakeUi {
     val welcomeScreen =
-      createWelcomeScreen(wizardMode, sdkComponentInstallerProvider, installHandoffData)
+      createWelcomeScreen(wizardMode, sdkComponentInstaller, installHandoffData, tracker)
     return FakeUi(welcomeScreen.welcomePanel, createFakeWindow = true)
   }
 
   private fun createWelcomeScreen(
     wizardMode: FirstRunWizardMode,
-    sdkComponentInstallerProvider: SdkComponentInstallerProvider? = null,
+    sdkComponentInstaller: SdkComponentInstaller? = null,
     installHandoffData: InstallerData? = null,
+    tracker: FirstRunWizardTracker = mock(),
   ): WelcomeScreen {
     if (installHandoffData != null) {
       installerData = installHandoffData
     }
 
-    val installer = sdkComponentInstallerProvider ?: SdkComponentInstallerProvider()
+    val installer = sdkComponentInstaller ?: SdkComponentInstaller()
     val welcomeScreen =
       AndroidStudioWelcomeScreenProvider()
-        .createWelcomeScreen(useNewWizard = !isTestingLegacyWizard!!, wizardMode, installer)
+        .createWelcomeScreen(
+          useNewWizard = !isTestingLegacyWizard!!,
+          wizardMode,
+          installer,
+          tracker,
+        )
 
     Disposer.register(projectRule.testRootDisposable, welcomeScreen)
-    welcomeScreen
-      .welcomePanel // Need to access the welcome panel to ensure the wizard is initialised
 
     return welcomeScreen
   }

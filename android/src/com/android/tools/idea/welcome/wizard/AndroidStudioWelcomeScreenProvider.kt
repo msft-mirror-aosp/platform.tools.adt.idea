@@ -20,6 +20,7 @@ import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
 import com.android.tools.idea.welcome.config.installerData
+import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.wizard.deprecated.FirstRunWizardHost
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ApplicationManager
@@ -42,26 +43,28 @@ class AndroidStudioWelcomeScreenProvider : WelcomeScreenProvider {
       }
     }
 
-    val useNewWizard = StudioFlags.NPW_FIRST_RUN_WIZARD.get()
+    val useNewWizard = StudioFlags.FIRST_RUN_MIGRATED_WIZARD_ENABLED.get()
     val wizardMode =
       AndroidStudioWelcomeScreenService.instance.getWizardMode(
         AndroidFirstRunPersistentData.getInstance(),
         installerData,
         IdeSdks.getInstance(),
       ) ?: return null
-    val sdkComponentInstallerProvider = SdkComponentInstallerProvider()
-    return createWelcomeScreen(useNewWizard, wizardMode, sdkComponentInstallerProvider)
+    val sdkComponentInstaller = SdkComponentInstaller()
+    val tracker = FirstRunWizardTracker(wizardMode.toMetricKind(), !useNewWizard)
+    return createWelcomeScreen(useNewWizard, wizardMode, sdkComponentInstaller, tracker)
   }
 
   @VisibleForTesting
   fun createWelcomeScreen(
     useNewWizard: Boolean,
     wizardMode: FirstRunWizardMode,
-    sdkComponentInstallerProvider: SdkComponentInstallerProvider,
+    sdkComponentInstaller: SdkComponentInstaller,
+    tracker: FirstRunWizardTracker,
   ): WelcomeScreen {
     AndroidStudioWelcomeScreenService.instance.wizardWasShown = true
-    return if (useNewWizard) StudioFirstRunWelcomeScreen(wizardMode, sdkComponentInstallerProvider)
-    else FirstRunWizardHost(wizardMode, sdkComponentInstallerProvider)
+    return if (useNewWizard) StudioFirstRunWelcomeScreen(wizardMode, sdkComponentInstaller, tracker)
+    else FirstRunWizardHost(wizardMode, sdkComponentInstaller, tracker)
   }
 
   override fun isAvailable(): Boolean {

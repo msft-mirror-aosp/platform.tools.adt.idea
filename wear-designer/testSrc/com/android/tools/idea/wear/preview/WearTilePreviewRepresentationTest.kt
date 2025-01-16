@@ -34,6 +34,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.TestProjectSystem
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.idea.util.TestToolWindowManager
 import com.android.tools.idea.util.runWhenSmartAndSyncedOnEdt
 import com.android.tools.preview.PreviewElement
@@ -94,6 +95,9 @@ class WearTilePreviewRepresentationTest {
       TestToolWindowManager(project),
       fixture.testRootDisposable,
     )
+
+    // Create VisualLintService early to avoid it being created at the time of project disposal
+    VisualLintService.getInstance(project)
   }
 
   @After
@@ -284,12 +288,17 @@ class WearTilePreviewRepresentationTest {
             .sceneViews
             .first()
         withContext(uiThread) {
-          preview.navigationHandler.handleNavigateWithCoordinates(
-            sceneViewWithNormalPreviewAnnotation,
-            sceneViewWithNormalPreviewAnnotation.x,
-            sceneViewWithNormalPreviewAnnotation.y,
-            false,
-          )
+          preview.navigationHandler
+            .findNavigatablesWithCoordinates(
+              sceneViewWithNormalPreviewAnnotation,
+              sceneViewWithNormalPreviewAnnotation.x,
+              sceneViewWithNormalPreviewAnnotation.y,
+              false,
+            )
+            .firstOrNull()
+            ?.let {
+              preview.navigationHandler.navigateTo(sceneViewWithNormalPreviewAnnotation, it, false)
+            }
         }
 
         runReadAction {
@@ -312,12 +321,17 @@ class WearTilePreviewRepresentationTest {
             .sceneViews
             .first()
         withContext(uiThread) {
-          preview.navigationHandler.handleNavigateWithCoordinates(
-            sceneViewWithMultiPreviewAnnotation,
-            sceneViewWithMultiPreviewAnnotation.x,
-            sceneViewWithMultiPreviewAnnotation.y,
-            false,
-          )
+          preview.navigationHandler
+            .findNavigatablesWithCoordinates(
+              sceneViewWithMultiPreviewAnnotation,
+              sceneViewWithMultiPreviewAnnotation.x,
+              sceneViewWithMultiPreviewAnnotation.y,
+              false,
+            )
+            .firstOrNull()
+            ?.let {
+              preview.navigationHandler.navigateTo(sceneViewWithMultiPreviewAnnotation, it, false)
+            }
         }
 
         runReadAction {

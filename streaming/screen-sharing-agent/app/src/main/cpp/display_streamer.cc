@@ -211,7 +211,7 @@ void DisplayStreamer::Run() {
   }
 
   AMediaFormat* media_format = CreateMediaFormat(codec_info_->mime_type);
-  VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = 0};
+  VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = frame_number_};
   bool continue_streaming = true;
   consequent_deque_error_count_ = 0;
 
@@ -302,6 +302,9 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(VideoPacketHeader* packet_h
   bool request_sync_frame = true;
   while (continue_streaming && IsCodecRunning()) {
     CodecOutputBuffer codec_buffer(codec_, StringPrintf("Display %d: ", display_id_));
+    if (frame_number_ == initial_frame_number_) {
+      Log::D("Display %d: calling AMediaCodec_dequeueOutputBuffer", display_id_);
+    }
     if (!codec_buffer.Deque(-1)) {
       if (++consequent_deque_error_count_ >= MAX_SUBSEQUENT_ERRORS && !ReduceBitRate()) {
         ExitCode exitCode = bit_rate_ <= MIN_BIT_RATE ? WEAK_VIDEO_ENCODER : REPEATED_VIDEO_ENCODER_ERRORS;
@@ -322,8 +325,8 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(VideoPacketHeader* packet_h
       continue;
     }
 
-    if (packet_header->frame_number == 0) {
-      Log::D("Display %d: first video frame produced by the encoder", display_id_) ;
+    if (frame_number_ == initial_frame_number_) {
+      Log::D("Display %d: video frame #%d produced by the encoder", display_id_, frame_number_ + 1) ;
     }
 
     if (request_sync_frame) {
@@ -355,7 +358,7 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(VideoPacketHeader* packet_h
       continue_streaming = false;
     }
     if (!codec_buffer.IsConfig()) {
-      packet_header->frame_number++;
+      packet_header->frame_number = ++frame_number_;
     }
     bit_rate_reduced_ = false;
     packet_header->flags &= ~VideoPacketHeader::FLAG_BIT_RATE_REDUCED;
@@ -365,17 +368,18 @@ bool DisplayStreamer::ProcessFramesUntilCodecStopped(VideoPacketHeader* packet_h
 
 void DisplayStreamer::SetVideoOrientation(int32_t orientation) {
   Log::D("Display %d: setting video orientation %d", display_id_, orientation);
+  SessionEnvironment& session_environment = Agent::GetSessionEnvironment();
   if (orientation == CURRENT_DISPLAY_ORIENTATION) {
     unique_lock lock(mutex_);
     if (video_orientation_ >= 0) {
-      Agent::session_environment().RestoreAccelerometerRotation();
+      session_environment.RestoreAccelerometerRotation();
       video_orientation_ = -1;
       StopCodecUnlocked();
     }
     return;
   }
 
-  Agent::session_environment().DisableAccelerometerRotation();
+  session_environment.DisableAccelerometerRotation();
 
   Jni jni = Jvm::GetJni();
   bool rotation_was_frozen = WindowManager::IsRotationFrozen(jni, display_id_);
@@ -436,6 +440,7 @@ void DisplayStreamer::DeleteCodec() {
 
 void DisplayStreamer::StartCodecUnlocked() {
   Log::D("Display %d: starting codec", display_id_);
+  initial_frame_number_ = frame_number_;
   media_status_t status = AMediaCodec_start(codec_);
   if (status != AMEDIA_OK) {
     Log::Fatal(VIDEO_ENCODER_START_ERROR, "Display %d: AMediaCodec_start returned %d", display_id_, status);
