@@ -187,7 +187,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NPW_NEW_KOTLIN_MULTIPLATFORM_MODULE = new BooleanFlag(
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.",
-    enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Integer> NPW_COMPILE_SDK_VERSION = new IntFlag(
     NPW, "new.project.compile.sdk", "New project Compile SDK version",
@@ -618,7 +618,7 @@ public final class StudioFlags {
     "Use the `app_info` feature if available on the device for discovering processes",
     "Check the `app_info` feature for connected devices, and use it to track processes if available. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    true);
+    false);
 
   public static final Flag<Boolean> JDWP_TRACER = new BooleanFlag(
     RUNDEBUG,
@@ -1719,7 +1719,7 @@ public final class StudioFlags {
     "device.catalog.enabled",
     "Enable the Device Catalog for virtual device creation",
     "Enable new UI for creating AVDs",
-    enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Boolean> DIRECT_ACCESS_DEVICE_CATALOG_ENABLED = new BooleanFlag(
@@ -1727,7 +1727,7 @@ public final class StudioFlags {
     "direct.access.device.catalog.enabled",
     "Enable the Device Catalog for Direct Access devices",
     "Enable new UI for selecting Firebase devices",
-    enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Boolean> POST_MVP_VIRTUAL_DEVICE_DIALOG_FEATURES_ENABLED = new BooleanFlag(
@@ -1860,7 +1860,7 @@ public final class StudioFlags {
       "crashlytics.show.insight.tool.window",
       "Show insight toolwindow in Crashlytics",
       "Show AI generated insights for Crashlytics issue in insight toolwindow",
-      enabledUpTo(CANARY)
+      true
     );
 
   // Must re-enable firebase onboarding flow should this be set to true.
@@ -1902,7 +1902,7 @@ public final class StudioFlags {
       "play.vitals.show.insight.tool.window",
       "Show insight toolwindow in Play Vitals",
       "Show AI generated insights for Play Vitals issue in insight toolwindow",
-      enabledUpTo(CANARY)
+      true
     );
   // endregion App Insights
 
@@ -2172,7 +2172,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
                     "Enable test scenario generation.",
                     "When enabled, generate test scenarios and corresponding function names for the selected code.",
-                    enabledUpTo(CANARY));
+                    true);
 
   // endregion STUDIO_BOT
 
@@ -2269,7 +2269,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_SDK_INDEX_DEPRECATION_ISSUES = new BooleanFlag(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.deprecation.issues", "Show library deprecation issues",
     "Show issues related to deprecated libraries from SDK Index in Lint and PSD",
-    enabledUpTo(CANARY)
+    true
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
 
