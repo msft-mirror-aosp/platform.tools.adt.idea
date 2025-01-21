@@ -33,6 +33,7 @@ import com.android.tools.idea.gradle.dsl.model.dependencies.ScriptDependenciesMo
 import com.android.tools.idea.gradle.dsl.model.ext.EmptyExtModelImpl
 import com.android.tools.idea.gradle.dsl.model.ext.ExtModelImpl
 import com.android.tools.idea.gradle.dsl.model.java.EmptyJavaModelImpl
+import com.android.tools.idea.gradle.dsl.model.java.JavaDeclarativeModelImpl
 import com.android.tools.idea.gradle.dsl.model.java.JavaModelImpl
 import com.android.tools.idea.gradle.dsl.model.kotlin.EmptyKotlinModelImpl
 import com.android.tools.idea.gradle.dsl.model.kotlin.KotlinModelImpl
@@ -50,6 +51,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElem
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement
 import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile
 import com.android.tools.idea.gradle.dsl.parser.java.JavaDslElement
+import com.android.tools.idea.gradle.dsl.parser.java.JavaDclElement
 import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslElement
 import com.android.tools.idea.gradle.dsl.parser.plugins.PluginsDslElement
 import com.android.tools.idea.gradle.dsl.parser.repositories.RepositoriesDslElement
@@ -70,7 +72,9 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
 
   override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> {
     return when (kind) {
-      DECLARATIVE -> mapOf()
+      DECLARATIVE -> mapOf(
+        "javaApplication" to JavaDclElement.JAVA_APPLICATION,
+      )
       else -> DEFAULT_ROOT_ELEMENTS_MAP
     }
   }
@@ -125,7 +129,11 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
 
       RepositoriesModel::class.java from {
         RepositoriesModelImpl(it.ensurePropertyElement(RepositoriesDslElement.REPOSITORIES))
-      }
+      },
+
+      JavaDeclarativeModelImpl::class.java from {
+        JavaDeclarativeModelImpl(it.ensurePropertyElement(JavaDclElement.JAVA_APPLICATION))
+      },
     )
 
     private val DECLARATIVE_ROOT_AVAILABLE_MODELS = listOf<BlockModelBuilder<*, GradleBuildFile>>(
