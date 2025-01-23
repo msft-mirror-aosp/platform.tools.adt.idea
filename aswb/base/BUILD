@@ -428,6 +428,7 @@ java_library(
     visibility = G3PLUGINS_VISIBILITY,
     deps = [
         ":base",
+        "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/shared",
         "//tools/adt/idea/aswb/shared:artifact",
         "//tools/vendor/google/aswb/plugin_api",
@@ -572,6 +573,8 @@ intellij_integration_test_suite(
         ":integration_test_utils",
         ":unit_test_utils",
         "//tools/adt/idea/aswb/aswb:integration_test_utils",
+        "//tools/adt/idea/aswb/common/experiments",
+        "//tools/adt/idea/aswb/common/experiments:unit_test_utils",
         "//tools/adt/idea/aswb/proto:proto_deps",
         "//tools/adt/idea/aswb/querysync",
         "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/artifacts:mock_artifact_cache",

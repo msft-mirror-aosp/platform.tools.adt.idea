@@ -132,6 +132,11 @@ public final class StudioFlags {
     "Show KTS/Gradle Combobox to which build script is used for the generated code",
     true);
 
+  public static final Flag<Boolean> NPW_PICK_LATEST_PATCH_AGP = new BooleanFlag(
+    NPW, "use.patch.releases", "Use the latest patch release of AGP",
+    "When enabled Studio will pick future patch releases of AGP for new projects.",
+    false);
+
   public static final Flag<Boolean> NPW_SHOW_AGP_VERSION_COMBO_BOX = new BooleanFlag(
     NPW, "show.agp.version.combobox", "Show AGP version combobox",
     "Show a combobox to select the version of Android Gradle plugin used for the new project",
@@ -448,6 +453,14 @@ public final class StudioFlags {
     "Enable support and UI element for Run configuration that deploys a custom artifact",
     false);
 
+  // This should be used by AndroidX team. See b/388473186
+  public static final Flag<Boolean> COMPOSE_CLASS_NAME_CALCULATOR_CANONICAL_FILE_CACHE = new BooleanFlag(
+    RUNDEBUG,
+    "compose.class.name.calculator.canonical.file.cache",
+    "Enable canonical filename cache in ComposeClassNameCalculator.",
+    "Turns on a canonical file cache for projects that have multiple versions of the same file as dependancies",
+    false);
+
   /**
    * The level of APK change that will be supported by the deployment pipeline's optimistic
    * "deploy-without-installing" path. Deploying changes that exceed the level of support
@@ -542,13 +555,6 @@ public final class StudioFlags {
     "Enable package filtering for the \"Device Explorer\" tool window",
     "Enable package filtering for the \"Device Explorer\" tool window, which allows users to filter processes by app package ids.\n" +
     "Changing the value of this flag requires restarting Android Studio.",
-    true);
-
-  public static final Flag<Boolean> ADBLIB_MIGRATION_WIFI_PAIRING = new BooleanFlag(
-    RUNDEBUG,
-    "adblib.migration.wifi.pairing",
-    "Use adblib in Pair Device over Wi-Fi",
-    "Use adblib instead of ddmlib for Pair Device over Wi-Fi",
     true);
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER = new BooleanFlag(
@@ -1186,10 +1192,6 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "use.uinput", "Use uinput module (https://kernel.org/doc/html/v4.12/input/uinput.html)",
     "Use uinput module ((https://kernel.org/doc/html/v4.12/input/uinput.html) for injecting input events",
     false);
-  public static final Flag<Boolean> B_364541401_LOGGING = new BooleanFlag(
-    DEVICE_MIRRORING, "b.364541401.logging", "Debug logging for investigation of b/364541401",
-    "Enable debug logging for investigation of b/364541401",
-    enabledUpTo(CANARY));
   //endregion
 
   // region Device Definition Download Service
@@ -1391,8 +1393,8 @@ public final class StudioFlags {
     enabledUpTo(CANARY));
 
   public static final Flag<Boolean> VIEW_IN_GALLERY = new BooleanFlag(
-    PREVIEW_COMMON, "view.preview.in.gallery", "View preview in Gallery mode",
-    "If enabled, shows a menu item to open the selected preview in Gallery mode.",
+    PREVIEW_COMMON, "view.preview.in.focus", "View preview in Focus mode",
+    "If enabled, shows a menu item to open the selected preview in Focus mode.",
     enabledUpTo(CANARY));
 
   public static final Flag<Boolean> ADD_PREVIEW_IMAGE_TO_AI_REQUEST_FOR_CODE_GENERATION = new BooleanFlag(
@@ -2094,6 +2096,12 @@ public final class StudioFlags {
                     "When enabled, add prompt library settings screen.",
                     enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> STUDIOBOT_SCROLL_TO_BOTTOM_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.scroll.to.bottom",
+                    "Enable Scroll to Bottom button",
+                    "When enabled, the chat will show a Scroll to Bottom button as needed.",
+                    enabledUpTo(DEV));
+
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
                     "Use ML model to suggest commit messages",
@@ -2272,7 +2280,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> SHOW_SDK_INDEX_DEPRECATION_ISSUES = new BooleanFlag(
     GOOGLE_PLAY_SDK_INDEX, "show.sdk.index.deprecation.issues", "Show library deprecation issues",
     "Show issues related to deprecated libraries from SDK Index in Lint and PSD",
-    enabledUpTo(CANARY)
+    true
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
 
@@ -2324,6 +2332,17 @@ public final class StudioFlags {
            ? BUILD_OUTPUT_DOWNLOADS_INFORMATION.get()
            : false;
   }
+
+  // region Settings Sync
+  private static final FlagGroup SETTINGS_SYNC = new FlagGroup(FLAGS, "settingssync", "Settings Sync");
+  public static final Flag<Boolean> SETTINGS_SYNC_ENABLED =
+    new BooleanFlag(
+      SETTINGS_SYNC,
+      "enable",
+      "Enable Settings Sync feature",
+      "Enable Settings Sync feature",
+      false);
+  // endregion Settings sync
 
   private StudioFlags() { }
 }

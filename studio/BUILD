@@ -55,6 +55,7 @@ studio_plugin(
         "//prebuilts/tools/common/m2:oauth2",
         "//prebuilts/tools/common/m2:jewel-ide",
         "//prebuilts/tools/common/m2:compose-desktop",
+        "//prebuilts/tools/common/m2:google-api-services-drive-v3-rev20241027-2.0.0",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
@@ -107,7 +108,9 @@ studio_plugin(
         "//tools/base/deploy/deployer:deploy_java_proto",
         "//tools/base/deploy/deployer:libjava_sites",
         "//tools/base/lint:liblint-checks-proto",
+        "//tools/base/repository:schema-generated",
         "//tools/base/sdk-common:aia-proto",
+        "//tools/base/sdklib:schema-generated",
         "//tools/adt/idea/debuggers:libjava_sites",
         "//tools/base/deploy/deployer:libjava_version",
         "//tools/vendor/google/game-tools/main:game-tools-protos",
@@ -693,13 +696,11 @@ studio_plugin(
 studio_plugin(
     name = "com.android.tools.gradle.dcl",
     directory = "gradle-declarative",
-    libs = [
-        "//tools/adt/idea/.idea/libraries:gradle-declarative-dsl",
-    ],
     modules = {
         "gradle-declarative.jar": [
             "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang",
             "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
+            "//tools/adt/idea/gradle-declarative-lang-sync:intellij.android.gradle.declarative.lang.sync",
         ],
     },
     visibility = ["//visibility:public"],

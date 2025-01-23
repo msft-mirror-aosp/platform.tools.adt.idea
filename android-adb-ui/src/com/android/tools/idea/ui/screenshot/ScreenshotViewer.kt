@@ -53,7 +53,6 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.IdeFocusManager
 import com.intellij.ui.dsl.builder.Align
@@ -125,7 +124,7 @@ class ScreenshotViewer(
   private val editorProvider: FileEditorProvider = getImageFileEditorProvider()
   private val imageFileEditor = editorProvider.createEditor(project, backingFile) as ImageFileEditor
 
-  private val persistentStorage = project.service<PersistentState>()
+  private val screenshotConfiguration = service<ScreenshotConfiguration>()
 
   private var decorationComboBox = ComboBox<ScreenshotDecorationOption>()
 
@@ -189,7 +188,7 @@ class ScreenshotViewer(
     decorationComboBox.setModel(decorationOptions)
 
     when {
-      persistentStorage.frameScreenshot && decorationComboBox.itemCount > defaultFramingOption + frameOptionStartIndex ->
+      screenshotConfiguration.frameScreenshot && decorationComboBox.itemCount > defaultFramingOption + frameOptionStartIndex ->
           decorationComboBox.setSelectedIndex(defaultFramingOption + frameOptionStartIndex) // Select the default framing option.
       isPlayCompatibleWearScreenshot -> decorationComboBox.setSelectedItem(ScreenshotDecorationOption.PLAY_COMPATIBLE)
       canClipDeviceMask -> decorationComboBox.setSelectedItem(ScreenshotDecorationOption.DISPLAY_SHAPE_CLIP)
@@ -197,7 +196,7 @@ class ScreenshotViewer(
     }
 
     val decorationListener = ActionListener {
-      persistentStorage.frameScreenshot = (decorationOptions.selectedItem as ScreenshotDecorationOption).framingOption != null
+      screenshotConfiguration.frameScreenshot = (decorationOptions.selectedItem as ScreenshotDecorationOption).framingOption != null
       updateImageFrame()
     }
     decorationComboBox.addActionListener(decorationListener)
@@ -387,7 +386,7 @@ class ScreenshotViewer(
         }
       }
       catch (e: IOException) {
-        thisLogger().error("Unexpected error while writing to " + VfsUtilCore.virtualToIoFile(backingFile).toPath(), e)
+        thisLogger().error("Unexpected error while writing to ${backingFile.toNioPath()}", e)
       }
     })
     sourceImageRef.set(rotatedImage)
@@ -460,17 +459,17 @@ class ScreenshotViewer(
     ALLOW_IMAGE_ROTATION // Enables the image rotation buttons.
   }
 
-  @Service(Service.Level.PROJECT)
-  @State(name = "ScreenshotViewer", storages = [Storage(NON_ROAMABLE_FILE)])
-  internal class PersistentState : PersistentStateComponent<PersistentState> {
+  @Service
+  @State(name = "ScreenshotConfiguration", storages = [Storage(NON_ROAMABLE_FILE)])
+  internal class ScreenshotConfiguration : PersistentStateComponent<ScreenshotConfiguration> {
     var frameScreenshot: Boolean = false
 
-    override fun getState(): PersistentState {
+    override fun getState(): ScreenshotConfiguration {
       return this
     }
 
-    override fun loadState(state: PersistentState) {
-      XmlSerializerUtil.copyBean<PersistentState>(state, this)
+    override fun loadState(state: ScreenshotConfiguration) {
+      XmlSerializerUtil.copyBean<ScreenshotConfiguration>(state, this)
     }
   }
 
@@ -479,8 +478,8 @@ class ScreenshotViewer(
     private const val SCREENSHOT_SAVE_PATH_KEY: @NonNls String = "ScreenshotViewer.SavePath"
 
     fun getDefaultDecoration(screenshotImage: ScreenshotImage, screenshotDecorator: ScreenshotDecorator,
-                             defaultFramingOption: FramingOption?, project: Project): ScreenshotDecorationOption {
-      val frameScreenshot = project.service<PersistentState>().frameScreenshot
+                             defaultFramingOption: FramingOption?): ScreenshotDecorationOption {
+      val frameScreenshot = service<ScreenshotConfiguration>().frameScreenshot
       // Clipping is available when either the postprocessor supports it or for round devices.
       val canClipDeviceMask = screenshotDecorator.canClipToDisplayShape || screenshotImage.isRoundDisplay
       // DAC specifies a 384x384 minimum size requirement but that requirement is actually not enforced.

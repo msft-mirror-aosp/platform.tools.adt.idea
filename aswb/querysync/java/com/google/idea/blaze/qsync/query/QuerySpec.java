@@ -62,6 +62,33 @@ public abstract class QuerySpec implements TruncatingFormattable {
       }
     },
 
+    PLAIN_WITH_SAFE_FILTERS {
+      @Override
+      public ImmutableList<String> getQueryFlags() {
+        return ImmutableList.of(
+          "--output=streamed_proto",
+          "--noproto:rule_inputs_and_outputs",
+          "--relative_locations=true",
+          "--consistent_labels=true"
+        );
+      }
+
+      @Override
+      public Optional<String> getQueryExpression(QuerySpec querySpec) {
+        String baseExpression = baseExpression(querySpec);
+        if (baseExpression.isEmpty()) {
+          return Optional.empty();
+        }
+        final var baseQuery = baseExpression(querySpec);
+        return Optional.of(
+          "let base = " +
+        baseQuery +
+        "\n" +
+        """
+    in $base - attr("tags", "[\\[,]no-ide[\\],]", $base)""");
+      }
+    },
+
     FILTERING_TO_KNOWN_AND_USED_TARGETS {
       @Override
       public ImmutableList<String> getQueryFlags() {

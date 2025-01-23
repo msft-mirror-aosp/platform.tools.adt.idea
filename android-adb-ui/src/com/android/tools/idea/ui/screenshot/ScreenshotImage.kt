@@ -27,10 +27,9 @@ class ScreenshotImage(
   private val displayInfo: String = "",
 ) {
 
-  val width
+  val width: Int
     get() = image.width
-
-  val height
+  val height: Int
     get() = image.height
 
   // True is the display is round.
@@ -41,7 +40,7 @@ class ScreenshotImage(
   // e.g. Android TV, report fictitious display density.
   val displayDensity: Double = computeDisplayDensity()
 
-  val isWear
+  val isWear: Boolean
     get() = deviceType == DeviceType.WEAR
 
   /**
@@ -63,7 +62,7 @@ class ScreenshotImage(
     return try {
       Dimension(width.toInt(), height.toInt())
     }
-    catch (e: NumberFormatException) {
+    catch (_: NumberFormatException) {
       null
     }
   }
@@ -73,7 +72,7 @@ class ScreenshotImage(
     return try {
       density.toDouble()
     }
-    catch (e: NumberFormatException) {
+    catch (_: NumberFormatException) {
       Double.NaN
     }
   }

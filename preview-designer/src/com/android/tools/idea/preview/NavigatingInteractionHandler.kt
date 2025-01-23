@@ -55,14 +55,14 @@ class NavigatingInteractionHandler(
 
   private val scope = AndroidCoroutineScope(surface)
 
-  override fun singleClick(x: Int, y: Int, modifiersEx: Int) {
+  override fun singleClick(mouseEvent: MouseEvent, modifiersEx: Int) {
     // When the selection capabilities are enabled and a Shift-click (single or double) happens,
     // then no navigation will happen. Only selection may be affected (see
     // mouseReleaseWhenNoInteraction)
     val isToggle = isSelectionEnabled() && isShiftDown(modifiersEx)
     if (!isToggle) {
       // Highlight the clicked widget but keep focus in DesignSurface.
-      clickPreview(x, y, false)
+      clickPreview(mouseEvent, false, modifiersEx)
     }
   }
 
@@ -97,14 +97,14 @@ class NavigatingInteractionHandler(
     return super.keyPressedWithoutInteraction(keyEvent)
   }
 
-  override fun doubleClick(x: Int, y: Int, modifiersEx: Int) {
+  override fun doubleClick(mouseEvent: MouseEvent, modifiersEx: Int) {
     // When the selection capabilities are enabled and a Shift-click (single or double) happens,
     // then
     // no navigation will happen. Only selection may be affected (see mouseReleaseWhenNoInteraction)
     val isToggle = isSelectionEnabled() && isShiftDown(modifiersEx)
     if (!isToggle) {
       // Navigate the caret to the clicked widget and focus on text editor.
-      clickPreview(x, y, true)
+      clickPreview(mouseEvent, true, modifiersEx)
     }
   }
 
@@ -308,31 +308,25 @@ class NavigatingInteractionHandler(
    * Handles a click in a preview. The click is handled asynchronously since finding the component
    * to navigate might be a slow operation.
    */
-  private fun clickPreview(
-    @SwingCoordinate x: Int,
-    @SwingCoordinate y: Int,
-    needsFocusEditor: Boolean,
-  ) {
+  private fun clickPreview(mouseEvent: MouseEvent, needsFocusEditor: Boolean, modifiersEx: Int) {
+    val x = mouseEvent.x
+    val y = mouseEvent.y
     val sceneView = surface.getSceneViewAt(x, y) ?: return
     val androidX = Coordinates.getAndroidXDip(sceneView, x)
     val androidY = Coordinates.getAndroidYDip(sceneView, y)
+    val isOptionDown = isOptionDown(modifiersEx)
     val scene = sceneView.scene
     scope.launch(AndroidDispatchers.workerThread) {
-      var navigatableElement =
-        navigationHandler
-          .findNavigatablesWithCoordinates(sceneView, x, y, needsFocusEditor)
-          .firstOrNull()
       val navigated =
         navigationHandler
-          .findNavigatablesWithCoordinates(sceneView, x, y, needsFocusEditor)
+          .findNavigatablesWithCoordinates(sceneView, x, y, needsFocusEditor, isOptionDown)
           .firstOrNull()
-          ?.let { navigationHandler.navigateTo(sceneView, navigatableElement!!, needsFocusEditor) }
+          ?.let { navigationHandler.navigateTo(sceneView, it!!, needsFocusEditor) }
           ?: run {
             if (needsFocusEditor) {
               // Only allow default navigation when double clicking since it might take us to a
-              // different
-              // file
-              navigationHandler.handleNavigate(sceneView, needsFocusEditor)
+              // different file
+              navigationHandler.handleNavigate(sceneView, true)
             }
             return@run false
           }
@@ -343,6 +337,9 @@ class NavigatingInteractionHandler(
       }
     }
   }
+
+  // TODO(b/257534922): Make sure that this modifier works for linux as well.
+  private fun isOptionDown(modifiersEx: Int) = (modifiersEx and (InputEvent.ALT_DOWN_MASK)) != 0
 
   private fun isShiftDown(modifiersEx: Int) = (modifiersEx and (InputEvent.SHIFT_DOWN_MASK)) != 0
 }

@@ -50,8 +50,7 @@ import com.intellij.execution.junit.JUnitConfigurationType
 import com.intellij.facet.Facet
 import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -76,15 +75,14 @@ import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.PlatformProjectOpenProcessor
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.workspaceModel.ide.JpsProjectLoadingManager
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
-import kotlinx.coroutines.withContext
 import org.jetbrains.android.AndroidStartupManager
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
@@ -146,12 +144,10 @@ private suspend fun performActivity(project: Project) {
   }
 
   if (shouldSyncOrAttachModels()) {
-    withContext(Dispatchers.EDT) {
-      removePointlessModules(project)
-      addJUnitProducersToIgnoredList(project)
-      attachCachedModelsOrTriggerSync(project, gradleProjectInfo)
-      subscribeToGradleSettingChanges(project)
-    }
+    removePointlessModules(project)
+    addJUnitProducersToIgnoredList(project)
+    attachCachedModelsOrTriggerSync(project, gradleProjectInfo)
+    subscribeToGradleSettingChanges(project)
   }
 
   gradleProjectInfo.isSkipStartupActivity = false
@@ -179,7 +175,7 @@ private fun whenAllModulesLoaded(project: Project, callback: () -> Unit) {
   }
 }
 
-private fun removePointlessModules(project: Project) {
+private suspend fun removePointlessModules(project: Project) {
   val moduleManager = ModuleManager.getInstance(project)
   val emptyModulesToRemove = mutableListOf<Pair<Module, Module.() -> Unit>>()
   val nativeOnlySourceRootsModulesToRemove = mutableListOf<Pair<Module, Module.() -> Unit>>()
@@ -204,9 +200,9 @@ private fun removePointlessModules(project: Project) {
   )
 }
 
-private fun removeModules(moduleManager: ModuleManager, modules: List<Pair<Module, Module.() -> Unit>>) {
+private suspend fun removeModules(moduleManager: ModuleManager, modules: List<Pair<Module, Module.() -> Unit>>) {
   if (modules.isEmpty()) return
-  runWriteAction {
+  writeAction {
     with(moduleManager.getModifiableModel()) {
       modules.forEach { (module, onRemovingModule) ->
         onRemovingModule(module)
@@ -441,6 +437,7 @@ fun addJUnitProducersToIgnoredList(project: Project) {
   }
 }
 
+@RequiresBackgroundThread
 private fun Module.isEmptyModule() =
   moduleFile == null &&
   rootManager.let { roots -> roots.contentEntries.isEmpty() && roots.orderEntries.all { it is ModuleSourceOrderEntry } }

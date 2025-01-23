@@ -73,6 +73,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -147,6 +148,7 @@ class ComposePreviewRepresentationGradleTest {
     }
   }
 
+  @Ignore("b/390401504")
   @Test
   fun `panel renders correctly first time`() = runBlocking {
     withContext(uiThread) { fakeUi.layoutAndDispatchEvents() }
@@ -248,16 +250,19 @@ class ComposePreviewRepresentationGradleTest {
         FileDocumentManager.getInstance().saveAllDocuments()
       }
     }
-    fakeUi.findComponent<SceneViewPanel>()?.doLayout()
+    withContext(uiThread) { fakeUi.findComponent<SceneViewPanel>()?.doLayout() }
+    projectRule.validate()
+
     delayUntilCondition(100, 2.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().size == 4 }
 
+    val allSceneViewPeerPanels = fakeUi.findAllComponents<SceneViewPeerPanel>()
+    val sceneViewPeerPanelsText =
+      allSceneViewPeerPanels.joinToString(", ") { "${it.displayName} showing=${it.isShowing}" }
+
     assertEquals(
+      "Unexpected visible panels. Current is '$sceneViewPeerPanelsText'",
       listOf("DefaultPreview", "MyPreviewWithInline", "OnlyATextNavigation", "TwoElementsPreview"),
-      fakeUi
-        .findAllComponents<SceneViewPeerPanel>()
-        .filter { it.isShowing }
-        .map { it.displayName }
-        .sorted(),
+      allSceneViewPeerPanels.filter { it.isShowing }.map { it.displayName }.sorted(),
     )
   }
 

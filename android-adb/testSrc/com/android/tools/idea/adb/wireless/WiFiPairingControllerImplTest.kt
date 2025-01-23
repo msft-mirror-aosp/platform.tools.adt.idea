@@ -59,12 +59,9 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
 
   @get:Rule val iconLoaderRule = IconLoaderRule()
 
-  private val timeProvider: MockNanoTimeProvider by lazy { MockNanoTimeProvider() }
-
   private val randomProvider by lazy { MockRandomProvider() }
 
-  private val adbService =
-    mockOrActual<AdbServiceWrapper> { AdbServiceWrapperImpl(project, timeProvider) }
+  private val adbService = mockOrActual<AdbServiceWrapper> { AdbServiceWrapperAdbLibImpl(project) }
   private val mDNSConfigurationRetriever = mockOrActual {}
 
   class MockableSystem {
@@ -318,6 +315,9 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
+    whenever(adbService.instance.getServerStatus())
+      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+
     // Act
     createModalDialogAndInteractWithIt({ controller.showDialog() }) {
       // Assert
@@ -375,6 +375,9 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     adbService.useMock = true
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
+
+    whenever(adbService.instance.getServerStatus())
+      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
 
     whenever(adbService.instance.executeCommand(listOf("mdns", "services"), ""))
       .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
@@ -487,6 +490,9 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     adbService.useMock = true
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
+
+    whenever(adbService.instance.getServerStatus())
+      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
 
     whenever(adbService.instance.executeCommand(listOf("mdns", "services"), ""))
       .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan

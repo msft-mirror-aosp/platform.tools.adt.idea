@@ -97,6 +97,9 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/android-lang:intellij.android.lang[module]",
         "//tools/adt/idea/gmaven:intellij.android.gmaven[module]",
+        "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang[module]",
+        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide[module]",
+        "//tools/adt/idea/gradle-declarative-lang-sync:intellij.android.gradle.declarative.lang.sync[module]",
     ],
 )
 
@@ -154,7 +157,7 @@ iml_module(
         "runs_gradle": {
             "test_filter": ".runsGradle",
             "tags": ["cpu:4"],
-            "shard_count": 2,
+            "shard_count": 4,
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -163,6 +166,7 @@ iml_module(
                 "//tools/data-binding:data_binding_runtime.zip",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
                 "//prebuilts/studio/jdk:jdk21",
+                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
             ],
         },
         "runs_gradle_dependencies": {

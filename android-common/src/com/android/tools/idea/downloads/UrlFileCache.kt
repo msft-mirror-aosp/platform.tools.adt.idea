@@ -15,154 +15,92 @@
  */
 package com.android.tools.idea.downloads
 
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import com.intellij.util.io.HttpRequests
-import kotlinx.coroutines.CoroutineDispatcher
 import java.io.IOException
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
-import kotlin.io.path.createTempDirectory
-import kotlin.io.path.createTempFile
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
-import kotlin.io.path.getLastModifiedTime
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.yield
+import kotlinx.datetime.Clock
 import org.jetbrains.annotations.TestOnly
 
 private val CONNECT_TIMEOUT = 5.seconds
 private val READ_TIMEOUT = 2.minutes
 
-private fun Path.isFresh(age: Duration) =
-  exists() &&
-    System.currentTimeMillis() - getLastModifiedTime().toMillis() < age.inWholeMilliseconds
-
 /** Read-through, on-disk cache of downloaded files. */
 @Service(Service.Level.PROJECT)
 class UrlFileCache
-@TestOnly constructor(private val coroutineScope: CoroutineScope, private val ioDispatcher: CoroutineDispatcher) : Disposable {
+@TestOnly
+constructor(
+  coroutineScope: CoroutineScope,
+  ioDispatcher: CoroutineDispatcher,
+  timeSource: TimeSource,
+  clock: Clock,
+) : RemoteFileCache(coroutineScope, ioDispatcher, timeSource, clock) {
+  constructor(
+    coroutineScope: CoroutineScope
+  ) : this(coroutineScope, Dispatchers.IO, TimeSource.Monotonic, Clock.System)
 
-  constructor(coroutineScope: CoroutineScope): this(coroutineScope, Dispatchers.IO)
-  private val files = mutableMapOf<String, Path>()
   private val lastModified = mutableMapOf<String, String>()
   private val eTags = mutableMapOf<String, String>()
-  private val tmpDir = createTempDirectory()
-  private val mutex = Mutex()
 
-  /**
-   * Downloads a file at the given [url] and returns a [Deferred] for the [Path] to the downloaded
-   * file.
-   *
-   * If a [transform] is provided, this transform is applied to the file before writing to disk. If
-   * the file is already downloaded, not more than [maxFileAge] old, or the server indicates the
-   * file has not changed, the cached copy will be provided and the [transform] will NOT be
-   * re-applied.
-   */
-  fun get(
-    url: String,
-    maxFileAge: Duration = Duration.ZERO,
-    indicator: ProgressIndicator? = null,
-    transform: ((InputStream) -> InputStream)? = null,
-  ): Deferred<Path> {
-    indicator?.isIndeterminate = true
-    indicator?.text = "Checking cached downloads"
-
-    return coroutineScope.async(ioDispatcher, CoroutineStart.UNDISPATCHED) {
-      mutex.withLock {
-        // Check the cache first.
-        val existing = files[url]?.also { if (it.isFresh(maxFileAge)) return@withLock it }
-        // Otherwise yield onto the ioDispatcher and suspend.
-        yield()
-        fetchAndFilterUrlLocked(existing, url, indicator, transform)
-      }
-    }
-  }
-
-  private fun fetchAndFilterUrlLocked(
+  override fun fetchAndFilterLocked(
     existing: Path?,
-    url: String,
+    identifier: String,
     indicator: ProgressIndicator?,
-    transform: ((InputStream) -> InputStream)?,
+    start: TimeMark,
   ): Path {
-    indicator?.text = "Downloading from ${URL(url).host}"
-    val file: Path =
-      HttpRequests.request(url)
-        .connectTimeout(CONNECT_TIMEOUT.inWholeMilliseconds.toInt())
-        .readTimeout(READ_TIMEOUT.inWholeMilliseconds.toInt())
-        .tuner { connection ->
-          lastModified[url]?.let { connection.setRequestProperty("If-Modified-Since", it) }
-          eTags[url]?.let { connection.setRequestProperty("If-None-Match", it) }
-        }
-        .connect { request ->
-          val responseCode = (request.connection as HttpURLConnection).responseCode
-          if (responseCode == HttpURLConnection.HTTP_NOT_MODIFIED) {
-            if (existing != null && existing.exists()) return@connect existing
-            throw HttpRequests.HttpStatusException(
+    val url = URL(identifier) // Will throw if it doesn't parse
+    indicator?.text = "Downloading from ${url.host}"
+    return HttpRequests.request(identifier)
+      .connectTimeout(CONNECT_TIMEOUT.inWholeMilliseconds.toInt())
+      .readTimeout(READ_TIMEOUT.inWholeMilliseconds.toInt())
+      .tuner { connection ->
+        lastModified[identifier]?.let { connection.setRequestProperty("If-Modified-Since", it) }
+        eTags[identifier]?.let { connection.setRequestProperty("If-None-Match", it) }
+      }
+      .connect { request ->
+        val responseCode = (request.connection as HttpURLConnection).responseCode
+        if (responseCode == HttpURLConnection.HTTP_NOT_MODIFIED) {
+          if (existing != null && existing.exists()) {
+            return@connect existing
+          }
+          throw RemoteFileCacheException(
+            FetchStats(start.elapsedNow(), success = false, notModified = true),
+            HttpRequests.HttpStatusException(
               "Received NOT_MODIFIED (304) but nothing in the cache.",
               304,
-              url,
-            )
-          }
-          val newFile = createTempFile(tmpDir)
-          try {
-            request.saveToFile(newFile, indicator)
-          } catch (e: IOException) {
-            newFile.deleteIfExists()
-            throw e
-          }
-          request.connection.getHeaderField("Last-Modified").let {
-            if (it != null) lastModified[url] = it else lastModified.remove(url)
-          }
-          request.connection.getHeaderField("ETag").let {
-            if (it != null) eTags[url] = it else eTags.remove(url)
-          }
-          return@connect newFile
+              identifier,
+            ),
+          )
         }
-        .transform(files[url], transform)
-
-    if (existing != file) {
-      existing?.deleteIfExists()
-      files[url] = file
-    }
-    return file
-  }
-
-  private fun Path.transform(cachedPath: Path?, transform: ((InputStream) -> InputStream)?): Path {
-    // Don't bother if there is no transform or if we want to serve the cached file.
-    if (transform == null || cachedPath == this) return this
-    val transformedPath = createTempFile(tmpDir)
-    try {
-      Files.newInputStream(this).use {
-        Files.copy(transform(it), transformedPath, StandardCopyOption.REPLACE_EXISTING)
+        val newFile = getNewWritablePath()
+        try {
+          request.saveToFile(newFile, indicator)
+        } catch (e: IOException) {
+          newFile.deleteIfExists()
+          throw RemoteFileCacheException(FetchStats(start.elapsedNow(), success = false), e)
+        }
+        request.connection.getHeaderField("Last-Modified").let {
+          if (it != null) lastModified[identifier] = it else lastModified.remove(identifier)
+        }
+        request.connection.getHeaderField("ETag").let {
+          if (it != null) eTags[identifier] = it else eTags.remove(identifier)
+        }
+        return@connect newFile
       }
-    } catch (e: Exception) {
-      transformedPath.deleteIfExists()
-      throw e
-    }
-    cachedPath?.deleteIfExists()
-    deleteIfExists()
-    return transformedPath
-  }
-
-  override fun dispose() {
-    tmpDir.toFile().deleteRecursively()
   }
 
   companion object {
