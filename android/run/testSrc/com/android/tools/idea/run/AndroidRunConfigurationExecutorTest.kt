@@ -501,6 +501,7 @@ class AndroidRunConfigurationExecutorTest {
           device: IDevice,
           app: ApkInfo,
           deployOptions: DeployOptions,
+          hasMakeBeforeRun: Boolean,
           indicator: ProgressIndicator
         ): Deployer.Result {
           throw DeployerException.pmFlagsNotSupported()
@@ -510,6 +511,7 @@ class AndroidRunConfigurationExecutorTest {
           device: IDevice,
           app: ApkInfo,
           deployOptions: DeployOptions,
+          hasMakeBeforeRun: Boolean,
           indicator: ProgressIndicator
         ): Deployer.Result {
           throw DeployerException.pmFlagsNotSupported()
@@ -519,6 +521,7 @@ class AndroidRunConfigurationExecutorTest {
           device: IDevice,
           app: ApkInfo,
           deployOptions: DeployOptions,
+          hasMakeBeforeRun: Boolean,
           indicator: ProgressIndicator
         ): Deployer.Result {
           throw DeployerException.pmFlagsNotSupported()
@@ -672,7 +675,7 @@ class AndroidRunConfigurationExecutorTest {
     )
   ) = object : ApplicationDeployer {
     override fun fullDeploy(
-      deviceToInstall: IDevice, app: ApkInfo, deployOptions: DeployOptions, indicator: ProgressIndicator
+      deviceToInstall: IDevice, app: ApkInfo, deployOptions: DeployOptions, hasMakeBeforeRun: Boolean, indicator: ProgressIndicator
     ): Deployer.Result {
       if (expectedMethod != ::fullDeploy.name) {
         throw RuntimeException("Method invocation is not expected")
@@ -684,7 +687,7 @@ class AndroidRunConfigurationExecutorTest {
     }
 
     override fun applyChangesDeploy(
-      deviceToInstall: IDevice, app: ApkInfo, deployOptions: DeployOptions, indicator: ProgressIndicator
+      deviceToInstall: IDevice, app: ApkInfo, deployOptions: DeployOptions, hasMakeBeforeRun: Boolean, indicator: ProgressIndicator
     ): Deployer.Result {
       if (expectedMethod != ::applyChangesDeploy.name) {
         throw RuntimeException("Method invocation is not expected")
@@ -696,7 +699,7 @@ class AndroidRunConfigurationExecutorTest {
     }
 
     override fun applyCodeChangesDeploy(
-      deviceToInstall: IDevice, app: ApkInfo, deployOptions: DeployOptions, indicator: ProgressIndicator
+      deviceToInstall: IDevice, app: ApkInfo, deployOptions: DeployOptions, hasMakeBeforeRun: Boolean, indicator: ProgressIndicator
     ): Deployer.Result {
       if (expectedMethod != ::applyCodeChangesDeploy.name) {
         throw RuntimeException("Method invocation is not expected")
