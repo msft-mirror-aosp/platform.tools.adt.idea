@@ -56,6 +56,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.StandardFileSystems;
+import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileSystem;
 import java.io.File;
@@ -288,8 +289,7 @@ public final class BuildModelContext {
   private void populateVersionCatalogFiles(@Nullable GradleSettingsModel gradleSettingsModel) {
     if (!GradleDslModelExperimentalSettings.getInstance().isVersionCatalogEnabled()) return;
     if (gradleSettingsModel == null) {
-      checkVersionCatalog(VersionCatalogModel.DEFAULT_CATALOG_FILE, VersionCatalogModel.DEFAULT_CATALOG_NAME)
-        .ifPresent(myVersionCatalogFiles::add);
+      addDefaultVersionCatalogIfExists();
       return;
     }
     for (VersionCatalogModel versionCatalogModel : gradleSettingsModel.dependencyResolutionManagement().versionCatalogs()) {
@@ -306,6 +306,14 @@ public final class BuildModelContext {
           .ifPresent(myVersionCatalogFiles::add);
       }
     }
+  }
+
+  private void addDefaultVersionCatalogIfExists() {
+    if (myRootProjectFile == null) return;
+    VirtualFile buildDirectory = myRootProjectFile.getFile().getParent();
+    VirtualFile tomlFile = buildDirectory.findFileByRelativePath(VersionCatalogModel.DEFAULT_CATALOG_FILE);
+    checkVersionCatalog(tomlFile, VersionCatalogModel.DEFAULT_CATALOG_NAME)
+      .ifPresent(myVersionCatalogFiles::add);
   }
 
   private Optional<GradleVersionCatalogFile> checkVersionCatalog(String filePath, String name) {
@@ -357,7 +365,31 @@ public final class BuildModelContext {
       return null;
     }
     GradleSettingsFile settingsFile = getOrCreateSettingsFile(maybeSettingsFile);
-    return new GradleSettingsModelImpl(settingsFile);
+    GradleSettingsModel model = new GradleSettingsModelImpl(settingsFile);
+    if (!canBuildUseSettingsModel(buildDslFile, maybeSettingsFile, model)) {
+      return null;
+    }
+    return model;
+  }
+
+  /**
+   * @return `true` if the settings file either:
+   * - is located in the build directory
+   * - includes the build as a subproject via `include(":myBuild")`
+   * It should return `false` if the settings file includes the build as a part of a composite build via `includeBuild("myBuild")`.
+   * In this case, the build should have another settings model, because it cannot use version catalogs from this one.
+   */
+  private static boolean canBuildUseSettingsModel(
+    @NotNull GradleBuildFile buildFile,
+    @NotNull VirtualFile settingsFile,
+    @NotNull GradleSettingsModel model
+  ) {
+    VirtualFile buildDirectory = buildFile.getFile().getParent();
+    VirtualFile settingsDirectory = settingsFile.getParent();
+    if (buildDirectory.equals(settingsDirectory)) return true;
+    // check if the build was added in the settings file as a subproject via `include(":subproject:path")`
+    String modulePath = ":" + VfsUtilCore.getRelativePath(buildDirectory, settingsDirectory, ':');
+    return model.modulePaths().contains(modulePath);
   }
 
   private void populateDeclarativeSoftwareTypes(@NotNull GradleBuildFile buildDslFile,

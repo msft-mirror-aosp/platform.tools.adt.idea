@@ -30,8 +30,8 @@ abstract class DependenciesHelper {
     fun withModel(projectModel: ProjectBuildModel): DependenciesInserter =
       when (calculateAddDependencyPolicy(projectModel)) {
         AddDependencyPolicy.VERSION_CATALOG -> CatalogDependenciesInserter(projectModel)
-        AddDependencyPolicy.BUILD_FILE -> DependenciesInserter(projectModel)
-        AddDependencyPolicy.DECLARATIVE -> DeclarativeDependenciesInserter(projectModel)
+        AddDependencyPolicy.BUILD_FILE -> DependenciesInserter()
+        AddDependencyPolicy.DECLARATIVE -> DeclarativeDependenciesInserter()
       }
 
     @JvmStatic
@@ -49,6 +49,5 @@ abstract class DependenciesHelper {
       return projectModel.projectSettingsModel?.dependencyResolutionManagement()?.catalogDefaultName()
                         ?: VersionCatalogModel.DEFAULT_CATALOG_NAME
     }
-
   }
 }

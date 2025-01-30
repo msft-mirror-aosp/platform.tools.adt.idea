@@ -58,8 +58,6 @@ import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifests
 import com.android.tools.idea.projectsystem.getFlavorAndBuildTypeManifestsOfLibs
 import com.android.tools.idea.projectsystem.getForFile
 import com.android.tools.idea.projectsystem.getTransitiveNavigationFiles
-import com.android.tools.idea.projectsystem.isAndroidTestFile
-import com.android.tools.idea.projectsystem.isScreenshotTestFile
 import com.android.tools.idea.projectsystem.sourceProviders
 import com.android.tools.idea.rendering.StudioModuleDependencies
 import com.android.tools.idea.res.AndroidDependenciesCache
@@ -309,10 +307,6 @@ class GradleModuleSystem(
     return CapabilitySupported()
   }
 
-  override fun registerDependency(coordinate: GradleCoordinate) {
-    registerDependency(coordinate, DependencyType.IMPLEMENTATION)
-  }
-
   override fun registerDependency(coordinate: GradleCoordinate, type: DependencyType) {
     val manager = GradleDependencyManager.getInstance(module.project)
     val dependencies = Collections.singletonList(coordinate.toDependency())
@@ -337,11 +331,6 @@ class GradleModuleSystem(
         manager.addDependencies(module, dependencies)
       }
     }
-  }
-
-  override fun updateLibrariesToVersion(toVersions: List<GradleCoordinate>) {
-    val manager = GradleDependencyManager.getInstance(module.project)
-    manager.updateLibrariesToVersion(module, toVersions.map { it.toDependency() })
   }
 
   override fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate> {
@@ -584,7 +573,8 @@ class GradleModuleSystem(
    */
   override val useAndroidX: Boolean get() = agpBuildGlobalFlags.useAndroidX
 
-  override val generateManifestClass: Boolean
+  /** Whether to generate manifest classes. */
+  val generateManifestClass: Boolean
     get() = agpBuildGlobalFlags.generateManifestClass && module.isMainModule()
 
   override val submodules: Collection<Module>
@@ -639,7 +629,7 @@ class GradleModuleSystem(
 
   override fun getProductionAndroidModule() = when (val linkedModuleData = module.getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)) {
     null -> super.getProductionAndroidModule()
-    else -> linkedModuleData.main
+    else -> linkedModuleData.main?.module
   }
 
   override fun getHolderModule(): Module = module.getHolderModule()

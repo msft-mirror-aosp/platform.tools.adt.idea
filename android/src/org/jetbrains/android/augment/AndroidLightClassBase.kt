@@ -3,10 +3,12 @@ package org.jetbrains.android.augment
 import com.android.tools.idea.projectsystem.ScopeType
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.google.common.base.MoreObjects
+import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.lang.java.JavaLanguage
 import com.intellij.navigation.ItemPresentationProviders
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.impl.LibraryScopeCache
@@ -16,6 +18,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.HierarchicalMethodSignature
 import com.intellij.psi.PsiClass
@@ -24,7 +27,9 @@ import com.intellij.psi.PsiClassType
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiIdentifier
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
@@ -51,15 +56,48 @@ import com.intellij.util.ArrayUtil
 import com.intellij.util.IncorrectOperationException
 import javax.swing.Icon
 import org.jetbrains.annotations.NonNls
-import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.jps.model.java.JavaSourceRootType.SOURCE
+import org.jetbrains.jps.model.java.JavaSourceRootType.TEST_SOURCE
 import org.jetbrains.kotlin.idea.base.projectStructure.KotlinResolveScopeEnlarger
 import org.jetbrains.kotlin.idea.base.projectStructure.customLibrary
 import org.jetbrains.kotlin.idea.base.projectStructure.customSdk
 import org.jetbrains.kotlin.idea.base.projectStructure.customSourceRootType
 
 abstract class AndroidLightClassBase
-protected constructor(psiManager: PsiManager, modifiers: Iterable<String>) :
-  LightElement(psiManager, JavaLanguage.INSTANCE), PsiClass, SyntheticElement {
+private constructor(
+  psiManager: PsiManager,
+  modifiers: Iterable<String>,
+  private val containingLightClass: AndroidLightClassBase?,
+  private val backingFile: PsiFile,
+  private val moduleInfo: AndroidLightClassModuleInfo,
+) : LightElement(psiManager, JavaLanguage.INSTANCE), PsiClass, SyntheticElement {
+
+  protected constructor(
+    psiManager: PsiManager,
+    modifiers: Iterable<String>,
+    containingFileProvider: ContainingFileProvider.Builder,
+    moduleInfo: AndroidLightClassModuleInfo,
+  ) : this(
+    psiManager,
+    modifiers,
+    null,
+    containingFileProvider
+      .build(psiManager.project, moduleInfo)
+      .getContainingFile(psiManager.project),
+    moduleInfo,
+  )
+
+  protected constructor(
+    containingLightClass: AndroidLightClassBase,
+    modifiers: Iterable<String>,
+  ) : this(
+    containingLightClass.manager,
+    modifiers,
+    containingLightClass,
+    containingLightClass.backingFile,
+    containingLightClass.moduleInfo,
+  )
+
   private val psiModifierList: LightModifierList =
     LightModifierList(psiManager).apply {
       for (modifier in modifiers) {
@@ -67,37 +105,8 @@ protected constructor(psiManager: PsiManager, modifiers: Iterable<String>) :
       }
     }
 
-  /**
-   * Sets the forced [ModuleInfo] of the containing [PsiFile] to point to the given [Module], so
-   * that the Kotlin IDE plugin knows how to handle this light class.
-   */
-  protected fun setModuleInfo(module: Module, isTest: Boolean) {
-    putUserData(ModuleUtilCore.KEY_MODULE, module)
-
-    // Some scenarios move up to the file level and then attempt to get the module from the file.
-    val containingFile = getContainingFile() ?: return
-    containingFile.putUserData(ModuleUtilCore.KEY_MODULE, module)
-    KotlinRegistrationHelper.setModuleInfo(containingFile, isTest)
-  }
-
-  /**
-   * Sets the forced [ModuleInfo] of the containing [PsiFile] to point to the given [Library], so
-   * that the Kotlin IDE plugin knows how to handle this light class.
-   */
-  protected fun setModuleInfo(library: Library) {
-    putUserData(LIBRARY, library)
-
-    val containingFile = getContainingFile() ?: return
-    KotlinRegistrationHelper.setModuleInfo(containingFile, library)
-  }
-
-  /**
-   * Sets the forced [ModuleInfo] of the containing [PsiFile] to point to the given [Sdk], so that
-   * the Kotlin IDE plugin knows how to handle this light class.
-   */
-  protected fun setModuleInfo(sdk: Sdk) {
-    val containingFile = getContainingFile() ?: return
-    KotlinRegistrationHelper.setModelInfo(containingFile, sdk)
+  init {
+    moduleInfo.setInfoOnUserData(this)
   }
 
   override fun checkAdd(element: PsiElement) {
@@ -253,7 +262,9 @@ protected constructor(psiManager: PsiManager, modifiers: Iterable<String>) :
 
   override fun getPresentation() = ItemPresentationProviders.getItemPresentation(this)
 
-  override fun getContainingFile() = containingClass?.containingFile
+  final override fun getContainingClass(): AndroidLightClassBase? = containingLightClass
+
+  final override fun getContainingFile(): PsiFile = backingFile
 
   override fun getTextRange(): TextRange = TextRange.EMPTY_RANGE
 
@@ -279,21 +290,112 @@ protected constructor(psiManager: PsiManager, modifiers: Iterable<String>) :
   }
 
   /**
-   * Encapsulates calls to Kotlin IDE plugin to prevent [NoClassDefFoundError] when Kotlin is not
-   * installed.
+   * For light classes that need a backing in-memory file (ie, any non-inner files that can't use
+   * the containing class's containingFile), this provider builds a backing Java file with name and
+   * package information appropriately set.
    */
-  private object KotlinRegistrationHelper {
-    fun setModuleInfo(file: PsiFile, isTest: Boolean) {
-      file.customSourceRootType =
-        if (isTest) JavaSourceRootType.TEST_SOURCE else JavaSourceRootType.SOURCE
+  protected sealed interface ContainingFileProvider {
+    fun getContainingFile(project: Project): PsiFile
+
+    class Builder(private val packageName: String, private val shortName: String) {
+
+      constructor(
+        fullyQualifiedName: String
+      ) : this(
+        fullyQualifiedName.substringBeforeLast('.', ""),
+        fullyQualifiedName.substringAfterLast('.', ""),
+      )
+
+      init {
+        require(packageName.isNotEmpty()) { "Package name \"$packageName\" must not be empty." }
+        require(shortName.isNotEmpty()) { "Short name \"$shortName\" must not be empty." }
+      }
+
+      private var contents: String = "// This class is generated on-the-fly by the IDE."
+
+      fun setContents(value: String): Builder {
+        contents = value
+        return this
+      }
+
+      fun build(project: Project, moduleInfo: AndroidLightClassModuleInfo): ContainingFileProvider {
+        val javaFile =
+          PsiFileFactory.getInstance(project)
+            .createFileFromText("$shortName.java", JavaFileType.INSTANCE, contents) as PsiJavaFile
+
+        javaFile.packageName = packageName
+        moduleInfo.setModuleInfoOnContainingFile(javaFile)
+
+        return ContainingFileProviderImpl(javaFile)
+      }
     }
 
-    fun setModuleInfo(file: PsiFile, library: Library) {
-      file.customLibrary = library
+    private class ContainingFileProviderImpl(private val psiFile: PsiJavaFile) :
+      ContainingFileProvider {
+      override fun getContainingFile(project: Project): PsiFile = psiFile
+    }
+  }
+
+  protected sealed class AndroidLightClassModuleInfo {
+    abstract fun setInfoOnUserData(lightClassUserData: UserDataHolder)
+
+    abstract fun setModuleInfoOnContainingFile(containingFile: PsiFile)
+
+    /**
+     * Sets the forced [AndroidLightClassModuleInfo] of the containing [PsiFile] to point to the
+     * given [Module], so that the Kotlin IDE plugin knows how to handle this light class.
+     */
+    private class FromModule(private val module: Module, private val isTest: Boolean) :
+      AndroidLightClassModuleInfo() {
+
+      override fun setInfoOnUserData(lightClassUserData: UserDataHolder) {
+        lightClassUserData.putUserData(ModuleUtilCore.KEY_MODULE, module)
+      }
+
+      override fun setModuleInfoOnContainingFile(containingFile: PsiFile) {
+        // Some scenarios move up to the file level and then attempt to get the module from the
+        // file.
+        containingFile.putUserData(ModuleUtilCore.KEY_MODULE, module)
+        containingFile.customSourceRootType = if (isTest) TEST_SOURCE else SOURCE
+      }
     }
 
-    fun setModelInfo(file: PsiFile, sdk: Sdk) {
-      file.customSdk = sdk
+    /**
+     * Sets the forced [AndroidLightClassModuleInfo] of the containing [PsiFile] to point to the
+     * given [Library], so that the Kotlin IDE plugin knows how to handle this light class.
+     */
+    private class FromLibrary(private val library: Library) : AndroidLightClassModuleInfo() {
+
+      override fun setInfoOnUserData(lightClassUserData: UserDataHolder) {
+        lightClassUserData.putUserData(LIBRARY, library)
+      }
+
+      override fun setModuleInfoOnContainingFile(containingFile: PsiFile) {
+        containingFile.customLibrary = library
+      }
+    }
+
+    /**
+     * Sets the forced [AndroidLightClassModuleInfo] of the containing [PsiFile] to point to the
+     * given [Sdk], so that the Kotlin IDE plugin knows how to handle this light class.
+     */
+    private class FromSdk(private val sdk: Sdk) : AndroidLightClassModuleInfo() {
+      override fun setInfoOnUserData(lightClassUserData: UserDataHolder) {}
+
+      override fun setModuleInfoOnContainingFile(containingFile: PsiFile) {
+        containingFile.customSdk = sdk
+      }
+    }
+
+    companion object {
+      @JvmStatic
+      @JvmOverloads
+      fun from(module: Module, isTest: Boolean = false): AndroidLightClassModuleInfo =
+        FromModule(module, isTest)
+
+      fun from(library: Library): AndroidLightClassModuleInfo = FromLibrary(library)
+
+      fun from(sdk: Sdk): AndroidLightClassModuleInfo = FromSdk(sdk)
     }
   }
 

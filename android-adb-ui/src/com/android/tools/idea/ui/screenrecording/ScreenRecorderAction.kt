@@ -28,6 +28,7 @@ import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.IdeAvdManagers
 import com.android.tools.idea.ui.AndroidAdbUiBundle
+import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -78,10 +79,10 @@ class ScreenRecorderAction : DumbAwareAction(
   override fun actionPerformed(event: AnActionEvent) {
     val params = event.getData(SCREEN_RECORDER_PARAMETERS_KEY) ?: return
     val project = event.project ?: return
-    val serialNumber = params.serialNumber
-    val dialog = ScreenRecorderOptionsDialog(project, serialNumber.isEmulator(), params.featureLevel)
+    val isEmulator = params.serialNumber.isEmulator()
+    val dialog = ScreenRecorderOptionsDialog(ScreenRecorderPersistentOptions.getInstance(), project, isEmulator, params.featureLevel)
     if (dialog.showAndGet()) {
-      startRecordingAsync(params, dialog.useEmulatorRecording, project)
+      startRecordingAsync(params, isEmulator && ScreenRecorderPersistentOptions.getInstance().useEmulatorRecording, project)
     }
   }
 
@@ -136,6 +137,7 @@ class ScreenRecorderAction : DumbAwareAction(
         }
         withContext(uiThread) {
           recordingInProgress.remove(serialNumber)
+          ActivityTracker.getInstance().inc()
         }
       }
     }

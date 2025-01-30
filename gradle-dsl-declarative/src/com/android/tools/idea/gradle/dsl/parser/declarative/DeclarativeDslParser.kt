@@ -87,7 +87,7 @@ class DeclarativeDslParser(
     fun getVisitor(context: GradlePropertiesDslElement, nameElement: GradleNameElement): DeclarativeRecursiveVisitor =
       object : DeclarativeRecursiveVisitor() {
         override fun visitBlock(psi: DeclarativeBlock) {
-          val name = psi.identifier?.name ?: return
+          val name = psi.identifier.name ?: return
           val description = context.getChildPropertiesElementDescription(this@DeclarativeDslParser, name) ?: return
           val block: GradlePropertiesDslElement? =
             if (GradleDslNamedDomainElement::class.java.isAssignableFrom(description.clazz) &&
@@ -98,7 +98,7 @@ class DeclarativeDslParser(
               element
             }
             else {
-              val identifier = psi.identifier ?: return
+              val identifier = psi.identifier
               getOrCreateElement(description, context, identifier, psi)
             }
           if (block != null) {
@@ -111,8 +111,8 @@ class DeclarativeDslParser(
         }
 
         override fun visitReceiverSimpleFactory(psi: DeclarativeReceiverSimpleFactory) {
-          val methodCall = parseFactory(psi, context, nameElement) ?: return
-          context.addParsedElement(methodCall)
+          val dslElement = maybeCreateBlock(psi, context) ?: parseFactory(psi, context, nameElement) ?: return
+          context.addParsedElement(dslElement)
         }
 
         override fun visitReceiverPrefixedFactory(factory: DeclarativeReceiverPrefixedFactory) {
@@ -207,6 +207,18 @@ class DeclarativeDslParser(
         list.addParsedExpression(methodCall)
       }
     }
+
+  private fun maybeCreateBlock(factory: DeclarativeReceiverSimpleFactory,
+                               context: GradlePropertiesDslElement): GradleDslElement? {
+    val name = factory.identifier.name
+    val description = context.getChildPropertiesElementDescription(this@DeclarativeDslParser, name)
+    if (factory.argumentsList?.argumentList?.isEmpty() == true && description != null) {
+      val element = description.constructor.construct(context, GradleNameElement.from(factory.identifier, this@DeclarativeDslParser))
+      element.psiElement = factory
+      return element
+    }
+    return null
+  }
 
   private fun parseFactory(psi: DeclarativeFactoryReceiver,
                            context: GradlePropertiesDslElement,

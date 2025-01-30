@@ -117,6 +117,7 @@ studio_plugin(
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
+        "//tools/adt/idea/android-common:libandroid-core-proto",
     ],
     license_files = [
         "//prebuilts/r8:license",
@@ -149,6 +150,9 @@ studio_plugin(
             "//tools/adt/idea/profilers-ui:intellij.android.profilers.ui",
             "//tools/adt/idea/profilers:intellij.android.profilers",
             "//tools/adt/idea/transport-database:intellij.android.transportDatabase",
+        ],
+        "android-screenshot-testing.jar": [
+            "//tools/adt/idea/screenshot-testing:intellij.android.screenshot-test",
         ],
         "android-rt.jar": [
             "//tools/adt/idea/rt:intellij.android.rt",
@@ -207,6 +211,7 @@ studio_plugin(
             "//tools/adt/idea/device-explorer-monitor:intellij.android.device-explorer-monitor",
             "//tools/adt/idea/device-explorer-common:intellij.android.device-explorer-common",
             "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
+            "//tools/adt/idea/journeys-with-gemini:intellij.android.journeys-with-gemini",
             "//tools/adt/idea/ml-api:intellij.android.ml-api",
             "//tools/adt/idea/streaming:intellij.android.streaming",
             "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
@@ -270,6 +275,7 @@ studio_plugin(
             "//tools/adt/idea/studio-labs:intellij.android.studio-labs",
             "//tools/adt/idea/gmaven:intellij.android.gmaven",
             "//tools/adt/idea/settings-sync:intellij.android.settings-sync",
+            "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
         ],
         "artwork.jar": [
             "//tools/adt/idea/artwork:intellij.android.artwork",

@@ -387,6 +387,11 @@ public final class StudioFlags {
     NELE, "force.monochrome.adaptive.icon", "Display monochrome preview of adaptive icon when none provided",
     "When enabled, the adaptive icon preview will automatically create a monochrome version if none is provided.",
     enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> USE_BYTECODE_R_CLASS_PARSING = new BooleanFlag(
+    NELE, "use.bytecode.r.class.loading", "Uses bytecode R class parsing instead of reflection",
+    "When enabled, the parsing of R classes will use bytecode parsing instead of reflection.",
+    true);
   //endregion
 
   //region Resource Repository
@@ -1191,6 +1196,14 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_USE_UINPUT = new BooleanFlag(
     DEVICE_MIRRORING, "use.uinput", "Use uinput module (https://kernel.org/doc/html/v4.12/input/uinput.html)",
     "Use uinput module ((https://kernel.org/doc/html/v4.12/input/uinput.html) for injecting input events",
+    false);
+  //endregion
+
+  //region Screenshot and Screen Recording
+  private static final FlagGroup SCREENSHOT = new FlagGroup(FLAGS, "screenshot", "Screenshot and Screen Recording");
+  public static final Flag<Boolean> SCREENSHOT_STREAMLINED_SAVING = new BooleanFlag(
+    SCREENSHOT, "streamlined.saving", "Save Screenshots and Screen Recordings without Asking User",
+    "Save screenshots and screen recordings without asking user",
     false);
   //endregion
 
@@ -2048,6 +2061,12 @@ public final class StudioFlags {
                     "When enabled, allows the user to navigate forward and back in the transform history in the diff view.",
                     false);
 
+  public static final Flag<Boolean> STUDIOBOT_ALLOW_TRANSFORMS_WITH_CITATIONS =
+    new BooleanFlag(STUDIOBOT, "editor.ai.transform.allow.transforms.with.citations",
+                    "Show transform results that have citations.",
+                    "When enabled, will show transform results with citations instead of blocking them.",
+                    false);
+
   public static final Flag<Boolean> STUDIOBOT_EXPERIMENTAL_SLASH_COMMANDS_ENABLED =
     new BooleanFlag(STUDIOBOT, "editor.ai.experimental.slash.commands.enabled",
                     "Enable experimental slash comments.",
@@ -2283,6 +2302,15 @@ public final class StudioFlags {
     true
   );
   // endregion GOOGLE_PLAY_SDK_INDEX
+
+  // region JOURNEYS_WITH_GEMINI
+  private static final FlagGroup JOURNEYS_WITH_GEMINI = new FlagGroup(FLAGS, "journeys.with.gemini", "Journeys with Gemini");
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_EDITOR = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.editor", "Enable Journeys with Gemini Editor",
+    "Use Journeys with Gemini Editor when editing journey files (.journey.xml extensions)",
+    enabledUpTo(DEV)
+  );
+  // endregion JOURNEYS_WITH_GEMINI
 
   // region DEV_SERVICES_DEPRECATION_SUPPORT
   // See go/android-studio-developer-services-compat-policy and go/as-kill-feature-past-deadline

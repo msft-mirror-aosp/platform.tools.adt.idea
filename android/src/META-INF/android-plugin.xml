@@ -623,6 +623,7 @@
     <notificationGroup id="Import Android Test Results" displayType="BALLOON" />
     <notificationGroup id="Google Play SDK Index Notifications" displayType="STICKY_BALLOON" isLogByDefault="true" />
     <notificationGroup id="Android Debug Bridge (adb)" displayType="BALLOON"/>
+    <notificationGroup id="Android 16 KB Alignment" displayType="BALLOON"/>
 
     <webHelpProvider implementation="com.android.tools.idea.help.AndroidWebHelpProvider"/>
 
@@ -647,6 +648,7 @@
     <daemon.highlightInfoFilter implementation="com.android.tools.idea.sdk.SdkHighlightFilter"/>
 
     <writingAccessProvider implementation="com.android.tools.idea.sdk.SdkWritingAccessProvider"/>
+    <postStartupActivity implementation="com.android.tools.idea.ndk.PageAlignProjectActivity"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
@@ -724,8 +726,6 @@
                     interface="com.android.tools.idea.run.configuration.editors.AndroidWearConfigurationEditorToken"/>
     <extensionPoint qualifiedName="com.android.tools.idea.testartifacts.instrumented.androidRunConfigurationToken"
                     interface="com.android.tools.idea.testartifacts.instrumented.AndroidRunConfigurationToken"/>
-    <extensionPoint qualifiedName="com.android.tools.idea.testartifacts.screenshot.screenshotTestRunConfigurationToken"
-                    interface="com.android.tools.idea.testartifacts.screenshot.ScreenshotTestRunConfigurationToken"/>
     <extensionPoint qualifiedName="com.android.tools.idea.res.resourceClassToken"
                     interface="com.android.tools.idea.res.ResourceClassToken"/>
     <extensionPoint qualifiedName="com.android.tools.idea.manifest.manifestClassToken"

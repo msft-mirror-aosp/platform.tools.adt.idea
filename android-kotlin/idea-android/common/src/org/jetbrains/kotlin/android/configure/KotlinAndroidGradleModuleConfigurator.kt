@@ -26,10 +26,11 @@ import com.android.ide.common.repository.GoogleMavenArtifactId.NAVIGATION_UI
 import com.android.ide.common.repository.GoogleMavenArtifactId.NAVIGATION_UI_KTX
 import com.android.tools.idea.gradle.dependencies.DependenciesHelper
 import com.android.tools.idea.gradle.dependencies.GroupNameDependencyMatcher
-import com.android.tools.idea.gradle.dependencies.IdPluginMatcher
 import com.android.tools.idea.gradle.dependencies.PluginInsertionConfig
 import com.android.tools.idea.gradle.dependencies.PluginInsertionConfig.MatchedStrategy
 import com.android.tools.idea.gradle.dependencies.PluginInsertionConfig.PluginInsertionStep
+import com.android.tools.idea.gradle.dependencies.PluginsHelper
+import com.android.tools.idea.gradle.dependencies.PluginInsertionConfig.*
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec
@@ -96,9 +97,10 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
 
     init {
         val steps = LinkedHashSet<PluginInsertionStep>()
-        steps.addAll(listOf(PluginInsertionStep.BUILDSCRIPT_CLASSPATH_WITH_VARIABLE,
-                            PluginInsertionStep.PLUGIN_BLOCK,
-                            PluginInsertionStep.PLUGIN_MANAGEMENT))
+        steps.addAll(listOf(
+            BuildscriptClasspathWithVariableInsertionStep,
+            PluginBlockInsertionStep,
+            PluginManagementInsertionStep))
         insertionConfig = PluginInsertionConfig(
             steps,
             MatchedStrategy.UPDATE_VERSION,
@@ -119,15 +121,14 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
 
         val pluginId = "org.jetbrains.kotlin.android"
         val classpathModule = "org.jetbrains.kotlin:kotlin-gradle-plugin"
-        val helper = DependenciesHelper.withModel(projectBuildModel)
+        val helper = PluginsHelper.withModel(projectBuildModel)
         val kotlinPluginAddedFiles = helper.addPluginOrClasspath(
             pluginId,
             classpathModule,
             version,
             listOf(moduleBuildModel),
-            IdPluginMatcher(pluginId),
-            GroupNameDependencyMatcher(CLASSPATH_CONFIGURATION_NAME, "$classpathModule:$version"),
-            insertionConfig
+            classpathMatcher = GroupNameDependencyMatcher(CLASSPATH_CONFIGURATION_NAME, "$classpathModule:$version"),
+            config = insertionConfig
         )
         if (kotlinPluginAddedFiles.isNotEmpty()) {
             changedFiles.addAll(kotlinPluginAddedFiles)

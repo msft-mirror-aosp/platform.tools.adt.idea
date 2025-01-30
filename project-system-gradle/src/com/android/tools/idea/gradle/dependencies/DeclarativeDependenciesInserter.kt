@@ -15,11 +15,8 @@
  */
 package com.android.tools.idea.gradle.dependencies
 
-import com.android.tools.idea.gradle.dsl.api.BasePluginsModel
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
-import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeSettingsModel
-import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
-import com.android.tools.idea.gradle.dsl.api.settings.PluginsBlockModel
+import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec
 import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.utils.addIfNotNull
 
@@ -27,47 +24,37 @@ import org.jetbrains.kotlin.utils.addIfNotNull
  * We assume for now that declarative project is pure (no non-declarative modules)
  * and no version catalog in it.
  */
-class DeclarativeDependenciesInserter(private val projectModel: ProjectBuildModel): DependenciesInserter(projectModel) {
+class DeclarativeDependenciesInserter: DependenciesInserter() {
 
-  override fun applySettingsPlugin(pluginId: String,
-                               version: String): Set<PsiFile> {
+  override fun addDependency(configuration: String,
+                             dependency: String,
+                             excludes: List<ArtifactDependencySpec>,
+                             parsedModel: GradleBuildModel,
+                             matcher: DependencyMatcher,
+                             sourceSetName: String?): Set<PsiFile> {
     val changedFiles = mutableSetOf<PsiFile>()
-
-    getSettingsModel()?.plugins()?.let {
-      it.applyPlugin(pluginId, version)
-      changedFiles.addIfNotNull(projectModel.projectSettingsModel?.psiFile)
+    val dependenciesModel = parsedModel.dependencies()
+    if (!dependenciesModel.hasArtifact(matcher)) {
+      dependenciesModel.addArtifact(configuration, dependency).also {
+        changedFiles.addIfNotNull(dependenciesModel.psiElement?.containingFile)
+      }
     }
-
     return changedFiles
   }
 
-  /**
-   * Applying plugin to module for declarative means nothing as all plugins can only be on settings
-   */
-  override fun addPlugin(pluginId: String, buildModel: GradleBuildModel, matcher: PluginMatcher): PsiFile? = null
-
-  override fun addPlugin(pluginId: String,
-                         version: String,
-                         apply: Boolean?,
-                         settingsPlugins: PluginsBlockModel,
-                         buildModel: GradleBuildModel,
-                         matcher: PluginMatcher): Set<PsiFile> {
+  override fun addPlatformDependency(configuration: String,
+                                     dependency: String,
+                                     enforced: Boolean,
+                                     parsedModel: GradleBuildModel,
+                                     matcher: DependencyMatcher): Set<PsiFile> {
     val changedFiles = mutableSetOf<PsiFile>()
+    val buildscriptDependencies = parsedModel.dependencies()
 
-    getSettingsModel()?.plugins()?.let { settings ->
-      if (!settings.hasPlugins(matcher)) applySettingsPlugin(pluginId, version).also { changedFiles.addAll(it) }
+    if (!buildscriptDependencies.hasArtifact(matcher)) {
+      buildscriptDependencies.addPlatformArtifact(configuration, dependency, enforced).also {
+        changedFiles.addIfNotNull(parsedModel.psiElement?.containingFile)
+      }
     }
-
     return changedFiles
   }
-
-  private fun getSettingsModel(): GradleDeclarativeSettingsModel? {
-    val settingsFile = projectModel.declarativeSettingsModel
-    if (settingsFile == null)
-      log.warn("Settings file does not exist so cannot insert declaration into plugin{} block")
-    return settingsFile
-  }
-
-  private fun BasePluginsModel.hasPlugins(matcher: PluginMatcher) = plugins().any { matcher.match(it) }
-
 }

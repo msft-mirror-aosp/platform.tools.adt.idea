@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.SdkConstants.FN_GRADLE_CONFIG_PROPERTIES
 import com.android.tools.idea.flags.DeclarativeStudioSupport
+import com.android.tools.idea.gradle.dsl.utils.EXT_VERSIONS_TOML
 import com.android.tools.idea.gradle.dsl.utils.FN_GRADLE_PROPERTIES
 import com.android.tools.idea.gradle.dsl.utils.FN_SETTINGS_GRADLE
 import com.android.tools.idea.gradle.dsl.utils.FN_SETTINGS_GRADLE_DECLARATIVE
@@ -78,7 +79,7 @@ class GradleFilesUpdater(private val project: Project, private val cs: Coroutine
     callback(result)
   }
 
-  private suspend fun computeFileHashes(): Result {
+  suspend fun computeFileHashes(): Result {
     suspend fun computeWrapperPropertiesHash(): Result {
       return readAction {
         GradleWrapper.find(project)?.propertiesFile?.takeIf { it.isRegularFile }?.let { Result.from(it) } ?: return@readAction Result.EMPTY
@@ -125,7 +126,7 @@ class GradleFilesUpdater(private val project: Project, private val cs: Coroutine
       return readAction {
         val files = gradle.children.mapNotNull { child ->
           ProgressManager.checkCanceled()
-          if (child.isRegularFile && child.name.endsWith(".versions.toml")) child else null
+          if (child.isRegularFile && child.name.endsWith(EXT_VERSIONS_TOML)) child else null
         }.toSet()
         Result.from(files)
       }
@@ -166,13 +167,6 @@ class GradleFilesUpdater(private val project: Project, private val cs: Coroutine
 
       fun from(files: Set<VirtualFile>, externalBuildFiles: Set<VirtualFile>): Result =
         Result(files.mapNotNull { f -> hash(f)?.let { h -> f to h } }.toMap(), externalBuildFiles)
-    }
-  }
-
-  class UpdateHashesProjectActivity : ProjectActivity {
-    override suspend fun execute(project: Project) {
-      val result = getInstance(project).computeFileHashes();
-      GradleFiles.getInstance(project).updateCallback().invoke(result)
     }
   }
 }
