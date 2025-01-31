@@ -80,7 +80,7 @@ public class AndroidStudioInstallation {
       } else {
         platform = "mac";
       }
-      studioDir = "Android Studio Preview.app/Contents";
+      studioDir = "Android Studio.app/Contents";
     } else if (SystemInfo.isWindows) {
       platform = "win";
       studioDir = "android-studio";

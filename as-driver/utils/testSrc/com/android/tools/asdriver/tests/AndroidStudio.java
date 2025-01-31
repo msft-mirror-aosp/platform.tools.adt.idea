@@ -110,14 +110,14 @@ public class AndroidStudio implements AutoCloseable {
     if (useSafeMode) {
       studioExecutable = "android-studio/bin/studio_safe.sh";
       if (SystemInfo.isMac) {
-        studioExecutable = "Android Studio Preview.app/Contents/bin/studio_safe.sh";
+        studioExecutable = "Android Studio.app/Contents/bin/studio_safe.sh";
       } else if (SystemInfo.isWindows) {
         studioExecutable = "android-studio/bin/studio_safe.bat";
       }
     } else {
       studioExecutable = "android-studio/bin/studio.sh";
       if (SystemInfo.isMac) {
-        studioExecutable = "Android Studio Preview.app/Contents/MacOS/studio";
+        studioExecutable = "Android Studio.app/Contents/MacOS/studio";
       } else if (SystemInfo.isWindows) {
         studioExecutable = String.format("android-studio/bin/studio%s.exe", CpuArch.isIntel32() ? "" : "64");
       }
