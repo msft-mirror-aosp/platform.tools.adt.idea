@@ -355,6 +355,11 @@ public final class StudioFlags {
     NELE, "background.displaylist", "Enable Display List background creation",
     "When enabled, the scene display list is created in the background.",
     false);
+
+  public static final Flag<Boolean> USE_BYTECODE_R_CLASS_PARSING = new BooleanFlag(
+    NELE, "use.bytecode.r.class.loading", "Uses bytecode R class parsing instead of reflection",
+    "When enabled, the parsing of R classes will use bytecode parsing instead of reflection.",
+    true);
   //endregion
 
   //region Resource Repository

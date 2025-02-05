@@ -17,6 +17,8 @@
 package com.android.tools.idea.run.tasks;
 
 
+import static com.intellij.openapi.keymap.impl.ui.ActionsTreeUtil.addAction;
+
 import com.android.adblib.AdbSession;
 import com.android.ddmlib.AdbHelper;
 import com.android.ddmlib.IDevice;
@@ -50,6 +52,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.ApplyChangesAgentError;
 import com.google.wireless.android.sdk.stats.LaunchTaskDetail;
+import com.intellij.notification.BrowseNotificationAction;
+import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
@@ -83,6 +87,7 @@ public abstract class AbstractDeployTask {
   protected final boolean myRerunOnSwapFailure;
   protected final boolean myAlwaysInstallWithPm;
   protected final boolean myAllowAssumeVerified;
+  protected final boolean myHasMakeBeforeRun;
   @NotNull private final Project myProject;
   @NotNull private final Collection<ApkInfo> myPackages;
   @NotNull protected List<LaunchTaskDetail> mySubTaskDetails;
@@ -91,12 +96,14 @@ public abstract class AbstractDeployTask {
                             @NotNull Collection<ApkInfo> packages,
                             boolean rerunOnSwapFailure,
                             boolean alwaysInstallWithPm,
-                            boolean allowAssumeVerified) {
+                            boolean allowAssumeVerified,
+                            boolean hasMakeBeforeRun) {
     myProject = project;
     myPackages = packages;
     myRerunOnSwapFailure = rerunOnSwapFailure;
     myAlwaysInstallWithPm = alwaysInstallWithPm;
     myAllowAssumeVerified = allowAssumeVerified;
+    myHasMakeBeforeRun = hasMakeBeforeRun;
     mySubTaskDetails = new ArrayList<>();
   }
 
@@ -168,20 +175,26 @@ public abstract class AbstractDeployTask {
 
     stopwatch.stop();
     long duration = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+    String informMake = myHasMakeBeforeRun ? "" : " with no build tasks before launch";
+    Notification notification = null;
     if (idsSkippedInstall.isEmpty()) {
-      String content = String.format("%s successfully finished in %s.", getDescription(), StringUtil.formatDuration(duration));
-      NOTIFICATION_GROUP.createNotification(content, NotificationType.INFORMATION).notify(myProject);
-    }
-    else {
-      String title = String.format("%s successfully finished in %s.", getDescription(), StringUtil.formatDuration(duration));
+      String content = String.format("%s successfully finished in %s%s", getDescription(), StringUtil.formatDuration(duration), informMake);
+      notification = NOTIFICATION_GROUP.createNotification(content, myHasMakeBeforeRun ? NotificationType.INFORMATION : NotificationType.WARNING);
+    } else {
+      String title = String.format("%s successfully finished in %s%s", getDescription(), StringUtil.formatDuration(duration), informMake);
       String content = createSkippedApkInstallMessage(idsSkippedInstall, idsSkippedInstall.size() == myPackages.size());
-      NOTIFICATION_GROUP.createNotification(title, content, NotificationType.INFORMATION).notify(myProject);
+      notification = NOTIFICATION_GROUP.createNotification(title, content, myHasMakeBeforeRun ? NotificationType.INFORMATION : NotificationType.WARNING);
     }
+
+    if (!myHasMakeBeforeRun) {
+      notification.addAction(new BrowseNotificationAction("Learn more about missing build tasks", "https://d.android.com/r/studio-ui/run-no-gradle-make"));
+    }
+    notification.notify(myProject);
 
     return results;
   }
 
-    protected abstract String getDescription();
+  protected abstract String getDescription();
 
   abstract protected Deployer.Result perform(IDevice device, Deployer deployer, @NotNull ApkInfo apkInfo, @NotNull Canceller canceller)
     throws DeployerException;
