@@ -342,10 +342,6 @@ class GradleModuleSystem(
     return sourceProviders.buildNamedModuleTemplatesFor(moduleRootDir, selectedSourceProviders)
   }
 
-  override fun canGeneratePngFromVectorGraphics(): CapabilityStatus {
-    return supportsPngGeneration(module)
-  }
-
   /**
    * See the documentation on [AndroidModuleSystem.analyzeDependencyCompatibility]
    */

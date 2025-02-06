@@ -28,6 +28,7 @@ import com.android.tools.idea.uibuilder.layout.option.SingleDirectionLayoutManag
  *   selected.
  * @param organizationEnabled if layout has organization
  * @param sceneViewAlignment scenes alignment
+ * @param shouldStoreScale if true, stores the current scale in the settings preferences.
  */
 data class SurfaceLayoutOption(
   val displayName: String,
@@ -35,11 +36,12 @@ data class SurfaceLayoutOption(
   val organizationEnabled: Boolean = false,
   val sceneViewAlignment: SceneViewAlignment = SceneViewAlignment.CENTER,
   val layoutType: LayoutType = LayoutType.Default,
+  val shouldStoreScale: Boolean = true,
 ) {
 
   enum class LayoutType {
     Default,
-    Gallery,
+    Focus,
     OrganizationGrid,
     SingleDirection,
   }

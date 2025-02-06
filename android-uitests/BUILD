@@ -21,8 +21,8 @@ COMMON_DATA = [
     "//prebuilts/studio/sdk:cmake",
     "//prebuilts/studio/sdk:ndk",
     # TODO (b/378379062): Delete sdk 34 after migrating all test apps to API 35
-    "//prebuilts/studio/sdk:platforms/android-34",
-    "//prebuilts/studio/sdk:platforms/android-35",
+    "//prebuilts/studio/sdk:platforms/android-34_build_only",
+    "//prebuilts/studio/sdk:platforms/android-35_build_only",
     "//prebuilts/studio/sdk:platform-tools",
     "//prebuilts/tools/common/aspects-agent:aspects_agent",
     "//prebuilts/tools:bazel-dist",
@@ -1278,6 +1278,7 @@ java_test(
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.ComponentSelectionSplitViewTest"],
     tags = COMMON_TAGS + [
+        "manual",
         "ui_test",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",

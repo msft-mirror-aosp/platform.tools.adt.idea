@@ -75,8 +75,8 @@ import com.android.tools.idea.preview.essentials.essentialsModeFlow
 import com.android.tools.idea.preview.fast.CommonFastPreviewSurface
 import com.android.tools.idea.preview.fast.FastPreviewSurface
 import com.android.tools.idea.preview.flow.PreviewFlowManager
-import com.android.tools.idea.preview.gallery.CommonGalleryEssentialsModeManager
-import com.android.tools.idea.preview.gallery.GalleryMode
+import com.android.tools.idea.preview.focus.CommonFocusEssentialsModeManager
+import com.android.tools.idea.preview.focus.FocusMode
 import com.android.tools.idea.preview.getDefaultPreviewQuality
 import com.android.tools.idea.preview.groups.PreviewGroupManager
 import com.android.tools.idea.preview.interactive.InteractivePreviewManager
@@ -362,11 +362,11 @@ class ComposePreviewRepresentation(
   private val hasRenderedAtLeastOnce = AtomicBoolean(false)
 
   /**
-   * This field indicates whether the preview should apply zoom-to-fit after rendering. Set it to
-   * true before operations like mode changes or layout adjustments causes a refresh or re-rendering
-   * of the previews, and where we want the previous zoom level to be preserved.
+   * Indicates if a preview mode change is in progress. This field is set to true from the time
+   * [PreviewModeManager.setMode] is called until the preview has finished rendering with the new
+   * [PreviewMode].
    */
-  private val shouldZoomToFitAfterRender = AtomicBoolean(true)
+  private val isPreviewModeChanging = AtomicBoolean(true)
 
   @VisibleForTesting internal val composePreviewFlowManager = ComposePreviewFlowManager()
 
@@ -704,7 +704,8 @@ class ComposePreviewRepresentation(
         NavigatingInteractionHandler(
           composeWorkBench.mainSurface,
           navigationHandler,
-          isSelectionEnabled = { StudioFlags.COMPOSE_PREVIEW_SELECTION.get() },
+          isSelectionEnabled = true,
+          isPopUpEnabled =  { StudioFlags.COMPOSE_PREVIEW_COMPONENT_POP_UP.get() }
         ),
       )
       .also { delegateInteractionHandler.delegate = it }
@@ -743,8 +744,8 @@ class ComposePreviewRepresentation(
 
   private val previewModeManager: PreviewModeManager = CommonPreviewModeManager()
 
-  private val galleryEssentialsModeManager =
-    CommonGalleryEssentialsModeManager(
+  private val focusEssentialsModeManager =
+    CommonFocusEssentialsModeManager(
         project = psiFile.project,
         lifecycleManager = lifecycleManager,
         previewFlowManager = composePreviewFlowManager,
@@ -785,6 +786,10 @@ class ComposePreviewRepresentation(
           // The layout update needs to happen before onEnter, so that any zooming performed
           // in onEnter uses the correct preview layout when measuring scale.
           updateLayoutManager(it)
+          // Sets that the mode is changing.
+          isPreviewModeChanging.set(true)
+          // Because of the Mode change the zoom need to be recalculated after the render.
+          surface.resetZoomToFitNotifier()
           onEnter(it)
         } else {
           updateLayoutManager(it)
@@ -910,10 +915,10 @@ class ComposePreviewRepresentation(
       launch { delegateFastPreviewSurface.requestFastPreviewRefreshSync() }
     } else if (invalidated.get()) requestRefresh()
 
-    // Gallery mode should be updated only if Preview is active / in foreground.
-    // It will help to avoid enabling gallery mode while Preview is inactive, as it will also save
+    // Focus mode should be updated only if Preview is active / in foreground.
+    // It will help to avoid enabling Focus mode while Preview is inactive, as it will also save
     // this state for later to restore.
-    galleryEssentialsModeManager.activate()
+    focusEssentialsModeManager.activate()
   }
 
   override fun onDeactivate() {
@@ -1057,12 +1062,14 @@ class ComposePreviewRepresentation(
           ComposePreviewLiteModeEvent.ComposePreviewLiteModeEventType.OPEN_AND_RENDER
         )
       }
-      // When changing mode and when [shouldZoomToFitAfterRender] is true we notify to
-      // DesignSurface to restore the zoom by calling [notifyZoomToFit].
-      if (shouldZoomToFitAfterRender.getAndSet(false)) {
+      // If this render was triggered by a mode change, check if we have stored scale, if we do we
+      // try to restore it.
+      // Otherwise, we notify to surface to apply zoom-to-fit.
+      if (isPreviewModeChanging.getAndSet(false)) {
         launch(uiThread) {
-          // We notify DesignSurface to try to restore the zoom
-          surface.notifyZoomToFit()
+          if (!surface.restorePreviousScale()) {
+            surface.notifyZoomToFit()
+          }
         }
       }
     }
@@ -1538,19 +1545,13 @@ class ComposePreviewRepresentation(
         }
         invalidateAndRefresh()
       }
-      is PreviewMode.Gallery -> {
+      is PreviewMode.Focus -> {
         withContext(uiThread) {
-          composeWorkBench.galleryMode = GalleryMode(composeWorkBench.mainSurface)
+          composeWorkBench.focusMode = FocusMode(composeWorkBench.mainSurface)
         }
-        resetZoomToFitOnAfterRender()
       }
     }
     surface.background = mode.backgroundColor
-  }
-
-  private fun resetZoomToFitOnAfterRender() {
-    shouldZoomToFitAfterRender.set(true)
-    surface.resetZoomToFitNotifier()
   }
 
   /** Performs cleanup for [mode] when leaving this mode to go to a mode of a different class. */
@@ -1573,11 +1574,10 @@ class ComposePreviewRepresentation(
         currentAnimationPreview = null
         requestVisibilityAndNotificationsUpdate()
       }
-      is PreviewMode.Gallery -> {
-        withContext(uiThread) { composeWorkBench.galleryMode = null }
+      is PreviewMode.Focus -> {
+        withContext(uiThread) { composeWorkBench.focusMode = null }
       }
     }
-    resetZoomToFitOnAfterRender()
   }
 
   private fun createAnimationPreviewPanel(

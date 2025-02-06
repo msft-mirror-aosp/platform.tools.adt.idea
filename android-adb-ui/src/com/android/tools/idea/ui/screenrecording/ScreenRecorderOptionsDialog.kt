@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.ui.screenrecording
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.help.AndroidWebHelpProvider.Companion.HELP_PREFIX
 import com.android.tools.idea.ui.AndroidAdbUiBundle.message
+import com.android.tools.idea.ui.save.SaveConfigurationDialog
 import com.android.tools.idea.ui.screenrecording.ScreenRecorderAction.Companion.MAX_RECORDING_DURATION_MINUTES
 import com.android.tools.idea.ui.screenrecording.ScreenRecorderAction.Companion.MAX_RECORDING_DURATION_MINUTES_LEGACY
 import com.intellij.openapi.project.Project
@@ -28,6 +30,7 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
 import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.NonNls
+import java.time.Instant
 import javax.swing.Action
 import javax.swing.JComponent
 import javax.swing.JEditorPane
@@ -35,7 +38,7 @@ import javax.swing.JEditorPane
 /** A dialog for setting the options for a screen recording. */
 internal class ScreenRecorderOptionsDialog(
   private val options: ScreenRecorderPersistentOptions,
-  project: Project,
+  private val project: Project,
   private val isEmulator: Boolean,
   private val apiLevel: Int,
 ) : DialogWrapper(project, true) {
@@ -77,6 +80,12 @@ internal class ScreenRecorderOptionsDialog(
             .onChanged { recordingLengthField.text = getMaxRecordingLengthText(it.isSelected) }
         }.contextHelp(message("screenrecord.options.use.emulator.recording.tooltip"))
       }
+
+      if (StudioFlags.SCREENSHOT_STREAMLINED_SAVING.get()) {
+        row {
+          button(message("configure.save.button.text")) { configureSave() }
+        }
+      }
     }
   }
 
@@ -91,6 +100,22 @@ internal class ScreenRecorderOptionsDialog(
   override fun createDefaultActions() {
     super.createDefaultActions()
     okAction.putValue(Action.NAME, message("screenrecord.options.ok.button.text"))
+  }
+
+  private fun configureSave() {
+    val dialog = SaveConfigurationDialog(
+        project,
+        options.saveLocation,
+        options.filenameTemplate,
+        options.postSaveAction,
+        if (isEmulator && options.useEmulatorRecording) "webm" else "mp4",
+        Instant.now(),
+        options.recordingCount + 1)
+    if (dialog.createWrapper(null, rootPane).showAndGet()) {
+      options.filenameTemplate = dialog.filenameTemplate
+      options.saveLocation = dialog.saveLocation
+      options.postSaveAction = dialog.postSaveAction
+    }
   }
 
   private fun getMaxRecordingLengthText(forEmulator: Boolean): @Nls String {

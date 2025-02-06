@@ -343,20 +343,10 @@ public final class StudioFlags {
     "Log in the IDEA log the messages coming from Java and native code of Layoutlib Native.",
     false);
 
-  public static final Flag<Boolean> NELE_ASSET_REPOSITORY_INCLUDE_AARS_THROUGH_PROJECT_SYSTEM = new BooleanFlag(
-    NELE, "asset.repository.include.aars.through.project.system", "Include AARs through project system",
-    "Include resource directories from AARs found through project system.",
-    false);
-
   public static final Flag<Boolean> NELE_CLASS_PRELOADING_DIAGNOSTICS = new BooleanFlag(
     NELE, "preview.class.preloading.diagnostics", "Enable class preloading overlay",
     "If enabled, the surface displays background class preloading progress",
     false);
-
-  public static final Flag<Boolean> NELE_NEW_COMPONENT_TREE = new BooleanFlag(
-    NELE, "use.component.tree.builder", "Use the Component Tree builder",
-    "If enabled, use the Component Tree builder for the Nele component tree",
-    true);
 
   public static final Flag<Boolean> NELE_XML_TO_COMPOSE = new BooleanFlag(
     NELE, "xml.to.compose", "Enable XML to Compose conversion",
@@ -1405,7 +1395,7 @@ public final class StudioFlags {
     "If enabled, Preview Essentials Mode will be enabled.",
     enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> VIEW_IN_GALLERY = new BooleanFlag(
+  public static final Flag<Boolean> VIEW_IN_FOCUS_MODE = new BooleanFlag(
     PREVIEW_COMMON, "view.preview.in.focus", "View preview in Focus mode",
     "If enabled, shows a menu item to open the selected preview in Focus mode.",
     enabledUpTo(CANARY));
@@ -1558,13 +1548,9 @@ public final class StudioFlags {
     COMPOSE, "allocation.limiter", "If enabled, limits allocations per render",
     "If enabled, limits the number of allocations that user code can do in a single render action",
     true);
-  public static final Flag<Boolean> COMPOSE_PREVIEW_SELECTION = new BooleanFlag(
-    COMPOSE, "compose.preview.selection", "Enable the select/deselect interaction with Previews",
-    "If enabled, Previews will be selectable, and some interactions will only be enabled for selected Previews",
-    true);
 
   public static final Flag<Boolean> COMPOSE_INVALIDATE_ON_RESOURCE_CHANGE = new BooleanFlag(
-    COMPOSE, "compose.preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
+    COMPOSE, "preview.invalidate.on.resource.change", "When a resource changes, invalidate the current preview",
     "Invalidates the preview is there is a resource change",
     true);
 
@@ -2061,6 +2047,12 @@ public final class StudioFlags {
                     "When enabled, allows the user to navigate forward and back in the transform history in the diff view.",
                     false);
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_COMPONENT_POP_UP = new BooleanFlag(
+    COMPOSE, "preview.popup", "Enable the opening pop up when holding the option key while clicking a preview",
+    "If enabled, when holding the option key while clicking a preview on a preview it will open pop up with all components under click",
+    enabledUpTo(DEV));
+
+
   public static final Flag<Boolean> STUDIOBOT_ALLOW_TRANSFORMS_WITH_CITATIONS =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.allow.transforms.with.citations",
                     "Show transform results that have citations.",
@@ -2198,6 +2190,18 @@ public final class StudioFlags {
                 "Generation model context size in tokens",
                 APOLLO_GENERATION_MODEL_CONTEXT_SIZE);
 
+  public static final Flag<Integer> STUDIOBOT_CHAT_MODEL_INPUT_TOKEN_LIMIT =
+    new IntFlag(STUDIOBOT, "chat.model.input.tokens",
+                "Input token limit for default chat model",
+                "Input token limit for default chat model",
+                16384);
+
+  public static final Flag<Integer> STUDIOBOT_CHAT_MODEL_OUTPUT_TOKEN_LIMIT =
+    new IntFlag(STUDIOBOT, "chat.model.output.tokens",
+                "Output token limit for default chat model",
+                "Output token limit for default chat model",
+                8192);
+
   public static final Flag<Boolean> STUDIOBOT_GENERATE_TEST_SCENARIOS =
     new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
                     "Enable test scenario generation.",
@@ -2311,17 +2315,6 @@ public final class StudioFlags {
     enabledUpTo(DEV)
   );
   // endregion JOURNEYS_WITH_GEMINI
-
-  // region DEV_SERVICES_DEPRECATION_SUPPORT
-  // See go/android-studio-developer-services-compat-policy and go/as-kill-feature-past-deadline
-  // These flags are mostly meant to be changed via server flags.
-  private static final FlagGroup DEV_SERVICES_SLA = new FlagGroup(FLAGS, "gservices", "Dev Services Support SLA");
-
-  public static final Flag<Boolean> DEV_SERVICES_SUPPORTED_V1 = new BooleanFlag(
-    DEV_SERVICES_SLA, "supported.v1", "Dev Services Supported", "Dev Services Supported", true);
-  public static final Flag<Boolean> DEV_SERVICES_DEPRECATED_V1 = new BooleanFlag(
-    DEV_SERVICES_SLA, "deprecated.v1", "Dev Services Supported", "Dev Services Deprecated", false);
-  // endregion DEV_SERVICES_DEPRECATION_SUPPORT
 
   // region WIZARD_MIGRATION
   private static final FlagGroup WIZARD_MIGRATION = new FlagGroup(

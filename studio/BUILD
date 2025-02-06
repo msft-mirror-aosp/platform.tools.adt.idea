@@ -88,7 +88,6 @@ studio_plugin(
         "//tools/adt/idea/.idea/libraries:zxing-core",
         "//tools/adt/idea/android:libandroid-core-proto",
         "//tools/adt/idea/project-system-gradle:libandroid-core-proto",
-        "//tools/adt/idea/android:libstudio.android-test-plugin-host-retention-proto",
         "//tools/adt/idea/android/lib:instantapps-api",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:background-inspector-proto",
         "//tools/adt/idea/app-inspection/inspectors/backgroundtask/model:workmanager-inspector-proto",
@@ -211,7 +210,6 @@ studio_plugin(
             "//tools/adt/idea/device-explorer-monitor:intellij.android.device-explorer-monitor",
             "//tools/adt/idea/device-explorer-common:intellij.android.device-explorer-common",
             "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
-            "//tools/adt/idea/journeys-with-gemini:intellij.android.journeys-with-gemini",
             "//tools/adt/idea/ml-api:intellij.android.ml-api",
             "//tools/adt/idea/streaming:intellij.android.streaming",
             "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
@@ -747,6 +745,7 @@ studio_plugin(
         "aiplugin.jar": [
             "//tools/vendor/google/ml/aiplugin/core:aiplugin.core",
             "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
+            "//tools/vendor/google/ml/aiplugin/android/journeys:aiplugin.android.journeys",
             "//tools/vendor/google/ml/aiplugin/android-plugin:aiplugin.android-plugin",
             "//tools/vendor/google/ml/aiplugin/android-plugin/descriptor:aiplugin.android-plugin.descriptor",
             "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",

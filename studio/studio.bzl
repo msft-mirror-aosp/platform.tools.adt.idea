@@ -641,7 +641,7 @@ def _produce_update_message_html(ctx):
         },
     )
 
-def _stamp_platform(ctx, platform, platform_files):
+def _stamp_platform(ctx, platform, platform_files, added_plugins):
     args = ["--stamp_platform"]
 
     ret = {}
@@ -721,6 +721,10 @@ def _stamp_platform(ctx, platform, platform_files):
     args.add("--build_txt", stamped_build_txt)
     args.add("--stamp_product_info")
     args.add("--replace_selector", system_selector)
+    for p in added_plugins:
+        args.add_all("--added_plugin", [p[PluginInfo].plugin_id] + platform.get(p[PluginInfo].plugin_files).keys())
+    args.use_param_file("@%s")
+    args.set_param_file_format("multiline")
     _stamp(ctx, args, [ctx.info_file, stamped_build_txt], product_info_json, stamped_product_info_json)
 
     return ret
@@ -769,7 +773,7 @@ def _get_external_attributes(all_files):
             attrs[zip_path] = "775"
     return attrs
 
-def _android_studio_os(ctx, platform, out):
+def _android_studio_os(ctx, platform, added_plugins, out):
     files = []
     all_files = {}
 
@@ -786,7 +790,7 @@ def _android_studio_os(ctx, platform, out):
         all_files.update({platform_prefix + platform.base_path + platform.jre + k: v for k, v in jre_files})
 
     # Stamp the platform and its plugins
-    platform_files = _stamp_platform(ctx, platform, platform_files)
+    platform_files = _stamp_platform(ctx, platform, platform_files, added_plugins)
     all_files.update({platform_prefix + k: v for k, v in platform_files.items()})
 
     # for plugin in platform_plugins:
@@ -940,7 +944,7 @@ def _android_studio_impl(ctx):
     }
     all_files = {}
     for (platform, output) in outputs.items():
-        all_files[platform] = _android_studio_os(ctx, platform, output)
+        all_files[platform] = _android_studio_os(ctx, platform, ctx.attr.plugins, output)
 
     _produce_update_message_html(ctx)
 
@@ -1394,6 +1398,8 @@ def intellij_platform(
             "//tools/base/bazel/platforms:macos-arm64": [src + "/darwin_aarch64/android-studio/Contents" + jar for jar in spec.jars + spec.jars_darwin_aarch64],
             "//conditions:default": [src + "/linux/android-studio" + jar for jar in spec.jars + spec.jars_linux],
         }),
+        add_exports = spec.add_exports,
+        add_opens = spec.add_opens,
     )
 
     _intellij_platform(
@@ -1434,6 +1440,7 @@ def intellij_platform(
         "windows": src + "/windows/android-studio",
     }
 
+    # buildifier: disable=native-py
     native.py_test(
         name = name + "_spec_test",
         srcs = ["//tools/adt/idea/studio:intellij_test.py"],
@@ -1500,12 +1507,11 @@ def intellij_platform(
         visibility = ["@intellij//:__subpackages__"],
     )
 
-    # TODO: merge this into the intellij_platform rule.
     dir_archive(
         name = name + "-full-linux",
-        dir = "prebuilts/studio/intellij-sdk/" + src + "/linux/android-studio",
+        dir = "prebuilts/studio/intellij-sdk/" + src + "/linux",
         files = native.glob([src + "/linux/android-studio/**"]),
-        visibility = ["@intellij//:__subpackages__"],
+        visibility = ["//tools/vendor/google/aswb/third_party/java/jetbrains/protobuf:__pkg__"],
     )
 
     studio_data(

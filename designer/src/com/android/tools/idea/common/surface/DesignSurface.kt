@@ -24,7 +24,6 @@ import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.ZOOMABLE_KEY
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.configurations.Configuration
-import com.android.tools.editor.PanZoomListener
 import com.android.tools.idea.actions.CONFIGURATIONS
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.analytics.DesignerAnalyticsManager
@@ -115,6 +114,8 @@ import kotlin.concurrent.withLock
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
@@ -243,10 +244,12 @@ abstract class DesignSurface<T : SceneManager>(
       .apply {
         background = this@DesignSurface.background
         if (hasZoomControls) alignmentX = CENTER_ALIGNMENT
-        scope.launch(uiThread) {
+        scope.launch {
           componentsUpdated.collect {
             if (readyToZoomToFitMask.get() != ZoomMaskConstants.ZOOM_TO_FIT_DONE_INT_MASK) {
-              checkIfReadyToZoomToFit(ZoomMaskConstants.NOTIFY_LAYOUT_CREATED_INT_MASK)
+              withContext(uiThread) {
+                checkIfReadyToZoomToFit(ZoomMaskConstants.NOTIFY_LAYOUT_CREATED_INT_MASK)
+              }
             }
           }
         }
@@ -440,12 +443,7 @@ abstract class DesignSurface<T : SceneManager>(
                 width > 0 &&
                 height > 0
             ) {
-              val hasModelAttached =
-                checkIfReadyToZoomToFit(ZoomMaskConstants.NOTIFY_COMPONENT_RESIZED_INT_MASK)
-              if (!hasModelAttached) {
-                // No model is attached, ignore the setup of initial zoom level.
-                return
-              }
+              checkIfReadyToZoomToFit(ZoomMaskConstants.NOTIFY_COMPONENT_RESIZED_INT_MASK)
             }
             // We rebuilt the scene to make sure all SceneComponents are placed at right positions.
             sceneManagers.forEach { manager: T -> manager.scene.needsRebuildList() }
@@ -534,8 +532,6 @@ abstract class DesignSurface<T : SceneManager>(
 
   @GuardedBy("listenersLock") private val listeners = mutableListOf<DesignSurfaceListener>()
 
-  @GuardedBy("listenersLock") private val zoomListeners = mutableListOf<PanZoomListener>()
-
   fun addListener(listener: DesignSurfaceListener) {
     listenersLock.withLock {
       // Ensure single registration
@@ -548,33 +544,8 @@ abstract class DesignSurface<T : SceneManager>(
     listenersLock.withLock { listeners.remove(listener) }
   }
 
-  fun addPanZoomListener(listener: PanZoomListener) {
-    listenersLock.withLock {
-      // Ensure single registration
-      zoomListeners.remove(listener)
-      zoomListeners.add(listener)
-    }
-  }
-
-  fun removePanZoomListener(listener: PanZoomListener) {
-    listenersLock.withLock { zoomListeners.remove(listener) }
-  }
-
   private fun clearListeners() {
-    listenersLock.withLock {
-      listeners.clear()
-      zoomListeners.clear()
-    }
-  }
-
-  /**
-   * Gets a copy of [zoomListeners] under a lock. Use this method instead of accessing the listeners
-   * directly.
-   */
-  private fun getZoomListeners(): ImmutableList<PanZoomListener> {
-    listenersLock.withLock {
-      return ImmutableList.copyOf(zoomListeners)
-    }
+    listenersLock.withLock { listeners.clear() }
   }
 
   /**
@@ -587,11 +558,17 @@ abstract class DesignSurface<T : SceneManager>(
     }
   }
 
+  private val _modelChanged = MutableSharedFlow<Unit>()
+
+  /** The [DesignSurface]'s [models] has changed. */
+  val modelChanged = _modelChanged.asSharedFlow()
+
   private fun notifyModelsChanged(models: List<NlModel?>) {
     val listeners = getSurfaceListeners()
     for (listener in listeners) {
       runInEdt { listener.modelsChanged(this, models) }
     }
+    scope.launch { _modelChanged.emit(Unit) }
   }
 
   private fun notifySelectionChanged(newSelection: List<NlComponent>) {
@@ -686,16 +663,14 @@ abstract class DesignSurface<T : SceneManager>(
       revalidateScrollArea()
       return
     }
-    if (shouldStoreScale) {
-      models.firstOrNull()?.let { storeCurrentScale(it) }
-    }
+    models.firstOrNull()?.let { storeCurrentScale(it) }
     revalidateScrollArea()
-    notifyScaleChanged(update.previousScale, update.newScale)
+    scope.launch { _zoomChanged.emit(Unit) }
   }
 
   /** Save the current zoom level from the file of the given [NlModel]. */
   private fun storeCurrentScale(model: NlModel) {
-    if (!isKeepingScaleWhenReopen()) {
+    if (!shouldStoreScale) {
       return
     }
     val state = getInstance(project).surfaceState
@@ -703,16 +678,18 @@ abstract class DesignSurface<T : SceneManager>(
     state.saveFileScale(project, model.virtualFile, zoomController)
   }
 
-  private fun notifyScaleChanged(previousScale: Double, newScale: Double) {
-    for (listener in getZoomListeners()) {
-      listener.zoomChanged(previousScale, newScale)
-    }
-  }
+  private val _zoomChanged = MutableSharedFlow<Unit>()
+
+  /** The [DesignSurface] screen scale has changed. */
+  val zoomChanged = _zoomChanged.asSharedFlow()
+
+  private val _panningChanged = MutableSharedFlow<Unit>()
+
+  /** The scrollbars value has changed. */
+  val panningChanged = _panningChanged.asSharedFlow()
 
   protected fun notifyPanningChanged() {
-    for (listener in getZoomListeners()) {
-      listener.panningChanged()
-    }
+    scope.launch { _panningChanged.emit(Unit) }
   }
 
   /**
@@ -829,10 +806,6 @@ abstract class DesignSurface<T : SceneManager>(
     }
   }
 
-  protected open fun isKeepingScaleWhenReopen(): Boolean {
-    return true
-  }
-
   /**
    * Restore the zoom level if it can be loaded from persistent settings, otherwise zoom-to-fit.
    *
@@ -841,45 +814,21 @@ abstract class DesignSurface<T : SceneManager>(
    */
   @UiThread
   private fun restoreZoomOrZoomToFit(): Boolean {
-    val model = model ?: return false
-    if (!restorePreviousScale(model)) {
+    if (!restorePreviousScale()) {
       zoomController.zoomToFit()
     }
     return true
   }
 
   /**
-   * Apply zoom to fit if there is a stored zoom in the persistent settings, it does nothing
-   * otherwise.
+   * Load the saved zoom level from the file.
    *
-   * Because zoom to fit scale gets calculated whenever [DesignSurface] changes its space or number
-   * of items, this function clear-up the stored zoom and replace it with the newly calculated zoom
-   * to fit value.
+   * @return true if the previous zoom level is restored, returns false if the previous zoom level
+   *   is not restored or [NlModel] is null.
    */
-  fun zoomToFitIfStorageNotEmpty() {
-    if (isZoomStored()) {
-      zoomController.zoomToFit()
-    }
-  }
-
-  /**
-   * Checks if there is zoom level stored from persistent settings.
-   *
-   * @return true if persistent settings contains a stored zoom, false otherwise.
-   */
-  private fun isZoomStored(): Boolean {
+  fun restorePreviousScale(): Boolean {
     val model = model ?: return false
-    return getInstance(model.project)
-      .surfaceState
-      .loadFileScale(project, model.virtualFile, zoomController) != null
-  }
-
-  /**
-   * Load the saved zoom level from the file of the given [NlModel]. Return true if the previous
-   * zoom level is restored, false otherwise.
-   */
-  private fun restorePreviousScale(model: NlModel): Boolean {
-    if (!isKeepingScaleWhenReopen()) {
+    if (!shouldStoreScale) {
       return false
     }
     val state = getInstance(model.project).surfaceState

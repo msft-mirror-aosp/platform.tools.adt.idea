@@ -1,5 +1,4 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
-load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
 # managed by go/iml_to_build
@@ -14,6 +13,9 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/project-system:intellij.android.projectSystem[module]",
+        "//tools/base/common:studio.android.sdktools.common[module]",
+        "//tools/analytics-library/tracker:analytics-tracker[module]",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
     ],
 )
 
@@ -80,13 +82,13 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-proto[test]",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto[test]",
         "//tools/adt/idea/artwork:intellij.android.artwork[module, test]",
-        "//tools/adt/idea/testartifacts:libstudio.android-test-plugin-host-retention-proto[test]",
         "//tools/adt/idea/.idea/libraries:emulator-proto[test]",
         "//tools/analytics-library/shared:analytics-shared[module, test]",
         "//tools/adt/idea/execution/common:intellij.android.execution.common.tests[module, test]",
         "//tools/adt/idea/android-adb:intellij.android.adb[module, test]",
         "@intellij//:intellij.platform.coverage[test]",
         "//tools/base/common:studio.android.sdktools.common[module, test]",
+        "//tools/adt/idea/testartifacts:intellij.android.testartifacts[module, test]",
     ],
 )
 
@@ -121,11 +123,4 @@ maven_repository(
         "@maven//:org.mockito.mockito-core_5.12.0",
     ],
     visibility = ["//tools/adt/idea/testartifacts:__subpackages__"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
-    name = "libstudio.android-test-plugin-host-retention-proto",
-    jars = ["//tools/base/utp/android-test-plugin-host-retention-proto:libstudio.android-test-plugin-host-retention-proto.jar"],
-    visibility = ["//visibility:public"],
 )

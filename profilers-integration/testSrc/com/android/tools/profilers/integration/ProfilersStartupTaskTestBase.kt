@@ -34,7 +34,6 @@ abstract class ProfilersStartupTaskTestBase : ProfilersTestBase() {
 
   protected fun testStartUpTask() {
     taskBasedProfiling(
-      systemImage = Emulator.SystemImage.API_33,
       deployApp = false,
       testFunction = {studio, adb ->
         Thread.sleep(5000)

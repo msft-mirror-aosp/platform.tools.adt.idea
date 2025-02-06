@@ -56,6 +56,7 @@ import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.patterns.ElementPattern
 import com.intellij.patterns.PatternCondition
@@ -229,7 +230,7 @@ class DeclarativeCompletionContributor : CompletionContributor() {
         val schema = DeclarativeService.getInstance(project).getDeclarativeSchema() ?: return
 
         val identifier = parameters.position.findParentOfType<DeclarativeAssignment>()?.identifier ?: return
-        var suggestions = getEnumList(identifier, schema)
+        var suggestions = getMaybeEnumList(identifier, schema) + getMaybeBooleanList(identifier, schema)
         if (suggestions.isEmpty()) {
           suggestions = getRootFunctions(identifier, schema).map { Suggestion(it.name, FACTORY) }
         }
@@ -307,8 +308,10 @@ class DeclarativeCompletionContributor : CompletionContributor() {
         val lineStartOffset = text.substring(0, context.tailOffset).indexOfLast { it == '\n' } + 1
         val whiteSpace = " ".repeat(context.startOffset - lineStartOffset)
 
-        document.insertString(context.tailOffset, " {\n$whiteSpace  \n$whiteSpace}")
-        editor.caretModel.moveToOffset(context.tailOffset - whiteSpace.length - 2)
+        document.insertString(context.tailOffset, " {\n$whiteSpace\n$whiteSpace}")
+        val newOffset = context.tailOffset - whiteSpace.length - 2 // -2 is to skip both chars "\n}"
+        editor.caretModel.moveToOffset(newOffset)
+        CodeStyleManager.getInstance(context.project).adjustLineIndent(document, newOffset)
       }
 
       FACTORY -> {
@@ -398,11 +401,20 @@ class DeclarativeCompletionContributor : CompletionContributor() {
   private fun EntryWithContext.toSuggestionPair(rootFunction: List<PlainFunction>) =
     this.entry to Suggestion(entry.simpleName, getType(this, rootFunction))
 
-  private fun getEnumList(identifier: DeclarativeIdentifier, schemas: BuildDeclarativeSchemas): List<Suggestion> {
+  private fun getMaybeEnumList(identifier: DeclarativeIdentifier, schemas: BuildDeclarativeSchemas): List<Suggestion> {
     val suggestions = getSuggestionEntries(identifier, schemas)
     val rootFunctions = getRootPlainFunctions(identifier, schemas)
     val enum = suggestions.find { it.entry.simpleName == identifier.name && getType(it, rootFunctions) == ENUM }
     return getEnumConstants(enum).map { Suggestion(it, ElementType.ENUM_CONSTANT) }
+  }
+
+  private fun getMaybeBooleanList(identifier: DeclarativeIdentifier, schemas: BuildDeclarativeSchemas): List<Suggestion> {
+    val suggestions = getSuggestionEntries(identifier, schemas)
+    val rootFunctions = getRootPlainFunctions(identifier, schemas)
+    return if (suggestions.any { it.entry.simpleName == identifier.name && getType(it, rootFunctions) == BOOLEAN })
+      listOf(Suggestion("true", BOOLEAN), Suggestion("false", BOOLEAN))
+    else
+      listOf()
   }
 
   private fun getSuggestionEntries(parent: PsiElement,

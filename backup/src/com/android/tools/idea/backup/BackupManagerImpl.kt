@@ -39,7 +39,10 @@ import com.android.tools.idea.backup.BackupManager.Companion.NOTIFICATION_GROUP
 import com.android.tools.idea.backup.BackupManager.Source
 import com.android.tools.idea.backup.DialogFactory.DialogButton
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
+import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.flags.StudioFlags
+import com.intellij.execution.ExecutionManager
+import com.intellij.execution.process.ProcessHandler
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType.INFORMATION
 import com.intellij.notification.Notifications
@@ -172,6 +175,9 @@ internal constructor(
     return backupService.isInstalled(serialNumber, applicationId)
   }
 
+  override fun isAppSupported(applicationId: String) =
+    project.getService(ProjectAppsProvider::class.java).getApplicationIds().contains(applicationId)
+
   @UiThread
   @VisibleForTesting
   internal fun doBackup(
@@ -190,6 +196,8 @@ internal constructor(
       cancellable(),
     ) {
       reportSequentialProgress { reporter ->
+        val processes = ExecutionManager.getInstance(project).getRunningProcesses()
+        processes.find { it.applicationId == applicationId }?.detachProcess()
         val listener = BackupProgressListener(reporter::onStep)
         val result = backupService.backup(serialNumber, applicationId, type, backupFile, listener)
         val operation = message("backup")
@@ -285,3 +293,6 @@ internal constructor(
 private fun SequentialProgressReporter.onStep(step: Step) {
   nextStep(step.step * 100 / step.totalSteps, step.text)
 }
+
+private val ProcessHandler.applicationId: String?
+  get() = getUserData(AndroidSessionInfo.KEY)?.applicationId

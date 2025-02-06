@@ -51,15 +51,11 @@ class ApkModuleSystem(override val module: Module): AndroidModuleSystem {
   override fun registerDependency(coordinate: GradleCoordinate, type: DependencyType) =
     throw UnsupportedOperationException("Cannot register dependencies in ApkModuleSystem")
 
-  override fun canGeneratePngFromVectorGraphics(): CapabilityStatus =
-    delegate.canGeneratePngFromVectorGraphics()
-
   override fun getResolveScope(scopeType: ScopeType): GlobalSearchScope =
     delegate.getResolveScope(scopeType)
 
   override val submodules: Collection<Module> = listOf()
 
-  // TODO: suspiciously, this is "required" early by determineDataBindingMode in LayoutBindingModuleCache.  I think that might be spurious.
   override fun getResolvedDependency(coordinate: GradleCoordinate, scope: DependencyScopeType): GradleCoordinate? = null
 
   override fun getAndroidLibraryDependencies(scope: DependencyScopeType): Collection<ExternalAndroidLibrary> = listOf()
