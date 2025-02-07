@@ -255,8 +255,7 @@ class VitalsTabTest {
     runBlocking(AndroidDispatchers.uiThread) {
       val tab = createTab()
       val fakeUi = FakeUi(tab)
-      // Consume Enable from Insight toolwindow being visible
-      controllerRule.consumeNext()
+
       controllerRule.consumeInitialState(
         LoadingState.Ready(
           IssueResponse(
@@ -284,8 +283,7 @@ class VitalsTabTest {
     runBlocking(AndroidDispatchers.uiThread) {
       val tab = createTab()
       val fakeUi = FakeUi(tab)
-      // Consume Enable from Insight toolwindow being visible
-      controllerRule.consumeNext()
+
       controllerRule.consumeInitialState(
         LoadingState.Ready(
           IssueResponse(
@@ -315,8 +313,7 @@ class VitalsTabTest {
     runBlocking(AndroidDispatchers.uiThread) {
       val tab = createTab()
       val fakeUi = FakeUi(tab)
-      // Consume Enable from Insight toolwindow being visible
-      controllerRule.consumeNext()
+
       controllerRule.consumeInitialState(
         LoadingState.Ready(
           IssueResponse(
@@ -346,8 +343,7 @@ class VitalsTabTest {
     runBlocking(AndroidDispatchers.uiThread) {
       val tab = createTab()
       val fakeUi = FakeUi(tab)
-      // Consume Enable from Insight toolwindow being visible
-      controllerRule.consumeNext()
+
       controllerRule.consumeInitialState(
         LoadingState.Ready(
           IssueResponse(
