@@ -184,6 +184,12 @@ public final class StudioFlags {
     "Allows the XR template to be used.",
     enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> NPW_ENABLE_NAVIGATION_UI_TEMPLATE = new BooleanFlag(
+    NPW, "navigationui.template",
+    "Enable Navigation UI template",
+    "Allows the Navigation UI template to be used.",
+    enabledUpTo(CANARY));
+
   public static final Flag<Boolean> NPW_NEW_KOTLIN_MULTIPLATFORM_MODULE = new BooleanFlag(
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.",
@@ -439,7 +445,7 @@ public final class StudioFlags {
     "install.use.pm.terminate",
     "When installing via the Package Manager, do not use the --dont-kill flag and skip process termination for API33+",
     "We assume there are no race conditions with the package manager and give full control to it.",
-    true);
+    false);
 
   public static final Flag<Boolean> SUPPORT_CUSTOM_ARTIFACTS = new BooleanFlag(
     RUNDEBUG,
@@ -1194,7 +1200,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> SCREENSHOT_STREAMLINED_SAVING = new BooleanFlag(
     SCREENSHOT, "streamlined.saving", "Save Screenshots and Screen Recordings without Asking User",
     "Save screenshots and screen recordings without asking user",
-    false);
+    enabledUpTo(CANARY));
+  public static final Flag<Boolean> SCREENSHOT_RESIZING = new BooleanFlag(
+    SCREENSHOT, "resizing", "Allow Screenshots to Be Resized",
+    "Allow screenshots to be resized",
+    enabledUpTo(CANARY));
   //endregion
 
   // region Device Definition Download Service
@@ -1493,7 +1503,7 @@ public final class StudioFlags {
     COMPOSE, "preview.resizing",
     "Enable resizing for Compose Preview",
     "If enabled, the user can resize the Compose Preview",
-    false
+    enabledUpTo(DEV)
   );
 
   public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = new BooleanFlag(
@@ -2101,6 +2111,12 @@ public final class StudioFlags {
                     "Attach the currently open files' paths and contents with chat queries.",
                     false);
 
+  public static final Flag<Boolean> STUDIOBOT_ASK_GEMINI_INCLUDE_BUILD_FILES_IN_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "askgemini.include.build.files.in.context",
+                    "Allow build files in 'Ask Gemini' context",
+                    "Flag to guard whether to include build configuration files in context of Ask Gemini queries",
+                    enabledUpTo(CANARY));
+
   public static final Flag<Boolean> STUDIOBOT_PROMPT_LIBRARY_ENABLED =
     new BooleanFlag(STUDIOBOT, "prompt.library",
                     "Enable Prompt Library",
@@ -2150,7 +2166,6 @@ public final class StudioFlags {
                     "Use AI to fix simple compiler errors",
                     "Editor action to provide quick fixes for errors", enabledUpTo(CANARY));
 
-
   public static final Flag<Boolean> STUDIOBOT_ATTACHMENTS =
     new BooleanFlag(STUDIOBOT, "attachments",
                     "Enable action to add attachments",
@@ -2181,14 +2196,6 @@ public final class StudioFlags {
                 "How many candidates to request for each generation",
                 "How many candidates to request for each generation",
                 1);
-
-  private static final int APOLLO_GENERATION_MODEL_CONTEXT_SIZE = 8192;
-
-  public static final Flag<Integer> STUDIOBOT_GENERATION_MODEL_CONTEXT_SIZE_TOKENS =
-    new IntFlag(STUDIOBOT, "generations.model.context.size",
-                "Generation model context size in tokens",
-                "Generation model context size in tokens",
-                APOLLO_GENERATION_MODEL_CONTEXT_SIZE);
 
   public static final Flag<Integer> STUDIOBOT_CHAT_MODEL_INPUT_TOKEN_LIMIT =
     new IntFlag(STUDIOBOT, "chat.model.input.tokens",

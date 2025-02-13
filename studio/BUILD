@@ -1,4 +1,6 @@
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+load("@rules_java//java:defs.bzl", "java_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
@@ -174,6 +176,8 @@ studio_plugin(
             "//tools/adt/idea/android-lint:intellij.android.lint",
             "//tools/adt/idea/android-templates:intellij.android.templates",
             "//tools/adt/idea/apkanalyzer:intellij.android.apkanalyzer",
+            "//tools/adt/idea/apkanalyzer/apk:intellij.android.apkanalyzer.apk",
+            "//tools/adt/idea/apkanalyzer/gradle:intellij.android.apkanalyzer.gradle",
             "//tools/base/profgen/profgen:studio.android.sdktools.profgen",
             "//tools/adt/idea/app-inspection/api:app-inspection.api",
             "//tools/adt/idea/app-inspection/ide:app-inspection.ide",
@@ -328,6 +332,7 @@ studio_plugin(
             "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
             "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
             "//tools/base/ddmlib:studio.android.sdktools.ddmlib",
+            "//tools/base/kexter:studio.android.sdktools.kexter",
             "//tools/base/jdwp-scache:studio.android.sdktools.jdwpscache",
             "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
             "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
@@ -763,6 +768,19 @@ studio_plugin(
         "@intellij//:intellij.platform.vcs.log.impl",
         "@intellij//:org.jetbrains.kotlin",
     ],
+)
+
+studio_plugin(
+    name = "com.android.altlang.soong",
+    directory = "soong-plugin",
+    libs = [
+        "//tools/vendor/google/alt-lang/soong/parser-prereqs:soong-parser-prereqs",
+        "//tools/vendor/google/alt-lang/soong/plugin:libblueprint-lexer-parser",
+    ],
+    modules = {
+        "soong-plugin.jar": ["//tools/vendor/google/alt-lang/soong/plugin:soong-plugin"],
+    },
+    visibility = ["//visibility:public"],
 )
 
 exports_files([

@@ -28,9 +28,8 @@ import com.intellij.util.ui.UIUtil;
 import java.awt.Component;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Objects;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -63,7 +62,7 @@ public class IconPickerDialogTest extends LightPlatformTestCase {
 
     UIUtil.findComponentsOfType(pickerDialog.createCenterPanel(), JComboBox.class).forEach(box -> {
       Object item = box.getSelectedItem();
-      if (item instanceof String && item.equals("Style 1")) {
+      if (Objects.requireNonNull(item).toString().equals("Style 1")) {
         // Select the "Style 2" style.
         box.setSelectedIndex(1);
       }
@@ -82,7 +81,7 @@ public class IconPickerDialogTest extends LightPlatformTestCase {
 
     UIUtil.findComponentsOfType(pickerDialog.createCenterPanel(), JComboBox.class).forEach(box -> {
       Object item = box.getSelectedItem();
-      if (item instanceof String && item.equals("All")) {
+      if (Objects.requireNonNull(item).toString().equals("All")) {
         // Select category: "Category3" which should only have 1 icon: 'my_icon_2.xml'.
         box.setSelectedIndex(3);
       }
@@ -120,6 +119,44 @@ public class IconPickerDialogTest extends LightPlatformTestCase {
     assertThat(tableToString(dialog.getTable())).isEqualTo(
       "style1 my icon 2                                                                                                        \n"
     );
+    dialog.close(DialogWrapper.CLOSE_EXIT_CODE);
+  }
+
+  public void testMaterialSymbolsStylesShowAtTheTop() {
+    IconPickerDialog dialog = getInitializedIconPickerDialog(
+      new IconPickerDialog(null, new TestUrlMetadataProvider(ICONS_PATH + "icons_metadata_with_material_symbols_test.txt"), new TestUrlLoaderProvider())
+    );
+
+    JComboBox<?> stylesBox = UIUtil.findComponentsOfType(dialog.createCenterPanel(), JComboBox.class)
+      .stream()
+      .filter((box) -> "Styles".equals(box.getName()))
+      .findFirst()
+      .orElseThrow();
+
+    WaitFor wait = new WaitFor(3000) {
+      @Override
+      protected boolean condition() {
+        return stylesBox.getModel().getSize() == 4;
+      }
+    };
+    assertTrue("Styles were not correctly populated", wait.isConditionRealized());
+
+    StringBuilder stylesString = new StringBuilder();
+    for (int i = 0; i < stylesBox.getModel().getSize(); i++) {
+      stylesString.append(stylesBox.getModel().getElementAt(i)).append("\n");
+    }
+
+    assertEquals(
+      """
+      Material Symbols Style 1
+      Material Symbols Style 2
+      Style 1
+      Style 2
+      """,
+      stylesString.toString()
+    );
+
+
     dialog.close(DialogWrapper.CLOSE_EXIT_CODE);
   }
 

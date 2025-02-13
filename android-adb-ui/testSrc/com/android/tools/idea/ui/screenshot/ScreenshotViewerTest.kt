@@ -50,6 +50,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.impl.EditorWindow
 import com.intellij.openapi.fileEditor.impl.FileEditorOpenOptions
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper.CLOSE_EXIT_CODE
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
@@ -126,6 +127,28 @@ class ScreenshotViewerTest {
     viewer.rootPane.setSize(viewer.rootPane.width + 50, viewer.rootPane.width + 100)
     ui.layoutAndDispatchEvents()
     assertThat(zoomModel.zoomFactor).isWithin(1.0e-6).of(1.0)
+  }
+
+  @Test
+  fun testResolutionChange() {
+    StudioFlags.SCREENSHOT_RESIZING.overrideForTest(true, testRootDisposable)
+    val config = service<ScreenshotConfiguration>()
+    assertThat(config.scale == 1.0)
+    config.scale = 0.5
+    val screenshotImage = ScreenshotImage(createImage(100, 200), 0, DeviceType.HANDHELD, DISPLAY_INFO_PHONE)
+    val viewer = createScreenshotViewer(screenshotImage, DeviceScreenshotDecorator())
+    val ui = FakeUi(viewer.rootPane)
+    val imageComponent = ui.getComponent<ImageComponent>()
+    waitForCondition(2.seconds) { imageComponent.document.value != null }
+    val image = imageComponent.document.value
+    assertThat(image.width).isEqualTo(50)
+    assertThat(image.height).isEqualTo(100)
+    @Suppress("UNCHECKED_CAST") val resolutionComboBox = ui.getComponent<ComboBox<*>> { it.item is Int } as ComboBox<Int>
+    assertThat(resolutionComboBox.item).isEqualTo(50)
+    resolutionComboBox.item = 25
+    assertThat(config.scale == 0.25)
+    waitForCondition(2.seconds) { imageComponent.document.value?.width == 25 }
+    assertThat(imageComponent.document.value.height).isEqualTo(50)
   }
 
   @Test
@@ -310,6 +333,7 @@ class ScreenshotViewerTest {
 
   @Test
   fun testSave_Phone() {
+    StudioFlags.SCREENSHOT_STREAMLINED_SAVING.overrideForTest(false, testRootDisposable)
     val screenshotImage = ScreenshotImage(createImage(200, 180), 0, DeviceType.HANDHELD, DISPLAY_INFO_PHONE)
     val viewer = createScreenshotViewer(screenshotImage, DeviceScreenshotDecorator())
     val tempFile = FileUtil.createTempFile("saved_screenshot", SdkConstants.DOT_PNG)
@@ -353,6 +377,7 @@ class ScreenshotViewerTest {
 
   @Test
   fun testSave_Wear() {
+    StudioFlags.SCREENSHOT_STREAMLINED_SAVING.overrideForTest(false, testRootDisposable)
     val screenshotImage = ScreenshotImage(createImage(384, 384), 0, DeviceType.WEAR, DISPLAY_INFO_WATCH)
     val viewer = createScreenshotViewer(screenshotImage, DeviceScreenshotDecorator())
     val ui = FakeUi(viewer.rootPane)

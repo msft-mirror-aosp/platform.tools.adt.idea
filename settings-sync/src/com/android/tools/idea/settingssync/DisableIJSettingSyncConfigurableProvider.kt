@@ -16,12 +16,17 @@
 package com.android.tools.idea.settingssync
 
 import com.android.tools.idea.flags.StudioFlags
-import com.intellij.ide.ApplicationInitializedListener
+import com.intellij.ide.AppLifecycleListener
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableEP
+
+private val IJ_SETTINGS_SYNC_PLUGIN_ID = PluginId.getId("com.intellij.settingsSync")
+
+internal fun checkIfFeaturePluginEnabled(): Boolean =
+  PluginManagerCore.getPlugin(IJ_SETTINGS_SYNC_PLUGIN_ID)?.isEnabled == true
 
 /**
  * This is to hide the IJ feature configurable behind the feature flag.
@@ -29,22 +34,17 @@ import com.intellij.openapi.options.ConfigurableEP
  * If users explicitly enable the feature plugin from the JetBrains Marketplace, this configurable
  * will still be visible.
  */
-class DisableIJSettingSyncConfigurableProvider : ApplicationInitializedListener {
-  private val IJ_SETTINGS_SYNC_PLUGIN_ID = PluginId.getId("com.intellij.settingsSync")
-
-  override suspend fun execute() {
-    if (!StudioFlags.SETTINGS_SYNC_ENABLED.get() && !checkIfPluginEnabled()) {
+class DisableIJSettingSyncConfigurableProvider : AppLifecycleListener {
+  override fun appFrameCreated(commandLineArgs: List<String?>) {
+    if (!StudioFlags.SETTINGS_SYNC_ENABLED.get() && !checkIfFeaturePluginEnabled()) {
       disableConfigurable()
     }
   }
 
-  private fun checkIfPluginEnabled(): Boolean =
-    PluginManagerCore.getPlugin(IJ_SETTINGS_SYNC_PLUGIN_ID)?.isEnabled == true
-
   private fun disableConfigurable() {
     val extension =
       Configurable.APPLICATION_CONFIGURABLE.extensionList.firstOrNull {
-        it.providerClass == "com.intellij.settingsSync.config.SettingsSyncConfigurableProvider"
+        it.providerClass == "com.intellij.settingsSync.core.config.SettingsSyncConfigurableProvider"
       } ?: return
 
     ExtensionPointName<ConfigurableEP<Configurable>>("com.intellij.applicationConfigurable")

@@ -79,6 +79,7 @@ import com.android.tools.idea.gradle.model.ndk.v2.NativeBuildSystem
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.project.AndroidGradleProjectStartupActivity
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
+import com.android.tools.idea.gradle.project.build.invoker.GradleBuildResult
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
@@ -121,7 +122,6 @@ import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.projectsystem.TestProjectSystemBuildManager
-import com.android.tools.idea.projectsystem.gradle.getHolderModule
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
@@ -129,6 +129,7 @@ import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.android.tools.idea.projectsystem.gradle.getGradleIdentityPath
 import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.getHolderModule
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
 import com.android.tools.idea.sdk.IdeSdks
@@ -144,7 +145,10 @@ import com.intellij.build.BuildProgressListener
 import com.intellij.build.BuildViewManager
 import com.intellij.build.SyncViewManager
 import com.intellij.build.events.BuildEvent
+import com.intellij.build.events.BuildIssueEvent
+import com.intellij.build.events.FinishBuildEvent
 import com.intellij.build.events.MessageEvent
+import com.intellij.build.events.impl.FinishBuildEventImpl
 import com.intellij.build.internal.DummySyncViewManager
 import com.intellij.externalSystem.JavaProjectData
 import com.intellij.gradle.toolingExtension.impl.model.sourceSetModel.DefaultGradleSourceSetModel
@@ -202,6 +206,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ThrowableConsumer
+import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.MultiMap
 import com.intellij.util.messages.MessageBusConnection
 import com.intellij.workspaceModel.core.fileIndex.impl.WorkspaceFileIndexImpl
@@ -212,7 +217,10 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
+import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
+import org.jetbrains.kotlin.idea.core.script.SCRIPT_DEPENDENCIES_SOURCES
 import org.jetbrains.kotlin.idea.core.script.dependencies.KotlinScriptWorkspaceFileIndexContributor
+import org.jetbrains.kotlin.idea.gradleJava.scripting.GradleScriptDependenciesSource
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtension
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtensions
 import org.jetbrains.plugins.gradle.model.ExternalProject
@@ -232,6 +240,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 data class AndroidProjectModels(
@@ -2226,16 +2235,15 @@ private fun <T> openPreparedProject(
       val project = runInEdtAndGet {
         PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
 
-        if (options.disableKtsRelatedIndexing) {
-          // [KotlinScriptWorkspaceFileIndexContributor] contributes a lot of classes/sources to index in order to provide Ctrl+Space
-          // experience in the code editor. It takes approximately 4 minutes to complete. We unregister the contributor to make our tests
-          // run faster.
-          disableKtsIndexing(disposable)
-        }
-
         var afterCreateCalled = false
 
         fun afterCreate(project: Project) {
+          if (options.disableKtsRelatedIndexing) {
+            // [KotlinScriptWorkspaceFileIndexContributor] contributes a lot of classes/sources to index in order to provide Ctrl+Space
+            // experience in the code editor. It takes approximately 4 minutes to complete. We unregister the contributor to make our tests
+            // run faster.
+            disableKtsIndexing(project, disposable)
+          }
           // After create is invoked via three different execution paths:
           //   (1) when we import a new Android Gradle project that does not yet have a `.idea` directory. In this case this method is
           //       called `GradleProjectImporter.createProject`;
@@ -2607,6 +2615,30 @@ fun <T> Project.buildAndWait(eventHandler: (BuildEvent) -> Unit = {}, buildStart
   }
 }
 
+class GradleBuildResultWithEvents<T: GradleBuildResult>(val result: T, val events: List<BuildEvent>): GradleBuildResult by result
+
+fun <T: GradleBuildResult> Project.buildAndAssertSuccess(expectSuccess: Boolean = true, invoker: (GradleBuildInvoker) -> ListenableFuture<T>) : GradleBuildResultWithEvents<T> {
+  val buildEvents = ContainerUtil.createConcurrentList<BuildEvent>()
+  val allBuildEventsProcessedLatch = CountDownLatch(1)
+  // Build
+  val result = buildAndWait(eventHandler = { event ->
+    if (event !is BuildIssueEvent && event !is MessageEvent && event !is FinishBuildEvent) return@buildAndWait
+    buildEvents.add(event)
+    // Events are generated in a separate thread(s) and if we don't wait for the FinishBuildEvent
+    // some might not reach here by the time we inspect them below resulting in flakiness (like b/318490086).
+    if (event is FinishBuildEventImpl) {
+      allBuildEventsProcessedLatch.countDown()
+    }
+  }, invoker = invoker)
+  if (result.isBuildSuccessful == expectSuccess) {
+    for (event in buildEvents) {
+      println(event.message)
+    }
+  }
+  allBuildEventsProcessedLatch.await(30, TimeUnit.SECONDS)
+  return GradleBuildResultWithEvents<T>(result, buildEvents)
+}
+
 // HACK: b/143864616 and ag/14916674 Bazel hack, until missing dependencies are available in "offline-maven-repo"
 fun updatePluginsResolutionManagement(origContent: String, pluginDefinitions: String): String {
   val pluginsResolutionStrategy =
@@ -2634,8 +2666,12 @@ private fun Project.maybeOutputDiagnostics() {
   }
 }
 
-fun disableKtsIndexing(disposable: Disposable) {
+fun disableKtsIndexing(project: Project, disposable: Disposable) {
   val ep = WorkspaceFileIndexImpl.EP_NAME
   val filteredExtensions = ep.extensionList.filter { it !is KotlinScriptWorkspaceFileIndexContributor }
   ExtensionTestUtil.maskExtensions(ep, filteredExtensions, disposable)
+
+  if (KotlinPluginModeProvider.isK2Mode()) {
+    SCRIPT_DEPENDENCIES_SOURCES.getPoint(project).unregisterExtension(GradleScriptDependenciesSource::class.java)
+  }
 }

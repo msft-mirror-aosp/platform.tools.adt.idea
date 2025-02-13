@@ -137,10 +137,6 @@ class EmulatorToolWindowPanelTest {
     @JvmField
     @ClassRule
     val iconRule = IconLoaderRule()
-
-    init {
-      System.setProperty("idea.leak.check.enabled", "false") // TODO(b/394175845): fix leaks.
-    }
   }
 
   private val projectRule = ProjectRule()
@@ -1202,7 +1198,7 @@ class EmulatorToolWindowPanelTest {
                                maxPercentDifferentLinux: Double = 0.0003,
                                maxPercentDifferentMac: Double = 0.0003,
                                maxPercentDifferentWindows: Double = 0.0003) {
-    ui.updateToolbars()
+    ui.updateToolbarsIfNecessary()
     val image = ui.render()
     val scaledImage = ImageUtils.scale(image, 0.5)
     val maxPercentDifferent = when {

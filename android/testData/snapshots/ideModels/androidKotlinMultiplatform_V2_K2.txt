@@ -127,11 +127,6 @@ LIBRARY_TABLE
         sourceSet                     : commonMain (IdeModuleSourceSetImpl)
             canBeConsumed                 : true
         variant                       : androidMain
-MODULE                        : Kotlin Scripts.KotlinBuildScript.androidLib:build.gradle.kts
-MODULE                        : Kotlin Scripts.KotlinBuildScript.app:build.gradle.kts
-MODULE                        : Kotlin Scripts.KotlinBuildScript.kmpFirstLib:build.gradle.kts
-MODULE                        : Kotlin Scripts.KotlinBuildScript.kmpJvmOnly:build.gradle.kts
-MODULE                        : Kotlin Scripts.KotlinBuildScript.kmpSecondLib:build.gradle.kts
 MODULE                        : Kotlin_Multiplatform
     externalProject               : Kotlin Multiplatform (DefaultExternalProject)
         path                          : : [-]
@@ -849,6 +844,7 @@ MODULE                        : Kotlin_Multiplatform
                         androidUnitTestResolvableDependenciesMetadata     : <empty>
                         androidUnitTestRuntimeClasspath         : <empty>
                         androidUnitTestRuntimeOnly    : <empty>
+                        annotationProcessorClasspath  : <empty>
                         - archives                    : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
                         commonMainApi                 : <empty>
                         commonMainApiDependenciesMetadata       : <empty>

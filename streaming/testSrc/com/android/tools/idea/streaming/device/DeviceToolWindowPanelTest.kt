@@ -205,6 +205,7 @@ class DeviceToolWindowPanelTest {
     assertThat(panel.preferredFocusableComponent).isEqualTo(panel.primaryDisplayView)
     assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_WEAR)
 
+    fakeUi.updateToolbarsIfNecessary()
     // Check push button actions.
     val pushButtonCases = listOf(
       Pair("Button 1", AKEYCODE_STEM_PRIMARY),
@@ -511,7 +512,7 @@ class DeviceToolWindowPanelTest {
                                maxPercentDifferentLinux: Double = 0.0003,
                                maxPercentDifferentMac: Double = 0.0003,
                                maxPercentDifferentWindows: Double = 0.0003) {
-    fakeUi.updateToolbars()
+    fakeUi.updateToolbarsIfNecessary()
     val image = fakeUi.render()
     val maxPercentDifferent = when {
       SystemInfo.isMac -> maxPercentDifferentMac

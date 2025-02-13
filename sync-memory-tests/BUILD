@@ -1,4 +1,5 @@
 load("@exec_properties//:constants.bzl", "LARGE_MACHINE")
+load("@rules_java//java:defs.bzl", "java_binary")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:kotlin.bzl", "kotlin_library")
 
@@ -216,8 +217,7 @@ iml_module(
         "//tools/data-binding:data_binding_runtime.zip",
     ],
     test_jvm_flags = [
-        "-agentpath:$(location //tools/adt/idea/memory-usage/src/main/native:liblightweight_heap_traverse)",
-        "-Dmemory.agent.path=$(location //tools/adt/idea/memory-usage/src/main/native:liblightweight_heap_traverse)",
+        "-Didea.skip.indices.initialization=true",
     ],
     test_srcs = ["testSrc"],
     test_tags = [

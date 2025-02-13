@@ -705,7 +705,7 @@ class ComposePreviewRepresentation(
           composeWorkBench.mainSurface,
           navigationHandler,
           isSelectionEnabled = true,
-          isPopUpEnabled =  { StudioFlags.COMPOSE_PREVIEW_COMPONENT_POP_UP.get() }
+          isPopUpEnabled = { StudioFlags.COMPOSE_PREVIEW_COMPONENT_POP_UP.get() },
         ),
       )
       .also { delegateInteractionHandler.delegate = it }
@@ -788,11 +788,23 @@ class ComposePreviewRepresentation(
           updateLayoutManager(it)
           // Sets that the mode is changing.
           isPreviewModeChanging.set(true)
-          // Because of the Mode change the zoom need to be recalculated after the render.
-          surface.resetZoomToFitNotifier()
+          // A mode change requires recalculating zoom-to-fit, so the zoom notifier is reset.
+          // However, a resize of the surface is not expected for all mode changes.
+          surface.resetZoomToFitNotifier(
+            shouldWaitForResize = it.expectResizeOnEnter(lastMode, project)
+          )
           onEnter(it)
         } else {
           updateLayoutManager(it)
+          if ((lastMode as? PreviewMode.Focus)?.isFocusModeWithDifferentTabs(it) == true) {
+            // If both the previous and the current previewModes are of type Focus, but they
+            // are showing two different previewElements (two different tabs), then we should
+            // apply zoom-to-fit.
+            // We don't need to wait for surface to resize because Focus mode has already run
+            // onEnter() and the surface is already with the correct updated sizes.
+            isPreviewModeChanging.set(true)
+            surface.resetZoomToFitNotifier(false)
+          }
         }
         lastMode = it
       }

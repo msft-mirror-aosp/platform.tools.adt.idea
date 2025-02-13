@@ -363,14 +363,15 @@ public final class AdbService implements Disposable {
       switch (AdbOptionsService.getInstance().getAdbServerMdnsBackend()) {
         case OPENSCREEN -> options.withEnv("ADB_MDNS_OPENSCREEN", "1");
         case BONJOUR -> options.withEnv("ADB_MDNS_OPENSCREEN", "0");
+        case DISABLED -> options.withEnv("ADB_MDNS", "0");
         case DEFAULT -> {
         }
       }
     }
 
     switch (AdbOptionsService.getInstance().getAdbServerBurstMode()) {
-      case ENABLED ->  options.withEnv("ADB_DELAYED_ACK", "1");
-      case DISABLED ->  options.withEnv("ADB_DELAYED_ACK", "0");
+      case ENABLED ->  options.withEnv("ADB_BURST_MODE", "1");
+      case DISABLED ->  options.withEnv("ADB_BURST_MODE", "0");
       case DEFAULT -> {}
     }
 

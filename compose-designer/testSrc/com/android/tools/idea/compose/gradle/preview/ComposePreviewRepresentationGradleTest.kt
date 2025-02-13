@@ -23,6 +23,7 @@ import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.compile.fast.isSuccess
 import com.android.tools.idea.common.surface.SceneViewPanel
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.gradle.ComposePreviewFakeUiGradleRule
 import com.android.tools.idea.compose.gradle.getPsiFile
 import com.android.tools.idea.compose.preview.ComposePreviewRefreshType
@@ -76,7 +77,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -151,7 +151,6 @@ class ComposePreviewRepresentationGradleTest {
     }
   }
 
-  @Ignore("b/390401504")
   @Test
   fun `panel renders correctly first time`() = runBlocking {
     withContext(uiThread) { fakeUi.layoutAndDispatchEvents() }
@@ -611,6 +610,61 @@ class ComposePreviewRepresentationGradleTest {
   }
 
   @Test
+  fun `test zoom-to-fit when switch Focus tabs`() = runBlocking {
+    val defaultModeScale = 1.5
+    previewView.mainSurface.zoomController.setScale(defaultModeScale)
+
+    val previewElements =
+      previewView.mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
+    val firstPreviewElement = previewElements.single { "DefaultPreview" in it.methodFqn }
+    val secondSelectedPreviewElement =
+      previewElements.single { "MyPreviewWithInline" in it.methodFqn }
+
+    // Ensures that the current mode is Default and the zoom is not a zoom-to-fit scale.
+    assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Default)
+    assertTrue(previewView.mainSurface.zoomController.canZoomToFit())
+
+    // Start Focus mode with the first tab.
+    projectRule.runAndWaitForRefresh(allRefreshesFinishTimeout = 35.seconds) {
+      composePreviewRepresentation.setMode(PreviewMode.Focus(firstPreviewElement))
+    }
+    delayUntilCondition(delayPerIterationMs = 500, timeout = 10.seconds) {
+      composePreviewRepresentation.mode.value is PreviewMode.Focus
+    }
+    previewView.mainSurface.notifyComponentResizedForTest()
+    delayUntilCondition(delayPerIterationMs = 250) {
+      !previewView.mainSurface.zoomController.canZoomToFit()
+    }
+
+    // Focus mode first tab should be in zoom-to-fit scale.
+    assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Focus)
+    assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
+
+    // Change the scale of the first tab.
+    previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+    previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+    previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+
+    // Because of the zoom change now we would be able to zoom-to-fit again.
+    assertTrue(previewView.mainSurface.zoomController.canZoomToFit())
+
+    // Switch to second tab of Focus mode.
+    projectRule.runAndWaitForRefresh(allRefreshesFinishTimeout = 35.seconds) {
+      composePreviewRepresentation.setMode(PreviewMode.Focus(secondSelectedPreviewElement))
+    }
+
+    previewView.mainSurface.notifyComponentResizedForTest()
+    previewView.mainSurface.notifyLayoutCreatedForTest()
+    delayUntilCondition(delayPerIterationMs = 250) {
+      !previewView.mainSurface.zoomController.canZoomToFit()
+    }
+
+    // Focus mode second tab should be in zoom-to-fit scale.
+    assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Focus)
+    assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
+  }
+
+  @Test
   fun `test zoom-to-fit when enable Animation inspection mode`() = runBlocking {
     val defaultModeScale = 1.5
     previewView.mainSurface.zoomController.setScale(defaultModeScale)
@@ -670,18 +724,7 @@ class ComposePreviewRepresentationGradleTest {
     assertTrue(previewView.mainSurface.zoomController.canZoomToFit())
 
     // Start Interactive Preview mode.
-    projectRule.runAndWaitForRefresh(allRefreshesFinishTimeout = 35.seconds) {
-      composePreviewRepresentation.setMode(PreviewMode.Interactive(selectedPreviewElement))
-    }
-    delayUntilCondition(delayPerIterationMs = 500, timeout = 10.seconds) {
-      composePreviewRepresentation.mode.value is PreviewMode.Interactive
-    }
-    // FakeUi doesn't call the designSurface.resize() callback needed to call the [notifyZoomToFit]
-    // when the render has finished. We need then to do notify the resize manually.
-    previewView.mainSurface.notifyComponentResizedForTest()
-    delayUntilCondition(delayPerIterationMs = 250) {
-      !previewView.mainSurface.zoomController.canZoomToFit()
-    }
+    startInteractiveMode(selectedPreviewElement)
 
     // Interactive Preview mode should be in zoom-to-fit scale.
     assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Interactive)
@@ -700,6 +743,27 @@ class ComposePreviewRepresentationGradleTest {
     }
     assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Default)
     assertEquals(defaultModeScale, previewView.mainSurface.zoomController.scale, 0.001)
+
+    // Start Interactive Preview mode.
+    startInteractiveMode(selectedPreviewElement)
+
+    // Interactive Preview again and should be in zoom-to-fit scale again.
+    assertTrue(composePreviewRepresentation.mode.value is PreviewMode.Interactive)
+    assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
+  }
+
+  private suspend fun startInteractiveMode(
+    selectedPreviewElement: PsiComposePreviewElementInstance
+  ) {
+    projectRule.runAndWaitForRefresh(allRefreshesFinishTimeout = 35.seconds) {
+      composePreviewRepresentation.setMode(PreviewMode.Interactive(selectedPreviewElement))
+    }
+    delayUntilCondition(delayPerIterationMs = 500, timeout = 10.seconds) {
+      composePreviewRepresentation.mode.value is PreviewMode.Interactive
+    }
+    delayUntilCondition(delayPerIterationMs = 250) {
+      !previewView.mainSurface.zoomController.canZoomToFit()
+    }
   }
 
   private suspend fun switchToDefaultMode() {

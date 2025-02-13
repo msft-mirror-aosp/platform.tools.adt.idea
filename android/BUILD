@@ -1,3 +1,4 @@
+load("@rules_java//java:defs.bzl", "java_binary")
 load("//tools/adt/idea/android-test-framework:check_tests.bzl", "check_tests")
 load("//tools/adt/idea/studio:studio.bzl", "studio_data")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
@@ -433,6 +434,7 @@ filegroup(
         "//tools/base/sdklib:schema-generated",
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/data-binding:compilerCommon.antlr_runtime.shaded",
+        "//tools/vendor/google/alt-lang/soong/plugin:libblueprint-lexer-parser",
         "//tools/vendor/google/asfp/base:studio-intellijext",
         "//tools/vendor/google/directaccess-client:directaccess_client_proto",
         "//tools/vendor/google/firebase/integration:libtitan_java_proto",

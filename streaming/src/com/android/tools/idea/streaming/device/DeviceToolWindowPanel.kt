@@ -19,7 +19,7 @@ import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.idea.concurrency.AndroidCoroutineScope
+import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.deviceprovisioner.DEVICE_HANDLE_KEY
 import com.android.tools.idea.streaming.core.AbstractDisplayPanel
 import com.android.tools.idea.streaming.core.DeviceId
@@ -44,6 +44,7 @@ import com.android.tools.idea.ui.screenshot.ScreenshotAction
 import com.android.tools.idea.ui.screenshot.ScreenshotOptions
 import com.android.utils.HashCodes
 import com.intellij.execution.runners.ExecutionUtil
+import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.diagnostic.thisLogger
@@ -112,17 +113,11 @@ internal class DeviceToolWindowPanel(
 
   private val deviceStateListener = object : DeviceController.DeviceStateListener {
     override fun onSupportedDeviceStatesChanged(deviceStates: List<FoldingState>) {
-      updateMainToolbarLater()
+      ActivityTracker.getInstance().inc()
     }
 
     override fun onDeviceStateChanged(deviceState: Int) {
-      updateMainToolbarLater()
-    }
-
-    private fun updateMainToolbarLater() {
-      EventQueue.invokeLater {
-        mainToolbar.updateActionsAsync()
-      }
+      ActivityTracker.getInstance().inc()
     }
   }
 
@@ -189,10 +184,7 @@ internal class DeviceToolWindowPanel(
           else -> {}
         }
 
-        EventQueue.invokeLater {
-          mainToolbar.updateActionsAsync()
-          secondaryToolbar.updateActionsAsync()
-        }
+        ActivityTracker.getInstance().inc()
       }
     })
 
@@ -249,7 +241,7 @@ internal class DeviceToolWindowPanel(
     @AnyThread
     fun initialize() {
       contentDisposable?.let {
-        AndroidCoroutineScope(it).launch {
+        it.createCoroutineScope().launch {
           val displays = try {
             deviceClient.deviceController?.getDisplayConfigurations() ?: return@launch
           }
@@ -319,8 +311,7 @@ internal class DeviceToolWindowPanel(
       val rootPanel = buildLayout(layoutRoot, newDisplays)
       displayDescriptors = newDisplays
       setRootPanel(rootPanel)
-      mainToolbar.updateActionsAsync()
-      secondaryToolbar.updateActionsAsync()
+      ActivityTracker.getInstance().inc()
     }
 
     fun buildLayout(multiDisplayState: MultiDisplayState) {
@@ -368,11 +359,10 @@ internal class DeviceToolWindowPanel(
     }
 
     private fun setRootPanel(rootPanel: JPanel) {
-      mainToolbar.updateActionsAsync() // Rotation buttons are hidden in multi-display mode.
-      secondaryToolbar.updateActionsAsync()
       centerPanel.removeAll()
       centerPanel.addToCenter(rootPanel)
       centerPanel.validate()
+      ActivityTracker.getInstance().inc()
     }
 
     private fun adjustDisplayDescriptors(displays: List<DisplayDescriptor>) {

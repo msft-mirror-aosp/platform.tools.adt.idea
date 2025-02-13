@@ -11,12 +11,14 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.projectSystem.gradle.iml"],
     lint_baseline = "lint_baseline.xml",
+    # NOTE: For edits to module_visibility, please see note at end of list
     module_visibility = [
         # Gradle Project System tools
         "//tools/adt/idea/build-attribution:intellij.android.build-attribution",
         "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd",
         "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade",
         # Project System Token implementation modules
+        "//tools/adt/idea/apkanalyzer/gradle:intellij.android.apkanalyzer.gradle",
         "//tools/adt/idea/native-symbolizer/gradle:native-symbolizer.gradle",
         "//tools/adt/idea/nav/safeargs/common/gradle:intellij.android.nav.safeargs.common.gradle",
         "//tools/adt/idea/app-inspection/ide/gradle:app-inspection.ide.gradle",
@@ -44,6 +46,11 @@ iml_module(
         "//tools/studio/google/cloud/tools/android-studio-plugin:google-cloud-tools-as",
         "//tools/adt/idea/screenshot-testing:intellij.android.screenshot-test",
     ],
+    # NOTE: If you are tempted to add to the above module_visibility list, please
+    # first read  go/as-project-system-cleanup, and discuss with and get agreement
+    # from the Gradle Project System team.  (An implementation of a "Token" -- see
+    # document in link -- is likely to be fine; a generalized dependency will need
+    # more justification.)
     resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
