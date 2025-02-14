@@ -75,6 +75,7 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
     return when (kind) {
       DECLARATIVE -> mapOf(
         "javaApplication" to JavaDclElement.JAVA_APPLICATION,
+        "javaLibrary" to JavaDclElement.JAVA_LIBRARY
       )
       else -> DEFAULT_ROOT_ELEMENTS_MAP
     }
@@ -91,6 +92,17 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
       "repositories" to RepositoriesDslElement.REPOSITORIES,
       "subprojects" to SubProjectsDslElement.SUBPROJECTS,
       "plugins" to PluginsDslElement.PLUGINS)
+
+    private fun declarativeJavaBuilder(file: GradleBuildFile): JavaDeclarativeModel {
+      file.getPropertyElement(JavaDclElement.JAVA_APPLICATION)?.let { element ->
+        return JavaDeclarativeModelImpl(element)
+      }
+      file.getPropertyElement(JavaDclElement.JAVA_LIBRARY)?.let { element ->
+        return JavaDeclarativeModelImpl(element)
+      }
+      // TODO throw exception for now but need to create add element mechanism
+      throw IllegalStateException("Cannot create java[Application|Library] dsl element")
+    }
 
     private val DEFAULT_ROOT_AVAILABLE_MODELS = listOf<BlockModelBuilder<*, GradleBuildFile>>(
       BuildScriptModel::class.java from {
@@ -133,7 +145,7 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
       },
 
       JavaDeclarativeModel::class.java from {
-        JavaDeclarativeModelImpl(it.ensurePropertyElement(JavaDclElement.JAVA_APPLICATION))
+        declarativeJavaBuilder(it)
       },
     )
 
