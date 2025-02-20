@@ -419,6 +419,13 @@ public final class StudioFlags {
     "Upon installing, if application is already on device, only send parts of the apks which have changed (the delta).",
     true);
 
+  public static final Flag<Integer> DELTA_INSTALL_CUSTOM_MAX_PATCH_SIZE = new IntFlag(
+    RUNDEBUG,
+    "deltainstall.custom.max.patch.size",
+    "Delta install Max Patch Size",
+    "The upper limit of number of bytes a delta install patch set can be before bailing out to a full install.",
+    -1); // Negative to use the PatchSetGenerator's default value of 40MB.
+
   public static final Flag<Boolean> INSTALL_WITH_ADBLIB = new BooleanFlag(
     RUNDEBUG,
     "installwithadblib",
@@ -879,7 +886,7 @@ public final class StudioFlags {
     GRADLE_IDE, "recommend.patch.releases", "Recommend upgrading to the latest patch release of AGP",
     "While stable versions of Android Studio support importing projects of newer patch releases of the same major-minor series " +
     "unless this is enabled, the upgrade assistant will not recommend those updates.",
-    false);
+    true);
 
   public static final Flag<Boolean> SUPPORT_FUTURE_AGP_VERSIONS = new BooleanFlag(
     GRADLE_IDE, "support.future.agp.versions", "Support opening projects that use future AGPs",
@@ -929,6 +936,9 @@ public final class StudioFlags {
     "Migrate project to Gradle local java.home",
     "Suggest migrating current project JDK configuration to .gradle/config.properties where gradleJvm uses the " +
     "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
+
+  public static final Flag<Boolean> RESTORE_INVALID_GRADLE_JDK_CONFIGURATION = new BooleanFlag(
+    GRADLE_IDE, "restore.invalid.gradle.jdk.configuration", "Restore invalid Gradle JDK configuration", "Restore project from invalid Gradle JDK configuration during opening.", true);
 
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = new BooleanFlag(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
@@ -1636,6 +1646,16 @@ public final class StudioFlags {
   );
   // endregion
 
+  // region Wear Declarative Watch Face
+  private static final FlagGroup WEAR_DECLARATIVE_WATCH_FACE = new FlagGroup(FLAGS, "wear.dwf", "Declarative Watch Face");
+
+  public static final Flag<Boolean> WEAR_WATCH_FACE_RUN_CONFIGURATION = new BooleanFlag(
+    WEAR_DECLARATIVE_WATCH_FACE, "run.configuration.enabled", "Enable run configuration for Declarative Watch Faces",
+    "If enabled, the Declarative Watch Face run configuration type will be available. Changing the value of this flag requires restarting Android Studio.",
+    enabledUpTo(DEV)
+  );
+  // endregion
+
   // region App Inspection
   private static final FlagGroup APP_INSPECTION = new FlagGroup(FLAGS, "appinspection", "App Inspection");
   public static final Flag<Boolean> ENABLE_APP_INSPECTION_TOOL_WINDOW = new BooleanFlag(
@@ -2085,7 +2105,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "chat.enable.context.attachment",
                     "Enable @file attachment and the context drawer.",
                     "When enabled, @file can be used to attach text files as context. Also enables the context drawer for context management.",
-                    enabledUpTo(DEV));
+                    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
@@ -2170,7 +2190,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "attachments",
                     "Enable action to add attachments",
                     "When enabled, enables the actions to manage attachments",
-                    false);
+                    enabledUpTo(CANARY));
 
   // rate limits are controlled by server flags
   public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =

@@ -42,7 +42,8 @@ import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
-import com.google.idea.blaze.base.command.buildresult.BuildResultHelper;
+import com.google.idea.blaze.base.command.buildresult.BuildResultParser;
+import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider;
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStats;
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
@@ -54,6 +55,7 @@ import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
 import com.google.idea.blaze.base.util.VersionChecker;
 import com.google.idea.blaze.base.vcs.BlazeVcsHandlerProvider.BlazeVcsHandler;
 import com.google.idea.blaze.common.Context;
+import com.google.idea.blaze.common.Interners;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.common.PrintOutput;
 import com.google.idea.blaze.common.artifact.BuildArtifactCache;
@@ -204,20 +206,21 @@ public class BazelDependencyBuilder implements DependencyBuilder {
           context, buildDependenciesBazelInvocationInfo.invocationWorkspaceFiles());
 
       BuildInvoker invoker = buildSystem.getDefaultInvoker(project, context);
-      try (BuildResultHelper buildResultHelper = invoker.createBuildResultHelper()) {
-        Optional<BuildDepsStats.Builder> buildDepsStatsBuilder =
-            BuildDepsStatsScope.fromContext(context);
-        buildDepsStatsBuilder.ifPresent(stats -> stats.setBlazeBinaryType(invoker.getType()));
-        BlazeCommand.Builder builder =
-            BlazeCommand.builder(invoker, BlazeCommandName.BUILD)
-                .addBlazeFlags(buildDependenciesBazelInvocationInfo.argsAndFlags())
-                .addBlazeFlags(buildResultHelper.getBuildFlags());
-        buildDepsStatsBuilder.ifPresent(
-            stats -> stats.setBuildFlags(builder.build().toArgumentList()));
-        Instant buildTime = Instant.now();
-        BlazeBuildOutputs outputs =
-            invoker.getCommandRunner().run(project, builder, buildResultHelper, context);
 
+      Optional<BuildDepsStats.Builder> buildDepsStatsBuilder =
+          BuildDepsStatsScope.fromContext(context);
+      buildDepsStatsBuilder.ifPresent(stats -> stats.setBlazeBinaryType(invoker.getType()));
+      BlazeCommand.Builder builder =
+          BlazeCommand.builder(invoker, BlazeCommandName.BUILD)
+              .addBlazeFlags(buildDependenciesBazelInvocationInfo.argsAndFlags());
+
+      buildDepsStatsBuilder.ifPresent(
+          stats -> stats.setBuildFlags(builder.build().toArgumentList()));
+      Instant buildTime = Instant.now();
+      try (BuildEventStreamProvider streamProvider = invoker.invoke(builder, context)) {
+        BlazeBuildOutputs outputs =
+            BlazeBuildOutputs.fromParsedBepOutput(
+                BuildResultParser.getBuildOutput(streamProvider, Interners.STRING));
         BazelExitCodeException.throwIfFailed(
             builder,
             outputs.buildResult(),
@@ -569,7 +572,8 @@ public class BazelDependencyBuilder implements DependencyBuilder {
         readArtifactInfoProtoFile(CcCompilationInfo.newBuilder(), file).build());
   }
 
-  protected <B extends Message.Builder> B readArtifactInfoProtoFile(B builder, ByteSource file)
+  @VisibleForTesting
+  public static <B extends Message.Builder> B readArtifactInfoProtoFile(B builder, ByteSource file)
       throws BuildException {
     try (InputStream inputStream = file.openStream()) {
       TextFormat.Parser parser = TextFormat.Parser.newBuilder().build();

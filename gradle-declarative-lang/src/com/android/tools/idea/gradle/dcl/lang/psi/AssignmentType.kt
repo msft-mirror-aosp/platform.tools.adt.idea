@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.gradle
+package com.android.tools.idea.gradle.dcl.lang.psi
 
-import com.intellij.DynamicBundle
-import org.jetbrains.annotations.NonNls
-import org.jetbrains.annotations.PropertyKey
-
-@NonNls
-private const val BUNDLE = "messages.GradleProjectSystem"
-
-object GradleProjectSystemBundle : DynamicBundle(BUNDLE) {
-  @JvmStatic
-  fun message(@PropertyKey(resourceBundle = BUNDLE) key: String, vararg params: Any) =
-    getMessage(key, *params)
+enum class AssignmentType {
+  ASSIGNMENT, APPEND
 }

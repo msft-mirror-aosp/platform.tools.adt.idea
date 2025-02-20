@@ -23,10 +23,10 @@ import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_11
 import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_17
 import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8
 
-const val GRADLE_SNAPSHOT_VERSION = "8.13-20250127102731+0000"
+const val GRADLE_SNAPSHOT_VERSION = "8.13-20250214080456+0000"
 const val GRADLE_DECLARATIVE_SNAPSHOT_VERSION = "8.12-20241105002153+0000"
 // For available versions: https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
-const val KOTLIN_SNAPSHOT_VERSION = "2.1.20-Beta2-36"
+const val KOTLIN_SNAPSHOT_VERSION = "2.1.20-RC-129"
 
 /**
  * An AGP Version definition to be used in AGP integration tests.
@@ -71,7 +71,7 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   AGP_35_JDK_8(agpVersion = "3.5.0", gradleVersion = "5.5", jdkVersion = JDK_1_8, kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1, compileSdk = "32"),
   AGP_35(agpVersion = "3.5.0", gradleVersion = "5.5", jdkVersion = JDK_11, kotlinVersion = "1.4.32", modelVersion = ModelVersion.V1, compileSdk = "32"),
 
-  AGP_40(agpVersion = "4.0.0", gradleVersion = "6.7.1", jdkVersion = JDK_11, kotlinVersion = "1.7.20", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_40(agpVersion = "4.0.0", gradleVersion = "6.1.1", jdkVersion = JDK_11, kotlinVersion = "1.5.21", modelVersion = ModelVersion.V1, compileSdk = "32"),
   AGP_41(agpVersion = "4.1.0", gradleVersion = "6.7.1", jdkVersion = JDK_11, kotlinVersion = "1.7.20", modelVersion = ModelVersion.V1, compileSdk = "32"),
   AGP_42(agpVersion = "4.2.0", gradleVersion = "6.7.1", jdkVersion = JDK_11, kotlinVersion = "1.7.20", modelVersion = ModelVersion.V1, compileSdk = "32"),
 

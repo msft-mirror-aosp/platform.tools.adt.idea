@@ -83,7 +83,6 @@ import com.intellij.serviceContainer.AlreadyDisposedException;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
-import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -109,6 +108,11 @@ import org.jetbrains.annotations.TestOnly;
  * Android layouts. This is a wrapper around the layout library.
  */
 public class RenderTask {
+  /**
+   * Indicates whether the size of the hardware used for rendering has changed.
+   */
+  private boolean isSizeChanged = false;
+
   /**
    * Listener that receives call before and after relevant {@link RenderTask} events.
    * This is <b>only for testing</b> and can only be set via a {@link TestOnly} method. This can be used
@@ -312,7 +316,12 @@ public class RenderTask {
     }
   }
 
+  /**
+   * Set the target quality to use when rendering.
+   * Note that a quality of 100% is enforced if layout validation is currently enabled.
+   */
   public void setQuality(float quality) {
+    if (myEnableLayoutScanner) quality = 1f;
     quality = Math.max(0f, Math.min(quality, 1f));
     if (quality == myTargetQuality) return;
     myTargetQuality = quality;
@@ -476,6 +485,10 @@ public class RenderTask {
   @NotNull
   public RenderTask setOverrideRenderSize(int overrideRenderWidth, int overrideRenderHeight) {
     myHardwareConfigHelper.setOverrideRenderSize(overrideRenderWidth, overrideRenderHeight);
+    if (myRenderSession != null) {
+      myRenderSession.updateHardwareConfiguration(myHardwareConfigHelper.getConfig());
+      isSizeChanged = true;
+    }
     return this;
   }
 
@@ -679,8 +692,6 @@ public class RenderTask {
     params.setFlag(RenderParamsFlags.FLAG_KEY_DISABLE_BITMAP_CACHING, true);
     params.setFlag(RenderParamsFlags.FLAG_DO_NOT_RENDER_ON_CREATE, true);
     params.setFlag(RenderParamsFlags.FLAG_KEY_RESULT_IMAGE_AUTO_SCALE, true);
-    params.setFlag(RenderParamsFlags.FLAG_KEY_ENABLE_LAYOUT_SCANNER, myEnableLayoutScanner);
-    params.setFlag(RenderParamsFlags.FLAG_ENABLE_LAYOUT_SCANNER_IMAGE_CHECK, myEnableLayoutScanner);
     params.setFlag(RenderParamsFlags.FLAG_KEY_ADAPTIVE_ICON_MASK_PATH, configuration.getAdaptiveShape().getPathDescription());
     params.setFlag(RenderParamsFlags.FLAG_KEY_USE_THEMED_ICON, configuration.getUseThemedIcon());
     params.setFlag(RenderParamsFlags.FLAG_KEY_FORCE_MONOCHROME_ICON, myForceMonochromeIcon);
@@ -688,6 +699,8 @@ public class RenderTask {
     params.setFlag(RenderParamsFlags.FLAG_KEY_USE_GESTURE_NAV, configuration.isGestureNav());
     params.setFlag(RenderParamsFlags.FLAG_KEY_EDGE_TO_EDGE, configuration.isEdgeToEdge());
     params.setFlag(RenderParamsFlags.FLAG_KEY_SHOW_CUTOUT, true);
+
+    params.setLayoutValidationChecker(() -> myEnableLayoutScanner);
 
     params.setCustomContentHierarchyParser(myCustomContentHierarchyParser);
     params.setImageTransformation(configuration.getImageTransformation());
@@ -1180,9 +1193,10 @@ public class RenderTask {
   public CompletableFuture<RenderResult> render(@NotNull IImageFactory factory) {
     myImageFactoryDelegate = factory;
     // If a re-render is happening after changing the quality up, then we need to re-measure
-    // to avoid the rendered image to show things out of place.
-    boolean forceMeasure = myTargetQuality > myCurrentQuality;
+    // to avoid the rendered image to show things out of place. Also if size has changed, we need to re-measure.
+    boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged;
     myCurrentQuality = myTargetQuality;
+    isSizeChanged = false;
     return renderInner(forceMeasure);
   }
 

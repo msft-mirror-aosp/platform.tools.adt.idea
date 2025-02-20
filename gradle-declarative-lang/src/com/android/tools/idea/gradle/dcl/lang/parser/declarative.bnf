@@ -36,6 +36,7 @@
     // list of tokens so that the DeclarativeElementTypeHolder has all necessary fields generated (corresponding
     // to these token names).
     OP_EQ = "="
+    OP_PLUS_EQ = "+="
     OP_DOT = "."
     OP_LBRACE = "{"
     OP_RBRACE = "}"
@@ -60,7 +61,7 @@
     double_literal
   ]
 
-  implements("assignment|block|factory_property_receiver|factory_receiver|property_simple_factory")=[
+  implements("assignment|block|factory_property_receiver|factory_receiver")=[
      "com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeEntry"
      "com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeIdentifierOwner"
   ]
@@ -72,7 +73,7 @@
   implements("property|literal")=[
      "com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeValue"
   ]
-  implements("property_simple_factory|embedded_factory")=[
+  implements("embedded_factory")=[
      "com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeAbstractFactory"
   ]
   implements("property|assignable_property")=[
@@ -98,11 +99,12 @@ entries ::= one_line_entries*
 private one_line_entries::=<<atNewLine (entry <<atSameLine (SEMI <<atSameLine entry>>)>>* SEMI?)>>
 private entry ::= !<<eof>> !(OP_RBRACE|OP_RPAREN) (assignment | block | factory) {pin=1 recoverWhile=entry_recover}
 private entry_recover ::= !(token|OP_RBRACE|OP_RPAREN|SEMI)
-assignment ::= lvalue OP_EQ rvalue {
+assignment ::= lvalue (OP_EQ | OP_PLUS_EQ) rvalue {
    pin=2
    methods=[
       getValue
       getIdentifier
+      getAssignmentType
       factory_receiver=""
       factory_property_receiver=""
    ]
@@ -163,12 +165,9 @@ embedded_factory ::= private_factory { // part of block - cannot be independent
 
 private factory ::=  factory_receiver | factory_property_receiver
 
-factory_property_receiver ::= property_receiver OP_DOT property_simple_factory {
+factory_property_receiver ::= property_receiver OP_DOT private_factory {
   mixin="com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFactoryMixin"
-  methods=[getReceiver getArgumentsList getIdentifier]
-}
-property_simple_factory ::= private_factory {
-  mixin="com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFactoryMixin"
+  methods=[getReceiver]
 }
 
 property_receiver ::= qualified_receiver | bare_receiver {methods=[getField getReceiver]}

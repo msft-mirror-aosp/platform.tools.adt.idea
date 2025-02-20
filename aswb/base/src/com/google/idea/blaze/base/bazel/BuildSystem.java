@@ -83,7 +83,7 @@ public interface BuildSystem {
     /**
      * Runs a blaze command, parses the build results into a {@link BlazeBuildOutputs} object.
      */
-    BuildEventStreamProvider invoke(BlazeCommand.Builder blazeCommandBuilder) throws BuildException;
+    BuildEventStreamProvider invoke(BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext) throws BuildException;
 
     /**
      * Runs a blaze query command.
@@ -91,7 +91,7 @@ public interface BuildSystem {
      * @return {@link InputStream} from the stdout of the blaze invocation and null if the query fails
      */
     @MustBeClosed
-    InputStream invokeQuery(BlazeCommand.Builder blazeCommandBuilder) throws BuildException;
+    InputStream invokeQuery(BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext) throws BuildException;
 
     /**
      * Runs a blaze info command.
@@ -99,7 +99,7 @@ public interface BuildSystem {
      * @return {@link InputStream} from the stdout of the blaze invocation and null if blaze info fails
      */
     @MustBeClosed
-    InputStream invokeInfo(BlazeCommand.Builder blazeCommandBuilder) throws BuildException;
+    InputStream invokeInfo(BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext) throws BuildException;
 
     /**
      * Returns the type of this build interface. Used for logging purposes.
@@ -185,13 +185,6 @@ public interface BuildSystem {
   }
 
   /**
-   * Get a Blaze invoker that supports multiple calls in parallel, if this build system supports it.
-   *
-   * @return An invoker, or {@code Optional.EMPTY} if parallelism is not supported.
-   */
-  Optional<BuildInvoker> getParallelBuildInvoker(Project project, BlazeContext context);
-
-  /**
    * Return the strategy for remote syncs to be used with this build system.
    */
   SyncStrategy getSyncStrategy(Project project);
@@ -214,11 +207,9 @@ public interface BuildSystem {
   default BuildInvoker getDefaultInvoker(Project project, BlazeContext context) {
     if (Blaze.getProjectType(project) != ProjectType.QUERY_SYNC
         && getSyncStrategy(project) == SyncStrategy.PARALLEL) {
-      return getParallelBuildInvoker(project, context).orElse(getBuildInvoker(project, context));
+      return getBuildInvoker(project, context, ImmutableSet.of(BuildInvoker.Capability.SUPPORTS_PARALLELISM));
     }
-    else {
       return getBuildInvoker(project, context);
-    }
   }
 
   /**

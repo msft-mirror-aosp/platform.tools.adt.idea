@@ -415,7 +415,7 @@ android-studio/jbr/release
 android-studio/lib/annotations.jar
 android-studio/lib/app.jar
 android-studio/lib/bouncy-castle.jar
-android-studio/lib/build-marker-AI-243.23654.117.2432.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-243.24978.46.2432.__BUILD_NUMBER__
 android-studio/lib/cds/classesLogAgent.jar
 android-studio/lib/external-system-rt.jar
 android-studio/lib/externalProcess-rt.jar
@@ -464,6 +464,7 @@ android-studio/lib/modules/intellij.platform.vcs.dvcs.impl.jar
 android-studio/lib/modules/intellij.platform.vcs.impl.jar
 android-studio/lib/modules/intellij.platform.vcs.log.impl.jar
 android-studio/lib/modules/intellij.rml.dfa.impl.jar
+android-studio/lib/modules/intellij.settingsSync.core.jar
 android-studio/lib/modules/intellij.smart.update.jar
 android-studio/lib/native/linux-x86_64/libsqliteij.so
 android-studio/lib/nio-fs.jar
@@ -2837,6 +2838,7 @@ android-studio/plugins/directaccess/lib/google-api-services-storage-v1-rev202303
 android-studio/plugins/directaccess/lib/google-api-services-testing-v1-rev20240917-2.0.0.jar
 android-studio/plugins/directaccess/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
 android-studio/plugins/directaccess/lib/libadb_proxy_java_proto.jar
+android-studio/plugins/directaccess/lib/libdevice_streaming_java_proto.jar
 android-studio/plugins/directaccess/lib/libftl_client_java_proto.jar
 android-studio/plugins/directaccess/resources/reverse_daemon.dex
 android-studio/plugins/editorconfig/lib/editorconfig.jar

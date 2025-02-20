@@ -36,6 +36,9 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.Messages.OK
+import com.intellij.openapi.ui.Messages.getErrorIcon
+import com.intellij.openapi.ui.Messages.showOkCancelDialog
 import com.intellij.openapi.util.text.StringUtil
 
 typealias DependencyAnalysis = Triple<List<GradleCoordinate>, List<GradleCoordinate>, String>
@@ -86,8 +89,8 @@ fun Module.dependsOnAppCompat(): Boolean =
   this.dependsOn(GoogleMavenArtifactId.APP_COMPAT_V7) || this.dependsOn(GoogleMavenArtifactId.ANDROIDX_APP_COMPAT_V7)
 
 /**
- * Add maven projects as dependencies for this module. The maven group and artifact IDs are taken from given [GradleCoordinate]s and the
- * coordinates' version information are disregarded. This method will show a dialog prompting the user for confirmation if
+ * Add Google maven projects as dependencies for this module. The maven group and artifact IDs are taken from given
+ * [GoogleMavenArtifactId]s. This method will show a dialog prompting the user for confirmation if
  * [promptUserBeforeAdding] is set to true and return with no-op if user chooses to not add the dependencies. If any of the dependencies
  * are added successfully and [requestSync] is set to true, this method will request a sync to make sure the artifacts are resolved.
  * In this case, the sync will happen asynchronously and this method will not wait for it to finish before returning.
@@ -112,34 +115,36 @@ fun Module.dependsOnAppCompat(): Boolean =
  */
 @JvmOverloads
 @UiThread
-fun Module.addDependenciesWithUiConfirmation(coordinates: List<GradleCoordinate>,
+fun Module.addDependenciesWithUiConfirmation(artifacts: Set<GoogleMavenArtifactId>,
                                              promptUserBeforeAdding: Boolean,
                                              requestSync: Boolean = true,
                                              dependencyType: DependencyType = DependencyType.IMPLEMENTATION)
-  : List<GradleCoordinate> {
+  : Set<GoogleMavenArtifactId> {
   ApplicationManager.getApplication().assertIsDispatchThread()
-  if (coordinates.isEmpty()) {
-    return listOf()
+  if (artifacts.isEmpty()) {
+    return setOf()
   }
 
   val moduleSystem = getModuleSystem()
-  val distinctCoordinates = coordinates.distinctBy { Pair(it.groupId, it.artifactId) }
+  val coordinateMap = artifacts.associate { it.getCoordinate("+") to it }
+  val coordinates = coordinateMap.keys.toList()
+
   val (compatibleDependencies, incompatibleDependencies, warning) = ProgressManager.getInstance().runProcessWithProgressSynchronously<DependencyAnalysis, Exception>(
-    { moduleSystem.analyzeDependencyCompatibility(distinctCoordinates) },
+    { moduleSystem.analyzeDependencyCompatibility(coordinates) },
     "Analyzing Dependency Compatibility",
     false,
     moduleSystem.module.project)
 
   // If [promptUserBeforeAdding] is false then we need to inform the user of any compatibility errors in a separate message window.
   if (promptUserBeforeAdding) {
-    if (!userWantsToAdd(project, distinctCoordinates, warning)) {
-      return distinctCoordinates
+    if (!userWantsToAdd(project, artifacts, warning)) {
+      return coordinates.mapNotNull { coordinateMap[it] }.toSet()
     }
   }
   else if (incompatibleDependencies.isNotEmpty()) {
     Messages.showErrorDialog(warning, "Compatibility Issues Detected")
     if (compatibleDependencies.isEmpty()) {
-      return incompatibleDependencies
+      return incompatibleDependencies.mapNotNull { coordinateMap[it] }.toSet()
     }
   }
 
@@ -175,16 +180,15 @@ fun Module.addDependenciesWithUiConfirmation(coordinates: List<GradleCoordinate>
     project.getSyncManager().requestSyncProject(ProjectSystemSyncManager.SyncReason.PROJECT_MODIFIED)
   }
 
-  return incompatibleDependencies + coordinatesToExceptions.map { it.first }
+  return (incompatibleDependencies + coordinatesToExceptions.map { it.first }).mapNotNull { coordinateMap[it] }.toSet()
 }
 
-fun userWantsToAdd(project: Project, coordinates: List<GradleCoordinate>, warning: String = ""): Boolean {
-  return Messages.OK == Messages.showOkCancelDialog(
-    project, createAddDependencyMessage(coordinates, warning), "Add Project Dependency", Messages.getErrorIcon())
+fun userWantsToAdd(project: Project, ids: Set<GoogleMavenArtifactId>, warning: String = ""): Boolean {
+  return OK == showOkCancelDialog(project, createAddDependencyMessage(ids, warning), "Add Project Dependency", getErrorIcon())
 }
 
 @VisibleForTesting
-fun createAddDependencyMessage(coordinates: List<GradleCoordinate>, warning: String = ""): String {
+fun createAddDependencyMessage(coordinates: Set<GoogleMavenArtifactId>, warning: String = ""): String {
   val libraryNames = coordinates.joinToString(", ") { it.toString() }
   val these = StringUtil.pluralize("this", coordinates.size)
   val libraries = StringUtil.pluralize("library", coordinates.size)
