@@ -37,11 +37,192 @@
           from the main menu.
           ]]>
       </description>
+      <step label="Compose Preview enhancements">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>Compose Preview now includes smoother and more responsive zooming,
+            the ability to collapse composable preview groups, and more intuitive
+            view modes. These enhancements make it easier than ever to build and
+            iterate on your Compose UIs.</p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/design/compose-preview-enhancements">Learn more</a>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="KMP Shared Module integration with Android applications">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>Android Studio now includes a new module template for adding shared logic to
+            your app using Kotlin Multi-Platform (KMP). To try out this feature, follow these
+            steps to create a KMP Shared Module in a newly created Android app:</p>
+            <br>
+            <ol>
+              <li>Make sure you're using the latest version of Android Studio Meerkat and that
+              your app uses the latest version of Android Gradle Plugin.</li>
+              <li>Open Android Studio and create a new Android project with the <em>Empty
+              Activity</em> template.</li>
+              <li>Switch from the <b>Android view</b> to the <b>Project view</b> to access the
+              project structure.</li>
+              <li>Click the <b>New</b> button in the <b>Project view</b> and select <em>Kotlin
+              Multiplatform Module</em> from the options. Choose <en>Shared Module</em> as the
+              type and keep the default settings.</li>
+              <li>Open the <code>build.gradle.kts</code> file in the Android app directory and
+              add a dependency on the shared module.</li>
+              <li>In the Shared module, edit the <code>Platform.android.kt</code> file and add
+              the following line of code:
+              <br>
+              <code>actual fun platform() = "Android from Shared KMP Module"</code></li>
+              <li>Open the <code>MainActivity.kt</code> file in the Android app directory and
+              modify it to call the <code>platform()</code> function from the shared module.</li>
+              <li>Build the project and run the Android application. You should see the message,
+              "Hello Android from Shared KMP Module!" displayed on the screen.</li>
+            </ol>
+            <br>
+            These shared modules contain shared business logic that can be used by both Android
+            and iOS platforms.
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/kmp-template">Learn more</a>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Updated UX for adding virtual and remote devices to Device Manager">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>Android Studio improves the UX when creating a local virtual device or adding a
+            device from
+            <a href="https://d.android.com/studio/run/android-device-streaming">Android
+            Device Streaming</a>.</p>
+            <br>
+            <p>To get started, click the <b>+</b> button from the Device Manager, and select
+            either <b>Create Virtual Device</b> or <b>Select Remote Devices</b>.</p>
+            <br>
+            <p>When creating a new virtual device, new filters and recommendations make it
+            easier to create a device configuration that fits your needs and performs the best
+            on your workstation.</p>
+            <br>
+            <p>Similarly, when selecting remote devices from Android Device Streaming, new
+            filters make it easier to find and select the devices you need. You now only need
+            to click the Firebase button at the top of the Device Manager window to select the
+            Firebase project you want to use for Android Device Streaming.</p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/test/add-device-flow">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Analyze crash reports with Gemini in Android Studio">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>Use Gemini in Android Studio to analyze your App Quality Insights crash reports,
+            generate insights, provide a crash summary, and when possible recommend next steps,
+            including sample code and links to relevant documentation. Generate all of this
+            information by clicking <b>Show Insights</b> in the <b>App Quality Insights</b> tool
+            window in Android Studio after you enable Gemini from
+            <b>View > Tool Windows > Gemini</b>.
+            </p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/debug/gemini-aqi">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Generate unit test scenarios">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>When writing unit tests for your app, Gemini can suggest test scenarios using
+            the context of the code you want to test. When generating unit test scenarios,
+            Gemini includes detailed names and descriptions for your tests, so that you
+            better understand the intention for each suggested test. You need to implement
+            the body of each test yourself.</p>
+            <br>
+            <p>To generate unit test scenarios, do the following:</p>
+            <br>
+            <ol>
+              <li>Navigate to the class you want to generate unit test scenarios for.</li>
+              <li>Right-click on the class and select <b>Gemini > Unit test scenarios</b>
+              from the context menu.</li>
+              <li>In the dialog that appears, select the methods of the class that you want to
+              generate scenarios for, and set the destination package for the tests.</li>
+              <li>Click <b>OK</b>.</li>
+              <li>Confirm the destination directory for your tests and click <b>OK</b>.</li>
+              <li>If the test class already exists, confirm whether you want Gemini to
+              suggest updates to the existing file.</li>
+            </ol>
+            <br>
+            <p>After Gemini processes the request, you should see either a new file with the
+            suggested unit tests or a diff for you to accept recommended changes to an
+            existing file.</p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/test/generate-scenarios">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Updated Build menu and actions">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>We made the following changes to the build actions and the Build menu to help
+            make it easy to build exactly what you want as you work on projects in
+            Android Studio:</p>
+            <br>
+              <ul>
+                <li><b>Added a new <code>Build 'run-configuration-name' Run Configuration</code>
+                action:</b> This action builds the currently selected run configuration.
+                For example, if you have the <code>:app</code> run configuration selected,
+                the action will build and assemble <code>app</code>. If you have recently
+                run a test on a device the action will build those tests.</li>
+                <li><b>Made <code>Build 'run-configuration-name' Run Configuration</code> the
+                default Build action:</b> To better match developer's intent, both the toolbar
+                button and the shortcut <kbd>Control/Command+F9</kbd> now execute the new
+                <code>Build run-configuration-name Run Configuration</code> action.</li>
+                <li><b>Reordered build actions:</b> We placed the new <code>Build
+                run-configuration-name</code> action at the top of the Build menu, next the Compile
+                actions, and next the "Assemble ..." actions (previous "Make ..." actions). We also
+                renamed the "Rebuild Project" action to "Clean and Assemble Project with Tests" to
+                more clearly reflect what the action does.</li>
+                <li><b>Used verbs that match what the build actions actually do:</b> In addition to
+                "Build" and "Compile" actions, we renamed <code>Make Project</code> to
+                <code>Assemble Project</code>. We also introduced a new <code>Assemble Project with
+                Tests</code> action to assemble test components as well.</li>
+              </ul>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/build-actions-update">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
+      <step label="Google Play SDK Insights: Deprecated SDK warnings">
+        <stepElement>
+          <section>
+            <![CDATA[
+            <p>SDK authors can now indicate when an SDK has been deprecated and mention alternative
+            SDKs to use instead. If any of the SDKs used by your app have been deprecated by their
+            authors, you'll see corresponding warnings in Android Studio along with information
+            about other SDKs that can be used instead.</p>
+            <br>
+            <a href="https://d.android.com/r/studio-ui/build/play-sdk-insights">Learn more</a>
+            <br>
+            ]]>
+          </section>
+        </stepElement>
+      </step>
       <footerStep label="">
         <stepElement>
           <section>
             <![CDATA[
-              <br><em>Last updated 11/06/2024</em><br>
+              <br><em>Last updated 02/21/2025</em><br>
             ]]>
           </section>
         </stepElement>
