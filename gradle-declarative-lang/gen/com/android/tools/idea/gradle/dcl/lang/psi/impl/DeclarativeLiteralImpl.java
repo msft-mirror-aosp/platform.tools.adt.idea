@@ -46,6 +46,12 @@ public class DeclarativeLiteralImpl extends CompositePsiElement implements Decla
 
   @Override
   @Nullable
+  public DeclarativePair getPair() {
+    return PsiTreeUtil.getChildOfType(this, DeclarativePair.class);
+  }
+
+  @Override
+  @Nullable
   public PsiElement getBoolean() {
     return findPsiChildByType(BOOLEAN);
   }

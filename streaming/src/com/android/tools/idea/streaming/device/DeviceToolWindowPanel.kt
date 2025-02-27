@@ -168,6 +168,8 @@ internal class DeviceToolWindowPanel(
               displayConfigurator.initialize()
               addDeviceStateListener(deviceStateListener)
             }
+
+            showContextMenuAdvertisementIfNecessary(disposable)
           }
           ConnectionState.DISCONNECTED -> {
             deviceClient.deviceController?.apply {

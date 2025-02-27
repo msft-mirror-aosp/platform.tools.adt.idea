@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.builder.model.v2.ide.SyncIssue
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_40
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_74
@@ -37,10 +38,11 @@ enum class AndroidCoreTestProject(
   override val isCompatibleWith: (AgpVersionSoftwareEnvironmentDescriptor) -> Boolean = { true },
   override val autoMigratePackageAttribute: Boolean = true,
   override val setup: () -> () -> Unit = { {} },
-  override val patch: AgpVersionSoftwareEnvironmentDescriptor.(projectRoot: File) -> Unit = {},
+  override val patch: AgpVersionSoftwareEnvironment.(projectRoot: File) -> Unit = {},
   override val expectedSyncIssues: Set<Int> = emptySet(),
   override val verifyOpened: ((Project) -> Unit)? = null
 ) : TemplateBasedTestProject {
+  ANDROID_KOTLIN_MULTIPLATFORM(TestProjectPaths.ANDROID_KOTLIN_MULTIPLATFORM),
   ANDROID_LIBRARY_AS_TEST_DEPENDENCY(TestProjectPaths.ANDROID_LIBRARY_AS_TEST_DEPENDENCY),
   ANDROIDX_SIMPLE(TestProjectPaths.ANDROIDX_SIMPLE),
   APP_WITH_BUILDSRC(TestProjectPaths.APP_WITH_BUILDSRC),

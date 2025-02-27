@@ -15,7 +15,17 @@
  */
 package com.android.tools.idea.gradle.dcl.lang.psi
 
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.BOOLEAN
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.DOUBLE_LITERAL
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.INTEGER_LITERAL
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.LONG_LITERAL
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.MULTILINE_STRING_LITERAL
 import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.NULL
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.ONE_LINE_STRING_LITERAL
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.OP_EQ
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.OP_PLUS_EQ
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.UNSIGNED_INTEGER
+import com.android.tools.idea.gradle.dcl.lang.parser.DeclarativeElementTypeHolder.UNSIGNED_LONG
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
@@ -81,14 +91,16 @@ class PsiImplUtil {
       assignment.assignableProperty.field
 
     @JvmStatic
-    fun getAssignmentType(assignment: DeclarativeAssignment): AssignmentType =
-      assignment.children.getOrNull(1)?.let{
-         when (it.text){
-          "=" -> AssignmentType.ASSIGNMENT
-          "+=" -> AssignmentType.APPEND
-           else -> throw IllegalStateException("Unknown assignment type: `${assignment.text}`")
-        }
-      } ?: throw IllegalStateException("Unknown assignment type: `${assignment.text}`")
+    fun getAssignmentType(assignment: DeclarativeAssignment): AssignmentType {
+      val children = assignment.children
+      return if (children.find { it.elementType == OP_PLUS_EQ } != null)
+        AssignmentType.APPEND
+      else if (children.find { it.elementType == OP_EQ } != null)
+        AssignmentType.ASSIGNMENT
+      else {
+        throw IllegalStateException("Unknown assignment type: `${assignment.text}`")
+      }
+    }
 
     @JvmStatic
     fun getIdentifier(receiver: DeclarativeQualifiedReceiver): DeclarativeIdentifier =
@@ -117,6 +129,29 @@ class PsiImplUtil {
     @JvmStatic
     fun getValue(assignment: DeclarativeAssignment): DeclarativeValue? {
       return assignment.children.firstNotNullOfOrNull { child -> (child as? DeclarativeValue).takeIf { it != null } }
+    }
+
+    @JvmStatic
+    fun getFirst(pair: DeclarativePair): Any? {
+      // need to get second DeclarativeValueElement as first is the key
+      val text = pair.firstChild.text
+      return when (pair.firstChild.elementType) {
+        BOOLEAN -> text == "true"
+        MULTILINE_STRING_LITERAL -> text.unTripleQuote().unescape()
+        ONE_LINE_STRING_LITERAL -> text.unquote().unescape()
+        LONG_LITERAL -> text?.toIntegerOrNull()
+        DOUBLE_LITERAL -> text?.toDoubleOrNull()
+        INTEGER_LITERAL -> text?.toIntegerOrNull()
+        UNSIGNED_LONG -> text?.toIntegerOrNull()
+        UNSIGNED_INTEGER -> text?.toIntegerOrNull()
+        NULL -> null
+        else -> null
+      }
+    }
+
+    @JvmStatic
+    fun getSecond(pair: DeclarativePair): DeclarativeValue {
+      return pair.children.filterIsInstance<DeclarativeValue>().first()
     }
 
     @JvmStatic
@@ -164,6 +199,7 @@ class PsiImplUtil {
 
     @JvmStatic
     fun getValue(literal: DeclarativeLiteral): Any? = when {
+      literal.pair !=null -> literal.pair!!.second
       literal.boolean != null -> literal.boolean?.text == "true"
       literal.multilineStringLiteral != null -> literal.multilineStringLiteral?.text?.unTripleQuote()?.unescape()
       literal.oneLineStringLiteral != null -> literal.oneLineStringLiteral?.text?.unquote()?.unescape()

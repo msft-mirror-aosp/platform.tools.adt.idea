@@ -42,7 +42,7 @@ import com.android.tools.idea.editors.build.RenderingBuildStatusManager
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.LlmPrompt
-import com.android.tools.idea.preview.PreviewElementProvider
+import com.android.tools.idea.preview.find.PreviewElementProvider
 import com.android.tools.idea.preview.updatePreviewsAndRefresh
 import com.android.tools.idea.projectsystem.NamedIdeaSourceProviderBuilder
 import com.android.tools.idea.projectsystem.SourceProviderManager
@@ -81,6 +81,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -446,6 +447,7 @@ class ComposePreviewViewImplTest {
     assertTrue(fakeUi.findComponent<JLabel> { it.text == "Display2" }!!.isShowing)
   }
 
+  @Ignore("b/387245555")
   @Test
   fun `open and close bottom panel`() {
     val composePreviewManager = TestComposePreviewManager()

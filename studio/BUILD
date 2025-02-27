@@ -154,6 +154,7 @@ studio_plugin(
         ],
         "android-screenshot-testing.jar": [
             "//tools/adt/idea/screenshot-testing:intellij.android.screenshot-test",
+            "//tools/adt/idea/screenshot-testing/gradle:intellij.android.screenshot-test.gradle",
         ],
         "android-rt.jar": [
             "//tools/adt/idea/rt:intellij.android.rt",
@@ -942,9 +943,6 @@ py_test(
     env = {
         "mkspec_files": "$(locations :mkspec_files)",
     },
-    tags = [
-        "noci:studio-win",
-    ],
     visibility = ["//visibility:public"],
 )
 
@@ -1156,6 +1154,14 @@ iml_test(
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpCustomJvmTest",
+)
+
+iml_test(
+    name = "EssentialPluginsTest",
+    module = ":intellij.android.studio.integration",
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.EssentialPluginsTest",
 )
 
 iml_test(

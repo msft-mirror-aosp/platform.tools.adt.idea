@@ -20,7 +20,6 @@ import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinitio
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.hookExecuteTasks
 import com.google.common.truth.Expect
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import com.intellij.openapi.externalSystem.service.ExternalSystemFacadeManager
@@ -41,8 +40,8 @@ class AndroidGradleTaskManagerTest {
     preparedProject.open { project ->
       val path = preparedProject.root
       val capturedRequests = project.hookExecuteTasks()
-      val facade = ApplicationManager.getApplication().getService(ExternalSystemFacadeManager::class.java)
-        .getFacade(project, path.absolutePath, GradleConstants.SYSTEM_ID)
+      val facadeManager = ExternalSystemFacadeManager.getInstance()
+      val facade = facadeManager.getFacade(project, path.absolutePath, GradleConstants.SYSTEM_ID)
 
       val externalSystemTaskId = ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project)
       // 1) This is a common form used by Android Studio etc.

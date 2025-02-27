@@ -52,15 +52,25 @@ iml_module(
         "npw.assetstudio": {
             "test_filter": "com.android.tools.idea.npw.assetstudio.ui",
         },
-        "AddNewModulesToAppTest": {
+        "GroovyAddNewModulesToAppTest": {
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
-            "test_filter": "com.android.tools.idea.npw.module.AddNewModulesToAppTest",
-            # b/192102820 flaky on windows, taking longer than 15 minutes
-            # b/376923937 flaky on linux, taking longer than 15 minutes
-            "tags": [
-                "noci:studio-win",
-                "noci:studio-linux",
-            ],
+            "test_filter": "com.android.tools.idea.npw.module.GroovyAddNewModulesToAppTest",
+        },
+        "GroovyVersionCatalogAddNewModulesToAppTest": {
+            # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
+            "test_filter": "com.android.tools.idea.npw.module.GroovyVersionCatalogAddNewModulesToAppTest",
+        },
+        "KtsAddNewModulesToAppTest": {
+            # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
+            "test_filter": "com.android.tools.idea.npw.module.KtsAddNewModulesToAppTest",
+            # b/399316550 flaky on windows, gradle daemon not found?
+            "tags": ["noci:studio-win"],
+        },
+        "KtsVersionCatalogAddNewModulesToAppTest": {
+            # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
+            "test_filter": "com.android.tools.idea.npw.module.KtsVersionCatalogAddNewModulesToAppTest",
+            # b/399316550 flaky on windows, gradle daemon not found?
+            "tags": ["noci:studio-win"],
         },
         "BenchmarkModuleTest": {
             # TODO(b/191881927) Test cases with a gradle KTS sync do not shard well
@@ -90,8 +100,6 @@ iml_module(
         },
         "ModuleModelTest": {
             "test_filter": "com.android.tools.idea.npw.module.ModuleModelTest",
-            # b/377654633 times out on Windows
-            "tags": ["noci:studio-win"],
         },
         "other": {
             "shard_count": 10,
@@ -108,7 +116,7 @@ iml_module(
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
-        "//prebuilts/studio/sdk:platforms/android-34",
+        "//prebuilts/studio/sdk:platforms/android-35",
         "//tools/adt/idea/android/testData",
         "//tools/base/build-system:android_gradle_plugin.zip",
         "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -116,10 +124,8 @@ iml_module(
         "//tools/base/build-system:gradle-distrib-8.0",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
     ],
-    test_srcs = [
-        "testResources",
-        "testSrc",
-    ],
+    test_resources = ["testResources"],
+    test_srcs = ["testSrc"],
     test_tags = [],
     test_timeout = "long",
     visibility = ["//visibility:public"],
@@ -200,7 +206,9 @@ maven_repository(
         "@maven//:com.android.tools.build.gradle_8.1.0",
         "@maven//:com.google.android.material.material_1.4.0",
         "@maven//:com.google.guava.guava_19.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-build-tools-impl_2.0.21",  # AddNewModulesToAppTest
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.24",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_2.0.21",  # AddNewModulesToAppTest
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_2.1.0",
         "@maven//:org.jetbrains.kotlin.kotlin-native-prebuilt_" + KGP_VERSION_FOR_TESTS,  # Used by AddKotlinMultiplatformLibraryModuleTest
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.9.24",

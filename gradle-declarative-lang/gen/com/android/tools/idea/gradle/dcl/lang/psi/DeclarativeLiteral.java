@@ -24,6 +24,9 @@ import com.intellij.psi.PsiElement;
 public interface DeclarativeLiteral extends DeclarativeValue {
 
   @Nullable
+  DeclarativePair getPair();
+
+  @Nullable
   PsiElement getBoolean();
 
   @Nullable

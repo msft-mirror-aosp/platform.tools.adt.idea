@@ -29,7 +29,6 @@ import com.android.flags.FlagOverrides;
 import com.android.flags.Flags;
 import com.android.flags.IntFlag;
 import com.android.flags.LongFlag;
-import com.android.flags.MendelFlag;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.DefaultFlagOverrides;
 import com.android.flags.overrides.PropertyOverrides;
@@ -113,12 +112,12 @@ public final class StudioFlags {
     false);
 
   public static final Flag<Boolean> NPW_ACCEPT_ALL_LICENSES = new BooleanFlag(
-    NPW,"first.run.accept.sdk.license", "Auto Accepts SDK license",
+    NPW, "first.run.accept.sdk.license", "Auto Accepts SDK license",
     "Auto Accepts SDK license for testing",
     false);
 
   public static final Flag<String> NPW_CUSTOM_LOCAL_APP_DATA = new StringFlag(
-    NPW,"first.run.local.app.data", "Set custom local app data",
+    NPW, "first.run.local.app.data", "Set custom local app data",
     "Sets custom location for sdk install directory",
     "");
 
@@ -288,8 +287,8 @@ public final class StudioFlags {
     true);
 
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = new BooleanFlag(PROFILER, "task.based.ux", "Task-based UX",
-    "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)",
-    true);
+                                                                             "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)",
+                                                                             true);
 
   public static final Flag<Boolean> PROFILER_LEAKCANARY = new BooleanFlag(PROFILER, "leakcanary", "LeakCanary",
                                                                           "Enables the integration of leakCanary and display of leaks",
@@ -603,7 +602,7 @@ public final class StudioFlags {
     "Enable Android Studio usage stats for IDevice methods",
     "Track IDevice method calls and success rates. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    false);
+    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> ADBLIB_ONE_SESSION_PER_PROJECT = new BooleanFlag(
     RUNDEBUG,
@@ -938,7 +937,8 @@ public final class StudioFlags {
     "#GRADLE_LOCAL_JAVA_HOME macro and the java.home stores the JDK path to trigger Gradle sync.", true);
 
   public static final Flag<Boolean> RESTORE_INVALID_GRADLE_JDK_CONFIGURATION = new BooleanFlag(
-    GRADLE_IDE, "restore.invalid.gradle.jdk.configuration", "Restore invalid Gradle JDK configuration", "Restore project from invalid Gradle JDK configuration during opening.", true);
+    GRADLE_IDE, "restore.invalid.gradle.jdk.configuration", "Restore invalid Gradle JDK configuration",
+    "Restore project from invalid Gradle JDK configuration during opening.", true);
 
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = new BooleanFlag(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
@@ -1169,6 +1169,10 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "wrap.toolbar", "Enable Toolbar Wrapping",
     "Wraps the toolbar when all buttons don't fit into the available width",
     true);
+  public static final Flag<Boolean> RUNNING_DEVICES_CONTEXT_MENU = new BooleanFlag(
+    EMBEDDED_EMULATOR, "context.menu", "Enable Context Menu",
+    "Enables context menu in the Running Devices tool window",
+    false);
   //endregion
 
   //region Device Mirroring
@@ -1226,10 +1230,10 @@ public final class StudioFlags {
   @NotNull
   public static final Flag<String> DEVICE_DEFINITION_DOWNLOAD_SERVICE_URL =
     new StringFlag(DEVICE_DEFINITION_DOWNLOAD_SERVICE,
-                "url",
-                "URL",
-                "The URL to download the device definitions from",
-                "");
+                   "url",
+                   "URL",
+                   "The URL to download the device definitions from",
+                   "");
   // endregion
 
   //region Refactorings
@@ -1314,9 +1318,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> ESSENTIALS_HIGHLIGHTING_MODE = new BooleanFlag(
     ESSENTIALS_MODE, "essential.highlighting.in.essentials.mode",
     "Essential Highlighting mode on in Essentials mode",
-   "When enabled turns on Essential Highlighting mode when in Essentials Mode. Essential Highlighting mode enables " +
-   "limited code inspections and highlighting while editing until a save all action is received e.g. Lint.",
-   false);
+    "When enabled turns on Essential Highlighting mode when in Essentials Mode. Essential Highlighting mode enables " +
+    "limited code inspections and highlighting while editing until a save all action is received e.g. Lint.",
+    false);
 
   public static final Flag<Boolean> ESSENTIALS_MODE_GETS_RECOMMENDED = new BooleanFlag(
     ESSENTIALS_MODE, "essentials.mode.gets.recommend",
@@ -1425,6 +1429,13 @@ public final class StudioFlags {
     "Add preview image to AI request for code generation",
     "If enabled, adds current preview image to an AI request for code generation.",
     true);
+
+  public static final Flag<Boolean> FIND_PREVIEWS_FROM_PREVIEW_SOURCESET = new BooleanFlag(
+    PREVIEW_COMMON, "find.previews.from.sourceset",
+    "Find previews from a file and also from preview-sourceset",
+    "If enabled, the process to find previews for a file will also search in its associated files from the preview-sourceset",
+    false
+  );
   //endregion
 
   //region Compose
@@ -1462,7 +1473,7 @@ public final class StudioFlags {
     COMPOSE, "deploy.live.edit.deploy.confined.analysis",
     "LiveEdit: Limit compilation error analysis to only the current file",
     "If enabled, Live Edit will aggressively live update even if there are analysis errors " +
-      "provided that the current file is error-free.",
+    "provided that the current file is error-free.",
     false
   );
 
@@ -1485,7 +1496,7 @@ public final class StudioFlags {
     COMPOSE, "deploy.live.edit.allow.multiple.min.api.dex.markers.in.apk",
     "LiveEdit: Allow multiple min api dex markers in apk",
     "If enabled, apk may contain multiple min api dex markers and LiveEdit picks the lowest among them",
-   false
+    false
   );
 
   public static final Flag<Boolean> COMPOSE_DEPLOY_LIVE_EDIT_BUILD_SYSTEM_MIN_SDK_VERSION_FOR_DEXING = new BooleanFlag(
@@ -1649,7 +1660,7 @@ public final class StudioFlags {
   // region Wear Declarative Watch Face
   private static final FlagGroup WEAR_DECLARATIVE_WATCH_FACE = new FlagGroup(FLAGS, "wear.dwf", "Declarative Watch Face");
 
-  public static final Flag<Boolean> WEAR_WATCH_FACE_RUN_CONFIGURATION = new BooleanFlag(
+  public static final Flag<Boolean> WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION = new BooleanFlag(
     WEAR_DECLARATIVE_WATCH_FACE, "run.configuration.enabled", "Enable run configuration for Declarative Watch Faces",
     "If enabled, the Declarative Watch Face run configuration type will be available. Changing the value of this flag requires restarting Android Studio.",
     enabledUpTo(DEV)
@@ -1761,8 +1772,8 @@ public final class StudioFlags {
   public static final Flag<Boolean> XR_DEVICE_SUPPORT_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "xr.device.support.enabled",
-      "XR Device Support Enabled",
-      "Enable the support of XR device in the device manager",
+    "XR Device Support Enabled",
+    "Enable the support of XR device in the device manager",
     enabledUpTo(CANARY));
   // endregion
 
@@ -1938,17 +1949,17 @@ public final class StudioFlags {
   private static final FlagGroup APP_LINKS_ASSISTANT = new FlagGroup(FLAGS, "app.links.assistant", "App Links Assistant");
   public static final Flag<Boolean> WEBSITE_ASSOCIATION_GENERATOR_V2 =
     new BooleanFlag(APP_LINKS_ASSISTANT, "website.association.generator.v2", "Website Association Generator V2",
-                "Improvements to Website Association Generator.", enabledUpTo(CANARY));
+                    "Improvements to Website Association Generator.", enabledUpTo(CANARY));
   public static final Flag<String> DEEPLINKS_GRPC_SERVER =
     new StringFlag(APP_LINKS_ASSISTANT, "deeplinks.grpc.server", "Deep links gRPC server address",
-                "Deep links gRPC server address. Use a non-default value for testing purposes.",
-                "deeplinkassistant-pa.googleapis.com");
+                   "Deep links gRPC server address. Use a non-default value for testing purposes.",
+                   "deeplinkassistant-pa.googleapis.com");
   public static final Flag<Boolean> CREATE_APP_LINKS_V2 =
     new BooleanFlag(APP_LINKS_ASSISTANT, "create.app.links.v2", "Create App Links V2",
-                "Improvements to the Create App Links functionalities.", false);
+                    "Improvements to the Create App Links functionalities.", false);
   public static final Flag<Boolean> IMPACT_TRACKING =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.impact.tracking", "App Links Assistant impact tracking",
-                "Impact tracking for the App Links Assistant", false);
+                    "Impact tracking for the App Links Assistant", false);
   public static final Flag<Boolean> DOMAIN_ISSUES_INSPECTION =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.domain.issues.inspection", "App Links Assistant domain issues inspection",
                     "Domain issues inspection that opens relevant App Links Assistant content", false);
@@ -1960,11 +1971,18 @@ public final class StudioFlags {
 
   // region TargetSDKVersion Upgrade Assistant
   private static final FlagGroup TSDKVUA = new FlagGroup(FLAGS, "tsdkvua", "Android SDK Upgrade Assistant");
-  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART = new BooleanFlag(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
-  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET = new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup", "Reset the results cache before running filters on startup", true);
-  public static final Flag<Boolean> TSDKVUA_FILTERS_WIP = new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
-  public static final Flag<Boolean> TSDKVUA_API_35 = new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", true);
-  public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(TSDKVUA, "omg76167", "Do NOT mitigate omg/76167", "Mitigating omg/76167 requires hiding part of API 35's 'secured background activity launches' step", false);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART =
+    new BooleanFlag(TSDKVUA, "filters.onstart", "Run filters on assistant startup", "Run filters on assistant startup", true);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_ONSTART_RESET =
+    new BooleanFlag(TSDKVUA, "filters.onstart.reset", "Reset the results cache before running filters on startup",
+                    "Reset the results cache before running filters on startup", true);
+  public static final Flag<Boolean> TSDKVUA_FILTERS_WIP =
+    new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
+  public static final Flag<Boolean> TSDKVUA_API_35 =
+    new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", true);
+  public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(TSDKVUA, "omg76167", "Do NOT mitigate omg/76167",
+                                                                        "Mitigating omg/76167 requires hiding part of API 35's 'secured background activity launches' step",
+                                                                        false);
   // endregion TargetSDKVersion Upgrade Assistant
 
   // region PROCESS_NAME_MONITOR
@@ -2035,14 +2053,20 @@ public final class StudioFlags {
                     "When enabled, the type of the last user action is included in inline code completion requests.",
                     enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_SHORTCUT_HINT_ENABLED =
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.shortcut.hint.enabled",
+                    "Enable the inline completion shortcut key hint.",
+                    "When enabled, a custom inlay displaying 'TAB to complete' or similar text will be shown alongside inline completions.",
+                    false);
+
   public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =
-    new MendelFlag(STUDIOBOT, "compiler.error.context.enabled", 97695187,
-                "Enable sending context with compiler error queries.",
-                "When enabled, compiler queries will attach context (e.g. error location, full trace), from the project.",
+    new BooleanFlag(STUDIOBOT, "compiler.error.context.enabled",
+                    "Enable sending context with compiler error queries.",
+                    "When enabled, compiler queries will attach context (e.g. error location, full trace), from the project.",
                     enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_PROJECT_FACTS_CONTEXT_ENABLED =
-    new MendelFlag(STUDIOBOT, "project.facts.context.enabled", 97715007,
+    new BooleanFlag(STUDIOBOT, "project.facts.context.enabled",
                     "Enable sending project facts with chat queries.",
                     "When enabled, chat queries will attach summarized facts about the project.",
                     enabledUpTo(DEV));
@@ -2077,6 +2101,12 @@ public final class StudioFlags {
                     "When enabled, allows the user to navigate forward and back in the transform history in the diff view.",
                     false);
 
+  public static final Flag<Boolean> STUDIOBOT_TRANSFORM_MULTIFILE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "editor.ai.transform.multifile.enabled",
+                    "Enable the transform to be able to output multiple files.",
+                    "When enabled, returns all files modified by models.",
+                    enabledUpTo(DEV));
+
   public static final Flag<Boolean> COMPOSE_PREVIEW_COMPONENT_POP_UP = new BooleanFlag(
     COMPOSE, "preview.popup", "Enable the opening pop up when holding the option key while clicking a preview",
     "If enabled, when holding the option key while clicking a preview on a preview it will open pop up with all components under click",
@@ -2101,6 +2131,12 @@ public final class StudioFlags {
                     "When enabled, the Chat toolwindow will use the Jewel-based UI, implemented in Compose for Desktop.",
                     enabledUpTo(DEV));
 
+  public static final Flag<Boolean> STUDIOBOT_USE_AIDA_SIMPLIFIED_ONBOARDING =
+    new BooleanFlag(STUDIOBOT, "chat.use.aida.simplified.onboarding",
+                    "Use the simplified AIDA onboarding flow.",
+                    "When enabled, the AIDA model onboarding will use the new simplified flow. Only applied if the Compose Chat toolwindow is enabled.",
+                    enabledUpTo(DEV));
+
   public static final Flag<Boolean> STUDIOBOT_CONTEXT_ATTACHMENT_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.enable.context.attachment",
                     "Enable @file attachment and the context drawer.",
@@ -2120,16 +2156,16 @@ public final class StudioFlags {
                     false);
 
   public static final Flag<Boolean> STUDIOBOT_CURRENT_FILE_CONTEXT =
-    new MendelFlag(STUDIOBOT, "current.file.context", 97694800,
-                   "Use the current file as context",
-                   "Attach the current file's path, contents, and selection with chat queries.",
-                   enabledUpTo(DEV));
+    new BooleanFlag(STUDIOBOT, "current.file.context",
+                    "Use the current file as context",
+                    "Attach the current file's path, contents, and selection with chat queries.",
+                    enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> STUDIOBOT_OPEN_FILES_CONTEXT =
+  public static final Flag<Boolean> STUDIOBOT_RECENT_FILES_CONTEXT =
     new BooleanFlag(STUDIOBOT, "open.files.context",
-                    "Use the currently open files as context",
-                    "Attach the currently open files' paths and contents with chat queries.",
-                    false);
+                    "Use the most recently opened files as context",
+                    "Attach the most recently opened files' (but not including the currently open one's) paths and contents with chat queries.",
+                    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_ASK_GEMINI_INCLUDE_BUILD_FILES_IN_CONTEXT =
     new BooleanFlag(STUDIOBOT, "askgemini.include.build.files.in.context",
@@ -2195,9 +2231,9 @@ public final class StudioFlags {
   // rate limits are controlled by server flags
   public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =
     new IntFlag(STUDIOBOT, "completions.per.hour",
-                    "AI completion requests per hour",
-                    "AI completion requests per hour",
-                    36000);
+                "AI completion requests per hour",
+                "AI completion requests per hour",
+                36000);
 
   public static final Flag<Integer> STUDIOBOT_CONVERSATIONS_PER_HOUR =
     new IntFlag(STUDIOBOT, "conversations.per.hour",
@@ -2256,7 +2292,7 @@ public final class StudioFlags {
     new FlagGroup(FLAGS, "wear.runconfigs.autocreate", "Autocreate Wear Run Configs");
   public static final Flag<Boolean> WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED =
     new BooleanFlag(WEAR_RUN_CONFIGS_AUTOCREATE, "enabled", "Enable Autocreate Wear Run Configs",
-                "When enabled, Wear run configurations will be automatically created.", true);
+                    "When enabled, Wear run configurations will be automatically created.", true);
   public static final Flag<Integer> WEAR_RUN_CONFIGS_AUTOCREATE_MAX_TOTAL_RUN_CONFIGS =
     new IntFlag(WEAR_RUN_CONFIGS_AUTOCREATE, "max.total.runconfigs", "Maximum total run configurations",
                 "Maximum total number of all types of run configurations that can be reached after autocreating Wear Run Configs. Wear Run Configurations will not be created if this limit is breached.",
@@ -2297,7 +2333,7 @@ public final class StudioFlags {
       "gmscore.min.version",
       "Minimum version of the GmsCore Backup module that is supported",
       "Minimum version of the GmsCore Backup module that is supported",
-      250231000);
+      250632000);
 
   public static final Flag<Boolean> BACKUP_ACTION_IN_RUNNING_DEVICES =
     new BooleanFlag(

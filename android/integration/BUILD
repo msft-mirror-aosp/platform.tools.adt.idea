@@ -22,6 +22,7 @@ iml_module(
         "//tools/base/perf-logger:studio.perf-logger[module, test]",
         "//tools/adt/idea/android:intellij.android.core[module, test]",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
+        "//tools/adt/idea/platform-performance-testing[module, test]",
     ],
 )
 
@@ -201,10 +202,7 @@ iml_test(
     ],
     module = ":intellij.android.core.integration",
     tags_linux = ["block-network"],
-    tags_windows = [
-        "block-network",
-        "noci:studio-win",
-    ],
+    tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.LanguageHighlightingTest",
 )
 
