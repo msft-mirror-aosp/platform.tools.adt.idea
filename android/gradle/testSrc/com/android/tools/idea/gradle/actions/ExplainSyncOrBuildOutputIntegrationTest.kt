@@ -72,16 +72,11 @@ class ExplainSyncOrBuildOutputIntegrationTest {
         .replace("\r\n", "\n")
         .replace("\\", "/")
     val absolutePath = buildFile.absolutePath.replace("\\", "/")
-    val maxCompileSdk = if (MAX_SUPPORTED_ANDROID_PLATFORM_VERSION.isPreview) {
-      """compileSdkPreview = "${MAX_SUPPORTED_ANDROID_PLATFORM_VERSION.codename}""""
-    } else {
-      "compileSdk = ${MAX_SUPPORTED_ANDROID_PLATFORM_VERSION.apiLevel}"
-    }
     assertEquals(
       """
                 We recommend using a newer Android Gradle plugin to use compileSdk = 341123
                 
-                This Android Gradle plugin ($ANDROID_GRADLE_PLUGIN_VERSION) was tested up to $maxCompileSdk.
+                This Android Gradle plugin ($ANDROID_GRADLE_PLUGIN_VERSION) was tested up to compileSdk = 36.
                 
                 You are strongly encouraged to update your project to use a newer
                 Android Gradle plugin that has been tested with compileSdk = 341123.
