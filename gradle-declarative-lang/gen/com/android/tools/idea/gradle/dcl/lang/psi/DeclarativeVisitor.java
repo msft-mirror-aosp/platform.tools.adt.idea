@@ -90,7 +90,8 @@ public class DeclarativeVisitor extends PsiElementVisitor {
   }
 
   public void visitLiteral(@NotNull DeclarativeLiteral o) {
-    visitValue(o);
+    visitSimpleLiteral(o);
+    // visitContributedReferenceHost(o);
   }
 
   public void visitPair(@NotNull DeclarativePair o) {
@@ -123,6 +124,10 @@ public class DeclarativeVisitor extends PsiElementVisitor {
 
   public void visitSimpleFactory(@NotNull DeclarativeSimpleFactory o) {
     visitFactoryReceiver(o);
+  }
+
+  public void visitSimpleLiteral(@NotNull DeclarativeSimpleLiteral o) {
+    visitValue(o);
   }
 
   public void visitAbstractFactory(@NotNull DeclarativeAbstractFactory o) {

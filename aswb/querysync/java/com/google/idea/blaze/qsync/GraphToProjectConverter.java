@@ -565,17 +565,11 @@ public class GraphToProjectConverter {
       workspaceModule.addContentEntries(contentEntry);
     }
 
-    ImmutableSet.Builder<LanguageClass> activeLanguages = ImmutableSet.builder();
-    if (graph.targetMap().values().stream().map(ProjectTarget::kind).anyMatch(RuleKinds::isJava)) {
-      activeLanguages.add(LanguageClass.LANGUAGE_CLASS_JAVA);
-    }
-    if (graph.targetMap().values().stream().map(ProjectTarget::kind).anyMatch(RuleKinds::isCc)) {
-      activeLanguages.add(LanguageClass.LANGUAGE_CLASS_CC);
-    }
+    final var activeLanguages = graph.getActiveLanguages();
 
     return ProjectProto.Project.newBuilder()
         .addModules(workspaceModule)
-        .addAllActiveLanguages(activeLanguages.build())
+        .addAllActiveLanguages(activeLanguages.stream().map(it -> it.protoValue).toList())
         .build();
   }
 
@@ -589,6 +583,7 @@ public class GraphToProjectConverter {
     Set<Path> directories = new HashSet<>();
     for (var sourceFile : sourceFiles) {
       if (sourceFile.getName().toString().endsWith(".xml")) {
+        @SuppressWarnings("PathAsIterable")
         List<Path> pathParts = Lists.newArrayList(sourceFile.getName());
         int resPos = pathParts.indexOf(Path.of("res"));
         if (resPos >= 0) {

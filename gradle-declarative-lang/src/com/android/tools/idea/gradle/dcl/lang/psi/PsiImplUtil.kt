@@ -117,6 +117,13 @@ class PsiImplUtil {
     fun getReferences(property: DeclarativeAssignableProperty): Array<PsiReference> =
       ReferenceProvidersRegistry.getReferencesFromProviders(property)
 
+    @JvmStatic
+    fun getReference(literal: DeclarativeLiteral): PsiReference? = getReferences(literal).firstOrNull()
+
+    @JvmStatic
+    fun getReferences(literal: DeclarativeLiteral): Array<PsiReference> =
+      ReferenceProvidersRegistry.getReferencesFromProviders(literal)
+
     // Name should be nullable to agree with CompositePsiElement.getName() in PSI impl classes
     @JvmStatic
     fun getName(property: DeclarativeIdentifier): String? {
@@ -132,26 +139,13 @@ class PsiImplUtil {
     }
 
     @JvmStatic
-    fun getFirst(pair: DeclarativePair): Any? {
-      // need to get second DeclarativeValueElement as first is the key
-      val text = pair.firstChild.text
-      return when (pair.firstChild.elementType) {
-        BOOLEAN -> text == "true"
-        MULTILINE_STRING_LITERAL -> text.unTripleQuote().unescape()
-        ONE_LINE_STRING_LITERAL -> text.unquote().unescape()
-        LONG_LITERAL -> text?.toIntegerOrNull()
-        DOUBLE_LITERAL -> text?.toDoubleOrNull()
-        INTEGER_LITERAL -> text?.toIntegerOrNull()
-        UNSIGNED_LONG -> text?.toIntegerOrNull()
-        UNSIGNED_INTEGER -> text?.toIntegerOrNull()
-        NULL -> null
-        else -> null
-      }
+    fun getFirst(pair: DeclarativePair): DeclarativeSimpleLiteral {
+      return pair.simpleLiteral
     }
 
     @JvmStatic
     fun getSecond(pair: DeclarativePair): DeclarativeValue {
-      return pair.children.filterIsInstance<DeclarativeValue>().first()
+      return pair.children.filterIsInstance<DeclarativeValue>()[1]
     }
 
     @JvmStatic
@@ -200,6 +194,20 @@ class PsiImplUtil {
     @JvmStatic
     fun getValue(literal: DeclarativeLiteral): Any? = when {
       literal.pair !=null -> literal.pair!!.second
+      literal.boolean != null -> literal.boolean?.text == "true"
+      literal.multilineStringLiteral != null -> literal.multilineStringLiteral?.text?.unTripleQuote()?.unescape()
+      literal.oneLineStringLiteral != null -> literal.oneLineStringLiteral?.text?.unquote()?.unescape()
+      literal.longLiteral != null -> literal.longLiteral?.text?.toIntegerOrNull()
+      literal.doubleLiteral != null -> literal.doubleLiteral?.text?.toDoubleOrNull()
+      literal.integerLiteral != null -> literal.integerLiteral?.text?.toIntegerOrNull()
+      literal.unsignedLong != null -> literal.unsignedLong?.text?.toIntegerOrNull()
+      literal.unsignedInteger != null -> literal.unsignedInteger?.text?.toIntegerOrNull()
+      literal.elementType == NULL -> null
+      else -> null
+    }
+
+    @JvmStatic
+    fun getValue(literal: DeclarativeSimpleLiteral): Any? = when {
       literal.boolean != null -> literal.boolean?.text == "true"
       literal.multilineStringLiteral != null -> literal.multilineStringLiteral?.text?.unTripleQuote()?.unescape()
       literal.oneLineStringLiteral != null -> literal.oneLineStringLiteral?.text?.unquote()?.unescape()

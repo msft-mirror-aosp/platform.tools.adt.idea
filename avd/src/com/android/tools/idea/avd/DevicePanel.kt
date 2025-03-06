@@ -96,7 +96,7 @@ internal fun DevicePanel(
         .collect {
           configureDevicePanelState.setDeviceName(it)
           nameError = deviceNameValidator.validate(it)
-          configureDevicePanelState.setIsDeviceNameValid(nameError == null)
+          configureDevicePanelState.isDeviceNameValid = nameError == null
         }
     }
 
@@ -126,23 +126,22 @@ internal fun DevicePanel(
       ApiFilter(
         androidVersions,
         systemImageFilterState.selectedApi,
-        systemImageFilterState::setSelectedApi,
+        systemImageFilterState::selectedApi::set,
         Modifier.padding(bottom = Padding.MEDIUM_LARGE),
       )
 
       ServicesDropdown(
         systemImageFilterState.selectedServices,
         servicesCollection,
-        systemImageFilterState::setSelectedServices,
+        systemImageFilterState::selectedServices::set,
         Modifier.padding(bottom = Padding.MEDIUM_LARGE),
       )
     }
 
     val baseExtensionLevels = remember(imageState.images) { BaseExtensionLevels(imageState.images) }
     val filteredSystemImages = systemImageFilterState.filter(imageState.images, baseExtensionLevels)
-    configureDevicePanelState.setIsSystemImageTableSelectionValid(
+    configureDevicePanelState.isSystemImageTableSelectionValid =
       configureDevicePanelState.systemImageTableSelectionState.selection in filteredSystemImages
-    )
 
     Box(Modifier.weight(1f).padding(bottom = Padding.SMALL)) {
       if (filteredSystemImages.isEmpty()) {
@@ -174,14 +173,14 @@ internal fun DevicePanel(
 
     ShowSdkExtensionSystemImagesCheckbox(
       systemImageFilterState.showSdkExtensionSystemImages,
-      systemImageFilterState::setShowSdkExtensionSystemImages,
+      systemImageFilterState::showSdkExtensionSystemImages::set,
       Modifier.padding(bottom = Padding.SMALL),
     )
 
     CheckboxRow(
       "Show unsupported system images",
       systemImageFilterState.showUnsupportedSystemImages,
-      systemImageFilterState::setShowUnsupportedSystemImages,
+      systemImageFilterState::showUnsupportedSystemImages::set,
     )
   }
 }

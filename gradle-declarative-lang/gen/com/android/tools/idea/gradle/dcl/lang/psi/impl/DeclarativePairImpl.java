@@ -51,56 +51,14 @@ public class DeclarativePairImpl extends CompositePsiElement implements Declarat
   }
 
   @Override
-  @Nullable
-  public PsiElement getBoolean() {
-    return findPsiChildByType(BOOLEAN);
+  @NotNull
+  public DeclarativeSimpleLiteral getSimpleLiteral() {
+    return PsiTreeUtil.getChildOfType(this, DeclarativeSimpleLiteral.class);
   }
 
   @Override
-  @Nullable
-  public PsiElement getDoubleLiteral() {
-    return findPsiChildByType(DOUBLE_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getIntegerLiteral() {
-    return findPsiChildByType(INTEGER_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getLongLiteral() {
-    return findPsiChildByType(LONG_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getMultilineStringLiteral() {
-    return findPsiChildByType(MULTILINE_STRING_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getOneLineStringLiteral() {
-    return findPsiChildByType(ONE_LINE_STRING_LITERAL);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getUnsignedInteger() {
-    return findPsiChildByType(UNSIGNED_INTEGER);
-  }
-
-  @Override
-  @Nullable
-  public PsiElement getUnsignedLong() {
-    return findPsiChildByType(UNSIGNED_LONG);
-  }
-
-  @Override
-  @Nullable
-  public Object getFirst() {
+  @NotNull
+  public DeclarativeSimpleLiteral getFirst() {
     return PsiImplUtil.getFirst(this);
   }
 

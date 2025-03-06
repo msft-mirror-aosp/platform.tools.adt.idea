@@ -63,16 +63,15 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 
 /** A local Blaze/Bazel invoker that issues commands via CLI. */
-public class LocalInvoker extends AbstractBuildInvoker1 {
+public class LocalInvoker extends AbstractBuildInvoker {
   private static Logger logger = Logger.getInstance(LocalInvoker.class);
   private final BuildBinaryType buildBinaryType;
 
   public LocalInvoker(
       Project project,
-      BlazeContext blazeContext,
       BuildSystem buildSystem,
       BuildBinaryType binaryType) {
-    super(project, blazeContext, buildSystem, binaryPath(binaryType, project));
+    super(project, buildSystem, binaryPath(binaryType, project));
     this.buildBinaryType = binaryType;
   }
 
@@ -84,16 +83,6 @@ public class LocalInvoker extends AbstractBuildInvoker1 {
   @Override
   public BlazeCommandRunner getCommandRunner() {
     return new CommandLineBlazeCommandRunner();
-  }
-
-  @Override
-  public boolean supportsHomeBlazerc() {
-    return true;
-  }
-
-  @Override
-  public boolean supportsParallelism() {
-    return false;
   }
 
   @Override

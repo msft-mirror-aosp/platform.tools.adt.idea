@@ -179,7 +179,7 @@ public class BazelDependencyBuilder implements DependencyBuilder {
   private static final ImmutableMultimap<QuerySyncLanguage, OutputGroup> OUTPUT_GROUPS_BY_LANGUAGE =
       ImmutableMultimap.<QuerySyncLanguage, OutputGroup>builder()
           .putAll(
-              QuerySyncLanguage.JAVA,
+              QuerySyncLanguage.JVM,
               OutputGroup.JARS,
               OutputGroup.AARS,
               OutputGroup.GENSRCS,
@@ -205,7 +205,7 @@ public class BazelDependencyBuilder implements DependencyBuilder {
       prepareInvocationFiles(
           context, buildDependenciesBazelInvocationInfo.invocationWorkspaceFiles());
 
-      BuildInvoker invoker = buildSystem.getDefaultInvoker(project, context);
+      BuildInvoker invoker = buildSystem.getDefaultInvoker(project);
 
       Optional<BuildDepsStats.Builder> buildDepsStatsBuilder =
           BuildDepsStatsScope.fromContext(context);
@@ -325,6 +325,9 @@ public class BazelDependencyBuilder implements DependencyBuilder {
         Path.of(INVOCATION_FILES_DIR + "/build_dependencies_deps.bzl"),
         MoreFiles.asByteSource(getBundledAspectDepsFilePath()));
     files.put(
+        Path.of(INVOCATION_FILES_DIR + "/build_dependencies_android_deps.bzl"),
+        MoreFiles.asByteSource(getBundledAspectAndroidDepsFilePath()));
+    files.put(
         Path.of(INVOCATION_FILES_DIR + "/" + aspectFileName),
         getByteSourceFromString(getBuildDependenciesParametersFileContent(parameters)));
     Optional<String> targetPatternFileWorkspaceRelativeFile;
@@ -347,6 +350,10 @@ public class BazelDependencyBuilder implements DependencyBuilder {
 
   protected Path getBundledAspectDepsFilePath() {
     return getBundledAspectPath("build_dependencies_deps.bzl");
+  }
+
+  protected Path getBundledAspectAndroidDepsFilePath() {
+    return getBundledAspectPath("build_dependencies_android_deps.bzl");
   }
 
   private ByteSource getByteSourceFromString(String content) {

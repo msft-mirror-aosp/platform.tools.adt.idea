@@ -75,13 +75,13 @@ class FloatingToolbarContainerTest {
     fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = disposableRule.disposable)
     val toolbar = FloatingToolbarContainer(horizontal = true, inactiveAlpha = 0.7).apply { createTestToolbars(collapsible = false) }
     panel.add(toolbar, BorderLayout.SOUTH)
-    assertAppearance("NonCollapsibleVerticalInactive")
+    assertAppearance("NonCollapsibleHorizontalInactive")
 
     fakeUi.mouse.moveTo(toolbar.x + toolbar.width - toolbar.height / 2, toolbar.y + toolbar.height / 2)
-    assertAppearance("NonCollapsibleVerticalActive")
+    assertAppearance("NonCollapsibleHorizontalActive")
 
     fakeUi.mouse.moveTo(0, 0)
-    assertAppearance("NonCollapsibleVerticalInactive")
+    assertAppearance("NonCollapsibleHorizontalInactive")
   }
 
   @Test
@@ -93,7 +93,7 @@ class FloatingToolbarContainerTest {
       addToolbar("FloatingToolbar", DefaultActionGroup(), collapsible = false)
     }
     panel.add(toolbar, BorderLayout.EAST)
-    fakeUi.updateToolbars()
+    fakeUi.updateToolbarsIfNecessary()
     // Empty toolbar should not be visible.
     val image = fakeUi.render()
     for (y in 0 until image.height) {

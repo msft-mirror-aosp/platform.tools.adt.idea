@@ -381,7 +381,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> FORCE_MONOCHROME_ADAPTIVE_ICON = new BooleanFlag(
     NELE, "force.monochrome.adaptive.icon", "Display monochrome preview of adaptive icon when none provided",
     "When enabled, the adaptive icon preview will automatically create a monochrome version if none is provided.",
-    enabledUpTo(CANARY));
+    true);
 
   public static final Flag<Boolean> USE_BYTECODE_R_CLASS_PARSING = new BooleanFlag(
     NELE, "use.bytecode.r.class.loading", "Uses bytecode R class parsing instead of reflection",
@@ -943,6 +943,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> GRADLE_SAVE_LOG_TO_FILE = new BooleanFlag(
     GRADLE_IDE, "save.log.to.file", "Save log to file", "Appends the build log to the given file", false);
 
+  public static final Flag<Boolean> SHOW_GRADLE_AUTO_SYNC_SETTING_UI = new BooleanFlag(
+    GRADLE_IDE, "gradle.sync.control.enabled", "Allow disabling of Auto Sync", "Allow opting-out from Gradle Auto Syncing.",
+    enabledUpTo(CANARY));
   /**
    * Don't read this directly, use AgpVersions.agpVersionStudioFlagOverride which handles the 'stable' alias
    */
@@ -1109,6 +1112,11 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.xr.inspection", "Enable or disable support for XR inspection",
     "When this flag is enabled, xr inspection is enabled.",
     enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ON_DEVICE_RENDERING = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.on.device.rendering", "Always use on-device rendering",
+    "Force using on-device rendering, even when the device is not XR. Used for development only.",
+    false);
   //endregion
 
   //region Embedded Emulator
@@ -1356,6 +1364,12 @@ public final class StudioFlags {
     false
   );
 
+  public static final Flag<Boolean> ENABLE_BACKUP_TESTING = new BooleanFlag(
+    TESTING, "backup.testing", "Run backup and restore tests",
+    "If enabled, backup and restore tests can be run from Studio and test results will be displayed in the test matrix",
+    false
+  );
+
   public static final Flag<Integer> ANDROID_PLATFORM_TO_AUTOCREATE = new IntFlag(
     TESTING,
     "android.platform.to.autocreate",
@@ -1525,13 +1539,6 @@ public final class StudioFlags {
     "Enable resizing for Compose Preview",
     "If enabled, the user can resize the Compose Preview",
     enabledUpTo(DEV)
-  );
-
-  public static final Flag<Boolean> COMPOSE_VIEW_INSPECTOR = new BooleanFlag(
-    COMPOSE, "view.inspector",
-    "Show the switch of view inspection tool in Compose",
-    "If enabled, the user can toggle the mouse inspection tool in the dropdown menu of Compose Preview. The tools is disabled by default",
-    false
   );
 
   public static final Flag<Boolean> COMPOSE_VIEW_FILTER = new BooleanFlag(
@@ -2059,6 +2066,13 @@ public final class StudioFlags {
                     "When enabled, a custom inlay displaying 'TAB to complete' or similar text will be shown alongside inline completions.",
                     false);
 
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_DEFERRED_MULTILINE_SUGGESTIONS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.deferred.multiline.suggestions.enabled",
+                    "Enable deferred multiline suggestions.",
+                    "When enabled, any part of a multi-line suggestion hidden behind the autosuggest popup will be removed, and " +
+                    "offered later to the user if they accept the first line of the completion.",
+                    false);
+
   public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "compiler.error.context.enabled",
                     "Enable sending context with compiler error queries.",
@@ -2177,7 +2191,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "prompt.library",
                     "Enable Prompt Library",
                     "When enabled, add prompt library settings screen.",
-                    enabledUpTo(CANARY));
+                    true);
 
   public static final Flag<Boolean> STUDIOBOT_SCROLL_TO_BOTTOM_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.scroll.to.bottom",

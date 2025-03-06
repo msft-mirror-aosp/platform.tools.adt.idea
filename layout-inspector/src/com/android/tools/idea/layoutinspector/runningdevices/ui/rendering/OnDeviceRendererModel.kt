@@ -20,6 +20,7 @@ import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
+import com.android.tools.idea.layoutinspector.ui.RenderSettings
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import java.awt.Rectangle
@@ -51,8 +52,9 @@ data class DrawInstruction(val rootViewId: Long, val bounds: Rectangle)
  */
 class OnDeviceRendererModel(
   parentDisposable: Disposable,
-  private val inspectorModel: InspectorModel,
+  val inspectorModel: InspectorModel,
   private val treeSettings: TreeSettings,
+  private val renderSettings: RenderSettings,
 ) : Disposable {
 
   private val _interceptClicks = MutableStateFlow<Boolean>(false)
@@ -73,6 +75,8 @@ class OnDeviceRendererModel(
   /** All the nodes that had a recent recomposition count change. */
   val recomposingNodes = _recomposingNodes.asStateFlow()
 
+  private var renderSettingsState = renderSettings.toState()
+
   private val modificationListener =
     object : InspectorModel.ModificationListener {
       override fun onModification(
@@ -81,7 +85,7 @@ class OnDeviceRendererModel(
         isStructuralChange: Boolean,
       ) {
         val newNodes = getNodes()
-        _visibleNodes.value = newNodes.mapNotNull { it.toDrawInstruction() }
+        setVisibleNodes(newNodes)
         // If the model is updated the DrawInstruction for the selected and hovered nodes can be
         // stale (for example if the position has changed).
         _selectedNode.value = newNodes.find { it == inspectorModel.selection }?.toDrawInstruction()
@@ -111,12 +115,27 @@ class OnDeviceRendererModel(
       }
     }
 
+  private val renderSettingsListener =
+    object : RenderSettings.Listener {
+      override fun onChange(state: RenderSettings.State) {
+        renderSettingsState = state
+
+        if (state.drawBorders == false) {
+          setVisibleNodes(emptyList())
+        } else {
+          setVisibleNodes(getNodes())
+        }
+      }
+    }
+
   init {
     Disposer.register(parentDisposable, this)
 
     inspectorModel.addModificationListener(modificationListener)
     inspectorModel.addSelectionListener(selectionListener)
     inspectorModel.addHoverListener(hoverListener)
+
+    renderSettings.modificationListeners.add(renderSettingsListener)
   }
 
   fun setInterceptClicks(enable: Boolean) {
@@ -124,17 +143,17 @@ class OnDeviceRendererModel(
   }
 
   fun selectNode(x: Double, y: Double, rootId: Long = inspectorModel.root.drawId) {
-    val node = findViewNodesAt(rootId, x, y).firstOrNull()
+    val node = findNodesAt(x, y, rootId).firstOrNull()
     inspectorModel.setSelection(node, SelectionOrigin.INTERNAL)
   }
 
   fun hoverNode(x: Double, y: Double, rootId: Long = inspectorModel.root.drawId) {
-    val node = findViewNodesAt(rootId, x, y).firstOrNull()
+    val node = findNodesAt(x, y, rootId).firstOrNull()
     inspectorModel.hoveredNode = node
   }
 
   /** Returns the list of visible nodes belonging to [rootId], at the provided coordinates. */
-  private fun findViewNodesAt(rootId: Long, x: Double, y: Double): List<ViewNode> {
+  fun findNodesAt(x: Double, y: Double, rootId: Long): List<ViewNode> {
     return getNodes(rootId).filter { it.layoutBounds.contains(x, y) }
   }
 
@@ -152,6 +171,17 @@ class OnDeviceRendererModel(
     inspectorModel.removeModificationListener(modificationListener)
     inspectorModel.removeSelectionListener(selectionListener)
     inspectorModel.removeHoverListener(hoverListener)
+
+    renderSettings.modificationListeners.remove(renderSettingsListener)
+  }
+
+  /** Sets the visible nodes, while respecting render settings. */
+  private fun setVisibleNodes(nodes: List<ViewNode>) {
+    if (renderSettings.drawBorders) {
+      _visibleNodes.value = nodes.mapNotNull { it.toDrawInstruction() }
+    } else {
+      _visibleNodes.value = emptyList()
+    }
   }
 
   /** Convert a ViewNode to [DrawInstruction]. */

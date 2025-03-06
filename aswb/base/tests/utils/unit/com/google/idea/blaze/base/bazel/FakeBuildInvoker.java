@@ -42,7 +42,6 @@ public abstract class FakeBuildInvoker implements BuildInvoker {
     return new AutoValue_FakeBuildInvoker.Builder()
         .type(BuildBinaryType.NONE)
         .binaryPath("")
-        .supportsParallelism(false)
         .buildResultHelperSupplier(() -> null)
         .commandRunner(new FakeBlazeCommandRunner())
         .buildSystem(FakeBuildSystem.builder(BuildSystemName.Blaze).build());
@@ -71,13 +70,8 @@ public abstract class FakeBuildInvoker implements BuildInvoker {
 
   @Override
   @Nullable
-  public abstract BlazeInfo getBlazeInfo();
-
-  public abstract boolean getSupportsParallelism();
-
-  @Override
-  public boolean supportsParallelism() {
-    return getSupportsParallelism();
+  public BlazeInfo getBlazeInfo(BlazeContext blazeContext) {
+    return null;
   }
 
   @Override
@@ -152,10 +146,6 @@ public abstract class FakeBuildInvoker implements BuildInvoker {
     public abstract Builder type(BuildBinaryType type);
 
     public abstract Builder binaryPath(String binaryPath);
-
-    public abstract Builder blazeInfo(BlazeInfo blazeInfo);
-
-    public abstract Builder supportsParallelism(boolean parallel);
 
     public abstract Builder buildResultHelperSupplier(Supplier<BuildResultHelper> supplier);
 
