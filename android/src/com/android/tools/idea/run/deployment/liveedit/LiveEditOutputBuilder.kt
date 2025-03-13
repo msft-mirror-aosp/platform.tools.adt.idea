@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.backend.common.output.OutputFile
 import org.jetbrains.kotlin.codegen.`when`.WhenByEnumsMapping.MAPPINGS_CLASS_NAME_POSTFIX
 import org.jetbrains.kotlin.codegen.`when`.WhenByEnumsMapping.MAPPING_ARRAY_FIELD_PREFIX
 import org.jetbrains.kotlin.idea.base.util.module
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.psi.KtFile
 import java.util.concurrent.TimeUnit
@@ -48,7 +49,7 @@ import java.util.concurrent.TimeUnit
 private val logger = LogWrapper(Logger.getInstance(LiveEditOutputBuilder ::class.java))
 private val debug = LiveEditLogger("LiveEditOutputBuilder")
 
-internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvider) {
+internal class LiveEditOutputBuilder {
   // The outputs builder is *cumulative* and will include the outputs from *all previously compiled files* during this LiveEdit operation
   // Be extremely careful if you use the state inside the outputs object for any reason (or better yet, don't) - it's very easy to
   // inadvertently re-process classes and break things, especially when running in manual mode
@@ -67,18 +68,15 @@ internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvi
     }
 
     val keyMetaFiles = classFiles.filter(::isKeyMeta)
-    if (keyMetaFiles.size > 1) {
-      throw IllegalStateException("Multiple KeyMeta files Found: $keyMetaFiles")
-    }
 
-    val keyMetaClass = keyMetaFiles.singleOrNull()?.let{ IrClass(it.asByteArray()) }
-    val groups = if (keyMetaClass != null) { parseComposeGroups(keyMetaClass) } else { emptyList() }
+    val declaredClasses = getDeclaredClassNames(sourceFile)
 
     val irClasses = mutableListOf<IrClass>()
     val modifiedMethods = mutableListOf<IrMethod>()
     val requiresReinit = mutableListOf<IrClass>()
     for (classFile in classFiles.filterNot { it in keyMetaFiles }) {
-      val changes = handleClassFile(applicationLiveEditServices, classFile, sourceFile, irCache, inlineCandidateCache, outputs)
+      val changes = handleClassFile(applicationLiveEditServices, classFile, sourceFile, declaredClasses, irCache, inlineCandidateCache,
+                                    outputs)
       irClasses.add(changes.clazz)
 
       modifiedMethods.addAll(changes.modifiedMethods)
@@ -87,7 +85,7 @@ internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvi
       }
     }
 
-    val groupTable = computeGroupTable(irClasses, groups)
+    val groupTable = computeGroupTable(irClasses)
     debug.log(groupTable.toStringWithLineInfo(sourceFile))
 
     // If a Composable lambda is created in a non-Compose context, re-instantiating it requires restarting the activity. The most common
@@ -109,7 +107,7 @@ internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvi
       }
 
       // If we have method changes but no group information, the best we can do is a save and load
-      if (groups.isEmpty()) {
+      if (groupTable.methodGroups.isEmpty() && groupTable.lambdaGroups.isEmpty()) {
         outputs.invalidateMode = InvalidateMode.SAVE_AND_LOAD
         break
       }
@@ -162,6 +160,7 @@ internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvi
   private fun handleClassFile(applicationLiveEditServices: ApplicationLiveEditServices,
                               classFile: OutputFile,
                               sourceFile: KtFile,
+                              declaredClasses: Set<String>,
                               irCache: IrClassCache,
                               inlineCandidateCache: SourceInlineCandidateCache,
                               output: LiveEditCompilerOutput.Builder): ChangeInfo {
@@ -169,13 +168,14 @@ internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvi
     val newClass = IrClass(classBytes)
     val oldClass = irCache[newClass.name] ?: run {
       logger.info("Live Edit: No cache entry for ${newClass.name}; using the APK for class diff")
-      apkClassProvider.getClass(applicationLiveEditServices, sourceFile, newClass.name)
+      val classContent = applicationLiveEditServices.getClassContent(sourceFile.originalFile.virtualFile, newClass.name)
+      classContent?.let { IrClass(it.content) }
     }
 
     output.addIrClass(newClass)
 
     val isFirstDiff = newClass.name !in irCache
-    val classType = if (isSyntheticClass(newClass)) LiveEditClassType.SUPPORT_CLASS else LiveEditClassType.NORMAL_CLASS
+    val classType = if (newClass.name in declaredClasses) LiveEditClassType.NORMAL_CLASS else LiveEditClassType.SUPPORT_CLASS
 
     // Live Edit supports adding new synthetic classes in order to handle the lambda classes that Compose generates
     if (oldClass == null) {
@@ -240,49 +240,6 @@ internal class LiveEditOutputBuilder(private val apkClassProvider: ApkClassProvi
 
     return ChangeInfo(newClass, modifiedIrMethods, requiresReinit)
   }
-}
-
-/**
- * Check if the class is a synthetic class; that is, a class generated by either the Kotlin or Compose compiler. Live Edit treats these
- * classes differently, primarily to handle generated lambda classes and SAM interface implementations.
- *
- * Unfortunately, not all generated classes receive the synthetic access flag, so checking for extension of internal Kotlin types is used
- * as a sufficient heuristic.
- *
- * TODO: Many places in LE code refer to these as "support" classes; we should probably switch that to "synthetic".
- */
-private fun isSyntheticClass(clazz: IrClass): Boolean {
-  if (clazz.superName == "kotlin/jvm/internal/Lambda" ||
-    clazz.superName == "kotlin/coroutines/jvm/internal/SuspendLambda" ||
-    clazz.superName == "kotlin/coroutines/jvm/internal/RestrictedSuspendLambda" ||
-    clazz.name.contains("ComposableSingletons\$")) {
-    return true
-  }
-
-  // Checking for SAM (single abstract method) interfaces; these aren't specifically tagged in bytecode, so we need a heuristic.
-  // All the following should be true:
-  //   - class is an inner class (class is contained in a class or method)
-  //   - class implements a single interface
-  //   - class exposes one public method (not including constructors, static initializers, or bridge methods)
-  if (clazz.enclosingMethod != null && clazz.interfaces.size == 1) {
-    val publicMethods = clazz.methods.filter {
-      it.access.contains(IrAccessFlag.PUBLIC) &&
-        !it.access.contains(IrAccessFlag.SYNTHETIC) &&
-        !it.access.contains(IrAccessFlag.BRIDGE) &&
-        !it.access.contains(IrAccessFlag.STATIC) &&
-        it.name != SpecialNames.INIT.asString()
-    }
-    if (publicMethods.size == 1) {
-      return true
-    }
-  }
-
-  // Check for WhenMapping.
-  if (isWhenMapping(clazz)) {
-    return true
-  }
-
-  return false
 }
 
 /**

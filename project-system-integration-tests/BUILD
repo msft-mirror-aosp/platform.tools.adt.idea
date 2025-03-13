@@ -1,3 +1,4 @@
+load("@exec_properties//:constants.bzl", "RBE_CPU_8")
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
@@ -24,21 +25,22 @@ iml_module(
     name = "intellij.android.projectSystem.integration.tests",
     enable_tests = False,
     iml_files = ["intellij.android.projectSystem.integration.tests.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "@intellij//:intellij-sdk",
+        "//prebuilts/tools/common/m2:junit-4.12",
+        "//tools/adt/idea/as-driver:as-driver.utils",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/base/common:studio.android.sdktools.common",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/lint:studio.android.sdktools.lint-checks",
+        "//tools/adt/idea/android:intellij.android.core",
+    ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = [
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
-        "@intellij//:intellij-sdk[test]",
-        "@intellij//:com.intellij.java",
-        "//prebuilts/tools/common/m2:junit-4.12[test]",
-        "//tools/adt/idea/as-driver:as-driver.utils[test]",
-        "//tools/base/testutils:studio.android.sdktools.testutils[test]",
-        "//tools/base/common:studio.android.sdktools.common[test]",
-        "//tools/adt/idea/.idea/libraries:truth[test]",
-        "//tools/base/lint:studio.android.sdktools.lint-checks[test]",
-        "//tools/adt/idea/android:intellij.android.core[test]",
-    ],
+    deps = ["@intellij//:com.intellij.java"],
 )
 
 iml_test(
@@ -135,12 +137,17 @@ iml_test(
 iml_test(
     name = "GradleTokensTest",
     timeout = "long",
+    exec_properties = RBE_CPU_8,
     jvm_flags = ["-Didea.skip.indices.initialization=true"],
     module = ":intellij.android.projectSystem.integration.tests",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     # Commented out due to b/242358149
     # tags_mac = ["block-network"],
-    tags_windows = ["block-network"],
+    tags_windows = [
+        "block-network",
+        "noci:studio-win",  # b/401592795
+    ],
     test_class = "com.android.tools.idea.projectsystem.gradle.GradleTokensTest",
 )
 

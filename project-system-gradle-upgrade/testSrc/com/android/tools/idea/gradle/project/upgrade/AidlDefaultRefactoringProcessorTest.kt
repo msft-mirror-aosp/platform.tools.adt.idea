@@ -19,9 +19,11 @@ import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.buildMainSourceProviderStub
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.junit.Assert.assertEquals
+import org.junit.Ignore
 import org.junit.Test
 
 @RunsInEdt
@@ -39,6 +41,7 @@ class AidlDefaultRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
   @Test
   fun testNoAidlDirectory() {
     writeToBuildFile(TestFileName("AidlDefault/NoAidlDeclaration"))
+    IndexingTestUtil.waitUntilIndexesAreReady(project)
     val processor = AidlDefaultRefactoringProcessor(project, AgpVersion.parse("7.0.0"), AgpVersion.parse("8.0.0"))
     processor.run()
     verifyFileContents(buildFile, TestFileName("AidlDefault/NoAidlDeclaration"))

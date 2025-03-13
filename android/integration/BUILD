@@ -1,3 +1,4 @@
+load("@exec_properties//:constants.bzl", "RBE_CPU_8")
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE", "KOTLIN_ARTIFACTS_FOR_TESTS")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
@@ -7,23 +8,24 @@ iml_module(
     name = "intellij.android.core.integration",
     enable_tests = False,
     iml_files = ["intellij.android.core.integration.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "@intellij//:intellij-sdk",
+        "//prebuilts/tools/common/m2:junit-4.12",
+        "//tools/adt/idea/as-driver:as-driver.utils",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/base/common:studio.android.sdktools.common",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/perf-logger:studio.perf-logger",
+        "//tools/adt/idea/android:intellij.android.core",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/platform-performance-testing",
+    ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = [
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
-        "@intellij//:intellij-sdk[test]",
-        "@intellij//:com.intellij.java",
-        "//prebuilts/tools/common/m2:junit-4.12[test]",
-        "//tools/adt/idea/as-driver:as-driver.utils[test]",
-        "//tools/base/testutils:studio.android.sdktools.testutils[test]",
-        "//tools/base/common:studio.android.sdktools.common[test]",
-        "//tools/adt/idea/.idea/libraries:truth[test]",
-        "//tools/base/perf-logger:studio.perf-logger[test]",
-        "//tools/adt/idea/android:intellij.android.core[test]",
-        "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
-        "//tools/adt/idea/platform-performance-testing[test]",
-    ],
+    deps = ["@intellij//:com.intellij.java"],
 )
 
 open_project_data = [
@@ -36,7 +38,11 @@ iml_test(
     name = "OpenProjectTest",
     timeout = "long",
     data = open_project_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.OpenProjectTest",
@@ -46,8 +52,12 @@ iml_test(
     name = "OpenProjectWithThreadingAgentDisabledTest",
     timeout = "long",
     data = open_project_data,
+    exec_properties = RBE_CPU_8,
     jvm_flags = ["-Dthreading_agent.disabled=true"],
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.OpenProjectTest",
@@ -62,7 +72,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.ShowUsagesTest",
@@ -147,12 +161,14 @@ iml_test(
     name = "EditorPerformanceTest",
     timeout = "long",
     data = editor_performance_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
     tags = [
         "ci:perfgate-linux",
         "ci:perfgate-win",
         "noci:studio-linux",
         "noci:studio-win",
+        "studio-e2e-test",
     ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
@@ -163,12 +179,14 @@ iml_test(
     name = "StartupPerformanceTest",
     timeout = "long",
     data = editor_performance_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
     tags = [
         "ci:perfgate-linux",
         "ci:perfgate-win",
         "noci:studio-linux",
         "noci:studio-win",
+        "studio-e2e-test",
     ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
@@ -179,12 +197,14 @@ iml_test(
     name = "EditorPerformanceWithK2Test",
     timeout = "long",
     data = editor_performance_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
     tags = [
         "ci:perfgate-linux",
         "ci:perfgate-win",
         "noci:studio-linux",
         "noci:studio-win",
+        "studio-e2e-test",
     ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
@@ -200,7 +220,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.LanguageHighlightingTest",
@@ -213,7 +237,11 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = [
         "block-network",
@@ -234,7 +262,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = [
         "block-network",
     ],
@@ -253,8 +285,12 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
-    tags = ["manual"],  # b/243923041
+    tags = [
+        "manual",  # b/243923041
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.AdbServerConnectionTest",
@@ -269,7 +305,11 @@ iml_test(
         "//prebuilts/studio/sdk:platform-tools",
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = [
         "block-network",
@@ -288,7 +328,11 @@ iml_test(
         "//tools/base/build-system:gradle-distrib-7.2",
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = [
         "block-network",
     ],
@@ -308,24 +352,40 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     test_class = "com.android.tools.idea.GoToDeclarationTest",
 )
+
+live_edit_test_data = [
+    # Gradle
+    "//tools/base/build-system:gradle-distrib-8.10.2",
+    # The project and the project's Maven dependencies.
+    ":liveeditproject",
+    ":live_edit_project_deps",
+    # SDK / Platform to build. Need 35+ for the compose libraies that it uses.
+    "//prebuilts/studio/sdk:platforms/android-35",
+    "//prebuilts/studio/sdk:build-tools/35.0.0",
+    "//prebuilts/studio/sdk:platform-tools",
+]
 
 iml_test(
     name = "LiveEditTest",
     timeout = "long",
-    data = [
-        ":live_edit_project_deps",
-        ":liveeditproject",
-        "//prebuilts/studio/sdk:build-tools/33.0.1",
+    data = live_edit_test_data + [
         "//prebuilts/studio/sdk:emulator",
-        "//prebuilts/studio/sdk:platform-tools",
         "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = [
         "block-network",
     ],
@@ -351,7 +411,11 @@ iml_test(
     name = "ApplyChangesTest",
     timeout = "long",
     data = apply_changes_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -365,8 +429,11 @@ iml_test(
     name = "ApplyCodeChangesTest",
     timeout = "long",
     data = apply_changes_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
-    tags = [],
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -390,7 +457,11 @@ iml_test(
     name = "BuildAndRunTest",
     timeout = "long",
     data = build_and_run_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -412,7 +483,11 @@ iml_test(
     name = "CreateProjectTest",
     timeout = "long",
     data = create_project_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.CreateProjectTest",
@@ -507,7 +582,11 @@ iml_test(
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         INTEGRATION_TEST_GRADLE_VERSION,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.BuildProjectTest",
@@ -523,12 +602,14 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         "//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
     tags = [
         "block-network",
         "ci:studio-linux_very_flaky",  # b/283129200
         "noci:studio-linux",
         "noci:studio-win",
+        "studio-e2e-test",
     ],
     test_class = "com.android.tools.idea.BuildProjectBleakTest",
 )
@@ -544,9 +625,11 @@ iml_test(
         "//prebuilts/studio/sdk:platforms/android-31",
         "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
     tags = [
         "noci:studio-win",  # RBE environment doesn't allow emulation (requires nested virtualization).
+        "studio-e2e-test",
     ],
     tags_linux = [
         "block-network",
@@ -569,7 +652,11 @@ iml_test(
         "//prebuilts/studio/sdk:platforms/android-31",
         "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = [
         "block-network",
         "noci:studio-linux",
@@ -594,7 +681,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -616,7 +707,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -635,7 +730,11 @@ iml_test(
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         INTEGRATION_TEST_GRADLE_VERSION,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -657,7 +756,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -670,19 +773,20 @@ iml_test(
 iml_test(
     name = "SamplesImportTest",
     data = open_project_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.SamplesImportTest",
 )
 
-multi_project_test_data = [
-    ":live_edit_project_deps",
+multi_project_test_data = live_edit_test_data + [
     ":buildproject_deps",
     ":minapp",
-    ":liveeditproject",
     "//prebuilts/studio/sdk:build-tools/33.0.1",
-    "//prebuilts/studio/sdk:platform-tools",
     INTEGRATION_TEST_GRADLE_VERSION,
 ]
 
@@ -690,7 +794,11 @@ iml_test(
     name = "MultiProjectTest",
     timeout = "long",
     data = multi_project_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = ["block-network"],
@@ -701,7 +809,11 @@ iml_test(
     name = "MultiProjectSameWindowTest",
     timeout = "long",
     data = multi_project_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = ["block-network"],
@@ -733,7 +845,11 @@ iml_test(
     name = "FirstLaunchTest",
     timeout = "moderate",
     data = first_launch_test_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -759,23 +875,42 @@ maven_repository(
     name = "live_edit_project_deps",
     # keep sorted: for buildifier
     artifacts = [
-        "@maven//:androidx.activity.activity-compose_1.5.1",
-        "@maven//:androidx.compose.compiler.compiler_1.3.2",
-        "@maven//:androidx.compose.material.material_1.3.0",
-        "@maven//:androidx.compose.ui.ui-test-manifest_1.3.0",
-        "@maven//:androidx.compose.ui.ui-tooling-preview_1.3.0",
-        "@maven//:androidx.compose.ui.ui-tooling_1.3.0",
-        "@maven//:androidx.compose.ui.ui_1.3.0",
-        "@maven//:androidx.core.core-ktx_1.9.0",
-        "@maven//:androidx.lifecycle.lifecycle-common-java8_2.5.1",
-        "@maven//:androidx.lifecycle.lifecycle-runtime-ktx_2.3.1",
-        "@maven//:com.android.tools.build.aapt2_8.1.0-10154469",
-        "@maven//:com.android.tools.build.gradle_8.1.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.7.20",
-        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
-        "@maven//:org.jetbrains.markdown_0.2.1",
+        # Mostly from Compose BOM 2024.04.01
+        "@maven//:androidx.activity.activity-compose_1.9.3",
+        "@maven//:androidx.collection.collection-ktx_1.4.2",
+        "@maven//:androidx.compose.compose-bom_2024.09.00",
+        "@maven//:androidx.compose.material.material-icons-core_1.7.0",
+        "@maven//:androidx.compose.material.material_1.7.0",
+        "@maven//:androidx.compose.material3.material3_1.3.0",
+        "@maven//:androidx.compose.runtime.runtime-saveable_1.7.1",
+        "@maven//:androidx.compose.ui.ui-graphics_1.7.0",
+        "@maven//:androidx.compose.ui.ui-test-manifest_1.7.0",
+        "@maven//:androidx.compose.ui.ui-tooling-preview_1.7.0",
+        "@maven//:androidx.compose.ui.ui-tooling_1.7.0",
+        "@maven//:androidx.compose.ui.ui_1.7.0",
+        "@maven//:androidx.core.core-ktx_1.15.0",
+        "@maven//:androidx.lifecycle.lifecycle-common-java8_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-process_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-runtime-compose_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-runtime-ktx_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-viewmodel-ktx_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-viewmodel-savedstate_2.8.7",
+        "@maven//:androidx.lifecycle.lifecycle-viewmodel_2.8.7",
+        "@maven//:androidx.test.espresso.espresso-core_3.5.1",
+        "@maven//:androidx.test.ext.junit_1.1.5",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_8.8.0",
+        "@maven//:com.android.tools.build.aapt2_8.8.0-12006047",
+        "@maven//:commons-io.commons-io_2.13.0",
+        "@maven//:junit.junit_4.13.2",
+        "@maven//:org.jetbrains.compose.ui.ui-test-junit4-desktop_1.7.3",
+        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.0.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-build-tools-impl_2.0.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-compose-compiler-plugin-embeddable_2.0.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.9.24",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.0.21",
+        "@maven//:org.jetbrains.kotlin.plugin.compose.org.jetbrains.kotlin.plugin.compose.gradle.plugin_2.0.21",
+        "@maven//:org.junit.junit-bom_5.9.2",
+        "@maven//:org.junit.junit-bom_5.9.3",
     ],
 )
 
@@ -1005,7 +1140,11 @@ iml_test(
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.core.integration",
+    tags = [
+        "studio-e2e-test",
+    ],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [

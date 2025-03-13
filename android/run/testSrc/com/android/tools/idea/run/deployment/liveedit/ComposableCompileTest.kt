@@ -103,6 +103,49 @@ class ComposableCompileTest {
   }
 
   @Test
+  fun composableLambdaArg() {
+    val file = projectRule.createKtFile("ComposeSimple.kt", """
+      import androidx.compose.runtime.Composable
+      @Composable
+      fun word(value: String) {
+        println(value)
+      }
+
+      @Composable
+      fun composableNested(inner: @Composable () -> Unit) {
+        inner()
+      }
+
+      @Composable
+      fun caller() {
+        composableNested {
+          word("hello")
+        }
+      }""")
+    val cache = projectRule.initialCache(listOf(file))
+    projectRule.modifyKtFile(file, """
+      import androidx.compose.runtime.Composable
+      @Composable
+      fun word(value: String) {
+        println(value)
+      }
+
+      @Composable
+      fun composableNested(inner: @Composable () -> Unit) {
+        inner()
+      }
+
+      @Composable
+      fun caller() {
+        composableNested {
+          word("hi")
+        }
+      }""")
+    val output = compile(file, cache)
+    Assert.assertTrue(output.classesMap["ComposeSimpleKt"]!!.isNotEmpty())
+  }
+
+  @Test
   fun simpleComposeNested() {
     val file = projectRule.createKtFile("ComposeNested.kt" , """
       import androidx.compose.runtime.Composable
@@ -124,9 +167,6 @@ class ComposableCompileTest {
         return { val y = 0 }
       }""")
     val output = compile(file, cache)
-
-    // TODO(386111622): Check group IDs for K2.
-    Assume.assumeFalse(KotlinPluginModeProvider.isK2Mode())
 
     Assert.assertTrue(-1369675262 in output.groupIds)
     val groupIdForNestedLambda = if (!KotlinPluginModeProvider.isK2Mode()) {
@@ -235,9 +275,6 @@ class ComposableCompileTest {
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
     val output = compile(listOf(LiveEditCompilerInput(file, fileState)), compiler)
-
-    // TODO(386111622): Check ComposableSingletons and getLambda for K2.
-    Assume.assumeFalse(KotlinPluginModeProvider.isK2Mode())
 
     val singleton = output.supportClassesMap["ComposableSingletons\$HasComposableSingletonsKt"];
     Assert.assertNotNull(singleton)

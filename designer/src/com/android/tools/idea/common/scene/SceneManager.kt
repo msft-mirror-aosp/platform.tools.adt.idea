@@ -33,6 +33,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Disposer
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -49,11 +50,9 @@ abstract class SceneManager(
   protected open val designSurface: DesignSurface<*>,
   private val sceneComponentProvider: SceneComponentHierarchyProvider,
 ) : Disposable, ResourceChangeListener {
-  init {
-    Disposer.register(model, this)
-  }
+  private val isDisposed = AtomicBoolean(false)
 
-  val scene: Scene = Scene(this, designSurface)
+  val scene: Scene
   private val hitProvider: HitProvider = DefaultHitProvider()
   private val activationLock = ReentrantLock()
   @GuardedBy("myActivationLock") private var isActivated = false
@@ -103,7 +102,20 @@ abstract class SceneManager(
   val viewObject: Any?
     get() = scene.root?.nlComponent?.viewInfo?.viewObject
 
+  init {
+    Disposer.register(model, this)
+    // Scene is initialized here to ensure that the SceneManager is already registered with the
+    // disposer.
+    // If initialized earlier, it could mean that a failed initialization would also leave the Scene
+    // in the disposer as a leak  .
+    scene = Scene(this, designSurface)
+  }
+
+  /** Returns true if this [SceneManager] has been disposed. */
+  protected fun isDisposed(): Boolean = isDisposed.get()
+
   override fun dispose() {
+    isDisposed.set(true)
     deactivate(this)
   }
 

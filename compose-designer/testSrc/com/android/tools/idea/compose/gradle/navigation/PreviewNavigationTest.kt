@@ -36,6 +36,7 @@ import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.testing.virtualFile
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreferredVisibility
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
+import com.android.tools.idea.uibuilder.surface.PreviewNavigatableWrapper
 import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
@@ -50,6 +51,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.runInEdtAndWait
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.Rectangle
 import java.util.concurrent.CountDownLatch
 import javax.swing.JPanel
 import kotlinx.coroutines.runBlocking
@@ -80,10 +82,17 @@ private class TestNavigationHandler(expectedInvocations: Int) : NavigationHandle
     y: Int,
     requestFocus: Boolean,
     shouldFindAllNavigatables: Boolean,
-  ): List<Navigatable> {
+  ): List<PreviewNavigatableWrapper> {
     assertTrue(expectedInvocationsCountDownLatch.count > 0)
     expectedInvocationsCountDownLatch.countDown()
     return listOf()
+  }
+
+  override suspend fun findBoundsOfComponents(
+    sceneView: SceneView,
+    fileName: String,
+  ): Map<Int, Rectangle> {
+    return mapOf()
   }
 
   override suspend fun navigateTo(

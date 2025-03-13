@@ -25,7 +25,7 @@ iml_module(
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.dagger.tests",
-    generate_k2_tests = True,
+    generate_k1_tests = True,
     iml_files = ["intellij.android.dagger.tests.iml"],
     tags = [
         "noci:studio-win",  # b/135665870
@@ -38,6 +38,13 @@ iml_module(
         "@maven//:com.google.dagger.hilt-core_2.44.2",
         "@maven//:javax.inject.javax.inject_1",
     ],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+    ],
     test_friends = ["//tools/adt/idea/dagger:intellij.android.dagger"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
@@ -47,9 +54,6 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.kotlin",
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
-        "//tools/adt/idea/.idea/libraries:truth[test]",
-        "//tools/adt/idea/.idea/libraries:mockito[test]",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
@@ -60,6 +64,5 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/artwork:intellij.android.artwork",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
     ],
 )

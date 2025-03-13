@@ -18,7 +18,9 @@ package com.android.tools.idea.uibuilder.editor
 import android.graphics.drawable.AnimationDrawable
 import android.widget.ImageView
 import com.android.SdkConstants
+import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.workbench.WorkBench
+import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.idea.actions.ANIMATION_TOOLBAR
 import com.android.tools.idea.common.editor.DesignToolsSplitEditor
 import com.android.tools.idea.common.editor.DesignerEditor
@@ -28,7 +30,6 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.DesignSurfaceSettings
 import com.android.tools.idea.common.type.DesignerEditorFileType
-import com.android.tools.idea.common.type.typeOf
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.rendering.AndroidBuildTargetReference
 import com.android.tools.idea.uibuilder.actions.DrawableScreenViewProvider
@@ -53,13 +54,13 @@ import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.util.function.Consumer
 import javax.swing.JPanel
 import org.jetbrains.android.uipreview.AndroidEditorSettings
-import org.jetbrains.kotlin.idea.core.util.toPsiFile
 
 private const val WORKBENCH_NAME = "DESIGN_FILES_PREVIEW_EDITOR"
 
@@ -70,8 +71,11 @@ const val DESIGN_FILES_PREVIEW_EDITOR_ID = "android-preview-designer"
  * any tool windows. It should be used as the preview portion of [DesignToolsSplitEditor] and to
  * open non-editable [DesignerEditorFileType] files, such as fonts and drawables.
  */
-class DesignFilesPreviewEditor(file: VirtualFile, project: Project) :
-  DesignerEditor(file, project) {
+class DesignFilesPreviewEditor(
+  file: VirtualFile,
+  project: Project,
+  fileType: DesignerEditorFileType,
+) : DesignerEditor(file, project, fileType) {
 
   // Used when previewing animated selector file, to provide the required data for
   // AnimatedSelectorToolbar.
@@ -79,20 +83,18 @@ class DesignFilesPreviewEditor(file: VirtualFile, project: Project) :
 
   override fun getEditorId() = DESIGN_FILES_PREVIEW_EDITOR_ID
 
+  @UiThread
   override fun createEditorPanel(): DesignerEditorPanel {
     val workBench = WorkBench<DesignSurface<*>>(myProject, WORKBENCH_NAME, this, this)
     val surface: (panel: DesignerEditorPanel) -> DesignSurface<*> = {
       NlSurfaceBuilder.builder(myProject, this)
         .setActionManagerProvider { surface ->
-          PreviewEditorActionManagerProvider(
-            surface as NlDesignSurface,
-            file?.toPsiFile(myProject)?.typeOf(),
-          )
+          PreviewEditorActionManagerProvider(surface as NlDesignSurface, fileType)
         }
         .build()
         .apply {
           val screenViewProvider =
-            when (file?.toPsiFile(project)?.typeOf()) {
+            when (fileType) {
               is AdaptiveIconFileType,
               is DrawableFileType -> {
                 val lastBackgroundType =
@@ -117,8 +119,7 @@ class DesignFilesPreviewEditor(file: VirtualFile, project: Project) :
     }
 
     val modelProvider =
-      if ((myFile.toPsiFile(myProject)?.typeOf() is AnimatedStateListFileType))
-        MyAnimatedSelectorModelProvider()
+      if (fileType is AnimatedStateListFileType) MyAnimatedSelectorModelProvider()
       else DesignerEditorPanel.ModelProvider.defaultModelProvider
 
     return DesignerEditorPanel(
@@ -235,6 +236,18 @@ class DesignFilesPreviewEditor(file: VirtualFile, project: Project) :
             }
           },
         )
+      val configurationChangeListener = ConfigurationListener { flags ->
+        if ((flags and ConfigurationListener.CFG_THEME) > 0) {
+          // Reset the toolbar on configuration change
+          toolbar.setFrameMs(0)
+        }
+        return@ConfigurationListener true
+      }
+      surface.configurations.firstOrNull()?.let {
+        it.addListener(configurationChangeListener)
+        // Remove the listener when disposing the panel, so the configuration won't leak
+        Disposer.register(panel) { it.removeListener(configurationChangeListener) }
+      }
     }
     return toolbar
   }

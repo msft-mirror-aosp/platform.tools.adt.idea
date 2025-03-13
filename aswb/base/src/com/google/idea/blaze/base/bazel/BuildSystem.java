@@ -20,7 +20,6 @@ import com.google.errorprone.annotations.MustBeClosed;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeCommandRunner;
-import com.google.idea.blaze.base.command.buildresult.BuildResultHelper;
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider;
 import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.model.BlazeVersionData;
@@ -73,7 +72,26 @@ public interface BuildSystem {
   interface BuildInvoker {
 
     enum Capability {
-      IS_LOCAL, SUPPORTS_CLI, SUPPORTS_PARALLELISM, SUPPORTS_API, SUPPORTS_DBIP
+      /**
+       * Capability to build Android Instrumentation Test APK
+       */
+      BUILD_AIT,
+      /**
+       * Capability to invoke blaze/bazel via CLI
+       */
+      SUPPORT_CLI,
+      /**
+       * Capability to run parallel builds
+       */
+      BUILD_PARALLEL_SHARDS,
+      /**
+       * Capability to run blaze/bazel query command via remote invocation
+       */
+      RUN_REMOTE_QUERIES,
+      /**
+       * Capability to debug Android local test
+       */
+      DEBUG_LOCAL_TEST
     }
 
     default ImmutableSet<Capability> getCapabilities() {
@@ -117,13 +135,6 @@ public interface BuildSystem {
     BlazeInfo getBlazeInfo(BlazeContext blazeContext) throws SyncFailedException;
 
     /**
-     * Create a {@link BuildResultHelper} instance. This instance must be closed when it is finished
-     * with.
-     */
-    @MustBeClosed
-    BuildResultHelper createBuildResultHelper();
-
-    /**
      * Returns a {@link BlazeCommandRunner} to be used to invoke the build.
      */
     BlazeCommandRunner getCommandRunner();
@@ -142,13 +153,13 @@ public interface BuildSystem {
   /**
    * Get a Blaze invoker with desired capabilities.
    */
-  BuildInvoker getBuildInvoker(Project project, Set<BuildInvoker.Capability> requirements);
+  Optional<BuildInvoker> getBuildInvoker(Project project, Set<BuildInvoker.Capability> requirements);
 
   /**
    * Get a Blaze invoker.
    */
   default BuildInvoker getBuildInvoker(Project project) {
-    return getBuildInvoker(project, ImmutableSet.of());
+    return getBuildInvoker(project, ImmutableSet.of()).orElseThrow();
   }
 
   /**
@@ -197,7 +208,7 @@ public interface BuildSystem {
   default BuildInvoker getDefaultInvoker(Project project) {
     if (Blaze.getProjectType(project) != ProjectType.QUERY_SYNC
         && getSyncStrategy(project) == SyncStrategy.PARALLEL) {
-      return getBuildInvoker(project, ImmutableSet.of(BuildInvoker.Capability.SUPPORTS_PARALLELISM));
+      return getBuildInvoker(project, ImmutableSet.of(BuildInvoker.Capability.BUILD_PARALLEL_SHARDS)).orElseThrow();
     }
     return getBuildInvoker(project);
   }

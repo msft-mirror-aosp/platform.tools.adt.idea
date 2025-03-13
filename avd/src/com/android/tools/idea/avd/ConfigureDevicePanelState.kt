@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.avd
 
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -33,64 +34,59 @@ import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.toImmutableList
 
 internal class ConfigureDevicePanelState(
-  device: VirtualDevice,
+  val device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
   image: ISystemImage?,
+  val deviceNameValidator: DeviceNameValidator,
   fileSystem: FileSystem = FileSystems.getDefault(),
   val maxCpuCoreCount: Int = max(1, Runtime.getRuntime().availableProcessors() / 2),
 ) {
-  var device by mutableStateOf(device)
   private var skins by mutableStateOf(skins)
   val systemImageTableSelectionState = TableSelectionState(image)
   val storageGroupState = StorageGroupState(device, fileSystem)
   val emulatedPerformanceGroupState = EmulatedPerformanceGroupState(device)
 
-  var isDeviceNameValid by mutableStateOf(true)
   var isSystemImageTableSelectionValid by mutableStateOf(true)
-  var isPreferredAbiValid by mutableStateOf(true)
+
+  val isPreferredAbiValid by derivedStateOf {
+    // Most changes to the system image selection will not affect whether the Preferred ABI is
+    // valid, so use derivedStateOf to minimize unnecessary recomposition.
+    device.preferredAbi == null ||
+      systemImageTableSelectionState.selection == null ||
+      systemImageTableSelectionState.selection.allAbiTypes().contains(device.preferredAbi)
+  }
 
   val isValid
     get() =
-      device.isValid && isDeviceNameValid && isSystemImageTableSelectionValid && isPreferredAbiValid
+      device.isValid &&
+        deviceNameError == null &&
+        isSystemImageTableSelectionValid &&
+        isPreferredAbiValid
 
   fun hasPlayStore(): Boolean {
     val image = systemImageTableSelectionState.selection
     return if (image == null) false else device.hasPlayStore(image)
   }
 
-  fun setDeviceName(deviceName: String) {
-    device = device.copy(name = deviceName)
-  }
+  val deviceNameError by derivedStateOf { deviceNameValidator.validate(this.device.name) }
 
   fun setSystemImageSelection(systemImage: ISystemImage) {
     systemImageTableSelectionState.selection = systemImage
-    updatePreferredAbiValidity()
-  }
-
-  fun setPreferredAbi(preferredAbi: String?) {
-    device = device.copy(preferredAbi = preferredAbi)
-    updatePreferredAbiValidity()
-  }
-
-  private fun updatePreferredAbiValidity() {
-    isPreferredAbiValid =
-      device.preferredAbi == null ||
-        systemImageTableSelectionState.selection == null ||
-        systemImageTableSelectionState.selection.allAbiTypes().contains(device.preferredAbi)
   }
 
   fun initDeviceSkins(path: Path) {
     val skin = getSkin(path)
-    device = device.copy(skin = skin, defaultSkin = skin)
+    device.skin = skin
+    device.defaultSkin = skin
   }
 
   fun initDefaultSkin(path: Path) {
-    device = device.copy(defaultSkin = getSkin(path))
+    device.defaultSkin = getSkin(path)
   }
 
   fun setSkin(path: Path) {
     val skin = getSkin(path)
-    device = device.copy(skin = if (skin !in skins()) device.defaultSkin else skin)
+    device.skin = if (skin !in skins()) device.defaultSkin else skin
   }
 
   fun skins(): Iterable<Skin> =
@@ -110,13 +106,12 @@ internal class ConfigureDevicePanelState(
   fun resetPlayStoreFields() {
     if (!hasPlayStore()) return
 
-    device =
-      device.copy(
-        expandedStorage = Custom(storageGroupState.custom.valid().storageCapacity.withMaxUnit()),
-        cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES,
-        graphicsMode = GraphicsMode.AUTO,
-        ram = device.defaultRam,
-        vmHeapSize = device.defaultVmHeapSize,
-      )
+    device.apply {
+      expandedStorage = Custom(storageGroupState.custom.valid().storageCapacity.withMaxUnit())
+      cpuCoreCount = EmulatedProperties.RECOMMENDED_NUMBER_OF_CORES
+      graphicsMode = GraphicsMode.AUTO
+      ram = defaultRam
+      vmHeapSize = defaultVmHeapSize
+    }
   }
 }

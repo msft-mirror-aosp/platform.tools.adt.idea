@@ -137,8 +137,6 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     private val myListener: ExternalSystemTaskNotificationListener,
     private val myResultFuture: SettableFuture<GradleInvocationResult>
   ) : Task.Backgroundable(myRequest.project, "Gradle Build Running", true) {
-    private val myHelper = GradleExecutionHelper()
-
     @Volatile
     private var myErrorCount = 0
 
@@ -299,7 +297,8 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
               }
             }
           }
-          GradleExecutionHelper.prepare(connection, operation, id, executionSettings, listener)
+          val buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, id, taskListener, cancellationTokenSource.token(), executionSettings)
+          GradleExecutionHelper.prepareForExecution(operation, cancellationTokenSource.token(), id, executionSettings, listener, buildEnvironment)
           if (enableBuildAttribution) {
             buildAttributionManager = project.getService(BuildAttributionManager::class.java)
             setUpBuildAttributionManager(
@@ -380,7 +379,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         }
       }
       return try {
-        myHelper.execute(
+        GradleExecutionHelper.execute(
           gradleRootProjectPath, executionSettings,
           myRequest.taskId, myListener, null, executeTasksFunction
         )

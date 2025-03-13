@@ -73,7 +73,7 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
       }
       """) { suggestions ->
       Truth.assertThat(suggestions.toList()).containsExactly(
-        "buildFeatures", "defaultConfig", "namespace", "productFlavors"
+        "buildFeatures", "defaultConfig", "getDefaultProguardFile", "namespace", "productFlavors"
       )
     }
   }
@@ -111,7 +111,7 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
       }
       """) { suggestions ->
       Truth.assertThat(suggestions.toList()).containsExactly(
-        "buildFeatures", "defaultConfig", "namespace", "productFlavors"
+        "buildFeatures", "defaultConfig", "getDefaultProguardFile", "namespace", "productFlavors"
       )
     }
   }
@@ -140,7 +140,7 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
       """) { suggestions ->
       Truth.assertThat(suggestions.toList()).containsExactly(
         "buildFeatures", "buildOutputs", "buildTypes", "bundle", "compileOptions",
-        "compileSdk", "defaultConfig", "dependenciesDcl", "lint", "namespace",
+        "compileSdk", "defaultConfig", "dependenciesDcl", "getDefaultProguardFile", "lint", "namespace",
         "productFlavors", "signingConfigs", "sourceSets"
       )
     }
@@ -181,7 +181,8 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
       }
     }
       """) { suggestions ->
-      Truth.assertThat(suggestions.toList()).containsExactly("isMinifyEnabled")
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "applicationIdSuffix", "buildConfigField", "isMinifyEnabled", "multiDexEnabled", "versionNameSuffix")
     }
   }
 
@@ -424,6 +425,20 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
         listOf("VERSION_1_1", "VERSION_1_2", "VERSION_26", "VERSION_27", "VERSION_HIGHER")
       )
     }
+    doCompletionTest("""
+      androidApp {
+        compileOptions {
+          sourceCompatibility = VERSION_H$caret
+        }
+      }
+    """, "build.gradle.dcl", """
+      androidApp {
+        compileOptions {
+          sourceCompatibility = VERSION_HIGHER$caret
+        }
+      }
+    """)
+
   }
 
   @Test
@@ -437,6 +452,20 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
       """) { suggestions ->
       Truth.assertThat(suggestions.toList()).containsExactly("true", "false")
     }
+
+    doCompletionTest("""
+      androidApp {
+        buildFeatures {
+          dataBinding = tr$caret
+        }
+      }
+   """, """
+      androidApp {
+        buildFeatures {
+          dataBinding = true$caret
+        }
+      }
+   """)
   }
 
   @Test

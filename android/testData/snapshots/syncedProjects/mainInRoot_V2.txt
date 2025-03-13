@@ -16,7 +16,7 @@ PROJECT                       : project
         ModuleTypeName                : JAVA_MODULE
         CONENT_ENTRY                  : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
-            EXCLUDE_FOLDER                : file://<PROJECT>/build [-]
+            EXCLUDE_FOLDER                : file://<PROJECT>/build
         JDK                           : <NAME_CUT> JavaSDK
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
@@ -180,6 +180,7 @@ PROJECT                       : project
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
+        CONENT_ENTRY                  : file://<PROJECT>/app/AndroidManifest.xml
         CONENT_ENTRY                  : file://<PROJECT>/app/assets
             JavaResource                  : file://<PROJECT>/app/assets
         CONENT_ENTRY                  : file://<PROJECT>/app/baselineProfiles [-]

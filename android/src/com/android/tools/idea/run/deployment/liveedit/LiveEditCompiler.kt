@@ -31,22 +31,18 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
+import org.jetbrains.kotlin.backend.common.output.OutputFile
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
 import java.util.Optional
 
-class LiveEditCompiler(val project: Project,
-                       private val irClassCache: IrClassCache,
-                       apkClassProvider: ApkClassProvider = DefaultApkClassProvider()) {
+class LiveEditCompiler(val project: Project, private val irClassCache: IrClassCache) {
 
   internal interface LiveEditCompilerForKotlinVersion {
-    fun compileKtFile(
-      applicationLiveEditServices: ApplicationLiveEditServices,
-      file: KtFile,
-      inputs: Collection<LiveEditCompilerInput>,
-      output: LiveEditCompilerOutput.Builder
-    )
+    fun compileKtFile(applicationLiveEditServices: ApplicationLiveEditServices,
+                      file: KtFile,
+                      inputs: Collection<LiveEditCompilerInput>): List<OutputFile>
   }
 
   private var applicationLiveEditServices: ApplicationLiveEditServices? = null
@@ -56,7 +52,7 @@ class LiveEditCompiler(val project: Project,
   var inlineCandidateCache = SourceInlineCandidateCache()
 
   private var desugarer = LiveEditDesugar()
-  private val outputBuilderWithAnalysis = LiveEditOutputBuilder(apkClassProvider)
+  private val outputBuilderWithAnalysis = LiveEditOutputBuilder()
   private val logger = LiveEditLogger("LE Compiler")
 
   /**
@@ -94,10 +90,18 @@ class LiveEditCompiler(val project: Project,
         }
         try {
           // Compiler pass
-          when (KotlinPluginModeProvider.isK2Mode()) {
-            true -> LiveEditCompilerForK2(project, inlineCandidateCache, irClassCache, this.outputBuilderWithAnalysis, file.module!!)
-            false -> LiveEditCompilerForK1(project, inlineCandidateCache, irClassCache, this.outputBuilderWithAnalysis)
-          }.compileKtFile(applicationLiveEditServices(), file, input, outputBuilder)
+          val compilerOutput = if (KotlinPluginModeProvider.isK2Mode()) {
+            LiveEditCompilerForK2(project, file.module!!)
+          } else {
+            LiveEditCompilerForK1(project, inlineCandidateCache)
+          }.compileKtFile(applicationLiveEditServices(), file, input)
+
+          // Run this validation *after* compilation so that PSI validation doesn't run until the class is in a state that compiles. This
+          // allows the user time to undo incompatible changes without triggering an error, similar to how differ validation works.
+          validatePsiDiff(input, file)
+
+          outputBuilderWithAnalysis.getGeneratedCode(applicationLiveEditServices!!, file, compilerOutput, irClassCache,
+                                                     inlineCandidateCache, outputBuilder)
 
           val outputs = outputBuilder.build()
           logger.dumpCompilerOutputs(outputs.classes)

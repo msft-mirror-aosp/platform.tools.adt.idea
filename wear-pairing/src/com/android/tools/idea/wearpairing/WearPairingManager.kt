@@ -27,7 +27,6 @@ import com.android.tools.idea.AndroidStartupActivity
 import com.android.tools.idea.adb.AdbService
 import com.android.tools.idea.avdmanager.AvdLaunchListener.RequestType
 import com.android.tools.idea.avdmanager.AvdManagerConnection.Companion.getDefaultAvdManagerConnection
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.ddms.DevicePropertyUtil.getManufacturer
 import com.android.tools.idea.ddms.DevicePropertyUtil.getModel
 import com.android.tools.idea.observable.core.OptionalProperty
@@ -45,11 +44,12 @@ import com.intellij.util.net.NetUtils
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.regex.Pattern
-import kotlin.io.path.Path
+import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.isActive
@@ -67,9 +67,23 @@ private val LOG
 
 @Service(Service.Level.APP)
 class WearPairingManager(
-  private val notificationsManager: WearPairingNotificationManager =
-    WearPairingNotificationManager.getInstance()
+  private val coroutineScope: CoroutineScope,
+  private val notificationsManager: WearPairingNotificationManager,
+  private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val edtDispatcher: CoroutineContext = Dispatchers.EDT,
 ) : AndroidDebugBridge.IDeviceChangeListener, ObservablePairedDevicesList {
+
+  constructor(
+    coroutineScope: CoroutineScope
+  ) : this(
+    coroutineScope = coroutineScope,
+    notificationsManager = WearPairingNotificationManager.getInstance(),
+    defaultDispatcher = Dispatchers.Default,
+    ioDispatcher = Dispatchers.IO,
+    edtDispatcher = Dispatchers.EDT,
+  )
+
   enum class PairingState {
     UNKNOWN,
     OFFLINE, // One or both device are offline/disconnected
@@ -84,7 +98,6 @@ class WearPairingManager(
     fun pairingDeviceRemoved(phoneWearPair: PhoneWearPair)
   }
 
-  private val updateDevicesChannel = Channel<Unit>(Channel.CONFLATED)
   private val pairingStatusListeners = CopyOnWriteArrayList<PairingStatusChangedListener>()
   private val mutex = Mutex()
 
@@ -196,25 +209,16 @@ class WearPairingManager(
       null
     ) // Don't reuse pending job, in case it's stuck on a slow operation (eg bridging devices)
     runningJob =
-      GlobalScope.launch(Dispatchers.IO) {
+      coroutineScope.launch(defaultDispatcher) {
         while (isActive) {
-          withTimeoutOrNull(
-            60_000
-          ) { // Wake up when there is an event, or from time to time (to check pairing state)
-            updateDevicesChannel.receive()
-          }
-          if (!isActive) {
-            break
-          }
           try {
             updateListAndForwardState()
           } catch (ex: Throwable) {
             LOG.warn(ex)
           }
+          delay(PERIODIC_UPDATE_INTERVAL)
         }
       }
-
-    updateDevicesChannel.trySend(Unit)
   }
 
   @Synchronized
@@ -247,7 +251,7 @@ class WearPairingManager(
     wearDevice: IDevice,
     connect: Boolean = true,
   ) =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       LOG.warn("Starting device bridge {connect = $connect}")
       removeAllPairedDevices(wear.deviceID, restartWearGmsCore = false)
 
@@ -295,31 +299,28 @@ class WearPairingManager(
   }
 
   suspend fun removeAllPairedDevices(deviceID: String, restartWearGmsCore: Boolean = true) =
-    withContext(workerThread) {
-      getPairsForDevice(deviceID).forEach {
-        removePairedDevices(it, restartWearGmsCore = restartWearGmsCore)
-      }
+    getPairsForDevice(deviceID).forEach {
+      removePairedDevices(it, restartWearGmsCore = restartWearGmsCore)
     }
 
   suspend fun removePairedDevices(
     phoneId: String,
     wearId: String,
     restartWearGmsCore: Boolean = true,
-  ) =
-    withContext(workerThread) {
-      val phoneWearPair =
-        mutex.withLock {
-          pairedDevicesList.find { it.phone.deviceID == phoneId && it.wear.deviceID == wearId }
-        } ?: return@withContext
+  ) {
+    val phoneWearPair =
+      mutex.withLock {
+        pairedDevicesList.find { it.phone.deviceID == phoneId && it.wear.deviceID == wearId }
+      } ?: return
 
-      removePairedDevices(phoneWearPair, restartWearGmsCore)
-    }
+    removePairedDevices(phoneWearPair, restartWearGmsCore)
+  }
 
   suspend fun removePairedDevices(
     phoneWearPair: PhoneWearPair,
     restartWearGmsCore: Boolean = true,
-  ) =
-    withContext(workerThread) {
+  ): Unit =
+    withContext(defaultDispatcher) {
       try {
         mutex.withLock {
           pairedDevicesList.removeAll {
@@ -356,27 +357,26 @@ class WearPairingManager(
       } catch (ex: Throwable) {
         LOG.warn(ex)
       }
-
-      updateDevicesChannel.trySend(Unit)
+      updateListAndForwardState()
     }
 
   override fun deviceConnected(device: IDevice) {
-    updateDevicesChannel.trySend(Unit)
+    coroutineScope.launch { updateListAndForwardState() }
   }
 
   override fun deviceDisconnected(device: IDevice) {
-    updateDevicesChannel.trySend(Unit)
+    coroutineScope.launch { updateListAndForwardState() }
   }
 
   override fun deviceChanged(device: IDevice, changeMask: Int) {
-    updateDevicesChannel.trySend(Unit)
+    coroutineScope.launch { updateListAndForwardState() }
   }
 
   internal suspend fun findDevice(deviceID: String): PairingDevice? =
-    withContext(workerThread) { getAvailableDevices().second[deviceID] }
+    getAvailableDevices().second[deviceID]
 
   private suspend fun getAvailableDevices() =
-    withContext(workerThread) {
+    withContext(defaultDispatcher) {
       val deviceTable = hashMapOf<String, PairingDevice>()
 
       // Collect list of all available AVDs
@@ -402,33 +402,37 @@ class WearPairingManager(
     }
 
   private suspend fun updateListAndForwardState() =
-    withContext(workerThread) {
-      val (connectedDevices, deviceTable) = getAvailableDevices()
-
-      // Don't loop directly on the list, because its values may be updated (ie added/removed)
-      pairedDevicesList.toList().forEach { phoneWearPair ->
-        addDisconnectedPairedDeviceIfMissing(phoneWearPair.phone, deviceTable)
-        addDisconnectedPairedDeviceIfMissing(phoneWearPair.wear, deviceTable)
-      }
-
-      withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-        // Broadcast data to listeners
-        val (wears, phones) =
-          deviceTable.values.sortedBy { it.displayName }.partition { it.isWearDevice }
-        model.phoneList.set(phones)
-        model.wearList.set(wears)
-        updateSelectedDevice(phones, model.selectedPhoneDevice)
-        updateSelectedDevice(wears, model.selectedWearDevice)
+    withContext(defaultDispatcher) {
+      try {
+        val (connectedDevices, deviceTable) = getAvailableDevices()
 
         // Don't loop directly on the list, because its values may be updated (ie added/removed)
         pairedDevicesList.toList().forEach { phoneWearPair ->
-          updateForwardState(phoneWearPair, connectedDevices)
+          addDisconnectedPairedDeviceIfMissing(phoneWearPair.phone, deviceTable)
+          addDisconnectedPairedDeviceIfMissing(phoneWearPair.wear, deviceTable)
         }
+
+        withContext(edtDispatcher + ModalityState.any().asContextElement()) {
+          // Broadcast data to listeners
+          val (wears, phones) =
+            deviceTable.values.sortedBy { it.displayName }.partition { it.isWearDevice }
+          model.phoneList.set(phones)
+          model.wearList.set(wears)
+          updateSelectedDevice(phones, model.selectedPhoneDevice)
+          updateSelectedDevice(wears, model.selectedWearDevice)
+
+          // Don't loop directly on the list, because its values may be updated (ie added/removed)
+          pairedDevicesList.toList().forEach { phoneWearPair ->
+            updateForwardState(phoneWearPair, connectedDevices)
+          }
+        }
+      } catch (ex: Throwable) {
+        LOG.warn(ex)
       }
     }
 
   internal suspend fun launchDevice(project: Project?, deviceId: String, avdInfo: AvdInfo) =
-    withContext(workerThread) {
+    withContext(defaultDispatcher) {
       connectedDevicesProvider()
         .find { it.getDeviceID() == deviceId }
         ?.apply {
@@ -441,7 +445,7 @@ class WearPairingManager(
     AndroidDebugBridge.getBridge()?.also {
       return it // Instance found, just return it
     }
-    return withContext(workerThread) {
+    return withContext(defaultDispatcher) {
       AndroidSdkUtils.findAdb(null).adbPath?.let {
         try {
           AdbService.getInstance().getDebugBridge(it).await()
@@ -454,7 +458,7 @@ class WearPairingManager(
   }
 
   private suspend fun getConnectedDevices() =
-    withContext(workerThread) {
+    withContext(defaultDispatcher) {
       connectedDevicesProvider().filter { it.isOnline }.associateBy { it.getDeviceID() }
     }
 
@@ -492,7 +496,7 @@ class WearPairingManager(
     device: PairingDevice,
     deviceTable: HashMap<String, PairingDevice>,
   ) =
-    withContext(workerThread) {
+    withContext(defaultDispatcher) {
       val deviceID = device.deviceID
       if (!deviceTable.contains(deviceID)) {
         if (device.isEmulator) {
@@ -521,6 +525,27 @@ class WearPairingManager(
       }
     }
 
+  private suspend fun IDevice.getDeviceID() =
+    withContext(defaultDispatcher) {
+      when {
+        // normalizeAvdId is applied to the returned path from the AVD data to remove any .. in the
+        // path. They were added in https://r.android.com/2441481 and, since we use the path as an
+        // ID, the .. does not match the path information we have in Studio.
+        // We intentionally use normalize since it does not access disk and will just normalize the
+        // path removing the ..
+        isEmulator && avdData?.isDone == true ->
+          avdData.get()?.avdFolder?.normalize()?.toString() ?: name
+        isEmulator ->
+          EmulatorConsole.getConsole(this@getDeviceID)?.avdNioPath?.normalize()?.toString() ?: name
+        getProperty(PROP_FIREBASE_TEST_LAB_SESSION) != null ->
+          getProperty(PROP_FIREBASE_TEST_LAB_SESSION) ?: name
+        else -> {
+          val matcher = WIFI_DEVICE_SERIAL_PATTERN.matcher(serialNumber)
+          if (matcher.matches()) matcher.group(1) else serialNumber
+        }
+      }
+    }
+
   class WearPairingManagerStartupActivity : AndroidStartupActivity {
     @UiThread
     override fun runActivity(project: Project, disposable: Disposable) {
@@ -539,6 +564,8 @@ class WearPairingManager(
     @JvmStatic
     fun getInstance(): WearPairingManager =
       ApplicationManager.getApplication().getService(WearPairingManager::class.java)
+
+    private val PERIODIC_UPDATE_INTERVAL = 60.seconds
   }
 }
 
@@ -607,34 +634,6 @@ private val WIFI_DEVICE_SERIAL_PATTERN =
   Pattern.compile("adb-(.*)-.*\\._adb-tls-connect\\._tcp\\.?")
 @VisibleForTesting
 internal const val PROP_FIREBASE_TEST_LAB_SESSION = "debug.firebase.test.lab.session"
-
-private fun normalizeAvdId(avdId: String) =
-  try {
-    Path(avdId.trim()).normalize().toString()
-  } catch (_: Throwable) {
-    avdId
-  }
-
-private suspend fun IDevice.getDeviceID() =
-  withContext(workerThread) {
-    when {
-      // normalizeAvdId is applied to the returned path from the AVD data to remove any .. in the
-      // path. They were added in https://r.android.com/2441481 and, since we use the path as an
-      // ID, the .. does not match the path information we have in Studio.
-      // We intentionally use normalize since it does not access disk and will just normalize the
-      // path removing the ..
-      isEmulator && avdData?.isDone == true ->
-        avdData.get()?.path?.let { normalizeAvdId(it) } ?: name
-      isEmulator ->
-        EmulatorConsole.getConsole(this@getDeviceID)?.avdPath?.let { normalizeAvdId(it) } ?: name
-      getProperty(PROP_FIREBASE_TEST_LAB_SESSION) != null ->
-        getProperty(PROP_FIREBASE_TEST_LAB_SESSION) ?: name
-      else -> {
-        val matcher = WIFI_DEVICE_SERIAL_PATTERN.matcher(serialNumber)
-        if (matcher.matches()) matcher.group(1) else serialNumber
-      }
-    }
-  }
 
 private fun updateSelectedDevice(
   deviceList: List<PairingDevice>,

@@ -68,16 +68,6 @@ public interface BuildGraphData {
   ProjectTarget getProjectTarget(Label label);
 
   /**
-   * An immutable directed graph of all project dependencies.
-   *
-   * <p>This graph include both in-project targets, and direct out-of-project dependencies.
-   *
-   * <p>To find the reverse dependencies of a target, you can use {@link Graph#predecessors} or
-   * {@link Graphs#transpose(Graph)} with this method.
-   */
-  DepsGraph<Label> depsGraph();
-
-  /**
    * Calculates the set of direct reverse dependencies for a set of targets (including the targets
    * themselves).
    */
@@ -127,19 +117,8 @@ public interface BuildGraphData {
   @Nullable
   Label selectLabelWithLeastDeps(Collection<Label> candidates);
 
-  /** A set of all the targets that show up in java rules 'src' attributes */
-  ImmutableSet<Label> javaSources();
-
   /** Returns a list of all the java source files of the project, relative to the workspace root. */
   List<Path> getJavaSourceFiles();
-
-  /**
-   * Returns a list of all the proto source files of the project, relative to the workspace root.
-   */
-  List<Path> getProtoSourceFiles();
-
-  /** Returns a list of all the cc source files of the project, relative to the workspace root. */
-  List<Path> getCcSourceFiles();
 
   List<Path> getSourceFilesByRuleKindAndType(
     Predicate<String> ruleKindPredicate, ProjectTarget.SourceType... sourceTypes);

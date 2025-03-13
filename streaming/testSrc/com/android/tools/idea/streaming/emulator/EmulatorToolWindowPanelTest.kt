@@ -164,7 +164,7 @@ class EmulatorToolWindowPanelTest {
     HeadlessDataManager.fallbackToProductionDataManager(testRootDisposable) // Necessary to properly update toolbar button states.
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
     val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
-    whenever(mockScreenRecordingCache.isScreenRecordingSupported(any(), any())).thenReturn(true)
+    whenever(mockScreenRecordingCache.isScreenRecordingSupported(any())).thenReturn(true)
     projectRule.project.registerServiceInstance(ScreenRecordingSupportedCache::class.java, mockScreenRecordingCache, testRootDisposable)
   }
 
@@ -388,7 +388,6 @@ class EmulatorToolWindowPanelTest {
     ui.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(ui, panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 600 height: 565")
-    assertAppearance(ui, "XrToolbarActions1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
 
     // Check that the buttons not applicable to XR devices are hidden.
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Power" }).isNotNull()
@@ -405,6 +404,9 @@ class EmulatorToolWindowPanelTest {
     assertThat(ui.findComponent<ActionButton> { it.action.templateText == "Toggle Passthrough" }).isNotNull()
 
     val xrInputController = EmulatorXrInputController.getInstance(project, emulatorView.emulator)
+    waitForCondition(2.seconds) { xrInputController.passthroughCoefficient != EmulatorXrInputController.UNKNOWN_PASSTHROUGH_COEFFICIENT }
+    assertAppearance(ui, "XrToolbarActions1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+
     assertThat(xrInputController.inputMode).isEqualTo(XrInputMode.HAND)
     val modes = mapOf(
       "Hand Tracking" to XrInputMode.HAND,
@@ -601,12 +603,12 @@ class EmulatorToolWindowPanelTest {
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { y: 2.2642112 }")
     ui.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { x: -2.2642112 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_rotation_event { x: 2.2642112 }")
     ui.mouse.dragTo(500, 10) // Exit the EmulatorView component.
     ui.mouse.dragTo(300, 35) // Enter the EmulatorView component in a different location.
     ui.mouse.dragTo(100, 435)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_head_rotation_event { x: -2.2642112 y: -1.1321056 }")
+        .isEqualTo("xr_head_rotation_event { x: 2.2642112 y: -1.1321056 }")
   }
 
   @Test
@@ -636,12 +638,12 @@ class EmulatorToolWindowPanelTest {
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_x: -3.6036036 }")
     ui.mouse.dragTo(500, 500)
-    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_y: -3.6036036 }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_movement_event { delta_y: 3.6036036 }")
     ui.mouse.dragTo(500, 10) // Exit the EmulatorView component.
     ui.mouse.dragTo(300, 35) // Enter the EmulatorView component in a different location.
     ui.mouse.dragTo(100, 435)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds)))
-        .isEqualTo("xr_head_movement_event { delta_x: 1.8018018 delta_y: -3.6036036 }")
+        .isEqualTo("xr_head_movement_event { delta_x: 1.8018018 delta_y: 3.6036036 }")
     ui.mouse.release()
 
     // Moving forward and backward by rotating the mouse wheel.
@@ -984,8 +986,10 @@ class EmulatorToolWindowPanelTest {
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(ui, panel, ++frameNumbers[PRIMARY_DISPLAY_ID])
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 363 height: 515")
 
-    emulator.changeSecondaryDisplays(listOf(DisplayConfiguration.newBuilder().setDisplay(1).setWidth(1080).setHeight(2340).build(),
-                                            DisplayConfiguration.newBuilder().setDisplay(2).setWidth(3840).setHeight(2160).build()))
+    runBlocking {
+      emulator.changeSecondaryDisplays(listOf(DisplayConfiguration.newBuilder().setDisplay(1).setWidth(1080).setHeight(2340).build(),
+                                              DisplayConfiguration.newBuilder().setDisplay(2).setWidth(3840).setHeight(2160).build()))
+    }
 
     waitForCondition(2.seconds) { ui.findAllComponents<EmulatorView>().size == 3 }
     ui.layoutAndDispatchEvents()

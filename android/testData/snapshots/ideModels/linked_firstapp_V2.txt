@@ -13,7 +13,7 @@ MODULE                        : My_First_App
     ModuleTypeName                : JAVA_MODULE
     CONENT_ENTRY                  : file://<ROOT>/firstapp
         EXCLUDE_FOLDER                : file://<ROOT>/firstapp/.gradle
-        EXCLUDE_FOLDER                : file://<ROOT>/firstapp/build [-]
+        EXCLUDE_FOLDER                : file://<ROOT>/firstapp/build
     JDK                           : <NAME_CUT> JavaSDK
     *isInherited                  : true
     ORDER_ENTRY                   : <Module source>
@@ -563,7 +563,7 @@ MODULE                        : My_First_App
         qName                         : My First App
         version                       : unspecified
         projectDir                    : <ROOT>/firstapp
-        buildDir                      : <ROOT>/firstapp/build [-]
+        buildDir                      : <ROOT>/firstapp/build
         buildFile                     : <ROOT>/firstapp/build.gradle
         externalSystemId              : GRADLE
         childProjects
@@ -2092,7 +2092,6 @@ MODULE                        : My_First_App.app
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debug
-                    jvmDefault                    : disable
                     jvmTarget                     : 21
                     moduleName                    : app_debug
                     noJdk                         : true
@@ -2111,7 +2110,6 @@ MODULE                        : My_First_App.app
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugAndroidTest
-                    jvmDefault                    : disable
                     jvmTarget                     : 21
                     moduleName                    : app_debugAndroidTest
                     noJdk                         : true
@@ -2130,7 +2128,6 @@ MODULE                        : My_First_App.app
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugUnitTest
-                    jvmDefault                    : disable
                     jvmTarget                     : 21
                     moduleName                    : app_debugUnitTest
                     noJdk                         : true
@@ -3224,7 +3221,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debug
-                    jvmDefault                    : disable
                     jvmTarget                     : 21
                     moduleName                    : mysharedlibrary_debug
                     noJdk                         : true
@@ -3242,7 +3238,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugAndroidTest
-                    jvmDefault                    : disable
                     jvmTarget                     : 21
                     moduleName                    : mysharedlibrary_debugAndroidTest
                     noJdk                         : true
@@ -3261,7 +3256,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugUnitTest
-                    jvmDefault                    : disable
                     jvmTarget                     : 21
                     moduleName                    : mysharedlibrary_debugUnitTest
                     noJdk                         : true

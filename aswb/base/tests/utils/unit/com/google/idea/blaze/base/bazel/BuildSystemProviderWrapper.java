@@ -23,7 +23,6 @@ import com.google.idea.blaze.base.bazel.BuildSystem.SyncStrategy;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeCommandRunner;
-import com.google.idea.blaze.base.command.buildresult.BuildResultHelper;
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider;
 import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.lang.buildfile.language.semantics.RuleDefinition;
@@ -244,12 +243,6 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
     }
 
     @Override
-    @MustBeClosed
-    public BuildResultHelper createBuildResultHelper() {
-      return inner.createBuildResultHelper();
-    }
-
-    @Override
     public BlazeCommandRunner getCommandRunner() {
       return inner.getCommandRunner();
     }
@@ -274,9 +267,9 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
     }
 
     @Override
-    public BuildInvoker getBuildInvoker(
+    public Optional<BuildInvoker> getBuildInvoker(
         Project project, Set<BuildInvoker.Capability> requirements) {
-      return new BuildInvokerWrapper(inner.getBuildInvoker(project, requirements));
+      return Optional.of(new BuildInvokerWrapper(inner.getBuildInvoker(project, requirements).orElseThrow()));
     }
 
     @Override

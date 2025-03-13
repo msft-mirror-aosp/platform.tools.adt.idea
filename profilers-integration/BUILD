@@ -1,3 +1,4 @@
+load("@exec_properties//:constants.bzl", "RBE_CPU_8")
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
@@ -7,17 +8,18 @@ iml_module(
     name = "intellij.android.profilers.integration",
     enable_tests = False,
     iml_files = ["intellij.android.profilers.integration.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/as-driver:as-driver.utils",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+    ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = [
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
-        "@intellij//:intellij-sdk[test]",
-        "@intellij//:com.intellij.java",
-        "//tools/adt/idea/.idea/libraries:truth[test]",
-        "//tools/adt/idea/as-driver:as-driver.utils[test]",
-        "//tools/base/testutils:studio.android.sdktools.testutils[test]",
-    ],
+    deps = ["@intellij//:com.intellij.java"],
 )
 
 profilers_test_common_data = [
@@ -36,7 +38,9 @@ iml_test(
     data = profilers_test_common_data + [
         "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/322952709
@@ -56,7 +60,9 @@ iml_test(
     data = profilers_test_common_data + [
         "@system_image_android-33PlayStore_default_x86_64//:x86_64-android-33PlayStore-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/282881259, b/260867011
@@ -76,7 +82,9 @@ iml_test(
     data = profilers_test_common_data + [
         "@system_image_android-33PlayStore_default_x86_64//:x86_64-android-33PlayStore-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/260867011
@@ -96,7 +104,9 @@ iml_test(
     data = profilers_test_common_data + [
         "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/260867011
@@ -116,7 +126,9 @@ iml_test(
     data = profilers_test_common_data + [
         "@system_image_android-33PlayStore_default_x86_64//:x86_64-android-33PlayStore-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/260867011
@@ -136,7 +148,9 @@ iml_test(
     data = profilers_test_common_data + [
         "@system_image_android-31_default_x86_64//:x86_64-android-31-images",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/260867011
@@ -154,7 +168,9 @@ iml_test(
     name = "SystemTraceTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -168,7 +184,9 @@ iml_test(
     name = "HeapDumpTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/260867011
@@ -186,7 +204,9 @@ iml_test(
     name = "CallstackSampleTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -200,7 +220,9 @@ iml_test(
     name = "NativeAllocationsTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -214,7 +236,9 @@ iml_test(
     name = "JavaKotlinMethodRecordingTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [],
     tags_mac = [],
     tags_windows = [
@@ -228,7 +252,9 @@ iml_test(
     name = "LiveViewTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [
@@ -242,7 +268,9 @@ iml_test(
     name = "JavaKotlinAllocationsTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/260867011
@@ -260,7 +288,9 @@ iml_test(
     name = "StartupSystemTraceTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/369429660
@@ -278,7 +308,9 @@ iml_test(
     name = "StartupJavaKotlinMethodRecordingTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/369429660
@@ -296,7 +328,9 @@ iml_test(
     name = "StartupNativeAllocationsTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "noci:studio-linux",
         "ci:studio-linux_very_flaky",  # b/369429660
@@ -318,7 +352,9 @@ iml_test(
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/android-31",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "block-network",
         "noci:studio-linux",
@@ -339,7 +375,9 @@ iml_test(
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/android-31",
     ],
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = [
         "block-network",
         "noci:studio-linux",
@@ -356,7 +394,9 @@ iml_test(
     name = "ImportAndExportTraceTest",
     timeout = "long",
     data = profilers_test_common_data,
+    exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
     tags_linux = ["block-network"],
     tags_mac = [],
     tags_windows = [

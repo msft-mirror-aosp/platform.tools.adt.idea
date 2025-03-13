@@ -530,14 +530,15 @@ internal class DeviceView(
       MouseEvent.BUTTON3 -> MotionEventMessage.BUTTON_SECONDARY
       else -> 0
     }
+    val isMouse = isHardwareInputEnabled()
     val message = when {
-      multiTouchMode -> MotionEventMessage(originalAndMirroredPointer(point), action, 0, 0, displayId)
+      multiTouchMode -> MotionEventMessage(originalAndMirroredPointer(point), action, 0, 0, displayId, isMouse)
       action == MotionEventMessage.ACTION_POINTER_DOWN || action == MotionEventMessage.ACTION_POINTER_UP ->
           MotionEventMessage(originalAndMirroredPointer(point), action or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT), 0, 0,
-                              displayId)
+                              displayId, isMouse)
       action == MotionEventMessage.ACTION_DOWN || action == MotionEventMessage.ACTION_UP || action == MotionEventMessage.ACTION_MOVE ->
-          MotionEventMessage(originalPointer(point, axisValues), action, buttonState, androidActionButton, displayId)
-      else -> MotionEventMessage(originalPointer(point, axisValues), action, 0, 0, displayId)
+          MotionEventMessage(originalPointer(point, axisValues), action, buttonState, androidActionButton, displayId, isMouse)
+      else -> MotionEventMessage(originalPointer(point, axisValues), action, 0, 0, displayId, isMouse)
     }
     deviceController?.sendControlMessage(message)
   }
@@ -813,6 +814,7 @@ internal class DeviceView(
         currentModifiers = currentModifiers and BUTTON_MASK.inv()
       }
       lastTouchCoordinates = null
+      terminateHovering(event)
       updateMultiTouchMode(event)
     }
 
@@ -828,9 +830,17 @@ internal class DeviceView(
 
     override fun mouseMoved(event: MouseEvent) {
       updateMultiTouchMode(event)
-      if (!multiTouchMode && (currentModifiers and BUTTON_MASK) == 0) {
-        sendMotionEvent(event.location, MotionEventMessage.ACTION_HOVER_MOVE, event.adjustedModifiers)
-        mouseHovering = true
+      if (isInsideDisplay(event)) {
+        if (!multiTouchMode && (currentModifiers and BUTTON_MASK) == 0) {
+          if (!mouseHovering) {
+            sendMotionEvent(event.location, MotionEventMessage.ACTION_HOVER_ENTER, event.adjustedModifiers)
+            mouseHovering = true
+          }
+          sendMotionEvent(event.location, MotionEventMessage.ACTION_HOVER_MOVE, event.adjustedModifiers)
+        }
+      }
+      else {
+        terminateHovering(event)
       }
     }
 

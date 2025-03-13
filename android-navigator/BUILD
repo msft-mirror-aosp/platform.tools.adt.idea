@@ -33,11 +33,11 @@ iml_module(
 iml_module(
     name = "intellij.android.navigator.testutils",
     iml_files = ["intellij.android.navigator.testutils.iml"],
+    test_deps = ["//tools/adt/idea/.idea/libraries:junit4"],
     test_srcs = ["testUtils"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/base/testutils:studio.android.sdktools.testutils",

@@ -1117,6 +1117,12 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.on.device.rendering", "Always use on-device rendering",
     "Force using on-device rendering, even when the device is not XR. Used for development only.",
     false);
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_HORIZONTAL_SCROLLABLE_COMPONENT_TREE = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.horizontal.scrollable.component.tree",
+    "Horizontal scroll for layout inspector component tree",
+    "When this flag is enabled, we enable horizontal scrolling for the Layout Inspector's component tree.",
+    enabledUpTo(DEV));
   //endregion
 
   //region Embedded Emulator
@@ -1761,14 +1767,6 @@ public final class StudioFlags {
     true
   );
 
-  public static final Flag<Boolean> DIRECT_ACCESS_DEVICE_CATALOG_ENABLED = new BooleanFlag(
-    DEVICE_MANAGER,
-    "direct.access.device.catalog.enabled",
-    "Enable the Device Catalog for Direct Access devices",
-    "Enable new UI for selecting Firebase devices",
-    true
-  );
-
   public static final Flag<Boolean> POST_MVP_VIRTUAL_DEVICE_DIALOG_FEATURES_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "post.mvp.virtual.device.dialog.features.enabled",
@@ -2064,14 +2062,20 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "inline.code.completion.shortcut.hint.enabled",
                     "Enable the inline completion shortcut key hint.",
                     "When enabled, a custom inlay displaying 'TAB to complete' or similar text will be shown alongside inline completions.",
-                    false);
+                    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_DEFERRED_MULTILINE_SUGGESTIONS_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.deferred.multiline.suggestions.enabled",
                     "Enable deferred multiline suggestions.",
                     "When enabled, any part of a multi-line suggestion hidden behind the autosuggest popup will be removed, and " +
                     "offered later to the user if they accept the first line of the completion.",
-                    false);
+                    enabledUpTo(DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_SYNTAX_HIGHLIGHTING_ENABLED =
+    new BooleanFlag(STUDIOBOT, "inline.code.completion.syntax.highlighting.enabled",
+                    "Enable syntax highlighting for inline suggestions.",
+                    "When inline completions will use lexical syntax highlighting colors.",
+                    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_COMPILER_ERROR_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "compiler.error.context.enabled",
@@ -2149,7 +2153,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "chat.use.aida.simplified.onboarding",
                     "Use the simplified AIDA onboarding flow.",
                     "When enabled, the AIDA model onboarding will use the new simplified flow. Only applied if the Compose Chat toolwindow is enabled.",
-                    enabledUpTo(DEV));
+                    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_CONTEXT_ATTACHMENT_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.enable.context.attachment",
@@ -2285,6 +2289,12 @@ public final class StudioFlags {
                     "When enabled, generate test scenarios and corresponding function names for the selected code.",
                     true);
 
+  public static final Flag<Boolean> STUDIOBOT_SUPPORT_GIAS_ENTERPRISE =
+    new BooleanFlag(STUDIOBOT, "support.gias.enterprise",
+                    "Enable support for GCA Enterprise tier",
+                    "Enable support for GCA Enterprise tier",
+                    enabledUpTo(DEV));
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
@@ -2339,7 +2349,7 @@ public final class StudioFlags {
       "enable",
       "Enable Backup/Restore feature",
       "Enable Backup/Restore feature",
-      true);
+      enabledUpTo(CANARY));
 
   public static final Flag<Integer> BACKUP_GMSCORE_MIN_VERSION =
     new IntFlag(
@@ -2389,6 +2399,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_EDITOR = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.editor", "Enable Journeys with Gemini Editor",
     "Use Journeys with Gemini Editor when editing journey files (.journey.xml extensions)",
+    enabledUpTo(DEV)
+  );
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_EXECUTION = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.execution", "Enable Journeys with Gemini execution",
+    "Enable triggering Journeys with Gemini run configurations",
     enabledUpTo(DEV)
   );
   // endregion JOURNEYS_WITH_GEMINI

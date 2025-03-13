@@ -7,6 +7,7 @@ iml_module(
     iml_files = ["intellij.android.buildCommon.iml"],
     jvm_target = "8",
     lint_baseline = "lint_baseline.xml",
+    test_deps = ["//tools/base/testutils:studio.android.sdktools.testutils"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     exports = [
@@ -28,7 +29,6 @@ iml_module(
         "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/base/sdklib:studio.android.sdktools.sdklib",
-        "//tools/base/testutils:studio.android.sdktools.testutils[test]",
         "@intellij//:com.intellij.gradle",
     ],
 )

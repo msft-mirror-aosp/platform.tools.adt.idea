@@ -194,6 +194,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
@@ -218,9 +219,9 @@ import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
-import org.jetbrains.kotlin.idea.core.script.SCRIPT_DEPENDENCIES_SOURCES
+import org.jetbrains.kotlin.idea.core.script.SCRIPT_CONFIGURATIONS_SOURCES
+import org.jetbrains.kotlin.idea.core.script.SCRIPT_DEFINITIONS_SOURCES
 import org.jetbrains.kotlin.idea.core.script.dependencies.KotlinScriptWorkspaceFileIndexContributor
-import org.jetbrains.kotlin.idea.gradleJava.scripting.GradleScriptDependenciesSource
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtension
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtensions
 import org.jetbrains.plugins.gradle.model.ExternalProject
@@ -239,6 +240,7 @@ import org.jetbrains.plugins.gradle.util.setBuildSrcModule
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
+import java.util.IdentityHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -658,21 +660,21 @@ fun createAndroidProjectBuilderForDefaultTestProjectStructure(
 
 fun AndroidProjectStubBuilder.createMainSourceProviderForDefaultTestProjectStructure(): IdeSourceProviderImpl {
   return IdeSourceProviderImpl(
-    myName = ARTIFACT_NAME_MAIN,
-    myFolder = moduleBasePath,
-    myManifestFile = "AndroidManifest.xml",
-    myJavaDirectories = listOf("src"),
-    myKotlinDirectories = listOf("srcKotlin"),
-    myResourcesDirectories = emptyList(),
-    myAidlDirectories = emptyList(),
-    myRenderscriptDirectories = emptyList(),
-    myResDirectories = listOf("res"),
-    myAssetsDirectories = emptyList(),
-    myJniLibsDirectories = emptyList(),
-    myMlModelsDirectories = emptyList(),
-    myShadersDirectories = emptyList(),
-    myCustomSourceDirectories = emptyList(),
-    myBaselineProfileDirectories = emptyList(),
+    name = ARTIFACT_NAME_MAIN,
+    folder = moduleBasePath,
+    manifestFile = "AndroidManifest.xml",
+    javaDirectories = listOf("src"),
+    kotlinDirectories = listOf("srcKotlin"),
+    resourcesDirectories = emptyList(),
+    aidlDirectories = emptyList(),
+    renderscriptDirectories = emptyList(),
+    resDirectories = listOf("res"),
+    assetsDirectories = emptyList(),
+    jniLibsDirectories = emptyList(),
+    mlModelsDirectories = emptyList(),
+    shadersDirectories = emptyList(),
+    customSourceDirectories = emptyList(),
+    baselineProfileDirectories = emptyList(),
   )
 }
 
@@ -721,21 +723,21 @@ private fun sourceProvider(
   includeShadersSources: Boolean = false,
 ): IdeSourceProviderImpl {
   return IdeSourceProviderImpl(
-    myName = name,
-    myFolder = rootDir,
-    myManifestFile = "AndroidManifest.xml",
-    myJavaDirectories = listOf("java"),
-    myKotlinDirectories = listOf("kotlin"),
-    myResourcesDirectories = listOf("resources"),
-    myAidlDirectories = if (includeAidlSources) listOf("aidl") else listOf(),
-    myRenderscriptDirectories = if (includeRenderScriptSources) listOf("rs") else listOf(),
-    myResDirectories = listOf("res"),
-    myAssetsDirectories = listOf("assets"),
-    myJniLibsDirectories = listOf("jniLibs"),
-    myMlModelsDirectories = listOf(),
-    myShadersDirectories = if (includeShadersSources) listOf("shaders") else listOf(),
-    myCustomSourceDirectories = listOf(/*IdeCustomSourceDirectoryImpl("custom", rootDir, "custom")*/),
-    myBaselineProfileDirectories = listOf("baselineProfiles"),
+    name = name,
+    folder = rootDir,
+    manifestFile = "AndroidManifest.xml",
+    javaDirectories = listOf("java"),
+    kotlinDirectories = listOf("kotlin"),
+    resourcesDirectories = listOf("resources"),
+    aidlDirectories = if (includeAidlSources) listOf("aidl") else listOf(),
+    renderscriptDirectories = if (includeRenderScriptSources) listOf("rs") else listOf(),
+    resDirectories = listOf("res"),
+    assetsDirectories = listOf("assets"),
+    jniLibsDirectories = listOf("jniLibs"),
+    mlModelsDirectories = listOf(),
+    shadersDirectories = if (includeShadersSources) listOf("shaders") else listOf(),
+    customSourceDirectories = listOf(/*IdeCustomSourceDirectoryImpl("custom", rootDir, "custom")*/),
+    baselineProfileDirectories = listOf("baselineProfiles"),
   )
 }
 
@@ -1611,12 +1613,14 @@ private fun setupTestProjectFromAndroidModelCore(
   val externalProjectData = InternalExternalProjectInfo(GradleConstants.SYSTEM_ID, rootProjectBasePath.path, projectDataNode)
   (ExternalProjectsManager.getInstance(project) as ExternalProjectsManagerImpl).updateExternalProjectData(externalProjectData)
 
-  ProjectDataManager.getInstance().importData(projectDataNode, project)
+  runWithModalProgressBlocking(project, "import project data from dataNodes") {
+    ProjectDataManager.getInstance().importData(projectDataNode, project)
+  }
   PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
 
   // Effectively getTestRootDisposable(), which is not the project itself but its earlyDisposable.
   IdeSdks.removeJdksOn((project as? ProjectEx)?.earlyDisposable ?: project)
-  runWriteAction {
+  runWithModalProgressBlocking(project, "invoking IdeaSyncPopulateProjectTask") {
     task.populateProject(
       projectDataNode,
       null
@@ -2472,7 +2476,7 @@ private fun setupDataNodesForSelectedVariant(
         listOfNotNull(lib.srcJar, lib.samplesJar),
         lib.docJar,
       )
-    }, newVariant)
+    }, newVariant, IdentityHashMap())
     moduleNode.setupAndroidContentEntriesPerSourceSet(gradleAndroidModel)
   }
 }
@@ -2672,6 +2676,7 @@ fun disableKtsIndexing(project: Project, disposable: Disposable) {
   ExtensionTestUtil.maskExtensions(ep, filteredExtensions, disposable)
 
   if (KotlinPluginModeProvider.isK2Mode()) {
-    SCRIPT_DEPENDENCIES_SOURCES.getPoint(project).unregisterExtension(GradleScriptDependenciesSource::class.java)
+    SCRIPT_DEFINITIONS_SOURCES.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
+    SCRIPT_CONFIGURATIONS_SOURCES.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
   }
 }

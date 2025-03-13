@@ -43,7 +43,11 @@ import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.cre
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
 import com.google.common.truth.Truth.assertThat
+import java.nio.file.FileSystem
+import java.nio.file.FileSystems
 import java.nio.file.Files
+import kotlin.math.max
+import kotlinx.collections.immutable.ImmutableCollection
 import kotlinx.collections.immutable.toImmutableList
 import org.junit.Rule
 import org.junit.Test
@@ -62,11 +66,7 @@ class AdditionalSettingsPanelTest {
     val device = TestDevices.pixel9Pro()
 
     val state =
-      ConfigureDevicePanelState(
-        device,
-        listOf(NoSkin.INSTANCE, device.skin).toImmutableList(),
-        null,
-      )
+      configureDevicePanelState(device, listOf(NoSkin.INSTANCE, device.skin).toImmutableList())
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -75,18 +75,13 @@ class AdditionalSettingsPanelTest {
     rule.onNodeWithText("[None]").performClick()
 
     // Assert
-    assertThat(state.device).isEqualTo(device.copy(skin = NoSkin.INSTANCE))
+    assertThat(state.device.skin).isEqualTo(NoSkin.INSTANCE)
   }
 
   @Test
   fun deviceSkinDropdownIsEnabledIsFoldable() {
     // Arrange
-    val state =
-      ConfigureDevicePanelState(
-        TestDevices.pixel9ProFold(),
-        emptyList<Skin>().toImmutableList(),
-        null,
-      )
+    val state = configureDevicePanelState(TestDevices.pixel9ProFold())
 
     // Act
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
@@ -99,7 +94,7 @@ class AdditionalSettingsPanelTest {
   fun speedDropdownOnSelectedItemChange() {
     // Arrange
     val device = TestDevices.pixel9Pro()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -108,14 +103,14 @@ class AdditionalSettingsPanelTest {
     rule.onNodeWithText("LTE").performClick()
 
     // Assert
-    assertThat(state.device).isEqualTo(device.copy(speed = AvdNetworkSpeed.LTE))
+    assertThat(state.device.speed).isEqualTo(AvdNetworkSpeed.LTE)
   }
 
   @Test
   fun orientationDropdownOnClick() {
     // Arrange
     val device = TestDevices.pixel9Pro()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -124,7 +119,7 @@ class AdditionalSettingsPanelTest {
     rule.onNodeWithText("Landscape").performClick()
 
     // Assert
-    assertThat(state.device).isEqualTo(device.copy(orientation = ScreenOrientation.LANDSCAPE))
+    assertThat(state.device.orientation).isEqualTo(ScreenOrientation.LANDSCAPE)
   }
 
   @Test
@@ -138,8 +133,8 @@ class AdditionalSettingsPanelTest {
 
     val fileSystem = createInMemoryFileSystem()
 
-    val state =
-      ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), image, fileSystem)
+    val state = configureDevicePanelState(device, image = image, fileSystem = fileSystem)
+    val initialExpandedStorage = device.expandedStorage
 
     val mySdCardFileImg = fileSystem.getPath(System.getProperty("user.home"), "mySdCardFile.img")
     Files.createDirectories(mySdCardFileImg.parent)
@@ -153,15 +148,14 @@ class AdditionalSettingsPanelTest {
     rule.waitForIdle()
 
     // Assert
-    assertThat(state.device)
-      .isEqualTo(device.copy(expandedStorage = ExistingImage(mySdCardFileImg)))
+    assertThat(state.device.expandedStorage).isEqualTo(ExistingImage(mySdCardFileImg))
 
     // Act
     rule.onNodeWithTag("CustomRadioButton").performClick()
     rule.waitForIdle()
 
     // Assert
-    assertThat(state.device).isEqualTo(device)
+    assertThat(state.device.expandedStorage).isEqualTo(initialExpandedStorage)
   }
 
   @Test
@@ -169,13 +163,7 @@ class AdditionalSettingsPanelTest {
     // Arrange
     val device = TestDevices.pixel9Pro()
 
-    val state =
-      ConfigureDevicePanelState(
-        device,
-        emptyList<Skin>().toImmutableList(),
-        null,
-        maxCpuCoreCount = 4,
-      )
+    val state = configureDevicePanelState(device, maxCpuCoreCount = 4)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -184,14 +172,14 @@ class AdditionalSettingsPanelTest {
     rule.onNodeWithText("3").performClick()
 
     // Assert
-    assertThat(state.device).isEqualTo(device.copy(cpuCoreCount = 3))
+    assertThat(state.device.cpuCoreCount).isEqualTo(3)
   }
 
   @Test
   fun graphicsAccelerationDropdownOnSelectedItemChange() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -200,14 +188,14 @@ class AdditionalSettingsPanelTest {
     rule.onNodeWithText("Hardware").performClick()
 
     // Assert
-    assertThat(state.device).isEqualTo(device.copy(graphicsMode = GraphicsMode.HARDWARE))
+    assertThat(state.device.graphicsMode).isEqualTo(GraphicsMode.HARDWARE)
   }
 
   @Test
   fun ramIsValid() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -217,16 +205,14 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onTooltips().assertCountEquals(0)
-
-    assertThat(state.device)
-      .isEqualTo(device.copy(ram = StorageCapacity(3, StorageCapacity.Unit.GB)))
+    assertThat(state.device.ram).isEqualTo(StorageCapacity(3, StorageCapacity.Unit.GB))
   }
 
   @Test
   fun ramIsEmpty() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -236,14 +222,14 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithText("Specify a RAM value").assertIsDisplayed()
-    assertThat(state.device).isEqualTo(device.copy(ram = null))
+    assertThat(state.device.ram).isNull()
   }
 
   @Test
   fun ramIsLessThanMin() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -254,14 +240,14 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithText("RAM must be at least 128M. Recommendation is 1G.").assertIsDisplayed()
-    assertThat(state.device).isEqualTo(device.copy(ram = null))
+    assertThat(state.device.ram).isNull()
   }
 
   @Test
   fun ramIsOverflow() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -271,14 +257,14 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithText("RAM value is too large").assertIsDisplayed()
-    assertThat(state.device).isEqualTo(device.copy(ram = null))
+    assertThat(state.device.ram).isNull()
   }
 
   @Test
   fun vmHeapSizeIsValid() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -291,15 +277,14 @@ class AdditionalSettingsPanelTest {
     // Assert
     rule.onTooltips().assertCountEquals(0)
 
-    assertThat(state.device)
-      .isEqualTo(device.copy(vmHeapSize = StorageCapacity(229, StorageCapacity.Unit.MB)))
+    assertThat(state.device.vmHeapSize).isEqualTo(StorageCapacity(229, StorageCapacity.Unit.MB))
   }
 
   @Test
   fun vmHeapSizeIsEmpty() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -311,14 +296,14 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithText("Specify a VM heap size").assertIsDisplayed()
-    assertThat(state.device).isEqualTo(device.copy(vmHeapSize = null))
+    assertThat(state.device.vmHeapSize).isNull()
   }
 
   @Test
   fun vmHeapSizeIsLessThanMin() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -330,14 +315,14 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithText("VM heap must be at least 16M").assertIsDisplayed()
-    assertThat(state.device).isEqualTo(device.copy(vmHeapSize = null))
+    assertThat(state.device.vmHeapSize).isNull()
   }
 
   @Test
   fun vmHeapSizeIsOverflow() {
     // Arrange
     val device = TestDevices.pixel6()
-    val state = ConfigureDevicePanelState(device, emptyList<Skin>().toImmutableList(), null)
+    val state = configureDevicePanelState(device)
 
     rule.setContent { provideCompositionLocals { AdditionalSettingsPanel(state) } }
 
@@ -349,22 +334,30 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     rule.onNodeWithText("VM heap size is too large").assertIsDisplayed()
-    assertThat(state.device).isEqualTo(device.copy(vmHeapSize = null))
-  }
-
-  private companion object {
-    private fun SemanticsNodeInteractionsProvider.onRamTextField() =
-      onNodeWithTag("RamRow").onChildren().filterToOne(hasSetTextAction())
-
-    private fun SemanticsNodeInteractionsProvider.onRamDropdown() =
-      onNodeWithTag("RamRow")
-        .onChildren()
-        .filterToOne(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
-
-    private fun SemanticsNodeInteractionsProvider.onRamDropdownPopupChildren() =
-      onNode(isPopup()).onChild().onChildren()
-
-    private fun SemanticsNodeInteractionsProvider.onVMHeapSizeTextField() =
-      onNodeWithTag("VMHeapSizeRow").onChildren().filterToOne(hasSetTextAction())
+    assertThat(state.device.vmHeapSize).isNull()
   }
 }
+
+private fun configureDevicePanelState(
+  device: VirtualDevice,
+  skins: ImmutableCollection<Skin> = emptyList<Skin>().toImmutableList(),
+  image: ISystemImage? = null,
+  deviceNameValidator: DeviceNameValidator = DeviceNameValidator(emptySet()),
+  fileSystem: FileSystem = FileSystems.getDefault(),
+  maxCpuCoreCount: Int = max(1, Runtime.getRuntime().availableProcessors() / 2),
+) =
+  ConfigureDevicePanelState(device, skins, image, deviceNameValidator, fileSystem, maxCpuCoreCount)
+
+private fun SemanticsNodeInteractionsProvider.onRamTextField() =
+  onNodeWithTag("RamRow").onChildren().filterToOne(hasSetTextAction())
+
+private fun SemanticsNodeInteractionsProvider.onRamDropdown() =
+  onNodeWithTag("RamRow")
+    .onChildren()
+    .filterToOne(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+
+private fun SemanticsNodeInteractionsProvider.onRamDropdownPopupChildren() =
+  onNode(isPopup()).onChild().onChildren()
+
+private fun SemanticsNodeInteractionsProvider.onVMHeapSizeTextField() =
+  onNodeWithTag("VMHeapSizeRow").onChildren().filterToOne(hasSetTextAction())

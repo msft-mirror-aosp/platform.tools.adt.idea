@@ -28,7 +28,6 @@ import com.google.idea.blaze.base.command.WorkspaceRootReplacement;
 import com.google.idea.blaze.base.command.buildresult.BuildEventProtocolUtils;
 import com.google.idea.blaze.base.command.buildresult.BuildResult;
 import com.google.idea.blaze.base.command.buildresult.BuildResultHelper;
-import com.google.idea.blaze.base.command.buildresult.BuildResultHelperBep;
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider;
 import com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider;
 import com.google.idea.blaze.base.execution.BazelGuard;
@@ -76,18 +75,13 @@ public class LocalInvoker extends AbstractBuildInvoker {
   }
 
   @Override
-  public BuildResultHelper createBuildResultHelper() {
-    return new BuildResultHelperBep();
-  }
-
-  @Override
   public BlazeCommandRunner getCommandRunner() {
     return new CommandLineBlazeCommandRunner();
   }
 
   @Override
   public ImmutableSet<Capability> getCapabilities() {
-    return ImmutableSet.of(Capability.IS_LOCAL, Capability.SUPPORTS_CLI);
+    return ImmutableSet.of(Capability.BUILD_AIT, Capability.SUPPORT_CLI, Capability.DEBUG_LOCAL_TEST);
   }
 
   @Override

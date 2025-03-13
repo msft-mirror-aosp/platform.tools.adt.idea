@@ -21,6 +21,7 @@ import com.android.ide.common.gradle.RichVersion
 import com.android.ide.common.repository.AgpVersion
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.ide.common.repository.GradleCoordinate
+import com.android.ide.common.repository.WellKnownMavenArtifactId
 import com.android.manifmerger.ManifestSystemProperty
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.concurrency.transform
@@ -86,8 +87,12 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import org.jetbrains.android.dom.manifest.getPrimaryManifestXml
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.kotlin.idea.base.facet.isMultiPlatformModule
+import org.jetbrains.plugins.gradle.execution.build.CachedModuleDataFinder
+import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
@@ -186,10 +191,10 @@ class GradleModuleSystem(
       ?.second?.toPath()
   }
 
-  override fun getRegisteredDependencyQueryId(id: GoogleMavenArtifactId): GradleRegisteredDependencyQueryId? =
+  override fun getRegisteredDependencyQueryId(id: WellKnownMavenArtifactId): GradleRegisteredDependencyQueryId? =
     GradleRegisteredDependencyQueryId(id.getModule())
 
-  override fun getRegisteredDependencyId(id: GoogleMavenArtifactId): GradleRegisteredDependencyId? =
+  override fun getRegisteredDependencyId(id: WellKnownMavenArtifactId): GradleRegisteredDependencyId? =
     GradleRegisteredDependencyId(id.getDependency("+"))
 
   override fun getRegisteredDependency(id: GradleRegisteredDependencyQueryId): GradleRegisteredDependencyId? =
@@ -226,7 +231,7 @@ class GradleModuleSystem(
   fun getRegisteredDependency(externalModule: ExternalModule): Dependency? =
     getDirectDependencies(module).find { it.name == externalModule.name && it.group == externalModule.group }
 
-  private fun Component.dependency() = Dependency(group, name, RichVersion.parse(version.toString()))
+  private fun Component.dependency() = Dependency(group, name, RichVersion.require(version))
 
   fun getDirectDependencies(module: Module): Sequence<Dependency> {
     // TODO: b/129297171
@@ -333,11 +338,28 @@ class GradleModuleSystem(
 
   override fun registerDependency(coordinate: GradleCoordinate, type: DependencyType) {
     val dependencies = Collections.singletonList(coordinate.toDependency())
-    registerDependencies(dependencies, type)
+    if (module.isMultiPlatformModule) {
+      getGradleSourceSetName(module)?.let { registerDependencies(dependencies, type, it) }
+    } else {
+      registerDependencies(dependencies, type)
+    }
+  }
+
+  @RequiresBackgroundThread
+  private fun getGradleSourceSetName(module: Module): String? {
+    val moduleNode = CachedModuleDataFinder.findModuleData(module) ?: return null
+    val sourceSetData = moduleNode.data as? GradleSourceSetData ?: return null
+    return sourceSetData.moduleName
+  }
+
+  private fun registerDependencies(dependencies: List<Dependency>, type: DependencyType, sourceSet: String) {
+    val manager = GradleDependencyManager.getInstance(module.project)
+    manager.addDependencies(module, dependencies, sourceSet)
   }
 
   private fun registerDependencies(dependencies: List<Dependency>, type: DependencyType) {
     val manager = GradleDependencyManager.getInstance(module.project)
+
     when (type) {
       DependencyType.ANNOTATION_PROCESSOR -> {
         // addDependenciesWithoutSync doesn't support this: more direct implementation

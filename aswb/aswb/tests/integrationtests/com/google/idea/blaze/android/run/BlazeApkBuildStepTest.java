@@ -28,7 +28,6 @@ import com.google.idea.blaze.base.BlazeIntegrationTestCase;
 import com.google.idea.blaze.base.bazel.BazelExitCode;
 import com.google.idea.blaze.base.bazel.FakeBlazeCommandRunner;
 import com.google.idea.blaze.base.bazel.FakeBuildInvoker;
-import com.google.idea.blaze.base.bazel.FakeBuildResultHelperBep;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.buildresult.BuildResult;
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider.BuildEventStreamException;
@@ -37,6 +36,7 @@ import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.ErrorCollector;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
+import java.io.File;
 import java.io.IOException;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -181,6 +181,7 @@ public final class BlazeApkBuildStepTest extends BlazeIntegrationTestCase {
         .setBlazeFlags(ImmutableList.of())
         .setExeFlags(ImmutableList.of())
         .setUseMobileInstall(true)
+        .setNativeDebuggingEnabled(false)
         .setLaunchId("some-random-id")
         .setBuildInvoker(newFakeInvoker())
         .setDeployInfoExtractor(
@@ -188,7 +189,6 @@ public final class BlazeApkBuildStepTest extends BlazeIntegrationTestCase {
   }
 
   private static FakeBuildInvoker newFakeInvoker() {
-    FakeBuildResultHelperBep buildResultHelper = new FakeBuildResultHelperBep();
-    return FakeBuildInvoker.builder().buildResultHelperSupplier(() -> buildResultHelper).build();
+    return FakeBuildInvoker.builder().build();
   }
 }

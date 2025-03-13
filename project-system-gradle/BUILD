@@ -41,6 +41,7 @@ iml_module(
         "//tools/adt/idea/android-navigator:intellij.android.navigator",
         "//tools/adt/idea/mlkit:intellij.android.mlkit",
         "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
+        "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         "//tools/vendor/google/android-ndk:android-ndk",
         "//tools/vendor/google/firebase:firebase",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
@@ -126,13 +127,19 @@ iml_module(
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
             ],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "test_filter": "com.android.tools.idea.gradle.project.sync.jdk.integration",
         },
         "providers.integration": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.ProviderIntegrationTestCase",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "shard_count": 5,
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
@@ -146,7 +153,10 @@ iml_module(
         "kts.highlighting": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.highlighting.GradleKtsResolveSymbolsTest",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -156,7 +166,10 @@ iml_module(
         },
         "runs_gradle": {
             "test_filter": ".runsGradle",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "shard_count": 4,
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
@@ -172,7 +185,10 @@ iml_module(
         "runs_indexing_with_gradle": {
             "test_filter": ".runsIndexingWithGradle",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -186,7 +202,10 @@ iml_module(
         },
         "runs_gradle_dependencies": {
             "test_filter": ".runsGradleDependencies",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -200,7 +219,10 @@ iml_module(
         },
         "runs_gradle_VersionCatalogAndDeclarative": {
             "test_filter": ".runsGradleVersionCatalogAndDeclarative",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -214,7 +236,10 @@ iml_module(
         "runs_indexing_with_gradle_VersionCatalogAndDeclarative": {
             "test_filter": ".runsIndexingWithGradleVersionCatalogAndDeclarative",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -227,7 +252,10 @@ iml_module(
         },
         "runs_gradle_build": {
             "test_filter": ".runsGradleBuild",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -241,7 +269,10 @@ iml_module(
         "runs_gradle_errors": {
             "test_filter": ".runsGradleErrors",
             "shard_count": 2,
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -255,7 +286,10 @@ iml_module(
         "runs_indexing_with_gradle_errors": {
             "test_filter": ".runsIndexingWithGradleErrors",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -268,7 +302,10 @@ iml_module(
         },
         "runs_gradle_open_project": {
             "test_filter": ".runsGradleOpenProjectTest",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -281,7 +318,10 @@ iml_module(
         },
         "runs_gradle_sync_integration": {
             "test_filter": ".runsGradleSyncIntegration",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -295,7 +335,10 @@ iml_module(
         "runs_indexing_with_gradle_snapshots": {
             "test_filter": ".runsIndexingWithGradleSnapshots",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "shard_count": 5,
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
@@ -310,7 +353,10 @@ iml_module(
         },
         "runs_gradle_snapshots": {
             "test_filter": ".runsGradleSnapshots",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -322,9 +368,13 @@ iml_module(
                 "//prebuilts/studio/jdk:jdk21",
             ],
         },
-        "runs_gradle_variants": {
-            "test_filter": ".runsGradleVariant",
-            "tags": ["cpu:4"],
+        "runs_indexing_with_gradle_variants": {
+            "test_filter": ".runsIndexingWithGradleVariant",
+            "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -337,7 +387,10 @@ iml_module(
         },
         "runs_gradle_projectsystem": {
             "test_filter": ".runsGradleProjectsystem",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -350,7 +403,10 @@ iml_module(
         },
         "runs_gradle_autosync": {
             "test_filter": ".autosync",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -363,7 +419,10 @@ iml_module(
         },
         "runs_gradle_signing": {
             "test_filter": ".runsGradleSigning",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -376,7 +435,10 @@ iml_module(
         },
         "runs_gradle_rendering": {
             "test_filter": ".runsGradleRendering",
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -390,7 +452,10 @@ iml_module(
         "runs_indexing_with_gradle_rendering": {
             "test_filter": ".runsIndexingWithGradleRendering",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
-            "tags": ["cpu:4"],
+            "tags": [
+                "cpu:4",
+                "noci:studio-win",
+            ],
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -403,6 +468,7 @@ iml_module(
         },
         "other": {
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
+            "tags": ["ci:studio-win"],
             # Note: we do not include AGP/Gradle artifacts in this test target, to enforce the separation between tests which require Gradle
             # to run (in split targets above) and this catch-all target.
             "data": [],
@@ -423,15 +489,59 @@ iml_module(
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/designer/testData",
         "//tools/adt/idea/project-system-gradle/testData",
-        "//tools/external/gradle:gradle-8.12-20241105002153+0000",
+        "//tools/external/gradle:gradle-8.14-20250304001707+0000",
+    ],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/adt/idea/jps-model:intellij.android.jps.model",
+        "//tools/adt/idea/android:intellij.android.core",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/base/flags:studio.android.sdktools.flags",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/adt/idea/.idea/libraries:studio-proto",
+        "//tools/adt/idea/deploy:intellij.android.deploy",
+        "//tools/adt/idea/android-lint:intellij.android.lint",
+        "//tools/adt/idea/ml-api:intellij.android.ml-api",
+        "//tools/adt/idea/android-navigator:intellij.android.navigator.testutils",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
+        "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd",
+        "//tools/adt/idea/project-system-gradle-repository-search:intellij.android.projectSystem.gradle.repositorySearch",
+        "//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync",
+        "//tools/adt/idea/project-system-gradle-sync-test-utils:intellij.android.projectSystem.gradle.sync.testUtils",
+        "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
+        "@intellij//:org.intellij.groovy",
+        "//tools/base/build-system:studio.android.sdktools.manifest-merger",
+        "//tools/base/lint:studio.android.sdktools.lint-checks",
+        "//tools/analytics-library/shared:analytics-shared",
+        "//tools/adt/idea/build-attribution:intellij.android.build-attribution",
+        "//tools/adt/idea/execution/common:intellij.android.execution.common",
+        "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "@intellij//:com.intellij.properties",
+        "//tools/adt/idea/.idea/libraries:agp-version",
+        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils",
+        "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative",
+        "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang",
+        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/gradle-declarative-lang-sync:intellij.android.gradle.declarative.lang.sync",
     ],
     test_jvm_flags = ["-Didea.skip.indices.initialization=true"],
     test_resources = ["testSrc/resources"],
     test_srcs = ["testSrc"],
-    test_tags = [
-        "block-network",
-        "noci:studio-win",
-    ],
+    test_tags = ["block-network"],
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -446,56 +556,12 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
-        "//tools/adt/idea/.idea/libraries:kotlin-test[test]",
         "@intellij//:com.intellij.gradle",
         "@intellij//:org.jetbrains.plugins.gradle",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:com.intellij.java-i18n",
         "@intellij//:com.intellij.java.ide",
-        "//tools/adt/idea/android-common:intellij.android.common[test]",
-        "//tools/adt/idea/jps-model:intellij.android.jps.model[test]",
-        "//tools/adt/idea/android:intellij.android.core[test]",
-        "//tools/adt/idea/project-system:intellij.android.projectSystem[test]",
-        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle[test]",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework[test]",
-        "//tools/base/flags:studio.android.sdktools.flags[test]",
-        "//tools/base/testutils:studio.android.sdktools.testutils[test]",
-        "//tools/adt/idea/.idea/libraries:mockito[test]",
-        "//tools/adt/idea/.idea/libraries:truth[test]",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils[test]",
-        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl[test]",
-        "//tools/adt/idea/.idea/libraries:studio-analytics-proto[test]",
-        "//tools/adt/idea/.idea/libraries:studio-proto[test]",
-        "//tools/adt/idea/deploy:intellij.android.deploy[test]",
-        "//tools/adt/idea/android-lint:intellij.android.lint[test]",
-        "//tools/adt/idea/ml-api:intellij.android.ml-api[test]",
-        "//tools/adt/idea/android-navigator:intellij.android.navigator.testutils[test]",
-        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models[test]",
-        "//tools/adt/idea/project-system-gradle-psd:intellij.android.projectSystem.gradle.psd[test]",
-        "//tools/adt/idea/project-system-gradle-repository-search:intellij.android.projectSystem.gradle.repositorySearch[test]",
-        "//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync[test]",
-        "//tools/adt/idea/project-system-gradle-sync-test-utils:intellij.android.projectSystem.gradle.sync.testUtils[test]",
-        "//tools/adt/idea/project-system-gradle-upgrade:intellij.android.projectSystem.gradle.upgrade[test]",
-        "//tools/analytics-library/testing:android.sdktools.analytics-testing[test]",
-        "//tools/analytics-library/tracker:analytics-tracker[test]",
-        "//tools/adt/idea/adt-ui:intellij.android.adt.ui[test]",
-        "@intellij//:org.intellij.groovy[test]",
-        "//tools/base/build-system:studio.android.sdktools.manifest-merger[test]",
-        "//tools/base/lint:studio.android.sdktools.lint-checks[test]",
-        "//tools/analytics-library/shared:analytics-shared[test]",
-        "//tools/adt/idea/build-attribution:intellij.android.build-attribution[test]",
-        "//tools/adt/idea/execution/common:intellij.android.execution.common[test]",
-        "//tools/adt/idea/render-resources:intellij.android.render-resources[test]",
         "@intellij//:org.toml.lang",
-        "@intellij//:com.intellij.properties[test]",
-        "//tools/adt/idea/.idea/libraries:agp-version[test]",
-        "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils[test]",
-        "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative[test]",
-        "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang[test]",
-        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide[test]",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin[test]",
-        "//tools/adt/idea/gradle-declarative-lang-sync:intellij.android.gradle.declarative.lang.sync[test]",
     ],
 )
 

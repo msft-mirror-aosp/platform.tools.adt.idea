@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.gradle.project.sync.snapshots
 
+import com.android.testutils.AssumeUtil
+import com.android.testutils.ignore.IgnoreTestRule
+import com.android.testutils.ignore.IgnoreWithCondition
+import com.android.testutils.ignore.OnWindows
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AGP_33
@@ -180,7 +184,11 @@ private object LightGradleSyncReferenceTestProject: LightGradleSyncTestProject {
 }
 
 @RunsInEdt
+@IgnoreWithCondition(reason = "Do not run SnapshotComparisonTest on Windows", condition = OnWindows::class)
 class LightSyncReferenceTest : SnapshotComparisonTest {
+  @get:Rule
+  val ignoreTestRule = IgnoreTestRule()
+
   @get:Rule
   var testName = TestName()
 
@@ -191,7 +199,8 @@ class LightSyncReferenceTest : SnapshotComparisonTest {
   override val snapshotDirectoryWorkspaceRelativePath: String = PROJECT_STRUCTURE_SNAPSHOT_DIR
 
   @Test
-  fun testLightSyncActual() {
+  fun testLightSyncActualNoBuild() {
+    AssumeUtil.assumeNotWindows() // TODO (b/399625141): fix on windows
     val dump = projectRule.project.saveAndDump()
     assertIsEqualToSnapshot(dump)
   }

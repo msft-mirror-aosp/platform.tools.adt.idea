@@ -73,7 +73,6 @@ private fun parseBounds(elements: List<Any?>, logger: Logger): List<ComposeViewI
       val lineNumber = item.javaClass.getMethod("getLineNumber").invoke(item) as Int
       val bounds = getBound(item)
       val children = item.javaClass.getMethod("getChildren").invoke(item) as List<Any?>
-
       val packageHash =
         try {
           item.javaClass.getMethod("getLocation").invoke(item)?.let {
@@ -85,7 +84,8 @@ private fun parseBounds(elements: List<Any?>, logger: Logger): List<ComposeViewI
         } ?: -1
 
       val sourceLocation = SourceLocationImpl(fileName, lineNumber, packageHash)
-      ComposeViewInfo(sourceLocation, bounds, parseBounds(children, logger))
+      // TODO(b/402786730): Re-enable name reading
+      ComposeViewInfo(sourceLocation, bounds, parseBounds(children, logger), "")
     } catch (t: Throwable) {
       logger.warn(t)
       null

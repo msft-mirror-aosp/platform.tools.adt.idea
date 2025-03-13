@@ -23,6 +23,9 @@ import static com.google.idea.blaze.base.bazel.BepUtils.parsedBep;
 import static com.google.idea.blaze.base.bazel.BepUtils.setOfFiles;
 import static com.google.idea.blaze.base.bazel.BepUtils.started;
 import static com.google.idea.blaze.base.bazel.BepUtils.targetComplete;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
@@ -36,6 +39,7 @@ import com.google.idea.blaze.base.BlazeIntegrationTestCase;
 import com.google.idea.blaze.base.bazel.BepUtils.FileArtifact;
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider.BuildEventStreamException;
 import com.google.idea.blaze.base.command.buildresult.bepparser.ParsedBepOutput;
+import com.google.idea.blaze.base.run.RuntimeArtifactKind;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
 import com.google.idea.blaze.common.Label;
@@ -74,16 +78,21 @@ public class BinaryDeployInfoExtractorTest extends BlazeIntegrationTestCase {
 
   @Test
   public void parse_nominalOutput() throws BuildEventStreamException, IOException {
+    NativeSymbolFinder mockSymbolFinder = mock(NativeSymbolFinder.class);
+    File symbolFile = new File("/path/to/symbol");
+    when(mockSymbolFinder.getNativeSymbolsForBuild(any(), any(), any(), any())).thenReturn(ImmutableList.of(symbolFile));
+    registerExtension(NativeSymbolFinder.EP_NAME, mockSymbolFinder);
     BlazeBuildOutputs buildOutputs =
         BlazeBuildOutputs.fromParsedBepOutput(nominalApkBuildOutput());
     BlazeAndroidDeployInfo deployInfo =
-        new BinaryDeployInfoExtractor(getProject(), true, Label.of("//some:target"))
+        new BinaryDeployInfoExtractor(getProject(), Label.of("//some:target"), true, true)
             .extract(buildOutputs, "android-deploy-info", "default", context);
 
     assertThat(deployInfo).isNotNull();
     assertThat(deployInfo.getMergedManifest().packageName)
         .isEqualTo("com.google.android.buildsteptester");
     assertThat(deployInfo.getApksToDeploy()).isEmpty();
+    assertThat(deployInfo.getSymbolFiles()).isEqualTo(ImmutableList.of(symbolFile));
     assertThat(deployInfo.getTestTargetMergedManifest()).isNull();
   }
 
@@ -129,7 +138,7 @@ public class BinaryDeployInfoExtractorTest extends BlazeIntegrationTestCase {
   private static class TestRuntimeArtifactCache implements RuntimeArtifactCache {
     @Override
     public ImmutableList<Path> fetchArtifacts(
-        Label label, List<? extends OutputArtifact> artifacts, BlazeContext context) {
+      Label label, List<? extends OutputArtifact> artifacts, BlazeContext context, RuntimeArtifactKind artifactKind) {
       return artifacts.stream()
           .map(a -> Paths.get(a.getBazelOutRelativePath()))
           .collect(toImmutableList());

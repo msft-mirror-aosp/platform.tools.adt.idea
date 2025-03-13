@@ -5,11 +5,11 @@ iml_module(
     name = "analytics",
     srcs = ["src"],
     iml_files = ["analytics.iml"],
+    test_deps = ["//tools/adt/idea/.idea/libraries:junit4"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
-        "//tools/adt/idea/.idea/libraries:junit4[test]",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",

@@ -1,6 +1,7 @@
 package org.jetbrains.android.refactoring;
 
 import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.util.registry.Registry;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.util.ArrayUtil;
@@ -13,6 +14,14 @@ import java.util.List;
 
 public class AndroidExtractStyleTest extends AndroidTestCase {
   private static final String BASE_PATH = "refactoring/extractStyle/";
+
+  @Override
+  protected void setUp() throws Exception {
+    super.setUp();
+
+    // b/402201770: Ensure any idempotence checks fail consistently.
+    Registry.get("platform.random.idempotence.check.rate").setValue(1, getTestRootDisposable());
+  }
 
   public void test1() {
     doTest("myStyle", new String[]{"android:textColor", "android:background"},

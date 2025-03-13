@@ -15,12 +15,16 @@
  */
 package com.android.tools.idea.uibuilder.type
 
+import com.android.resources.ResourceFolderType
+import com.android.tools.idea.common.type.XmlDesignerEditorFileType
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlFile
 import org.jetbrains.android.dom.menu.MenuDomFileDescription
 
-object MenuFileType : LayoutEditorFileType("menu") {
+object MenuFileType : LayoutEditorFileType("menu"), XmlDesignerEditorFileType {
+  override val resourceFolderType: ResourceFolderType = ResourceFolderType.MENU
+
   override fun getLayoutEditorStateType() = LayoutEditorState.Type.MENU
 
   override fun isResourceTypeOf(file: PsiFile) =

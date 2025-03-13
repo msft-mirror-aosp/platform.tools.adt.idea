@@ -21,10 +21,13 @@ import com.android.SdkConstants.FN_PROJECT_PROGUARD_FILE
 import com.android.SdkConstants.OLD_PROGUARD_FILE
 import com.android.ide.common.gradle.Dependency
 import com.android.ide.common.repository.AgpVersion
+import com.android.tools.lint.client.api.Configuration
+import com.android.tools.lint.client.api.FlagConfiguration
 import com.android.tools.lint.client.api.IssueRegistry
 import com.android.tools.lint.client.api.LintClient
 import com.android.tools.lint.client.api.LintClient.Companion.CLIENT_STUDIO
 import com.android.tools.lint.client.api.LintDriver
+import com.android.tools.lint.client.api.Vendor
 import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.Platform
 import com.intellij.codeInsight.intention.IntentionAction
@@ -41,11 +44,11 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlFile
+import java.io.File
+import java.util.EnumSet
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.plugins.gradle.config.isGradleFile
 import org.toml.lang.psi.TomlFileType
-import java.io.File
-import java.util.EnumSet
 
 /**
  * Extension point for the general lint support to look up services it does not directly depend
@@ -63,6 +66,13 @@ abstract class LintIdeSupport {
   }
 
   open fun getIssueRegistry(): IssueRegistry = LintIdeIssueRegistry()
+
+  open fun getIssueRegistry(issues: List<Issue>): IssueRegistry {
+    return object : IssueRegistry() {
+      override val issues: List<Issue> = issues
+      override val vendor: Vendor = issues.firstOrNull()?.vendor ?: AOSP_VENDOR
+    }
+  }
 
   open fun getBaselineFile(client: LintIdeClient, module: Module): File? {
     val dir = module.getModuleDir() ?: return null
@@ -94,7 +104,7 @@ abstract class LintIdeSupport {
         fileType === KotlinFileType.INSTANCE ||
         fileType === PropertiesFileType.INSTANCE ||
         fileType === TomlFileType ||
-      file.name.endsWith(EXT_GRADLE_DECLARATIVE)
+        file.name.endsWith(EXT_GRADLE_DECLARATIVE)
     ) {
       return true
     }
@@ -158,11 +168,43 @@ abstract class LintIdeSupport {
     return LintIdeClient(lintResult.getModule().project, lintResult)
   }
 
+  /**
+   * Creates a batch client which ignores project-local configurations and custom lint jars from
+   * dependencies. Used for in-IDE refactoring uses of lint, such as the unused resources
+   * refactoring, which behind the scenes runs lint to find the unused resources -- and we want to
+   * make sure that the lint run doesn't get confused by project local settings (such as a lint.xml
+   * file which turns off the unused resources lint inspection for one of the folders) or slowed
+   * down by third party lint checks loaded from the project dependencies.
+   */
+  open fun createIsolatedClient(
+    lintResult: LintBatchResult,
+    issueRegistry: IssueRegistry,
+  ): LintIdeClient {
+    return object : LintIdeClient(lintResult.project, lintResult) {
+      override fun findGlobalRuleJars(driver: LintDriver?, warnDeprecated: Boolean): List<File> =
+        emptyList()
+
+      override fun findRuleJars(
+        project: com.android.tools.lint.detector.api.Project
+      ): Iterable<File> = emptyList()
+
+      override fun getConfiguration(
+        project: com.android.tools.lint.detector.api.Project,
+        driver: LintDriver?,
+      ): Configuration =
+        object : FlagConfiguration(configurations) {
+          override fun exactCheckedIds(): Set<String> = issueRegistry.issues.map { it.id }.toSet()
+        }
+
+      override fun getConfiguration(file: File): Configuration? = null
+    }
+  }
+
   open fun recommendedAgpVersion(project: Project): AgpVersion? = null
 
   open fun shouldRecommendUpdateAgpToLatest(project: Project): Boolean = false
 
-  open fun updateAgpToLatest(project: Project) {}
+  open fun updateAgpToLatest(project: Project, agpVersion: AgpVersion?) {}
 
   open fun shouldOfferUpgradeAssistantForDeprecatedConfigurations(project: Project): Boolean = false
 

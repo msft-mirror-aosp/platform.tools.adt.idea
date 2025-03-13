@@ -36,6 +36,9 @@ import com.android.tools.idea.lint.common.LintResult
 import com.android.tools.idea.lint.common.getModuleDir
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.util.CommonAndroidUtil
+import com.android.tools.lint.client.api.Configuration
+import com.android.tools.lint.client.api.FlagConfiguration
+import com.android.tools.lint.client.api.IssueRegistry
 import com.android.tools.lint.client.api.LintDriver
 import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.Platform
@@ -57,14 +60,14 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlFile
+import java.io.File
+import java.util.EnumSet
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.plugins.gradle.config.isGradleFile
 import org.toml.lang.psi.TomlFileType
-import java.io.File
-import java.util.EnumSet
 
 class AndroidLintIdeSupport : LintIdeSupport() {
   override fun getIssueRegistry() = AndroidLintIdeIssueRegistry()
@@ -115,8 +118,7 @@ class AndroidLintIdeSupport : LintIdeSupport() {
     if (facet == null && !CommonAndroidUtil.getInstance().isAndroidProject(module.project))
       return false
 
-    if (file.name.endsWith(EXT_GRADLE_DECLARATIVE))
-      return true
+    if (file.name.endsWith(EXT_GRADLE_DECLARATIVE)) return true
 
     return when (file.fileType) {
       JavaFileType.INSTANCE,
@@ -166,6 +168,30 @@ class AndroidLintIdeSupport : LintIdeSupport() {
   override fun createEditorClient(lintResult: LintEditorResult) =
     AndroidLintIdeClient(lintResult.getModule().project, lintResult)
 
+  override fun createIsolatedClient(
+    lintResult: LintBatchResult,
+    issueRegistry: IssueRegistry,
+  ): LintIdeClient {
+    return object : AndroidLintIdeClient(lintResult.project, lintResult) {
+      override fun findGlobalRuleJars(driver: LintDriver?, warnDeprecated: Boolean): List<File> =
+        emptyList()
+
+      override fun findRuleJars(
+        project: com.android.tools.lint.detector.api.Project
+      ): Iterable<File> = emptyList()
+
+      override fun getConfiguration(
+        project: com.android.tools.lint.detector.api.Project,
+        driver: LintDriver?,
+      ): Configuration =
+        object : FlagConfiguration(configurations) {
+          override fun exactCheckedIds(): Set<String> = issueRegistry.issues.map { it.id }.toSet()
+        }
+
+      override fun getConfiguration(file: File): Configuration? = null
+    }
+  }
+
   override fun recommendedAgpVersion(project: Project): AgpVersion? {
     val current = project.findPluginInfo()?.pluginVersion ?: return null
     val latestKnown = AgpVersions.latestKnown
@@ -181,7 +207,8 @@ class AndroidLintIdeSupport : LintIdeSupport() {
   override fun shouldRecommendUpdateAgpToLatest(project: Project) =
     project.getService(AssistantInvoker::class.java).shouldRecommendPluginUpgradeToLatest(project)
 
-  override fun updateAgpToLatest(project: Project) {
+  override fun updateAgpToLatest(project: Project, agpVersion: AgpVersion?) {
+    // TODO: AGP Upgrade Assistant needs to be updated to support updating to a specific version
     project.getService(AssistantInvoker::class.java).performRecommendedPluginUpgrade(project)
   }
 

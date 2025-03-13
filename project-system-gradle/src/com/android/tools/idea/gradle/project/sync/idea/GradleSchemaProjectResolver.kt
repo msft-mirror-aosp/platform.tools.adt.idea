@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.sync.idea
 
+import com.android.tools.idea.gradle.dcl.lang.ide.DeclarativeIdeSupport
 import com.android.tools.idea.gradle.dcl.lang.sync.DeclarativeGradleModelProvider
 import com.android.tools.idea.gradle.dcl.lang.sync.ProjectSchemas
 import com.android.tools.idea.gradle.dcl.lang.sync.SettingsSchemas
@@ -40,22 +41,26 @@ class GradleSchemaProjectResolver : AbstractProjectResolverExtension() {
   }
 
   override fun populateProjectExtraModels(gradleProject: IdeaProject, ideProject: DataNode<ProjectData?>) {
-    val projectSchemas: ProjectSchemas? = resolverCtx.getRootModel(ProjectSchemas::class.java)
-    if (projectSchemas != null) {
-      ideProject.createChild(DECLARATIVE_PROJECT_SCHEMAS, projectSchemas)
-    }
-    val settingsSchemas: SettingsSchemas? = resolverCtx.getRootModel(SettingsSchemas::class.java)
-    if (settingsSchemas != null) {
-      ideProject.createChild(DECLARATIVE_SETTINGS_SCHEMAS, settingsSchemas)
+    if (DeclarativeIdeSupport.isEnabled()) {
+      val projectSchemas: ProjectSchemas? = resolverCtx.getRootModel(ProjectSchemas::class.java)
+      if (projectSchemas != null) {
+        ideProject.createChild(DECLARATIVE_PROJECT_SCHEMAS, projectSchemas)
+      }
+      val settingsSchemas: SettingsSchemas? = resolverCtx.getRootModel(SettingsSchemas::class.java)
+      if (settingsSchemas != null) {
+        ideProject.createChild(DECLARATIVE_SETTINGS_SCHEMAS, settingsSchemas)
+      }
     }
     nextResolver.populateProjectExtraModels(gradleProject, ideProject)
   }
 
-  override fun getModelProvider(): ProjectImportModelProvider {
+  override fun getModelProvider(): ProjectImportModelProvider? {
+    if (!DeclarativeIdeSupport.isEnabled()) return null
     return DeclarativeGradleModelProvider()
   }
 
   override fun getExtraProjectModelClasses(): Set<Class<out Any>> {
+    if (!DeclarativeIdeSupport.isEnabled()) return setOf()
     throw UnsupportedOperationException("getExtraProjectModelClasses() is not used when getModelProvider() is overridden.")
   }
 
