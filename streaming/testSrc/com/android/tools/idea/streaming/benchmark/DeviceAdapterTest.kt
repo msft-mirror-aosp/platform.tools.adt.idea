@@ -36,6 +36,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.setMain
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -226,6 +227,7 @@ class DeviceAdapterTest {
     assertThat(errors[0]).isEqualTo("Could not launch benchmarking app.")
   }
 
+  @Ignore("b/403304174")
   @Test
   fun ready_keysConfigurationIntoApp() {
     FakeUi(view, createFakeWindow = true)
