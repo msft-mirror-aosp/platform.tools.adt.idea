@@ -17,7 +17,7 @@ package com.google.idea.blaze.base.project;
 
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.intellij.ide.IdeBundle;
-import com.intellij.ide.impl.TrustedProjects;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.ide.util.projectWizard.ProjectBuilder;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.Project;
@@ -31,7 +31,7 @@ public class TrustAwareProjectCreator implements ExtendableBazelProjectCreator {
   /** Returns true if the user has trusted the project. */
   @Override
   public boolean canCreateProject(@Nullable BuildSystemName buildSystemName) {
-    if (TrustedProjects.isTrustedCheckDisabled()) {
+    if (TrustedProjects.INSTANCE.isTrustedCheckDisabled()) {
       return true;
     }
     var trustText = IdeBundle.message("untrusted.project.dialog.trust.button");
@@ -49,7 +49,7 @@ public class TrustAwareProjectCreator implements ExtendableBazelProjectCreator {
             .defaultButton(trustText)
             .focusedButton(dontOpenText)
             .asWarning()
-            .help(TrustedProjects.TRUSTED_PROJECTS_HELP_TOPIC)
+            .help(com.intellij.ide.impl.TrustedProjects.TRUSTED_PROJECTS_HELP_TOPIC)
             .show(null, null);
 
     return trustText.equals(choice);

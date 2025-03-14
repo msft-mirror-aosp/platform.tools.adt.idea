@@ -15,14 +15,14 @@
  */
 package com.google.idea.blaze.base.execution;
 
-import com.intellij.ide.impl.TrustedProjects;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.project.Project;
 
 /** A {@link BazelGuard} that only allows execution if the project is trusted. */
 public class TrustedProjectGuard implements BazelGuard {
   @Override
   public void checkIsExecutionAllowed(Project project) throws ExecutionDeniedException {
-    if (!TrustedProjects.isTrusted(project)) {
+    if (!TrustedProjects.isProjectTrusted(project)) {
       throw new ExecutionDeniedException("Execution is not allowed because project is not trusted");
     }
   }
