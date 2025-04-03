@@ -209,7 +209,7 @@ private val dispatchEventMethod = ReflectionUtil.getDeclaredMethod(EventQueue::c
 /**
  * Implementation of [DialogWrapperPeerFactory] for headless tests involving dialogs.
  */
-class HeadlessDialogWrapperPeerFactory : DialogWrapperPeerFactory() {
+class HeadlessDialogWrapperPeerFactory: DialogWrapperPeerFactory() {
 
   override fun createPeer(wrapper: DialogWrapper, project: Project?, canBeParent: Boolean): DialogWrapperPeer {
     return HeadlessDialogWrapperPeer(wrapper, project)
@@ -263,9 +263,13 @@ private class HeadlessDialogWrapperPeer(
   private var title: String? = null
   private var visible = false
   private var nestedEventLoopLatch: CountDownLatch? = null
+  private var dialogWindow: JDialog
+  private val dialog = MyDialog()
 
   init {
     modal = ideModalityType != IdeModalityType.MODELESS
+    dialog.add(rootPane)
+    dialogWindow = createFakeWindow(dialog, wrapper.disposable)
   }
 
   override fun isHeadless(): Boolean {
@@ -317,7 +321,7 @@ private class HeadlessDialogWrapperPeer(
   }
 
   override fun getWindow(): Window? {
-    return null
+    return dialogWindow
   }
 
   override fun getRootPane(): JRootPane {
@@ -394,9 +398,6 @@ private class HeadlessDialogWrapperPeer(
         Disposer.register(wrapper.disposable, runnable::run)
       }
     }
-
-    val dialog = MyDialog()
-    dialog.add(rootPane)
 
     val dialogWrapper = dialog.dialogWrapper
     if (dialogWrapper.isAutoAdjustable) {

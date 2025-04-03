@@ -148,21 +148,34 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
 
   @Test
   fun testListProperty() {
-    doCompletionTestPatchedSchema("""
+    doTestOnPatchedSchema("""
       androidApp {
         buildTypes{
           buildType("debug"){
             matching$caret
         }
       }
-      """, """
+      """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "matchingFallbacks = listOf()", "matchingFallbacks += listOf()"
+      )
+    }
+  }
+
+  @Test
+  fun testListPropertyEditing() {
+    doTestOnPatchedSchema("""
       androidApp {
         buildTypes{
           buildType("debug"){
-            matchingFallbacks = listOf($caret)
+            matchingFall${caret}backs += listOf()
         }
       }
-      """)
+      """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "matchingFallbacks"
+      )
+    }
   }
 
   @Test
@@ -198,6 +211,41 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
         fakeFileList = listOf(layout.projectDirectory.file($caret))
       }
       """)
+  }
+
+  @Test
+  fun testNoSuggestionAfterIllegalAppend() {
+    doTestOnPatchedSchema("""
+      androidApp {
+        compileSdk += ${caret}1
+      }
+      """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).isEmpty()
+    }
+  }
+
+  @Test
+  fun testNoSuggestionAfterIllegalAppend2() {
+    doTestOnPatchedSchema("""
+      androidApp {
+        compileSdk += 1${caret}
+      }
+      """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).isEmpty()
+    }
+  }
+
+  @Test
+  fun testNoSuggestionAfterIllegalAppendPropertyValue() {
+    doTestOnPatchedSchema("""
+      androidApp {
+        bundle  {
+          integrityConfigDir += l$caret
+        }
+      }
+      """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).isEmpty()
+    }
   }
 
   @Test
@@ -245,6 +293,27 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
         buildTypes{
           buildType("debug"){
             matchingFallbacks = listOf($caret)
+          }
+        }
+      }
+      """.trimIndent())
+  }
+
+  @Test
+  fun testAppendList() {
+    doCompletionTestPatchedSchema("""
+      androidApp {
+        buildTypes{
+          buildType("debug"){
+            matchingFallbacks += li$caret
+          }
+        }
+      }
+      """.trimIndent(), """
+      androidApp {
+        buildTypes{
+          buildType("debug"){
+            matchingFallbacks += listOf($caret)
           }
         }
       }
@@ -322,7 +391,9 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
     }
       """) { suggestions ->
       Truth.assertThat(suggestions.toList()).containsExactly(
-        "applicationIdSuffix", "buildConfigField", "dependencies", "isMinifyEnabled", "matchingFallbacks", "multiDexEnabled", "versionNameSuffix")
+        "applicationIdSuffix", "buildConfigField", "dependencies", "isMinifyEnabled",
+        "matchingFallbacks += listOf()", "matchingFallbacks = listOf()", "multiDexEnabled",
+        "proguardFile", "proguardFiles += listOf()", "proguardFiles = listOf()", "versionNameSuffix")
     }
   }
 
@@ -622,6 +693,114 @@ class DeclarativeCompletionContributorTest : UsefulTestCase() {
       Truth.assertThat(suggestions.toList()).containsExactly("layout", "listOf", "rootProject", "uri")
     }
   }
+
+  @Test
+  fun testSuggestionsFunctionArguments() {
+    doTestOnPatchedSchema("""
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles = listOf($caret)
+        }
+      }
+    }
+    """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "buildConfigField", "layout", "listOf", "proguardFile")
+    }
+  }
+
+  @Test
+  fun testSuggestionsFunctionArgumentsWithAppend() {
+    doTestOnPatchedSchema("""
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles += listOf($caret)
+        }
+      }
+    }
+    """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "buildConfigField", "layout", "listOf", "proguardFile")
+    }
+  }
+
+
+  @Test
+  fun testSuggestionsFunctionSecondArgument() {
+    doTestOnPatchedSchema("""
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles = listOf(proguardFile("a"), $caret)
+        }
+      }
+    }
+    """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "buildConfigField", "layout", "listOf", "proguardFile")
+    }
+  }
+
+  @Test
+  fun testSuggestionsFunctionSecondArgumentWithAppend() {
+    doTestOnPatchedSchema("""
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles += listOf(proguardFile("a"), $caret)
+        }
+      }
+    }
+    """) { suggestions ->
+      Truth.assertThat(suggestions.toList()).containsExactly(
+        "buildConfigField", "layout", "listOf", "proguardFile")
+    }
+  }
+
+  @Test
+  fun testCompletionFunctionArguments() {
+    doCompletionTestPatchedSchema("""
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles = listOf(proguard$caret)
+        }
+      }
+    }
+    """, """
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles = listOf(proguardFile($caret))
+        }
+      }
+    }
+    """)
+  }
+
+  @Test
+  fun testCompletionFunctionSecondArguments() {
+    doCompletionTestPatchedSchema("""
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles = listOf(proguardFile("a"), prog$caret)
+        }
+      }
+    }
+    """, """
+    androidApp {
+      buildTypes {
+        buildType("debug") {
+          proguardFiles = listOf(proguardFile("a"), proguardFile($caret))
+        }
+      }
+    }
+    """)
+  }
+
 
   @Test
   fun testSuggestionsPlugins() {

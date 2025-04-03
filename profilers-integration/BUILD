@@ -30,7 +30,6 @@ profilers_test_common_data = [
     "//prebuilts/studio/sdk:platform-tools",
     INTEGRATION_TEST_GRADLE_VERSION,
     "@system_image_android-33_default_x86_64//:x86_64-android-33-images",
-    "@system_image_android-35_default_x86_64//:x86_64-android-35-images",
 ]
 
 iml_test(
@@ -224,7 +223,10 @@ iml_test(
     exec_properties = RBE_CPU_8,
     module = ":intellij.android.profilers.integration",
     tags = ["studio-e2e-test"],
-    tags_linux = ["block-network"],
+    tags_linux = [
+        "block-network",
+        "ci:studio-linux_very_flaky",  # b/406616088
+    ],
     tags_mac = [],
     tags_windows = [
         "block-network",

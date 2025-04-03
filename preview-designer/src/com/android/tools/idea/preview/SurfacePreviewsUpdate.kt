@@ -46,7 +46,6 @@ import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.jetbrains.rd.util.getOrCreate
@@ -210,7 +209,7 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
   if (facet == null || configurationManager == null) return emptyList()
   // Retrieve the models that were previously displayed so we can reuse them instead of creating new
   // ones.
-  val existingModels = models.toMutableList()
+  val existingModels = models
   val previewElementsList = previewElements.toList()
   val modelIndices =
     if (tryReusingModels) {
@@ -226,12 +225,9 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
       previewElement to if (modelIndices[idx] == -1) null else existingModels[modelIndices[idx]]
     }
 
-  existingModels.removeAll(elementsToReusableModels.mapNotNull { it.second })
-  debugLogger?.log("Removing ${existingModels.size} model(s)")
-  existingModels.forEach {
-    removeModel(it)
-    Disposer.dispose(it)
-  }
+  val notReusedModels = existingModels - elementsToReusableModels.mapNotNull { it.second }.toSet()
+  debugLogger?.log("Removing ${notReusedModels.size} model(s)")
+  removeModels(notReusedModels)
 
   refreshEventBuilder?.withPreviewsCount(elementsToReusableModels.size)
   refreshEventBuilder?.withPreviewsToRefresh(elementsToReusableModels.size)
@@ -253,7 +249,7 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
     elementsToReusableModels
       .map { (previewElement, model) ->
         val newModel: NlModel =
-          getNewModel(
+          createOrReuseModelForPreviewElement(
             model,
             debugLogger,
             previewElementModelAdapter,
@@ -360,7 +356,7 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
  *
  * @return the [NlModel] to use for rendering.
  */
-private suspend fun <T : PsiPreviewElement> NlDesignSurface.getNewModel(
+private suspend fun <T : PsiPreviewElement> NlDesignSurface.createOrReuseModelForPreviewElement(
   modelToReuse: NlModel?,
   debugLogger: PreviewElementDebugLogger?,
   previewElementModelAdapter: PreviewElementModelAdapter<T, NlModel>,

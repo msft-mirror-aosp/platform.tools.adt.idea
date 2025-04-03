@@ -168,7 +168,7 @@ class AehdWizardTest {
       finishButton.doClick()
 
       verify(mockAehdWizardController, times(1)).setupAehd(any(), any(), any())
-      verify(mockAehdWizardController, times(0)).handleCancel(any(), any(), any(), any())
+      verify(mockAehdWizardController, times(0)).handleCancel(any(), any(), any())
     }
   }
 
@@ -186,8 +186,7 @@ class AehdWizardTest {
 
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-      verify(mockAehdWizardController, timeout(2000).times(1))
-        .handleCancel(any(), any(), any(), any())
+      verify(mockAehdWizardController, timeout(2000).times(1)).handleCancel(any(), any(), any())
     }
   }
 
@@ -282,7 +281,7 @@ class AehdWizardTest {
         .apply { init() }
 
     createModalDialogAndInteractWithIt(dialogTrigger = { wizard.show() }) {
-      showCallback(FakeUi(getRoot(wizard.contentPane), createFakeWindow = true))
+      showCallback(FakeUi(getRoot(wizard.contentPane)))
     }
   }
 
@@ -299,7 +298,7 @@ class AehdWizardTest {
       )
 
     createModalDialogAndInteractWithIt(dialogTrigger = { wizard.showAndGet() }) { dialogWrapper ->
-      showCallback(FakeUi(getRoot(dialogWrapper.contentPane), createFakeWindow = true))
+      showCallback(FakeUi(getRoot(dialogWrapper.contentPane)))
     }
   }
 

@@ -114,7 +114,7 @@ public class StringResourceViewPanel implements Disposable {
     initToolbar();
 
     myXmlLabel = new JBLabel("XML:", SwingConstants.RIGHT);
-    myXmlTextField = new JBTextField();
+    myXmlTextField = new MinimumWidthTextField();
     myXmlTextField.setEnabled(false);
     myXmlTextField.setName("xmlTextField");
 
@@ -299,6 +299,7 @@ public class StringResourceViewPanel implements Disposable {
     myDefaultValueTextField = new TextFieldWithBrowseButton(textField, new ShowMultilineActionListener(), this);
 
     myDefaultValueTextField.setButtonIcon(StudioIcons.Common.EDIT);
+    myDefaultValueTextField.setEnabled(false);
     myDefaultValueTextField.setName("defaultValueTextField");
   }
 

@@ -22,7 +22,7 @@ import org.junit.rules.ExternalResource
 /**
  * Enables showing of dialogs in a headless test environment.
  */
-class HeadlessDialogRule : ExternalResource() {
+class HeadlessDialogRule: ExternalResource() {
 
   private lateinit var disposable: Disposable
 

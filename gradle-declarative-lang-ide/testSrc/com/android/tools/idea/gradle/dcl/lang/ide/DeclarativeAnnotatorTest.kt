@@ -23,7 +23,6 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.UsefulTestCase
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -109,14 +108,12 @@ class DeclarativeAnnotatorTest : UsefulTestCase() {
   }
 
   @Test
-  @Ignore("New schema does not have NDO")
-  fun stopCheckingWithUnknownNamedDomainObjects() {
+  fun checkingUnknownNamedDomainObjects() {
     doBuildFileTest("""
-      androidApplication {
-        appBuildTypes {
-          // not in schema
-          staging {
-            isMinifyEnabled = true
+      androidApp {
+        buildTypes {
+          buildType("new_type") {
+             ${"isMinifyEnableddd" highlightedAs HighlightSeverity.ERROR} = false
           }
         }
       }
@@ -124,12 +121,11 @@ class DeclarativeAnnotatorTest : UsefulTestCase() {
   }
 
   @Test
-  @Ignore("New schema does not have NDO")
   fun checkingWithKnownNamedDomainObjects() {
     doBuildFileTest("""
       androidApp {
-        appBuildTypes {
-          debug {
+        buildTypes {
+          buildType("debug") {
             ${"isMinifyEnableddd" highlightedAs HighlightSeverity.ERROR} = false
           }
         }
@@ -319,6 +315,14 @@ class DeclarativeAnnotatorTest : UsefulTestCase() {
     """)
   }
 
+  @Test
+  fun listOfRegularFilesProperty2() {
+    doPatchedBuildFileTest("""
+       androidApp {
+         fakeFileList += listOf(layout.projectDirectory.file("aaa"), layout.projectDirectory.file("bbb"))
+       }
+    """)
+  }
 
   @Test
   fun listOfRegularFilesPropertyNegativeTest() {
@@ -339,6 +343,26 @@ class DeclarativeAnnotatorTest : UsefulTestCase() {
            }
          }
        }
+    """)
+  }
+
+  @Test
+  fun checkWrongAppend() {
+    doPatchedBuildFileTest("""
+      androidApp {
+         defaultConfig {
+           ${"minSdk += 33".highlightedAs(HighlightSeverity.ERROR, "Cannot do `+=` for this property type") }
+         }
+      }
+    """)
+  }
+
+  @Test
+  fun checkWrongAppend2() {
+    doPatchedBuildFileTest("""
+      androidApp {
+        ${"namespace += \"aaa\"".highlightedAs(HighlightSeverity.ERROR, "Cannot do `+=` for this property type") }
+      }
     """)
   }
 

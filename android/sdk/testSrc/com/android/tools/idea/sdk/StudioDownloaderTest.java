@@ -62,6 +62,7 @@ import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -202,7 +203,8 @@ public class StudioDownloaderTest {
           @Override
           public void setFraction(double fraction) {
             super.setFraction(fraction);
-            if (fraction * CANCELLATIONS_COUNT >= currentCancellationsCount.get()) {
+            // The sub-progress for the actual download runs from 0.1 to 0.8; after that we can't cancel.
+            if (fraction >= 0.8 * currentCancellationsCount.get() / CANCELLATIONS_COUNT) {
               currentCancellationsCount.incrementAndGet();
               cancel();
             }
@@ -231,6 +233,7 @@ public class StudioDownloaderTest {
 
 
   @Test
+  @Ignore("b/406368116")
   public void testCorruptedPartialDownload() throws Exception {
     FileSystem fs = InMemoryFileSystems.createInMemoryFileSystem();
     // Create some sizeable custom content to download.

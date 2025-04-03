@@ -29,6 +29,7 @@ import com.android.sdklib.deviceprovisioner.ReservationState
 import com.android.sdklib.deviceprovisioner.TemplateActivationAction
 import com.android.sdklib.deviceprovisioner.testing.DeviceProvisionerRule
 import com.android.sdklib.internal.avd.AvdInfo
+import com.android.testutils.ProcessHandleProviderRule
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.swing.FakeUi
@@ -79,6 +80,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ToolWindowType
@@ -97,6 +99,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assume.assumeFalse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -111,6 +114,7 @@ import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JViewport
 import javax.swing.SwingConstants
+import kotlin.test.expect
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -349,6 +353,7 @@ class StreamingToolWindowManagerTest {
 
   @Test
   fun testPhysicalDevice() {
+    assumeFalse(SystemInfo.isWindows) // b/407577034
     deviceMirroringSettings::activateOnConnection.override(true, testRootDisposable)
     assertThat(contentManager.contents).isEmpty()
     assertThat(toolWindow.isVisible).isFalse()

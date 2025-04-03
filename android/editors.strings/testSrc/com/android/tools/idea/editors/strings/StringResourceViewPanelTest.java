@@ -45,6 +45,7 @@ import com.android.tools.idea.res.StringResourceWriter;
 import com.intellij.ide.impl.HeadlessDataManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.concurrency.SameThreadExecutor;
 import java.awt.Component;
@@ -61,6 +62,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.AbstractButton;
 import javax.swing.CellEditor;
 import javax.swing.DefaultCellEditor;
+import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import org.jetbrains.android.AndroidTestCase;
@@ -382,6 +384,38 @@ public final class StringResourceViewPanelTest extends AndroidTestCase {
     assertThat(notNull(focusManager.getFocusOwner()).getName()).isEqualTo("scrollableTable");
   }
 
+  public void testDefaultValueField() {
+    // Initial state:
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isFalse();
+
+    myPanel.getTable().getFrozenTable().setUI(new HeadlessTableUI());
+    myPanel.getTable().getScrollableTable().setUI(new HeadlessTableUI());
+    myPanel.getLoadingPanel().setSize(1200, 2000);
+    FakeUi ui = new FakeUi(myPanel.getLoadingPanel(), 1.0, true, getTestRootDisposable());
+
+    // The translation field is enabled in all columns of the scrollable table:
+    clickCell(ui, 0, 4);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 5);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 6);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 7);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 8);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+
+    // And enabled in all columns of the frozen table:
+    clickCell(ui, 0, 0);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 1);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 2);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+    clickCell(ui, 0, 3);
+    assertThat(myPanel.myDefaultValueTextField.isEnabled()).isTrue();
+  }
+
   public void testTranslationTextField() {
     // Initial state:
     assertThat(myPanel.myTranslationTextField.isEnabled()).isFalse();
@@ -412,6 +446,29 @@ public final class StringResourceViewPanelTest extends AndroidTestCase {
     assertThat(myPanel.myTranslationTextField.isEnabled()).isFalse();
     clickCell(ui, 0, 3);
     assertThat(myPanel.myTranslationTextField.isEnabled()).isFalse();
+  }
+
+  public void testLongBenglaString() {
+    // Set the translated text to a long Bangla string:
+    String benglaText = "স্পিনার একটি সেট থেকে একটি মান ".repeat(100);
+    myTable.getModel().setValueAt(benglaText, 1, 5);
+
+    myPanel.getLoadingPanel().setSize(1200, 2000);
+    new FakeUi(myPanel.getLoadingPanel(), 1.0, true, getTestRootDisposable());
+
+    TextFieldWithBrowseButton textField = myPanel.myTranslationTextField;
+    int width = textField.getWidth();
+
+    // Select the cell with the long string:
+    myTable.selectCellAt(1, 5);
+    assertThat(textField.getText()).isEqualTo(benglaText);
+
+    // Layout the container of the text field:
+    textField.getParent().invalidate();
+    textField.getParent().doLayout();
+
+    // The text field should not have grown after assigning the long Bengla text.
+    assertThat(textField.getWidth()).isEqualTo(width);
   }
 
   @Nullable

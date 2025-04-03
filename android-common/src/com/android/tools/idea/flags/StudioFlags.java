@@ -197,7 +197,7 @@ public final class StudioFlags {
   public static final Flag<Integer> NPW_COMPILE_SDK_VERSION = new IntFlag(
     NPW, "new.project.compile.sdk", "New project Compile SDK version",
     "SDK version to be used for compileSdk for newly created project.",
-    35);
+    36);
   //endregion
 
   //region Memory Usage Reporting
@@ -363,11 +363,6 @@ public final class StudioFlags {
     "If enabled, Zoom change will show up an animation.",
     false);
 
-  public static final Flag<Boolean> SCROLLABLE_ZOOM_ON_GRID = new BooleanFlag(
-    NELE, "scrollable.zoom.grid.layout", "Enable scrollable zoom on grid layout",
-    "If enabled, zooming on a grid layout will not re-layout the items and will make the preview scrollable.",
-    false);
-
   public static final Flag<Boolean> DETACHABLE_ATTACHED_TOOLWINDOWS = new BooleanFlag(
     NELE, "detached.attached.toolwindows", "Allow floating attached tool windows",
     "Allows floating attached tool windows (partly broken).",
@@ -376,7 +371,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_BACKGROUND_DISPLAY_LIST = new BooleanFlag(
     NELE, "background.displaylist", "Enable Display List background creation",
     "When enabled, the scene display list is created in the background.",
-    false);
+    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> FORCE_MONOCHROME_ADAPTIVE_ICON = new BooleanFlag(
     NELE, "force.monochrome.adaptive.icon", "Display monochrome preview of adaptive icon when none provided",
@@ -1618,12 +1613,7 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW = new BooleanFlag(
     COMPOSE, "preview.generate.preview.action", "Enable editor action for generating Compose Previews",
-    "Enable a context-menu action that can generate a Compose Preview corresponding to the selected @Composable",
-    enabledUpTo(CANARY));
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_ALL_PREVIEWS_FILE = new BooleanFlag(
-    COMPOSE, "preview.generate.previews.file.action", "Enable editor action for generating all Compose Previews for a file",
-    "Enable a context-menu action that can generate Compose Previews corresponding to the @Composable functions of a file",
+    "Enable context-menu actions that can generate a Compose Preview corresponding to the selected @Composable",
     enabledUpTo(CANARY));
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_EXTRA_PARAMETER_CONTEXT = new BooleanFlag(
@@ -1644,6 +1634,16 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_SEND_PREVIEW_TO_STUDIO_BOT = new BooleanFlag(
     COMPOSE, "send.preview.to.studio.bot", "Enable action to send Compose Previews to Studio Bot",
     "Enables a context-menu action to send Compose Previews to Studio Bot as context.",
+    enabledUpTo(DEV));
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_COMPONENT_POP_UP = new BooleanFlag(
+    COMPOSE, "preview.popup", "Enable the opening pop up when holding the option key while clicking a preview",
+    "If enabled, when holding the option key while clicking a preview on a preview it will open pop up with all components under click",
+    enabledUpTo(DEV));
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_CODE_TO_PREVIEW_NAVIGATION = new BooleanFlag(
+    COMPOSE, "preview.code.to.preview.navigation", "Enable the highlighting of preview components when clicking on code",
+    "If a user moves their caret to a element present in a preview, we highlight those elements",
     enabledUpTo(DEV));
   //endregion
 
@@ -2159,17 +2159,6 @@ public final class StudioFlags {
                     "When enabled, returns all files modified by models.",
                     enabledUpTo(DEV));
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_COMPONENT_POP_UP = new BooleanFlag(
-    COMPOSE, "preview.popup", "Enable the opening pop up when holding the option key while clicking a preview",
-    "If enabled, when holding the option key while clicking a preview on a preview it will open pop up with all components under click",
-    enabledUpTo(DEV));
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_CODE_TO_PREVIEW_NAVIGATION = new BooleanFlag(
-    COMPOSE, "preview.code.to.preview.navigation", "Enable the highlighting of preview components when clicking on code",
-    "If a user moves their caret to a element present in a preview, we highlight those elements",
-    enabledUpTo(DEV));
-
-
   public static final Flag<Boolean> STUDIOBOT_ALLOW_TRANSFORMS_WITH_CITATIONS =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.allow.transforms.with.citations",
                     "Show transform results that have citations.",
@@ -2199,6 +2188,12 @@ public final class StudioFlags {
                     "Enable @file attachment and the context drawer.",
                     "When enabled, @file can be used to attach text files as context. Also enables the context drawer for context management.",
                     enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_FOLDER_CONTEXT_SELECTION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.enable.folder.context.selection",
+                    "Enable @folder attachment.",
+                    "When enabled, @folder can be used to attach folders as context.",
+                    enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_DEPENDENCY_SUGGESTION_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.suggest.dependencies.on.insert",
@@ -2302,7 +2297,7 @@ public final class StudioFlags {
     new IntFlag(STUDIOBOT, "conversations.per.hour",
                 "AI conversations per hour",
                 "AI conversations per hour",
-                60);
+                120);
 
   public static final Flag<Integer> STUDIOBOT_GENERATIONS_PER_HOUR =
     new IntFlag(STUDIOBOT, "generations.per.hour",
@@ -2338,7 +2333,30 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "support.gias.enterprise",
                     "Enable support for GCA Enterprise tier",
                     "Enable support for GCA Enterprise tier",
-                    false);
+                    enabledUpTo(CANARY));
+
+  public enum DasherSupportMode {
+    /**
+     * Don't include any special treatment for dasher users.
+     * This is mainly useful as a workaround for situations like in b/407825030
+     */
+    NEVER,
+    /**
+     * If we detect a dasher user, attempt to automatically figure out their eligibility for various tiers
+     */
+    AUTO,
+    /**
+     * Always show the tier selection mode and let the user choose.
+     * This is a bypass in case the AUTO mode doesn't work for some reason.
+     */
+    ALWAYS
+  }
+
+  public static final EnumFlag<DasherSupportMode> STUDIOBOT_SUPPORT_GIAS_DASHER_ACCOUNTS =
+    new EnumFlag<>(STUDIOBOT, "support.gias.dasher.accounts",
+                   "Enable support for GCA Dasher accounts",
+                   "Enable support for GCA Dasher accounts",
+                   DasherSupportMode.AUTO);
 
   // endregion STUDIO_BOT
 

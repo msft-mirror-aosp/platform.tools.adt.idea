@@ -5,8 +5,7 @@ iml_module(
     name = "intellij.android.core.editing.documentation",
     srcs = ["src"],
     iml_files = ["intellij.android.core.editing.documentation.iml"],
-    # TODO: b/405445548 - Remove once flakiness on Windows has been addressed.
-    tags = ["noci:studio-win"],
+    resources = ["resources"],
     test_class = "com.android.tools.idea.IdeaTestSuite",
     # keep sorted
     test_data = [
@@ -31,6 +30,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
     ],
     test_srcs = ["testSrc"],
+    test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [

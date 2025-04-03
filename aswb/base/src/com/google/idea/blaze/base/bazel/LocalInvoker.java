@@ -15,6 +15,7 @@
  */
 package com.google.idea.blaze.base.bazel;
 
+import com.android.tools.idea.sdk.IdeSdks;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Closer;
 import com.google.idea.blaze.base.async.process.ExternalTask;
@@ -22,8 +23,6 @@ import com.google.idea.blaze.base.async.process.LineProcessingOutputStream;
 import com.google.idea.blaze.base.async.process.PrintOutputLineProcessor;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
-import com.google.idea.blaze.base.command.BlazeCommandRunner;
-import com.google.idea.blaze.base.command.CommandLineBlazeCommandRunner;
 import com.google.idea.blaze.base.command.WorkspaceRootReplacement;
 import com.google.idea.blaze.base.command.buildresult.BuildEventProtocolUtils;
 import com.google.idea.blaze.base.command.buildresult.BuildResult;
@@ -75,11 +74,6 @@ public class LocalInvoker extends AbstractBuildInvoker {
   }
 
   @Override
-  public BlazeCommandRunner getCommandRunner() {
-    return new CommandLineBlazeCommandRunner();
-  }
-
-  @Override
   public ImmutableSet<Capability> getCapabilities() {
     return ImmutableSet.of(Capability.BUILD_AIT, Capability.SUPPORT_CLI, Capability.DEBUG_LOCAL_TEST);
   }
@@ -126,25 +120,27 @@ public class LocalInvoker extends AbstractBuildInvoker {
       Function<String, String> rootReplacement =
           WorkspaceRootReplacement.create(workspaceRoot.path(), blazeCommand);
       boolean isUnitTestMode = ApplicationManager.getApplication().isUnitTestMode();
+      ExternalTask.Builder builder = ExternalTask.builder(workspaceRoot)
+        .addBlazeCommand(blazeCommand)
+        .context(blazeContext)
+        .stdout(out)
+        .stderr(
+          LineProcessingOutputStream.of(
+            line -> {
+              line = rootReplacement.apply(line);
+              // errors are expected, so limit logging to info level
+              if (isUnitTestMode) {
+                // This is essential output in bazel-in-bazel tests if they fail.
+                System.out.println(line.stripTrailing());
+              }
+              Logger.getInstance(this.getClass()).info(line.stripTrailing());
+              blazeContext.output(PrintOutput.output(line.stripTrailing()));
+              return true;
+            }))
+        .ignoreExitCode(true);
+      maybeAddAndroidHome(builder);
       int retVal =
-          ExternalTask.builder(workspaceRoot)
-              .addBlazeCommand(blazeCommand)
-              .context(blazeContext)
-              .stdout(out)
-              .stderr(
-                  LineProcessingOutputStream.of(
-                      line -> {
-                        line = rootReplacement.apply(line);
-                        // errors are expected, so limit logging to info level
-                        if (isUnitTestMode) {
-                          // This is essential output in bazel-in-bazel tests if they fail.
-                          System.out.println(line.stripTrailing());
-                        }
-                        Logger.getInstance(this.getClass()).info(line.stripTrailing());
-                        blazeContext.output(PrintOutput.output(line.stripTrailing()));
-                        return true;
-                      }))
-              .ignoreExitCode(true)
+          builder
               .build()
               .run();
       SyncQueryStatsScope.fromContext(blazeContext)
@@ -178,13 +174,15 @@ public class LocalInvoker extends AbstractBuildInvoker {
       OutputStream stderr =
           closer.register(
               LineProcessingOutputStream.of(new PrintOutputLineProcessor(blazeContext)));
+      ExternalTask.Builder builder = ExternalTask.builder(WorkspaceRoot.fromProject(project))
+        .addBlazeCommand(blazeCommand)
+        .context(blazeContext)
+        .stdout(out)
+        .stderr(stderr)
+        .ignoreExitCode(true);
+      maybeAddAndroidHome(builder);
       int exitCode =
-          ExternalTask.builder(WorkspaceRoot.fromProject(project))
-              .addBlazeCommand(blazeCommand)
-              .context(blazeContext)
-              .stdout(out)
-              .stderr(stderr)
-              .ignoreExitCode(true)
+          builder
               .build()
               .run();
       BazelExitCodeException.throwIfFailed(blazeCommand, exitCode);
@@ -207,18 +205,26 @@ public class LocalInvoker extends AbstractBuildInvoker {
       BlazeContext context,
       File outputFile) {
     blazeCommandBuilder.addBlazeFlags(BuildEventProtocolUtils.getBuildFlags(outputFile));
+    ExternalTask.Builder builder = ExternalTask.builder(workspaceRoot)
+      .addBlazeCommand(blazeCommandBuilder.build())
+      .context(context)
+      .stdout(LineProcessingOutputStream.of(new PrintOutputLineProcessor(context)))
+      .stderr(
+        LineProcessingOutputStream.of(
+          BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context)))
+      .ignoreExitCode(true);
+    maybeAddAndroidHome(builder);
     int retVal =
-        ExternalTask.builder(workspaceRoot)
-            .addBlazeCommand(blazeCommandBuilder.build())
-            .context(context)
-            .stdout(LineProcessingOutputStream.of(new PrintOutputLineProcessor(context)))
-            .stderr(
-                LineProcessingOutputStream.of(
-                    BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context)))
-            .ignoreExitCode(true)
+        builder
             .build()
             .run();
     return BuildResult.fromExitCode(retVal);
+  }
+
+  private void maybeAddAndroidHome(ExternalTask.Builder builder) {
+    if (this.buildBinaryType.needsAndroidHome) {
+      builder.environmentVar("ANDROID_HOME", IdeSdks.getInstance().getAndroidSdkPath().toString());
+    }
   }
 
   private BuildEventStreamProvider getBepStream(File outputFile)

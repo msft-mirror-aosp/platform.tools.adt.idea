@@ -17,6 +17,7 @@ package com.android.tools.idea.avdmanager
 
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus
+import com.android.testutils.FakeProcessHandle
 import com.android.tools.idea.avdmanager.EmulatorLogListener.Severity
 import com.android.tools.idea.testing.executeCapturingLoggedErrorsAndWarnings
 import com.google.common.truth.Truth.assertThat
@@ -113,9 +114,10 @@ class EmulatorProcessHandlerTest {
     private val stdin = ByteArrayOutputStream()
     private val stdout = CountDownByteArrayInputStream(output.joinToString("\n").toByteArray())
     private val stderr = ByteArray(0).inputStream()
+    private val handle = FakeProcessHandle(12345)
 
     override fun destroy() {
-      TODO("Not yet implemented")
+      handle.destroy()
     }
 
     override fun getOutputStream(): OutputStream = stdin
@@ -123,6 +125,8 @@ class EmulatorProcessHandlerTest {
     override fun getInputStream(): InputStream = stdout
 
     override fun getErrorStream(): InputStream = stderr
+
+    override fun toHandle(): ProcessHandle = handle
 
     override fun waitFor(): Int {
       stdout.waitUntilReadCompletely()

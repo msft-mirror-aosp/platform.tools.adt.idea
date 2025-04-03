@@ -29,9 +29,7 @@ iml_module(
         "-Djdk.attach.allowAttachSelf=true",
     ],
     test_srcs = ["testSrc"],
-    test_tags = [
-        "block-network",
-    ],
+    test_tags = ["block-network"],
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

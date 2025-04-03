@@ -1,0 +1,51 @@
+<!--
+  ~ Copyright (C) 2021 The Android Open Source Project
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~      http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+<idea-plugin>
+  <extensions defaultExtensionNs="com.android.run">
+    <androidLaunchTaskContributor implementation="com.android.tools.idea.debuggers.coroutine.CoroutineDebuggerLaunchTaskContributor" />
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- Disable class preloading (b/403624089). -->
+    <registryKey overrides="true" key="debugger.preload.types.hierarchy" defaultValue="false" description="Request superclass and interfaces for each loaded class in advance to speed up further operations"/>
+
+    <xdebugger.configurableProvider implementation="com.android.tools.idea.debuggers.coroutine.CoroutineDebuggerConfigurableProvider" />
+    <debugger.positionManagerFactory implementation="com.android.tools.idea.debug.AndroidPositionManagerFactory"/>
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.BitmapRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.BitmapDrawableRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.AndroidTypedIntegerRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.ArrayMapRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.SupportArrayMapRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.AndroidxSupportArrayMapRenderer" />
+    <debugger.nodeRenderer implementation="com.android.tools.idea.debug.MeasureSpecRenderer" />
+    <debugger.fieldVisibilityProvider implementation="com.android.tools.idea.debug.AndroidFieldVisibilityProvider"/>
+    <debugger.dexBytecodeInspector implementation="com.android.tools.idea.debug.DexBytecodeInspectorImpl"/>
+
+    <debuggerClassFilterProvider implementation="com.android.tools.idea.debug.AndroidDebuggerClassesFilterProvider"/>
+    <xdebugger.settings implementation="com.android.tools.idea.debug.AndroidDebuggerSettings"/>
+
+    <projectService
+        serviceInterface="com.android.tools.idea.debuggers.coroutine.CoroutineDebuggerAnalyticsTracker"
+        serviceImplementation="com.android.tools.idea.debuggers.coroutine.CoroutineDebuggerAnalyticsTrackerImpl" />
+    <projectService serviceInterface="com.android.tools.idea.debug.ResourceIdResolver"
+                    serviceImplementation="com.android.tools.idea.debug.ProjectResourceIdResolver"/>
+  </extensions>
+
+  <projectListeners>
+    <listener class="com.android.tools.idea.debuggers.coroutine.CoroutineDebuggerProjectListener" topic="com.intellij.openapi.project.ProjectManagerListener"/>
+  </projectListeners>
+
+</idea-plugin>

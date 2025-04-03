@@ -53,14 +53,14 @@ class StorageGroupTest {
     setContent { StorageGroup(device, state, false, false) }
 
     // Act
-    composeRule.onInternalStorageTextField().performTextReplacement("3")
+    composeRule.onInternalStorageTextField().performTextReplacement("6")
 
     @OptIn(ExperimentalTestApi::class)
     composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
     composeRule.onTooltips().assertCountEquals(0)
-    assertThat(device.internalStorage).isEqualTo(StorageCapacity(3, StorageCapacity.Unit.GB))
+    assertThat(device.internalStorage).isEqualTo(StorageCapacity(6, StorageCapacity.Unit.GB))
   }
 
   @Test
@@ -83,28 +83,6 @@ class StorageGroupTest {
   }
 
   @Test
-  fun internalStorageIsLessThanMinAndHasPlayStore() {
-    // Arrange
-    val device = TestDevices.pixel6()
-    val state = StorageGroupState(device)
-
-    setContent { StorageGroup(device, state, true, false) }
-
-    // Act
-    composeRule.onInternalStorageTextField().performTextReplacement("1")
-
-    @OptIn(ExperimentalTestApi::class)
-    composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
-
-    // Assert
-    composeRule
-      .onNodeWithText("Internal storage for Play Store devices must be at least 2G")
-      .assertIsDisplayed()
-
-    assertThat(device.internalStorage).isNull()
-  }
-
-  @Test
   fun internalStorageIsLessThanMin() {
     // Arrange
     val device = TestDevices.pixel6()
@@ -119,7 +97,7 @@ class StorageGroupTest {
     composeRule.onInternalStorageTextField().performMouseInput { moveTo(center) }
 
     // Assert
-    composeRule.onNodeWithText("Internal storage must be at least 2G").assertIsDisplayed()
+    composeRule.onNodeWithText("Internal storage must be at least 6 GB").assertIsDisplayed()
     assertThat(device.internalStorage).isNull()
   }
 
@@ -277,27 +255,6 @@ class StorageGroupTest {
   }
 
   @Test
-  fun customIsLessThanMinAndHasPlayStore() {
-    // Arrange
-    val device = TestDevices.pixel6()
-    val state = StorageGroupState(device)
-
-    setContent { StorageGroup(device, state, true, false) }
-
-    // Act
-    composeRule.onCustomTextField().performTextReplacement("99")
-
-    @OptIn(ExperimentalTestApi::class)
-    composeRule.onCustomTextField().performMouseInput { moveTo(center) }
-
-    // Assert
-    composeRule
-      .onNodeWithText("The SD card for Play Store devices must be at least 100M")
-      .assertIsDisplayed()
-    assertThat(device.expandedStorage).isNull()
-  }
-
-  @Test
   fun customIsLessThanMin() {
     // Arrange
     val device = TestDevices.pixel6()
@@ -312,7 +269,7 @@ class StorageGroupTest {
     composeRule.onCustomTextField().performMouseInput { moveTo(center) }
 
     // Assert
-    composeRule.onNodeWithText("The SD card must be at least 10M").assertIsDisplayed()
+    composeRule.onNodeWithText("The SD card must be at least 10 MB").assertIsDisplayed()
     assertThat(device.expandedStorage).isNull()
   }
 

@@ -23,7 +23,7 @@ COMMON_DATA = [
     "//prebuilts/studio/sdk:ndk",
     # TODO (b/378379062): Delete sdk 34 after migrating all test apps to API 35
     "//prebuilts/studio/sdk:platforms/android-34_build_only",
-    "//prebuilts/studio/sdk:platforms/android-35_build_only",
+    "//prebuilts/studio/sdk:platforms/android-36_build_only",
     "//prebuilts/studio/sdk:platform-tools",
     "//prebuilts/tools/common/aspects-agent:aspects_agent",
     "//prebuilts/tools:bazel-dist",
@@ -38,7 +38,7 @@ COMMON_DATA = [
     "//tools/vendor/google/testing/display:xvfb",
 ] + select({
     "@platforms//os:windows": [],
-    "//conditions:default": ["//tools/adt/idea/bleak/src/com/android/tools/idea/bleak/agents:jnibleakhelper"],
+    "//conditions:default": ["//tools/adt/idea/bleak/native:jnibleakhelper"],
 })
 
 COMMON_TAGS = [
@@ -1253,7 +1253,7 @@ java_test(
     data = COMMON_DATA + [
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/sdk:platforms/android-35",
+        "//prebuilts/studio/sdk:platforms/android-36",
     ] + glob([
         "testData/SimpleApplication/**",
     ]),
@@ -2069,9 +2069,7 @@ java_test(
 java_test(
     name = "WarningsCheckInNewCPPProjectTest",
     size = "large",
-    data = COMMON_DATA + glob([
-        "testData/debugger/CLionNdkHelloJni/**",
-    ]),
+    data = COMMON_DATA,
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.cpp.WarningsCheckInNewCPPProjectTest"],
     tags = COMMON_TAGS + [
         "noci:studio-win",
