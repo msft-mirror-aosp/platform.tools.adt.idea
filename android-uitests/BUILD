@@ -220,7 +220,9 @@ maven_repository(
         "@maven//:androidx.legacy.legacy-support-v4_1.0.0",
         "@maven//:androidx.lifecycle.lifecycle-common-java8_2.6.1",
         "@maven//:androidx.lifecycle.lifecycle-common-java8_2.8.3",
+        "@maven//:androidx.lifecycle.lifecycle-common-java8_2.8.7",
         "@maven//:androidx.lifecycle.lifecycle-common_2.6.1",
+        "@maven//:androidx.lifecycle.lifecycle-common_2.8.7",
         "@maven//:androidx.lifecycle.lifecycle-extensions_2.2.0",
         "@maven//:androidx.lifecycle.lifecycle-livedata-core_2.8.3",  # Needed for TemplateDiffTest#testNewComposeWearActivityWithTileAndComplication
         "@maven//:androidx.lifecycle.lifecycle-livedata-core_2.8.7",
@@ -329,8 +331,8 @@ maven_repository(
         "@maven//:com.google.auto.value.auto-value_1.6.2",
         "@maven//:com.google.code.gson.gson_2.2.4",
         "@maven//:com.google.code.gson.gson_2.6.2",
-        "@maven//:com.google.dagger.dagger-compiler_2.52",
-        "@maven//:com.google.dagger.dagger_2.52",
+        "@maven//:com.google.dagger.dagger-compiler_2.56.1",
+        "@maven//:com.google.dagger.dagger_2.56.1",
         "@maven//:com.google.errorprone.error_prone_annotations_2.3.2",
         "@maven//:com.google.firebase.firebase-common_12.0.1",
         "@maven//:com.google.guava.guava_28.2-jre",
@@ -457,7 +459,10 @@ java_test(
 java_test(
     name = "AddResourceMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:runtime",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+    ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.AddResourceMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -471,7 +476,10 @@ java_test(
 java_test(
     name = "AddAssetMemoryUseTest",
     size = "large",
-    data = COMMON_DATA + glob(["testData/SimpleApplication/**"]),
+    data = COMMON_DATA + [
+        "//prebuilts/studio/layoutlib:runtime",
+        "//prebuilts/studio/layoutlib/data:framework_res.jar",
+    ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.performance.AddAssetMemoryUseTest"],
     tags = COMMON_TAGS + [
         "ci:studio-linux_very_flaky",
@@ -506,8 +514,6 @@ java_test(
     ] + glob(["testData/SimpleApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualizationTest"],
     tags = COMMON_TAGS + [
-        "ci:studio-linux_very_flaky",
-        "noci:studio-linux",
         "noci:studio-win",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",
@@ -556,8 +562,6 @@ java_test(
     ] + glob(["testData/VisualLintApplication/**"]),
     jvm_flags = ["-Dtest.suite.class=com.android.tools.idea.tests.gui.uibuilder.VisualLintTest"],
     tags = COMMON_TAGS + [
-        "ci:studio-linux_very_flaky",
-        "noci:studio-linux",
         "noci:studio-win",
     ],
     test_class = "com.android.tools.idea.tests.gui.GuiJarTestSuite",

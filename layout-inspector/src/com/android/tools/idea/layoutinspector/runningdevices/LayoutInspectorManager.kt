@@ -360,6 +360,9 @@ private fun createRendererPanel(
         inspectorModel = layoutInspector.inspectorModel,
         treeSettings = layoutInspector.treeSettings,
         renderSettings = layoutInspector.renderSettings,
+        navigateToSelectedViewOnDoubleClick = {
+          layoutInspector.navigateToSelectedViewFromRendererDoubleClick()
+        },
       )
 
     OnDeviceRendererPanel(
@@ -388,9 +391,20 @@ private fun createRendererPanel(
           },
         )
       },
-      currentSessionStatistics = { layoutInspector.currentClient.stats },
+      navigateToSelectedViewOnDoubleClick = {
+        layoutInspector.navigateToSelectedViewFromRendererDoubleClick()
+      },
     )
   }
+}
+
+private fun LayoutInspector.navigateToSelectedViewFromRendererDoubleClick() {
+  navigateToSelectedViewFromRendererDoubleClick(
+    scope = coroutineScope,
+    inspectorModel = inspectorModel,
+    client = currentClient,
+    notificationModel = notificationModel,
+  )
 }
 
 /**

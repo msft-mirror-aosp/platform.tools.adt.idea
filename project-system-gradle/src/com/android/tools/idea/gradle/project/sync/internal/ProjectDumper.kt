@@ -133,10 +133,16 @@ class ProjectDumper(
       else -> {
         val (filePath, suffix) = splitPathAndSuffix()
         val file = File(filePath)
-        val existenceSuffix = if (!file.exists()) " [-]" else ""
-        (if (file.isRooted) filePath.replaceKnownPaths() else filePath) + suffix + existenceSuffix
+        (if (file.isRooted) filePath.replaceKnownPaths() else filePath) + suffix + file.existenceSuffix()
       }
     }
+  }
+
+  fun File.existenceSuffix(): String {
+    // Exclude Gradle build directory since expected generated files are tracked separately
+    // and its presence depends on applied dependencies/plugins
+    if (name == "build") return ""
+    return if (!exists()) " [-]" else ""
   }
 
   fun String.toPrintableString(): String = if (this == SdkConstants.CURRENT_BUILD_TOOLS_VERSION) "<CURRENT_BUILD_TOOLS_VERSION>"
@@ -280,12 +286,15 @@ class ProjectDumper(
       .replace(KotlinCompilerVersion.VERSION, "<KOTLIN_SDK_VERSION>")
   }
 
-  fun String.replaceJdkPath() = when(this) {
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jbr-next").toString() -> "<JDK_PATH>"
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk17").toString() -> "<JDK_PATH-17>"
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk11").toString() -> "<JDK_PATH-11>"
-    EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk8").toString() -> "<JDK_PATH-1_8>"
-    else -> this
+  fun String.replaceJdkPath(): String {
+    if (!StudioPathManager.isRunningFromSources()) return this
+    return when (this) {
+      EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jbr-next").toString() -> "<JDK_PATH>"
+      EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk17").toString() -> "<JDK_PATH-17>"
+      EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk11").toString() -> "<JDK_PATH-11>"
+      EmbeddedDistributionPaths.getJdkRootPathFromSourcesRoot("prebuilts/studio/jdk/jdk8").toString() -> "<JDK_PATH-1_8>"
+      else -> this
+    }
   }
 
   fun String.replaceMatchingVersion(version: String?): String =

@@ -147,17 +147,16 @@ class NewAndroidModuleModel(
   commandName: String = "New Module",
   override val isLibrary: Boolean = false,
   wizardContext: WizardUiContext,
-  recommendedBuildSdk: AndroidVersion?,
+  override val recommendedBuildSdk: AndroidVersion?,
 ) :
   ModuleModel(
-    "",
+    name = "",
     commandName,
     isLibrary,
     projectModelData,
     template,
     moduleParent,
     wizardContext,
-    recommendedBuildSdk,
   ) {
   override val moduleTemplateDataBuilder =
     ModuleTemplateDataBuilder(
