@@ -31,6 +31,7 @@ import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ClearLogcatListener
 import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.DeviceHeadsUpListener
+import com.android.tools.idea.run.ProcessHandlerApplicationTerminator
 import com.android.tools.idea.run.configuration.execution.createRunContentDescriptor
 import com.android.tools.idea.run.configuration.execution.getDevices
 import com.android.tools.idea.run.configuration.execution.println
@@ -151,7 +152,8 @@ constructor(
             project.messageBus.syncPublisher(ClearLogcatListener.TOPIC).clearLogcat(device.serialNumber)
           }
           LaunchUtils.initiateDismissKeyguard(device)
-          getDeployTask(device).run(device, indicator)
+          val terminator = ProcessHandlerApplicationTerminator(indicator, devices, packageName)
+          getDeployTask(device, terminator).run(device, indicator)
           // Notify listeners of the deployment.
           project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).launchingTest(device.serialNumber, project)
         }
@@ -164,7 +166,7 @@ constructor(
     Futures.whenAllComplete(futures).call({ processHandler.detachProcess() }, appExecutorService)
   }
 
-  private fun getDeployTask(device: IDevice): DeployTask {
+  private fun getDeployTask(device: IDevice, terminator: ProcessHandlerApplicationTerminator): DeployTask {
     val packages = apkProvider.getApks(device)
     val pmInstallOptions =
       if (device.version.apiLevel >= 23) {
@@ -174,7 +176,7 @@ constructor(
       }
     val containsMakeBeforeRun = configuration.beforeRunTasks.any { it.isEnabled }
 
-    return DeployTask(project, packages, pmInstallOptions, false, false, false, containsMakeBeforeRun)
+    return DeployTask(project, packages, terminator, pmInstallOptions, false, false, false, containsMakeBeforeRun)
   }
 
   /**
