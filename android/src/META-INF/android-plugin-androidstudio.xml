@@ -43,7 +43,8 @@
 
     <!-- Disable JetBrains feedback surveys (b/402895189). Tested by AndroidStudioJetBrainsSurveysTest. -->
     <registryKey overrides="true" key="platform.feedback" defaultValue="false" description="Enables JetBrains feedback surveys"/>
-
+    <!-- Disable Java 30th anniversary inlay renderer. -->
+    <registryKey overrides="true" key="java.exceptions.anniversary.banner" defaultValue="[off*]" description="Show the java anniversary banner in the console"/>
     <welcomeScreen implementation="com.android.tools.idea.welcome.wizard.AndroidStudioWelcomeScreenProvider"/>
 
     <codeStyleSettingsProvider implementation="org.jetbrains.android.formatter.AndroidStudioCodeStyleSettingsProvider" order="last"/>
