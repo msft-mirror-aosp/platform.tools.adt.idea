@@ -22,7 +22,7 @@ import com.google.idea.blaze.base.logging.utils.querysync.QuerySyncActionStatsSc
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.base.qsync.QuerySyncManager.TaskOrigin
-import com.google.idea.blaze.base.qsync.QuerySyncManager.getInstance
+import com.google.idea.blaze.base.qsync.QuerySyncManager.Companion.getInstance
 import com.google.idea.blaze.base.qsync.settings.QuerySyncSettings
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.common.Label
@@ -55,7 +55,7 @@ class BuildDependenciesHelper(val project: Project) {
     fun showPrompt(displayFileName: String, targets: Set<Label>, onChosen: (Label) -> Unit, onCancelled: () -> Unit)
   }
 
-  fun canEnableAnalysisNow(): Boolean = syncManager.isProjectLoaded && !syncManager.operationInProgress()
+  fun canEnableAnalysisNow(): Boolean = syncManager.getLoadedProject().isPresent && !syncManager.operationInProgress()
 
   fun getTargetsToEnableAnalysisForPaths(workspaceRelativePaths: Collection<Path>): Set<TargetsToBuild> {
     if (!canEnableAnalysisNow()) {
@@ -171,26 +171,6 @@ class BuildDependenciesHelper(val project: Project) {
         consumer(targetsToBuild)
       }
       buildProcess.await()
-    }
-  }
-
-  val workingSetTargetsIfEnabled: Set<Label>
-    /**
-     * Returns the set of targets affected by files in the current working set if automatic building of the dependencies
-     * in the working set is enabled.
-     */
-    get() = if (QuerySyncSettings.getInstance().buildWorkingSet()) getWorkingSetTargets() else setOf()
-
-  private fun getWorkingSetTargets(): Set<Label> {
-    return try {
-      getAffectedTargetsForPaths(this.workingSet)
-    }
-    catch (be: BuildException) {
-      syncManager.notifyWarning(
-        "Could not obtain working set",
-        "Error trying to obtain working set. Not including it in build: $be",
-      )
-      setOf()
     }
   }
 }

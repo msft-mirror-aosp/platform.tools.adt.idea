@@ -242,6 +242,7 @@ fun configureLayoutlibSceneManager(
   requestPrivateClassLoader: Boolean,
   runVisualAnalysis: Boolean,
   quality: Float,
+  disableAnimation: Boolean,
 ): LayoutlibSceneManager =
   sceneManager.apply {
     sceneRenderConfiguration.let { config ->
@@ -264,6 +265,7 @@ fun configureLayoutlibSceneManager(
       // During configure of SceneManager, always clear the override render size in SceneManagers,
       // as they are reused and may have old resize data.
       config.clearOverrideRenderSize = true
+      config.disableAnimation = disableAnimation
     }
     visualLintMode =
       if (runVisualAnalysis) {
@@ -485,6 +487,12 @@ class ComposePreviewRepresentation(
             }
             emptyUiCheckPanel.setHasErrors(count > 0)
             VisualLintUsageTracker.getInstance().trackVisiblePreviews(count, facet)
+            val totalContentToShow = surface.sceneManagers.flatMap { it.sceneViews }.size
+            // If after applying the filter the number of Previews to show is different we need to
+            // re-apply zoom-to-fit.
+            if (count != totalContentToShow) {
+              surface.zoomController.zoomToFit()
+            }
             surface.repaint()
           }
         } else {
@@ -1013,6 +1021,7 @@ class ComposePreviewRepresentation(
       requestPrivateClassLoader = usePrivateClassLoader(),
       runVisualAnalysis = mode.value is PreviewMode.UiCheck,
       quality = qualityManager.getTargetQuality(layoutlibSceneManager),
+      disableAnimation = mode.value.isNormal,
     )
 
   private fun onAfterRender(previewsCount: Int) {

@@ -42,7 +42,6 @@ iml_module(
         "//tools/adt/idea/android-lint:intellij.android.lint",
         "//tools/adt/idea/android-navigator:intellij.android.navigator",
         "//tools/adt/idea/mlkit:intellij.android.mlkit",
-        "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
         "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
         "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         "//tools/vendor/google/android-ndk:android-ndk",
@@ -321,8 +320,8 @@ iml_module(
                 "//prebuilts/studio/jdk:jdk21",
             ],
         },
-        "runs_indexing_resync_project": {
-            "test_filter": "com.android.tools.idea.gradle.project.sync.runsGradleOpenProjectTest.PhasedSyncResyncTests",
+        "runs_gradle_phased_sync": {
+            "test_filter": ".runsIndexingWithGradlePhasedSync",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
             "tags": [
                 "cpu:4",

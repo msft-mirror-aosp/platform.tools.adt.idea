@@ -16,7 +16,9 @@
 package com.android.tools.idea.settingssync.onboarding
 
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.android.flags.junit.FlagRule
@@ -238,7 +240,7 @@ class WizardFlowTest {
     // Action
     // 1. Select to stay with the current configuration.
     composeTestRule
-      .onNodeWithText("Do not enable Backup & Sync for this account.", useUnmergedTree = true)
+      .onNodeWithText("Continue to sync my settings to $activeSyncUser.", useUnmergedTree = true)
       .assertIsDisplayed()
       .performClick()
     // 2. Click "Finish" button.
@@ -272,7 +274,7 @@ class WizardFlowTest {
     // 1. Select to configure using the new account.
     composeTestRule
       .onNodeWithText(
-        "stop syncing settings to the previously signed-in account ($activeSyncUser)",
+        "Sync settings to $USER_EMAIL instead.",
         substring = true,
         useUnmergedTree = true,
       )
@@ -351,6 +353,28 @@ class WizardFlowTest {
 
     // Ensure status
     assertThat(SettingsSyncSettings.getInstance().syncEnabled).isFalse()
+
+    // remote/local settings timestamp info
+    with(composeTestRule.onAllNodesWithText("Last updated: ", substring = true)) {
+      assertCountEquals(2)
+      this[0].assertIsDisplayed()
+      this[1].assertIsDisplayed()
+    }
+
+    // explicit remote copy date check
+    composeTestRule.onNodeWithText("Last updated: 5/8/24", substring = true).assertIsDisplayed()
+
+    // remote/local build info
+    with(
+      composeTestRule.onAllNodesWithText(
+        "Android Studio version: Android Studio dev build",
+        substring = true,
+      )
+    ) {
+      assertCountEquals(2)
+      this[0].assertIsDisplayed()
+      this[1].assertIsDisplayed()
+    }
 
     // Action
     // 1. click to use the settings from the remote.

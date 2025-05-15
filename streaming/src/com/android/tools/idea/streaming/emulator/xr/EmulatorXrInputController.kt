@@ -24,8 +24,6 @@ import com.android.emulator.control.Velocity
 import com.android.emulator.control.XrOptions
 import com.android.emulator.control.XrOptions.Environment.forNumber
 import com.android.tools.idea.protobuf.Empty
-import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
-import com.android.tools.idea.streaming.core.DeviceId
 import com.android.tools.idea.streaming.core.getNormalizedScrollAmount
 import com.android.tools.idea.streaming.emulator.EmptyStreamObserver
 import com.android.tools.idea.streaming.emulator.EmulatorController
@@ -82,9 +80,17 @@ internal class EmulatorXrInputController(private val emulator: EmulatorControlle
     }
   }
 
+  override fun sendTranslation(x: Float, y: Float, z: Float) {
+    translation.deltaX = x
+    translation.deltaY = y
+    translation.deltaZ = z
+    inputEvent.setXrHeadMovementEvent(translation)
+    sendInputEvent(inputEvent.build())
+  }
+
   @UiThread
   override fun mouseDragged(event: MouseEvent, deviceDisplaySize: Dimension, scaleFactor: Double): Boolean {
-    if (!isMouseUsedForNavigation(inputMode)) {
+    if (!isMouseUsedForNavigation()) {
       return false
     }
     val referencePoint = mouseDragReferencePoint
@@ -98,10 +104,10 @@ internal class EmulatorXrInputController(private val emulator: EmulatorControlle
         inputEvent.clear()
         when (inputMode) {
           XrInputMode.LOCATION_IN_SPACE_XY -> {
-            translation.clear()
             // Direction of movement in 3D space is opposite to direction of mouse dragging.
             translation.deltaX = -deltaX * scale
             translation.deltaY = deltaY * scale // Direction of Y axis in 3D space is opposite to screen coordinates.
+            translation.clearDeltaZ()
             inputEvent.setXrHeadMovementEvent(translation)
           }
           XrInputMode.LOCATION_IN_SPACE_Z -> {
@@ -126,7 +132,7 @@ internal class EmulatorXrInputController(private val emulator: EmulatorControlle
 
   @UiThread
   override fun mouseWheelMoved(event: MouseWheelEvent, deviceDisplaySize: Dimension, scaleFactor: Double): Boolean {
-    if (!isMouseUsedForNavigation(inputMode)) {
+    if (!isMouseUsedForNavigation()) {
       return false
     }
     translation.clear()
@@ -198,19 +204,13 @@ internal class EmulatorXrInputController(private val emulator: EmulatorControlle
 internal class EmulatorXrInputControllerService(project: Project): Disposable {
 
   private val xrControllers = ConcurrentMap<EmulatorController, EmulatorXrInputController>()
-  private val hardwareInputStateStorage = project.service<HardwareInputStateStorage>()
 
   fun getXrInputController(emulator: EmulatorController): EmulatorXrInputController {
     return xrControllers.computeIfAbsent(emulator) {
       Disposer.register(emulator) {
         xrControllers.remove(emulator)
       }
-      val emulatorXrInputController = EmulatorXrInputController(emulator)
-      if (emulatorXrInputController.inputMode == XrInputMode.HARDWARE) {
-        hardwareInputStateStorage.setHardwareInputEnabled(DeviceId.ofEmulator(emulator.emulatorId), true)
-      }
-
-      return@computeIfAbsent emulatorXrInputController
+      return@computeIfAbsent EmulatorXrInputController(emulator)
     }
   }
 

@@ -1202,10 +1202,6 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "context.menu", "Enable Context Menu",
     "Enables context menu in the Running Devices tool window",
     false);
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_B415832959_LOGGING = new BooleanFlag(
-    EMBEDDED_EMULATOR, "b415832959.logging", "Enable Logging for Investigation of b/415832959",
-    "Enable logging for investigation of b/415832959",
-    enabledUpTo(DEV));
   //endregion
 
   //region Device Mirroring
@@ -1379,7 +1375,7 @@ public final class StudioFlags {
     TESTING, "additional.testing.gradle.options", "Show additional Gradle Options in Gradle RunConfiguration editor",
     "If enabled, Gradle RunConfiguration shows an additional Android Studio specific options to customize Gradle task execution," +
     "  such as showing test results in the test matrix, or use the device selector view to choose the target device.",
-    enabledUpTo(DEV)
+    enabledUpTo(CANARY)
   );
 
   public static final Flag<Boolean> ENABLE_SCREENSHOT_TESTING = new BooleanFlag(
@@ -1692,6 +1688,12 @@ public final class StudioFlags {
     WEAR_DECLARATIVE_WATCH_FACE, "xml.editor.support.enabled", "Enable XML editor support for Declarative Watch Faces",
     "If enabled, the editor will support Watch Face Format in XML files",
     enabledUpTo(CANARY)
+  );
+
+  public static final Flag<Boolean> WATCH_FACE_STUDIO_FILE_IMPORT = new BooleanFlag(
+    WEAR_DECLARATIVE_WATCH_FACE, "wfs.import.enabled", "Enable support for importing Watch Face Studio files (.wfs)",
+    "If enabled, it will be possible to import Watch Face Studio files.",
+    enabledUpTo(DEV)
   );
   // endregion
 
@@ -2230,6 +2232,12 @@ public final class StudioFlags {
                     "When enabled, the chat will show a Scroll to Bottom button as needed.",
                     enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> STUDIOBOT_RESPONSE_CANCELLATION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.response.cancellation.enabled",
+                    "Enable cancellation in Chat Timeline",
+                    "When enabled, the chat will show a banner that will allow cancelling ongoing responses.",
+                    enabledUpTo(DEV));
+
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
                     "Use ML model to suggest commit messages",
@@ -2403,6 +2411,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> ENABLE_COMBINED_LOGIN_COMPOSE_UI =
     new BooleanFlag(GOOGLE_LOGIN, "combined.login.use.compose.flow", "Enable combined login using Compose",
                     "When enabled, a combined sign-in flow using Compose will show when logging in for a new user.", false);
+  public static final Flag<Boolean> USE_1P_LOGIN_UI =
+    new BooleanFlag(GOOGLE_LOGIN, "use.1p.login.ui", "Use 1P login UI",
+                    "Use 1P login UI to show the OAuth scopes that will be requested", false);
   // endregion Google Login
 
   // region Cloud Integration
@@ -2473,20 +2484,20 @@ public final class StudioFlags {
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_EXECUTION = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.execution", "Enable Journeys with Gemini execution",
     "Enable Journeys with Gemini related functionality to allow users to create, edit and execute Journeys.",
-    enabledUpTo(DEV)
+    enabledUpTo(CANARY)
   );
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.auto.gradle.configuration",
     "Enable automatic Gradle configuration for Journeys with Gemini",
     "Applies the Gradle configuration needed to run Journeys automatically when a Journeys run configuration is triggered",
-    enabledUpTo(DEV)
+    enabledUpTo(CANARY)
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION_DEP = new StringFlag(
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.auto.gradle.configuration",
     "Journey plugin dependency name used by automatic Gradle configuration",
     "The ID of the Journey AGP plugin to use in the init-script injected when JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION " +
     "is enabled, Use the `-dev` suffix to use a locally built plugin.",
-    "com.android.tools.journeys:journeys-gradle-plugin:0.0.1-alpha01"
+    "com.android.tools.journeys:journeys-gradle-plugin:0.0.1-alpha02"
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION_EXTRA_REPOSITORY_URL = new StringFlag(
     JOURNEYS_WITH_GEMINI, "extra.repository.url.for.journeys.with.gemini.auto.gradle.configuration",
@@ -2576,6 +2587,17 @@ public final class StudioFlags {
       "enable",
       "Enable Wifi 2.0",
       "Enable Wifi 2.0 feature",
+      false);
+  // endregion Wifi 2.0
+
+  // region Benchmark Survey
+  private static final FlagGroup BENCHMARK_SURVEY = new FlagGroup(FLAGS, "benchmark.survey", "Benchmark Survey");
+  public static final Flag<Boolean> BENCHMARK_SURVEY_ENABLED =
+    new BooleanFlag(
+      BENCHMARK_SURVEY,
+      "enable",
+      "Enable Benchmark Survey",
+      "Enable the benchmark survey when requesting user satisfaction",
       false);
   // endregion Wifi 2.0
 

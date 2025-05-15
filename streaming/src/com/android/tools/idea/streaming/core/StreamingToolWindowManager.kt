@@ -162,7 +162,7 @@ internal val LIVE_ICON = BadgeIconSupplier(INACTIVE_ICON).liveIndicatorIcon
  */
 @UiThread
 internal class StreamingToolWindowManager @AnyThread constructor(
-  private val toolWindow: ToolWindow,
+  private val toolWindow: ToolWindowEx,
 ) : RunningEmulatorCatalog.Listener, DeviceClientRegistry.Listener, DumbAware, Disposable {
 
   private val project
@@ -239,7 +239,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
         if (contentShown) {
           createEmptyStatePanel()
         }
-        hideLiveIndicator()
+        setLiveIndicator(false)
       }
     }
   }
@@ -402,7 +402,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
       val newTabAction = NewTabAction()
       newTabAction.registerCustomShortcutSet(KeyEvent.VK_T, KeyEvent.CTRL_DOWN_MASK or KeyEvent.SHIFT_DOWN_MASK, toolWindow.component)
-      (toolWindow as ToolWindowEx).setTabActions(newTabAction)
+      toolWindow.setTabActions(newTabAction)
 
       val actionGroup = DefaultActionGroup()
       actionGroup.addAction(ToggleZoomToolbarAction())
@@ -563,7 +563,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
     placeholderContent?.removeAndDispose() // Remove the placeholder panel.
 
-    showLiveIndicator()
+    setLiveIndicator(true)
     hideToolWindowName()
 
     return content
@@ -661,25 +661,26 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     return null
   }
 
-  private fun showLiveIndicator() {
-    toolWindow.setIcon(LIVE_ICON)
+  private fun updateLiveIndicator() {
+    val embeddedEmulatorsRunning = RunningEmulatorCatalog.getInstance().emulators.find { it.emulatorId.isEmbedded } != null
+    setLiveIndicator(embeddedEmulatorsRunning || !deviceClientRegistry.isEmpty())
   }
 
-  private fun hideLiveIndicator() {
-    toolWindow.setIcon(INACTIVE_ICON)
+  private fun setLiveIndicator(live: Boolean) {
+    toolWindow.setIcon(if (live) LIVE_ICON else INACTIVE_ICON)
   }
 
   private fun showToolWindowName() {
     if (StudioFlags.RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME.get()) {
       toolWindow.component.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, null)
-      (toolWindow as ToolWindowEx).updateContentUi()
+      toolWindow.updateContentUi()
     }
   }
 
   private fun hideToolWindowName() {
     if (StudioFlags.RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME.get()) {
       toolWindow.component.putClientProperty(ToolWindowContentUi.HIDE_ID_LABEL, "true")
-      (toolWindow as ToolWindowEx).updateContentUi()
+      toolWindow.updateContentUi()
     }
   }
 
@@ -721,6 +722,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     if (requester != this && deviceClients[serialNumber]?.client == client) {
       deactivateMirroring(serialNumber)
       deviceClients.remove(serialNumber)
+    }
+    else {
+      updateLiveIndicator()
     }
   }
 
@@ -1102,11 +1106,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
       if (!contentShown) {
         toolWindowScope.launch(Dispatchers.IO) {
-          val embeddedEmulators = RunningEmulatorCatalog.getInstance().updateNow().await().filter { it.emulatorId.isEmbedded }
+          RunningEmulatorCatalog.getInstance().updateNow().await()
           withContext(Dispatchers.EDT) {
-            if (deviceClients.isEmpty() && embeddedEmulators.isEmpty()) {
-              hideLiveIndicator()
-            }
+            updateLiveIndicator()
           }
         }
       }
@@ -1316,9 +1318,11 @@ private val AnActionEvent.contentManager: ContentManager?
     if (contentManager != null) {
       return contentManager
     }
-    val component = getData(PlatformCoreDataKeys.CONTEXT_COMPONENT)
-    return ComponentUtil.getParentOfType(InternalDecorator::class.java, component)?.contentManager
+    return getData(PlatformCoreDataKeys.CONTEXT_COMPONENT)?.containingDecorator?.contentManager
   }
+
+private val Component.containingDecorator: InternalDecorator?
+  get() = ComponentUtil.getParentOfType(InternalDecorator::class.java, this)
 
 private fun isLocalEmulator(deviceSerialNumber: String) =
     deviceSerialNumber.startsWith("emulator-")
@@ -1407,6 +1411,10 @@ internal class DeviceClientRegistry : Disposable {
       consumer(client)
     }
   }
+
+  @UiThread
+  fun isEmpty(): Boolean =
+      clientsBySerialNumber.isEmpty()
 
   fun addListener(listener: Listener) {
     listeners.add(listener)

@@ -53,7 +53,9 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisFromWriteAction
 import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisOnEdt
+import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisFromWriteAction
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisOnEdt
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -97,10 +99,10 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
   }
 
   private class Resolvable
-  private constructor(val libraries: Collection<MavenClassRegistryBase.LibraryImportData>) {
+  private constructor(val libraries: Collection<MavenClassRegistry.LibraryImportData>) {
     companion object {
       fun createNewOrNull(
-        libraries: Collection<MavenClassRegistryBase.LibraryImportData>
+        libraries: Collection<MavenClassRegistry.LibraryImportData>
       ): Resolvable? = libraries.takeUnless { it.isEmpty() }?.let(::Resolvable)
     }
   }
@@ -114,8 +116,10 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
       return
     }
 
-    invoke(project, editor, element, registry, true)
+    invoke(project, editor, element, registry, syncAfterChanges)
   }
+
+  @TestOnly internal var syncAfterChanges = true
 
   override fun getFamilyName(): String =
     AndroidBundle.message("android.suggested.import.action.family.name")
@@ -183,8 +187,7 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
   }
 
   companion object {
-    @TestOnly
-    internal fun invoke(
+    private fun invoke(
       project: Project,
       editor: Editor,
       element: PsiElement,
@@ -338,14 +341,14 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
 
       addDependency(module, artifact, artifactVersion)
       // Also add on an extra dependency for special cases.
-      registry.findExtraArtifacts(artifact).forEach {
+      MavenClassRegistry.findExtraArtifacts(artifact).forEach {
         addDependency(module, it.key, artifactVersion, it.value)
       }
 
       // Also add dependent annotation processor?
       val moduleSystem = module.getModuleSystem()
       if (moduleSystem.canRegisterDependency(DependencyType.ANNOTATION_PROCESSOR).isSupported()) {
-        registry.findAnnotationProcessor(artifact)?.let {
+        MavenClassRegistry.findAnnotationProcessor(artifact)?.let {
           val annotationProcessor =
             if (moduleSystem.useAndroidX) {
               AndroidxNameUtils.getCoordinateMapping(it)
@@ -522,9 +525,12 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
         (receiverExpression as? KtDotQualifiedExpression)?.selectorExpression ?: receiverExpression
       if (KotlinPluginModeProvider.isK2Mode()) {
         allowAnalysisOnEdt {
-          analyze(receiverExpr) {
-            (receiverExpr.expressionType as? KaClassType)?.classId?.asFqNameString()?.let {
-              return left.text to it
+          @OptIn(KaAllowAnalysisFromWriteAction::class)
+          allowAnalysisFromWriteAction {
+            analyze(receiverExpr) {
+              (receiverExpr.expressionType as? KaClassType)?.classId?.asFqNameString()?.let {
+                return left.text to it
+              }
             }
           }
         }
@@ -544,7 +550,7 @@ class AndroidMavenImportIntentionAction : PsiElementBaseIntentionAction() {
       text: String,
       receiverType: String?,
       completionFileType: FileType?,
-    ): Collection<MavenClassRegistryBase.LibraryImportData> {
+    ): Collection<MavenClassRegistry.LibraryImportData> {
       if (receiverType == ALL_RECEIVER_TYPES) {
         return registry.findLibraryDataAnyReceiver(text, useAndroidX, completionFileType)
       }

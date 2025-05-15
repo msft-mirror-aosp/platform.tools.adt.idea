@@ -25,6 +25,8 @@ import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.actions.StreamingHardwareInputAction
+import com.android.tools.idea.streaming.xr.AbstractXrInputController
+import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
 import com.android.tools.idea.ui.DISPLAY_ID_KEY
 import com.intellij.ide.DataManager
 import com.intellij.ide.KeyboardAwareFocusOwner
@@ -133,10 +135,14 @@ abstract class AbstractDisplayView(
   protected abstract val hardwareInput: HardwareInput
   private val hardwareInputStateStorage = project.service<HardwareInputStateStorage>()
 
+  internal abstract val xrInputController: AbstractXrInputController?
+
   /** Controls whether right clicks are sent to the device when the hardware input is disabled. */
   var rightClicksAreSentToDevice: Boolean = false
 
   protected val contextMenuHandler: PopupHandler? = createContextMenuHandler(contextMenuActionGroupId)
+
+  protected val deviceInputListenerManager = project.service<DeviceInputListenerManager>()
 
   protected open val project: Project?
     get() = CommonDataKeys.PROJECT.getData(DataManager.getInstance().getDataContext(this))
@@ -317,7 +323,7 @@ abstract class AbstractDisplayView(
   }
 
   protected fun isHardwareInputEnabled(): Boolean =
-      hardwareInputStateStorage.isHardwareInputEnabled(deviceId)
+      hardwareInputStateStorage.isHardwareInputEnabled(deviceId) && xrInputController?.isMouseUsedForNavigation() != true
 
   final override fun skipKeyEventDispatcher(event: KeyEvent): Boolean {
     if (!isHardwareInputEnabled()) {
@@ -373,6 +379,32 @@ abstract class AbstractDisplayView(
     return when {
       StudioFlags.RUNNING_DEVICES_CONTEXT_MENU.get() -> ContextMenuHandler(this, contextMenuActionGroupId, javaClass.simpleName)
       else -> null
+    }
+  }
+
+  override fun canZoomIn(): Boolean =
+      deviceType == DeviceType.XR || super.canZoomIn()
+
+  override fun canZoomOut(): Boolean =
+      deviceType == DeviceType.XR || super.canZoomOut()
+
+  override fun canZoomToActual(): Boolean =
+      deviceType != DeviceType.XR && super.canZoomToActual()
+
+  override fun canZoomToFit(): Boolean =
+      deviceType != DeviceType.XR && super.canZoomToFit()
+
+  override fun zoom(type: ZoomType): Boolean {
+    when (deviceType) {
+      DeviceType.XR -> {
+        when (type) {
+          ZoomType.IN -> xrInputController?.sendTranslation(0F, 0F, -TRANSLATION_STEP_SIZE) // Move forward.
+          ZoomType.OUT -> xrInputController?.sendTranslation(0F, 0F, TRANSLATION_STEP_SIZE) // Move backward.
+          else -> {}
+        }
+        return true
+      }
+      else -> return super.zoom(type)
     }
   }
 

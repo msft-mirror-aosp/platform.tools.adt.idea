@@ -16,6 +16,9 @@
 package com.android.tools.idea.adb.wireless
 
 import com.android.annotations.concurrency.UiThread
+import com.android.sdklib.deviceprovisioner.SetChange.Add
+import com.android.sdklib.deviceprovisioner.SetChange.Remove
+import com.android.sdklib.deviceprovisioner.trackSetChanges
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.google.wireless.android.sdk.stats.WifiPairingEvent.PairingMethod.QR_CODE
@@ -29,6 +32,8 @@ import java.net.InetAddress
 import java.time.Duration
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.time.delay
 import kotlinx.coroutines.withContext
@@ -39,7 +44,7 @@ class QrCodeScanningController(
   private val service: WiFiPairingService,
   private val view: WiFiPairingView,
   parentDisposable: Disposable,
-  private val mdnsDevice: String?,
+  private val mdnsServiceUnderPairing: TrackingMdnsService?,
 ) : Disposable {
   private val LOG = logger<QrCodeScanningController>()
   private val modelListener = MyModelListener()
@@ -75,14 +80,14 @@ class QrCodeScanningController(
     model.qrCodeImage = qrCode
   }
 
-  private fun startPairingDevice(mdnsService: MdnsService, password: String) {
+  private fun startPairingDevice(pairingMdnsService: PairingMdnsService, password: String) {
     state = State.Pairing
-    view.showQrCodePairingInProgress(mdnsService)
+    view.showQrCodePairingInProgress(pairingMdnsService)
     scope.launch(Dispatchers.EDT + ModalityState.any().asContextElement()) {
       val now = System.currentTimeMillis()
       val adbVersion = service.getAdbVersion()
       try {
-        val pairingResult = service.pairMdnsService(mdnsService, password)
+        val pairingResult = service.pairMdnsService(pairingMdnsService, password)
         view.showQrCodePairingWaitForDevice(pairingResult)
         val device = service.waitForDevice(pairingResult)
         WifiPairingUsageTracker.trackSuccess(
@@ -93,7 +98,7 @@ class QrCodeScanningController(
           System.currentTimeMillis() - now,
         )
         state = State.PairingSuccess
-        view.showQrCodePairingSuccess(mdnsService, device)
+        view.showQrCodePairingSuccess(pairingMdnsService, device)
       } catch (error: Throwable) {
         if (!isCancelled(error)) {
           WifiPairingUsageTracker.trackFailure(
@@ -102,9 +107,9 @@ class QrCodeScanningController(
             error,
             System.currentTimeMillis() - now,
           )
-          LOG.warn("Error pairing device ${mdnsService}", error)
+          LOG.warn("Error pairing device ${pairingMdnsService}", error)
           state = State.PairingError
-          view.showQrCodePairingError(mdnsService, error)
+          view.showQrCodePairingError(pairingMdnsService, error)
         }
       }
     }
@@ -137,25 +142,38 @@ class QrCodeScanningController(
   }
 
   private suspend fun startMdnsTrackingService() {
-    service.trackMdnsServices().collect {
-      val services =
-        it.pairingMdnsServices.map {
-          MdnsService(
-            it.mdnsService.serviceInstanceName.instance,
-            if (it.mdnsService.serviceInstanceName.instance.startsWith("studio-"))
-              ServiceType.QrCode
-            else ServiceType.PairingCode,
-            InetAddress.getByName(it.mdnsService.ipv4),
-            it.mdnsService.port,
-          )
-        }
-      view.model.pairingCodeServices =
-        services.filter {
-          it.serviceType == ServiceType.PairingCode &&
-            (mdnsDevice == null || mdnsDevice == it.serviceName)
-        }
-      view.model.qrCodeServices = services.filter { it.serviceType == ServiceType.QrCode }
-    }
+    service
+      .trackMdnsServices()
+      .map { it.pairingMdnsServices.toSet() }
+      .trackSetChanges()
+      .takeWhile { state == State.Polling }
+      .collect {
+        val newServices =
+          when (it) {
+            is Add -> {
+              listOf(
+                PairingMdnsService(
+                  it.value.mdnsService.serviceInstanceName.instance,
+                  if (it.value.mdnsService.serviceInstanceName.instance.startsWith("studio-"))
+                    ServiceType.QrCode
+                  else ServiceType.PairingCode,
+                  InetAddress.getByName(it.value.mdnsService.ipv4),
+                  it.value.mdnsService.port,
+                )
+              )
+            }
+            is Remove -> {
+              emptyList()
+            }
+          }
+        view.model.pairingCodeServices =
+          newServices.filter {
+            it.serviceType == ServiceType.PairingCode &&
+              (mdnsServiceUnderPairing == null ||
+                mdnsServiceUnderPairing.serviceName == it.serviceName)
+          }
+        view.model.qrCodeServices = newServices.filter { it.serviceType == ServiceType.QrCode }
+      }
   }
 
   enum class State {
@@ -183,7 +201,7 @@ class QrCodeScanningController(
       }
     }
 
-    override fun onPairingCodePairAction(mdnsService: MdnsService) {
+    override fun onPairingCodePairAction(pairingMdnsService: PairingMdnsService) {
       // Ignore
     }
 
@@ -196,7 +214,7 @@ class QrCodeScanningController(
   inner class MyModelListener : AdbDevicePairingModelListener {
     override fun qrCodeGenerated(newImage: QrCodeImage) {}
 
-    override fun qrCodeServicesDiscovered(services: List<MdnsService>) {
+    override fun qrCodeServicesDiscovered(services: List<PairingMdnsService>) {
       LOG.info("${services.size} QR code connect services discovered")
       services.forEachIndexed { index, it ->
         LOG.info(
@@ -215,7 +233,7 @@ class QrCodeScanningController(
       }
     }
 
-    override fun pairingCodeServicesDiscovered(services: List<MdnsService>) {
+    override fun pairingCodeServicesDiscovered(services: List<PairingMdnsService>) {
       LOG.info("${services.size} pairing code pairing services discovered")
       services.forEachIndexed { index, it ->
         LOG.info(

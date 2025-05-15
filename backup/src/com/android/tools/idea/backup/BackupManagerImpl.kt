@@ -58,7 +58,6 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.ModalTaskOwner
 import com.intellij.platform.ide.progress.TaskCancellation.Companion.cancellable
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
-import com.intellij.platform.util.progress.SequentialProgressReporter
 import com.intellij.platform.util.progress.reportSequentialProgress
 import java.nio.file.Path
 import kotlin.io.path.pathString
@@ -213,7 +212,7 @@ internal constructor(
     val result = backupService.restore(serialNumber, path, listener)
     val operation = message("restore")
     if (notify) {
-      result.notify(operation, serialNumber = serialNumber)
+      result.notifyRestore(operation, serialNumber)
     }
     if (result is Error) {
       logger.warn(message("notification.error", operation), result.throwable)
@@ -278,7 +277,7 @@ internal constructor(
         val result = backupService.backup(serialNumber, applicationId, type, backupFile, listener)
         val operation = message("backup")
         if (notify) {
-          result.notify(operation, backupFile, serialNumber)
+          result.notifyBackup(operation, backupFile, serialNumber, applicationId)
         }
         when (result) {
           is Success -> virtualFileManager.refreshAndFindFileByNioPath(backupFile)
@@ -291,36 +290,56 @@ internal constructor(
     }
   }
 
-  private suspend fun BackupResult.notify(
+  private suspend fun BackupResult.notifyBackup(
     operation: String,
-    backupFile: Path? = null,
+    backupFile: Path,
     serialNumber: String,
+    applicationId: String,
   ) {
     when (this) {
-      is Success -> notifySuccess(message("notification.success", operation), backupFile)
-      is WithoutAppData -> notifySuccessWithoutAppData(backupFile)
+      is Success ->
+        notifyBackupSuccess(message("notification.success", operation), backupFile, applicationId)
+      is WithoutAppData -> notifyBackupSuccessWithoutAppData(backupFile, applicationId)
       is Error -> notifyError(message("notification.error", operation), throwable, serialNumber)
     }
   }
 
-  private fun notifySuccess(message: String, backupFile: Path?) {
-    val notification = Notification(NOTIFICATION_GROUP, message, INFORMATION)
-    if (backupFile != null) {
-      notification.addAction(ShowPostBackupDialogAction(project, backupFile))
+  private suspend fun BackupResult.notifyRestore(operation: String, serialNumber: String) {
+    when (this) {
+      is Success -> notifyRestoreSuccess(message("notification.success", operation))
+      is Error -> notifyError(message("notification.error", operation), throwable, serialNumber)
+      is WithoutAppData ->
+        throw IllegalArgumentException("Restore should not result in WithoutAppData")
     }
-    Notifications.Bus.notify(notification, project)
   }
 
-  private fun notifySuccessWithoutAppData(backupFile: Path?) {
-    val notification =
-      Notification(
-        NOTIFICATION_GROUP,
-        message("notification.success", message("backup")),
-        message("notification.without.app.data"),
-        INFORMATION,
-      )
-    notification.addAction(ShowPostBackupDialogAction(project, backupFile!!))
-    notification.addAction(BackupDisabledLearnMoreAction())
+  private fun notifyBackupSuccess(message: String, backupFile: Path, applicationId: String) {
+    notify(message) {
+      if (isAppInProject(applicationId)) {
+        addAction(ShowPostBackupDialogAction(project, backupFile))
+      }
+    }
+  }
+
+  private fun notifyBackupSuccessWithoutAppData(backupFile: Path, applicationId: String) {
+    notify(
+      message("notification.without.app.data"),
+      message("notification.success", message("backup")),
+    ) {
+      if (isAppInProject(applicationId)) {
+        addAction(ShowPostBackupDialogAction(project, backupFile))
+      }
+      addAction(BackupDisabledLearnMoreAction())
+    }
+  }
+
+  private fun notifyRestoreSuccess(message: String) {
+    notify(message)
+  }
+
+  private fun notify(content: String, title: String = "", block: Notification.() -> Unit = {}) {
+    val notification = Notification(NOTIFICATION_GROUP, title, content, INFORMATION)
+    notification.block()
     Notifications.Bus.notify(notification, project)
   }
 
@@ -392,6 +411,9 @@ internal constructor(
     }
   }
 
+  private fun isAppInProject(applicationId: String) =
+    project.getService(ProjectAppsProvider::class.java).getApplicationIds().contains(applicationId)
+
   companion object {
     fun openBackupDisabledLearnMoreLink() {
       BrowserUtil.browse("https://developer.android.com/identity/sign-in/restore-credentials")
@@ -412,10 +434,6 @@ internal constructor(
     val applicationId: String,
     val appIdToBackupEnabledMap: Map<String, Boolean>,
   )
-}
-
-private fun SequentialProgressReporter.onStep(step: Step) {
-  nextStep(step.step * 100 / step.totalSteps, step.text)
 }
 
 private val ProcessHandler.applicationId: String?

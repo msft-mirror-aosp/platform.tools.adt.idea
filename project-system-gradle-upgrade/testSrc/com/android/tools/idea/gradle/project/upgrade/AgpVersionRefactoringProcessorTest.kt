@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.android.ide.common.repository.AgpVersion
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT
 import com.android.utils.FileUtils
 import com.intellij.openapi.application.runWriteAction
@@ -406,6 +405,23 @@ class AgpVersionRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     writeToGradlePropertiesFile("android.bundle.enableUncompressedNativeLibs=false\n")
     val processor = AgpVersionRefactoringProcessor(project, AgpVersion.parse("8.1.0"), AgpVersion.parse("8.1.0"))
     assertFalse(processor.isBlocked)
+  }
+
+  @Test
+  fun testJcenterUsageInBuildFileBlocksUpgrade() {
+    writeToBuildFile(TestFileName("AgpVersion/JcenterUsage"))
+    val processor = AgpVersionRefactoringProcessor(project, AgpVersion.parse("8.1.0"), AgpVersion.parse("9.0.0"))
+    assertTrue(processor.isBlocked)
+    assertSize(1, processor.blockProcessorReasons())
+    assertEquals("jcenter is a deprecated property", processor.blockProcessorReasons()[0].shortDescription)
+  }
+
+  @Test
+  fun testMavenCentralUsageInBuildFileDoesNotBlockUpgrade() {
+    writeToBuildFile(TestFileName("AgpVersion/MavenCentralUsage"))
+    val processor = AgpVersionRefactoringProcessor(project, AgpVersion.parse("8.1.0"), AgpVersion.parse("9.0.0"))
+    assertFalse(processor.isBlocked)
+    assertSize(0, processor.blockProcessorReasons())
   }
 
   private fun writeToGradlePropertiesFile(text: String) {

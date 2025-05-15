@@ -17,7 +17,7 @@ package com.android.tools.idea.imports
 
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
-import com.android.tools.idea.imports.MavenClassRegistryBase.LibraryImportData
+import com.android.tools.idea.imports.MavenClassRegistry.LibraryImportData
 import com.google.common.truth.Truth.assertThat
 import java.io.InputStream
 import java.nio.charset.StandardCharsets.UTF_8
@@ -141,6 +141,22 @@ class MavenClassRegistryTest {
         )
       )
 
+    assertThat(mavenClassRegistry.findImportDataByClassName("Fake"))
+      .containsExactly(
+        LibraryImportData(
+          artifact = "androidx.activity:activity",
+          importedItemFqName = "androidx.activity.Fake",
+          importedItemPackageName = "androidx.activity",
+          version = "1.1.0",
+        ),
+        LibraryImportData(
+          artifact = "androidx.annotation:annotation",
+          importedItemFqName = "androidx.annotation.Fake",
+          importedItemPackageName = "androidx.annotation",
+          version = "1.1.0",
+        ),
+      )
+
     assertThat(mavenClassRegistry.lookup.topLevelFunctionsMap)
       .containsExactlyEntriesIn(
         mapOf(
@@ -187,6 +203,26 @@ class MavenClassRegistryTest {
               )
             ),
         )
+      )
+
+    assertThat(
+        mavenClassRegistry.findImportDataByFunctionSpecifier(
+          FunctionSpecifier("FakeFunction", null)
+        )
+      )
+      .containsExactly(
+        LibraryImportData(
+          artifact = "androidx.activity:activity",
+          importedItemFqName = "androidx.activity.FakeFunction",
+          importedItemPackageName = "androidx.activity",
+          version = "1.1.0",
+        ),
+        LibraryImportData(
+          artifact = "androidx.annotation:annotation",
+          importedItemFqName = "androidx.annotation.FakeFunction",
+          importedItemPackageName = "androidx.annotation",
+          version = "1.1.0",
+        ),
       )
 
     assertThat(mavenClassRegistry.lookup.ktxMap)
@@ -631,5 +667,62 @@ class MavenClassRegistryTest {
     assertThrows(IllegalArgumentException::class.java) {
       KotlinTopLevelFunction.fromJvmQualifiedName("foo", "com.example.Receiver")
     }
+  }
+
+  @Test
+  fun isPackageIndexed() {
+    repositoryIndexContents =
+      """
+        {
+          "Index": [
+            {
+              "groupId": "group1",
+              "artifactId": "artifact1",
+              "version": "1",
+              "ktxTargets": [],
+              "fqcns": [
+                "com.example.class1"
+              ]
+            },
+            {
+              "groupId": "group2",
+              "artifactId": "artifact2",
+              "version": "1",
+              "ktxTargets": [],
+              "fqcns": [
+                "com.example2.class1"
+              ],
+              "ktlfns": [
+                {
+                  "xfqn": "com.example2.toplevel.FacadeFileKt.someExtensionFunction",
+                  "rcvr": "amazingReceiver"
+                }
+              ]
+            },
+            {
+              "groupId": "group3",
+              "artifactId": "artifact3",
+              "version": "1",
+              "ktxTargets": [],
+              "fqcns": [],
+              "ktlfns": [
+                {
+                  "xfqn": "foo.bar.baz.FacadeFileKt.someExtensionFunction",
+                  "rcvr": "amazingReceiver"
+                }
+              ]
+            }
+          ]
+        }
+      """
+        .trimIndent()
+
+    val mavenClassRegistry = MavenClassRegistry.createFrom(::getIndexByteStream)
+
+    assertThat(mavenClassRegistry.isPackageIndexed("com.example")).isTrue()
+    assertThat(mavenClassRegistry.isPackageIndexed("com.example2")).isTrue()
+    assertThat(mavenClassRegistry.isPackageIndexed("com.example2.toplevel")).isTrue()
+    assertThat(mavenClassRegistry.isPackageIndexed("foo.bar.baz")).isTrue()
+    assertThat(mavenClassRegistry.isPackageIndexed("other")).isFalse()
   }
 }
