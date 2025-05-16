@@ -1588,11 +1588,6 @@ public final class StudioFlags {
     "If enabled, the project will be treated as a Compose project, showing Previews if available and enhancing the Compose editing",
     false);
 
-  public static final Flag<Boolean> COMPOSE_FAST_PREVIEW_AUTO_DISABLE = new BooleanFlag(
-    COMPOSE, "fast.preview.auto.disable", "If enabled, Fast Preview can auto-disable",
-    "If enabled, if fast preview finds a compiler problem, it will be auto disable until the user re-enables it",
-    false);
-
   public static final Flag<Boolean> COMPOSE_ALLOCATION_LIMITER = new BooleanFlag(
     COMPOSE, "allocation.limiter", "If enabled, limits allocations per render",
     "If enabled, limits the number of allocations that user code can do in a single render action",
@@ -2145,7 +2140,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.session.diff.editor.viewer.enabled",
                     "Enable the new DiffEditorViewer UI that can show multiple-file diffs.",
                     "When enabled, uses the new DiffEditorViewer UI.",
-                    false);
+                    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_ALLOW_TRANSFORMS_WITH_CITATIONS =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.allow.transforms.with.citations",
@@ -2414,6 +2409,12 @@ public final class StudioFlags {
   public static final Flag<Boolean> USE_1P_LOGIN_UI =
     new BooleanFlag(GOOGLE_LOGIN, "use.1p.login.ui", "Use 1P login UI",
                     "Use 1P login UI to show the OAuth scopes that will be requested", false);
+  public static final Flag<String> CHIME_ENDPOINT =
+    new StringFlag(GOOGLE_LOGIN, "chime.endpoint", "Chime Endpoint",
+                   "Endpoint to use for Chime API", "notifications-pa.googleapis.com");
+  public static final Flag<Boolean> SHOW_MARKETING_DIALOG =
+    new BooleanFlag(GOOGLE_LOGIN, "show.marketing.dialog", "Show marketing dialog",
+                    "Show marketing dialog after user logs in", true);
   // endregion Google Login
 
   // region Cloud Integration
@@ -2497,7 +2498,7 @@ public final class StudioFlags {
     "Journey plugin dependency name used by automatic Gradle configuration",
     "The ID of the Journey AGP plugin to use in the init-script injected when JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION " +
     "is enabled, Use the `-dev` suffix to use a locally built plugin.",
-    "com.android.tools.journeys:journeys-gradle-plugin:0.0.1-alpha02"
+    "com.android.tools.journeys:journeys-gradle-plugin:0.0.1-alpha03"
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION_EXTRA_REPOSITORY_URL = new StringFlag(
     JOURNEYS_WITH_GEMINI, "extra.repository.url.for.journeys.with.gemini.auto.gradle.configuration",

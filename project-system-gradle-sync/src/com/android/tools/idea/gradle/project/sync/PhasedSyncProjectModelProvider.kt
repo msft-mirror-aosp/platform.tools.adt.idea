@@ -17,8 +17,11 @@
 
 package com.android.tools.idea.gradle.project.sync
 
+import com.android.builder.model.v2.models.AndroidDsl
+import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.Versions
+import com.android.ide.common.repository.AgpVersion
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import org.gradle.tooling.BuildAction
 import org.gradle.tooling.BuildController
@@ -26,7 +29,7 @@ import org.gradle.tooling.model.gradle.GradleBuild
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 
 
-class BasicAndroidProjectModelProvider : ProjectImportModelProvider {
+class PhasedSyncProjectModelProvider : ProjectImportModelProvider {
    /**
     * This is just indicating which phase the provider will  on. To match the names it can technically run on
     * [GradleModelFetchPhase.PROJECT_MODEL_PHASE] but we populate source sets with this information, so it's kept in the source set phase.
@@ -41,14 +44,31 @@ class BasicAndroidProjectModelProvider : ProjectImportModelProvider {
     controller.run(buildModels.flatMap { buildModel ->
       buildModel.projects.mapNotNull { gradleProject ->
         BuildAction {
-          Triple(gradleProject, controller.findModel(gradleProject, Versions::class.java), controller.findModel(gradleProject, BasicAndroidProject::class.java))
-          }
+          gradleProject to AndroidProjectData(
+            controller.findModel(gradleProject, Versions::class.java)
+              // TODO(b/384022658): Reconsider this check if we implement a cache between model providers to avoid fetching the models twice
+              ?.takeIf { it.isAtLeastAgp8() } ?: return@BuildAction null,
+            controller.findModel(gradleProject, BasicAndroidProject::class.java),
+            controller.findModel(gradleProject, AndroidProject::class.java),
+            controller.findModel(gradleProject, AndroidDsl::class.java)
+          )
         }
-    }).forEach { (gradleProject, versions, basicAndroidProject) ->
-      versions?.let { modelConsumer.consumeProjectModel(gradleProject, it, Versions::class.java) }
-      basicAndroidProject?.let { modelConsumer.consumeProjectModel(gradleProject, it, BasicAndroidProject::class.java) }
-    }
+      }
+    }).filterNotNull()
+      .forEach { (gradleProject, data) ->
+        modelConsumer.consumeProjectModel(gradleProject, data.versions, Versions::class.java)
+        modelConsumer.consumeProjectModel(gradleProject, data.basicAndroidProject, BasicAndroidProject::class.java)
+        modelConsumer.consumeProjectModel(gradleProject, data.androidProject, AndroidProject::class.java)
+        modelConsumer.consumeProjectModel(gradleProject, data.androidDsl, AndroidDsl::class.java)
+      }
   }
 }
 
+private fun Versions.isAtLeastAgp8() = AgpVersion.parse(agp).isAtLeast(8, 0, 0)
 
+private data class AndroidProjectData(
+  val versions: Versions,
+  val basicAndroidProject: BasicAndroidProject,
+  val androidProject: AndroidProject,
+  val androidDsl: AndroidDsl
+)
