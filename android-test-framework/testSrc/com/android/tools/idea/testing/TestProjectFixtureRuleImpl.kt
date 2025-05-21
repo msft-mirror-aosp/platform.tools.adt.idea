@@ -84,6 +84,7 @@ internal class TestProjectFixtureRuleImpl(
                   fixtureName,
                   AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
                   null,
+                  sdk = it,
                   syncReady
                 )
                 preparedProject.open {
@@ -120,26 +121,19 @@ private fun setupJdk(path: Path, testRootDisposable: Disposable): Sdk? {
   return addedSdk
 }
 
-private inline fun AggregateAndThrowIfAnyContext.withSdksHandled(testRootDisposable: Disposable, body: () -> Unit) {
+private inline fun AggregateAndThrowIfAnyContext.withSdksHandled(testRootDisposable: Disposable, body: (Sdk?) -> Unit) {
   val jdkPath = EmbeddedDistributionPaths.getInstance().embeddedJdkPath
-  WriteAction.runAndWait<Throwable> {
+  val sdk = WriteAction.computeAndWait<Sdk, Throwable> {
     // drop any discovered SDKs to not leak them
     cleanJdkTable()
-    setupJdk(jdkPath, testRootDisposable)
-  }
-
-  val jdk = IdeSdks.getInstance().jdk ?: error("Failed to set JDK")
-  if (jdk.homePath != jdkPath.toAbsolutePath().toString()) {
-    Disposer.register(testRootDisposable) {
-      runWriteAction { runCatchingAndRecord { ProjectJdkTable.getInstance().removeJdk(jdk) } }
-    }
+    setupJdk(jdkPath, testRootDisposable) ?: error("Failed to set JDK")
   }
 
   val oldAndroidSdkPath = IdeSdks.getInstance().androidSdkPath
   Disposer.register(testRootDisposable) {
     runWriteAction { runCatchingAndRecord { AndroidSdkPathStore.getInstance().androidSdkPath = oldAndroidSdkPath?.toPath() } }
   }
-  runCatchingAndRecord { body() }
+  runCatchingAndRecord { body(sdk) }
   runInEdtAndWait { runCatchingAndRecord { removeAllAndroidSdks() } }
 }
 

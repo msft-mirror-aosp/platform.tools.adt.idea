@@ -30,6 +30,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
+import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.createTestOpenProjectOptions
 import com.intellij.testFramework.runInEdtAndGet
@@ -50,9 +51,10 @@ interface LightGradleTestProject : TestProjectDefinition {
     name: String,
     agpVersion: AgpVersionSoftwareEnvironment,
     ndkVersion: String?,
+    sdk: Sdk?,
     syncReady: Boolean
   ): PreparedTestProject {
-    val preparedProject = templateProject.prepareTestProject(integrationTestEnvironment, name, agpVersion, ndkVersion, syncReady)
+    val preparedProject = templateProject.prepareTestProject(integrationTestEnvironment, name, agpVersion, ndkVersion, sdk, syncReady)
     preparedProject.root.resolve(".gradle").mkdir()
     return object: PreparedTestProject {
       override fun <T> open(
