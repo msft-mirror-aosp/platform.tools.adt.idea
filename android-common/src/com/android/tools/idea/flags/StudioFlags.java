@@ -1227,6 +1227,11 @@ public final class StudioFlags {
     DEVICE_MIRRORING, "unicode.typing", "Enable Unicode Typing",
     "Enable typing of arbitrary Unicode characters",
     false);
+  public static final Flag<Boolean> DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH = new BooleanFlag(
+    DEVICE_MIRRORING, "xr.simulated.passthrough", "Enable Simulated Passthrough for XR Headsets",
+    "Enable simulated passthrough for XR headsets",
+    false);
+
   //endregion
 
   //region Screenshot and Screen Recording
@@ -1992,6 +1997,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DOMAIN_ISSUES_INSPECTION =
     new BooleanFlag(APP_LINKS_ASSISTANT, "app.links.assistant.domain.issues.inspection", "App Links Assistant domain issues inspection",
                     "Domain issues inspection that opens relevant App Links Assistant content", false);
+  public static final Flag<Boolean> ALA_SERVICE_COMPATIBILITY_ENABLED =
+    new BooleanFlag(APP_LINKS_ASSISTANT, "service.compatibility.enabled", "App Links Assistant service compatibility enabled",
+                    "Flag that controls whether service compatibility banner is enabled", true);
   // endregion App Links Assistant
 
   // region NEW_COLLECT_LOGS_DIALOG
@@ -2007,8 +2015,10 @@ public final class StudioFlags {
                     "Reset the results cache before running filters on startup", true);
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP =
     new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters", false);
-  public static final Flag<Boolean> TSDKVUA_API_35 =
-    new BooleanFlag(TSDKVUA, "api35", "Enable support for API 35", "Enable support for API 35", true);
+  public static final Flag<Integer> TSDKVUA_API_NEXT =
+    new IntFlag(TSDKVUA, "api.next", "The version of the next API", "The version of the next API", 36);
+  public static final Flag<Boolean> TSDKVUA_API_NEXT_ENABLE =
+    new BooleanFlag(TSDKVUA, "api.next.enable", "Enable support for the next API", "Enable support for the next API", false);
   public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(TSDKVUA, "omg76167", "Do NOT mitigate omg/76167",
                                                                         "Mitigating omg/76167 requires hiding part of API 35's 'secured background activity launches' step",
                                                                         false);
@@ -2155,6 +2165,12 @@ public final class StudioFlags {
                     "When enabled, uses the new DiffEditorViewer UI.",
                     enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> STUDIOBOT_FLEXIBLE_TRANSFORM_SUGGESTIONS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "flexible.transform.suggestions.enabled",
+                    "Enable the new flexible suggestions/diffs controls in the editor.",
+                    "If enabled, will show AI transform suggestions using new, more flexible controls such as inlays.",
+                    false);
+
   public static final Flag<Boolean> STUDIOBOT_ALLOW_TRANSFORMS_WITH_CITATIONS =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.allow.transforms.with.citations",
                     "Show transform results that have citations.",
@@ -2238,6 +2254,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "prompt.library.chat.lookup",
                     "Show Saved Prompts in chat lookup",
                     "When enabled, add Rules section to lookup popup.",
+                    enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> STUDIOBOT_MCP_HOST_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mcp.host.enabled",
+                    "Enable Model Context Protocol (MCP) support",
+                    "Allows the agent to use custom tools provided by Model Context Protocol (MCP) servers",
                     enabledUpTo(CANARY));
 
   public static final Flag<Boolean> STUDIOBOT_SCROLL_TO_BOTTOM_ENABLED =
@@ -2658,8 +2680,8 @@ public final class StudioFlags {
       "enable",
       "Enable Benchmark Survey",
       "Enable the benchmark survey when requesting user satisfaction",
-      false);
-  // endregion Wifi 2.0
+      true);
+  // endregion Benchmark Survey
 
   // region deprecation policy
   private static final FlagGroup DEPRECATION_POLICY = new FlagGroup(FLAGS, "deprecationpolicy", "Deprecation Policy");

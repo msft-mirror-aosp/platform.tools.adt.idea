@@ -6,6 +6,12 @@ load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
+package(
+    default_package_metadata = [
+        "//build/bazel/licenses:Android-Apache-2.0",
+    ],
+)
+
 app_icon(
     name = "nightly-icon",
     icns = "nightly/studio.icns",
@@ -499,6 +505,7 @@ studio_plugin(
             "//tools/adt/idea/design-plugin/descriptor:intellij.android.design-plugin.descriptor",
             "//tools/adt/idea/designer/customview:intellij.android.designer.customview",
             "//tools/adt/idea/designer:intellij.android.designer",
+            "//tools/adt/idea/designer/gradle:intellij.android.designer.gradle",
             "//tools/adt/idea/glance-designer:intellij.android.glance-designer",
             "//tools/adt/idea/layoutlib:intellij.android.layoutlib",
             "//tools/adt/idea/nav/editor:intellij.android.nav.editor",
@@ -725,6 +732,7 @@ studio_plugin(
         "//tools/vendor/google/ml/aiplugin/core:aida_proto",
         "//tools/vendor/google/ml/aiplugin/core:aida_protobuf",
         "//tools/vendor/google/ml/aiplugin/core:gemini_plugin_proto",
+        "//tools/vendor/google/ml/aiplugin/mcp/client:mcp-kotlin-sdk",
     ],
     modules = {
         "aiplugin.jar": [
@@ -739,6 +747,7 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/android-plugin:aiplugin.android-plugin",
             "//tools/vendor/google/ml/aiplugin/android-plugin/descriptor:aiplugin.android-plugin.descriptor",
             "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",
+            "//tools/vendor/google/ml/aiplugin/mcp/client:aiplugin.mcp.client",
             "//tools/vendor/google/ml/aiplugin/rag/indexer:aiplugin.rag.indexer",
             "//tools/vendor/google/ml/aiplugin/sdkcompat:aiplugin.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/cloudcode-core:aiplugin.cloudcode-core",
@@ -803,6 +812,7 @@ android_studio(
     files_win = {
         "safemode/win/studio_safe.bat": "bin/studio_safe.bat",
     },
+    generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     platform = "@intellij//:intellij-sdk",
     plugins = [

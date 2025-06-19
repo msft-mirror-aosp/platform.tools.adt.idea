@@ -31,11 +31,14 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Path
+import com.intellij.openapi.module.Module
 
 interface BuildSystemLiveEditServices<P : AndroidProjectSystem, C: ApplicationProjectContext> : Token {
   fun isApplicable(applicationProjectContext: ApplicationProjectContext): Boolean
 
   fun getApplicationServices(applicationProjectContext: C): ApplicationLiveEditServices
+
+  fun disqualifyingBytecodeTransformation(module: Module): BuildSystemBytecodeTransformation?
 
   companion object {
     val EP_NAME =
@@ -70,6 +73,8 @@ interface BuildSystemLiveEditServices<P : AndroidProjectSystem, C: ApplicationPr
   }
 }
 
+class BuildSystemBytecodeTransformation(val buildHasTransformation: Boolean, val transformationPoints: List<String>)
+
 sealed interface DesugarConfigs {
   class NotKnown(val message: String?): DesugarConfigs
   class Known(val configs: List<Path>): DesugarConfigs
@@ -79,6 +84,7 @@ interface ApplicationLiveEditServices {
   fun getClassContent(file: VirtualFile, className: String): ClassContent?
   fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration
   fun getDesugarConfigs(): DesugarConfigs
+  fun getRuntimeVersionString(): String
 
   @TestOnly
   class LegacyForTests(private val project: Project): ApplicationLiveEditServices {
@@ -93,19 +99,31 @@ interface ApplicationLiveEditServices {
     }
 
     override fun getDesugarConfigs() = DesugarConfigs.NotKnown("Desugar config not set up in unit tests yet.")
+
+    override fun getRuntimeVersionString(): String = DEFAULT_RUNTIME_VERSION
   }
 
   @TestOnly
-  class ApplicationLiveEditServicesForTests(private val classFiles: Map<String, ByteArray>): ApplicationLiveEditServices {
+  class ApplicationLiveEditServicesForTests(
+    private val classFiles: Map<String, ByteArray>,
+    val versionString: String = DEFAULT_RUNTIME_VERSION,
+  ): ApplicationLiveEditServices {
     override fun getClassContent(file: VirtualFile, className: String): ClassContent? {
       return classFiles[className]?.let { ClassContent.forTests(it) }
     }
 
     override fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration {
       return ktFile.module?.let { module -> getCompilerConfiguration(module, ktFile) }
-        ?: error("Cannot get kotlin compiler configuration for $ktFile")
+             ?: error("Cannot get kotlin compiler configuration for $ktFile")
     }
 
     override fun getDesugarConfigs() = DesugarConfigs.NotKnown("No Desugar config.")
+
+    override fun getRuntimeVersionString() = versionString
+  }
+
+  companion object {
+    /** Default version of the runtime to use if the dependency resolution fails when looking for the daemon. */
+    const val DEFAULT_RUNTIME_VERSION = "1.1.0-alpha02"
   }
 }

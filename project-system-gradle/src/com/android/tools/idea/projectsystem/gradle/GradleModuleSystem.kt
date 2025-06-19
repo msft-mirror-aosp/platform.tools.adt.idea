@@ -36,6 +36,7 @@ import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
+import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.sync.idea.getGradleProjectPath
 import com.android.tools.idea.util.DynamicAppUtils
 import com.android.tools.idea.projectsystem.AndroidModuleSystem
@@ -96,8 +97,6 @@ import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.nio.file.Path
-import java.util.Collections
-import java.util.concurrent.TimeUnit
 import com.android.ide.common.gradle.Module as ExternalModule
 
 /** Creates a map for the given pairs, filtering out null values. */
@@ -198,22 +197,6 @@ class GradleModuleSystem(
   override fun getRegisteredDependency(id: GradleRegisteredDependencyQueryId): GradleRegisteredDependencyId? =
     getRegisteredDependency(id.module)?.let { GradleRegisteredDependencyId(it) }
 
-  // TODO: b/129297171
-  override fun getRegisteredDependency(coordinate: GradleCoordinate): GradleCoordinate? =
-    // TODO(xof): I'm reasonably convinced that this interface (in terms of GradleCoordinate) and its implementation
-    //  verifying that any version field specified in the GradleCoordinate matches (in some sense, where "+" is treated
-    //  specially in the coordinate but not in any of the matches) is not reasonably supportable.  Almost all uses of this in production
-    //  use a bare version of "+", which will match any version.  There is an exception, which attempts to insert specific versions
-    //  taken from fragments of other Gradle build files (or Maven XML).
-    //  I think the ideal final state will involve removing this function from the AndroidModuleSystem interface; converting users of
-    //  this to the getRegisteredDependency(ExternalModule) method below; and require clients who want to query or add specific
-    //  dependency versions to Gradle build files to accept that they are using GradleModuleSystem facilities, which we will allow from
-    //  a limited set of modules.  In the meantime, preserve existing behavior by emulating GradleCoordinate.matches(...)
-    getRegisteredDependency(ExternalModule(coordinate.groupId, coordinate.artifactId))
-      ?.takeIf { it.matches(coordinate) }
-      ?.toIdentifier()
-      ?.let { GradleCoordinate.parseCoordinateString(it) }
-
   // This only exists to support the contract of getRegisteredDependency(), which is that an existing declared dependency should be
   // returned if it matches the coordinate given, with a possibly-wild or possibly rich version.  If the declared dependency is to
   // an explicit singleton, we check whether the pattern contains that version; if the pattern version is wild, we accept any
@@ -253,7 +236,7 @@ class GradleModuleSystem(
     AndroidDependenciesCache.getAllAndroidDependencies(module.getMainModule(), true).map(AndroidFacet::getModule)
 
   override fun getAndroidTestDirectResourceModuleDependencies(): List<Module> {
-    val dependencies = GradleAndroidModel.get(this.module)?.selectedAndroidTestCompileDependencies
+    val dependencies = GradleAndroidDependencyModel.get(this.module)?.selectedAndroidTestCompileDependencies
     return dependencies?.libraries?.filterIsInstance<IdeModuleLibrary>()
       ?.mapNotNull { it.getGradleProjectPath().resolveIn(this.module.project) }
       ?.toList()
@@ -275,30 +258,30 @@ class GradleModuleSystem(
   }
 
   private fun getCompileDependenciesFor(module: Module, scope: DependencyScopeType): IdeDependencies? {
-    val gradleModel = GradleAndroidModel.get(module) ?: return null
+    val gradleModel = GradleAndroidDependencyModel.get(module) ?: return null
 
     return when (scope) {
-      DependencyScopeType.MAIN -> gradleModel.selectedVariant.mainArtifact.compileClasspath
+      DependencyScopeType.MAIN -> gradleModel.selectedVariantWithDependencies.mainArtifact.compileClasspath
       DependencyScopeType.ANDROID_TEST ->
-        gradleModel.selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.compileClasspath
+        gradleModel.selectedVariantWithDependencies.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.compileClasspath
       DependencyScopeType.UNIT_TEST ->
-        gradleModel.selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }?.compileClasspath
-      DependencyScopeType.TEST_FIXTURES -> gradleModel.selectedVariant.testFixturesArtifact?.compileClasspath
+        gradleModel.selectedVariantWithDependencies.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }?.compileClasspath
+      DependencyScopeType.TEST_FIXTURES -> gradleModel.selectedVariantWithDependencies.testFixturesArtifact?.compileClasspath
       DependencyScopeType.SCREENSHOT_TEST ->
-        gradleModel.selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }?.compileClasspath
+        gradleModel.selectedVariantWithDependencies.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }?.compileClasspath
     }
   }
 
   private fun getRuntimeDependenciesFor(module: Module, scope: DependencyScopeType): Sequence<IdeDependencies> {
     fun impl(module: Module, scope: DependencyScopeType): Sequence<IdeDependencies> = sequence {
-      val gradleModel = GradleAndroidModel.get(module)
+      val gradleModel = GradleAndroidDependencyModel.get(module)
       if (gradleModel == null) {
         // TODO(b/253476264): Returning an incomplete set of dependencies is highly problematic and should be avoided.
         ClearResourceCacheAfterFirstBuild.getInstance(module.project).setIncompleteRuntimeDependencies()
         return@sequence
       }
 
-      val selectedVariant = gradleModel.selectedVariant
+      val selectedVariant = gradleModel.selectedVariantWithDependencies
       val artifact = when (scope) {
         DependencyScopeType.MAIN -> selectedVariant.mainArtifact
         DependencyScopeType.ANDROID_TEST -> selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
@@ -332,11 +315,6 @@ class GradleModuleSystem(
     registerDependencies(listOf(dependency.dependency), type)
   }
 
-  override fun registerDependency(coordinate: GradleCoordinate, type: DependencyType) {
-    val dependencies = Collections.singletonList(coordinate.toDependency())
-    registerDependencies(dependencies, type)
-  }
-
   private val DependencyType.configurationName get() = when(this) {
       DependencyType.ANNOTATION_PROCESSOR -> "annotationProcessor"
       DependencyType.DEBUG_IMPLEMENTATION -> "debugImplementation"
@@ -362,31 +340,6 @@ class GradleModuleSystem(
           sourceProviders.currentDeviceTestSourceProviders[CommonTestType.ANDROID_TEST].orEmpty())
     return sourceProviders.buildNamedModuleTemplatesFor(moduleRootDir, selectedSourceProviders)
   }
-
-  /**
-   * Analyzes the compatibility of the [dependenciesToAdd] with the existing artifacts in the project.
-   *
-   * The version component of each of the coordinates in [dependenciesToAdd] are disregarded.
-   * The result is a triplet consisting of:
-   * <ul>
-   *   <li>A list of coordinates including a valid version found in the repository</li>
-   *   <li>A list of coordinates that were missing from the repository</li>
-   *   <li>A warning string describing the compatibility issues that could not be resolved if any</li>
-   * </ul>
-   *
-   * An incompatibility warning is either a compatibility with problem among the already existing artifacts,
-   * or a compatibility problem with one of the [dependenciesToAdd]. In the latter case the coordinates in
-   * the found coordinates are simply the latest version of the libraries, which may or may not cause build
-   * errors if they are added to the project.
-   * <p>
-   * An empty warning value and an empty missing list of coordinates indicates a successful result.
-   * <p>
-   * **Note**: This function may cause the parsing of build files and as such should not be called from the UI thread.
-   */
-  fun analyzeCoordinateCompatibility(dependenciesToAdd: List<GradleCoordinate>)
-    : Triple<List<GradleCoordinate>, List<GradleCoordinate>, String> =
-    //TODO(b/369433182): Change the API to return a ListenableFuture instead of calling get with a timeout here...
-    dependencyCompatibility.analyzeCoordinateCompatibility(dependenciesToAdd).get(60, TimeUnit.SECONDS)
 
   override fun analyzeDependencyCompatibility(
     dependencies: List<GradleRegisteredDependencyId>
@@ -611,7 +564,7 @@ class GradleModuleSystem(
 
   override fun getTestLibrariesInUse(): TestLibraries? {
     val androidTestArtifact =
-      GradleAndroidModel.get(module)?.selectedVariant?.deviceTestArtifacts?.find { it.name == IdeArtifactName.ANDROID_TEST } ?: return null
+      GradleAndroidDependencyModel.get(module)?.selectedVariantWithDependencies?.deviceTestArtifacts?.find { it.name == IdeArtifactName.ANDROID_TEST } ?: return null
     return TestLibraries.newBuilder().also { recordTestLibraries(it, androidTestArtifact) }.build()
   }
 
@@ -661,7 +614,7 @@ class GradleModuleSystem(
     get() = moduleHierarchyProvider.submodules
 
   override val desugarLibraryConfigFilesKnown: Boolean
-    get() = GradleAndroidModel.get(module)?.agpVersion?.let {it >= (DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION) } ?: false
+    get() = GradleAndroidModel.get(module)?.agpVersion?.let { it >= (DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION) } ?: false
   override val desugarLibraryConfigFilesNotKnownUserMessage: String?
     get() = when {
       GradleAndroidModel.get(module) == null -> "Not supported for non-Android modules."
@@ -751,8 +704,8 @@ private fun AndroidFacet.getLibraryManifests(dependencies: List<AndroidFacet>): 
   val aarManifests =
     (listOf(this) + dependencies)
       .flatMap { androidFacet ->
-        GradleAndroidModel.get(androidFacet)
-          ?.mainArtifact?.compileClasspath
+        GradleAndroidDependencyModel.get(androidFacet)
+          ?.mainArtifactWithDependencies?.compileClasspath
           ?.libraries
           ?.filterIsInstance<IdeAndroidLibrary>()
           ?.mapNotNull { it.manifestFile() }

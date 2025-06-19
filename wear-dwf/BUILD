@@ -24,6 +24,8 @@ iml_module(
         "//tools/base/build-system:studio.android.sdktools.manifest-merger",
         "//tools/base/apkparser:studio.android.sdktools.binary-resources",
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
+        "//tools/analytics-library/tracker:analytics-tracker",
     ],
 )
 
@@ -48,6 +50,10 @@ iml_module(
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing",
+        "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
     ],
     test_friends = ["//tools/adt/idea/wear-dwf:intellij.android.wear-dwf"],
     test_resources = ["testData"],

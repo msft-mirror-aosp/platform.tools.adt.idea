@@ -76,14 +76,16 @@ object ClassForNameHandler {
 
 /**
  * [ClassVisitor] that repackages certain classes with a new package name. This allows to have the same class in two separate
- * namespaces so it can
+ * namespaces so they co-exist. This is similar to applying jarjar to a library.
  */
 class RepackageTransform(delegate: ClassVisitor,
                          packagePrefixes: Collection<String>,
                          remappedPrefix: String) :
   ClassRemapper(delegate,
                 RepackageRemapper(packagePrefixes.map { it.fromPackageNameToBinaryName() },
-                                  remappedPrefix.fromPackageNameToBinaryName())), ClassVisitorUniqueIdProvider {
+                                  remappedPrefix.fromPackageNameToBinaryName())
+                  .chainWith(PreviewParameterProviderRemapper())
+  ), ClassVisitorUniqueIdProvider {
   override val uniqueId: String = RepackageTransform::class.qualifiedName + "," + com.google.common.hash.Hashing.goodFastHash(64)
     .newHasher()
     .putString(packagePrefixes.joinToString(","), Charsets.UTF_8)

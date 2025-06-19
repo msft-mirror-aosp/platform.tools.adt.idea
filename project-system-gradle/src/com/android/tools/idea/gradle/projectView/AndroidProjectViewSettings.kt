@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.projectView
 
+import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.application.ApplicationManager
 
 interface AndroidProjectViewSettings {
@@ -22,5 +23,21 @@ interface AndroidProjectViewSettings {
 
   companion object {
     fun getInstance(): AndroidProjectViewSettings = ApplicationManager.getApplication().getService(AndroidProjectViewSettings::class.java)
+    const val PROJECT_VIEW_KEY = "studio.projectview"
+  }
+
+  /*
+   * Should the Project view used by default? The result depends on custom property
+   *  [PROJECT_VIEW_KEY] and the application settings.
+   */
+  fun isProjectViewDefault(): Boolean {
+    if (StudioFlags.SHOW_DEFAULT_PROJECT_VIEW_SETTINGS.get()) {
+      if (java.lang.Boolean.getBoolean(PROJECT_VIEW_KEY))
+        return true
+      return defaultToProjectView
+    } else {
+      // If flag is not enabled, fall back to studio.projectview flag
+      return java.lang.Boolean.getBoolean(PROJECT_VIEW_KEY)
+    }
   }
 }

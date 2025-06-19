@@ -15,27 +15,23 @@
  */
 package com.android.tools.idea.streaming
 
-import com.android.tools.idea.streaming.core.AbstractDisplayView
-import com.android.tools.idea.streaming.device.DEVICE_CLIENT_KEY
-import com.android.tools.idea.streaming.device.DEVICE_CONTROLLER_KEY
-import com.android.tools.idea.streaming.device.DeviceView
-import com.android.tools.idea.streaming.emulator.EMULATOR_CONTROLLER_KEY
-import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.CustomizedDataContext
 import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.DataContext.EMPTY_CONTEXT
 import com.intellij.openapi.actionSystem.DataSnapshotProvider
-import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.UiDataProvider
+import com.intellij.openapi.actionSystem.ex.ActionUtil.performActionDumbAwareWithCallbacks
+import com.intellij.openapi.actionSystem.ex.ActionUtil.performDumbAwareUpdate
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext.getProjectContext
 import com.intellij.openapi.project.Project
+import com.intellij.ui.ComponentUtil.findParentByCondition
 import java.awt.Component
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.CHAR_UNDEFINED
@@ -56,9 +52,9 @@ fun executeStreamingAction(action: AnAction, source: Component, project: Project
                            modifiers: Int = CTRL_DOWN_MASK,
                            extra: DataSnapshotProvider? = null) {
   val event = createTestEvent(source, project, place = place, modifiers = modifiers, extra = extra)
-  action.update(event)
+  performDumbAwareUpdate(action, event, true)
   assertThat(event.presentation.isEnabledAndVisible).isTrue()
-  action.actionPerformed(event)
+  performActionDumbAwareWithCallbacks(action, event)
 }
 
 fun updateAndGetActionPresentation(actionId: String, source: Component, project: Project? = null,
@@ -72,7 +68,7 @@ fun updateAndGetActionPresentation(action: AnAction, source: Component, project:
                                    place: String = ActionPlaces.KEYBOARD_SHORTCUT,
                                    extra: DataSnapshotProvider? = null): Presentation {
   val event = createTestEvent(source, project, place, presentation = action.templatePresentation.clone(), extra = extra)
-  action.update(event)
+  performDumbAwareUpdate(action, event, false)
   return event.presentation
 }
 
@@ -80,33 +76,19 @@ fun createTestEvent(source: Component, project: Project? = null, place: String =
                     modifiers: Int = CTRL_DOWN_MASK, presentation: Presentation = Presentation(),
                     extra: DataSnapshotProvider? = null): AnActionEvent {
   val inputEvent = KeyEvent(source, KEY_RELEASED, System.currentTimeMillis(), modifiers, VK_E, CHAR_UNDEFINED)
-  val dataContext = CustomizedDataContext.withSnapshot(DataContext.EMPTY_CONTEXT, TestDataSnapshotProvider(source, project, extra))
+  val rootContext = extra.toDataContext(project?.let { getProjectContext(it) } ?: EMPTY_CONTEXT)
+  val dataContext = createDataContext(source, rootContext)
   return AnActionEvent.createEvent(dataContext, presentation, place, ActionUiKind.NONE, inputEvent)
 }
 
-private class TestDataSnapshotProvider(
-  private val component: Component,
-  private val project: Project? = null,
-  private val extra: DataSnapshotProvider?
-) : DataSnapshotProvider {
-
-  private val emulatorView
-    get() = component as? EmulatorView
-  private val deviceView
-    get() = component as? DeviceView
-  private val displayView
-    get() = component as? AbstractDisplayView
-
-  override fun dataSnapshot(sink: DataSink) {
-    sink.apply {
-      extra?.let { dataSnapshot(it) }
-      (component as? UiDataProvider)?.let { uiDataSnapshot(it) }
-      set(EMULATOR_CONTROLLER_KEY, emulatorView?.emulator)
-      set(DEVICE_CLIENT_KEY, deviceView?.deviceClient)
-      set(DEVICE_CONTROLLER_KEY, deviceView?.deviceController)
-      set(SERIAL_NUMBER_KEY, displayView?.deviceSerialNumber)
-      set(CommonDataKeys.PROJECT, project)
-      set(PlatformCoreDataKeys.CONTEXT_COMPONENT, component)
-    }
-  }
+private fun createDataContext(component: Component?, rootContext: DataContext): DataContext {
+  val c = findParentByCondition(component) { it is UiDataProvider } ?: return rootContext
+  val parentContext = createDataContext(c.parent, rootContext)
+  return (c as UiDataProvider).toDataSnapshotProvider().toDataContext(parentContext)
 }
+
+private fun DataSnapshotProvider?.toDataContext(parent: DataContext): DataContext =
+    this?.let { CustomizedDataContext.withSnapshot(parent, this) } ?: parent
+
+private fun UiDataProvider.toDataSnapshotProvider(): DataSnapshotProvider =
+    DataSnapshotProvider { sink -> sink.uiDataSnapshot(this@UiDataProvider) }

@@ -21,7 +21,7 @@ import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.compose.preview.COMPOSE_PREVIEW_MANAGER
 import com.android.tools.idea.compose.preview.analytics.ComposeResizeToolingUsageTracker
 import com.android.tools.idea.compose.preview.message
-import com.android.tools.idea.compose.preview.util.getDimensionsInDp
+import com.android.tools.idea.compose.preview.util.deviceSizeDp
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.compose.preview.util.toPreviewAnnotationText
 import com.android.tools.idea.concurrency.asCollection
@@ -44,10 +44,10 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.kotlin.idea.base.codeInsight.ShortenReferencesFacility
-import org.jetbrains.kotlin.idea.base.psi.imports.addImport
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtFunction
+import org.jetbrains.kotlin.psi.KtImportAlias
 import org.jetbrains.kotlin.psi.KtPsiFactory
 
 /**
@@ -73,7 +73,7 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
     val previewMethod = previewElement.previewBody?.element?.parent as? KtFunction ?: return
     val deviceState = configuration.deviceState ?: error("Device state should not be null")
 
-    val (widthDp, heightDp) = getDimensionsInDp(configuration)
+    val (widthDp, heightDp) = configuration.deviceSizeDp()
     val mode =
       if (showDecorations) ResizeComposePreviewEvent.ResizeMode.DEVICE_RESIZE
       else ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE
@@ -96,11 +96,21 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
       {
         val targetFile = previewMethod.containingFile as? KtFile ?: return@runWriteCommandAction
 
-        // Use KtFile.addImport to ensure the @Preview import is present
-        targetFile.addImport(FqName(COMPOSE_PREVIEW_ANNOTATION_FQN))
+        // Check if Preview is imported with an alias
+        val alias: KtImportAlias? =
+          targetFile.findAliasByFqName(FqName(COMPOSE_PREVIEW_ANNOTATION_FQN))
 
-        val newAnnotationText =
+        // If an alias exists, use it. Otherwise, use the FQN for initial creation.
+        val annotationClassName = alias?.name ?: COMPOSE_PREVIEW_ANNOTATION_FQN
+
+        // toPreviewAnnotationText already creates with FQN internally.
+        // We'll replace the FQN with the alias if one exists, or keep FQN if not.
+        val baseAnnotationParams =
           toPreviewAnnotationText(previewElement, configuration, nameForNewPreview)
+            .removePrefix("@${COMPOSE_PREVIEW_ANNOTATION_FQN}") // Remove the FQN prefix
+
+        val newAnnotationText = "@$annotationClassName$baseAnnotationParams"
+
         val newAnnotationEntry = ktPsiFactory.createAnnotationEntry(newAnnotationText)
 
         ShortenReferencesFacility.getInstance()
@@ -118,10 +128,10 @@ class SavePreviewInNewSizeAction(val dispatcher: CoroutineDispatcher = Dispatche
       e.dataContext.getData(RESIZE_PANEL_INSTANCE_KEY)?.hasBeenResized == true
 
     if (e.presentation.isEnabledAndVisible) {
-      val (widthDp, heightDp) = getDimensionsInDp(configuration)
-      e.presentation.text = message("action.save.preview.current.size.title", widthDp, heightDp)
+      e.presentation.text =
+        message("action.save.preview.current.size.title", createNewName(configuration))
       e.presentation.description =
-        message("action.save.preview.current.size.description", widthDp, heightDp)
+        message("action.save.preview.current.size.description", createNewName(configuration))
       e.presentation.putClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR, true)
     }
   }
@@ -184,7 +194,7 @@ private fun createNewName(configuration: Configuration): String {
   if (targetDevice.id != Configuration.CUSTOM_DEVICE_ID) {
     return targetDevice.displayName
   }
-  val (widthDp, heightDp) = getDimensionsInDp(configuration)
+  val (widthDp, heightDp) = configuration.deviceSizeDp()
 
-  return "${widthDp}x${heightDp}dp"
+  return "${widthDp}dp x ${heightDp}dp"
 }

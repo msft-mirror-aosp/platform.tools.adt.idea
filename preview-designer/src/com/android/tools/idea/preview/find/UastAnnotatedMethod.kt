@@ -26,14 +26,14 @@ import org.jetbrains.uast.UMethod
  * [AnnotatedMethod] implementation based on [UMethod].
  *
  * @param method the [UMethod] annotated with an `@Preview` annotation
- * @param previewParameterAnnotationFqn the Fully Qualified Name of the `@PreviewParameter`
+ * @param previewParameterAnnotationFqns the set of Fully Qualified Names of the `@PreviewParameter`
  *   annotation corresponding to the `@Preview` annotation used on [method]. For example,
  *   `androidx.compose.ui.tooling.preview.PreviewParameter` for methods annotated with the Compose
  *   `@Preview`.
  */
 class UastAnnotatedMethod(
   private val method: UMethod,
-  private val previewParameterAnnotationFqn: String?,
+  private val previewParameterAnnotationFqns: Set<String>,
 ) : AnnotatedMethod<SmartPsiElementPointer<PsiElement>> {
   override val name: String
     get() = method.name
@@ -48,7 +48,7 @@ class UastAnnotatedMethod(
     get() =
       method.uastParameters.mapNotNull { parameter ->
         parameter.uAnnotations
-          .firstOrNull { previewParameterAnnotationFqn == it.qualifiedName }
+          .firstOrNull { it.qualifiedName in previewParameterAnnotationFqns }
           ?.let { anno ->
             val name = (parameter.javaPsi as PsiParameter).name
             name to UastAnnotationAttributesProvider(anno, emptyMap())

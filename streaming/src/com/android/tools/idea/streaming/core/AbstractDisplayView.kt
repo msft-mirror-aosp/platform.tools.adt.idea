@@ -16,7 +16,6 @@
 package com.android.tools.idea.streaming.core
 
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.adtui.ZOOMABLE_KEY
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.adtui.ui.NotificationHolderPanel
@@ -28,7 +27,6 @@ import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.actions.StreamingHardwareInputAction
 import com.android.tools.idea.streaming.xr.AbstractXrInputController
 import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
-import com.android.tools.idea.ui.DISPLAY_ID_KEY
 import com.intellij.ide.DataManager
 import com.intellij.ide.KeyboardAwareFocusOwner
 import com.intellij.openapi.Disposable
@@ -36,12 +34,11 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataSink
-import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.getParentOfType
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.components.JBPanel
@@ -106,7 +103,7 @@ abstract class AbstractDisplayView(
   project: Project,
   val displayId: Int,
   contextMenuActionGroupId: String,
-) : ZoomablePanel(), Disposable, KeyboardAwareFocusOwner, UiDataProvider {
+) : ZoomablePanel(), Disposable, KeyboardAwareFocusOwner {
 
   /** Serial number of the device shown in the view. */
   val deviceSerialNumber: String
@@ -254,9 +251,9 @@ abstract class AbstractDisplayView(
     disconnectedStatePanel.hidePanel()
   }
 
-  private fun findLoadingPanel(): StreamingLoadingPanel? = findContainingComponent()
+  private fun findLoadingPanel(): StreamingLoadingPanel? = getParentOfType<StreamingLoadingPanel>()
 
-  internal fun findNotificationHolderPanel(): NotificationHolderPanel? = findContainingComponent()
+  internal fun findNotificationHolderPanel(): NotificationHolderPanel? = getParentOfType<NotificationHolderPanel>()
 
   /**
    * Rounds the given value down to an integer if it is above 1, or to the nearest multiple of
@@ -369,12 +366,6 @@ abstract class AbstractDisplayView(
     return g
   }
 
-  override fun uiDataSnapshot(sink: DataSink) {
-    sink[DISPLAY_ID_KEY] = displayId
-    sink[DISPLAY_VIEW_KEY] = this
-    sink[ZOOMABLE_KEY] = this
-  }
-
   protected fun MouseWheelEvent.getNormalizedScrollAmount(): Double =
       getNormalizedScrollAmount(scale)
 
@@ -398,17 +389,16 @@ abstract class AbstractDisplayView(
       deviceType != DeviceType.XR && super.canZoomToFit()
 
   override fun zoom(type: ZoomType): Boolean {
-    when (deviceType) {
-      DeviceType.XR -> {
-        when (type) {
-          ZoomType.IN -> xrInputController?.sendTranslation(0F, 0F, -TRANSLATION_STEP_SIZE) // Move forward.
-          ZoomType.OUT -> xrInputController?.sendTranslation(0F, 0F, TRANSLATION_STEP_SIZE) // Move backward.
-          else -> {}
-        }
-        return true
+    if (deviceType == DeviceType.XR) {
+      when (type) {
+        ZoomType.IN -> xrInputController?.sendTranslation(0F, 0F, -TRANSLATION_STEP_SIZE) // Move forward.
+        ZoomType.OUT -> xrInputController?.sendTranslation(0F, 0F, TRANSLATION_STEP_SIZE) // Move backward.
+        else -> {}
       }
-      else -> return super.zoom(type)
+      return false
     }
+
+    return super.zoom(type)
   }
 
   internal fun interface FrameListener {

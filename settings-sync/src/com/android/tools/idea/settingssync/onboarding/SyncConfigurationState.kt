@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.state.ToggleableState
-import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.settingssync.PROVIDER_CODE_GOOGLE
 import com.android.tools.idea.settingssync.SettingsSyncFeature
 import com.android.tools.idea.settingssync.SyncEventsMetrics
@@ -31,6 +30,7 @@ import com.google.gct.login2.ui.onboarding.compose.GoogleSignInWizard
 import com.google.gct.wizard.WizardState
 import com.google.gct.wizard.WizardStateElement
 import com.google.wireless.android.sdk.stats.BackupAndSyncEvent
+import com.google.wireless.android.sdk.stats.GoogleLoginPluginEvent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.settingsSync.core.SettingsSyncBundle
 import com.intellij.settingsSync.core.SettingsSyncLocalSettings
@@ -41,7 +41,6 @@ import com.intellij.settingsSync.core.UpdateResult
 import com.intellij.settingsSync.core.communicator.RemoteCommunicatorHolder
 import com.intellij.settingsSync.core.config.SettingsSyncEnabler
 import java.util.concurrent.CountDownLatch
-import javax.swing.JComponent
 
 internal val feature
   get() = LoginFeature.feature<SettingsSyncFeature>()
@@ -109,38 +108,21 @@ internal class SyncConfigurationState : WizardStateElement, SettingsSyncEnabler.
     return false
   }
 
-  @UiThread
-  fun getCloudStatusWithModalProgressBlocking(
-    userEmail: String,
-    allowFetchIfCacheMiss: Boolean,
-    parentComponent: JComponent?,
-  ): UpdateResult? {
-    return cloudStatusCache[userEmail]
-      ?: run {
-        if (allowFetchIfCacheMiss) {
-          checkCloudUpdatesWithModalProgressBlocking(
-              userEmail,
-              PROVIDER_CODE_GOOGLE,
-              parentComponent,
-            )
-            .also { cloudStatusCache[userEmail] = it }
-        } else {
-          null
-        }
-      }
-  }
-
+  /**
+   * Gets a user's cloud sync status, prioritizing a valid result from the local cache.
+   *
+   * On a cache miss (or if the cached result is an error), this function triggers a network request
+   * to fetch the latest status, but only if [allowFetchIfCacheMiss] is `true`.
+   */
   suspend fun getCloudStatus(userEmail: String, allowFetchIfCacheMiss: Boolean): UpdateResult? {
+    val cached = cloudStatusCache[userEmail]
+    if (cached != null && cached !is UpdateResult.Error) return cached
+
+    if (allowFetchIfCacheMiss) {
+      cloudStatusCache[userEmail] = checkCloudUpdates(userEmail, PROVIDER_CODE_GOOGLE)
+    }
+
     return cloudStatusCache[userEmail]
-      ?: run {
-        if (allowFetchIfCacheMiss) {
-          checkCloudUpdates(userEmail, PROVIDER_CODE_GOOGLE).also {
-            cloudStatusCache[userEmail] = it
-          }
-        } else {
-          null
-        }
-      }
   }
 
   override fun WizardState.handleFinished() {
@@ -178,9 +160,18 @@ internal class SyncConfigurationState : WizardStateElement, SettingsSyncEnabler.
     SyncEventsMetrics.getInstance()
       .trackEvent(
         BackupAndSyncEvent.newBuilder().apply {
-          // TODO: Currently fine, but need to revisit this if this code is reused for the other
-          // enablement flow.
-          enablementFlow = BackupAndSyncEvent.EnablementFlow.UNIFIED_SIGN_IN_FLOW
+          enablementFlow =
+            when (getOrCreateState { GoogleSignInWizard.SignInState() }.loginType) {
+              GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN -> {
+                BackupAndSyncEvent.EnablementFlow.UNIFIED_SIGN_IN_FLOW
+              }
+              GoogleLoginPluginEvent.LoginType.FEATURE_LOGIN -> {
+                BackupAndSyncEvent.EnablementFlow.ACCOUNT_SETTINGS_PAGE
+              }
+              else -> {
+                BackupAndSyncEvent.EnablementFlow.UNKNOWN_FLOW
+              }
+            }
         }
       )
   }

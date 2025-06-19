@@ -15,6 +15,11 @@
  */
 package com.android.tools.idea.gradle.projectView
 
+import com.android.tools.analytics.UsageTracker
+import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.projectView.AndroidProjectViewSettings.Companion.PROJECT_VIEW_KEY
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.google.wireless.android.sdk.stats.ProjectViewDefaultViewEvent
 import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
@@ -35,12 +40,38 @@ class AndroidProjectViewSettingsImpl: AndroidProjectViewSettings, PersistentStat
     get() = state.defaultToProjectView
     set(newValue) {
       state.defaultToProjectView = newValue
+      trackDefaultViewSetting(newValue)
     }
 
   override fun getState(): ProjectViewSettingsState = state
 
   override fun loadState(newState: ProjectViewSettingsState) {
     state = newState
+  }
+
+  override fun initializeComponent() {
+    defaultToProjectView = state.defaultToProjectView
+    trackDefaultViewSetting(state.defaultToProjectView)
+    super.initializeComponent()
+  }
+
+  // Used by AdvancedSettingsImpl to configure the visibility of this setting
+  fun isDefaultToProjectViewVisible(): Boolean {
+    return StudioFlags.SHOW_DEFAULT_PROJECT_VIEW_SETTINGS.get()
+  }
+
+  // Used by AdvancedSettingsImpl to configure enabling this setting
+  fun isDefaultToProjectViewEnabled(): Boolean {
+    // This setting is disabled when "studio.projectview=true" custom property is set
+    return StudioFlags.SHOW_DEFAULT_PROJECT_VIEW_SETTINGS.get() && !java.lang.Boolean.getBoolean(PROJECT_VIEW_KEY)
+  }
+
+  private fun trackDefaultViewSetting(setting: Boolean) {
+    val defaultView = if (setting) ProjectViewDefaultViewEvent.DefaultView.PROJECT_VIEW else ProjectViewDefaultViewEvent.DefaultView.ANDROID_VIEW
+    UsageTracker.log(
+      AndroidStudioEvent.newBuilder().setKind(AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT).setProjectViewDefaultViewEvent(
+        ProjectViewDefaultViewEvent.newBuilder().setDefaultView(defaultView))
+    )
   }
 
   companion object {

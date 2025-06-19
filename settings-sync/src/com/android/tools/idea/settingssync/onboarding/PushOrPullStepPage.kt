@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.google.gct.login2.ui.onboarding.compose.InnerWizardContentPage
+import com.google.gct.wizard.RetryableException
 import com.google.gct.wizard.WizardDialogController
 import com.google.gct.wizard.WizardPage
 import com.google.gct.wizard.WizardPageControl
@@ -35,7 +36,6 @@ import com.google.gct.wizard.WizardState
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.application.ex.ApplicationInfoEx
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.settingsSync.core.SettingsSyncBundle
 import com.intellij.settingsSync.core.SettingsSyncStateHolder
 import com.intellij.settingsSync.core.UpdateResult
@@ -65,15 +65,12 @@ internal class PushOrPullStepPage : WizardPage() {
         val settingsSyncState =
           when (configurationState.pushOrPull) {
             PushOrPull.PULL -> {
-              val result: UpdateResult? =
-                configurationState.getCloudStatusWithModalProgressBlocking(
-                  userEmail =
-                    checkNotNull(with(configurationState) { state.getOnboardingUser().email }),
-                  // No network call at this point as the result is supposedly already cached.
-                  allowFetchIfCacheMiss = false,
-                  parentComponent = null,
-                )
+              val email =
+                with(configurationState) { state.getOnboardingUser().email }
+                  ?: error("Should have valid email address at this point.")
 
+              // No network call at this point as the result is supposedly already cached.
+              val result: UpdateResult? = configurationState.cloudStatusCache[email]
               (result as? UpdateResult.Success)?.settingsSnapshot?.getState()
                 ?: error("Should have valid remote settings sync data available. (current: $result")
             }
@@ -86,7 +83,7 @@ internal class PushOrPullStepPage : WizardPage() {
         true
       }
 
-      override fun shouldShow(): Boolean {
+      override suspend fun shouldShow(): Boolean {
         with(configurationState) {
           if (state.canSkipFeatureConfiguration()) return false
 
@@ -96,23 +93,19 @@ internal class PushOrPullStepPage : WizardPage() {
           val onboardingUserEmail = state.getOnboardingUser().email ?: return true
 
           val cloudStatus: UpdateResult =
-            getCloudStatusWithModalProgressBlocking(
-              userEmail = onboardingUserEmail,
-              allowFetchIfCacheMiss = true,
-              parentComponent = null,
-            ) ?: error("Should have remote settings sync data available.")
+            getCloudStatus(userEmail = onboardingUserEmail, allowFetchIfCacheMiss = true)
+              ?: error("Should have remote settings sync data available.")
 
           return when (cloudStatus) {
             UpdateResult.NoFileOnServer,
             UpdateResult.FileDeletedFromServer -> false
             is UpdateResult.Success -> true
             is UpdateResult.Error -> {
-              thisLogger()
-                .warn(
+              throw RetryableException(
+                message =
                   SettingsSyncBundle.message("notification.title.update.error") +
-                    "(${cloudStatus.message})"
-                )
-              false
+                    ": ${cloudStatus.message}"
+              )
             }
           }
         }

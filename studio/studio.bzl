@@ -1,6 +1,8 @@
 """This file contains Bazel build rules for the Android Studio release distribution"""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load("//build/bazel/rules/gathering:prebuilt_package_metadata.bzl", "prebuilt_package_metadata")
+load("//build/bazel/rules/gathering:write_package_metadata.bzl", "write_package_metadata")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "AppIconInfo", "replace_app_icon")
 load("//tools/base/bazel:bazel.bzl", "ImlModuleInfo")
 load("//tools/base/bazel:expand_template.bzl", "expand_template_ex")
@@ -201,7 +203,7 @@ def _resource_deps(res_dirs, res, platform):
             files += [(dir + "/" + f.basename, f) for f in dep.files.to_list()]
     return files
 
-def _check_plugin(ctx, out, files, kind, id, verify_deps = None):
+def _check_plugin(ctx, out, files, kind, id, allow_bundled_updates = False, verify_deps = None):
     deps = None
     if verify_deps != None:
         deps = [dep[PluginInfo].plugin_metadata for dep in verify_deps]
@@ -211,6 +213,8 @@ def _check_plugin(ctx, out, files, kind, id, verify_deps = None):
     check_args.add_all("--files", files)
     check_args.add("--kind", kind)
     check_args.add("--id", id)
+    if allow_bundled_updates:
+        check_args.add("--allow_bundled_updates")
     if deps != None:
         check_args.add_all("--deps", deps, omit_if_empty = False)
 
@@ -1084,6 +1088,8 @@ _android_studio = rule(
 # Builds a distribution of android studio.
 # Args:
 #       platform: A studio_data target with the per-platform filegroups
+#       generate_package_metadata: If true, a write_package_metadata target will
+#                                  be created.
 #       jre: If include a target with the jre to bundle in.
 #       plugins: A list of plugins to be bundled
 #       modules: A dictionary (see studio_plugin) with modules bundled at top level
@@ -1127,7 +1133,14 @@ _android_studio = rule(
 # before patch 12. In such a case, the release_number would be 3.
 def android_studio(
         name,
+        plugins,
+        generate_package_metadata = False,
         **kwargs):
+    if generate_package_metadata:
+        write_package_metadata(
+            name = name + "-metadata",
+            deps = plugins,
+        )
     _android_studio(
         name = name,
         compress = is_release(),
@@ -1138,6 +1151,7 @@ def android_studio(
             "@platforms//os:windows": WIN.name,
             "//conditions:default": "",
         }),
+        plugins = plugins,
         **kwargs
     )
 
@@ -1172,7 +1186,7 @@ def _intellij_plugin_import_impl(ctx):
     java_info = java_common.merge([export[JavaInfo] for export in ctx.attr.exports])
     jars = java_info.runtime_output_jars
 
-    _check_plugin(ctx, ctx.outputs.plugin_metadata, jars, ctx.attr.kind, id)
+    _check_plugin(ctx, ctx.outputs.plugin_metadata, jars, ctx.attr.kind, id, allow_bundled_updates = ctx.attr.allow_bundled_updates)
 
     return [
         java_info,
@@ -1201,6 +1215,7 @@ _intellij_plugin_import = rule(
     attrs = {
         "kind": attr.string(default = "plugin", doc = "Pass 'module' if this is a plugin module inside a larger host plugin"),
         "id": attr.string(doc = "the plugin id, if different from the target name"),
+        "allow_bundled_updates": attr.bool(doc = "whether to allow this plugin to be updated out-of-band", default = False),
         # Note: platform plugins will have no files because they are already in intellij-sdk.
         "files": attr.label_list(allow_files = True),
         "strip_prefix": attr.string(),
@@ -1386,6 +1401,7 @@ def intellij_platform_import(name, spec):
             name = name + "-plugin-%s" % plugin,
             id = plugin,
             kind = kind,
+            allow_bundled_updates = True,  # Since these plugins are outside our control.
             exports = [":" + jars_target_name],
             target_dir = "",
             visibility = ["//visibility:public"],
@@ -1408,6 +1424,11 @@ def intellij_platform(
       src: the root directory
       spec: a map of bundled plugins and associated jars
     """
+    prebuilt_package_metadata(
+        name = name + "_prebuilt_metadata",
+        third_party_dependencies = "AI/linux/android-studio/license/third-party-libraries.json",
+    )
+
     jvm_import(
         name = name + "_jars",
         jars = select({
@@ -1427,6 +1448,9 @@ def intellij_platform(
         exports = [":" + name + "_jars"],
         compress = is_release(),
         mac_bundle_name = spec.mac_bundle_name,
+        package_metadata = [
+            ":" + name + "_prebuilt_metadata",
+        ],
         studio_data = name + ".data",
         visibility = ["@intellij//:__subpackages__"],
         # Local linux sandbox does not support spaces in names, so we exclude some files

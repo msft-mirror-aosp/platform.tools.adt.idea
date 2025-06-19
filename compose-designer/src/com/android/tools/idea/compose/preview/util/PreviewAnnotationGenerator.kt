@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.compose.preview.util
 
-import com.android.resources.Density
 import com.android.tools.compose.COMPOSE_PREVIEW_ANNOTATION_FQN
 import com.android.tools.configurations.Configuration
 import com.android.tools.preview.ComposePreviewElementInstance
@@ -26,27 +25,6 @@ import com.android.tools.preview.UNSET_UI_MODE_VALUE
 import com.android.tools.preview.config.*
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_CHIN_SIZE_ZERO
 import java.util.Locale as JavaUtilLocale
-
-/**
- * Calculates the current width and height in DP for the given Configuration. This helper
- * centralizes the logic to convert pixel dimensions (from deviceSize()) to DP.
- */
-internal fun getDimensionsInDp(configuration: Configuration): Pair<Int, Int> {
-  val deviceState =
-    configuration.deviceState ?: error("Can't create device spec without device state")
-  val screen = deviceState.hardware.screen
-  val dpi = screen.pixelDensity.dpiValue
-
-  val currentDeviceSizePx = configuration.deviceSize()
-  val widthPx = currentDeviceSizePx.width
-  val heightPx = currentDeviceSizePx.height
-
-  val dpiFactor = Density.DEFAULT_DENSITY.toFloat() / dpi.toFloat()
-  val widthDp = (widthPx * dpiFactor).toInt()
-  val heightDp = (heightPx * dpiFactor).toInt()
-
-  return Pair(widthDp, heightDp)
-}
 
 /** Appends a parameter-value pair to the StringBuilder. */
 private fun StringBuilder.appendParamValue(parameterName: String, value: String): StringBuilder =
@@ -64,7 +42,7 @@ internal fun createDeviceSpec(configuration: Configuration): String {
   val screen = deviceState.hardware.screen
   val dpi = screen.pixelDensity.dpiValue
 
-  val (widthDp, heightDp) = getDimensionsInDp(configuration)
+  val (widthDp, heightDp) = configuration.deviceSizeDp()
 
   val builder = StringBuilder(Preview.DeviceSpec.PREFIX)
 
@@ -109,7 +87,16 @@ internal fun createDeviceSpec(configuration: Configuration): String {
  * `@Preview` annotation string, incorporating the current configuration's dimensions and a new
  * [name].
  *
+ * This function always returns the @Preview annotation with its Fully Qualified Name (i.e.,
+ * `@androidx.compose.ui.tooling.preview.Preview(...)`). Callers should be aware that they might
+ * need to use facilities like `ShortenReferencesFacility` or string manipulation if they intend to
+ * use a shorter, unqualified name for the annotation.
+ *
  * Parameters are only added if their value is different from their default.
+ *
+ * @param previewElement The [ComposePreviewElementInstance] for which to generate the annotation.
+ * @param configuration The [Configuration] containing device and display settings.
+ * @param name The desired name for the new preview.
  */
 internal fun toPreviewAnnotationText(
   previewElement: ComposePreviewElementInstance<*>,
@@ -119,10 +106,10 @@ internal fun toPreviewAnnotationText(
   val displaySettings = previewElement.displaySettings
   val previewConfig = previewElement.configuration
 
-  val (currentWidthDp, currentHeightDp) = getDimensionsInDp(configuration)
+  val (currentWidthDp, currentHeightDp) = configuration.deviceSizeDp()
 
   return buildString {
-    append("@${COMPOSE_PREVIEW_ANNOTATION_FQN.substringAfterLast('.')}(\n")
+    append("@$COMPOSE_PREVIEW_ANNOTATION_FQN(\n")
 
     val params = mutableListOf<String>()
 

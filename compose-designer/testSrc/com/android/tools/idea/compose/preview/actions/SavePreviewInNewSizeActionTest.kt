@@ -251,7 +251,7 @@ class SavePreviewInNewSizeActionTest {
       .isEqualTo(
         """
           @Preview(
-              name = "200x100dp",
+              name = "200dp x 100dp",
               group = "MyGroup",
               showSystemUi = true,
               device = "spec:width=200dp,height=100dp,dpi=160,orientation=landscape"
@@ -401,7 +401,7 @@ class SavePreviewInNewSizeActionTest {
       .isEqualTo(
         """
           @Preview(
-              name = "100x200dp",
+              name = "100dp x 200dp",
               group = "MyGroup",
               showBackground = true,
               widthDp = 100,
@@ -552,7 +552,7 @@ class SavePreviewInNewSizeActionTest {
       .isEqualTo(
         """
         @Preview(
-            name = "845x360dp",
+            name = "845dp x 360dp",
             device = "spec:width=360dp,height=640dp,dpi=480",
             widthDp = 845,
             heightDp = 360
@@ -571,7 +571,7 @@ class SavePreviewInNewSizeActionTest {
       annotation class DevicePreviews
 
       @Preview(
-          name = "845x360dp",
+          name = "845dp x 360dp",
           device = "spec:width=360dp,height=640dp,dpi=480",
           widthDp = 845,
           heightDp = 360
@@ -664,8 +664,360 @@ class SavePreviewInNewSizeActionTest {
     val finalMode = modeManager.mode.value
     assertThat(finalMode).isInstanceOf(PreviewMode.Focus::class.java)
     val focusMode = finalMode as PreviewMode.Focus
-    assertThat(focusMode.selected!!.displaySettings.parameterName).isEqualTo("100x200dp")
+    assertThat(focusMode.selected!!.displaySettings.parameterName).isEqualTo("100dp x 200dp")
     Disposer.dispose(previewManager)
+  }
+
+  @Test
+  fun `add new annotation uses FQN when simple Preview name is ambiguous`() = runTest {
+    // 1. Add the conflicting class file
+    @Language("kotlin")
+    projectRule.fixture.addFileToProject(
+      "src/some/other/package/Preview.kt", // Path matching the package
+      """
+                package some.other.package
+
+                class Preview // This is the conflicting class named 'Preview'
+                """
+        .trimIndent(),
+    )
+
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+        package com.example
+
+        import androidx.compose.runtime.Composable
+        import some.other.package.Preview // This import creates a name conflict for 'Preview'
+
+        // Due to the conflict, @Preview must be fully qualified to compile
+        @androidx.compose.ui.tooling.preview.Preview(name = "ExistingPreview")
+        @Composable
+        fun MyComposable() {
+        }
+                """
+          .trimIndent(),
+      )
+
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          projectRule.project,
+          composeTest.virtualFile,
+        )
+        .first()
+    modeManager.setMode(PreviewMode.Focus(previewElement))
+
+    val configuration = createConfiguration(300, 400)
+    configuration.updateScreenSize(300, 400)
+
+    `when`(resizePanel.hasBeenResized).thenReturn(true)
+    `when`(model.dataProvider)
+      .thenReturn(
+        object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+          override fun getData(dataId: String) =
+            previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+        }
+      )
+    `when`(model.configuration).thenReturn(configuration)
+
+    val action = SavePreviewInNewSizeAction()
+    val event = TestActionEvent.createTestEvent(getDataContext())
+
+    action.actionPerformed(event)
+
+    @Language("kotlin")
+    val expectedContent =
+      """
+      package com.example
+
+      import androidx.compose.runtime.Composable
+      import some.other.package.Preview // This import creates a name conflict for 'Preview'
+
+      // Due to the conflict, @Preview must be fully qualified to compile
+      @androidx.compose.ui.tooling.preview.Preview(
+          name = "300dp x 400dp",
+          widthDp = 300,
+          heightDp = 400
+      )
+      @androidx.compose.ui.tooling.preview.Preview(name = "ExistingPreview")
+      @Composable
+      fun MyComposable() {
+      }
+                """
+        .trimIndent()
+
+    assertThat(composeTest.text).isEqualTo(expectedContent)
+  }
+
+  @Test
+  fun `add new annotation uses FQN with custom MultiPreview annotation from separate file and conflicting import`() =
+    runTest {
+      // 1. Add the conflicting class file
+      @Language("kotlin")
+      val conflictingPreviewFile =
+        projectRule.fixture.addFileToProject(
+          "src/some/other/package/Preview.kt", // Path matching the package
+          """
+                package some.other.package
+
+                class Preview // This is the conflicting class named 'Preview'
+                """
+            .trimIndent(),
+        )
+
+      // 2. Add the custom MultiPreview annotation in a separate file
+      @Language("kotlin")
+      val fontScalePreviewsFile =
+        projectRule.fixture.addFileToProject(
+          "src/com/example/multipreview/FontScalePreviews.kt",
+          """
+                package com.example.multipreview
+
+                import androidx.compose.ui.tooling.preview.Preview
+
+                @Preview(name = "small font", group = "font scales", fontScale = 0.5f)
+                @Preview(name = "large font", group = "font scales", fontScale = 1.5f)
+                annotation class FontScalePreviews
+                """
+            .trimIndent(),
+        )
+
+      // 3. Main Compose Test file
+      @Language("kotlin")
+      val composeTest =
+        projectRule.fixture.addFileToProject(
+          "src/Test.kt",
+          """
+                package com.example
+
+                import androidx.compose.runtime.Composable
+                import com.example.multipreview.FontScalePreviews
+                import some.other.package.Preview // This import creates a name conflict for 'Preview'
+
+                @FontScalePreviews
+                @Composable
+                fun MyComposable() {
+                }
+                """
+            .trimIndent(),
+        )
+
+      // Select one of the previews from the MultiPreview for resizing (e.g., "MyComposable - small
+      // font")
+      var previewElements =
+        AnnotationFilePreviewElementFinder.findPreviewElements(
+          projectRule.project,
+          composeTest.virtualFile,
+        )
+
+      val selectedPreviewElement =
+        previewElements.first { it.displaySettings.name == "MyComposable - small font" }
+          as PsiComposePreviewElement
+      assertThat(selectedPreviewElement).isNotNull()
+
+      modeManager.setMode(PreviewMode.Focus(selectedPreviewElement))
+
+      // Simulate a resize to a new configuration
+      val newWidth = 250
+      val newHeight = 400
+      val configuration = createConfiguration(newWidth, newHeight)
+      configuration.updateScreenSize(newWidth, newHeight)
+
+      `when`(resizePanel.hasBeenResized).thenReturn(true)
+      `when`(model.dataProvider)
+        .thenReturn(
+          object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+            override fun getData(dataId: String) =
+              selectedPreviewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+          }
+        )
+      `when`(model.configuration).thenReturn(configuration)
+
+      val action = SavePreviewInNewSizeAction()
+      val event = TestActionEvent.createTestEvent(getDataContext())
+
+      action.actionPerformed(event)
+
+      @Language("kotlin")
+      val expectedContent =
+        """
+                package com.example
+
+                import androidx.compose.runtime.Composable
+                import com.example.multipreview.FontScalePreviews
+                import some.other.package.Preview // This import creates a name conflict for 'Preview'
+
+                @androidx.compose.ui.tooling.preview.Preview(
+                    name = "250dp x 400dp",
+                    group = "font scales",
+                    fontScale = 0.5f,
+                    widthDp = 250,
+                    heightDp = 400
+                )
+                @FontScalePreviews
+                @Composable
+                fun MyComposable() {
+                }
+                """
+          .trimIndent()
+
+      assertThat(composeTest.text).isEqualTo(expectedContent)
+    }
+
+  @Test
+  fun `add new annotation uses existing alias for Preview`() = runTest {
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+        package com.example
+
+        import androidx.compose.runtime.Composable
+        import androidx.compose.ui.tooling.preview.Preview as MyCustomPreviewAlias
+
+        @MyCustomPreviewAlias(name = "ExistingAliasedPreview")
+        @Composable
+        fun MyComposable() {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          projectRule.project,
+          composeTest.virtualFile,
+        )
+        .first()
+    modeManager.setMode(PreviewMode.Focus(previewElement))
+
+    val configuration = createConfiguration(300, 400)
+    configuration.updateScreenSize(300, 400)
+
+    `when`(resizePanel.hasBeenResized).thenReturn(true)
+    `when`(model.dataProvider)
+      .thenReturn(
+        object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+          override fun getData(dataId: String) =
+            previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+        }
+      )
+    `when`(model.configuration).thenReturn(configuration)
+
+    val action = SavePreviewInNewSizeAction()
+    val event = TestActionEvent.createTestEvent(getDataContext())
+
+    action.actionPerformed(event)
+
+    @Language("kotlin")
+    val expectedContent =
+      """
+      package com.example
+
+      import androidx.compose.runtime.Composable
+      import androidx.compose.ui.tooling.preview.Preview as MyCustomPreviewAlias
+
+      @MyCustomPreviewAlias(
+          name = "300dp x 400dp",
+          widthDp = 300,
+          heightDp = 400
+      )
+      @MyCustomPreviewAlias(name = "ExistingAliasedPreview")
+      @Composable
+      fun MyComposable() {
+      }
+      """
+        .trimIndent()
+
+    assertThat(composeTest.text).isEqualTo(expectedContent)
+  }
+
+  @Test
+  fun `add new annotation uses existing alias despite conflicting simple Preview name`() = runTest {
+    // 1. Add the conflicting class file
+    @Language("kotlin")
+    val conflictingPreviewFile =
+      projectRule.fixture.addFileToProject(
+        "src/some/other/package/Preview.kt", // Path matching the package
+        """
+                package some.other.package
+
+                class Preview
+                """
+          .trimIndent(),
+      )
+
+    // 2. Main Compose Test file with existing alias and a conflicting import
+    @Language("kotlin")
+    val composeTest =
+      projectRule.fixture.addFileToProject(
+        "src/Test.kt",
+        """
+                package com.example
+
+                import androidx.compose.runtime.Composable
+                import androidx.compose.ui.tooling.preview.Preview as MyCustomPreviewAlias
+                import some.other.package.Preview
+
+                @MyCustomPreviewAlias(name = "ExistingAliasedPreview")
+                @Composable
+                fun MyComposable() {
+                }
+                """
+          .trimIndent(),
+      )
+
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          projectRule.project,
+          composeTest.virtualFile,
+        )
+        .first()
+    modeManager.setMode(PreviewMode.Focus(previewElement))
+
+    val configuration = createConfiguration(300, 400)
+    configuration.updateScreenSize(300, 400)
+
+    `when`(resizePanel.hasBeenResized).thenReturn(true)
+    `when`(model.dataProvider)
+      .thenReturn(
+        object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+          override fun getData(dataId: String) =
+            previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+        }
+      )
+    `when`(model.configuration).thenReturn(configuration)
+
+    val action = SavePreviewInNewSizeAction()
+    val event = TestActionEvent.createTestEvent(getDataContext())
+
+    action.actionPerformed(event)
+
+    @Language("kotlin")
+    val expectedContent =
+      """
+        package com.example
+
+        import androidx.compose.runtime.Composable
+        import androidx.compose.ui.tooling.preview.Preview as MyCustomPreviewAlias
+        import some.other.package.Preview
+
+        @MyCustomPreviewAlias(
+            name = "300dp x 400dp",
+            widthDp = 300,
+            heightDp = 400
+        )
+        @MyCustomPreviewAlias(name = "ExistingAliasedPreview")
+        @Composable
+        fun MyComposable() {
+        }
+                """
+        .trimIndent()
+
+    assertThat(composeTest.text).isEqualTo(expectedContent)
   }
 
   fun KtAnnotationEntry.getValueForArgument(name: String): String? {

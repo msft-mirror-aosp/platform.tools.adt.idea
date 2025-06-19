@@ -18,6 +18,8 @@ package com.android.tools.idea.settingssync.onboarding
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -38,10 +40,12 @@ import com.google.gct.login2.LoginFeature
 import com.google.gct.login2.PreferredUser
 import com.google.gct.login2.ui.onboarding.compose.GoogleSignInWizard
 import com.google.gct.wizard.FakeController
+import com.google.gct.wizard.NavigationState
 import com.google.gct.wizard.WizardPage
 import com.google.gct.wizard.WizardState
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.BACKUP_AND_SYNC_EVENT
 import com.google.wireless.android.sdk.stats.BackupAndSyncEvent
+import com.google.wireless.android.sdk.stats.GoogleLoginPluginEvent
 import com.intellij.openapi.components.SettingsCategory
 import com.intellij.openapi.util.Disposer
 import com.intellij.settingsSync.core.ServerState
@@ -52,12 +56,13 @@ import com.intellij.settingsSync.core.SettingsSyncSettings.State
 import com.intellij.settingsSync.core.UpdateResult
 import com.intellij.settingsSync.core.communicator.SettingsSyncCommunicatorProvider
 import com.intellij.testFramework.DisposableRule
-import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
-import com.intellij.testFramework.RunsInEdt
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
@@ -65,7 +70,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 
-@RunsInEdt
 class WizardFlowTest {
   private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
@@ -74,11 +78,7 @@ class WizardFlowTest {
 
   @get:Rule
   val rules =
-    RuleChain.outerRule(EdtRule())
-      .around(projectRule)
-      .around(flagRule)
-      .around(disposableRule)
-      .around(composeTestRule)
+    RuleChain.outerRule(projectRule).around(flagRule).around(disposableRule).around(composeTestRule)
 
   private lateinit var communicator: FakeRemoteCommunicator
   private lateinit var communicatorProvider: FakeCommunicatorProvider
@@ -90,6 +90,9 @@ class WizardFlowTest {
 
   private val tracker =
     TestUsageTracker(VirtualTimeScheduler()).also { UsageTracker.setWriterForTest(it) }
+
+  private val dispatcher = UnconfinedTestDispatcher()
+  private val scope = TestScope(dispatcher)
 
   @Before
   fun setup() {
@@ -140,11 +143,15 @@ class WizardFlowTest {
     pages: List<WizardPage>,
     state: WizardState,
     expectedInitialPage: WizardPage,
-  ) {
-    val controller = FakeController(pages, state)
+    scope: CoroutineScope,
+  ): FakeController {
+    val controller = FakeController(pages, state, scope)
+    waitForCondition(1.seconds) { controller.currentPage != null }
+    assertThat(controller.currentPage).isEqualTo(expectedInitialPage)
 
     composeTestRule.setContent { controller.CurrentComposablePage() }
-    assertThat(controller.currentPage).isEqualTo(expectedInitialPage)
+
+    return controller
   }
 
   // This covers the onboarding flow: step3 only
@@ -155,9 +162,12 @@ class WizardFlowTest {
       WizardState().apply {
         // Make sure we won't skip the page
         getOrCreateState { GoogleSignInWizard.SignInState() }
-          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+          .apply {
+            signedInUser = PreferredUser.User(email = USER_EMAIL)
+            loginType = GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN
+          }
       }
-    initWizard(pages, wizardState, expectedInitialPage = step3)
+    initWizard(pages, wizardState, expectedInitialPage = step3, scope)
 
     // Ensure status
     assertThat(SettingsSyncSettings.getInstance().syncEnabled).isFalse()
@@ -165,6 +175,7 @@ class WizardFlowTest {
     // Action
     val pushResult: PushResult =
       communicator.awaitForPush {
+        composeTestRule.waitUntil { composeTestRule.onNodeWithText("Finish").isDisplayed() }
         composeTestRule.onNodeWithText("Finish").assertIsDisplayed().performClick()
       }
 
@@ -200,15 +211,18 @@ class WizardFlowTest {
 
   // This covers the onboarding flow: step3 only
   @Ignore("b/410589934")
-  fun `test sync categories selection wizard page, disable plugins`() {
+  fun `test sync categories selection wizard page, disable plugins`() = {
     // Prepare
     val wizardState =
       WizardState().apply {
         // Make sure we won't skip the page
         getOrCreateState { GoogleSignInWizard.SignInState() }
-          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+          .apply {
+            signedInUser = PreferredUser.User(email = USER_EMAIL)
+            loginType = GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN
+          }
       }
-    initWizard(pages, wizardState, expectedInitialPage = step3)
+    initWizard(pages, wizardState, expectedInitialPage = step3, scope)
 
     // Ensure status
     assertThat(SettingsSyncSettings.getInstance().syncEnabled).isFalse()
@@ -217,6 +231,7 @@ class WizardFlowTest {
     composeTestRule.onNodeWithText("Plugins").assertIsDisplayed().performClick()
     val pushResult: PushResult =
       communicator.awaitForPush {
+        composeTestRule.waitUntil { composeTestRule.onNodeWithText("Finish").isDisplayed() }
         composeTestRule.onNodeWithText("Finish").assertIsDisplayed().performClick()
       }
 
@@ -262,9 +277,12 @@ class WizardFlowTest {
       WizardState().apply {
         // Make sure we won't skip the page
         getOrCreateState { GoogleSignInWizard.SignInState() }
-          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+          .apply {
+            signedInUser = PreferredUser.User(email = USER_EMAIL)
+            loginType = GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN
+          }
       }
-    initWizard(pages, wizardState, expectedInitialPage = step1)
+    initWizard(pages, wizardState, expectedInitialPage = step1, scope)
 
     // Action
     // 1. Select to stay with the current configuration.
@@ -295,9 +313,12 @@ class WizardFlowTest {
       WizardState().apply {
         // Make sure we won't skip the page
         getOrCreateState { GoogleSignInWizard.SignInState() }
-          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+          .apply {
+            signedInUser = PreferredUser.User(email = USER_EMAIL)
+            loginType = GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN
+          }
       }
-    initWizard(pages, wizardState, expectedInitialPage = step1)
+    initWizard(pages, wizardState, expectedInitialPage = step1, scope)
 
     // Action
     // 1. Select to configure using the new account.
@@ -327,9 +348,12 @@ class WizardFlowTest {
       WizardState().apply {
         // Make sure we won't skip the page
         getOrCreateState { GoogleSignInWizard.SignInState() }
-          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+          .apply {
+            signedInUser = PreferredUser.User(email = USER_EMAIL)
+            loginType = GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN
+          }
       }
-    initWizard(pages, wizardState, expectedInitialPage = step2)
+    initWizard(pages, wizardState, expectedInitialPage = step2, scope)
 
     // Ensure status
     assertThat(SettingsSyncSettings.getInstance().syncEnabled).isFalse()
@@ -376,9 +400,12 @@ class WizardFlowTest {
       WizardState().apply {
         // Make sure we won't skip the page
         getOrCreateState { GoogleSignInWizard.SignInState() }
-          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+          .apply {
+            signedInUser = PreferredUser.User(email = USER_EMAIL)
+            loginType = GoogleLoginPluginEvent.LoginType.COMBINED_LOGIN
+          }
       }
-    initWizard(pages, wizardState, expectedInitialPage = step2)
+    initWizard(pages, wizardState, expectedInitialPage = step2, scope)
 
     // Ensure status
     assertThat(SettingsSyncSettings.getInstance().syncEnabled).isFalse()
@@ -438,6 +465,33 @@ class WizardFlowTest {
         )
       )
     }
+  }
+
+  // This covers the onboarding flow: step1 -> retry -> step3
+  @Test
+  fun `retry and recover`() {
+    // Prepare
+    communicator.isConnected = false
+    val activeSyncUser = "active_sync_user@test.com"
+
+    SettingsSyncSettings.getInstance().syncEnabled = true
+    SettingsSyncLocalSettings.getInstance().userId = activeSyncUser
+    val wizardState =
+      WizardState().apply {
+        // Make sure we won't skip the page
+        getOrCreateState { GoogleSignInWizard.SignInState() }
+          .apply { signedInUser = PreferredUser.User(email = USER_EMAIL) }
+      }
+    val controller = initWizard(pages, wizardState, expectedInitialPage = step1, scope)
+    composeTestRule.onNodeWithText("Next").assertIsDisplayed().performClick()
+    waitForCondition(1.seconds) { controller.navigationState is NavigationState.Error }
+
+    // Action
+    communicator.isConnected = true
+    composeTestRule.onNodeWithText("Retry").assertExists().assertIsEnabled().performClick()
+
+    waitForCondition(1.seconds) { controller.navigationState is NavigationState.Ready }
+    assertThat(controller.currentPage).isEqualTo(step3)
   }
 
   private fun List<CheckboxNode>.toLocallyStoredState(syncEnabled: Boolean): State {

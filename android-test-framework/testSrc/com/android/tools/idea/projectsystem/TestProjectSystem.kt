@@ -139,7 +139,7 @@ class TestProjectSystem @JvmOverloads constructor(
   }
 
   /**
-   * Add a fake error condition for [coordinate] such that calling [AndroidModuleSystem.registerDependency] on the
+   * Add a fake error condition for [coordinate] such that calling [RegisteringModuleSystem.registerDependency] on the
    * coordinate will throw a [DependencyManagementException] with error message set to [errorMessage].
    */
   fun addFakeErrorForRegisteringDependency(coordinate: GradleCoordinate, errorMessage: String) {
@@ -194,13 +194,6 @@ class TestProjectSystem @JvmOverloads constructor(
 
       override fun getDirectResourceModuleDependents() = emptyList<Module>()
 
-      override fun registerDependency(coordinate: GradleCoordinate, type: DependencyType) {
-        coordinateToFakeRegisterDependencyError[coordinate]?.let {
-          throw DependencyManagementException(it, DependencyManagementException.ErrorCodes.INVALID_ARTIFACT)
-        }
-        dependenciesByModule.put(module, Dependency(type, coordinate))
-      }
-
       override fun registerDependency(dependency: TestRegisteredDependencyId, type: DependencyType) {
         coordinateToFakeRegisterDependencyError[dependency.coordinate]?.let {
           throw DependencyManagementException(it, DependencyManagementException.ErrorCodes.INVALID_ARTIFACT)
@@ -219,9 +212,6 @@ class TestProjectSystem @JvmOverloads constructor(
 
       private fun getRegisteredDependencyId(coordinate: GradleCoordinate): TestRegisteredDependencyId =
         TestRegisteredDependencyId(coordinate)
-
-      override fun getRegisteredDependency(coordinate: GradleCoordinate): GradleCoordinate? =
-        getRegisteredDependency(getRegisteredDependencyQueryId(coordinate))?.coordinate
 
       override fun getRegisteredDependency(id: TestRegisteredDependencyQueryId): TestRegisteredDependencyId? =
         dependenciesByModule[module].firstOrNull { it.coordinate.matches(id.coordinate) }?.let {

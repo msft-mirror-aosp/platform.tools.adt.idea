@@ -16,6 +16,7 @@
 package com.android.tools.idea.insights.ui
 
 import com.android.tools.idea.gservices.DevServicesDeprecationData
+import com.android.tools.idea.gservices.DevServicesDeprecationStatus
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.google.wireless.android.sdk.stats.DevServiceDeprecationInfo
@@ -66,7 +67,7 @@ class ServiceUnsupportedPanel(
 
     scope.launch {
       activeTabFlow.takeTillFirst { it }.collect()
-      logEvent(userNotified = true)
+      logEvent(deprecationData.status, userNotified = true)
     }
   }
 
@@ -93,13 +94,6 @@ class ServiceUnsupportedPanel(
 
         val contentPanel = JPanel(BorderLayout(0, JBUI.scale(8))).apply { isOpaque = false }
 
-        val headerLabel =
-          JBLabel(deprecationData.header).apply {
-            font = JBFont.label().asBold()
-            isOpaque = false
-          }
-        contentPanel.add(headerLabel, BorderLayout.NORTH)
-
         val descriptionTextPane =
           JTextArea().apply {
             text = deprecationData.description
@@ -107,11 +101,11 @@ class ServiceUnsupportedPanel(
             isFocusable = false
             wrapStyleWord = true
             lineWrap = true
-            columns = 50
+            columns = 30
             font = JBFont.label()
             isOpaque = false
           }
-        contentPanel.add(descriptionTextPane)
+        contentPanel.add(descriptionTextPane, BorderLayout.NORTH)
 
         val bottomPanel =
           JPanel(HorizontalLayout(8)).apply {
@@ -119,7 +113,7 @@ class ServiceUnsupportedPanel(
             if (deprecationData.showUpdateAction) {
               val updateLabel =
                 createHyperlinkLabel("Update Android Studio") {
-                  logEvent(userClickedUpdate = true)
+                  logEvent(deprecationData.status, userClickedUpdate = true)
                   updateCallback()
                 }
               add(updateLabel)
@@ -127,7 +121,7 @@ class ServiceUnsupportedPanel(
             if (deprecationData.moreInfoUrl.isNotEmpty()) {
               val moreInfoLabel =
                 createHyperlinkLabel("More info") {
-                  logEvent(userClickedMoreInfo = true)
+                  logEvent(deprecationData.status, userClickedMoreInfo = true)
                   BrowserUtil.browse(deprecationData.moreInfoUrl)
                 }
               add(moreInfoLabel)
@@ -158,11 +152,13 @@ class ServiceUnsupportedPanel(
     }
 
   private fun logEvent(
+    deprecationStatus: DevServicesDeprecationStatus,
     userNotified: Boolean? = null,
     userClickedMoreInfo: Boolean? = null,
     userClickedUpdate: Boolean? = null,
   ) =
     tracker.logServiceDeprecated(
+      deprecationStatus,
       AppQualityInsightsUsageEvent.ServiceDeprecationInfo.Panel.TAB_PANEL,
       DevServiceDeprecationInfo.DeliveryType.PANEL,
       userNotified,

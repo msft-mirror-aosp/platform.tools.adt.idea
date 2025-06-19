@@ -16,15 +16,16 @@
 package com.android.tools.idea.compose.preview.resize
 
 import com.android.SdkConstants
-import com.android.resources.Density
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.State
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
+import com.android.tools.idea.compose.preview.analytics.ComposeResizeToolingUsageTracker
+import com.android.tools.idea.compose.preview.analytics.resizeMode
 import com.android.tools.idea.compose.preview.message
-import com.android.tools.idea.compose.preview.util.getDimensionsInDp
+import com.android.tools.idea.compose.preview.util.deviceSizeDp
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.configurations.DeviceGroup
 import com.android.tools.idea.configurations.ReferenceDevice
@@ -34,6 +35,8 @@ import com.android.tools.idea.preview.util.getSdkDevices
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.visual.getDeviceGroupsSortedAsMap
 import com.android.tools.preview.UNDEFINED_DIMENSION
+import com.android.tools.preview.config.ConversionUtil
+import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
@@ -62,7 +65,6 @@ import javax.swing.JButton
 import javax.swing.JFormattedTextField
 import javax.swing.SwingConstants
 import javax.swing.text.NumberFormatter
-import kotlin.math.roundToInt
 import org.jetbrains.annotations.TestOnly
 
 private const val textFieldWidth = 60
@@ -217,7 +219,10 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     currentSceneManager?.sceneRenderConfiguration?.clearOverrideRenderSize = true
     currentSceneManager?.forceNextResizeToWrapContent = isOriginalPreviewSizeModeWrap()
     currentConfiguration?.setEffectiveDevice(originalDeviceSnapshot, originalDeviceStateSnapshot)
-
+    ComposeResizeToolingUsageTracker.logResizeReverted(
+      currentSceneManager?.scene?.designSurface,
+      currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
+    )
     hasBeenResized = false
   }
 
@@ -291,6 +296,12 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
       revertResizing()
     } else if (selectedItem is DropDownListItem.DeviceItem) {
       currentConfiguration?.setDevice(selectedItem.device, false)
+      ComposeResizeToolingUsageTracker.logResizeStopped(
+        currentSceneManager?.scene?.designSurface,
+        currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
+        ResizeComposePreviewEvent.ResizeSource.DROPDOWN,
+        selectedItem.device.id,
+      )
     }
   }
 
@@ -409,7 +420,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     val newHeightDp = heightTextField.text.toIntOrNull()
 
     if (newWidthDp != null && newHeightDp != null && newWidthDp > 0 && newHeightDp > 0) {
-      val (currentConfigWidthDp, currentConfigHeightDp) = getDimensionsInDp(config)
+      val (currentConfigWidthDp, currentConfigHeightDp) = config.deviceSizeDp()
       if (newWidthDp == currentConfigWidthDp && newHeightDp == currentConfigHeightDp) {
         return
       }
@@ -418,9 +429,18 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
         LOG.warn("Cannot update screen size, invalid DPI: $dpi")
         return
       }
-      val widthPx = (newWidthDp * dpi / Density.DEFAULT_DENSITY.toFloat()).roundToInt()
-      val heightPx = (newHeightDp * dpi / Density.DEFAULT_DENSITY.toFloat()).roundToInt()
-      config.updateScreenSize(widthPx, heightPx)
+      config.updateScreenSize(
+        ConversionUtil.dpToPx(newWidthDp, dpi),
+        ConversionUtil.dpToPx(newHeightDp, dpi),
+      )
+      ComposeResizeToolingUsageTracker.logResizeStopped(
+        currentSceneManager?.scene?.designSurface,
+        currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
+        newWidthDp,
+        newHeightDp,
+        dpi,
+        ResizeComposePreviewEvent.ResizeSource.TEXT_FIELD,
+      )
     }
   }
 
@@ -453,7 +473,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
       devicePickerButton.text = message("device.name.custom")
     }
 
-    val (wDp, hDp) = getDimensionsInDp(config)
+    val (wDp, hDp) = config.deviceSizeDp()
     widthTextField.text = wDp.toString()
     heightTextField.text = hDp.toString()
 
