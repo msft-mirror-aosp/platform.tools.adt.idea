@@ -23,9 +23,9 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.project.AndroidNewProjectInitializationStartupActivity
+import com.android.tools.idea.gradle.project.importing.GradleNewProjectConfiguration
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
 import com.android.tools.idea.gradle.run.MakeBeforeRunTaskProviderUtil
-import com.android.tools.idea.gradle.util.CompatibleGradleVersion.Companion.getCompatibleGradleVersion
 import com.android.tools.idea.gradle.util.GradleWrapper
 import com.android.tools.idea.npw.module.recipes.androidProject.androidProjectRecipe
 import com.android.tools.idea.npw.project.DomainToPackageExpression
@@ -75,6 +75,8 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.pom.java.LanguageLevel
+import org.jetbrains.android.util.AndroidBundle.message
+import org.jetbrains.android.util.AndroidUtils
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -82,9 +84,6 @@ import java.nio.file.Paths
 import java.util.Locale
 import java.util.Optional
 import java.util.regex.Pattern
-import org.gradle.util.GradleVersion
-import org.jetbrains.android.util.AndroidBundle.message
-import org.jetbrains.android.util.AndroidUtils
 
 private val logger: Logger
   get() = logger<NewProjectModel>()
@@ -278,9 +277,10 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     saveWizardState()
   }
 
-  private inner class ProjectTemplateRenderer : MultiTemplateRenderer.TemplateRenderer {
+  @VisibleForTesting
+  inner class ProjectTemplateRenderer : MultiTemplateRenderer.TemplateRenderer {
 
-    private lateinit var gradleVersion: GradleVersion
+    private lateinit var projectTemplateData: ProjectTemplateData
 
     @WorkerThread
     override fun init() {
@@ -288,7 +288,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         this@NewProjectModel.agpVersionSelector
           .get()
           .resolveVersion(AgpVersions::getAvailableVersions)
-      projectTemplateDataBuilder.apply {
+      projectTemplateData = projectTemplateDataBuilder.apply {
         topOut = File(project.basePath ?: "")
         androidXSupport = true
 
@@ -296,8 +296,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         language = this@NewProjectModel.language.value
         agpVersion = resolvedAgpVersion
         additionalMavenRepos = this@NewProjectModel.additionalMavenRepos.get()
-      }
-      gradleVersion = getCompatibleGradleVersion(resolvedAgpVersion).version
+      }.build()
     }
 
     @WorkerThread
@@ -311,8 +310,16 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     }
 
     @WorkerThread
+    override fun onSourcesCreated() {
+      GradleProjectImporter.configureNewProject(project, GradleNewProjectConfiguration(
+        useDefaultDaemonJvmCriteria = true
+      ))
+    }
+
+    @WorkerThread
     override fun render() {
       performCreateProject(false)
+      updateDistributionUrl()
 
       try {
         val projectRoot = VfsUtilCore.virtualToIoFile(project.baseDir)
@@ -328,7 +335,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
           project,
           null,
           "New Project",
-          projectTemplateDataBuilder.build(),
+          projectTemplateData,
           showErrors = true,
           dryRun = dryRun,
           moduleRoot = null,
@@ -348,20 +355,20 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       recipe.render(context, executor, AndroidStudioEvent.TemplateRenderer.ANDROID_PROJECT)
     }
 
+    private fun updateDistributionUrl() {
+      val rootLocation = File(projectLocation.get())
+      val wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation)
+      try {
+        GradleWrapper.get(wrapperPropertiesFilePath, project).updateDistributionUrl(projectTemplateData.gradleVersion)
+      } catch (e: IOException) {
+        // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails
+        // and the error message has a "quick fix".
+        logger.warn("Failed to update Gradle wrapper file", e)
+      }
+    }
+
     @UiThread
     override fun finish() {
-      fun updateDistributionUrl() {
-        val rootLocation = File(projectLocation.get())
-        val wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation)
-        try {
-          GradleWrapper.get(wrapperPropertiesFilePath, project).updateDistributionUrl(gradleVersion)
-        } catch (e: IOException) {
-          // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails
-          // and the error message has a "quick fix".
-          logger.warn("Failed to update Gradle wrapper file", e)
-        }
-      }
-
       fun performGradleImport() =
         try {
           val sdkData = AndroidSdks.getInstance().tryToChooseAndroidSdk()
@@ -392,7 +399,6 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         return
       }
 
-      updateDistributionUrl()
       performGradleImport()
     }
 

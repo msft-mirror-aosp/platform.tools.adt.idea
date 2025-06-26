@@ -17,7 +17,6 @@ package com.android.tools.idea.projectsystem
 
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.ide.common.repository.GradleCoordinate
-import com.android.ide.common.repository.GradleVersion
 import com.android.ide.common.repository.WellKnownMavenArtifactId
 import com.android.ide.common.resources.AndroidManifestPackageNameUtils
 import com.android.ide.common.util.PathString
@@ -120,8 +119,8 @@ class TestProjectSystem @JvmOverloads constructor(
   /**
    * Adds the given artifact to the given module's list of dependencies.
    */
-  fun addDependency(artifactId: GoogleMavenArtifactId, module: Module, mavenVersion: GradleVersion) {
-    val coordinate = artifactId.getCoordinate(mavenVersion.toString())
+  fun addDependency(artifactId: GoogleMavenArtifactId, module: Module, testVersion: TestVersion) {
+    val coordinate = artifactId.getCoordinate(testVersion.toString())
     dependenciesByModule.put(module, Dependency(DependencyType.IMPLEMENTATION, coordinate))
   }
 
@@ -218,8 +217,10 @@ class TestProjectSystem @JvmOverloads constructor(
           TestRegisteredDependencyId(it.coordinate)
         }
 
-      override fun getResolvedDependency(coordinate: GradleCoordinate, scope: DependencyScopeType): GradleCoordinate? =
-        dependenciesByModule[module].map { it.coordinate }.firstOrNull { it.matches(coordinate) }
+      override fun hasResolvedDependency(id: WellKnownMavenArtifactId, scope: DependencyScopeType): Boolean =
+        id.getCoordinate("+").let { coordinate ->
+          dependenciesByModule[module].map { it.coordinate }.firstOrNull { it.matches(coordinate) } != null
+        }
 
       override fun getModuleTemplates(targetDirectory: VirtualFile?): List<NamedModuleTemplate> =
         listOfNotNull(
@@ -370,6 +371,28 @@ class TestProjectSystem @JvmOverloads constructor(
   override fun findModulesWithApplicationId(applicationId: String): Collection<Module> {
     return emptyList()
   }
+}
+
+sealed interface TestVersion {
+  companion object {
+    @JvmStatic
+    fun create(parts: List<Int>): TestVersion = NumericTestVersion(parts)
+    @JvmStatic
+    fun create(vararg parts: Int): TestVersion = create(parts.toList())
+    @JvmField
+    val WILD: TestVersion = SpecialTestVersion.WILD
+  }
+}
+
+data class NumericTestVersion(val parts: List<Int>): TestVersion {
+  override fun toString() = parts.joinToString(".")
+}
+
+enum class SpecialTestVersion(val string: String): TestVersion {
+  WILD("+")
+  ;
+
+  override fun toString() = string
 }
 
 class TestProjectSystemBuildManager(

@@ -16,12 +16,14 @@
 package com.android.tools.idea.streaming.actions
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
+import com.android.tools.adtui.actions.createTestEvent
+import com.android.tools.adtui.actions.executeAction
+import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findAllDescendants
 import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.streaming.core.DeviceId
-import com.android.tools.idea.streaming.createTestEvent
 import com.android.tools.idea.streaming.device.DeviceClient
 import com.android.tools.idea.streaming.device.DeviceDisplayPanel
 import com.android.tools.idea.streaming.device.DeviceView
@@ -30,9 +32,7 @@ import com.android.tools.idea.streaming.device.FakeScreenSharingAgentRule.FakeDe
 import com.android.tools.idea.streaming.device.UNKNOWN_ORIENTATION
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.emulator.FakeEmulator
-import com.android.tools.idea.streaming.executeStreamingAction
 import com.android.tools.idea.streaming.extractText
-import com.android.tools.idea.streaming.updateAndGetActionPresentation
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.Presentation
@@ -81,7 +81,7 @@ class StreamingHardwareInputActionTest {
     val action = StreamingHardwareInputAction()
     val view = emulatorViewRule.newEmulatorView(FakeEmulator::createPhoneAvd)
 
-    executeStreamingAction(action, view, project)
+    executeAction(action, view, project)
     val presentation = updateAndGetActionPresentation(action, view, project)
 
     assertThat(presentation.isEnabled).isTrue()
@@ -94,7 +94,7 @@ class StreamingHardwareInputActionTest {
     val action = StreamingHardwareInputAction()
     val view = emulatorViewRule.newEmulatorView(FakeEmulator::createPhoneAvd)
 
-    executeStreamingAction(action, view, project)
+    executeAction(action, view, project)
 
     assertThat(action.isSelected(createTestEvent(view, project))).isTrue()
   }
@@ -105,7 +105,7 @@ class StreamingHardwareInputActionTest {
     val view = createDeviceView(agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280)))
     assertThat(action.isSelected(createTestEvent(view, project))).isFalse()
 
-    executeStreamingAction(action, view, project)
+    executeAction(action, view, project)
 
     assertThat(action.isSelected(createTestEvent(view, project))).isTrue()
   }
@@ -118,7 +118,7 @@ class StreamingHardwareInputActionTest {
     assertThat(action.isSelected(createTestEvent(view1, project))).isFalse()
     assertThat(action.isSelected(createTestEvent(view2, project))).isFalse()
 
-    executeStreamingAction(action, view1, project)
+    executeAction(action, view1, project)
 
     assertThat(action.isSelected(createTestEvent(view1, project))).isTrue()
     assertThat(action.isSelected(createTestEvent(view2, project))).isFalse()

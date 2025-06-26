@@ -17,7 +17,14 @@ package com.android.tools.idea.ui.screenshot
 
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.adtui.ImageUtils
+import com.android.tools.adtui.device.SkinDefinition
+import java.awt.AlphaComposite
+import java.awt.Color
 import java.awt.Dimension
+import java.awt.Graphics2D
+import java.awt.Rectangle
+import java.awt.geom.Area
+import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
 import kotlin.math.roundToInt
 
@@ -27,21 +34,17 @@ class ScreenshotImage(
   val deviceType: DeviceType,
   val deviceName: String,
   val displayId: Int,
-  private val displayInfo: String = "",
+  val displaySize: Dimension = Dimension(),
+  // Display density in dpi, or zero if not available. Please keep in mind that some devices,
+  // e.g. Android TV, report fictitious display density.
+  val displayDensity: Int = 0,
+  val isRoundDisplay: Boolean = false,
 ) {
 
   val width: Int
     get() = image.width
   val height: Int
     get() = image.height
-
-  // True is the display is round.
-  val isRoundDisplay: Boolean = displayInfo.contains("FLAG_ROUND")
-  // Size of the display in pixels.
-  val displaySize: Dimension? = computeDisplaySize()
-  // Display density in dpi, or Double.NaN if not available. Please keep in mind that some devices,
-  // e.g. Android TV, report fictitious display density.
-  val displayDensity: Double = computeDisplayDensity()
 
   val isWear: Boolean
     get() = deviceType == DeviceType.WEAR
@@ -65,28 +68,53 @@ class ScreenshotImage(
       deviceType = deviceType,
       deviceName = deviceName,
       displayId = displayId,
-      displayInfo = displayInfo,
+      displaySize = displaySize,
+      displayDensity = displayDensity,
+      isRoundDisplay = isRoundDisplay,
     )
   }
 
-  private fun computeDisplaySize(): Dimension? {
-    val (width, height) = Regex("(\\d+) x (\\d+)").find(displayInfo)?.destructured ?: return null
-    return try {
-      Dimension(width.toInt(), height.toInt())
+  fun decorate(drawFrame: Boolean, skinDefinition: SkinDefinition, backgroundColor: Color?): BufferedImage {
+    val w = image.width
+    val h = image.height
+    val skin = skinDefinition.createScaledLayout(w, h, screenshotOrientationQuadrants)
+    val arcWidth = skin.displayCornerSize.width
+    val arcHeight = skin.displayCornerSize.height
+    if (drawFrame) {
+      val frameRectangle = skin.frameRectangle
+      @Suppress("UndesirableClassUsage")
+      val decoratedImage = BufferedImage(frameRectangle.width, frameRectangle.height, BufferedImage.TYPE_INT_ARGB)
+      val graphics = decoratedImage.createGraphics()
+      val displayRectangle = Rectangle(-frameRectangle.x, -frameRectangle.y, w, h)
+      graphics.drawImageWithRoundedCorners(image, displayRectangle, arcWidth, arcHeight)
+      skin.drawFrameAndMask(graphics, displayRectangle)
+      graphics.dispose()
+      return decoratedImage
     }
-    catch (_: NumberFormatException) {
-      null
+
+    @Suppress("UndesirableClassUsage")
+    val decoratedImage = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+    val graphics = decoratedImage.createGraphics()
+    val displayRectangle = Rectangle(0, 0, w, h)
+    graphics.drawImageWithRoundedCorners(image, displayRectangle, arcWidth, arcHeight)
+    graphics.composite = AlphaComposite.getInstance(AlphaComposite.DST_OUT)
+    skin.drawFrameAndMask(graphics, displayRectangle) // Erase the part of the image overlapping with the frame.
+    if (backgroundColor != null) {
+      graphics.color = backgroundColor
+      graphics.composite = AlphaComposite.getInstance(AlphaComposite.DST_OVER)
+      graphics.fillRect(0, 0, image.width, image.height)
     }
+    graphics.dispose()
+    return decoratedImage
   }
 
-  private fun computeDisplayDensity(): Double {
-    val (density) = Regex("density (\\d+)").find(displayInfo)?.destructured ?: return Double.NaN
-    return try {
-      density.toDouble()
+  private fun Graphics2D.drawImageWithRoundedCorners(image: BufferedImage, displayRectangle: Rectangle, arcWidth: Int, arcHeight: Int) {
+    if (arcWidth > 0 && arcHeight > 0) {
+      clip = Area(RoundRectangle2D.Double(displayRectangle.x.toDouble(), displayRectangle.y.toDouble(),
+                                          displayRectangle.width.toDouble(), displayRectangle.height.toDouble(),
+                                          arcWidth.toDouble(), arcHeight.toDouble()))
     }
-    catch (_: NumberFormatException) {
-      Double.NaN
-    }
+    drawImage(image, null, displayRectangle.x, displayRectangle.y)
+    clip = null
   }
 }
-

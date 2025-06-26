@@ -72,11 +72,13 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   // Needed for GetCurrentTime
   private val service = FakeTransportService(timer)
+
   @get:Rule
   var grpcChannel = FakeGrpcChannel("LeakCanaryLogcatCommandHandlerTest", service)
   private val channel: ManagedChannel = InProcessChannelBuilder.forName(grpcChannel.name).usePlaintext().directExecutor().build()
   private var transportServiceGrpc = TransportServiceGrpc.newBlockingStub(channel)
   private val startTime = System.nanoTime()
+
   // endTime should be greater than startTime
   private val endTime = System.nanoTime() + 10000000
 
@@ -264,6 +266,7 @@ class LeakCanaryLogcatCommandHandlerTest {
     // Simulate some delay to allow coroutines to process
     waitForEvent(this)
     // All leaks in logcat are detected and added to queue along with start event.
+    deleteIncompleteLeaksFromQueue()
     assertEquals(mockEventQueue.size, 5)
     var index = 0
     verifyStartEvent()
@@ -304,6 +307,7 @@ class LeakCanaryLogcatCommandHandlerTest {
     waitForEvent(this)
 
     // Only complete leak is taken into consideration and incomplete leaks are eliminated
+    deleteIncompleteLeaksFromQueue()
     assertEquals(mockEventQueue.size, 2)
 
     verifyStartEvent()
@@ -319,10 +323,10 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   private fun verifyStartEvent() {
     val startEvent = mockEventQueue.poll()
-    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_INFO, startEvent.kind)
+    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS, startEvent.kind)
     assertEquals(123, startEvent.groupId)
-    assertEquals(startTime, startEvent.leakCanaryLogcatInfo.logcatStarted.timestamp)
-    assertEquals(0, startEvent.leakCanaryLogcatInfo.logcatEnded.startTimestamp)
+    assertEquals(startTime, startEvent.leakCanaryLogcatStatus.logcatStarted.timestamp)
+    assertEquals(0, startEvent.leakCanaryLogcatStatus.logcatEnded.startTimestamp)
   }
 
   private fun verifyEndEvent() {
@@ -331,12 +335,12 @@ class LeakCanaryLogcatCommandHandlerTest {
     assertEquals(mockEventQueue.size, 2) // End event is received
     val leakInfoEndEvent = mockEventQueue.poll()
     val sessionEndEvent = mockEventQueue.poll()
-    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_INFO, leakInfoEndEvent.kind)
+    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS, leakInfoEndEvent.kind)
     assertEquals(123, leakInfoEndEvent.groupId)
-    assertEquals(startTime, leakInfoEndEvent.leakCanaryLogcatInfo.logcatEnded.startTimestamp)
+    assertEquals(startTime, leakInfoEndEvent.leakCanaryLogcatStatus.logcatEnded.startTimestamp)
     assertTrue(leakInfoEndEvent.isEnded)
-    assertEquals(endTime, leakInfoEndEvent.leakCanaryLogcatInfo.logcatEnded.endTimestamp)
-    assertEquals(LeakCanary.LeakCanaryLogcatEnded.Status.SUCCESS, leakInfoEndEvent.leakCanaryLogcatInfo.logcatEnded.status)
+    assertEquals(endTime, leakInfoEndEvent.leakCanaryLogcatStatus.logcatEnded.endTimestamp)
+    assertEquals(LeakCanary.LeakCanaryLogcatEnded.Status.SUCCESS, leakInfoEndEvent.leakCanaryLogcatStatus.logcatEnded.status)
 
     assertEquals(Common.Event.Kind.SESSION, sessionEndEvent.kind)
     assertEquals(0, sessionEndEvent.groupId)
@@ -367,7 +371,7 @@ class LeakCanaryLogcatCommandHandlerTest {
     return handler.shouldHandle(command)
   }
 
-  private fun mockProjectDevice(disposable: Disposable ,app: MockApplication) {
+  private fun mockProjectDevice(disposable: Disposable, app: MockApplication) {
     val projectManagerMock = mock(ProjectManager::class.java)
     val projectMock = spy(MockProjectEx(disposable))
     projectMock.registerService(LogcatService::class.java, mockLogcatService)
@@ -399,6 +403,14 @@ class LeakCanaryLogcatCommandHandlerTest {
       }
     }
     return resultList
+  }
+
+  private fun deleteIncompleteLeaksFromQueue() {
+    mockEventQueue.removeIf { event ->
+      val analysisDurationString = event.leakcanaryLogcat.logcatMessage.split("\n").find { "Analysis duration" in it } ?: ""
+      val isIncompleteTrace = analysisDurationString.split(":").last().trim() == "-1 ms"
+      isIncompleteTrace
+    }
   }
 
   companion object {

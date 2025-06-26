@@ -30,7 +30,7 @@ import com.android.tools.idea.ui.util.getPhysicalDisplayIdFromDumpsysOutput
 import com.google.common.base.Throwables.throwIfUnchecked
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import java.awt.Dimension
 
 private val commandTimeout = INFINITE_DURATION
 
@@ -46,8 +46,6 @@ class ShellCommandScreenshotProvider(
 
   private val coroutineScope = createCoroutineScope()
   private val adbLibService = AdbLibService.getInstance(project)
-  private val deviceDisplayInfoRegex =
-      Regex("\\s(DisplayDeviceInfo\\W.* state ON,.*)\\s\\S]*?\\s+mCurrentLayerStack=$displayId\\W", RegexOption.MULTILINE)
 
   /** This simplified constructor is intended exclusively for use in TestRecorderScreenshotTask. */
   constructor(project: Project, serialNumber: String) : this(project, serialNumber, DeviceType.HANDHELD, "Device", PRIMARY_DISPLAY_ID)
@@ -68,31 +66,26 @@ class ShellCommandScreenshotProvider(
       adbLibService.session.deviceServices.screenCapAsBufferedImage(deviceSelector, physicalDisplayId)
     }
 
-    return runBlocking {
-      try {
-        val dumpsysOutput = dumpsysJob.await()
-        ProgressManagerAdapter.checkCanceled()
-        val displayInfo = extractDeviceDisplayInfo(dumpsysOutput)
-        ProgressManagerAdapter.checkCanceled()
-        val image = screenshotJob.await()
-        ProgressManagerAdapter.checkCanceled()
-        val screenshotRotation = displayInfoProvider?.getScreenshotRotation(displayId) ?: 0
-        val rotatedImage = ImageUtils.rotateByQuadrants(image, screenshotRotation)
-        val orientation = displayInfoProvider?.getDisplayOrientation(displayId) ?: 0
-        ScreenshotImage(rotatedImage, orientation, deviceType, deviceName, displayId, displayInfo)
-      }
-      catch (e: Throwable) {
-        throwIfUnchecked(e)
-        throw RuntimeException(e)
-      }
+    try {
+      val dumpsysOutput = dumpsysJob.await()
+      ProgressManagerAdapter.checkCanceled()
+      val displayInfo = DumpsysDisplayDeviceInfoParser.getActiveDisplays(dumpsysOutput).find { it.logicalId == displayId }
+      ProgressManagerAdapter.checkCanceled()
+      val image = screenshotJob.await()
+      ProgressManagerAdapter.checkCanceled()
+      val screenshotRotation = displayInfoProvider?.getScreenshotRotation(displayId) ?: 0
+      val rotatedImage = ImageUtils.rotateByQuadrants(image, screenshotRotation)
+      val orientation = displayInfoProvider?.getDisplayOrientation(displayId) ?: displayInfo?.orientationQuadrants ?: 0
+      val displaySize = displayInfoProvider?.getDisplaySize(displayId) ?: displayInfo?.size ?: Dimension()
+      val displayDensity = displayInfo?.density ?: 0
+      val isRoundDisplay = displayInfo?.isRound ?: false
+      return ScreenshotImage(rotatedImage, orientation, deviceType, deviceName, displayId, displaySize, displayDensity, isRoundDisplay)
+    }
+    catch (e: Throwable) {
+      throwIfUnchecked(e)
+      throw RuntimeException(e)
     }
   }
-
-  /**
-   * Returns the first line starting with "DisplayDeviceInfo".
-   */
-  private fun extractDeviceDisplayInfo(dumpsysOutput: String): String =
-    deviceDisplayInfoRegex.find(dumpsysOutput)?.groupValues?.get(1) ?: ""
 
   override fun dispose() {}
 }

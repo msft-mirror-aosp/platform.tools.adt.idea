@@ -20,12 +20,13 @@ import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.State
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
+import com.android.tools.configurations.ConversionUtil
+import com.android.tools.configurations.deviceSizeDp
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.analytics.ComposeResizeToolingUsageTracker
 import com.android.tools.idea.compose.preview.analytics.resizeMode
 import com.android.tools.idea.compose.preview.message
-import com.android.tools.idea.compose.preview.util.deviceSizeDp
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.configurations.DeviceGroup
 import com.android.tools.idea.configurations.ReferenceDevice
@@ -35,7 +36,6 @@ import com.android.tools.idea.preview.util.getSdkDevices
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.visual.getDeviceGroupsSortedAsMap
 import com.android.tools.preview.UNDEFINED_DIMENSION
-import com.android.tools.preview.config.ConversionUtil
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
@@ -68,6 +68,9 @@ import javax.swing.text.NumberFormatter
 import org.jetbrains.annotations.TestOnly
 
 private const val textFieldWidth = 60
+
+private const val minimumSizeDp = 1
+private const val maximumSizeDp = 5000
 
 /**
  * Panel that allows resizing the preview by selecting a device or entering custom dimensions. It is
@@ -160,7 +163,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     devicePickerButton = setupDevicePickerButton()
 
     val formatter = NumberFormatter(NumberFormat.getIntegerInstance())
-    formatter.minimum = 1
+    formatter.minimum = minimumSizeDp
+    formatter.maximum = maximumSizeDp
     widthTextField = JFormattedTextField(formatter)
     heightTextField = JFormattedTextField(formatter)
 
@@ -295,7 +299,10 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     if (selectedItem is DropDownListItem.OriginalItem) {
       revertResizing()
     } else if (selectedItem is DropDownListItem.DeviceItem) {
-      currentConfiguration?.setDevice(selectedItem.device, false)
+      currentConfiguration?.setEffectiveDevice(
+        selectedItem.device,
+        selectedItem.device.defaultState,
+      )
       ComposeResizeToolingUsageTracker.logResizeStopped(
         currentSceneManager?.scene?.designSurface,
         currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
@@ -416,8 +423,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
 
   private fun updateConfigurationFromTextFields() {
     val config = currentConfiguration ?: return
-    val newWidthDp = widthTextField.text.toIntOrNull()
-    val newHeightDp = heightTextField.text.toIntOrNull()
+    val newWidthDp = widthTextField.value as? Int
+    val newHeightDp = heightTextField.value as? Int
 
     if (newWidthDp != null && newHeightDp != null && newWidthDp > 0 && newHeightDp > 0) {
       val (currentConfigWidthDp, currentConfigHeightDp) = config.deviceSizeDp()
@@ -474,8 +481,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     }
 
     val (wDp, hDp) = config.deviceSizeDp()
-    widthTextField.text = wDp.toString()
-    heightTextField.text = hDp.toString()
+    widthTextField.value = wDp
+    heightTextField.value = hDp
 
     setEnabledIncludingChildren(true)
 

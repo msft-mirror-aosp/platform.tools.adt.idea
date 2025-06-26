@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.gradle.extensions
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.registry.Registry
 import org.gradle.util.GradleVersion
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
@@ -51,3 +53,7 @@ fun GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(
     isProjectUsingDaemonJvmCriteria(rootProjectPath, it)
   } ?: false
 }
+
+fun GradleDaemonJvmHelper.isDaemonJvmCriteriaRequiredForNewProjects(gradleVersion: GradleVersion) =
+  Registry.`is`("gradle.daemon.jvm.criteria.new.project") &&
+  gradleVersion >= GradleVersion.version(StudioFlags.NPW_DAEMON_JVM_CRITERIA_REQUIRED_GRADLE_VERSION.get())

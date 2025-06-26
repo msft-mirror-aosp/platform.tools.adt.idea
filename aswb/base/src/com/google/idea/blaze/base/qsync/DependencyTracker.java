@@ -21,6 +21,7 @@ import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.exception.BuildException;
 import com.google.idea.blaze.qsync.deps.OutputGroup;
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage;
+import com.google.idea.common.experiments.BoolExperiment;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -32,6 +33,8 @@ import java.util.stream.Collectors;
  * dependencies.
  */
 public interface DependencyTracker {
+  BoolExperiment gatherJdeps =
+    new BoolExperiment("qsync.gather.jdeps", false);
 
   /**
    * Builds the external dependencies of the given target(s), putting the resultant libraries in the
@@ -42,7 +45,7 @@ public interface DependencyTracker {
 
   /** Request to {@link #buildDependenciesForTargets(BlazeContext, DependencyBuildRequest)}. */
   class DependencyBuildRequest {
-    enum RequestType {
+    public enum RequestType {
       /**
        * Build multiple targets and mark all dependencies as built even if they produce no
        * artifacts.
@@ -72,16 +75,16 @@ public interface DependencyTracker {
       return new DependencyBuildRequest(RequestType.WHOLE_PROJECT, ImmutableSet.of());
     }
 
-    public static DependencyBuildRequest filePreviews(Collection<Label> targets) {
-      return new DependencyBuildRequest(RequestType.FILE_PREVIEWS, ImmutableSet.copyOf(targets));
+    public Collection<OutputGroup> getOutputGroups(Collection<QuerySyncLanguage> languages) {
+      return getOutputGroups(languages, requestType);
     }
 
-    public Collection<OutputGroup> getOutputGroups(Collection<QuerySyncLanguage> languages) {
+    public static Collection<OutputGroup> getOutputGroups(Collection<QuerySyncLanguage> languages, RequestType type) {
       var outputGroups = languages.stream()
         .mapMulti(DependencyBuildRequest::languageToOutputGroups)
         .collect(Collectors.toCollection(() -> EnumSet.noneOf(OutputGroup.class)));
 
-      if (requestType.equals(RequestType.FILE_PREVIEWS)) {
+      if (type.equals(RequestType.FILE_PREVIEWS)) {
         outputGroups.add(OutputGroup.TRANSITIVE_RUNTIME_JARS);
       }
 
@@ -95,6 +98,9 @@ public interface DependencyTracker {
           consumer.accept(OutputGroup.AARS);
           consumer.accept(OutputGroup.GENSRCS);
           consumer.accept(OutputGroup.ARTIFACT_INFO_FILE);
+          if (gatherJdeps.getValue()) {
+            consumer.accept(OutputGroup.JDEPS);
+          }
         }
         case CC -> {
           consumer.accept(OutputGroup.CC_HEADERS);
@@ -103,4 +109,6 @@ public interface DependencyTracker {
       }
     }
   }
+
+  DependencyBuilder getBuilder();
 }

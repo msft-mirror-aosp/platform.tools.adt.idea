@@ -5,13 +5,14 @@ aswb_library(
     name = "deps",
     srcs = glob(["*.java"]),
     visibility = [
-        "//tools/adt/idea/aswb/querysync:__subpackages__",
+        "//tools/adt/idea/aswb:__subpackages__",
         "//tools/vendor/google3/aswb/javatests/com/google/devtools/intellij/blaze/plugin/aswb:__subpackages__",
     ],
     deps = [
         ":artifact_tracker_state_java_proto",
         "//tools/adt/idea/aswb/common/experiments",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/artifacts:build_artifact_java_proto",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/cc:cc_compilation_info_java_proto",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/java:java_target_info_java_proto",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
@@ -20,6 +21,7 @@ aswb_library(
         "//tools/adt/idea/aswb/shared:artifact",
         "//tools/adt/idea/aswb/shared:proto",
         "//tools/adt/idea/aswb/shared:vcs",
+        "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:deps_java_proto",
         "//tools/adt/idea/aswb/third_party/java/auto_value",
         "//tools/vendor/google/aswb/plugin_api",
         "@maven//:com.google.guava.guava",

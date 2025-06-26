@@ -1265,6 +1265,7 @@ fun AndroidProjectStubBuilder.buildAndroidProjectStub(): IdeAndroidProjectImpl {
         false
       )
     },
+    coreVariants = this.variants,
     flavorDimensions = this.flavorDimensions.orEmpty(),
     compileTarget = getLatestAndroidPlatform(),
     bootClasspath = listOf(),
@@ -1965,7 +1966,7 @@ private fun createJavaModuleDataNode(
           gradlePath,
           moduleBasePath,
           listOf(),
-          null,
+          moduleBasePath.resolve("build.gradle"),
           null,
           null,
           false,

@@ -17,6 +17,10 @@ package com.android.tools.idea.compose.preview.util
 
 import com.android.tools.compose.COMPOSE_PREVIEW_ANNOTATION_FQN
 import com.android.tools.configurations.Configuration
+import com.android.tools.configurations.deviceSizeDp
+import com.android.tools.idea.compose.pickers.preview.enumsupport.UiMode
+import com.android.tools.idea.compose.pickers.preview.enumsupport.Wallpaper
+import com.android.tools.idea.configurations.ReferenceDevice
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.android.tools.preview.ConfigurablePreviewElement
 import com.android.tools.preview.NO_DEVICE_SPEC
@@ -24,7 +28,77 @@ import com.android.tools.preview.UNDEFINED_API_LEVEL
 import com.android.tools.preview.UNSET_UI_MODE_VALUE
 import com.android.tools.preview.config.*
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_CHIN_SIZE_ZERO
+import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_DPI
+import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_ORIENTATION
 import java.util.Locale as JavaUtilLocale
+
+/**
+ * A set of device IDs corresponding to `ReferenceDevice`s. These devices are for tooling and should
+ * not be saved by their ID.
+ */
+private val referenceDeviceIds = ReferenceDevice.getWindowSizeDevices().map { it.id }.toSet()
+
+// region uiModeToString conversion
+
+// Constants mirroring those in android.content.res.Configuration for uiMode bitmasks
+private const val UI_MODE_NIGHT_MASK = 0x30
+private const val UI_MODE_TYPE_MASK = 0x0f
+
+/** Enum representing the `UI_MODE_NIGHT_*` constants. */
+private enum class NightMode(val classConstant: String, val resolvedValue: Int) {
+  NIGHT_NO("UI_MODE_NIGHT_NO", 16),
+  NIGHT_YES("UI_MODE_NIGHT_YES", 32);
+
+  companion object {
+    private val valueMap = entries.associateBy(NightMode::resolvedValue)
+
+    fun fromInt(value: Int): NightMode? = valueMap[value]
+  }
+}
+
+/**
+ * Converts a `uiMode` integer value into a human-readable string of its constant parts by using the
+ * [UiMode] and [NightMode] enums.
+ */
+private fun uiModeToString(uiMode: Int): String {
+  if (uiMode == UNSET_UI_MODE_VALUE) return ""
+
+  val night = uiMode and UI_MODE_NIGHT_MASK
+  val type = uiMode and UI_MODE_TYPE_MASK
+
+  // If there are other bits set besides night/type, we can't represent it cleanly.
+  if ((uiMode and (night or type).inv()) != 0) {
+    return uiMode.toString()
+  }
+
+  val nightString = if (night != 0) NightMode.fromInt(night)?.classConstant else null
+  val typeString = if (type != 0) UiMode.fromInt(type)?.classConstant else null
+
+  val parts = listOfNotNull(nightString, typeString)
+
+  // Fallback to integer if we found parts of the bitmask that don't map to our enums.
+  if ((night != 0 && nightString == null) || (type != 0 && typeString == null)) {
+    return uiMode.toString()
+  }
+
+  return if (parts.isEmpty()) uiMode.toString() else parts.joinToString(" or ")
+}
+
+// endregion
+
+// region wallpaperToString conversion
+
+private fun wallpaperToString(wallpaperValue: Int): String {
+  val wallpaper = Wallpaper.entries.find { it.resolvedValue == wallpaperValue.toString() }
+  // We assume the FQN for Wallpapers will be imported, so we just need the enum class name.
+  return if (wallpaper != null && wallpaper != Wallpaper.NONE) {
+    "Wallpapers.${wallpaper.classConstant}"
+  } else {
+    wallpaperValue.toString() // Fallback for unknown values
+  }
+}
+
+// endregion
 
 /** Appends a parameter-value pair to the StringBuilder. */
 private fun StringBuilder.appendParamValue(parameterName: String, value: String): StringBuilder =
@@ -49,10 +123,14 @@ internal fun createDeviceSpec(configuration: Configuration): String {
   builder.appendParamValue(Preview.DeviceSpec.PARAMETER_WIDTH, "${widthDp}dp")
   builder.appendSeparator()
   builder.appendParamValue(Preview.DeviceSpec.PARAMETER_HEIGHT, "${heightDp}dp")
-  builder.appendSeparator()
-  builder.appendParamValue(Preview.DeviceSpec.PARAMETER_DPI, dpi.toString())
-  builder.appendSeparator()
-  builder.appendParamValue(Preview.DeviceSpec.PARAMETER_ORIENTATION, orientation)
+  if (dpi != DEFAULT_DPI) {
+    builder.appendSeparator()
+    builder.appendParamValue(Preview.DeviceSpec.PARAMETER_DPI, dpi.toString())
+  }
+  if (orientation != DEFAULT_ORIENTATION.name) {
+    builder.appendSeparator()
+    builder.appendParamValue(Preview.DeviceSpec.PARAMETER_ORIENTATION, orientation)
+  }
 
   val currentDeviceConfig = device.toDeviceConfig()
 
@@ -122,10 +200,14 @@ internal fun toPreviewAnnotationText(
       params.add("$PARAMETER_SHOW_BACKGROUND = true")
     }
     if (!displaySettings.backgroundColor.isNullOrBlank()) {
-      val colorNonNull = displaySettings.backgroundColor!!
-      params.add(
-        "$PARAMETER_BACKGROUND_COLOR = ${if (colorNonNull.startsWith("0x")) colorNonNull else "0x$colorNonNull"}"
-      )
+      var colorValue = displaySettings.backgroundColor!!
+      if (colorValue.startsWith("#")) {
+        colorValue = colorValue.substring(1)
+      } else if (colorValue.startsWith("0x", ignoreCase = true)) {
+        colorValue = colorValue.substring(2)
+      }
+      // Ensure the hex value is uppercase to match test expectations and improve consistency.
+      params.add("$PARAMETER_BACKGROUND_COLOR = 0x${colorValue.uppercase()}")
     }
 
     if (previewConfig.apiLevel != UNDEFINED_API_LEVEL) {
@@ -138,22 +220,33 @@ internal fun toPreviewAnnotationText(
       params.add("$PARAMETER_FONT_SCALE = ${previewConfig.fontScale}f")
     }
     if (previewConfig.uiMode != UNSET_UI_MODE_VALUE) {
-      params.add("$PARAMETER_UI_MODE = ${previewConfig.uiMode}")
+      params.add("$PARAMETER_UI_MODE = ${uiModeToString(previewConfig.uiMode)}")
+    }
+    if (previewConfig.wallpaper.toString() != Wallpaper.NONE.resolvedValue) {
+      params.add("$PARAMETER_WALLPAPER = ${wallpaperToString(previewConfig.wallpaper)}")
     }
     if (displaySettings.showDecoration) {
       params.add("$PARAMETER_SHOW_SYSTEM_UI = true")
     }
 
     val targetDevice = configuration.device
-    if (targetDevice != null && targetDevice.id != Configuration.CUSTOM_DEVICE_ID) {
-      // If the current configuration's device is a known, non-custom device, use its ID.
+    val isReferenceDevice = targetDevice != null && referenceDeviceIds.contains(targetDevice.id)
+
+    if (
+      targetDevice != null &&
+        targetDevice.id != Configuration.CUSTOM_DEVICE_ID &&
+        !isReferenceDevice
+    ) {
+      // If the current configuration's device is a known, non-custom device and non-reference
+      // device, use its ID.
       if (targetDevice.id != DEFAULT_DEVICE_ID) {
         // If device is default we can omit device parameter
         params.add("$PARAMETER_DEVICE = \"id:${targetDevice.id}\"")
       }
     } else {
-      if (displaySettings.showDecoration) {
-        val deviceSpec = createDeviceSpec(configuration)
+      val deviceSpec = createDeviceSpec(configuration)
+
+      if (displaySettings.showDecoration || isReferenceDevice) {
         params.add("$PARAMETER_DEVICE = \"$deviceSpec\"")
       } else {
         if (
@@ -161,7 +254,7 @@ internal fun toPreviewAnnotationText(
             previewConfig.deviceSpec != "Devices.DEFAULT"
         ) {
           // if original configuration had device non-default spec we should update it
-          params.add("$PARAMETER_DEVICE = \"${previewConfig.deviceSpec}\"")
+          params.add("$PARAMETER_DEVICE = \"$deviceSpec\"")
         }
         params.add("$PARAMETER_WIDTH_DP = $currentWidthDp")
         params.add("$PARAMETER_HEIGHT_DP = $currentHeightDp")

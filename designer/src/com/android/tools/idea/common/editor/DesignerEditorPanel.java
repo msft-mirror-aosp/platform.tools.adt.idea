@@ -16,6 +16,7 @@
 package com.android.tools.idea.common.editor;
 
 
+import static com.android.tools.idea.actions.DesignerDataKeys.ANIMATION_TOOLBAR;
 import static com.android.tools.idea.common.editor.DefaultModelProviderKt.getDEFAULT_MODEL_PROVIDER;
 
 import com.android.annotations.concurrency.UiThread;
@@ -37,6 +38,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemService;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.rendering.AndroidBuildTargetReference;
 import com.android.tools.idea.startup.ClearResourceCacheAfterFirstBuild;
+import com.android.tools.idea.uibuilder.editor.AnimationToolbar;
 import com.android.tools.idea.uibuilder.editor.NlActionManager;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.surface.NlScreenViewProvider;
@@ -108,7 +110,6 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
   @NotNull private final VirtualFile myFile;
   @NotNull private final DesignSurface<?> mySurface;
   @NotNull private final DesignSurfaceListener mySurfaceListener;
-  @NotNull private final Map<NlModel, ModelListener> myModelToListeners = new HashMap<>();
 
   @NotNull private final ModelLintIssueAnnotator myModelLintIssueAnnotator;
   @NotNull private final Consumer<NlComponent> myComponentRegistrar;
@@ -144,6 +145,17 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
   NotificationPanel myNotificationPanel = new NotificationPanel(
     ExtensionPointName.create("com.android.tools.idea.uibuilder.editorNotificationProvider"));
 
+  /**
+   * Listener to update the issues when the model suffers any updates.
+   */
+  @NotNull
+  private final ModelListener myModelListener = new ModelListener() {
+    @Override
+    public void modelDerivedDataChanged(@NotNull NlModel model) {
+      myModelLintIssueAnnotator.annotateRenderInformationToLint(model);
+    }
+  };
+
   /** {@link IdeView} that allows the IDE to present the correct File menu options by detecting where the current file is located. */
   private final IdeView myIdeView = new IdeView() {
     @Override
@@ -162,6 +174,7 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
       return getFile().getContainingDirectory();
     }
   };
+  private @Nullable AnimationToolbar myAnimationToolbar;
 
   /**
    * Creates a new {@link DesignerEditorPanel}.
@@ -318,6 +331,10 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
       sink.set(SplitEditorKt.getSPLIT_TEXT_EDITOR_KEY(), (TextEditor)fileEditorDelegate);
       sink.set(LangDataKeys.IDE_VIEW, myIdeView);
     }
+
+    if (myAnimationToolbar != null) {
+      sink.set(ANIMATION_TOOLBAR, myAnimationToolbar);
+    }
   }
 
   /**
@@ -326,6 +343,13 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
    */
   void setFileEditorDelegate(TextEditor editor) {
     getSurface().setFileEditorDelegate(editor);
+  }
+
+  /**
+   * Sets the {@link AnimationToolbar} to be used by this surface.
+   */
+  public void setAnimationToolbar(@Nullable AnimationToolbar toolbar) {
+    myAnimationToolbar = toolbar;
   }
 
   @NotNull
@@ -431,26 +455,13 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
 
   @UiThread
   private void initNeleModelOnEventDispatchThread(@NotNull NlModel model) {
-    if (Disposer.isDisposed(model)) {
+    if (model.isDisposed()) {
       return;
     }
 
-    mySurface.getModels()
-      .forEach(it -> {
-        ModelListener listener = myModelToListeners.remove(it);
-        if (listener != null) {
-          it.removeListener(listener);
-        }
-      });
+    mySurface.getModels().forEach(it -> it.removeListener(myModelListener));
     mySurface.setModel(model);
-    ModelListener listener = new ModelListener() {
-      @Override
-      public void modelDerivedDataChanged(@NotNull NlModel model) {
-        myModelLintIssueAnnotator.annotateRenderInformationToLint(model);
-      }
-    };
-    myModelToListeners.put(model, listener);
-    model.addListener(listener);
+    model.addListener(myModelListener);
 
     if (myAccessoryPanel != null) {
       float initialProportion = PropertiesComponent.getInstance().getFloat(ACCESSORY_PROPORTION, 0.5f);
@@ -508,13 +519,7 @@ public class DesignerEditorPanel extends JPanel implements Disposable, UiDataPro
   @Override
   public void dispose() {
     mySurface.removeListener(mySurfaceListener);
-    Set<NlModel> keys = myModelToListeners.keySet();
-    for (NlModel model : keys) {
-      ModelListener listener = myModelToListeners.remove(model);
-      if (listener != null) {
-        model.removeListener(listener);
-      }
-    }
+    mySurface.getModels().forEach((model) -> model.removeListener(myModelListener));
   }
 
   @NotNull

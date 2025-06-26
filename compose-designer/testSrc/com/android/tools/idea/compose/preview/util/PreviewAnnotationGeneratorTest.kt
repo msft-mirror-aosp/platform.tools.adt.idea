@@ -23,6 +23,7 @@ import com.android.sdklib.devices.Hardware
 import com.android.sdklib.devices.Screen
 import com.android.sdklib.devices.State
 import com.android.tools.configurations.Configuration
+import com.android.tools.configurations.DEVICE_CLASS_PHONE_ID
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.preview.ComposePreviewElementInstance
@@ -111,6 +112,7 @@ class PreviewAnnotationGeneratorTest {
     deviceSpec: String? = null,
     widthDp: Int = UNDEFINED_DIMENSION,
     heightDp: Int = UNDEFINED_DIMENSION,
+    wallpaper: Int = -1,
     composableMethodFqn: String = "com.example.MyComposable",
     baseName: String = "MyComposable",
     parameterName: String? = name.ifBlank { null },
@@ -124,6 +126,7 @@ class PreviewAnnotationGeneratorTest {
         fontScale = fontScale,
         uiMode = uiMode,
         device = deviceSpec,
+        wallpaper = wallpaper,
       )
     return SingleComposePreviewElementInstance.forTesting<Any>(
       composableMethodFqn = composableMethodFqn,
@@ -239,7 +242,7 @@ class PreviewAnnotationGeneratorTest {
             apiLevel = 30,
             locale = "fr",
             fontScale = 1.5f,
-            uiMode = 35,
+            uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_CAR,
             widthDp = 400,
             heightDp = 600
         )
@@ -262,7 +265,7 @@ class PreviewAnnotationGeneratorTest {
       @androidx.compose.ui.tooling.preview.Preview(
           name = "ShowSystemUiPreview",
           showSystemUi = true,
-          device = "spec:width=400dp,height=600dp,dpi=160,orientation=portrait"
+          device = "spec:width=400dp,height=600dp,dpi=160"
       )
       """
           .trimIndent()
@@ -362,7 +365,7 @@ class PreviewAnnotationGeneratorTest {
         @androidx.compose.ui.tooling.preview.Preview(
             name = "DevicePortrait",
             showSystemUi = true,
-            device = "spec:width=167dp,height=333dp,dpi=480,orientation=portrait"
+            device = "spec:width=167dp,height=333dp,dpi=480"
         )
       """
           .trimIndent()
@@ -475,6 +478,86 @@ class PreviewAnnotationGeneratorTest {
           name = "DefaultDevicePreview"
       )
       """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `toPreviewAnnotationText with reference device generates device spec`() = runTest {
+    val referenceDeviceId = DEVICE_CLASS_PHONE_ID
+    val configuration = createConfigurationForDevice(referenceDeviceId)
+
+    // showDecoration is false to ensure the spec is generated because it's a reference device,
+    // not because of the decoration.
+    val previewElement =
+      createPreviewElement(name = "ReferenceDevicePreview", showDecoration = false)
+
+    val generatedText =
+      toPreviewAnnotationText(previewElement, configuration, "ReferenceDevicePreview")
+
+    // For a reference device, a 'spec' should be generated instead of an 'id',
+    // as reference devices are for tooling purposes and their IDs are not stable.
+    // The spec for ReferenceDevice.PHONE is 411x891 dp at 420 dpi.
+    assertThat(generatedText)
+      .isEqualTo(
+        """
+      @androidx.compose.ui.tooling.preview.Preview(
+          name = "ReferenceDevicePreview",
+          device = "spec:width=411dp,height=891dp"
+      )
+      """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `toPreviewAnnotationText handles backgroundColor with hash prefix`() = runTest {
+    val previewElement =
+      createPreviewElement(
+        name = "ColorTest",
+        showBackground = true,
+        backgroundColor = "#FF112233", // Color format with hash
+      )
+    val configuration = createConfiguration(width = 100, height = 100)
+
+    val generatedText = toPreviewAnnotationText(previewElement, configuration, "ColorTest")
+
+    assertThat(generatedText)
+      .isEqualTo(
+        """
+        @androidx.compose.ui.tooling.preview.Preview(
+            name = "ColorTest",
+            showBackground = true,
+            backgroundColor = 0xFF112233,
+            widthDp = 100,
+            heightDp = 100
+        )
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `toPreviewAnnotationText preserves wallpaper`() = runTest {
+    val previewElement =
+      createPreviewElement(
+        name = "WallpaperPreview",
+        wallpaper = 1, // Corresponds to Wallpapers.GREEN_DOMINATED_EXAMPLE
+      )
+    val configuration = createConfiguration(width = 400, height = 600)
+
+    val generatedText = toPreviewAnnotationText(previewElement, configuration, "WallpaperPreview")
+
+    assertThat(generatedText)
+      .isEqualTo(
+        """
+        @androidx.compose.ui.tooling.preview.Preview(
+            name = "WallpaperPreview",
+            wallpaper = Wallpapers.GREEN_DOMINATED_EXAMPLE,
+            widthDp = 400,
+            heightDp = 600
+        )
+        """
           .trimIndent()
       )
   }

@@ -196,6 +196,11 @@ public final class StudioFlags {
     NPW, "new.project.compile.sdk", "New project Compile SDK version",
     "SDK version to be used for compileSdk for newly created project.",
     36);
+
+  public static final Flag<String> NPW_DAEMON_JVM_CRITERIA_REQUIRED_GRADLE_VERSION = new StringFlag(
+    NPW, "new.project.daemon.jvm.criteria.gradle.version", "New project Daemon JVM criteria required Gradle version",
+    "The Gradle version required to configure Daemon JVM criteria for newly created projects",
+    "9.1");
   //endregion
 
   //region Memory Usage Reporting
@@ -352,7 +357,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> NELE_BACKGROUND_DISPLAY_LIST = new BooleanFlag(
     NELE, "background.displaylist", "Enable Display List background creation",
     "When enabled, the scene display list is created in the background.",
-    enabledUpTo(CANARY));
+    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> FORCE_MONOCHROME_ADAPTIVE_ICON = new BooleanFlag(
     NELE, "force.monochrome.adaptive.icon", "Display monochrome preview of adaptive icon when none provided",
@@ -2000,6 +2005,12 @@ public final class StudioFlags {
   public static final Flag<Boolean> ALA_SERVICE_COMPATIBILITY_ENABLED =
     new BooleanFlag(APP_LINKS_ASSISTANT, "service.compatibility.enabled", "App Links Assistant service compatibility enabled",
                     "Flag that controls whether service compatibility banner is enabled", true);
+  public static final Flag<Boolean> GEMINI_ADD_LOGIC_FOR_A_NEW_LINK =
+    new BooleanFlag(APP_LINKS_ASSISTANT, "gemini.add.logic.for.a.new.link", "Use Gemini to add deep link logic",
+                    "Use Gemini to add the business logic for a new deep link.", false);
+  public static final Flag<Boolean> MISSING_URLS_FEATURE =
+    new BooleanFlag(APP_LINKS_ASSISTANT, "missing.urls.feature", "Missing URLs feature",
+                    "Add a new tab to display missing URLs and help users fix them.", false);
   // endregion App Links Assistant
 
   // region NEW_COLLECT_LOGS_DIALOG

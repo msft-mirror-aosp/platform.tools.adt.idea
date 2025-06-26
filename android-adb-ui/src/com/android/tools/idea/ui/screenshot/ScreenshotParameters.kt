@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.ui.screenshot
 
-import ai.grazie.annotation.TestOnly
 import com.android.prefs.AndroidLocationsSingleton
 import com.android.resources.ScreenOrientation
 import com.android.resources.ScreenRound
@@ -31,9 +30,9 @@ import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.SkinUtils
 import com.android.tools.idea.ui.AndroidAdbUiBundle
 import com.android.tools.sdk.DeviceManagers
+import com.intellij.openapi.actionSystem.DataKey
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.name
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.log2
@@ -105,29 +104,20 @@ private constructor(
     if (deviceType == DeviceType.HANDHELD || deviceType == DeviceType.AUTOMOTIVE) {
       val displaySize = screenshotImage.displaySize
       val descriptors = DeviceArtDescriptor.getDescriptors(null).associateBy { it.id }
-      if (displaySize != null) {
-        if (deviceType == DeviceType.AUTOMOTIVE) {
-          val automotive = descriptors["automotive_1024"]
-          val screenSize = automotive?.getScreenSize(ScreenOrientation.LANDSCAPE)
-          if (
-            screenSize != null &&
-              abs(
-                screenSize.height.toDouble() / screenSize.width -
-                  displaySize.height.toDouble() / displaySize.width
-              ) < 0.01
-          ) {
-            framingOptions.add(DeviceFramingOption(automotive))
-          }
+      if (deviceType == DeviceType.AUTOMOTIVE) {
+        val automotive = descriptors["automotive_1024"]
+        val screenSize = automotive?.getScreenSize(ScreenOrientation.LANDSCAPE)
+        if (screenSize != null &&
+            abs(screenSize.height.toDouble() / screenSize.width - displaySize.height.toDouble() / displaySize.width) < 0.01) {
+          framingOptions.add(DeviceFramingOption(automotive))
         }
       }
       val displayDensity = screenshotImage.displayDensity
       val diagonalSize =
-        displaySize?.let { hypot(it.width.toDouble(), it.height.toDouble()) / displayDensity }
-          ?: Double.NaN
+          if (displayDensity == 0) Double.NaN else hypot(displaySize.width.toDouble(), displaySize.height.toDouble()) / displayDensity
       val deviceArtId =
         when {
-          deviceType == DeviceType.HANDHELD &&
-            (diagonalSize.isNaN() || diagonalSize < MIN_TABLET_DIAGONAL_SIZE) -> "phone"
+          deviceType == DeviceType.HANDHELD && (diagonalSize.isNaN() || diagonalSize < MIN_TABLET_DIAGONAL_SIZE) -> "phone"
           else -> "tablet"
         }
       descriptors[deviceArtId]?.let { framingOptions.add(DeviceFramingOption(it)) }
@@ -145,7 +135,7 @@ private constructor(
     screenshotImage: ScreenshotImage,
     devices: Collection<Device>,
   ): List<MatchingSkin> {
-    val displaySize = screenshotImage.displaySize ?: return listOf()
+    val displaySize = screenshotImage.displaySize
     val w = displaySize.width.toDouble()
     val h = displaySize.height.toDouble()
     val diagonalSize = hypot(w, h)
@@ -176,8 +166,7 @@ private constructor(
       if (screen.isRound() != screenshotImage.isRoundDisplay) {
         continue
       }
-      val skinFolder =
-        device.skinFolder ?: continue // Not interested in approximate matches without a skin.
+      val skinFolder = device.skinFolder ?: continue // Not interested in approximate matches without a skin.
       val width = screen.xDimension
       val height = screen.yDimension
       val deviceDiagonal = hypot(width.toDouble(), height.toDouble())
@@ -195,11 +184,7 @@ private constructor(
    * ordering and keeping only the matches that don't differ from the best one by more than
    * [MAX_MATCH_DISTANCE_RATIO].
    */
-  private fun MutableList<MatchingSkin>.addMatch(
-    displayName: String,
-    skinFolder: Path,
-    matchDistance: Double,
-  ) {
+  private fun MutableList<MatchingSkin>.addMatch(displayName: String, skinFolder: Path, matchDistance: Double) {
     if (isNotEmpty()) {
       if (matchDistance > get(0).matchDistance * MAX_MATCH_DISTANCE_RATIO) {
         return
@@ -232,8 +217,7 @@ private constructor(
       return false
     }
     val screen = defaultHardware.screen
-    return hypot(screen.xDimension / screen.xdpi, screen.yDimension / screen.ydpi) >=
-      MIN_TABLET_DIAGONAL_SIZE
+    return hypot(screen.xDimension / screen.xdpi, screen.yDimension / screen.ydpi) >= MIN_TABLET_DIAGONAL_SIZE
   }
 
   private fun Screen.isRound() = screenRound == ScreenRound.ROUND
@@ -245,6 +229,9 @@ private constructor(
   )
 
   companion object {
+
+    val DATA_KEY = DataKey.create<ScreenshotParameters>("ScreenshotParameters")
+
     private fun getAvdProperties(
       avdFolder: Path,
       avdManagerConnection: AvdManagerConnection,
@@ -288,10 +275,7 @@ private constructor(
         if (!skinFolder.isAbsolute) {
           skinFolder = skinHome?.resolve(skinFolder) ?: return null
         }
-        if (
-          !Files.exists(skinFolder.resolve("layout")) &&
-            !Files.exists(skinFolder.resolve("default/layout"))
-        ) {
+        if (!Files.exists(skinFolder.resolve("layout")) && !Files.exists(skinFolder.resolve("default/layout"))) {
           return null
         }
         return skinFolder

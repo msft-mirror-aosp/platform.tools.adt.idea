@@ -26,6 +26,9 @@ import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.ZoomType
+import com.android.tools.adtui.actions.createTestEvent
+import com.android.tools.adtui.actions.executeAction
+import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.DataManagerRule
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
@@ -41,7 +44,6 @@ import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
 import com.android.tools.idea.streaming.core.FloatingToolbarContainer
 import com.android.tools.idea.streaming.core.SplitPanel
-import com.android.tools.idea.streaming.createTestEvent
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDescriptor
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel.MultiDisplayStateStorage
 import com.android.tools.idea.streaming.emulator.FakeEmulator.Companion.IGNORE_SCREENSHOT_CALL_FILTER
@@ -49,8 +51,6 @@ import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
 import com.android.tools.idea.streaming.emulator.actions.EmulatorFoldingAction
 import com.android.tools.idea.streaming.emulator.actions.EmulatorShowVirtualSensorsAction
 import com.android.tools.idea.streaming.emulator.xr.EmulatorXrInputController
-import com.android.tools.idea.streaming.executeStreamingAction
-import com.android.tools.idea.streaming.updateAndGetActionPresentation
 import com.android.tools.idea.streaming.xr.AbstractXrInputController.Companion.UNKNOWN_PASSTHROUGH_COEFFICIENT
 import com.android.tools.idea.streaming.xr.XrInputMode
 import com.android.tools.idea.testing.disposable
@@ -128,9 +128,7 @@ import kotlin.test.fail
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * Tests for [EmulatorToolWindowPanel] and some of its toolbar actions.
- */
+/** Tests for [EmulatorToolWindowPanel] and some of its toolbar actions. */
 @Suppress("OPT_IN_USAGE", "OverrideOnly")
 @RunsInEdt
 class EmulatorToolWindowPanelTest {
@@ -709,7 +707,7 @@ class EmulatorToolWindowPanelTest {
     assertAppearance("DisplayModesPhone", maxPercentDifferentMac = 0.002, maxPercentDifferentWindows = 0.05)
 
     // Set the foldable display mode.
-    executeStreamingAction("android.emulator.display.mode.foldable", emulatorView, project)
+    executeAction("android.emulator.display.mode.foldable", emulatorView, project)
     val setDisplayModeCall = emulator.getNextGrpcCall(2.seconds)
     assertThat(setDisplayModeCall.methodName).isEqualTo("android.emulation.control.EmulatorController/setDisplayMode")
     assertThat(shortDebugString(setDisplayModeCall.request)).isEqualTo("value: FOLDABLE")

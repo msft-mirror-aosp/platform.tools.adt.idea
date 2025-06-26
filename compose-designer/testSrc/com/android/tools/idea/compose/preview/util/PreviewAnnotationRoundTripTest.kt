@@ -178,14 +178,12 @@ class PreviewAnnotationRoundTripTest {
 
     val generatedText = toPreviewAnnotationText(previewElement, configuration, "MyDevicePreview")
 
-    // Corrected expected string: it should preserve the original device spec AND add
-    // widthDp/heightDp
     assertThat(generatedText)
       .isEqualTo(
         """
         @androidx.compose.ui.tooling.preview.Preview(
             name = "MyDevicePreview",
-            device = "spec:width=100dp,height=100dp,dpi=240,orientation=portrait",
+            device = "spec:width=400dp,height=800dp,dpi=240",
             widthDp = 400,
             heightDp = 800
         )
@@ -257,6 +255,7 @@ class PreviewAnnotationRoundTripTest {
       """
       import androidx.compose.ui.tooling.preview.Preview
       import androidx.compose.runtime.Composable
+      import android.content.res.Configuration.UI_MODE_NIGHT_NO
 
       @androidx.compose.ui.tooling.preview.Preview(
           name = "FullParams",
@@ -266,7 +265,7 @@ class PreviewAnnotationRoundTripTest {
           apiLevel = 28,
           locale = "en-rUS",
           fontScale = 1.2f,
-          uiMode = 16
+          uiMode = UI_MODE_NIGHT_NO
       )
       @Composable
       fun MyComposable() {
@@ -299,11 +298,11 @@ class PreviewAnnotationRoundTripTest {
             name = "FullParams",
             group = "MyGroup",
             showBackground = true,
-            backgroundColor = 0x#ffcccccc,
+            backgroundColor = 0xFFCCCCCC,
             apiLevel = 28,
             locale = "en-rUS",
             fontScale = 1.2f,
-            uiMode = 16,
+            uiMode = UI_MODE_NIGHT_NO,
             widthDp = 500,
             heightDp = 500
         )
@@ -356,13 +355,12 @@ class PreviewAnnotationRoundTripTest {
       val generatedText =
         toPreviewAnnotationText(previewElement, configuration, "DeviceWithCustomSize")
 
-      // Expected: original device spec + new widthDp/heightDp
       assertThat(generatedText)
         .isEqualTo(
           """
         @androidx.compose.ui.tooling.preview.Preview(
             name = "DeviceWithCustomSize",
-            device = "spec:width=400dp,height=800dp,dpi=240,cutout=double",
+            device = "spec:width=600dp,height=1200dp,dpi=160",
             widthDp = 600,
             heightDp = 1200
         )
@@ -370,4 +368,97 @@ class PreviewAnnotationRoundTripTest {
             .trimIndent()
         )
     }
+
+  @Test
+  fun `toPreviewAnnotationText with combined UiMode generates constant names`() = runTest {
+    @Language("kotlin")
+    val composeFileContent =
+      """
+      import androidx.compose.ui.tooling.preview.Preview
+      import androidx.compose.runtime.Composable
+      import android.content.res.Configuration.UI_MODE_NIGHT_YES
+      import android.content.res.Configuration.UI_MODE_TYPE_DESK
+
+      @Preview(name = "CombinedUiMode", uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_DESK)
+      @Composable
+      fun MyComposable() {}
+      """
+        .trimIndent()
+
+    val composeTestFile = projectRule.fixture.addFileToProject("src/Test.kt", composeFileContent)
+
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          projectRule.project,
+          composeTestFile.virtualFile,
+        )
+        .flatMap { it.resolve() }
+        .first()
+
+    val configuration = createConfiguration(width = 200, height = 200)
+
+    val generatedText = toPreviewAnnotationText(previewElement, configuration, "CombinedUiMode")
+
+    assertThat(generatedText)
+      .isEqualTo(
+        """
+        @androidx.compose.ui.tooling.preview.Preview(
+            name = "CombinedUiMode",
+            uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_DESK,
+            widthDp = 200,
+            heightDp = 200
+        )
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun `toPreviewAnnotationText round-trips with wallpaper`() = runTest {
+    @Language("kotlin")
+    val composeFileContent =
+      """
+      import androidx.compose.ui.tooling.preview.Preview
+      import androidx.compose.ui.tooling.preview.Wallpapers
+      import androidx.compose.runtime.Composable
+
+      @androidx.compose.ui.tooling.preview.Preview(
+        name = "WallpaperPreview",
+        wallpaper = Wallpapers.RED_DOMINATED_EXAMPLE
+      )
+      @Composable
+      fun MyComposable() {
+      }
+    """
+        .trimIndent()
+
+    val composeTestFile = projectRule.fixture.addFileToProject("src/Test.kt", composeFileContent)
+
+    val previewElements =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          projectRule.project,
+          composeTestFile.virtualFile,
+        )
+        .flatMap { it.resolve() }
+    assertThat(previewElements).hasSize(1)
+
+    val previewElement = previewElements.first()
+
+    val configuration = createConfiguration(width = 400, height = 600)
+
+    val generatedText = toPreviewAnnotationText(previewElement, configuration, "WallpaperPreview")
+
+    assertThat(generatedText)
+      .isEqualTo(
+        """
+        @androidx.compose.ui.tooling.preview.Preview(
+            name = "WallpaperPreview",
+            wallpaper = Wallpapers.RED_DOMINATED_EXAMPLE,
+            widthDp = 400,
+            heightDp = 600
+        )
+        """
+          .trimIndent()
+      )
+  }
 }

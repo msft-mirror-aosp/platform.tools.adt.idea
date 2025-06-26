@@ -111,8 +111,10 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers): ModelSta
 
   @VisibleForTesting
   fun addLeaks(newLeaks: List<Leak>) {
-    val newLeakList = _leaks.value + newLeaks
-    _leaks.value = newLeakList
+    val uniqueNewLeaks = newLeaks.filter { it !in _leaks.value }
+    if (uniqueNewLeaks.isNotEmpty()) {
+      _leaks.value = _leaks.value + uniqueNewLeaks
+    }
   }
 
   /**
@@ -247,7 +249,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers): ModelSta
         Transport.GetEventGroupsRequest.newBuilder()
           .setStreamId(session.streamId)
           .setPid(session.pid)
-          .setKind(Common.Event.Kind.LEAKCANARY_LOGCAT_INFO)
+          .setKind(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
           .setFromTimestamp(range.min.toLong())
           .setToTimestamp(range.max.toLong())
           .build()).groupsList.flatMap { group -> group.eventsList.toList() }
