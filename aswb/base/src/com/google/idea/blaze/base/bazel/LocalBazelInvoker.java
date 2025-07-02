@@ -3,10 +3,13 @@ package com.google.idea.blaze.base.bazel;
 import com.google.common.collect.ImmutableSet;
 import com.google.idea.blaze.base.settings.BuildBinaryType;
 import com.intellij.openapi.project.Project;
+import org.jetbrains.annotations.VisibleForTesting;
 
-public class LocalBazelInvoker extends AbstractLocalInvoker {
-  private static final ImmutableSet<Capability> CAPABILITIES = ImmutableSet.of(
-    Capability.SUPPORT_CLI, Capability.ATTACH_JAVA_DEBUGGER, Capability.SUPPORT_QUERY_FILE, Capability.RETURN_PROCESS_HANDLER);
+public final class LocalBazelInvoker extends AbstractLocalInvoker {
+  @VisibleForTesting
+  public static final ImmutableSet<Capability> CAPABILITIES = ImmutableSet.of(
+    Capability.SUPPORT_CLI, Capability.ATTACH_JAVA_DEBUGGER, Capability.SUPPORT_QUERY_FILE, Capability.SUPPORT_TARGET_PATTERN_FILE,
+    Capability.RETURN_PROCESS_HANDLER);
 
 
   public LocalBazelInvoker(Project project, BuildSystem buildSystem, String binaryPath) {

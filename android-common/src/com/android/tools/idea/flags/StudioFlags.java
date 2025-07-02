@@ -1173,7 +1173,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_AVD = new BooleanFlag(
     EMBEDDED_EMULATOR, "allow.xr", "Allow XR AVD to run embedded",
     "Enables running an XR AVD in the Running Devices tool window",
-    enabledUpTo(CANARY));
+    true);
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.tracking", "Enable hand tracking input mode for XR AVDs",
     "Enables hand tracking input mode for XR AVDs",
@@ -1720,7 +1720,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> APP_INSPECTION_USE_EXPERIMENTAL_DATABASE_INSPECTOR = new BooleanFlag(
     APP_INSPECTION, "use.experimental.database.inspector", "Use experimental Database Inspector",
     "Use experimental Database Inspector",
-    enabledUpTo(CANARY)
+    true
   );
   // endregion
 
@@ -1883,7 +1883,7 @@ public final class StudioFlags {
       "direct.access.show.oem.lab.devices",
       "Show OEM lab devices",
       "OEM lab devices are available to users.",
-      enabledUpTo(CANARY));
+      true);
 
   // endregion Firebase Test Lab
 
@@ -2180,7 +2180,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "flexible.transform.suggestions.enabled",
                     "Enable the new flexible suggestions/diffs controls in the editor.",
                     "If enabled, will show AI transform suggestions using new, more flexible controls such as inlays.",
-                    false);
+                    enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_ALLOW_TRANSFORMS_WITH_CITATIONS =
     new BooleanFlag(STUDIOBOT, "editor.ai.transform.allow.transforms.with.citations",
@@ -2259,13 +2259,13 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "prompt.library.rules",
                     "Enable Rules Prompt Library",
                     "When enabled, add Rules section to prompt library settings screen.",
-                    enabledUpTo(CANARY));
+                    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> STUDIOBOT_PROMPT_LIBRARY_CHAT_LOOKUP_ENABLED =
     new BooleanFlag(STUDIOBOT, "prompt.library.chat.lookup",
                     "Show Saved Prompts in chat lookup",
                     "When enabled, add Rules section to lookup popup.",
-                    enabledUpTo(CANARY));
+                    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> STUDIOBOT_MCP_HOST_ENABLED =
     new BooleanFlag(STUDIOBOT, "mcp.host.enabled",
@@ -2301,7 +2301,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion.override",
                     "Allow users to override prompt for suggesting commit messages",
                     "Enables the \"Commit Message Generation\" in Prompt Library setting",
-                    enabledUpTo(CANARY));
+                    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> README_GENERATION =
     new BooleanFlag(STUDIOBOT, "readme.generation",
@@ -2413,6 +2413,12 @@ public final class StudioFlags {
                     "Enable using Gradle project structure Agent tools by default",
                     "When enabled, a set of tools allowing the agent to query for the Gradle project structure will be included by default.",
                     enabledUpTo(DEV));
+
+  public static final Flag<Boolean> STUDIOBOT_SUGGESTION_SMART_GROUPING_ENABLED =
+    new BooleanFlag(STUDIOBOT, "suggestion.smart.grouping.enabled",
+                    "Enable smart grouping of suggestions that are accepted or rejected together",
+                    "When enabled, individual chunks of suggestions may be grouped together using heuristic logic into semantic chunks that can be accepted or rejected together.",
+                    false);
 
   public static final Flag<Boolean> GEMINI_AGENT_MODE =
     new BooleanFlag(STUDIOBOT, "agent.mode",
@@ -2669,7 +2675,7 @@ public final class StudioFlags {
       "gradle.files.in.module",
       "Show UI for having build files per module",
       "When enabled, the settings menu will show a checkbox to change the behavior of the Android view to display gradle files under each module",
-      enabledUpTo(CANARY));
+      true);
   // endregion PROJECT_TOOL_WINDOW
 
   // region Wifi 2.0

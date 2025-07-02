@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SIMPLE_SIMPLE_H
-#define SIMPLE_SIMPLE_H
+#ifndef SIMPLE_SIMPLE_H_
+#define SIMPLE_SIMPLE_H_
 
 #include <string>
 
 class Simple {
-  std::string testString;
+ private:
+  std::string test_string_;
 
  public:
   Simple();
 };
 
-#endif
+#endif // SIMPLE_SIMPLE_H_

@@ -1,7 +1,22 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
 package(
     default_visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "test_fixture_bzl",
+    srcs = ["test_fixture.bzl"],
+)
+
+bzl_library(
+    name = "check_utils_bzl",
+    srcs = ["check_utils.bzl"],
+    deps = [
+        "@bazel_skylib//lib:types",
+        "@rules_testing//lib/private:struct_subject_bzl",
+    ],
 )
 
 build_test(

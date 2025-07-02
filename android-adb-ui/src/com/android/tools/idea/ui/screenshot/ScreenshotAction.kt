@@ -16,8 +16,10 @@
 package com.android.tools.idea.ui.screenshot
 
 import com.android.SdkConstants.DOT_PNG
+import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.io.writeImage
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.tools.adtui.ImageUtils
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.ui.AndroidAdbUiBundle.message
@@ -39,9 +41,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-/**
- * Captures a screenshot of the device display.
- */
+/** Captures a screenshot of a device display. */
 class ScreenshotAction : DumbAwareAction(
   message("screenshot.action.title"),
   message("screenshot.action.description"),
@@ -57,7 +57,7 @@ class ScreenshotAction : DumbAwareAction(
   override fun actionPerformed(event: AnActionEvent) {
     val project = event.project ?: return
     val screenshotParameters = event.getData(ScreenshotParameters.DATA_KEY) ?: return
-    val displayId = event.getData(DISPLAY_ID_KEY) ?: 0
+    val displayId = event.getData(DISPLAY_ID_KEY) ?: PRIMARY_DISPLAY_ID
     val displayInfoProvider = event.getData(DISPLAY_INFO_PROVIDER_KEY)
     val serialNumber = screenshotParameters.serialNumber
 
@@ -73,7 +73,7 @@ class ScreenshotAction : DumbAwareAction(
           val screenshotDecorator = screenshotParameters.screenshotDecorator
           val framingOptions = screenshotParameters.getFramingOptions(screenshotImage)
           val decoration = ScreenshotViewer.getDefaultDecoration(screenshotImage, screenshotDecorator, framingOptions.firstOrNull())
-          val processedImage = screenshotDecorator.decorate(screenshotImage, decoration)
+          val processedImage = ImageUtils.scale(screenshotDecorator.decorate(screenshotImage, decoration), getScreenshotScale())
           val file = FileUtil.createTempFile("screenshot", DOT_PNG).toPath()
           processedImage.writeImage("PNG", file)
           val backingFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file) ?:
@@ -86,7 +86,7 @@ class ScreenshotAction : DumbAwareAction(
           val allowImageRotation = displayInfoProvider == null && screenshotParameters.deviceType == DeviceType.HANDHELD
 
           ApplicationManager.getApplication().invokeLater {
-            val viewer = ScreenshotViewer(project, screenshotImage, backingFile, screenshotProvider, screenshotDecorator,
+            val viewer = ScreenshotViewer(project, screenshotImage, processedImage, backingFile, screenshotProvider, screenshotDecorator,
                                           framingOptions, defaultFrame, allowImageRotation)
             Disposer.register(viewer.disposable, screenshotProvider)
             viewer.show()

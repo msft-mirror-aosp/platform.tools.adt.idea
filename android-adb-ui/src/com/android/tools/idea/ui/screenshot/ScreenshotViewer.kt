@@ -122,6 +122,7 @@ import kotlin.math.roundToInt
 class ScreenshotViewer(
   private val project: Project,
   screenshotImage: ScreenshotImage,
+  processedImage: BufferedImage,
   private val backingFile: VirtualFile,
   private val screenshotProvider: ScreenshotProvider,
   private val screenshotDecorator: ScreenshotDecorator,
@@ -186,6 +187,7 @@ class ScreenshotViewer(
     }
     sourceImageRef.set(screenshotImage)
     rotationQuadrants = screenshotImage.screenshotOrientationQuadrants
+    displayedImageRef.set(TimestampedImage(processedImage))
 
     val decorationOptions = DefaultComboBoxModel<ScreenshotDecorationOption>()
     decorationOptions.addElement(ScreenshotDecorationOption.RECTANGULAR)
@@ -222,7 +224,7 @@ class ScreenshotViewer(
 
     init()
 
-    processScreenshot()
+    updateEditorImage()
   }
 
   override fun createCenterPanel(): JComponent {
@@ -589,7 +591,7 @@ class ScreenshotViewer(
 
     fun getDefaultDecoration(screenshotImage: ScreenshotImage, screenshotDecorator: ScreenshotDecorator,
                              defaultFramingOption: FramingOption?): ScreenshotDecorationOption {
-      val frameScreenshot = service<ScreenshotConfiguration>().frameScreenshot
+      val frameScreenshot = service<DeviceScreenshotSettings>().frameScreenshot
       // Clipping is available when either the postprocessor supports it or for round devices.
       val canClipDeviceMask = screenshotDecorator.canClipToDisplayShape || screenshotImage.isRoundDisplay
       // DAC specifies a 384x384 minimum size requirement but that requirement is actually not enforced.
