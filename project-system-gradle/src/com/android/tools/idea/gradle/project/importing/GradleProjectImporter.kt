@@ -30,6 +30,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -196,7 +197,7 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
         }
       }
       val projectSettings = GradleDefaultProjectSettings.createProjectSettings(externalProjectPath)
-      ExternalSystemApiUtil.getSettings(newProject, GradleConstants.SYSTEM_ID).linkProject(projectSettings)
+      ExternalSystemUtil.linkExternalProject(projectSettings, ImportSpecBuilder(newProject, GradleConstants.SYSTEM_ID))
       GradleJdkConfigurationInitializer.getInstance().initialize(newProject, externalProjectPath, projectSettings, configuration)
 
       beforeOpen(newProject)
