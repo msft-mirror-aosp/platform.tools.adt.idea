@@ -41,6 +41,7 @@ import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
 import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.google.idea.blaze.qsync.project.ProjectProto.Project;
+import java.util.Set;
 
 /**
  * A {@link ProjectProtoTransform} that adds built artifact information to the project proto, based
@@ -51,10 +52,10 @@ public class DependenciesProjectProtoUpdater implements ProjectProtoTransform {
   private final ImmutableList<ProjectProtoUpdateOperation> updateOperations;
 
   public DependenciesProjectProtoUpdater(
-      ProjectDefinition projectDefinition,
-      ProjectPath.Resolver pathResolver,
-      Supplier<Boolean> attachDepsSrcjarsExperiment,
-      boolean enableLibraryEntity) {
+    ProjectDefinition projectDefinition,
+    ProjectPath.Resolver pathResolver,
+    Set<String> emptyJarDigests,
+    Supplier<Boolean> attachDepsSrcjarsExperiment) {
     // Require empty package prefixes for srcjar inner paths, since the ultimate consumer of these
     // paths does not support setting a package prefix (see `Library.ModifiableModel.addRoot`).
     PackageStatementParser packageReader = new PackageStatementParser();
@@ -62,7 +63,7 @@ public class DependenciesProjectProtoUpdater implements ProjectProtoTransform {
 
     ImmutableList.Builder<ProjectProtoUpdateOperation> updateOperations =
         ImmutableList.<ProjectProtoUpdateOperation>builder()
-            .add(new AddCompiledJavaDeps(enableLibraryEntity))
+            .add(new AddCompiledJavaDeps(emptyJarDigests))
             .add(
                 new AddProjectGenSrcJars(
                     projectDefinition,
@@ -76,11 +77,10 @@ public class DependenciesProjectProtoUpdater implements ProjectProtoTransform {
           new AddDependencySrcJars(
               projectDefinition,
               pathResolver,
-              srcJarInnerPathFinder,
-              enableLibraryEntity));
+              srcJarInnerPathFinder));
       updateOperations.add(
           new AddDependencyGenSrcsJars(
-            projectDefinition, new SrcJarPackageRootsExtractor(srcJarInnerPathFinder), enableLibraryEntity));
+            projectDefinition, new SrcJarPackageRootsExtractor(srcJarInnerPathFinder)));
     }
     this.updateOperations = updateOperations.build();
   }

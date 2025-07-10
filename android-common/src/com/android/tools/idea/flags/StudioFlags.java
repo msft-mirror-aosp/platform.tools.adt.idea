@@ -1562,7 +1562,7 @@ public final class StudioFlags {
     COMPOSE, "deploy.live.edit.compact.status.button",
     "LiveEdit: Use a Single Button to Display Live Edit Status in the Toolbar of the Running Devices Window",
     "If enabled, no status text will be displayed in the toolbar of the Running Devices window",
-    enabledUpTo(CANARY)
+    true
   );
 
   public static final Flag<Boolean> COMPOSE_DEBUG_BOUNDS = new BooleanFlag(
@@ -1621,15 +1621,20 @@ public final class StudioFlags {
     "Enable UI Check mode in Compose preview for running ATF checks and Visual Linting on Wear OS devices.",
     true);
 
-  public static final Flag<Boolean> COMPOSE_UI_CHECK_AI_QUICK_FIX = new BooleanFlag(
-    COMPOSE, "ui.check.mode.ai.quickfix", "Enable AI-powered quick fix action for UI Check",
-    "Enable an AI-powered quick fix action for UI Check issues.",
-    enabledUpTo(DEV));
-
   public static final Flag<Boolean> COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI = new BooleanFlag(
     COMPOSE, "transform.ui.with.ai", "Enable action to transform UI with Gemini",
     "Enables a context-menu action to transform UI with Gemini.",
     enabledUpTo(CANARY));
+
+  public static final Flag<Boolean> COMPOSE_CRITIQUE_AGENT_CODE_REWRITE = new BooleanFlag(
+    COMPOSE, "critique.agent.code.rewrite", "Enable action to rewrite UI from Image",
+    "Enables a context-menu action to analyze UI images and rewrite corresponding code to match the target design.",
+    false);
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_AI_AGENTS_DROPDOWN = new BooleanFlag(
+    COMPOSE, "ai.agents.dropdown", "Enable dropdown action to list Compose Preview AI agent actions",
+    "Enables a dropdown action that lists actions that trigger AI agent flows related to Compose Previews.",
+    false);
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_CODE_TO_PREVIEW_NAVIGATION = new BooleanFlag(
     COMPOSE, "preview.code.to.preview.navigation", "Enable the highlighting of preview components when clicking on code",
@@ -1890,15 +1895,6 @@ public final class StudioFlags {
   // region App Insights
   private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
 
-  public static final Flag<String> APP_INSIGHTS_AI_INSIGHT_ENDPOINT =
-    new StringFlag(
-      APP_INSIGHTS,
-      "app.insights.ai.insight.endpoint",
-      "App insights AI insight endpoint",
-      "Endpoint for getting AI insight",
-      "cloudaicompanion.googleapis.com"
-    );
-
   public static final Flag<Boolean> GEMINI_FETCH_REAL_INSIGHT =
     new BooleanFlag(
       APP_INSIGHTS,
@@ -1941,15 +1937,6 @@ public final class StudioFlags {
       "Set Crashlytics to be in integration test mode.",
       false);
 
-  public static final Flag<Boolean> CRASHLYTICS_INSIGHT_IN_TOOLWINDOW =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "crashlytics.show.insight.tool.window",
-      "Show insight toolwindow in Crashlytics",
-      "Show AI generated insights for Crashlytics issue in insight toolwindow",
-      true
-    );
-
   public static final Flag<String> PLAY_VITALS_GRPC_SERVER =
     new StringFlag(
       APP_INSIGHTS,
@@ -1958,30 +1945,6 @@ public final class StudioFlags {
       "Set Play Vitals gRpc server address, mainly used for testing purposes.",
       "playdeveloperreporting.googleapis.com");
 
-  public static final Flag<Boolean> PLAY_VITALS_GRPC_USE_TRANSPORT_SECURITY =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "play.vitals.grpc.use.transport.security",
-      "Use transport security",
-      "Set Play Vitals gRpc channel to use transport security",
-      true);
-
-  public static final Flag<Boolean> PLAY_VITALS_VCS_INTEGRATION_ENABLED =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "play.vitals.vcs.integration",
-      "Enable VCS integration for Play Vitals.",
-      "Enhance code navigation in the Play Vitals tab to aid crash investigation with the recorded VCS info",
-      true);
-
-  public static final Flag<Boolean> PLAY_VITALS_INSIGHT_IN_TOOLWINDOW =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "play.vitals.show.insight.tool.window",
-      "Show insight toolwindow in Play Vitals",
-      "Show AI generated insights for Play Vitals issue in insight toolwindow",
-      true
-    );
   // endregion App Insights
 
   // region App Links Assistant
@@ -2271,19 +2234,31 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "mcp.host.enabled",
                     "Enable Model Context Protocol (MCP) support",
                     "Allows the agent to use custom tools provided by Model Context Protocol (MCP) servers",
-                    enabledUpTo(CANARY));
+                    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> STUDIOBOT_SCROLL_TO_BOTTOM_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.scroll.to.bottom",
                     "Enable AutoScroll Button",
                     "When enabled, the chat will show a button on the timeline to toggle auto-scrolling.",
+                    enabledUpTo(STABLE));
+
+  public static final Flag<Boolean> STUDIOBOT_CHAT_QUERY_STATUS_BANNER_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.query.status.banner.enabled",
+                    "Enable thinking banner in Chat Timeline",
+                    "When enabled, the chat timeline will show a banner that shows the thinking stream of an ongoing response.",
                     enabledUpTo(DEV));
 
-  public static final Flag<Boolean> STUDIOBOT_RESPONSE_CANCELLATION_ENABLED =
-    new BooleanFlag(STUDIOBOT, "chat.response.cancellation.enabled",
-                    "Enable cancellation in Chat Timeline",
-                    "When enabled, the chat will show a banner that will allow cancelling ongoing responses.",
-                    enabledUpTo(CANARY));
+  public static final Flag<Boolean> STUDIOBOT_AGENT_MODE_QUERY_STATUS_BANNER_ENABLED =
+    new BooleanFlag(STUDIOBOT, "agent.query.status.banner.enabled",
+                    "Enable query status banner in Agent Mode Timeline",
+                    "When enabled, the agent mode timeline will show a banner showing thinking stream and tool usage of an ongoing response.",
+                    enabledUpTo(STABLE));
+
+  public static final Flag<Boolean> STUDIOBOT_STOP_BUTTON_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.stop.button.enabled",
+                    "Enable Stop Button",
+                    "When enabled, the query box will show a button to stop ongoing responses.",
+                    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> STUDIOBOT_SHOW_MODEL_NAME_IN_QUERY_BOX =
     new BooleanFlag(STUDIOBOT, "chat.show.model.name",
@@ -2412,7 +2387,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "include.gradle.project.structure.tools.by.default",
                     "Enable using Gradle project structure Agent tools by default",
                     "When enabled, a set of tools allowing the agent to query for the Gradle project structure will be included by default.",
-                    enabledUpTo(DEV));
+                    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> STUDIOBOT_SUGGESTION_SMART_GROUPING_ENABLED =
     new BooleanFlag(STUDIOBOT, "suggestion.smart.grouping.enabled",
@@ -2534,7 +2509,7 @@ public final class StudioFlags {
       "gmscore.min.version",
       "Minimum version of the GmsCore Backup module that is supported",
       "Minimum version of the GmsCore Backup module that is supported",
-      250632000);
+      252234000);
 
   public static final Flag<Boolean> BACKUP_ACTION_IN_RUNNING_DEVICES =
     new BooleanFlag(
@@ -2706,14 +2681,14 @@ public final class StudioFlags {
     new BooleanFlag(
       DEPRECATION_POLICY,
       "use.policy.with.deprecate",
-      "Use N2 deprecation policy",
-      "Use N2 deprecation policy that supports DEPRECATED state",
-      enabledUpTo(CANARY));
+      "Use compatibility policy with DEPRECATE support",
+      "Use compatibility policy that supports DEPRECATED state",
+      true);
   public static final Flag<String> DEFAULT_MORE_INFO_URL =
     new StringFlag(
       DEPRECATION_POLICY,
       "default.more.info.url",
-      "Defaul More Info URL",
+      "Default More Info URL",
       "Redirect to this URL if moreInfoUrl is not provided",
       "https://developer.android.com/studio/releases#service-compat"
     );

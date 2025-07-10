@@ -37,6 +37,7 @@ import com.google.idea.blaze.exception.BuildException;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.openapi.project.Project;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -233,7 +234,7 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
     }
 
     @Override
-    public ImmutableSet<Capability> getCapabilities() {
+    public Set<Capability> getCapabilities() {
       return inner.getCapabilities();
     }
 
@@ -279,7 +280,7 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
 
     @Override
     public Optional<BuildInvoker> getBuildInvoker(
-        Project project, Set<BuildInvoker.Capability> requirements) {
+        Project project, Set<? extends BuildInvoker.Capability> requirements) {
       return Optional.of(new BuildInvokerWrapper(inner.getBuildInvoker(project, requirements).orElseThrow()));
     }
 
@@ -305,6 +306,16 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
     @Override
     public BazelQueryRunner createQueryRunner(Project project) {
       return inner.createQueryRunner(project);
+    }
+
+    @Override
+    public @NotNull Optional<@NotNull String> getInvocationLink(@NotNull String invocationId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public @NotNull Set<@NotNull String> getEmptyJarDigests() {
+      return Collections.emptySet();
     }
   }
 }

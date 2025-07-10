@@ -34,13 +34,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.jetbrains.annotations.NotNull;
 
 /** Adds compiled jars from dependencies to the project. */
 public class AddCompiledJavaDeps implements ProjectProtoUpdateOperation {
-  private final boolean enableLibraryEntity;
 
-  public AddCompiledJavaDeps(boolean enableLibraryEntity) {
-    this.enableLibraryEntity = enableLibraryEntity;
+  @NotNull private final Set<@NotNull String> emptyJarDigests;
+
+  public AddCompiledJavaDeps(@NotNull Set<@NotNull String> emptyJarDigests) {
+    this.emptyJarDigests = emptyJarDigests;
   }
 
   @Override
@@ -59,22 +62,30 @@ public class AddCompiledJavaDeps implements ProjectProtoUpdateOperation {
                 outputJarToTarget.put(jar.digest(), target.label());
               }
             });
+    AtomicInteger emptySkipped = new AtomicInteger();
     for (TargetBuildInfo target : artifactState.targets()) {
       if (target.javaInfo().isPresent()) {
         JavaArtifactInfo javaInfo = target.javaInfo().get();
         Set<String> locallySeen = new HashSet<>();
 
         for (BuildArtifact jar :
-            javaInfo.jars().stream()
-                // Prefer already added artifactPaths.
-                .filter(
-                    jar -> {
-                      final var targetLabelByDigest = outputJarToTarget.get(jar.digest());
-                      return targetLabelByDigest == null
-                          || target.label().equals(targetLabelByDigest);
-                    })
-                .sorted(Comparator.comparing(it -> !seen.contains(it.artifactPath().toString())))
-                .toList()) {
+          javaInfo.jars().stream()
+            // Prefer already added artifactPaths.
+            .filter(jar -> {
+              boolean emptyJar = emptyJarDigests.contains(jar.digest());
+              if (emptyJar) {
+                emptySkipped.incrementAndGet();
+              }
+              return !emptyJar;
+            })
+            .filter(
+              jar -> {
+                final var targetLabelByDigest = outputJarToTarget.get(jar.digest());
+                return targetLabelByDigest == null
+                       || target.label().equals(targetLabelByDigest);
+              })
+            .sorted(Comparator.comparing(it -> !seen.contains(it.artifactPath().toString())))
+            .toList()) {
           if (locallySeen.contains(jar.digest())) {
             skipped.add(jar.artifactPath().toString());
             continue;
@@ -89,11 +100,8 @@ public class AddCompiledJavaDeps implements ProjectProtoUpdateOperation {
       }
     }
     context.output(PrintOutput.output("Skipped " + skipped.size() + " duplicate jars"));
-    if (!enableLibraryEntity) {
-      updateProjectProtoUpdateAllJarsInOneLibrary(javaDepsDir, update);
-    } else {
-      updateProjectProtoUpdateOneTargetToOneLibrary(libNameToJars, update);
-    }
+    context.output(PrintOutput.output("Skipped " + emptySkipped.get() + " empty jars"));
+    updateProjectProtoUpdateOneTargetToOneLibrary(libNameToJars, update);
   }
 
   private void updateProjectProtoUpdateOneTargetToOneLibrary(
@@ -108,18 +116,5 @@ public class AddCompiledJavaDeps implements ProjectProtoUpdateOperation {
                             jar ->
                                 JarDirectory.newBuilder().setPath(jar).setRecursive(false).build())
                         .collect(toImmutableSet())));
-  }
-
-  private void updateProjectProtoUpdateAllJarsInOneLibrary(
-      ArtifactDirectoryBuilder javaDepsDir, ProjectProtoUpdate update) {
-    if (!javaDepsDir.isEmpty()) {
-      update
-          .library(JAVA_DEPS_LIB_NAME)
-          .addClassesJar(
-              JarDirectory.newBuilder().setPath(javaDepsDir.path().toString()).setRecursive(true));
-      if (!update.workspaceModule().getLibraryNameList().contains(JAVA_DEPS_LIB_NAME)) {
-        update.workspaceModule().addLibraryName(JAVA_DEPS_LIB_NAME);
-      }
-    }
   }
 }

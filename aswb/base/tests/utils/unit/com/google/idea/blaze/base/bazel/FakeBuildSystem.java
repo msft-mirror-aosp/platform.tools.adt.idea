@@ -22,9 +22,11 @@ import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.qsync.BazelQueryRunner;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.intellij.openapi.project.Project;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import javax.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Fake implementation of {@link BuildSystem} for use in unit tests.
@@ -49,7 +51,7 @@ public abstract class FakeBuildSystem implements BuildSystem {
   abstract Optional<BuildInvoker> getBuildInvoker();
 
   @Override
-  public Optional<BuildInvoker> getBuildInvoker(Project project, Set<BuildInvoker.Capability> requirements) {
+  public Optional<BuildInvoker> getBuildInvoker(Project project, Set<? extends BuildInvoker.Capability> requirements) {
     return getBuildInvoker();
   }
   @Override
@@ -72,6 +74,16 @@ public abstract class FakeBuildSystem implements BuildSystem {
   @Override
   public BazelQueryRunner createQueryRunner(Project project) {
     return null;
+  }
+
+  @Override
+  public @NotNull Optional<@NotNull String> getInvocationLink(@NotNull String invocationId) {
+    return Optional.empty();
+  }
+
+  @Override
+  public @NotNull Set<@NotNull String> getEmptyJarDigests() {
+    return Collections.emptySet();
   }
 
   /**
