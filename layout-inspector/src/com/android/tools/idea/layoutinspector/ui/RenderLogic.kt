@@ -33,7 +33,7 @@ import java.awt.geom.AffineTransform
 import java.awt.geom.Line2D
 import java.awt.geom.Point2D
 
-private val HQ_RENDERING_HINTS =
+val HQ_RENDERING_HINTS =
   mapOf(
     RenderingHints.KEY_ANTIALIASING to RenderingHints.VALUE_ANTIALIAS_ON,
     RenderingHints.KEY_TEXT_ANTIALIASING to RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
@@ -64,13 +64,13 @@ class RenderLogic(private val renderModel: RenderModel, val renderSettings: Rend
 
   /** Render an overlay image */
   fun renderOverlay(g: Graphics2D) {
-    if (renderModel.overlay == null) {
+    if (renderModel.overlayImage == null) {
       return
     }
 
     g.composite = AlphaComposite.SrcOver.derive(renderModel.overlayAlpha)
     val bounds = renderModel.hitRects[0].bounds.bounds
-    g.drawImage(renderModel.overlay, bounds.x, bounds.y, bounds.width, bounds.height, null)
+    g.drawImage(renderModel.overlayImage, bounds.x, bounds.y, bounds.width, bounds.height, null)
   }
 
   private fun renderImages(g: Graphics, drawInfo: ViewDrawInfo) {

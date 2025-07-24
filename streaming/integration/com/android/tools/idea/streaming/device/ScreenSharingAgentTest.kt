@@ -19,15 +19,15 @@ import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.testutils.TestUtils.getBinPath
-import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.testlib.Adb
 import com.android.tools.asdriver.tests.AndroidSystem
-import com.android.tools.testlib.Emulator
+import com.android.tools.idea.adb.CreateAndroidDebugBridgeForAdblibRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.ANDROID_SCROLL_ADJUSTMENT_FACTOR
 import com.android.tools.idea.testing.flags.overrideForTest
+import com.android.tools.testlib.Adb
+import com.android.tools.testlib.Emulator
 import com.android.tools.tests.IdeaTestSuiteBase
 import com.android.utils.executeWithRetries
 import com.google.common.truth.Truth.assertThat
@@ -285,7 +285,7 @@ class ScreenSharingAgentTest {
         executeWithRetries<InterruptedException>(LONG_DEVICE_OPERATION_TIMEOUT) {
           fakeUi.mouse.wheel(firstScroll.x, firstScroll.y, -1)  // Vertical scrolling on Android is backward
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-          waitForLog(firstScroll.scrollLog(v = ANDROID_SCROLL_ADJUSTMENT_FACTOR), INPUT_TIMEOUT)
+          waitForLog(firstScroll.scrollLog(v = ANDROID_SCROLL_ADJUSTMENT_FACTOR.toFloat()), INPUT_TIMEOUT)
         }
 
         // Now that we know motion events can be received by the app, conduct the real test.
@@ -298,8 +298,8 @@ class ScreenSharingAgentTest {
             val sign = -rotation.sign // On Android, scrolling vertically is upside-down compared to AWT.
             var remainingRotation = (rotation * ANDROID_SCROLL_ADJUSTMENT_FACTOR).absoluteValue
             while (remainingRotation > 0) {
-              val scrollAmount = remainingRotation.coerceAtMost(1f)
-              waitForLog(Point(x, y).scrollLog(v = scrollAmount * sign), INPUT_TIMEOUT)
+              val scrollAmount = remainingRotation.coerceAtMost(1.0)
+              waitForLog(Point(x, y).scrollLog(v = (scrollAmount * sign).toFloat()), INPUT_TIMEOUT)
               remainingRotation -= scrollAmount
             }
           }
@@ -322,7 +322,7 @@ class ScreenSharingAgentTest {
         executeWithRetries<InterruptedException>(LONG_DEVICE_OPERATION_TIMEOUT) {
           fakeUi.mouse.wheel(firstScroll.x, firstScroll.y, -1)  // Vertical scrolling on Android is backward
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-          waitForLog(firstScroll.scrollLog(v = ANDROID_SCROLL_ADJUSTMENT_FACTOR), INPUT_TIMEOUT)
+          waitForLog(firstScroll.scrollLog(v = ANDROID_SCROLL_ADJUSTMENT_FACTOR.toFloat()), INPUT_TIMEOUT)
         }
 
         // Now that we know motion events can be received by the app, conduct the real test.
@@ -338,8 +338,8 @@ class ScreenSharingAgentTest {
             val sign = rotation.sign
             var remainingRotation = (rotation * ANDROID_SCROLL_ADJUSTMENT_FACTOR).absoluteValue
             while (remainingRotation > 0) {
-              val scrollAmount = remainingRotation.coerceAtMost(1f)
-              waitForLog(Point(x, y).scrollLog(h = scrollAmount * sign), INPUT_TIMEOUT)
+              val scrollAmount = remainingRotation.coerceAtMost(1.0)
+              waitForLog(Point(x, y).scrollLog(h = (scrollAmount * sign).toFloat()), INPUT_TIMEOUT)
               remainingRotation -= scrollAmount
             }
           }
@@ -391,7 +391,8 @@ class ScreenSharingAgentTest {
 
     @get:ClassRule
     @get:JvmStatic
-    val ruleChain: RuleChain = RuleChain(projectRule, disposableRule, system, EdtRule())
+    val ruleChain: RuleChain =
+      RuleChain(projectRule, disposableRule, CreateAndroidDebugBridgeForAdblibRule(), system, EdtRule())
 
     private lateinit var adb: Adb
     private lateinit var emulator: Emulator
@@ -420,11 +421,6 @@ class ScreenSharingAgentTest {
 
       val disposable = Disposer.newDisposable("ScreenSharingAgentTest").also { classDisposable = it }
       StudioFlags.DEVICE_MIRRORING_AGENT_LOG_LEVEL.overrideForTest("debug", disposable)
-
-      val adbBinary = resolveWorkspacePath("prebuilts/studio/sdk/linux/platform-tools/adb")
-      check(Files.exists(adbBinary))
-      check(System.getProperty(AndroidSdkUtils.ADB_PATH_PROPERTY) == null)
-      System.setProperty(AndroidSdkUtils.ADB_PATH_PROPERTY, adbBinary.toString())
 
       adb = system.runAdb()
       emulator = system.runEmulator(Emulator.SystemImage.API_30)
@@ -513,7 +509,6 @@ class ScreenSharingAgentTest {
     private fun Point.dragToLog(): String = logForTouchEventAction("ACTION_MOVE")
     private fun Point.logForTouchEventAction(action: String): String = ".*: TOUCH EVENT: $action $coordinates"
     private fun Point.scrollLog(v: Float = 0.0f, h: Float = 0.0f): String = ".*: MOTION EVENT: ACTION_SCROLL $coordinates v=$v h=$h"
-
 
     private val Point.coordinates: String
       get() {

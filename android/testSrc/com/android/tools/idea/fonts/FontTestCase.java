@@ -45,26 +45,5 @@ public abstract class FontTestCase extends AndroidTestCase {
     }
     return file;
   }
-
-  private static class FontCache extends DownloadableFontCacheServiceImpl {
-    public FontCache() {
-      super(FontDownloader.NOOP_FONT_DOWNLOADER, new Supplier<>() {
-        private File mySdkFontPath;
-
-        @NotNull
-        @Override
-        public File get() {
-          if (mySdkFontPath == null) {
-            try {
-              mySdkFontPath = FileUtil.createTempDirectory("font", "sdk");
-            }
-            catch (IOException ex) {
-              throw new RuntimeException(ex);
-            }
-          }
-          return mySdkFontPath;
-        }
-      });
-    }
-  }
 }
+

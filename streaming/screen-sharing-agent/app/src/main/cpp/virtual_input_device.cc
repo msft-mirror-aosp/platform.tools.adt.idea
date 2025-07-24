@@ -31,6 +31,9 @@
 #include "log.h"
 #include "string_printf.h"
 
+#define LOG_IOCTL_CALLS true
+#define HOVERING_ENABLED true
+
 namespace screensharing {
 
 using namespace std;
@@ -38,8 +41,41 @@ using namespace std::chrono;
 
 namespace {
 
-enum class DeviceType { DPAD, KEYBOARD, MOUSE, TABLET, TOUCHSCREEN, STYLUS };
-const char* const TYPE_NAMES[] = { "Dpad", "Keyboard", "Mouse", "Tablet", "Touchscreen", "Stylus" };
+#if (LOG_IOCTL_CALLS)
+
+int logging_ioctl(int fd, unsigned op) {
+  Log::D("ioctl(%d, 0x%x)", fd, op);
+  return ioctl(fd, op);
+}
+
+int logging_ioctl(int fd, unsigned op, int value) {
+  Log::D("ioctl(%d, 0x%x, %d)", fd, op, value);
+  return ioctl(fd, op, value);
+}
+
+int logging_ioctl(int fd, unsigned op, const char* value) {
+  Log::D("ioctl(%d, 0x%x, \"%s\")", fd, op, value);
+  return ioctl(fd, op, value);
+}
+
+int logging_ioctl(int fd, unsigned op, const uinput_abs_setup* value) {
+  Log::D("ioctl(%d, 0x%x, uinput_abs_setup{ code=%d, absinfo={ minimum=%d, maximum=%d } })",
+         fd, op, value->code, value->absinfo.minimum, value->absinfo.maximum);
+  return ioctl(fd, op, value);
+}
+
+int logging_ioctl(int fd, unsigned op, const uinput_setup* value) {
+  Log::D("ioctl(%d, 0x%x, uinput_setup{ name=\"%s\", id={ version=%d, bustype=0x%x, vendor=0x%x product=%d } })",
+         fd, op, value->name, value->id.version, value->id.bustype, value->id.vendor, value->id.product);
+  return ioctl(fd, op, value);
+}
+
+#define ioctl logging_ioctl
+
+#endif  // LOG_IOCTL_CALLS
+
+enum class DeviceType { KEYBOARD, TABLET };
+const char* const TYPE_NAMES[] = { "Keyboard", "Tablet" };
 
 constexpr int32_t INVALID_FD = -1;
 constexpr int32_t INVALID_TRACKING_ID = -1;
@@ -86,83 +122,36 @@ int OpenUInput(DeviceType device_type, const char* phys, int32_t screen_width, i
   ioctl(fd, UI_SET_EVBIT, EV_SYN);
 
   switch (device_type) {
-    case DeviceType::DPAD:
-      for (const auto& [_, keyCode] : VirtualDpad::DPAD_KEY_CODE_MAPPING) {
-        ioctl(fd, UI_SET_KEYBIT, keyCode);
-      }
-      break;
-
     case DeviceType::KEYBOARD:
       for (const auto& [_, keyCode] : VirtualKeyboard::KEY_CODE_MAPPING) {
         ioctl(fd, UI_SET_KEYBIT, keyCode);
       }
       break;
 
-    case DeviceType::MOUSE:
-      ioctl(fd, UI_SET_EVBIT, EV_REL);
-      ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
-      ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
-      ioctl(fd, UI_SET_KEYBIT, BTN_MIDDLE);
-      ioctl(fd, UI_SET_KEYBIT, BTN_BACK);
-      ioctl(fd, UI_SET_KEYBIT, BTN_FORWARD);
-      ioctl(fd, UI_SET_RELBIT, REL_X);
-      ioctl(fd, UI_SET_RELBIT, REL_Y);
-      ioctl(fd, UI_SET_RELBIT, REL_WHEEL);
-      ioctl(fd, UI_SET_RELBIT, REL_HWHEEL);
-      break;
-
     case DeviceType::TABLET:
       ioctl(fd, UI_SET_EVBIT, EV_ABS);
       ioctl(fd, UI_SET_KEYBIT, BTN_TOUCH);
       ioctl(fd, UI_SET_KEYBIT, BTN_TOOL_PEN);
+      ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
+      ioctl(fd, UI_SET_KEYBIT, BTN_MIDDLE);
+      ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
+      ioctl(fd, UI_SET_ABSBIT, ABS_MT_TOOL_TYPE);
       ioctl(fd, UI_SET_ABSBIT, ABS_MT_SLOT);
       ioctl(fd, UI_SET_ABSBIT, ABS_MT_TRACKING_ID);
       ioctl(fd, UI_SET_ABSBIT, ABS_MT_POSITION_X);
       ioctl(fd, UI_SET_ABSBIT, ABS_MT_POSITION_Y);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_TOOL_TYPE);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_TOUCH_MAJOR);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_PRESSURE);
-      ioctl(fd, UI_SET_PROPBIT, INPUT_PROP_POINTER);
-      break;
-
-    case DeviceType::TOUCHSCREEN:
-      ioctl(fd, UI_SET_EVBIT, EV_ABS);
-      ioctl(fd, UI_SET_KEYBIT, BTN_TOUCH);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_SLOT);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_TRACKING_ID);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_POSITION_X);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_POSITION_Y);
-      ioctl(fd, UI_SET_ABSBIT, ABS_MT_TOOL_TYPE);
       ioctl(fd, UI_SET_ABSBIT, ABS_MT_TOUCH_MAJOR);
       ioctl(fd, UI_SET_ABSBIT, ABS_MT_PRESSURE);
       ioctl(fd, UI_SET_PROPBIT, INPUT_PROP_DIRECT);
-      break;
-
-    case DeviceType::STYLUS:
-      ioctl(fd, UI_SET_EVBIT, EV_ABS);
-      ioctl(fd, UI_SET_KEYBIT, BTN_TOUCH);
-      ioctl(fd, UI_SET_KEYBIT, BTN_STYLUS);
-      ioctl(fd, UI_SET_KEYBIT, BTN_STYLUS2);
-      ioctl(fd, UI_SET_KEYBIT, BTN_TOOL_PEN);
-      ioctl(fd, UI_SET_KEYBIT, BTN_TOOL_RUBBER);
-      ioctl(fd, UI_SET_ABSBIT, ABS_X);
-      ioctl(fd, UI_SET_ABSBIT, ABS_Y);
-      ioctl(fd, UI_SET_ABSBIT, ABS_TILT_X);
-      ioctl(fd, UI_SET_ABSBIT, ABS_TILT_Y);
-      ioctl(fd, UI_SET_ABSBIT, ABS_PRESSURE);
+      ioctl(fd, UI_SET_EVBIT, EV_REL);
+      ioctl(fd, UI_SET_RELBIT, REL_X);
+      ioctl(fd, UI_SET_RELBIT, REL_Y);
+      ioctl(fd, UI_SET_RELBIT, REL_WHEEL);
+      ioctl(fd, UI_SET_RELBIT, REL_WHEEL_HI_RES);
+      ioctl(fd, UI_SET_RELBIT, REL_HWHEEL);
+      ioctl(fd, UI_SET_RELBIT, REL_HWHEEL_HI_RES);
       ioctl(fd, UI_SET_PROPBIT, INPUT_PROP_DIRECT);
-      break;
-  }
 
-  int version;
-  if (ioctl(fd, UI_GET_VERSION, &version) == 0 && version >= 5) {
-    uinput_setup setup{};
-    strlcpy(setup.name, GetName(device_type), UINPUT_MAX_NAME_SIZE);
-    setup.id.version = 1;
-    setup.id.bustype = BUS_VIRTUAL;
-    setup.id.vendor = VENDOR_ID;
-    setup.id.product = GetProductId(device_type);
-    if (device_type == DeviceType::TABLET) {
       uinput_abs_setup slotAbsSetup {.code = ABS_MT_SLOT};
       slotAbsSetup.absinfo.maximum = VirtualInputDevice::MAX_POINTERS - 1;
       slotAbsSetup.absinfo.minimum = 0;
@@ -192,7 +181,7 @@ int OpenUInput(DeviceType device_type, const char* phys, int32_t screen_width, i
         return INVALID_FD;
       }
       uinput_abs_setup majorAbsSetup {.code = ABS_MT_TOUCH_MAJOR};
-      majorAbsSetup.absinfo.maximum = screen_width - 1;
+      majorAbsSetup.absinfo.maximum = min(screen_width, screen_height) - 1;
       majorAbsSetup.absinfo.minimum = 0;
       if (ioctl(fd, UI_ABS_SETUP, &majorAbsSetup) != 0) {
         CloseAndReportError(phys, fd);
@@ -205,124 +194,18 @@ int OpenUInput(DeviceType device_type, const char* phys, int32_t screen_width, i
         CloseAndReportError(phys, fd);
         return INVALID_FD;
       }
-    } else if (device_type == DeviceType::TOUCHSCREEN) {
-      uinput_abs_setup xAbsSetup {.code = ABS_MT_POSITION_X};
-      xAbsSetup.absinfo.maximum = screen_width - 1;
-      xAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &xAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup yAbsSetup {.code = ABS_MT_POSITION_Y};
-      yAbsSetup.absinfo.maximum = screen_height - 1;
-      yAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &yAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup majorAbsSetup {.code = ABS_MT_TOUCH_MAJOR};
-      majorAbsSetup.absinfo.maximum = screen_width - 1;
-      majorAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &majorAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup pressureAbsSetup {.code = ABS_MT_PRESSURE};
-      pressureAbsSetup.absinfo.maximum = VirtualInputDevice::MAX_PRESSURE;
-      pressureAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &pressureAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup slotAbsSetup {.code = ABS_MT_SLOT};
-      slotAbsSetup.absinfo.maximum = VirtualInputDevice::MAX_POINTERS - 1;
-      slotAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &slotAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup trackingIdAbsSetup {.code = ABS_MT_TRACKING_ID};
-      trackingIdAbsSetup.absinfo.maximum = VirtualInputDevice::MAX_POINTERS - 1;
-      trackingIdAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &trackingIdAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-    } else if (device_type == DeviceType::STYLUS) {
-      uinput_abs_setup xAbsSetup {.code = ABS_X};
-      xAbsSetup.absinfo.maximum = screen_width - 1;
-      xAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &xAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup yAbsSetup {.code = ABS_Y};
-      yAbsSetup.absinfo.maximum = screen_height - 1;
-      yAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &yAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup tiltXAbsSetup {.code = ABS_TILT_X};
-      tiltXAbsSetup.absinfo.maximum = 90;
-      tiltXAbsSetup.absinfo.minimum = -90;
-      if (ioctl(fd, UI_ABS_SETUP, &tiltXAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup tiltYAbsSetup {.code = ABS_TILT_Y};
-      tiltYAbsSetup.absinfo.maximum = 90;
-      tiltYAbsSetup.absinfo.minimum = -90;
-      if (ioctl(fd, UI_ABS_SETUP, &tiltYAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-      uinput_abs_setup pressureAbsSetup {.code = ABS_PRESSURE};
-      pressureAbsSetup.absinfo.maximum = VirtualInputDevice::MAX_PRESSURE;
-      pressureAbsSetup.absinfo.minimum = 0;
-      if (ioctl(fd, UI_ABS_SETUP, &pressureAbsSetup) != 0) {
-        CloseAndReportError(phys, fd);
-        return INVALID_FD;
-      }
-    }
-    if (ioctl(fd, UI_DEV_SETUP, &setup) != 0) {
-      CloseAndReportError(phys, fd);
-      return INVALID_FD;
-    }
-  } else {
-    // UI_DEV_SETUP was not introduced until version 5. Try setting up manually.
-    Log::I("%s: Falling back to version %d manual setup", phys, version);
-    uinput_user_dev fallback{};
-    strlcpy(fallback.name, GetName(device_type), UINPUT_MAX_NAME_SIZE);
-    fallback.id.version = 1;
-    fallback.id.bustype = BUS_VIRTUAL;
-    fallback.id.vendor = VENDOR_ID;
-    fallback.id.product = GetProductId(device_type);
-    if (device_type == DeviceType::TOUCHSCREEN) {
-      fallback.absmin[ABS_MT_POSITION_X] = 0;
-      fallback.absmax[ABS_MT_POSITION_X] = screen_width - 1;
-      fallback.absmin[ABS_MT_POSITION_Y] = 0;
-      fallback.absmax[ABS_MT_POSITION_Y] = screen_height - 1;
-      fallback.absmin[ABS_MT_TOUCH_MAJOR] = 0;
-      fallback.absmax[ABS_MT_TOUCH_MAJOR] = screen_width - 1;
-      fallback.absmin[ABS_MT_PRESSURE] = 0;
-      fallback.absmax[ABS_MT_PRESSURE] = VirtualInputDevice::MAX_PRESSURE;
-    } else if (device_type == DeviceType::STYLUS) {
-      fallback.absmin[ABS_X] = 0;
-      fallback.absmax[ABS_X] = screen_width - 1;
-      fallback.absmin[ABS_Y] = 0;
-      fallback.absmax[ABS_Y] = screen_height - 1;
-      fallback.absmin[ABS_TILT_X] = -90;
-      fallback.absmax[ABS_TILT_X] = 90;
-      fallback.absmin[ABS_TILT_Y] = -90;
-      fallback.absmax[ABS_TILT_Y] = 90;
-      fallback.absmin[ABS_PRESSURE] = 0;
-      fallback.absmax[ABS_PRESSURE] = VirtualInputDevice::MAX_PRESSURE;
-    }
-    if (TEMP_FAILURE_RETRY(write(fd, &fallback, sizeof(fallback))) != sizeof(fallback)) {
-      CloseAndReportError(phys, fd);
-      return INVALID_FD;
-    }
+      break;
+  }
+
+  uinput_setup setup{};
+  strlcpy(setup.name, GetName(device_type), UINPUT_MAX_NAME_SIZE);
+  setup.id.version = 1;
+  setup.id.bustype = BUS_VIRTUAL;
+  setup.id.vendor = VENDOR_ID;
+  setup.id.product = GetProductId(device_type);
+  if (ioctl(fd, UI_DEV_SETUP, &setup) != 0) {
+    CloseAndReportError(phys, fd);
+    return INVALID_FD;
   }
 
   if (ioctl(fd, UI_DEV_CREATE) != 0) {
@@ -330,6 +213,7 @@ int OpenUInput(DeviceType device_type, const char* phys, int32_t screen_width, i
     return INVALID_FD;
   }
 
+  // TODO: Replace with a more robust wait mechanism.
   this_thread::sleep_for(DEVICE_READINESS_DELAY);  // The events injected before the framework processes the new device can be ignored.
   return fd;
 }
@@ -599,69 +483,6 @@ const map<int, int> VirtualKeyboard::KEY_CODE_MAPPING = {
     {AKEYCODE_REFRESH, KEY_REFRESH},
 };
 
-// --- VirtualDpad ---
-
-VirtualDpad::VirtualDpad()
-    : VirtualInputDevice(GetPhysName(DeviceType::DPAD)) {
-  fd_ = OpenUInput(DeviceType::DPAD, phys_.c_str(), 0, 0);
-}
-
-VirtualDpad::~VirtualDpad() = default;
-
-bool VirtualDpad::WriteDpadKeyEvent(int32_t android_key_code, int32_t android_action, nanoseconds event_time) {
-  return WriteEvKeyEvent(android_key_code, android_action, DPAD_KEY_CODE_MAPPING, VirtualKeyboard::KEY_ACTION_MAPPING, event_time);
-}
-
-// Dpad keycode mapping from https://source.android.com/devices/input/keyboard-devices
-const map<int, int> VirtualDpad::DPAD_KEY_CODE_MAPPING = {
-    {AKEYCODE_DPAD_DOWN, KEY_DOWN},
-    {AKEYCODE_DPAD_UP, KEY_UP},
-    {AKEYCODE_DPAD_LEFT, KEY_LEFT},
-    {AKEYCODE_DPAD_RIGHT, KEY_RIGHT},
-    {AKEYCODE_DPAD_CENTER, KEY_SELECT},
-    {AKEYCODE_BACK, KEY_BACK},
-};
-
-// --- VirtualMouse ---
-
-VirtualMouse::VirtualMouse()
-    : VirtualInputDevice(GetPhysName(DeviceType::MOUSE)) {
-  fd_ = OpenUInput(DeviceType::MOUSE, phys_.c_str(), 0, 0);
-}
-
-VirtualMouse::~VirtualMouse() = default;
-
-bool VirtualMouse::WriteButtonEvent(int32_t android_button_code, int32_t android_action, nanoseconds event_time) {
-  return WriteEvKeyEvent(android_button_code, android_action, BUTTON_CODE_MAPPING, BUTTON_ACTION_MAPPING, event_time);
-}
-
-bool VirtualMouse::WriteRelativeEvent(int32_t relative_x, int32_t relative_y, nanoseconds event_time) {
-  return (relative_x == 0 || WriteInputEvent(EV_REL, REL_X, relative_x, event_time)) &&
-         (relative_x == 0 || WriteInputEvent(EV_REL, REL_Y, relative_y, event_time)) &&
-         ((relative_x == 0 && relative_y == 0) || WriteInputEvent(EV_SYN, SYN_REPORT, 0, event_time));
-}
-
-bool VirtualMouse::WriteScrollEvent(int32_t scroll_x, int32_t scroll_y, nanoseconds event_time) {
-  Log::D("%s: WriteScrollEvent(%d, %d,...)", phys_.c_str(), scroll_x, scroll_y);
-  return (scroll_x == 0 || WriteInputEvent(EV_REL, REL_HWHEEL, scroll_x, event_time, true)) &&
-         (scroll_y == 0 || WriteInputEvent(EV_REL, REL_WHEEL, scroll_y, event_time, true)) &&
-         ((scroll_x == 0 && scroll_y == 0) || WriteInputEvent(EV_SYN, SYN_REPORT, 0, event_time, true));
-}
-
-const map<int, UinputAction> VirtualMouse::BUTTON_ACTION_MAPPING = {
-    {AMOTION_EVENT_ACTION_BUTTON_PRESS, UinputAction::PRESS},
-    {AMOTION_EVENT_ACTION_BUTTON_RELEASE, UinputAction::RELEASE},
-};
-
-// Button code mapping from https://source.android.com/devices/input/touch-devices
-const map<int, int> VirtualMouse::BUTTON_CODE_MAPPING = {
-    {AMOTION_EVENT_BUTTON_PRIMARY, BTN_LEFT},
-    {AMOTION_EVENT_BUTTON_SECONDARY, BTN_RIGHT},
-    {AMOTION_EVENT_BUTTON_TERTIARY, BTN_MIDDLE},
-    {AMOTION_EVENT_BUTTON_BACK, BTN_BACK},
-    {AMOTION_EVENT_BUTTON_FORWARD, BTN_FORWARD},
-};
-
 // --- VirtualTablet ---
 
 VirtualTablet::VirtualTablet(int32_t screen_width, int32_t screen_height)
@@ -743,6 +564,7 @@ bool VirtualTablet::WriteTouchEvent(int32_t pointer_id, int32_t tool_type, int32
 
 bool VirtualTablet::WriteMotionEvent(int32_t pointer_id, int32_t tool_type, int32_t action, int32_t location_x, int32_t location_y,
                                      nanoseconds event_time) {
+#if(HOVERING_ENABLED)
   auto action_iterator = TOUCH_ACTION_MAPPING.find(action);
   if (action_iterator == TOUCH_ACTION_MAPPING.end()) {
     Log::E("%s: Unsupported action: %d.", phys_.c_str(), action);
@@ -774,10 +596,12 @@ bool VirtualTablet::WriteMotionEvent(int32_t pointer_id, int32_t tool_type, int3
     Log::E("%s: Failed to write SYN_REPORT for motion event.", phys_.c_str());
     return false;
   }
+#endif  // HOVERING_ENABLED
   return true;
 }
 
 bool VirtualTablet::StartHovering(nanoseconds event_time) {
+#if (HOVERING_ENABLED)
   Log::D("%s: StartHovering: is_hovering_=%s", phys_.c_str(), is_hovering_ ? "true" : "false");
   if (!is_hovering_) {
     if (!WriteButtonTouchEvent(false, event_time)) {
@@ -787,10 +611,12 @@ bool VirtualTablet::StartHovering(nanoseconds event_time) {
     is_hovering_ = true;
     Log::D("%s: StartHovering: hovering started", phys_.c_str());
   }
+#endif  // HOVERING_ENABLED
   return true;
 }
 
 bool VirtualTablet::StopHovering(nanoseconds event_time) {
+#if (HOVERING_ENABLED)
   Log::D("%s: StopHovering: is_hovering_=%s", phys_.c_str(), is_hovering_ ? "true" : "false");
   if (is_hovering_) {
     if (!WriteTouchEndEvent(0, event_time)) {
@@ -800,7 +626,22 @@ bool VirtualTablet::StopHovering(nanoseconds event_time) {
     is_hovering_ = false;
     Log::D("%s: StopHovering: hovering stopped", phys_.c_str());
   }
+#endif  // HOVERING_ENABLED
   return true;
+}
+
+bool VirtualTablet::WriteVerticalScrollEvent(float amount, std::chrono::nanoseconds event_time) {
+  Log::D("%s: WriteVerticalScrollEvent(%.3g, ...)", phys_.c_str(), amount);
+  return WriteInputEvent(EV_REL, REL_WHEEL, amount, event_time, true) &&
+         WriteInputEvent(EV_REL, REL_WHEEL_HI_RES, amount * HI_RES_WHEEL_UNITS_PER_TICK, event_time, true) &&
+         WriteInputEvent(EV_SYN, SYN_REPORT, 0, event_time, true);
+}
+
+bool VirtualTablet::WriteHorizontalScrollEvent(float amount, std::chrono::nanoseconds event_time) {
+  Log::D("%s: WriteHorizontalScrollEvent(%.3g, ...)", phys_.c_str(), amount);
+  return WriteInputEvent(EV_REL, REL_HWHEEL, amount, event_time, true) &&
+         WriteInputEvent(EV_REL, REL_HWHEEL_HI_RES, amount * HI_RES_WHEEL_UNITS_PER_TICK, event_time, true) &&
+         WriteInputEvent(EV_SYN, SYN_REPORT, 0, event_time, true);
 }
 
 bool VirtualTablet::WriteButtonTouchEvent(bool is_down, nanoseconds event_time) {
@@ -875,238 +716,6 @@ bool VirtualTablet::HandleTouchUp(int32_t pointer_id, nanoseconds event_time) {
 const map<int, int> VirtualTablet::TOOL_TYPE_MAPPING = {
     {AMOTION_EVENT_TOOL_TYPE_FINGER, MT_TOOL_FINGER},
     {AMOTION_EVENT_TOOL_TYPE_STYLUS, MT_TOOL_PEN}
-};
-
-// --- VirtualTouchscreen ---
-
-VirtualTouchscreen::VirtualTouchscreen(int32_t screen_width, int32_t screen_height)
-    : VirtualInputDevice(GetPhysName(DeviceType::TOUCHSCREEN)),
-      screen_width_(screen_width),
-      screen_height_(screen_height) {
-  fd_ = OpenUInput(DeviceType::TOUCHSCREEN, phys_.c_str(), screen_width, screen_height);
-  Log::D("%s: VirtualTouchscreen(%d, %d)", phys_.c_str(), screen_width, screen_height);
-}
-
-VirtualTouchscreen::~VirtualTouchscreen() = default;
-
-bool VirtualTouchscreen::IsValidPointerId(int32_t pointer_id, UinputAction uinput_action) {
-  if (pointer_id < -1 || pointer_id >= static_cast<int>(MAX_POINTERS)) {
-    Log::E("%s: Virtual touch event has invalid pointer id %d; value must be between -1 and %zu", phys_.c_str(), pointer_id, MAX_POINTERS - 0);
-    return false;
-  }
-
-  if (uinput_action == UinputAction::PRESS && active_pointers_.test(pointer_id)) {
-    Log::E("%s: Repetitive action DOWN event received on a pointer %d that is already down.", phys_.c_str(), pointer_id);
-    return false;
-  }
-  if (uinput_action == UinputAction::RELEASE && !active_pointers_.test(pointer_id)) {
-    Log::E("%s: Pointer %d action UP received with no prior action DOWN on touchscreen %d.", phys_.c_str(), pointer_id, fd_);
-    return false;
-  }
-  return true;
-}
-
-bool VirtualTouchscreen::WriteTouchEvent(int32_t pointer_id, int32_t tool_type, int32_t action,
-                                         int32_t location_x, int32_t location_y, int32_t pressure,
-                                         int32_t major_axis_size, nanoseconds event_time) {
-  Log::D("%s: WriteTouchEvent(%d, %d, %d, %d, %d, %d, %d, %lld)",
-         phys_.c_str(), pointer_id, tool_type, action, location_x, location_y, pressure, major_axis_size, event_time.count());
-  auto action_iterator = TOUCH_ACTION_MAPPING.find(action);
-  if (action_iterator == TOUCH_ACTION_MAPPING.end()) {
-    Log::E("%s: Unknown action: %d", phys_.c_str(), action);
-    return false;
-  }
-  UinputAction uinput_action = action_iterator->second;
-  if (!IsValidPointerId(pointer_id, uinput_action)) {
-    return false;
-  }
-  auto tool_type_iterator = TOOL_TYPE_MAPPING.find(tool_type);
-  if (tool_type_iterator == TOOL_TYPE_MAPPING.end()) {
-    Log::E("%s: Unknown tool: %d", phys_.c_str(), tool_type);
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_MT_SLOT, pointer_id, event_time, true)) {
-    return false;
-  }
-  auto tool = static_cast<int32_t>(tool_type_iterator->second);
-  if (!WriteInputEvent(EV_ABS, ABS_MT_TOOL_TYPE, tool, event_time, true)) {
-    return false;
-  }
-  if (uinput_action == UinputAction::PRESS && !HandleTouchDown(pointer_id, event_time)) {
-    return false;
-  }
-  if (uinput_action == UinputAction::RELEASE && !HandleTouchUp(pointer_id, event_time)) {
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_MT_POSITION_X, location_x, event_time, true)) {
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_MT_POSITION_Y, location_y, event_time, true)) {
-    return false;
-  }
-  if (!isnan(pressure)) {
-    if (!WriteInputEvent(EV_ABS, ABS_MT_PRESSURE, pressure, event_time, true)) {
-      return false;
-    }
-  }
-  if (!isnan(major_axis_size)) {
-    if (!WriteInputEvent(EV_ABS, ABS_MT_TOUCH_MAJOR, major_axis_size, event_time, true)) {
-      return false;
-    }
-  }
-  return WriteInputEvent(EV_SYN, SYN_REPORT, 0, event_time, true);
-}
-
-bool VirtualTouchscreen::HandleTouchDown(int32_t pointer_id, nanoseconds event_time) {
-  // When a new pointer is down on the touchscreen, add the pointer id in the corresponding
-  // entry in the unreleased touches map.
-  if (active_pointers_.none()) {
-    // Only sends the BTN Down event when the first pointer on the touchscreen is down.
-    if (!WriteInputEvent(EV_KEY, BTN_TOUCH, static_cast<int32_t>(UinputAction::PRESS), event_time, true)) {
-      return false;
-    }
-    Log::D("%s: First pointer %d down, BTN DOWN event sent", phys_.c_str(), pointer_id);
-  }
-
-  active_pointers_.set(pointer_id);
-  Log::D("%s: Added pointer %d to the map", phys_.c_str(), pointer_id);
-  if (!WriteInputEvent(EV_ABS, ABS_MT_TRACKING_ID, pointer_id, event_time, true)) {
-    return false;
-  }
-  return true;
-}
-
-bool VirtualTouchscreen::HandleTouchUp(int32_t pointer_id, nanoseconds event_time) {
-  if (!WriteInputEvent(EV_ABS, ABS_MT_TRACKING_ID, INVALID_TRACKING_ID, event_time, true)) {
-    return false;
-  }
-  // When a pointer is no longer in touch, remove the pointer id from the corresponding
-  // entry in the unreleased touches map.
-  active_pointers_.reset(pointer_id);
-  Log::D("%s: Pointer %d erased", phys_.c_str(), pointer_id);
-
-  // Only sends the BTN UP event when there's no pointers on the touchscreen.
-  if (active_pointers_.none()) {
-    if (!WriteInputEvent(EV_KEY, BTN_TOUCH, static_cast<int32_t>(UinputAction::RELEASE), event_time, true)) {
-      return false;
-    }
-    Log::D("%s: No pointers, BTN UP event sent.", phys_.c_str());
-  }
-  return true;
-}
-
-// Tool type mapping from https://source.android.com/devices/input/touch-devices
-const map<int, int> VirtualTouchscreen::TOOL_TYPE_MAPPING = {
-    {AMOTION_EVENT_TOOL_TYPE_FINGER, MT_TOOL_FINGER},
-    {AMOTION_EVENT_TOOL_TYPE_STYLUS, MT_TOOL_PEN}
-};
-
-// --- VirtualStylus ---
-
-VirtualStylus::VirtualStylus(int32_t screen_width, int32_t screen_height)
-    : VirtualInputDevice(GetPhysName(DeviceType::STYLUS)),
-      screen_width_(screen_width),
-      screen_height_(screen_height) {
-  fd_ = OpenUInput(DeviceType::STYLUS, phys_.c_str(), screen_width, screen_height);
-}
-
-VirtualStylus::~VirtualStylus() = default;
-
-bool VirtualStylus::WriteMotionEvent(int32_t tool_type, int32_t action, int32_t location_x,
-                                     int32_t location_y, int32_t pressure, int32_t tilt_x,
-                                     int32_t tilt_y, nanoseconds event_time) {
-  auto action_iterator = TOUCH_ACTION_MAPPING.find(action);
-  if (action_iterator == TOUCH_ACTION_MAPPING.end()) {
-    Log::E("%s: Unsupported action: %d.", phys_.c_str(), action);
-    return false;
-  }
-  UinputAction uinput_action = action_iterator->second;
-  auto tool_type_iterator = TOOL_TYPE_MAPPING.find(tool_type);
-  if (tool_type_iterator == TOOL_TYPE_MAPPING.end()) {
-    Log::E("%s: Unsupported tool type: %d.", phys_.c_str(), tool_type);
-    return false;
-  }
-  auto tool = static_cast<uint16_t>(tool_type_iterator->second);
-  if (uinput_action == UinputAction::PRESS && !HandleStylusDown(tool, event_time)) {
-    return false;
-  }
-  if (!is_stylus_down_) {
-    Log::E("%s: Action UP or MOVE received with no prior action DOWN.", phys_.c_str());
-    return false;
-  }
-  if (uinput_action == UinputAction::RELEASE && !HandleStylusUp(tool, event_time)) {
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_X, location_x, event_time)) {
-    Log::E("%s: Unsupported x-axis location: %d.", phys_.c_str(), location_x);
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_Y, location_y, event_time)) {
-    Log::E("%s: Unsupported y-axis location: %d.", phys_.c_str(), location_y);
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_TILT_X, tilt_x, event_time)) {
-    Log::E("%s: Unsupported x-axis tilt: %d.", phys_.c_str(), tilt_x);
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_TILT_Y, tilt_y, event_time)) {
-    Log::E("%s: Unsupported y-axis tilt: %d.", phys_.c_str(), tilt_y);
-    return false;
-  }
-  if (!WriteInputEvent(EV_ABS, ABS_PRESSURE, pressure, event_time)) {
-    Log::E("%s: Unsupported pressure: %d.", phys_.c_str(), pressure);
-    return false;
-  }
-  if (!WriteInputEvent(EV_SYN, SYN_REPORT, 0, event_time)) {
-    Log::E("%s: Failed to write SYN_REPORT.", phys_.c_str());
-    return false;
-  }
-  return true;
-}
-
-bool VirtualStylus::WriteButtonEvent(int32_t android_button_code, int32_t android_action, nanoseconds event_time) {
-  return WriteEvKeyEvent(android_button_code, android_action, BUTTON_CODE_MAPPING, VirtualMouse::BUTTON_ACTION_MAPPING, event_time);
-}
-
-bool VirtualStylus::HandleStylusDown(uint16_t tool, nanoseconds event_time) {
-  if (is_stylus_down_) {
-    Log::E("%s: Repetitive action DOWN event received for a stylus that is already down.", phys_.c_str());
-    return false;
-  }
-  if (!WriteInputEvent(EV_KEY, tool, static_cast<int32_t>(UinputAction::PRESS), event_time)) {
-    Log::E("%s: Failed to write EV_KEY for stylus press, tool type: %u.", phys_.c_str(), tool);
-    return false;
-  }
-  if (!WriteInputEvent(EV_KEY, BTN_TOUCH, static_cast<int32_t>(UinputAction::PRESS), event_time)) {
-    Log::E("%s: Failed to write BTN_TOUCH for stylus press.", phys_.c_str());
-    return false;
-  }
-  is_stylus_down_ = true;
-  return true;
-}
-
-bool VirtualStylus::HandleStylusUp(uint16_t tool, nanoseconds event_time) {
-  if (!WriteInputEvent(EV_KEY, tool, static_cast<int32_t>(UinputAction::RELEASE), event_time)) {
-    Log::E("%s: Failed to write EV_KEY for stylus release, tool type: %u.", phys_.c_str(), tool);
-    return false;
-  }
-  if (!WriteInputEvent(EV_KEY, BTN_TOUCH, static_cast<int32_t>(UinputAction::RELEASE), event_time)) {
-    Log::E("%s: Failed to write BTN_TOUCH for stylus release.", phys_.c_str());
-    return false;
-  }
-  is_stylus_down_ = false;
-  return true;
-}
-
-const map<int, int> VirtualStylus::TOOL_TYPE_MAPPING = {
-    {AMOTION_EVENT_TOOL_TYPE_STYLUS, BTN_TOOL_PEN},
-    {AMOTION_EVENT_TOOL_TYPE_ERASER, BTN_TOOL_RUBBER},
-};
-
-// Button code mapping from https://source.android.com/devices/input/touch-devices
-const map<int, int> VirtualStylus::BUTTON_CODE_MAPPING = {
-    {AMOTION_EVENT_BUTTON_STYLUS_PRIMARY, BTN_STYLUS},
-    {AMOTION_EVENT_BUTTON_STYLUS_SECONDARY, BTN_STYLUS2},
 };
 
 }  // namespace screensharing

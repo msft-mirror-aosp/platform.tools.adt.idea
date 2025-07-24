@@ -577,7 +577,7 @@ public final class StudioFlags {
     "Use adblib version of `AndroidDebugBridgeDelegate`",
     "Use adblib version of `AndroidDebugBridgeDelegate` in `AndroidDebugBridge` class. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    enabledUpTo(DEV));
+    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_ADB_DELEGATE_USAGE_TRACKER = new BooleanFlag(
     RUNDEBUG,
@@ -609,7 +609,7 @@ public final class StudioFlags {
     "Use the `app_info` feature if available on the device for discovering processes",
     "Check the `app_info` feature for connected devices, and use it to track processes if available. " +
     "Note: Changing the value of this flag requires restarting Android Studio.",
-    enabledUpTo(CANARY));
+    enabledUpTo(STABLE));
 
   public static final Flag<Boolean> JDWP_TRACER = new BooleanFlag(
     RUNDEBUG,
@@ -1145,6 +1145,11 @@ public final class StudioFlags {
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.on.device.rendering", "Always use on-device rendering",
     "Force using on-device rendering, even when the device is not XR. Used for development only.",
     false);
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_V2_RENDERING = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.v2.rendering", "Enable V2 studio-side rendering",
+    "Enable the new studio-side renderer in embedded mode.",
+    enabledUpTo(CANARY));
 
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_HORIZONTAL_SCROLLABLE_COMPONENT_TREE = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.horizontal.scrollable.component.tree",
@@ -1833,13 +1838,14 @@ public final class StudioFlags {
       "Enable Play Policy Insights",
       enabledUpTo(CANARY));
 
-  public static final Flag<Boolean> PLAY_POLICY_INSIGHTS_AUTO_UPDATE =
-    new BooleanFlag(
+  // Flag only for unplanned compatibility issues between Android Studio and lint libraries.
+  public static final Flag<String> PLAY_POLICY_INSIGHTS_TARGET_LIBRARY_VERSION =
+    new StringFlag(
       PLAY_POLICY_INSIGHTS,
-      "play.policy.insights.auto.update",
-      "Play Policy Insights Auto Update",
-      "Update Play Policy lint rule library to the latest",
-      enabledUpTo(CANARY));
+      "play.policy.insights.target.library.version",
+      "Play Policy Insights target library version",
+      "Force a specific version of the Play Policy Insights.",
+      "");
   // endregion Play Policy Insights
 
   // region Firebase Test Lab
@@ -2196,6 +2202,12 @@ public final class StudioFlags {
                     "This macro attaches the most recently opened files' (but not including the currently open one's) paths and contents with chat queries.",
                     enabledUpTo(CANARY));
 
+  public static final Flag<Boolean> STUDIOBOT_AGENT_MD_FILES_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "agent.md.files.context",
+                    "Enable the AGENT.md Files macro in the context drawer",
+                    "This macro attaches AGENT.md or GEMINI.md Files under directories of the current file and its recursive parents.",
+                    enabledUpTo(CANARY));
+
   public static final Flag<Boolean> STUDIOBOT_ASK_GEMINI_INCLUDE_BUILD_FILES_IN_CONTEXT =
     new BooleanFlag(STUDIOBOT, "askgemini.include.build.files.in.context",
                     "Allow build files in 'Ask Gemini' context",
@@ -2377,7 +2389,7 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "suggestion.smart.grouping.enabled",
                     "Enable smart grouping of suggestions that are accepted or rejected together",
                     "When enabled, individual chunks of suggestions may be grouped together using heuristic logic into semantic chunks that can be accepted or rejected together.",
-                    false);
+                    enabledUpTo(DEV));
 
   public static final Flag<Boolean> STUDIOBOT_DEPLOY_TOOLS_BY_DEFAULT =
     new BooleanFlag(STUDIOBOT, "include.deploy.tools.by.default",
@@ -2400,14 +2412,6 @@ public final class StudioFlags {
                     "Enable New Project Agent",
                     "Enables the 'New Project Agent'.",
                     false);
-
-  public enum CodeIndexingMode {NONE, BM25}
-
-  public static final EnumFlag<CodeIndexingMode> GEMINI_INDEX_CODEBASE =
-    new EnumFlag<>(STUDIOBOT, "codebase.indexing.mode",
-                   "Codebase Indexing Mode",
-                   "Index the codebase to allow searching using natural language",
-                   CodeIndexingMode.NONE);
 
   public enum DasherSupportMode {
     /**
@@ -2443,6 +2447,12 @@ public final class StudioFlags {
                     "Verify user tier in all API requests to the AIDA endpoint",
                     "Verify user tier in all API requests to the AIDA endpoint",
                     true);
+
+  public static final Flag<Boolean> GEMINI_NEXT_PREDICTION =
+    new BooleanFlag(STUDIOBOT, "gemini.next.prediction",
+                    "Enable next edit/action prediction in the IDE",
+                    "Enable next edit/action prediction in the IDE",
+                    false);
 
   // endregion STUDIO_BOT
 

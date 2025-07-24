@@ -22,8 +22,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.moveCaret
-import com.android.tools.idea.wear.dwf.dom.raw.expressions.WFFExpressionConfiguration
-import com.android.tools.idea.wear.dwf.dom.raw.expressions.WFFExpressionDataSource
+import com.android.tools.idea.wear.dwf.dom.raw.expressions.WFFExpressionLiteralExpr
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.lang.injection.InjectedLanguageManager
@@ -71,7 +70,6 @@ class UserConfigurationReferenceTest {
             <Stroke color="[CONFIGURATION.another_color_config]" />
             <Stroke notAColorAttribute="[CONFIGURATION.some_color_config]" />
             <Photos source="[CONFIGURATION.photo_config]" />
-            <Photos source="drawable_id" />
             <NotAPhotos source="[CONFIGURATION.photo_config]" />
           </Scene>
         </WatchFace>
@@ -132,9 +130,6 @@ class UserConfigurationReferenceTest {
         fixture.findElementByText("<PhotosConfiguration id=\"photo_config\" />", XmlTag::class.java)
       )
 
-    fixture.moveCaret("<Photos source=\"draw|able_id\" />")
-    assertThat(fixture.getReferenceAtCaretPosition()).isNull()
-
     fixture.moveCaret("<NotAPhotos source=\"[CONFIGURATION|.photo_config]\" />")
     assertThat(fixture.getReferenceAtCaretPosition()).isNull()
   }
@@ -169,6 +164,41 @@ class UserConfigurationReferenceTest {
         "[CONFIGURATION.color_config_2]",
         "[CONFIGURATION.color_config_3]",
       )
+  }
+
+  @Test
+  fun `xml attributes can autocomplete without starting with an open bracket`() {
+    val watchFaceFile =
+      fixture.addFileToProject(
+        "res/raw/watch_face.xml",
+        // language=XML
+        """
+        <WatchFace>
+          <UserConfigurations>
+            <ColorConfiguration id="color_config_1" />
+            <ColorConfiguration id="color_config_2" />
+            <ColorConfiguration id="color_config_3" />
+            <PhotosConfiguration id="photo_config_1" />
+            <PhotosConfiguration id="photo_config_2" />
+          </UserConfigurations>
+          <Scene backgroundColor="color_$caret" />
+          <Photos source="photo_" />
+        </WatchFace>
+      """
+          .trimIndent(),
+      )
+    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
+
+    assertThat(fixture.completeBasic().map { it.lookupString })
+      .containsExactly(
+        "[CONFIGURATION.color_config_1]",
+        "[CONFIGURATION.color_config_2]",
+        "[CONFIGURATION.color_config_3]",
+      )
+
+    fixture.moveCaret("<Photos source=\"photo_|\" />")
+    assertThat(fixture.completeBasic().map { it.lookupString })
+      .containsExactly("[CONFIGURATION.photo_config_1]", "[CONFIGURATION.photo_config_2]")
   }
 
   @Test
@@ -292,13 +322,14 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("[DATA_|SOURCE]")
     val dataSource =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionDataSource>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(dataSource).isNotNull()
-    assertThat(dataSource?.reference).isNull()
+    assertThat(dataSource?.reference).isNotNull()
+    assertThat(dataSource?.reference?.resolve()).isNull()
 
     fixture.moveCaret("[CONFIGURATION.boolean|_configuration]")
     val configuration =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(configuration).isNotNull()
     assertThat(configuration?.reference).isNotNull()
     assertThat(configuration?.reference?.resolve())
@@ -311,7 +342,7 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("[CONFIGURATION.|unknown]")
     val unknownConfiguration =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(unknownConfiguration).isNotNull()
     assertThat(unknownConfiguration?.reference).isNotNull()
     assertThat(unknownConfiguration?.reference?.resolve()).isNull()
@@ -443,7 +474,7 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("expression=\"[CONFIGURATION.|boolean_config]\"")
     val expressionConfiguration =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     // this shouldn't be injected when the flag is disabled
     assertThat(expressionConfiguration).isNull()
 
@@ -509,7 +540,7 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("[CONFIGURATION.|boolean_config]")
     val validBooleanConfig =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(validBooleanConfig).isNotNull()
     assertThat(validBooleanConfig?.reference?.resolve())
       .isEqualTo(
@@ -521,7 +552,7 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("[CONFIGURATION.|boolean_config.0]")
     val invalidBooleanConfig =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(invalidBooleanConfig).isNotNull()
     assertThat(invalidBooleanConfig?.reference?.resolve()).isNull()
   }
@@ -546,7 +577,7 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("[CONFIGURATION.|list_config]")
     val validListConfig =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(validListConfig).isNotNull()
     assertThat(validListConfig?.reference?.resolve())
       .isEqualTo(
@@ -555,9 +586,72 @@ class UserConfigurationReferenceTest {
 
     fixture.moveCaret("[CONFIGURATION.|list_config.0]")
     val invalidListConfig =
-      findInjectedElementAtCaret()?.parentOfType<WFFExpressionConfiguration>(withSelf = true)
+      findInjectedElementAtCaret()?.parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
     assertThat(invalidListConfig).isNotNull()
     assertThat(invalidListConfig?.reference?.resolve()).isNull()
+  }
+
+  @Test
+  fun `autocompletes user configurations in expressions when a literal is expected`() {
+    // wrap in a watch face file for the configuration references to resolve
+    val watchFaceFile =
+      fixture.addFileToProject(
+        "res/raw/watch_face.xml",
+        // language=XML
+        """
+        <WatchFace>
+          <UserConfigurations>
+            <BooleanConfiguration id="boolean_configuration" />
+            <ColorConfiguration id="color_config_1" />
+            <ColorConfiguration id="color_config_2" />
+            <PhotosConfiguration id="photo_config" />
+            <ListConfiguration id="list_configuration" />
+          </UserConfigurations>
+          <Parameter expression="$caret" />
+        </WatchFace>
+      """
+          .trimIndent(),
+      )
+
+    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
+
+    assertThat(fixture.completeBasic().map { it.lookupString })
+      .containsAllIn(
+        arrayOf(
+          "[CONFIGURATION.boolean_configuration]",
+          "[CONFIGURATION.color_config_1]",
+          "[CONFIGURATION.color_config_2]",
+          "[CONFIGURATION.photo_config]",
+          "[CONFIGURATION.list_configuration]",
+        )
+      )
+
+    fixture.type("[CONFIGURATION.color_config_1] * list")
+    assertThat(fixture.completeBasic().map { it.lookupString })
+      .containsExactly("[CONFIGURATION.list_configuration]")
+  }
+
+  @Test
+  fun `does not autocomplete user configurations in expressions when a literal is not expected`() {
+    // wrap in a watch face file for the configuration references to resolve
+    val watchFaceFile =
+      fixture.addFileToProject(
+        "res/raw/watch_face.xml",
+        // language=XML
+        """
+        <WatchFace>
+          <UserConfigurations>
+            <BooleanConfiguration id="boolean_configuration" />
+          </UserConfigurations>
+          <Parameter expression="[CONFIGURATION.boolean_configuration] $caret" />
+        </WatchFace>
+      """
+          .trimIndent(),
+      )
+
+    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
+
+    assertThat(fixture.completeBasic().map { it.lookupString }).isEmpty()
   }
 
   private fun findInjectedElementAtCaret() =

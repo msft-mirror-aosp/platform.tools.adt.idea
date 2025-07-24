@@ -16,7 +16,10 @@ java_library(
 java_library(
     name = "sample_no_ide",
     srcs = glob(["java/com/example/sample/*.java"]),
-    tags = ["no-ide"],
+    tags = [
+        "a-tag-before-no-ide",
+        "no-ide",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":lib",
@@ -46,11 +49,20 @@ java_library(
 )
 
 java_library(
-    name = "jar_of_interface_and_implementation",
-    srcs = glob(["java/com/example/jar_of_interface_and_implementation/*.java"]),
+    name = "jar_of_interface_and_implementation_list_implementation_in_source_file",
+    srcs = ["java/com/example/jar_of_interface_and_implementation/LibShouldNotBeIgnoredByJdeps.java"],
     visibility = ["//visibility:public"],
     deps = [
         "//java_and_deps/deps/interface_and_implementation/java/com/example/interface_and_implementation:libchild",
         "//java_and_deps/deps/interface_and_implementation/java/com/example/interface_and_implementation:libchildimpl",
+    ],
+)
+
+java_library(
+    name = "jar_of_interface_and_implementation_not_list_implementation_in_source_file",
+    srcs = ["java/com/example/jar_of_interface_and_implementation/LibShouldBeIgnoredByJdeps.java"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//java_and_deps/deps/interface_and_implementation/java/com/example/interface_and_implementation:libuser",
     ],
 )

@@ -21,8 +21,9 @@ import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
+import com.android.tools.idea.layoutinspector.runningdevices.OverlayHost
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
-import com.android.tools.idea.layoutinspector.ui.toolbar.actions.INITIAL_ALPHA_PERCENT
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.INITIAL_ALPHA_VALUE
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.INITIAL_LAYER_SPACING
 import com.google.common.annotations.VisibleForTesting
 import java.awt.Image
@@ -30,6 +31,8 @@ import java.awt.Rectangle
 import java.awt.Shape
 import java.awt.geom.AffineTransform
 import java.awt.geom.Area
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan
@@ -54,7 +57,7 @@ class RenderModel(
   val notificationModel: NotificationModel,
   val treeSettings: TreeSettings,
   val currentClientProvider: () -> InspectorClient,
-) {
+) : OverlayHost {
   /**
    * The last rendered level hovered over. This is different from [InspectorModel.hoveredNode],
    * since this differentiates between different layers owned by the same ViewNode.
@@ -91,16 +94,26 @@ class RenderModel(
 
   val modificationListeners = mutableListOf<() -> Unit>()
 
-  var overlay: Image? = null
+  /** [ByteArray] representation of the [overlayImage]. */
+  var overlayBytes: ByteArray? = null
     set(value) {
       if (value != null) {
+        val image = ImageIO.read(ByteArrayInputStream(value))
+        overlayImage = image
         resetRotation()
+      } else {
+        overlayImage = null
       }
+
       field = value
       modificationListeners.forEach { it() }
     }
 
-  var overlayAlpha: Float = INITIAL_ALPHA_PERCENT / 100f
+  /** Overlay image, controlled by [overlayBytes]. */
+  var overlayImage: Image? = null
+    private set
+
+  var overlayAlpha: Float = INITIAL_ALPHA_VALUE
     set(value) {
       field = value
       modificationListeners.forEach { it() }
@@ -117,7 +130,7 @@ class RenderModel(
   init {
     model.addModificationListener { _, new, _ ->
       if (new == null) {
-        overlay = null
+        overlayImage = null
       }
       if (!currentClientProvider().capabilities.contains(InspectorClient.Capability.SUPPORTS_SKP)) {
         resetRotation()
@@ -423,4 +436,19 @@ class RenderModel(
 
   /** Fire the modification listeners manually. */
   fun fireModified() = modificationListeners.forEach { it() }
+
+  // TODO(b/433223949): remove
+  override fun setOverlay(image: ByteArray?) {
+    overlayBytes = image
+  }
+
+  // TODO(b/433223949): remove
+  override fun getOverlay(): ByteArray? {
+    return overlayBytes
+  }
+
+  // TODO(b/433223949): remove
+  override fun setOverlayTransparency(alpha: Float) {
+    overlayAlpha = alpha
+  }
 }

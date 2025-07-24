@@ -281,6 +281,7 @@ def one_of(a, b):
 def _encode_target_info_proto(target_info):
     contents = struct(
         target = target_info.target,
+        is_external_dependency = target_info.is_external_dependency,
         dep_java_info_files = _encode_file_list(target_info.dep_java_info_files),
         jars = _encode_file_list(target_info.jars),
         compile_jdeps = _encode_file_list(target_info.compile_jdeps),
@@ -563,6 +564,7 @@ def _collect_own_java_artifacts(
         fail("Unexpected: " + str(own_jar_files) + " " + str(own_jar_depsets))
 
     return struct(
+        is_external_dependency = must_build_main_artifacts,
         jar_depset = own_jar_depset,
         compile_jdeps_depset = depset(own_compile_jdeps_files),
         output_jar_depset = depset(own_output_jar_files),
@@ -575,6 +577,7 @@ def _collect_own_java_artifacts(
 
 def _target_to_artifact_entry(
         label = "",
+        is_external_dependency = False,
         dep_java_info_files = [],
         jars = [],
         compile_jdeps = [],
@@ -586,6 +589,7 @@ def _target_to_artifact_entry(
         android_resources_package = ""):
     return struct(
         target = label,
+        is_external_dependency = is_external_dependency,
         dep_java_info_files = dep_java_info_files,
         jars = jars,
         compile_jdeps = compile_jdeps,
@@ -634,6 +638,7 @@ def _collect_own_and_dependency_java_artifacts(
     gen_srcs = own_files.gensrc_depset.to_list()  # Flattening is fine here (these are files from one target)
     java_info_file = _write_java_target_info(ctx, target.label, _target_to_artifact_entry(
         label = str(target.label),
+        is_external_dependency = own_files.is_external_dependency,
         dep_java_info_files = dep_java_info_files,  # No flattening here. This is a list of direct dependencies only.
         jars = jars,
         compile_jdeps = compile_jdeps,
@@ -696,6 +701,8 @@ def _collect_own_and_dependency_cc_info(target, rule):
             gen_headers = gen_headers.to_list(),
             toolchain_id = cc_toolchain_info.id if cc_toolchain_info else None,
         )
+    if not compilation_info and not cc_toolchain_info:
+        return None
     return struct(
         compilation_info = compilation_info,
         gen_headers = gen_headers,
@@ -715,9 +722,7 @@ def _collect_dependencies_core_impl(
         ctx,
         params,
     )
-    cc_dep_info = None
-    if CcInfo in target:
-        cc_dep_info = _collect_cc_dependencies_core_impl(target, ctx)
+    cc_dep_info = _collect_cc_dependencies_core_impl(target, ctx)
     cc_toolchain_dep_info = _collect_cc_toolchain_info(target, ctx)
     return merge_dependencies_info(target, ctx, java_dep_info, cc_dep_info, cc_toolchain_dep_info)
 
@@ -764,8 +769,11 @@ def _collect_java_dependencies_core_impl(
 
 def _collect_cc_dependencies_core_impl(target, ctx):
     cc_info = _collect_own_and_dependency_cc_info(target, ctx.rule)
+    if not cc_info:
+        return None
     cc_info_files = []
-    cc_info_files = [_write_cc_target_info(target.label, cc_info.compilation_info, ctx)] + ([cc_info.cc_toolchain_info.file] if cc_info.cc_toolchain_info else [])
+    cc_info_files = ([_write_cc_target_info(target.label, cc_info.compilation_info, ctx)] if cc_info.compilation_info else []) + \
+                    ([cc_info.cc_toolchain_info.file] if cc_info.cc_toolchain_info else [])
 
     return create_cc_dependencies_info(
         cc_info_files = depset(cc_info_files),

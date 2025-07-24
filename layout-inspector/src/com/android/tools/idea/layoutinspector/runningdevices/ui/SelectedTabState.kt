@@ -24,6 +24,7 @@ import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.dataProviderForLayoutInspector
 import com.android.tools.idea.layoutinspector.properties.DimensionUnitAction
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
+import com.android.tools.idea.layoutinspector.runningdevices.RenderingComponents
 import com.android.tools.idea.layoutinspector.runningdevices.SPLITTER_KEY
 import com.android.tools.idea.layoutinspector.runningdevices.actions.GearAction
 import com.android.tools.idea.layoutinspector.runningdevices.actions.HorizontalSplitAction
@@ -36,9 +37,9 @@ import com.android.tools.idea.layoutinspector.runningdevices.actions.SwapVertica
 import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
 import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
 import com.android.tools.idea.layoutinspector.runningdevices.actions.VerticalSplitAction
-import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.LayoutInspectorRenderer
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefinition
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.OverlayActionGroup
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.TargetSelectionActionFactory
 import com.android.tools.idea.layoutinspector.ui.toolbar.createEmbeddedLayoutInspectorToolbar
 import com.android.tools.idea.streaming.core.DeviceId
@@ -85,7 +86,7 @@ data class SelectedTabState(
   val deviceId: DeviceId,
   val tabComponents: TabComponents,
   val layoutInspector: LayoutInspector,
-  val rendererPanel: LayoutInspectorRenderer,
+  val renderingComponents: RenderingComponents,
 ) : Disposable {
 
   private var uiConfig = UiConfig.HORIZONTAL
@@ -99,8 +100,8 @@ data class SelectedTabState(
     uiConfig = uiConfigString?.let { UiConfig.valueOf(uiConfigString) } ?: UiConfig.HORIZONTAL
 
     val layoutInspectorProvider = dataProviderForLayoutInspector(layoutInspector)
-    DataManager.registerDataProvider(rendererPanel, layoutInspectorProvider)
-    Disposer.register(this) { DataManager.removeDataProvider(rendererPanel) }
+    DataManager.registerDataProvider(renderingComponents.renderer, layoutInspectorProvider)
+    Disposer.register(this) { DataManager.removeDataProvider(renderingComponents.renderer) }
   }
 
   @TestOnly
@@ -113,7 +114,7 @@ data class SelectedTabState(
     ApplicationManager.getApplication().assertIsDispatchThread()
 
     wrapUi(uiConfig)
-    tabComponents.displayView.add(rendererPanel)
+    tabComponents.displayView.add(renderingComponents.renderer)
 
     layoutInspector.processModel?.addSelectedProcessListeners(
       EdtExecutorService.getInstance(),
@@ -215,8 +216,9 @@ data class SelectedTabState(
   ): JComponent {
     val toggleDeepInspectAction =
       ToggleDeepInspectAction(
-        isSelected = { rendererPanel.interceptClicks },
-        setSelected = { rendererPanel.interceptClicks = it },
+        // TODO(b/433223949): set on the model directly once StudioRendererPanel is removed
+        isSelected = { renderingComponents.renderer.interceptClicks },
+        setSelected = { renderingComponents.renderer.interceptClicks = it },
         isRendering = { layoutInspector.renderModel.isActive },
         connectedClientProvider = { layoutInspector.currentClient },
       )
@@ -237,25 +239,35 @@ data class SelectedTabState(
         deviceId.serialNumber,
       )
     return createEmbeddedLayoutInspectorToolbar(
-      parentDisposable,
-      targetComponent,
-      layoutInspector,
-      processPicker,
-      listOf(
-        toggleDeepInspectAction,
-        GearAction(
-          HorizontalSplitAction(::uiConfig, ::updateUi),
-          SwapHorizontalSplitAction(::uiConfig, ::updateUi),
-          VerticalSplitAction(::uiConfig, ::updateUi),
-          SwapVerticalSplitAction(::uiConfig, ::updateUi),
-          LeftVerticalSplitAction(::uiConfig, ::updateUi),
-          SwapLeftVerticalSplitAction(::uiConfig, ::updateUi),
-          RightVerticalSplitAction(::uiConfig, ::updateUi),
-          SwapRightVerticalSplitAction(::uiConfig, ::updateUi),
-          Separator.create(),
-          DimensionUnitAction,
+      parentDisposable = parentDisposable,
+      targetComponent = targetComponent,
+      layoutInspector = layoutInspector,
+      selectProcessAction = processPicker,
+      firstGroupExtraActions =
+        listOf(
+          OverlayActionGroup(
+            inspectorModel = layoutInspector.inspectorModel,
+            getImage = { renderingComponents.model.getOverlay() },
+            setImage = { renderingComponents.model.setOverlay(it) },
+            setAlpha = { renderingComponents.model.setOverlayTransparency(it) },
+          )
         ),
-      ),
+      lastGroupExtraActions =
+        listOf(
+          toggleDeepInspectAction,
+          GearAction(
+            HorizontalSplitAction(::uiConfig, ::updateUi),
+            SwapHorizontalSplitAction(::uiConfig, ::updateUi),
+            VerticalSplitAction(::uiConfig, ::updateUi),
+            SwapVerticalSplitAction(::uiConfig, ::updateUi),
+            LeftVerticalSplitAction(::uiConfig, ::updateUi),
+            SwapLeftVerticalSplitAction(::uiConfig, ::updateUi),
+            RightVerticalSplitAction(::uiConfig, ::updateUi),
+            SwapRightVerticalSplitAction(::uiConfig, ::updateUi),
+            Separator.create(),
+            DimensionUnitAction,
+          ),
+        ),
     )
   }
 
@@ -282,7 +294,7 @@ data class SelectedTabState(
 
     unwrapUi()
 
-    tabComponents.displayView.remove(rendererPanel)
+    tabComponents.displayView.remove(renderingComponents.renderer)
     layoutInspector.processModel?.removeSelectedProcessListener(selectedProcessListener)
 
     tabComponents.tabContentPanelContainer.revalidate()
@@ -294,7 +306,8 @@ data class SelectedTabState(
     // are invoked.
     if (!project.isDisposed) {
       layoutInspector.inspectorClientSettings.inLiveMode = true
-      rendererPanel.interceptClicks = false
+      // TODO(b/433223949): set on the model directly once StudioRendererPanel is removed
+      renderingComponents.renderer.interceptClicks = false
     }
   }
 

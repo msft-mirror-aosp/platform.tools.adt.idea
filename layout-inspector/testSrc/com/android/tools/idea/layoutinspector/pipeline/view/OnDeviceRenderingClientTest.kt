@@ -188,7 +188,15 @@ class OnDeviceRenderingClientTest {
 
   @Test
   fun testDrawSelectedNode(): Unit = runTest {
-    val drawInstructions = DrawInstruction(1L, Rectangle(), 1, "label")
+    val drawInstructions =
+      DrawInstruction(
+        rootViewId = 1L,
+        bounds = Rectangle(),
+        color = 1,
+        label = DrawInstruction.Label(text = "label", size = 1f),
+        strokeThickness = 1f,
+        outlineColor = null,
+      )
     onDeviceRenderingClient.drawSelectedNode(drawInstructions)
 
     val expectedCommand =
@@ -197,7 +205,8 @@ class OnDeviceRenderingClientTest {
           bounds = listOf(Rectangle()),
           color = 1,
           type = LayoutInspectorViewProtocol.DrawCommand.Type.SELECTED_NODES,
-          label = "label",
+          label = DrawInstruction.Label(text = "label", size = 1f),
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -207,7 +216,15 @@ class OnDeviceRenderingClientTest {
 
   @Test
   fun testDrawHoveredNode(): Unit = runTest {
-    val drawInstructions = DrawInstruction(1L, Rectangle(), 1, null)
+    val drawInstructions =
+      DrawInstruction(
+        rootViewId = 1L,
+        bounds = Rectangle(),
+        color = 1,
+        label = null,
+        strokeThickness = 1f,
+        outlineColor = null,
+      )
     onDeviceRenderingClient.drawHoveredNode(drawInstructions)
 
     val expectedCommand =
@@ -216,6 +233,7 @@ class OnDeviceRenderingClientTest {
           bounds = listOf(Rectangle()),
           color = 1,
           type = LayoutInspectorViewProtocol.DrawCommand.Type.HOVERED_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -225,7 +243,15 @@ class OnDeviceRenderingClientTest {
 
   @Test
   fun testDrawVisibleNodes(): Unit = runTest {
-    val drawInstructions = DrawInstruction(1L, Rectangle(), 1, null)
+    val drawInstructions =
+      DrawInstruction(
+        rootViewId = 1L,
+        bounds = Rectangle(),
+        color = 1,
+        label = null,
+        strokeThickness = 1f,
+        outlineColor = null,
+      )
     onDeviceRenderingClient.drawVisibleNodes(listOf(drawInstructions))
 
     val expectedCommand =
@@ -234,6 +260,7 @@ class OnDeviceRenderingClientTest {
           bounds = listOf(Rectangle()),
           color = 1,
           type = LayoutInspectorViewProtocol.DrawCommand.Type.VISIBLE_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -243,7 +270,15 @@ class OnDeviceRenderingClientTest {
 
   @Test
   fun testDrawRecomposingNodes(): Unit = runTest {
-    val drawInstructions = DrawInstruction(1L, Rectangle(), 1, null)
+    val drawInstructions =
+      DrawInstruction(
+        rootViewId = 1L,
+        bounds = Rectangle(),
+        color = 1,
+        label = null,
+        strokeThickness = 1f,
+        outlineColor = null,
+      )
     onDeviceRenderingClient.drawRecomposingNodes(listOf(drawInstructions))
 
     val expectedCommand =
@@ -252,6 +287,7 @@ class OnDeviceRenderingClientTest {
           bounds = listOf(Rectangle()),
           color = 1,
           type = LayoutInspectorViewProtocol.DrawCommand.Type.RECOMPOSING_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -269,7 +305,8 @@ class OnDeviceRenderingClientTest {
           rootId = 1L,
           bounds = emptyList(),
           color = 1,
-          LayoutInspectorViewProtocol.DrawCommand.Type.SELECTED_NODES,
+          type = LayoutInspectorViewProtocol.DrawCommand.Type.SELECTED_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -287,7 +324,8 @@ class OnDeviceRenderingClientTest {
           rootId = 1L,
           bounds = emptyList(),
           color = 1,
-          LayoutInspectorViewProtocol.DrawCommand.Type.HOVERED_NODES,
+          type = LayoutInspectorViewProtocol.DrawCommand.Type.HOVERED_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -304,7 +342,8 @@ class OnDeviceRenderingClientTest {
           rootId = 1L,
           bounds = emptyList(),
           color = 1,
-          LayoutInspectorViewProtocol.DrawCommand.Type.VISIBLE_NODES,
+          type = LayoutInspectorViewProtocol.DrawCommand.Type.VISIBLE_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 
@@ -321,7 +360,8 @@ class OnDeviceRenderingClientTest {
           rootId = 1L,
           bounds = emptyList(),
           color = 1,
-          LayoutInspectorViewProtocol.DrawCommand.Type.RECOMPOSING_NODES,
+          type = LayoutInspectorViewProtocol.DrawCommand.Type.RECOMPOSING_NODES,
+          strokeThickness = 1f,
         )
         .toByteArray()
 

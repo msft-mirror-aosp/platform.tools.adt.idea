@@ -16,21 +16,31 @@
 package com.android.tools.idea.testartifacts.scopes
 
 import com.android.tools.idea.testartifacts.TestConfigurationTesting
-import com.android.tools.idea.testartifacts.createAndroidGradleConfigurationFromDirectory
-import com.android.tools.idea.testing.AndroidGradleTestCase
+import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil
+import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromDirectory
+import com.android.tools.idea.testing.AndroidGradleProjectRule
+import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.project.Project
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 
 /**
  * Tests for verifying that there is no conflict creating an instrumented test after a Gradle unit test.
  */
-class AndroidTestAndGradleConfigurationConflictsTest : AndroidGradleTestCase() {
-  // See: http://b/173106394
-  @Throws(Exception::class)
+@RunsInEdt
+class AndroidTestAndGradleConfigurationConflictsTest {
+  @get:Rule
+  val projectRule = AndroidGradleProjectRule().onEdt()
+  val project by lazy { projectRule.project }
+
+  @Test // See: http://b/173106394
   fun testCanCreateInstrumentedTestConfiguration() {
-    loadSimpleApplication()
-    assertThat(createAndroidGradleConfigurationFromDirectory(project, "app/src/test/java/google/simpleapplication")).isNotNull()
+    projectRule.loadProject(SIMPLE_APPLICATION)
+    assertThat(createAndroidGradleTestConfigurationFromDirectory(project, "app/src/test/java/google/simpleapplication")).isNotNull()
 
     // Verify that no configuration is created from the context of AndroidTest artifact.
     // This follows the workflow on AS when trying to create a AndroidTest configuration, where we first check if any existing configuration
@@ -48,10 +58,9 @@ class AndroidTestAndGradleConfigurationConflictsTest : AndroidGradleTestCase() {
   }
 
   private fun findExistingAndroidTestConfigurationFromDirectory(project: Project, directory: String): RunConfiguration? {
-    val element = TestConfigurationTesting.getPsiElement(project, directory, true)
-    val context = TestConfigurationTesting.createContext(project, element)
+    val element = TestConfigurationTestingUtil.getPsiElement(project, directory, true)
+    val context = TestConfigurationTestingUtil.createContext(project, element)
     // Search for any existing run configuration that was created from this context.
-    val existing = context.findExisting() ?: return null
-    return existing.configuration
+    return context.findExisting()?.configuration
   }
 }

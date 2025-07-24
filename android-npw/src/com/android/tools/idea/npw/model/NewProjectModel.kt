@@ -17,10 +17,10 @@ package com.android.tools.idea.npw.model
 
 import com.android.annotations.concurrency.UiThread
 import com.android.annotations.concurrency.WorkerThread
-import com.android.ide.common.repository.AgpVersion
 import com.android.io.CancellableFileIo
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.project.AndroidNewProjectInitializationStartupActivity
 import com.android.tools.idea.gradle.project.importing.GradleNewProjectConfiguration
@@ -75,8 +75,6 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.pom.java.LanguageLevel
-import org.jetbrains.android.util.AndroidBundle.message
-import org.jetbrains.android.util.AndroidUtils
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -84,61 +82,11 @@ import java.nio.file.Paths
 import java.util.Locale
 import java.util.Optional
 import java.util.regex.Pattern
+import org.jetbrains.android.util.AndroidBundle.message
+import org.jetbrains.android.util.AndroidUtils
 
 private val logger: Logger
   get() = logger<NewProjectModel>()
-
-/**
- * Picks the version of AGP to use for new projects and modules.
- *
- * For existing projects, FixedVersion is used, but for new projects, the version might be resolved
- * during template render, see [newProjectAgpVersionSelector]
- */
-sealed class AgpVersionSelector {
-
-  /** Resolve the version, calling the [publishedAgpVersions] supplier only if needed */
-  abstract fun resolveVersion(publishedAgpVersions: () -> Set<AgpVersion>): AgpVersion
-
-  /**
-   * Returns true if the selector will select an AGP version of at least the version passed
-   * irrespective of the published AGP versions.
-   *
-   * The only time [willSelectAtLeast]`(version)` will not be equivalent to
-   * [resolveVersion]`(AgpVersions::getAvailableVersions)` is when differentiating between minor
-   * versions is important and [newProjectAgpVersionSelector] returns a [MaximumPatchVersion]
-   * selector. See AgoVersionSelectorTest for examples.
-   */
-  abstract fun willSelectAtLeast(version: AgpVersion): Boolean
-
-  data class FixedVersion(private val version: AgpVersion) : AgpVersionSelector() {
-    override fun resolveVersion(publishedAgpVersions: () -> Set<AgpVersion>): AgpVersion = version
-
-    override fun willSelectAtLeast(minimum: AgpVersion): Boolean = this.version >= minimum
-  }
-
-  @VisibleForTesting
-  data class MaximumPatchVersion(private val version: AgpVersion) : AgpVersionSelector() {
-    override fun resolveVersion(publishedAgpVersions: () -> Set<AgpVersion>): AgpVersion {
-      if (version.isPreview) return version
-      return (publishedAgpVersions
-        .invoke()
-        .filter { it.major == version.major && it.minor == version.minor }
-        .maxOrNull()
-        ?.takeIf { it >= version }) ?: version
-    }
-
-    override fun willSelectAtLeast(minimum: AgpVersion): Boolean = this.version >= minimum
-  }
-}
-
-/** Create a AgpVersionSelector for new project use */
-fun newProjectAgpVersionSelector(): AgpVersionSelector {
-  return if (StudioFlags.NPW_PICK_LATEST_PATCH_AGP.get()) {
-    AgpVersionSelector.MaximumPatchVersion(AgpVersions.newProject)
-  } else {
-    AgpVersionSelector.FixedVersion(AgpVersions.newProject)
-  }
-}
 
 interface ProjectModelData {
   val projectSyncInvoker: ProjectSyncInvoker
@@ -155,6 +103,7 @@ interface ProjectModelData {
   val additionalMavenRepos: ObjectValueProperty<List<URL>>
   val multiTemplateRenderer: MultiTemplateRenderer
   val projectTemplateDataBuilder: ProjectTemplateDataBuilder
+  val prompt: StringProperty
 }
 
 class NewProjectModel : WizardModel(), ProjectModelData {
@@ -174,9 +123,13 @@ class NewProjectModel : WizardModel(), ProjectModelData {
   override val agpVersionSelector =
     ObjectValueProperty<AgpVersionSelector>(newProjectAgpVersionSelector())
   override val additionalMavenRepos: ObjectValueProperty<List<URL>> = ObjectValueProperty(listOf())
-  override val multiTemplateRenderer = MultiTemplateRenderer { renderer ->
+  override val multiTemplateRenderer = MultiTemplateRenderer(::runRenderer)
+  // TODO(b/431005261): Fill this in only if the Gemini new project is used
+  override val prompt = StringValueProperty("Implement a tic-tac-toe app")
+
+  private fun runRenderer(renderer: (Project) -> Unit) {
     object :
-        Task.Modal(
+        Task.Backgroundable(
           null,
           message("android.compile.messages.generating.r.java.content.name"),
           false,
@@ -199,6 +152,12 @@ class NewProjectModel : WizardModel(), ProjectModelData {
             .setProjectInitializer {
               logger.info("Rendering a new project.")
               NonProjectFileWritingAccessProvider.disableChecksDuring { renderer(newProject) }
+
+              if (StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && !prompt.isEmpty.get()) {
+                ApplicationManager.getApplication().invokeLater {
+                  GeminiPluginApi.getInstance().launchNewProjectAgent(newProject, prompt.get())
+                }
+              }
             }
 
           val openProjectTask = OpenProjectTask {
@@ -212,6 +171,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       }
       .queue()
   }
+
   override val projectTemplateDataBuilder = ProjectTemplateDataBuilder(true)
 
   init {
@@ -220,16 +180,16 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     language.set(calculateInitialLanguage(properties))
   }
 
-  private fun saveWizardState() =
-    with(properties) {
-      setValue(PROPERTIES_NPW_LANGUAGE_KEY, language.value.toString())
-      setValue(PROPERTIES_NPW_ASKED_LANGUAGE_KEY, true)
+  private fun saveWizardState() {
+    val properties = properties
+    properties.setValue(PROPERTIES_NPW_LANGUAGE_KEY, language.value.toString())
+    properties.setValue(PROPERTIES_NPW_ASKED_LANGUAGE_KEY, true)
 
-      val androidPackage = packageName.get().substringBeforeLast('.')
-      if (AndroidUtils.isValidAndroidPackageName(androidPackage)) {
-        setValue(PROPERTIES_ANDROID_PACKAGE_KEY, androidPackage)
-      }
+    val androidPackage = packageName.get().substringBeforeLast('.')
+    if (AndroidUtils.isValidAndroidPackageName(androidPackage)) {
+      properties.setValue(PROPERTIES_ANDROID_PACKAGE_KEY, androidPackage)
     }
+  }
 
   override fun handleFinished() {
     val projectLocation = projectLocation.get().trimEnd(File.separatorChar)
@@ -288,15 +248,18 @@ class NewProjectModel : WizardModel(), ProjectModelData {
         this@NewProjectModel.agpVersionSelector
           .get()
           .resolveVersion(AgpVersions::getAvailableVersions)
-      projectTemplateData = projectTemplateDataBuilder.apply {
-        topOut = File(project.basePath ?: "")
-        androidXSupport = true
+      projectTemplateData =
+        projectTemplateDataBuilder
+          .apply {
+            topOut = File(project.basePath ?: "")
+            androidXSupport = true
 
-        setProjectDefaults(project)
-        language = this@NewProjectModel.language.value
-        agpVersion = resolvedAgpVersion
-        additionalMavenRepos = this@NewProjectModel.additionalMavenRepos.get()
-      }.build()
+            setProjectDefaults(project)
+            language = this@NewProjectModel.language.value
+            agpVersion = resolvedAgpVersion
+            additionalMavenRepos = this@NewProjectModel.additionalMavenRepos.get()
+          }
+          .build()
     }
 
     @WorkerThread
@@ -311,9 +274,10 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
     @WorkerThread
     override fun onSourcesCreated() {
-      GradleProjectImporter.configureNewProject(project, GradleNewProjectConfiguration(
-        useDefaultDaemonJvmCriteria = true
-      ))
+      GradleProjectImporter.configureNewProject(
+        project,
+        GradleNewProjectConfiguration(useDefaultDaemonJvmCriteria = true),
+      )
     }
 
     @WorkerThread
@@ -359,7 +323,8 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       val rootLocation = File(projectLocation.get())
       val wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation)
       try {
-        GradleWrapper.get(wrapperPropertiesFilePath, project).updateDistributionUrl(projectTemplateData.gradleVersion)
+        GradleWrapper.get(wrapperPropertiesFilePath, project)
+          .updateDistributionUrl(projectTemplateData.gradleVersion)
       } catch (e: IOException) {
         // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails
         // and the error message has a "quick fix".
