@@ -410,8 +410,6 @@
       <module fileurl="file://$PROJECT_DIR$/room/intellij.android.room.iml" filepath="$PROJECT_DIR$/room/intellij.android.room.iml" />
       <module fileurl="file://$PROJECT_DIR$/room/intellij.android.room.tests.iml" filepath="$PROJECT_DIR$/room/intellij.android.room.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/rt/intellij.android.rt.iml" filepath="$PROJECT_DIR$/rt/intellij.android.rt.iml" />
-      <module fileurl="file://$PROJECT_DIR$/safemode/intellij.android.safemode.iml" filepath="$PROJECT_DIR$/safemode/intellij.android.safemode.iml" />
-      <module fileurl="file://$PROJECT_DIR$/safemode/intellij.android.safemode.integration.tests.iml" filepath="$PROJECT_DIR$/safemode/intellij.android.safemode.integration.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/screenshot-testing/intellij.android.screenshot-test.iml" filepath="$PROJECT_DIR$/screenshot-testing/intellij.android.screenshot-test.iml" />
       <module fileurl="file://$PROJECT_DIR$/screenshot-testing/gradle/intellij.android.screenshot-test.gradle.iml" filepath="$PROJECT_DIR$/screenshot-testing/gradle/intellij.android.screenshot-test.gradle.iml" />
       <module fileurl="file://$PROJECT_DIR$/screenshot-testing/intellij.android.screenshot-test.tests.iml" filepath="$PROJECT_DIR$/screenshot-testing/intellij.android.screenshot-test.tests.iml" />
@@ -460,6 +458,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../base/wizard/template-plugin/intellij.android.wizardTemplate.plugin.iml" filepath="$PROJECT_DIR$/../../base/wizard/template-plugin/intellij.android.wizardTemplate.plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/lint/intellij.lint.iml" filepath="$PROJECT_DIR$/lint/intellij.lint.iml" />
       <module fileurl="file://$PROJECT_DIR$/lint/tests/intellij.lint.tests.iml" filepath="$PROJECT_DIR$/lint/tests/intellij.lint.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/adt-ui-compose/jewel.sdkcompat/jewel.sdkcompat.iml" filepath="$PROJECT_DIR$/adt-ui-compose/jewel.sdkcompat/jewel.sdkcompat.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/lldb-integration-tests/lldb-integration-tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/lldb-integration-tests/lldb-integration-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/memory-usage/memory-usage.iml" filepath="$PROJECT_DIR$/memory-usage/memory-usage.iml" />
       <module fileurl="file://$PROJECT_DIR$/native-symbolizer/native-symbolizer.iml" filepath="$PROJECT_DIR$/native-symbolizer/native-symbolizer.iml" />

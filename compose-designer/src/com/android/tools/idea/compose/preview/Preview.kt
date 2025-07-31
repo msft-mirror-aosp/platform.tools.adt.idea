@@ -48,6 +48,7 @@ import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.concurrency.asCollection
+import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.concurrency.launchWithProgress
 import com.android.tools.idea.editors.build.PsiCodeFileOutOfDateStatusReporter
 import com.android.tools.idea.editors.build.RenderingBuildStatus
@@ -1571,7 +1572,7 @@ class ComposePreviewRepresentation(
 
           // Subscribe to bus message for closing the inspector from other files
           ComposeAnimationListener.messageBus
-            .connect(animationPreview)
+            .connect(animationPreview.scope)
             .subscribe(
               ComposeAnimationListener.TOPIC,
               object : ComposeAnimationListener {
@@ -1624,7 +1625,7 @@ class ComposePreviewRepresentation(
       }
       is PreviewMode.AnimationInspection -> {
         currentAnimationPreview?.let {
-          withContext(Dispatchers.EDT) { Disposer.dispose(it) }
+          withContext(Dispatchers.EDT) { it.cancelScope() }
           it.tracker.closeAnimationInspector()
         }
         currentAnimationPreview = null
@@ -1648,16 +1649,14 @@ class ComposePreviewRepresentation(
     psiFilePointer: SmartPsiElementPointer<PsiFile>,
   ): ComposeAnimationPreview {
     return ComposeAnimationPreview(
+        this@ComposePreviewRepresentation.createCoroutineScope(),
         surface.project,
         ComposeAnimationTracker(AnimationToolingUsageTracker.getInstance(surface)),
         { surface.model?.let { surface.getSceneManager(it) } },
         surface,
         psiFilePointer,
       )
-      .also {
-        Disposer.register(this@ComposePreviewRepresentation, it)
-        it.tracker.openAnimationInspector()
-      }
+      .also { it.tracker.openAnimationInspector() }
   }
 
   private var currentAnimationPreview: ComposeAnimationPreview? = null
@@ -1671,7 +1670,12 @@ class ComposePreviewRepresentation(
 
     override fun onCaretPositionChanged(event: CaretEvent, isModificationTriggered: Boolean) {
       if (StudioFlags.COMPOSE_PREVIEW_CODE_TO_PREVIEW_NAVIGATION.get() && !isNavigatingToCode) {
-        staticNavHandler.onCaretMoved(event.newPosition.line + 1)
+        if (isModificationTriggered) {
+          // if the user is typing clear the highlight
+          staticNavHandler.clearHighlight();
+        } else {
+          staticNavHandler.onCaretMoved(event.newPosition.line + 1)
+        }
       }
 
       // If isNavigatingToCode was true it was correctly handled above so we should reset it

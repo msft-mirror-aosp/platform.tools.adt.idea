@@ -192,7 +192,10 @@ private fun Project.dumpAllIdeModels() : Sequence<String> {
       // without the dependencies, whereas that's not the case formerly.
       dumpAllVariants = false,
       // IdeModelDumper dump the root project structure by default, we don't want that here
-      dumpRootModuleProjectStructure = false
+      dumpRootModuleProjectStructure = false,
+      // IdeModelDumper dumps only one entry from each linked group to prevent noise, but we should
+      // compare everything here.
+      dumpAllLinkedModules = true
   )
 
   return dumper.toString().nameProperties()
@@ -202,7 +205,8 @@ private fun Project.dumpAllIdeModels() : Sequence<String> {
 private fun Project.createDumper() = ProjectDumper(
   androidSdk = getSdk().toFile(),
   devBuildHome = TestUtils.getWorkspaceRoot().toFile(),
-  projectJdk = ProjectRootManager.getInstance(this).projectSdk
+  projectJdk = ProjectRootManager.getInstance(this).projectSdk,
+  alwaysExpandLibraries = true
 )
 
 private fun Module.projectDirectory(): File? = ExternalSystemModulePropertyManager.getInstance(this).getLinkedProjectPath()?.let { File(it) }
@@ -259,7 +263,7 @@ internal class ModelDumpSyncContributor: GradleSyncContributor {
                                              storage: MutableEntityStorage) {
     // Multiple composite builds can invoke this method, so keeping track of all android projects
     knownAndroidPaths += context.allBuilds.flatMap { buildModel ->
-      buildModel.projects.filter { projectModel ->
+      buildModel.projects.sortedBy{ it.path }.filter { projectModel ->
         context.getProjectModel(projectModel, Versions::class.java) != null
       }.map {
         it.projectDirectory
