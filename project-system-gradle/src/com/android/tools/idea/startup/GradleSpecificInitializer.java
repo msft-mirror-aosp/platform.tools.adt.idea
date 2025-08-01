@@ -89,13 +89,9 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
 
   @VisibleForTesting
   public static void initializePhasedSync() {
-    if (!StudioFlags.PHASED_SYNC_ENABLED.get()) {
-      Registry.get("gradle.phased.sync.enabled").setValue(false);
-    } else {
-      Registry.get("gradle.phased.sync.enabled").setValue(true);
-    }
+    Registry.get("gradle.phased.sync.enabled").setValue(StudioFlags.PHASED_SYNC_ENABLED.get());
+    Registry.get("gradle.phased.sync.bridge.disabled").setValue(StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get());
 
-    ProjectDataService.EP_NAME.getPoint().unregisterExtension(GradleBridgeProjectDataService.class);
     ProjectDataService.EP_NAME.getPoint().registerExtension(new AndroidGradleBridgeProjectDataService());
   }
 
