@@ -45,7 +45,6 @@ import com.android.tools.idea.gradle.project.sync.computeVariantNameToBeSynced
 import com.android.tools.idea.gradle.project.sync.convert
 import com.android.tools.idea.gradle.project.sync.getAllChildren
 import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectResolver.Companion.toIdeDeclaredDependencies
-import com.android.tools.idea.gradle.project.sync.idea.entities.AndroidGradleSourceSetEntitySource
 import com.android.tools.idea.gradle.project.sync.patchForKapt
 import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
 import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGroup
@@ -74,8 +73,8 @@ import com.intellij.openapi.project.modules
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.CanonicalPathPrefixTree
 import com.intellij.openapi.util.removeUserData
+import com.intellij.openapi.util.io.toCanonicalPath
 import com.intellij.openapi.vfs.VfsUtilCore.pathToUrl
-import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
 import com.intellij.platform.workspace.jps.entities.ExcludeUrlEntity
 import com.intellij.platform.workspace.jps.entities.ExternalSystemModuleOptionsEntity
@@ -93,9 +92,8 @@ import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.jps.entities.testProperties
 import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.EntityStorage
-import com.intellij.platform.workspace.storage.ImmutableEntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
-import com.intellij.platform.workspace.storage.impl.url.toVirtualFileUrl
+import com.intellij.platform.workspace.storage.url.VirtualFileUrl
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_RESOURCE_ROOT_ENTITY_TYPE_ID
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_SOURCE_ROOT_ENTITY_TYPE_ID
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_TEST_RESOURCE_ROOT_ENTITY_TYPE_ID
@@ -114,17 +112,20 @@ import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.ExternalProject
 import org.jetbrains.plugins.gradle.model.GradleLightBuild
 import org.jetbrains.plugins.gradle.model.GradleLightProject
+import org.jetbrains.plugins.gradle.model.GradleTaskModel
 import org.jetbrains.plugins.gradle.service.project.GradleContentRootIndex
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncContributor
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncProjectConfigurator.project
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleBuildEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleLinkedProjectEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleProjectEntitySource
+import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
+import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeEntitySource
 import org.jetbrains.plugins.gradle.util.GradleConstants
+import java.io.File
+import java.nio.file.Path
 import kotlin.collections.plus
-import org.jetbrains.plugins.gradle.model.GradleTaskModel
+import org.gradle.tooling.model.idea.IdeaProject
+import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 
 private val LOG = logger<AndroidSourceRootSyncContributor>()
 
@@ -139,25 +140,37 @@ internal data class SourceSetUpdateResult(
   val allAndroidProjectContexts: List<SyncContributorAndroidProjectContext> = emptyList(),
 )
 
+internal data class AndroidGradleProjectEntitySource(
+  override val projectPath: String,
+  val buildRootUrl: VirtualFileUrl,
+  val projectRootUrl: VirtualFileUrl,
+) : GradleBridgeEntitySource
+
+internal data class AndroidGradleSourceSetEntitySource(
+  val projectEntitySource: AndroidGradleProjectEntitySource,
+  val sourceSetName: String,
+) : GradleBridgeEntitySource {
+  override val projectPath: String by projectEntitySource::projectPath
+}
+
 internal open class SyncContributorProjectContext(
   val context: ProjectResolverContext,
   val project: Project,
   val buildModel: GradleLightBuild,
   val projectModel: GradleLightProject,
 ) {
-  val virtualFileUrlManager = project.workspaceModel.getVirtualFileUrlManager()
-  // Create an entity source representing each project root
-  val rootIdeaProjectEntitySource = GradleLinkedProjectEntitySource(File(context.projectPath).toVirtualFileUrl())
-  // For each build, create an entity source representing the Gradle build, as the root project source as parent
-  val buildEntitySource = GradleBuildEntitySource(rootIdeaProjectEntitySource, buildModel.buildIdentifier.rootDir.toVirtualFileUrl())
   // For each project in the build, create an entity source representing the project, as the build entity source as the parent.
-  val projectEntitySource = GradleProjectEntitySource(buildEntitySource, projectModel.projectDirectory.toVirtualFileUrl())
+  val projectEntitySource = AndroidGradleProjectEntitySource(
+    context.projectPath,
+    context.virtualFileUrl(buildModel.buildIdentifier.rootDir),
+    context.virtualFileUrl(projectModel.projectDirectory)
+  )
 
-  val isGradleRootProject = buildEntitySource.linkedProjectEntitySource.projectRootUrl == projectEntitySource.projectRootUrl
+  val isGradleRootProject = context.projectPath == projectModel.projectDirectory.toPath().toCanonicalPath()
 
   val externalProject = context.getProjectModel(projectModel, ExternalProject::class.java)!!
 
-  fun File.toVirtualFileUrl() = toVirtualFileUrl(virtualFileUrlManager)
+  fun File.toVirtualFileUrl() = context.virtualFileUrl(this)
 }
 
 
@@ -234,7 +247,7 @@ internal class SyncContributorAndroidProjectContext(
         gradleProject.buildScript.sourceFile,
         context.projectGradleVersion,
         versions.agpVersionAsString,
-        gradlePluginModel
+        gradlePluginModel,
       )
     }
 
