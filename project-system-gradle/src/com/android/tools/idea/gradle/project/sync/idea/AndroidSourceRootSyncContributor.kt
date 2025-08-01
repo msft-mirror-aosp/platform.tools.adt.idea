@@ -117,7 +117,6 @@ import org.jetbrains.plugins.gradle.service.project.GradleContentRootIndex
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncContributor
-import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncProjectConfigurator.project
 import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
 import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeEntitySource
 import org.jetbrains.plugins.gradle.util.GradleConstants
@@ -328,7 +327,7 @@ class AndroidSourceRootSyncContributor : GradleSyncContributor {
     val previousResult = checkNotNull(context.getUserData(SOURCE_SET_UPDATE_RESULT_KEY)) {
       "No result from source set phase!"
     }
-    performModuleActionsFromPreviousPhase(context.project(), previousResult.allModuleActions)
+    performModuleActionsFromPreviousPhase(context.project, previousResult.allModuleActions)
     if (StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.get()) {
       setupAndroidDependenciesForAllProjects(
         context,
@@ -401,7 +400,7 @@ class AndroidSourceRootSyncContributor : GradleSyncContributor {
     storage: MutableEntityStorage
   ): SourceSetUpdateResult {
     LOG.debug("Configuring modules for source sets")
-    val project = context.project()
+    val project = context.project
     val syncOptions = context.getSyncOptions(project)
     val allAndroidContexts = context.allBuilds.flatMap { buildModel ->
       buildModel.projects.mapNotNull { projectModel ->
