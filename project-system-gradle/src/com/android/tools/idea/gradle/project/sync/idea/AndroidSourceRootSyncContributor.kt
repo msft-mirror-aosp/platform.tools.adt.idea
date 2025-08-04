@@ -346,7 +346,7 @@ class AndroidSourceRootSyncContributor : GradleSyncContributor {
       else -> {}
     }
 
-    if (phase == GradleModelFetchPhase.PROJECT_SOURCE_SET_PHASE) {
+    if (phase == GradleModelFetchPhase.SOURCE_SET_MODEL_PHASE) {
       val result = configureModulesForSourceSets(context, storage.toSnapshot())
       // Only replace the android related source sets
       storage.replaceBySource({ it in result.knownEntitySources }, result.updatedStorage)
