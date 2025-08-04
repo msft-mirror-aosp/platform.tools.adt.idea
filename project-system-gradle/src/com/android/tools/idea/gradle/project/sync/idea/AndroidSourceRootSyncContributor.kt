@@ -51,9 +51,8 @@ import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGrou
 import com.android.tools.idea.sdk.AndroidSdks
 import com.google.common.collect.HashBasedTable
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
-import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.ADDITIONAL_MODEL_PHASE
-import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.PROJECT_SOURCE_SET_DEPENDENCY_PHASE
-import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.PROJECT_SOURCE_SET_PHASE
+import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.Companion.PROJECT_SOURCE_SET_DEPENDENCY_PHASE
+import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.Companion.PROJECT_SOURCE_SET_PHASE
 import com.intellij.java.workspace.entities.JavaModuleSettingsEntity
 import com.intellij.java.workspace.entities.JavaResourceRootPropertiesEntity
 import com.intellij.java.workspace.entities.JavaSourceRootPropertiesEntity
@@ -71,8 +70,8 @@ import com.intellij.openapi.progress.checkCanceled
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.getAndUpdateUserData
 import com.intellij.openapi.util.io.CanonicalPathPrefixTree
-import com.intellij.openapi.util.removeUserData
 import com.intellij.openapi.util.io.toCanonicalPath
 import com.intellij.openapi.vfs.VfsUtilCore.pathToUrl
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
@@ -117,14 +116,14 @@ import org.jetbrains.plugins.gradle.service.project.GradleContentRootIndex
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncContributor
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncListener
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Companion.PROJECT_MODEL_PHASE
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Companion.SOURCE_SET_MODEL_PHASE
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Companion.ADDITIONAL_MODEL_PHASE
+import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeEntitySource
 import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
-import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeEntitySource
 import org.jetbrains.plugins.gradle.util.GradleConstants
-import java.io.File
-import java.nio.file.Path
-import kotlin.collections.plus
-import org.gradle.tooling.model.idea.IdeaProject
-import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 
 private val LOG = logger<AndroidSourceRootSyncContributor>()
 
@@ -143,13 +142,18 @@ internal data class AndroidGradleProjectEntitySource(
   override val projectPath: String,
   val buildRootUrl: VirtualFileUrl,
   val projectRootUrl: VirtualFileUrl,
-) : GradleBridgeEntitySource
+) : GradleBridgeEntitySource {
+  override val phase: GradleSyncPhase
+    get() = PROJECT_MODEL_PHASE
+}
 
 internal data class AndroidGradleSourceSetEntitySource(
   val projectEntitySource: AndroidGradleProjectEntitySource,
   val sourceSetName: String,
 ) : GradleBridgeEntitySource {
   override val projectPath: String by projectEntitySource::projectPath
+  override val phase: GradleSyncPhase
+    get() = SOURCE_SET_MODEL_PHASE
 }
 
 internal open class SyncContributorProjectContext(
@@ -294,21 +298,59 @@ internal class SyncContributorAndroidProjectContext(
 private val SOURCE_SET_UPDATE_RESULT_KEY: Key<SourceSetUpdateResult> = Key.create("SOURCE_SET_UPDATE_RESULT")
 
 @ApiStatus.Internal
+class AndroidSourceRootSyncListener : GradleSyncListener {
+
+  override fun onModelFetchPhaseCompleted(
+    context: ProjectResolverContext,
+    phase: GradleModelFetchPhase,
+  ) {
+    performModuleActions(context)
+  }
+
+  /**
+   * Actual module instances will only be available in the phase after we commit changes to the storage.
+   *
+   * This method performs any module operations registered earlier after the instances are created.
+   */
+  private fun performModuleActions(context: ProjectResolverContext) {
+    val moduleActions = context.getAndUpdateUserData(MODULE_ACTION_KEY, { null }) ?: return
+    val modulesByName = context.project.modules.associateBy { it.name }
+    moduleActions.forEach { (moduleName, actions) ->
+      val module = checkNotNull(modulesByName[moduleName]) { "No module found for module with registered actions!" }
+      actions.forEach { it(module) }
+    }
+  }
+
+  companion object {
+
+    val MODULE_ACTION_KEY: Key<Map<String, List<ModuleAction>>> = Key.create("AndroidSourceRootSyncContributor.moduleActionKey")
+  }
+}
+
+@ApiStatus.Internal
 @Order(GradleSyncContributor.Order.SOURCE_ROOT_CONTRIBUTOR)
 class AndroidSourceRootSyncContributor : GradleSyncContributor {
+
   override suspend fun onModelFetchPhaseCompleted(
     context: ProjectResolverContext,
     storage: MutableEntityStorage,
     phase: GradleModelFetchPhase,
   ) {
-    if (context.isPhasedSyncEnabled) {
-      LOG.info("Processing phase $phase for Android.")
-      when(phase) {
-        PROJECT_SOURCE_SET_PHASE -> handleSourceSetPhase(context, storage)
-        PROJECT_SOURCE_SET_DEPENDENCY_PHASE -> handleDependencyPhase(context, storage)
-        ADDITIONAL_MODEL_PHASE -> handleAdditionalModelPhase(context, storage)
-        else -> {}
-      }
+    if (!context.isPhasedSyncEnabled) return
+
+    LOG.info("Processing phase $phase for Android.")
+    when(phase) {
+      PROJECT_SOURCE_SET_PHASE -> handleSourceSetPhase(context, storage)
+      PROJECT_SOURCE_SET_DEPENDENCY_PHASE -> handleDependencyPhase(context, storage)
+      ADDITIONAL_MODEL_PHASE -> handleAdditionalModelPhase(context, storage)
+      else -> {}
+    }
+
+    if (phase == GradleModelFetchPhase.PROJECT_SOURCE_SET_PHASE) {
+      val result = configureModulesForSourceSets(context, storage.toSnapshot())
+      // Only replace the android related source sets
+      storage.replaceBySource({ it in result.knownEntitySources }, result.updatedStorage)
+      context.putUserData(AndroidSourceRootSyncListener.MODULE_ACTION_KEY, result.allModuleActions)
     }
   }
 
@@ -327,7 +369,6 @@ class AndroidSourceRootSyncContributor : GradleSyncContributor {
     val previousResult = checkNotNull(context.getUserData(SOURCE_SET_UPDATE_RESULT_KEY)) {
       "No result from source set phase!"
     }
-    performModuleActionsFromPreviousPhase(context.project, previousResult.allModuleActions)
     if (StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.get()) {
       setupAndroidDependenciesForAllProjects(
         context,
@@ -363,30 +404,6 @@ class AndroidSourceRootSyncContributor : GradleSyncContributor {
       }
     }.toSet()
   }
-
-  override suspend fun onModelFetchCompleted(context: ProjectResolverContext, storage: MutableEntityStorage) {
-    context.removeUserData(SOURCE_SET_UPDATE_RESULT_KEY)
-  }
-
-  override suspend fun onModelFetchFailed(context: ProjectResolverContext,
-                                          storage: MutableEntityStorage,
-                                          exception: Throwable) {
-    context.removeUserData(SOURCE_SET_UPDATE_RESULT_KEY)
-  }
-
-  /**
-   * Actual module instances will only be available in the phase after we commit changes to the storage.
-   *
-   * This method performs any module operations registered earlier after the instances are created.
-   */
-  private fun performModuleActionsFromPreviousPhase(project: Project, modulesActionsFromPreviousPhaseMap: Map<String, List<ModuleAction>>) {
-    val modulesByName = project.modules.associateBy { it.name }
-    modulesActionsFromPreviousPhaseMap.forEach { (moduleName, actions) ->
-      val module = checkNotNull(modulesByName[moduleName]) { "No module found for module with registered actions!" }
-      actions.forEach { it(module) }
-    }
-  }
-
 
   /**
    * Duplicates the existing entity storage and mutates it by
