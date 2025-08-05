@@ -19,19 +19,30 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.idea.SyncContributorProjectContext
 import com.android.tools.idea.gradle.project.sync.idea.createModuleEntity
 import com.android.tools.idea.gradle.project.sync.idea.resolveModuleName
+<<<<<<< HEAD
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
+import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.Companion.PROJECT_SOURCE_SET_PHASE
+=======
+>>>>>>> 3a373d1d293 ([Gradle|Sync] new: extract GradleSyncPhase for GradleSyncContributor)
 import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.openapi.project.Project
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleId
+import com.intellij.platform.workspace.storage.ImmutableEntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.entities
+import com.intellij.platform.workspace.storage.toBuilder
 import com.intellij.workspaceModel.ide.legacyBridge.findModule
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncContributor
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
+<<<<<<< HEAD
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Companion.PROJECT_MODEL_PHASE
+=======
+>>>>>>> 3a373d1d293 ([Gradle|Sync] new: extract GradleSyncPhase for GradleSyncContributor)
 import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
-import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeEntitySource
+import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeEntitySource
 
 /**
  * This is a sync contributor that runs after the platform's content root contributor to fix-up any issues caused by it and makes sure
@@ -41,23 +52,30 @@ import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeE
  * the issues are fixed. It's worth pointing that there is a longer term plan to remove the bridge data service on the platform.
  */
 @Suppress("UnstableApiUsage")
-@Order(GradleSyncContributor.Order.CONTENT_ROOT_CONTRIBUTOR + 1)
+//@Order(GradleSyncContributor.Order.CONTENT_ROOT_CONTRIBUTOR + 1)
 class FixSyncContributorIssues: GradleSyncContributor {
-  override suspend fun onModelFetchPhaseCompleted(context: ProjectResolverContext,
+<<<<<<< HEAD
+   suspend fun onModelFetchPhaseCompleted(context: ProjectResolverContext,
                                                   storage: MutableEntityStorage,
                                                   phase: GradleModelFetchPhase) {
+=======
+
+  override val phase: GradleSyncPhase = GradleSyncPhase.PROJECT_MODEL_PHASE
+
+  override suspend fun configureProjectModel(
+    context: ProjectResolverContext,
+    storage: MutableEntityStorage,
+  ) {
+>>>>>>> 3a373d1d293 ([Gradle|Sync] new: extract GradleSyncPhase for GradleSyncContributor)
     if (!context.isPhasedSyncEnabled || !StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get()) {
       // If data bridge is not disabled, everything that was set up by phased sync will be removed, so no need to do anything.
       return
     }
 
-    if (phase == GradleModelFetchPhase.PROJECT_MODEL_PHASE) {
+    // Keep the root module as an iml based entity, because many things go wrong if there isn't at least one .iml based module
+    removeGradleBasedEntitiesForRootModule(context, storage)
 
-      // Keep the root module as an iml based entity, because many things go wrong if there isn't at least one .iml based module
-      removeGradleBasedEntitiesForRootModule(context, storage)
-
-      reconcileExistingHolderModules(context, context.project, storage)
-    }
+    reconcileExistingHolderModules(context, context.project, storage)
   }
 
   private fun reconcileExistingHolderModules(context: ProjectResolverContext, project: Project, storage: MutableEntityStorage) {
@@ -97,6 +115,16 @@ class FixSyncContributorIssues: GradleSyncContributor {
       .filter { module -> module.entitySource is GradleBridgeEntitySource }
       .filter { module -> module.contentRoots.any { it.url == projectRootUrl } }
       .toList().forEach { module -> storage.removeEntity(module) }
+  }
+
+  override val phase: GradleSyncPhase
+    get() = PROJECT_MODEL_PHASE
+
+  override suspend fun createProjectModel(context: ProjectResolverContext,
+                                          storage: ImmutableEntityStorage): ImmutableEntityStorage {
+    val mutableStorage = storage.toBuilder()
+    onModelFetchPhaseCompleted(context, mutableStorage, PROJECT_SOURCE_SET_PHASE)
+    return mutableStorage.toSnapshot()
   }
 }
 
