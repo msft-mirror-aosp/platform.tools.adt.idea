@@ -135,6 +135,7 @@ class StateInspectionModelTest {
     assertThat(model.recompositionText.value).isEqualTo("")
     assertThat(model.stateReadsText.value).isEqualTo("")
     assertThat(model.stackTraceText.value).isEqualTo("")
+    assertThat(model.composableInspected.value).isEqualTo(null)
   }
 
   @Test
@@ -151,6 +152,7 @@ class StateInspectionModelTest {
     assertThat(model.recompositionText.value).isEqualTo("")
     assertThat(model.stateReadsText.value).isEqualTo("")
     assertThat(model.stackTraceText.value).isEqualTo("")
+    assertThat(model.composableInspected.value).isEqualTo(null)
     assertThat(model.prevAction.isEnabled()).isFalse()
     assertThat(model.nextAction.isEnabled()).isFalse()
     assertThat(model.minimizeAction.isEnabled()).isTrue()
@@ -175,6 +177,8 @@ class StateInspectionModelTest {
       """
           .trimIndent()
       )
+    assertThat(model.composableInspected.value)
+      .isEqualTo(ComposableDefinition("Item", "MainActivity.kt"))
     assertThat(model.prevAction.isEnabled()).isTrue()
     assertThat(model.nextAction.isEnabled()).isFalse()
     assertThat(model.minimizeAction.isEnabled()).isTrue()
@@ -200,6 +204,7 @@ class StateInspectionModelTest {
     assertThat(model.recompositionText.value).isEqualTo("Waiting for interactions")
     assertThat(model.stateReadsText.value).isEqualTo("")
     assertThat(model.stackTraceText.value).isEqualTo("")
+    assertThat(model.composableInspected.value).isEqualTo(null)
     assertThat(model.prevAction.isEnabled()).isFalse()
     assertThat(model.nextAction.isEnabled()).isFalse()
     assertThat(model.minimizeAction.isEnabled()).isTrue()
@@ -260,6 +265,8 @@ class StateInspectionModelTest {
       """
           .trimIndent()
       )
+    assertThat(model.composableInspected.value)
+      .isEqualTo(ComposableDefinition("Item", "MainActivity.kt"))
     assertThat(model.prevAction.isEnabled()).isFalse()
     assertThat(model.nextAction.isEnabled()).isFalse()
     assertThat(model.minimizeAction.isEnabled()).isTrue()
