@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,15 @@
  */
 package com.android.tools.idea.compose.gradle.datasource
 
+import com.android.tools.idea.compose.ComposeGradleProjectRule
 import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
-import com.android.tools.idea.compose.gradle.ComposeGradleProjectRule
-import com.android.tools.idea.compose.gradle.renderer.renderPreviewElementForResult
+import com.android.tools.idea.compose.SIMPLE_COMPOSE_PROJECT_PATH
+import com.android.tools.idea.compose.SimpleComposeAppPaths
 import com.android.tools.idea.compose.preview.AnnotationFilePreviewElementFinder
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
-import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
-import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
 import com.android.tools.idea.compose.preview.TestComposePreviewView
+import com.android.tools.idea.compose.renderer.renderPreviewElementForResult
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.editors.build.RenderingBuildStatus
@@ -338,6 +338,108 @@ class ParametrizedPreviewTest {
     preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection().forEach {
       assertTrue(it.displaySettings.name.endsWith("TestWithProvider (name 0)"))
     }
+  }
+
+  @Test
+  fun testParametrizedPreviewMultiplePreviewsAnnotationOrder(): Unit = runBlocking {
+    val project = projectRule.project
+
+    val parametrizedPreviews =
+      VfsUtil.findRelativeFile(
+        SimpleComposeAppPaths.APP_PARAMETRIZED_PREVIEWS.path,
+        ProjectRootManager.getInstance(project).contentRoots[0],
+      ) ?: throw RuntimeException("Cannot find relative file")
+    val psiFile = runReadAction { PsiManager.getInstance(project).findFile(parametrizedPreviews)!! }
+
+    val mainSurface =
+      NlSurfaceBuilder.builder(project, projectRule.fixture.testRootDisposable).build()
+
+    val composeView = TestComposePreviewView(mainSurface)
+    val preview =
+      ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
+        composeView
+      }
+    Disposer.register(projectRule.fixture.testRootDisposable, preview)
+
+    composeView.runAndWaitForRefresh { preview.onActivate() }
+    composeView.runAndWaitForRefresh { preview.setMode(PreviewMode.Default()) }
+
+    val elements =
+      StaticPreviewProvider(
+          AnnotationFilePreviewElementFinder.findPreviewElements(project, parametrizedPreviews)
+            .filter {
+              it.displaySettings.organizationName == "TestWithProviderMultiplePreviewsAnnotation"
+            }
+        )
+        .resolve()
+    assertEquals(6, elements.count())
+
+    assertThat(
+        preview.composePreviewFlowManager.renderedPreviewElementsFlow.value
+          .asCollection()
+          .filter {
+            it.displaySettings.organizationName == "TestWithProviderMultiplePreviewsAnnotation"
+          }
+          .map { it.displaySettings.name }
+      )
+      .containsExactly(
+        "DefaultName - TestWithProviderMultiplePreviewsAnnotation (name 0)",
+        "DefaultName - TestWithProviderMultiplePreviewsAnnotation (name 0)",
+        "DefaultName - TestWithProviderMultiplePreviewsAnnotation (name 1)",
+        "DefaultName - TestWithProviderMultiplePreviewsAnnotation (name 1)",
+        "DefaultName - TestWithProviderMultiplePreviewsAnnotation (name 2)",
+        "DefaultName - TestWithProviderMultiplePreviewsAnnotation (name 2)",
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun testParametrizedPreviewMultiplePreviewsOrder(): Unit = runBlocking {
+    val project = projectRule.project
+
+    val parametrizedPreviews =
+      VfsUtil.findRelativeFile(
+        SimpleComposeAppPaths.APP_PARAMETRIZED_PREVIEWS.path,
+        ProjectRootManager.getInstance(project).contentRoots[0],
+      ) ?: throw RuntimeException("Cannot find relative file")
+    val psiFile = runReadAction { PsiManager.getInstance(project).findFile(parametrizedPreviews)!! }
+
+    val elements =
+      StaticPreviewProvider(
+          AnnotationFilePreviewElementFinder.findPreviewElements(project, parametrizedPreviews)
+            .filter { it.displaySettings.organizationName == "TestWithProviderMultiplePreviews" }
+        )
+        .resolve()
+    assertEquals(6, elements.count())
+
+    val mainSurface =
+      NlSurfaceBuilder.builder(project, projectRule.fixture.testRootDisposable).build()
+
+    val composeView = TestComposePreviewView(mainSurface)
+    val preview =
+      ComposePreviewRepresentation(psiFile, PreferredVisibility.SPLIT) { _, _, _, _, _, _ ->
+        composeView
+      }
+    Disposer.register(projectRule.fixture.testRootDisposable, preview)
+
+    composeView.runAndWaitForRefresh { preview.onActivate() }
+    composeView.runAndWaitForRefresh { preview.setMode(PreviewMode.Default()) }
+
+    assertThat(
+        preview.composePreviewFlowManager.renderedPreviewElementsFlow.value
+          .asCollection()
+          .filter { it.displaySettings.organizationName == "TestWithProviderMultiplePreviews" }
+          .map { it.displaySettings.name }
+      )
+      .containsExactly(
+        "DefaultName - TestWithProviderMultiplePreviews (name 0)",
+        "DefaultName - TestWithProviderMultiplePreviews (name 1)",
+        "DefaultName - TestWithProviderMultiplePreviews (name 2)",
+        "DefaultName - TestWithProviderMultiplePreviews (name 0)",
+        "DefaultName - TestWithProviderMultiplePreviews (name 1)",
+        "DefaultName - TestWithProviderMultiplePreviews (name 2)",
+      )
+      .inOrder()
   }
 
   private suspend fun PreviewElementProvider<PsiComposePreviewElement>.resolve() =

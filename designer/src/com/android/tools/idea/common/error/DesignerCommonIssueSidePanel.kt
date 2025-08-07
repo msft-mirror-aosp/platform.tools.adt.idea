@@ -15,12 +15,16 @@
  */
 package com.android.tools.idea.common.error
 
-import com.android.layoutlib.androidx.annotation.VisibleForTesting
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.rendering.errors.ui.MessageTip
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
 import com.android.utils.HtmlBuilder
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionToolbar
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -41,10 +45,12 @@ import com.intellij.ui.components.panels.HorizontalLayout
 import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.FlowLayout
 import java.awt.Font
 import java.io.File
+import javax.swing.Box
 import javax.swing.BoxLayout
-import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 import javax.swing.SwingConstants
@@ -52,14 +58,11 @@ import javax.swing.ToolTipManager
 import javax.swing.event.HyperlinkListener
 import org.jetbrains.annotations.TestOnly
 
-/** The name of the "Fix with AI" button. */
-@VisibleForTesting const val FIX_WITH_AI_BUTTON_NAME = "fixWithAiButton"
-
 /** The side panel to show the detail of issue and its source code if available */
 class DesignerCommonIssueSidePanel(
   private val project: Project,
   parentDisposable: Disposable,
-  private val onFixWitAiButtonClicked: (VisualLintRenderIssue) -> Unit,
+  private val fixWithAiActionProvider: (VisualLintRenderIssue) -> AnAction?,
 ) : JPanel(BorderLayout()), Disposable {
 
   private val splitter: OnePixelSplitter = OnePixelSplitter(true, 0.5f, 0.1f, 0.9f)
@@ -93,7 +96,7 @@ class DesignerCommonIssueSidePanel(
   fun loadIssueNode(issueNode: DesignerCommonIssueNode?): Boolean {
     splitter.firstComponent =
       (issueNode as? IssueNode)?.let { node ->
-        DesignerCommonIssueDetailPanel(project, node.issue, onFixWitAiButtonClicked)
+        DesignerCommonIssueDetailPanel(project, node.issue, fixWithAiActionProvider)
       }
     return splitter.firstComponent != null
   }
@@ -113,7 +116,7 @@ class DesignerCommonIssueSidePanel(
 class DesignerCommonIssueDetailPanel(
   project: Project,
   issue: Issue,
-  onFixWitAiButtonClicked: (VisualLintRenderIssue) -> Unit,
+  fixWithAiActionProvider: (VisualLintRenderIssue) -> AnAction?,
 ) : JPanel() {
 
   init {
@@ -151,7 +154,7 @@ class DesignerCommonIssueDetailPanel(
     descriptionEditorPane.readHTML(description)
 
     if (issue is VisualLintRenderIssue) {
-      contentPanel.addVisualRenderIssue(issue, project, onFixWitAiButtonClicked)
+      contentPanel.addVisualRenderIssue(issue, project, fixWithAiActionProvider)
     }
   }
 
@@ -184,26 +187,20 @@ class DesignerCommonIssueDetailPanel(
       )
     }
 
-  private fun VisualLintRenderIssue.getAffectedFiles(): List<VirtualFile> {
-    val navigatableFile = (navigatable as? OpenFileDescriptor)?.file
-    return if (navigatableFile == null || affectedFiles.contains(navigatableFile)) {
-      affectedFiles
-    } else {
-      affectedFiles.toMutableList().apply { add(navigatableFile) }
-    }
-  }
-
   private fun JPanel.addVisualRenderIssue(
     issue: VisualLintRenderIssue,
     project: Project,
-    onFixWitAiButtonClicked: (VisualLintRenderIssue) -> Unit,
+    fixWithAiActionProvider: (VisualLintRenderIssue) -> AnAction?,
   ) {
-    val affectedFilePanel = JPanel().apply { border = JBUI.Borders.empty(4, 0) }
-    affectedFilePanel.layout = BoxLayout(affectedFilePanel, BoxLayout.Y_AXIS)
+    val affectedFilePanel =
+      JPanel().apply {
+        border = JBUI.Borders.empty(4, 0)
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+      }
 
     val projectBasePath = project.basePath
     if (projectBasePath != null) {
-      val relatedFiles = issue.getAffectedFiles()
+      val relatedFiles = issue.affectedFilesWithNavigatable
       if (relatedFiles.isNotEmpty()) {
         affectedFilePanel.add(
           JBLabel("Affected Files:").apply {
@@ -219,31 +216,49 @@ class DesignerCommonIssueDetailPanel(
             ?: continue
         val link =
           object :
-            ActionLink(
-              pathToDisplay,
-              { OpenFileDescriptor(project, file).navigateInEditor(project, true) },
-            ) {
-            override fun getToolTipText(): String? {
-              return if (size.width < minimumSize.width) {
-                pathToDisplay
-              } else {
-                null
+              ActionLink(
+                pathToDisplay,
+                { OpenFileDescriptor(project, file).navigateInEditor(project, true) },
+              ) {
+              override fun getToolTipText(): String? {
+                return if (size.width < minimumSize.width) {
+                  pathToDisplay
+                } else {
+                  null
+                }
               }
             }
-          }
+            .apply { alignmentX = LEFT_ALIGNMENT }
         ToolTipManager.sharedInstance().registerComponent(link)
         affectedFilePanel.add(link)
       }
     }
+
     if (StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.get()) {
-      affectedFilePanel.add(
-        JButton("Fix with AI").apply {
-          name = FIX_WITH_AI_BUTTON_NAME
-          alignmentX = LEFT_ALIGNMENT
-          addActionListener { onFixWitAiButtonClicked(issue) }
-        }
-      )
+      fixWithAiActionProvider(issue)?.let { fixWithAiAction ->
+        val actionToolbar = createToolbar(affectedFilePanel, fixWithAiAction)
+        val toolbarWrapper =
+          JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+            alignmentX = LEFT_ALIGNMENT
+            border = JBUI.Borders.emptyTop(8)
+            add(actionToolbar.component)
+            add(Box.createVerticalGlue())
+          }
+        affectedFilePanel.add(toolbarWrapper)
+      }
     }
     add(affectedFilePanel, BorderLayout.CENTER)
+  }
+
+  private fun createToolbar(targetComponent: JComponent, fixWithAiAction: AnAction): ActionToolbar {
+    fixWithAiAction.templatePresentation.putClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR, true)
+    val actionGroup = DefaultActionGroup().apply { add(fixWithAiAction) }
+    return ActionManager.getInstance()
+      .createActionToolbar("DesignerCommonIssuesToolbar", actionGroup, true)
+      .apply {
+        this.targetComponent = targetComponent
+        this.component.isOpaque = true
+        this.component.border = JBUI.Borders.empty()
+      }
   }
 }

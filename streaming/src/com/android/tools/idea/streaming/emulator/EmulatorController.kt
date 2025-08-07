@@ -215,7 +215,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   @Slow
   fun loadEmulatorConfiguration(): Boolean {
     emulatorConfig = try {
-      EmulatorConfiguration.readAvdDefinition(emulatorId.avdId, emulatorId.avdFolder)
+      EmulatorConfiguration.readAvdDefinition(emulatorId.avdFolder)
     }
     catch (e: Exception) {
       val message = e.message ?: e.javaClass.name
@@ -341,7 +341,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
       alarm.cancelAllRequests()
       val vmRunState = VmRunState.newBuilder().setState(VmRunState.RunState.SHUTDOWN).build()
       setVmState(vmRunState)
-      runningAvdTracker.shuttingDown(emulatorId.avdId)
+      runningAvdTracker.shuttingDown(emulatorId.avdFolder)
     }
   }
 

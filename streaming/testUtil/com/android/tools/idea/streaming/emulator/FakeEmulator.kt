@@ -22,7 +22,6 @@ import com.android.emulator.control.ClipData
 import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.DisplayConfigurations
 import com.android.emulator.control.DisplayConfigurationsChangedNotification
-import com.android.emulator.control.DisplayMode as DisplayModeMessage
 import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.emulator.control.EmulatorStatus
 import com.android.emulator.control.ExtendedControlsStatus
@@ -53,15 +52,18 @@ import com.android.emulator.control.UiControllerGrpc
 import com.android.emulator.control.Velocity
 import com.android.emulator.control.VmRunState
 import com.android.emulator.control.XrOptions
-import com.android.emulator.snapshot.SnapshotOuterClass.Image as SnapshotImage
 import com.android.emulator.snapshot.SnapshotOuterClass.Snapshot
 import com.android.io.writeImage
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
 import com.android.sdklib.repository.targets.SystemImageManager
+import com.android.testutils.FakeProcessHandle
 import com.android.testutils.TestUtils
 import com.android.tools.adtui.ImageUtils.rotateByQuadrants
 import com.android.tools.adtui.util.normalizedRotation
+import com.android.tools.idea.avdmanager.RunningAvd.RunType
+import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.io.grpc.ForwardingServerCall.SimpleForwardingServerCall
 import com.android.tools.idea.io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener
 import com.android.tools.idea.io.grpc.Metadata
@@ -85,12 +87,15 @@ import com.android.utils.FileUtils.copyDirectory
 import com.google.common.base.Predicates.alwaysTrue
 import com.google.common.util.concurrent.SettableFuture
 import com.intellij.concurrency.ConcurrentCollectionFactory
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.util.text.StringUtil.parseInt
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.io.createDirectories
 import com.intellij.util.ui.UIUtil
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.invoke
+import org.junit.Assert.fail
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.RenderingHints
@@ -120,24 +125,22 @@ import javax.imageio.ImageIO
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.time.Duration
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.invoke
-import org.junit.Assert.fail
+import com.android.emulator.control.DisplayMode as DisplayModeMessage
+import com.android.emulator.snapshot.SnapshotOuterClass.Image as SnapshotImage
 
-/**
- * Fake emulator for use in tests. Provides in-process gRPC services.
- */
-class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory: Path) {
+/** Fake emulator for use in tests. Provides in-process gRPC services. */
+class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirectory: Path) {
 
-  val avdId = StringUtil.trimExtensions(avdFolder.fileName.toString())
-  private val registrationFile = registrationDirectory.resolve("pid_${grpcPort + 12345}.ini")
+  private var pid: Long = grpcPort.toLong()
+  private val registrationFile: Path
+    get() = registrationDirectory.resolve("pid_$pid.ini")
   private val executor = AppExecutorUtil.createBoundedApplicationPoolExecutor("FakeEmulatorControllerService", 1)
   private val coroutineDispatcher = executor.asCoroutineDispatcher()
   private var grpcServer: Server? = null
   private val lifeCycleLock = Object()
   private var startTime = 0L
 
-  private val config = EmulatorConfiguration.readAvdDefinition(avdId, avdFolder)
+  private val config = EmulatorConfiguration.readAvdDefinition(avdFolder)
   private val foldedDisplayRegion: FoldedDisplay? = readDisplayRegion(avdFolder)
 
   val isRunning: Boolean
@@ -217,11 +220,10 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory
   val grpcCallLog = LinkedBlockingDeque<GrpcCallRecord>()
   private val grpcSemaphore = Semaphore(Int.MAX_VALUE)
 
-  /**
-   * Starts the Emulator. The Emulator is fully initialized when the method returns.
-   */
+  /** Starts the Emulator. The Emulator is fully initialized when the method returns. */
   fun start(standalone: Boolean = false) {
     synchronized(lifeCycleLock) {
+      pid += 10000
       val keysToExtract = setOf("fastboot.chosenSnapshotFile", "fastboot.forceChosenSnapshotBoot", "fastboot.forceFastBoot")
       val map = readKeyValueFile(avdFolder.resolve("config.ini"), keysToExtract)
       val snapshotId = when {
@@ -236,26 +238,26 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory
       grpcServer = createAndStartGrpcServer()
       Files.writeString(registrationFile, registrationContent(standalone), CREATE_NEW)
     }
+    createProcessHandle(standalone)
   }
 
   private fun registrationContent(standalone: Boolean): String {
     val embeddedFlags = if (standalone) "" else """ "-qt-hide-window" "-idle-grpc-timeout" "300""""
+    val id = avdFolder.fileName.toString().removeSuffix(".avd")
 
     return """
         port.serial=$serialPort
         port.adb=${serialPort + 1}
         avd.name=$avdName
         avd.dir=$avdFolder
-        avd.id=$avdId
-        cmdline="/emulator_home/fake_emulator" "-netdelay" "none" "-netspeed" "full" "-avd" "$avdId" $embeddedFlags
+        avd.id=$id
+        cmdline="/emulator_home/fake_emulator" "-netdelay" "none" "-netspeed" "full" "-avd" "$id" $embeddedFlags
         grpc.port=$grpcPort
         grpc.token=RmFrZSBnUlBDIHRva2Vu
         """.trimIndent()
   }
 
-  /**
-   * Stops the Emulator. The Emulator is completely shut down when the method returns.
-   */
+  /** Stops the Emulator. The Emulator is completely shut down when the method returns. */
   fun stop() {
     synchronized(lifeCycleLock) {
       if (startTime != 0L) {
@@ -271,6 +273,34 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory
         startTime = 0
       }
     }
+    destroyProcessHandle()
+  }
+
+  /** Simulates an emulator crash. The Emulator is terminated but the registration file in not deleted. */
+  fun crash() {
+    synchronized(lifeCycleLock) {
+      if (startTime != 0L) {
+        if (grpcSemaphore.availablePermits() == 0) {
+          resumeGrpc()
+        }
+        stopGrpcServer()
+        startTime = 0
+      }
+    }
+    destroyProcessHandle()
+  }
+
+  private fun createProcessHandle(standalone: Boolean) {
+    val processHandle = ProcessHandleProvider.getProcessHandle(pid)
+    if (processHandle is FakeProcessHandle) {
+      val runType = if (standalone) RunType.STANDALONE else RunType.EMBEDDED
+      service<RunningAvdTracker>().started(avdFolder, processHandle, runType, isLaunchedByThisProcess = true)
+    }
+  }
+
+  private fun destroyProcessHandle() {
+    val processHandle = service<RunningAvdTracker>().runningAvds[avdFolder]?.processHandle
+    (processHandle as? FakeProcessHandle)?.destroy()
   }
 
   private fun stopGrpcServer() {
@@ -284,24 +314,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory
     grpcServer = null
   }
 
-  /**
-   * Simulates an emulator crash. The Emulator is terminated but the registration file in not deleted.
-   */
-  fun crash() {
-    synchronized(lifeCycleLock) {
-      if (startTime != 0L) {
-        if (grpcSemaphore.availablePermits() == 0) {
-          resumeGrpc()
-        }
-        stopGrpcServer()
-        startTime = 0
-      }
-    }
-  }
-
-  /**
-   * Adds, removes, updates secondary displays.
-   */
+  /** Adds, removes, updates secondary displays. */
   suspend fun changeSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
     coroutineDispatcher.invoke {
       val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
@@ -322,9 +335,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory
     }
   }
 
-  /**
-   * Folds/unfolds the primary display.
-   */
+  /** Folds/unfolds the primary display. */
   fun setPosture(posture: PostureValue) {
     executor.submit {
       devicePosture = posture
@@ -341,9 +352,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, registrationDirectory
   fun getNextGrpcCall(timeout: Duration, filter: Predicate<GrpcCallRecord> = DEFAULT_CALL_FILTER): GrpcCallRecord =
       grpcCallLog.get(timeout, filter)
 
-  /**
-   * Clears the gRPC call log.
-   */
+  /** Clears the gRPC call log. */
   @UiThread
   fun clearGrpcCallLog() {
     grpcCallLog.clear()

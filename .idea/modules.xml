@@ -190,6 +190,7 @@
       <module fileurl="file://$PROJECT_DIR$/adt-testutils/intellij.android.adt.testutils.iml" filepath="$PROJECT_DIR$/adt-testutils/intellij.android.adt.testutils.iml" />
       <module fileurl="file://$PROJECT_DIR$/adt-ui/intellij.android.adt.ui.iml" filepath="$PROJECT_DIR$/adt-ui/intellij.android.adt.ui.iml" />
       <module fileurl="file://$PROJECT_DIR$/adt-ui-compose/intellij.android.adt.ui.compose.iml" filepath="$PROJECT_DIR$/adt-ui-compose/intellij.android.adt.ui.compose.iml" />
+      <module fileurl="file://$PROJECT_DIR$/adt-ui-compose/intellij.android.adt.ui.compose.tests.iml" filepath="$PROJECT_DIR$/adt-ui-compose/intellij.android.adt.ui.compose.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/adt-ui-model/intellij.android.adt.ui.model.iml" filepath="$PROJECT_DIR$/adt-ui-model/intellij.android.adt.ui.model.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-material/intellij.android.android-material.iml" filepath="$PROJECT_DIR$/android-material/intellij.android.android-material.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-material/intellij.android.android-material.tests.iml" filepath="$PROJECT_DIR$/android-material/intellij.android.android-material.tests.iml" />
@@ -232,6 +233,7 @@
       <module fileurl="file://$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.iml" filepath="$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.iml" />
       <module fileurl="file://$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.integration.iml" filepath="$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.integration.iml" />
       <module fileurl="file://$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.tests.iml" filepath="$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.testFramework.iml" filepath="$PROJECT_DIR$/compose-designer/intellij.android.compose-designer.testFramework.iml" />
       <module fileurl="file://$PROJECT_DIR$/compose-ide-plugin/intellij.android.compose-ide-plugin.iml" filepath="$PROJECT_DIR$/compose-ide-plugin/intellij.android.compose-ide-plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/compose-ide-plugin/intellij.android.compose-ide-plugin.tests.iml" filepath="$PROJECT_DIR$/compose-ide-plugin/intellij.android.compose-ide-plugin.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/intellij.android.core.iml" filepath="$PROJECT_DIR$/android/intellij.android.core.iml" />
@@ -460,6 +462,7 @@
       <module fileurl="file://$PROJECT_DIR$/lint/tests/intellij.lint.tests.iml" filepath="$PROJECT_DIR$/lint/tests/intellij.lint.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/adt-ui-compose/jewel.sdkcompat/jewel.sdkcompat.iml" filepath="$PROJECT_DIR$/adt-ui-compose/jewel.sdkcompat/jewel.sdkcompat.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/lldb-integration-tests/lldb-integration-tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/lldb-integration-tests/lldb-integration-tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/modelcontextprotocol/kotlin-sdk/mcp.kotlin-sdk.iml" filepath="$PROJECT_DIR$/../../vendor/modelcontextprotocol/kotlin-sdk/mcp.kotlin-sdk.iml" />
       <module fileurl="file://$PROJECT_DIR$/memory-usage/memory-usage.iml" filepath="$PROJECT_DIR$/memory-usage/memory-usage.iml" />
       <module fileurl="file://$PROJECT_DIR$/native-symbolizer/native-symbolizer.iml" filepath="$PROJECT_DIR$/native-symbolizer/native-symbolizer.iml" />
       <module fileurl="file://$PROJECT_DIR$/native-symbolizer/gradle/native-symbolizer.gradle.iml" filepath="$PROJECT_DIR$/native-symbolizer/gradle/native-symbolizer.gradle.iml" />

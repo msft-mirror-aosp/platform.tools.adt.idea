@@ -21,8 +21,10 @@ iml_module(
             ],
         },
         "Benchmark2000MemoryMac": {
-            "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark2000MemoryTest",
+            "test_filter": "com.android.tools.idea.gradle.project.sync.memory.Benchmark2000MemoryMacTest",
             "tags": [
+                "noci:studio-win",
+                "noci:studio-linux",
                 "ci:studio-mac",
                 "exclusive-if-local",
             ],
@@ -53,9 +55,11 @@ iml_module(
             ],
         },
         "Benchmark2000CpuMac": {
-            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuTest",
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuMacTest",
             "additional_jvm_args": ["-Xmx6g"],
             "tags": [
+                "noci:studio-win",
+                "noci:studio-linux",
                 "ci:studio-mac",
                 "exclusive-if-local",
             ],
@@ -276,7 +280,6 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/base/perf-logger:studio.perf-logger",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/memory-usage",

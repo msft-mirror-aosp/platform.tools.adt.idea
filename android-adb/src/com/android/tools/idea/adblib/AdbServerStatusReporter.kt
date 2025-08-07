@@ -23,13 +23,17 @@ import com.android.tools.idea.adb.AdbOptionsService
 import com.android.tools.idea.isAndroidEnvironment
 import com.google.wireless.android.sdk.stats.AdbServerStatus
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Retrieve status of ADB Server and upload stats */
 class AdbServerStatusReporter(val statusReporter: (ServerStatus) -> Unit) : ProjectActivity {
   @Suppress("unused") constructor() : this(::reportAdbStatus)
+
+  private val logger = thisLogger()
 
   override suspend fun execute(project: Project) {
     if (!isAndroidEnvironment(project)) {
@@ -37,8 +41,15 @@ class AdbServerStatusReporter(val statusReporter: (ServerStatus) -> Unit) : Proj
     }
     val session = AdbLibService.getInstance(project).session
     session.scope.launch {
-      val serverStatus = retrieveServerStatus(session)
-      statusReporter(serverStatus)
+      runCatching {
+        val serverStatus = retrieveServerStatus(session)
+        statusReporter(serverStatus)
+        logger.info("ADB server logs can be found at: ${serverStatus.absoluteLogPath}")
+      }.onFailure { e ->
+        if (e !is CancellationException) {
+          thisLogger().warn("Cannot report `AdbServerStatus` due to a problem with adb server", e)
+        }
+      }
     }
   }
 

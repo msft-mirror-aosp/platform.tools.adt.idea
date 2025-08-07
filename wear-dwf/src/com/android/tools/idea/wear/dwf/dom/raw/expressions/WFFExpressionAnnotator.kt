@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.wear.dwf.dom.raw.expressions
 
+import com.android.SdkConstants.ATTR_TYPE
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.wear.dwf.WFFConstants
+import com.android.tools.idea.wear.dwf.WFFConstants.DataSources
 import com.android.tools.idea.wear.dwf.WearDwfBundle.message
 import com.android.tools.idea.wear.dwf.dom.raw.CurrentWFFVersionService
 import com.android.tools.idea.wear.dwf.dom.raw.configurations.UserConfigurationReference
@@ -62,8 +64,17 @@ class WFFExpressionAnnotator() : Annotator {
     dataSourceId: PsiElement,
     holder: AnnotationHolder,
   ) {
-    val dataSource = findDataSource(dataSourceId.text)
-    if (dataSource == null) {
+    val dataSource =
+      if (dataSourceId.isComplicationDataSource()) {
+        dataSourceId.findComplicationDataSource()
+      } else {
+        dataSourceId.findStaticDataSource() ?: dataSourceId.findPatternDataSource()
+      }
+    // The data source can be a complication data source used under the wrong type. This will
+    // be reported as an error by InvalidComplicationDataSourceLocationInspection
+    val isDataSourceUnknown =
+      dataSource == null && DataSources.COMPLICATION_ALL.none { it.id == dataSourceId.text }
+    if (isDataSourceUnknown) {
       holder
         .newAnnotation(
           HighlightSeverity.ERROR,
@@ -72,7 +83,11 @@ class WFFExpressionAnnotator() : Annotator {
         .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
         .range(dataSourceId)
         .create()
-    } else if (wffVersion != null && wffVersion < dataSource.requiredVersion) {
+    } else if (
+      dataSource != null && wffVersion != null && wffVersion < dataSource.requiredVersion
+    ) {
+      // TODO(b/436560081): move this to a local inspection, this annotator should only highlight
+      // unknown data sources
       holder
         .newAnnotation(
           HighlightSeverity.ERROR,
@@ -145,4 +160,17 @@ class WFFExpressionAnnotator() : Annotator {
       .textAttributes(WFFExpressionTextAttributes.CONFIGURATION.key)
       .create()
   }
+
+  private fun PsiElement.isComplicationDataSource() =
+    text.startsWith(WFFConstants.COMPLICATION_PREFIX)
+
+  private fun PsiElement.findComplicationDataSource(): StaticDataSource? {
+    val complicationType = getParentComplicationTag(this)?.getAttribute(ATTR_TYPE)?.value
+    return DataSources.COMPLICATION_BY_TYPE[complicationType]?.find { it.id == text }
+  }
+
+  private fun PsiElement.findStaticDataSource() = DataSources.ALL_STATIC_BY_ID[text]
+
+  private fun PsiElement.findPatternDataSource() =
+    DataSources.ALL_PATTERNS.find { it.pattern.matches(text) }
 }

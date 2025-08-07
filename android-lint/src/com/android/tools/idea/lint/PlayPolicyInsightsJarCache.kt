@@ -24,8 +24,8 @@ import com.android.repository.api.Downloader
 import com.android.repository.api.ProgressIndicatorAdapter
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.concurrency.createChildScope
+import com.android.tools.idea.flags.FeatureConfiguration
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gservices.DevServicesDeprecationDataProvider
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.idea.util.StudioPathManager
@@ -37,7 +37,6 @@ import com.google.common.hash.Hashing
 import com.google.common.io.Files
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.components.service
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.text.nullize
 import java.io.File
@@ -58,14 +57,14 @@ private const val BUNDLED_JAR_PATH = "insights-lint-0.1.2.jar"
 private const val MIN_UPDATE_BACKOFF_MINUTES = 10L
 private const val CACHE_EXPIRY_DAYS = 7L
 
-private const val DEPRECATION_SERVICE_NAME = "aqi/policy"
-private const val DEPRECATION_USER_FRIENDLY_SERVICE_NAME = "Play Policy Insights"
-
 /** Load and cache the custom lint rule jars for play policy insights. */
 class PlayPolicyInsightsJarCache(
   private val client: AndroidLintIdeClient,
   private val cachedDir: Path?,
   private val downloader: Downloader,
+  private var googleMavenRepository: GoogleMavenRepository? = null,
+  private val allowPreview: Boolean =
+    FeatureConfiguration.current.stabilityLevel <= FeatureConfiguration.PREVIEW.stabilityLevel,
 ) {
   constructor(client: AndroidLintIdeClient) : this(client, getCacheDir(), StudioDownloader())
 
@@ -73,7 +72,6 @@ class PlayPolicyInsightsJarCache(
   @kotlin.concurrent.Volatile private var cachedFile: File? = null
 
   private val bundledJar: File? = getBundledJar()
-  private var googleMavenRepository: GoogleMavenRepository? = null
   @VisibleForTesting val isUpdating = MutableStateFlow(false)
   @kotlin.concurrent.Volatile private var nextUpdatingTimeMs = 0L
   private val targetLibraryVersion =
@@ -170,16 +168,7 @@ class PlayPolicyInsightsJarCache(
   /** Starts a new job to update the cached file. */
   private fun updateCachedJar() {
     // Check service deprecation status if target version is not specified.
-    if (
-      targetLibraryVersion.isEmpty() &&
-        service<DevServicesDeprecationDataProvider>()
-          .getCurrentDeprecationData(
-            DEPRECATION_SERVICE_NAME,
-            DEPRECATION_USER_FRIENDLY_SERVICE_NAME,
-          )
-          .isUnsupported()
-    )
-      return
+    if (targetLibraryVersion.isEmpty() && isPlayPolicyInsightsUnsupported) return
 
     val dir = cachedDir ?: return
 
@@ -200,7 +189,7 @@ class PlayPolicyInsightsJarCache(
             val repository = getGoogleMavenRepository()
             val version =
               targetLibraryVersion.takeIf { it.isNotEmpty() }
-                ?: repository.getVersions(GROUP_ID, ARTIFACT_ID).maxOrNull()
+                ?: repository.findVersion(GROUP_ID, ARTIFACT_ID, allowPreview = allowPreview)
                 ?: return@launch
             val jarName = "${ARTIFACT_ID}-${version}.jar"
             val urlResolver: (String) -> URL = { fileName ->

@@ -26,6 +26,7 @@ import com.android.tools.wear.wff.WFFVersion.WFFVersion4
 
 object WFFConstants {
   const val CONFIGURATION_PREFIX = "CONFIGURATION."
+  const val COMPLICATION_PREFIX = "COMPLICATION."
 
   const val ATTRIBUTE_ID = "id"
   const val ATTRIBUTE_COLORS = "colors"
@@ -302,6 +303,128 @@ object WFFConstants {
         ),
       )
 
+    /**
+     * @see <a
+     *   href="https://developer.android.com/reference/wear-os/wff/complication/complication">Complication</a>
+     */
+    val COMPLICATION_BY_TYPE =
+      mapOf(
+        "LONG_TEXT" to
+          setOf(
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(id = "COMPLICATION.SMALL_IMAGE", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.TEXT", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.TITLE", requiredVersion = WFFVersion1),
+          ),
+        "MONOCHROMATIC_IMAGE" to
+          setOf(
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE_AMBIENT",
+              requiredVersion = WFFVersion1,
+            ),
+          ),
+        "PHOTO_IMAGE" to
+          setOf(StaticDataSource(id = "COMPLICATION.PHOTO_IMAGE", requiredVersion = WFFVersion1)),
+        "RANGED_VALUE" to
+          setOf(
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE_AMBIENT",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(id = "COMPLICATION.TEXT", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.TITLE", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.RANGED_VALUE_MIN", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.RANGED_VALUE_MAX", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.RANGED_VALUE_VALUE", requiredVersion = WFFVersion1),
+            StaticDataSource(
+              id = "COMPLICATION.RANGED_VALUE_COLORS",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.RANGED_VALUE_COLORS_INTERPOLATE",
+              requiredVersion = WFFVersion2,
+            ),
+          ),
+        "SHORT_TEXT" to
+          setOf(
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.MONOCHROMATIC_IMAGE_AMBIENT",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(id = "COMPLICATION.TEXT", requiredVersion = WFFVersion1),
+            StaticDataSource(id = "COMPLICATION.TITLE", requiredVersion = WFFVersion1),
+          ),
+        "SMALL_IMAGE" to
+          setOf(
+            StaticDataSource(id = "COMPLICATION.SMALL_IMAGE", requiredVersion = WFFVersion1),
+            StaticDataSource(
+              id = "COMPLICATION.SMALL_IMAGE_AMBIENT",
+              requiredVersion = WFFVersion1,
+            ),
+            StaticDataSource(id = "COMPLICATION.IMAGE_STYLE", requiredVersion = WFFVersion1),
+          ),
+        "GOAL_PROGRESS" to
+          setOf(
+            StaticDataSource(
+              id = "COMPLICATION.GOAL_PROGRESS_VALUE",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.GOAL_PROGRESS_TARGET_VALUE",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(id = "COMPLICATION.TEXT", requiredVersion = WFFVersion2),
+            StaticDataSource(id = "COMPLICATION.TITLE", requiredVersion = WFFVersion2),
+            StaticDataSource(
+              id = "COMPLICATION.GOAL_PROGRESS_COLORS",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.GOAL_PROGRESS_COLORS_INTERPOLATE",
+              requiredVersion = WFFVersion2,
+            ),
+          ),
+        "WEIGHTED_ELEMENTS" to
+          setOf(
+            StaticDataSource(
+              id = "COMPLICATION.WEIGHTED_ELEMENTS_COLORS",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.WEIGHTED_ELEMENTS_WEIGHTS",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(
+              id = "COMPLICATION.WEIGHTED_ELEMENTS_BACKGROUND_COLOR",
+              requiredVersion = WFFVersion2,
+            ),
+            StaticDataSource(id = "COMPLICATION.TITLE", requiredVersion = WFFVersion2),
+            StaticDataSource(id = "COMPLICATION.TEXT", requiredVersion = WFFVersion2),
+          ),
+      )
+
+    val COMPLICATION_ALL = COMPLICATION_BY_TYPE.values.flatten().toSet()
+
+    /**
+     * Contains all static data sources, such as `[STEP_COUNT]`, does not include patterned data
+     * sources, such as `[WEATHER.DAYS.<days>.IS_AVAILABLE]`, and does not contain complication data
+     * sources, such as `[COMPLICATION.TEXT]` which depend on the type of complication.
+     */
     val ALL_STATIC =
       TIME_UNIT +
         TIME_SOURCE +

@@ -86,11 +86,11 @@ class BuildConfigDefaultRefactoringProcessor : AgpUpgradeComponentRefactoringPro
     }
   }
 
-  // TODO(xof): find target for redirect
   override val readMoreUrlRedirect = ReadMoreUrlRedirect("build-config-default")
 
   companion object {
     val INSERT_PROPERTY = UsageType(AndroidBundle.messagePointer("project.upgrade.buildConfigDefaultRefactoringProcessor.enable.usageType"))
+    val DEFAULT_CHANGED = AgpVersion.parse("8.0.0-alpha02")
   }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("UnstableApiUsage")
-
 package com.android.tools.idea.compose.gradle.preview
 
 import com.android.testutils.delayUntilCondition
@@ -26,14 +24,16 @@ import com.android.tools.idea.common.surface.SceneViewPanel
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
 import com.android.tools.idea.common.surface.sceneview.SceneViewTopPanel
 import com.android.tools.idea.common.util.ShowGroupUnderConditionWrapper
-import com.android.tools.idea.compose.gradle.ComposeGradleProjectRule
-import com.android.tools.idea.compose.gradle.activateAndWaitForRender
-import com.android.tools.idea.compose.gradle.waitForRender
+import com.android.tools.idea.compose.ComposeGradleProjectRule
+import com.android.tools.idea.compose.SIMPLE_COMPOSE_PROJECT_PATH
+import com.android.tools.idea.compose.SimpleComposeAppPaths
+import com.android.tools.idea.compose.activateAndWaitForRender
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
-import com.android.tools.idea.compose.preview.SIMPLE_COMPOSE_PROJECT_PATH
-import com.android.tools.idea.compose.preview.SimpleComposeAppPaths
+import com.android.tools.idea.compose.preview.TestComposePreviewView
+import com.android.tools.idea.compose.preview.displayName
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.compose.preview.waitForAllRefreshesToFinish
+import com.android.tools.idea.compose.waitForRender
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.preview.modes.PreviewMode

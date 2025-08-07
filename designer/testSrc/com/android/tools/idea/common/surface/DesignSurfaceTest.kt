@@ -153,6 +153,7 @@ class DesignSurfaceTest : LayoutTestCase() {
 
     modelChangeCountDown.await(2, TimeUnit.SECONDS)
     assertEquals(listOf(model), surface.models)
+    assertFalse(model.isDisposed)
   }
 
   fun testSetDifferentModelConcurrently() {

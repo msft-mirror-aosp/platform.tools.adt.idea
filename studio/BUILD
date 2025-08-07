@@ -1,7 +1,7 @@
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@rules_java//java:defs.bzl", "java_binary")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
-load("//tools/adt/idea/studio:studio.bzl", "android_studio", "studio_plugin")
+load("//tools/adt/idea/studio:studio.bzl", "android_studio", "android_studio_configuration", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
@@ -24,13 +24,6 @@ app_icon(
 bool_flag(
     name = "create-nightly-build",
     build_setting_default = False,
-)
-
-# Examples of version suffix are
-# Canary 2, RC 1, Patch 1, Nightly 2023-04-10.
-string_flag(
-    name = "version-suffix",
-    build_setting_default = "",
 )
 
 config_setting(
@@ -443,10 +436,6 @@ studio_plugin(
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.autolink",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmStrikethrough",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.lvcs.impl",
@@ -730,6 +719,7 @@ studio_plugin(
     directory = "gemini",
     libs = [
         "//prebuilts/tools/common/m2:libgoogle_auth_transitive_deps",
+        "//prebuilts/tools/common/m2:openai-java-sdk",
         "//prebuilts/tools/common/m2:sqlite-jdbc-3.43.0.0",
         "//prebuilts/tools/common/m2:wire-runtime-jvm-5.3.1",
         "//tools/adt/idea/.idea/libraries:kotlinx-serialization",
@@ -784,9 +774,6 @@ studio_plugin(
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmStrikethrough",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.vcs.impl",
@@ -816,15 +803,30 @@ exports_files([
     "studio.py",
 ])
 
+android_studio_configuration(
+    name = "nightly",
+    application_icon = ":nightly-icon",
+    version_suffix = "Nightly __BUILD_DAY__",
+    version_type = "Nightly",
+)
+
+android_studio_configuration(
+    name = "canary",
+    application_icon = None,
+    version_suffix = None,
+    version_type = STUDIO_VERSION,
+)
+
 android_studio(
     name = "android-studio",
-    application_icon = select({
-        ":nightly-build": ":nightly-icon",
-        "//conditions:default": None,
-    }),
     codesign_entitlements = "codesign/entitlements.xml",
+    configurations = [
+        ":canary",
+        ":nightly",
+    ],
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
+    legacy_default_configuration = "canary",
     platform = "@intellij//:intellij-sdk",
     plugins = [
         ":org.jetbrains.android",
@@ -847,19 +849,7 @@ android_studio(
     update_message_template = ":update_message.html",
     version_code_name = STUDIO_CODENAME,
     version_micro_patch = STUDIO_MICRO_PATCH,
-    # This will get added to the end of the full-version string.
-    # TODO(b/240707039): automate this.
     version_release_number = STUDIO_RELEASE_NUMBER,
-    version_suffix = select({
-        ":nightly-build": ":version-suffix",
-        # The android_studio rule will generate suffixes depending on the
-        # version_type and version_release_number.
-        "//conditions:default": None,
-    }),
-    version_type = select({
-        ":nightly-build": "Nightly",
-        "//conditions:default": STUDIO_VERSION,
-    }),
     visibility = ["//visibility:public"],
 )
 
@@ -1363,7 +1353,8 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
-        "@intellij//:Git4Idea",
+        "@intellij//:intellij.compose.ide.plugin.gradleTooling.rt",
+        "@intellij//:intellij.debugger.streams.core",
         "@intellij//:intellij.grid",
         "@intellij//:intellij.grid.core.impl",
         "@intellij//:intellij.grid.csv.core.impl",
@@ -1374,17 +1365,20 @@ iml_module(
         "@intellij//:intellij.java.unscramble",
         "@intellij//:intellij.java.vcs",
         "@intellij//:intellij.json.split",
-        "@intellij//:com.intellij.modules.json",
         "@intellij//:intellij.jvm.analysis.impl",
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
         "@intellij//:intellij.libraries.grpc",
         "@intellij//:intellij.libraries.grpc.netty.shaded",
         "@intellij//:intellij.libraries.ktor.client",
         "@intellij//:intellij.libraries.ktor.client.cio",
         "@intellij//:intellij.libraries.microba",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.performanceTesting.frontend",
         "@intellij//:intellij.platform.bookmarks.backend",
         "@intellij//:intellij.platform.bookmarks.frontend",
         "@intellij//:intellij.platform.clouds",
         "@intellij//:intellij.platform.collaborationTools",
+        "@intellij//:intellij.platform.compose",
         "@intellij//:intellij.platform.coverage",
         "@intellij//:intellij.platform.coverage.agent",
         "@intellij//:intellij.platform.debugger.impl.backend",
@@ -1400,6 +1394,15 @@ iml_module(
         "@intellij//:intellij.platform.images.backend.svg",
         "@intellij//:intellij.platform.images.copyright",
         "@intellij//:intellij.platform.inline.completion",
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.autolink",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmStrikethrough",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.kernel.backend",
         "@intellij//:intellij.platform.lvcs.impl",
         "@intellij//:intellij.platform.navbar",
@@ -1431,16 +1434,5 @@ iml_module(
         "@intellij//:intellij.settingsSync.core",
         "@intellij//:intellij.turboComplete.languages.kotlin.k1",
         "@intellij//:intellij.yaml.backend",
-        "@intellij//:intellij.platform.jewel.foundation",
-        "@intellij//:intellij.platform.jewel.ideLafBridge",
-        "@intellij//:intellij.platform.jewel.markdown.core",
-        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
-        "@intellij//:intellij.platform.jewel.ui",
-        "@intellij//:intellij.libraries.skiko",
-        "@intellij//:intellij.libraries.compose.foundation.desktop",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.autolink",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmStrikethrough",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
     ],
 )

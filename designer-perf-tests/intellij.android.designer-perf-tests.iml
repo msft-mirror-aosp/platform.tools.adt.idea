@@ -33,9 +33,9 @@
     <orderEntry type="module" module-name="intellij.android.rendering" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.compose-designer.tests" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.preview-elements" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.preview-fast-compile" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.visual-lint" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.compose-designer.testFramework" scope="TEST" />
   </component>
 </module>

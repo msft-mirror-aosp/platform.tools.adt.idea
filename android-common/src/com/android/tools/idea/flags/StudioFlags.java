@@ -1064,17 +1064,17 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_SCREENSHOTS = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.screenshots", "Enable Emulator Screenshot Tracing",
     "Enables tracing of received Emulator screenshots");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_NOTIFICATIONS = new BooleanFlag(
-    EMBEDDED_EMULATOR, "trace.notifications", "Enable Emulator Notification Tracing",
-    "Enables tracing of received Emulator notifications"
-    );
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_DISCOVERY = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_AVD = new BooleanFlag(
-    EMBEDDED_EMULATOR, "allow.xr", "Allow XR AVD to run embedded",
-    "Enables running an XR AVD in the Running Devices tool window"
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_HEADSET_AVD = new BooleanFlag(
+    EMBEDDED_EMULATOR, "allow.xr", "Allow XR headset AVD to run embedded",
+    "Enables running an XR headset AVD in the Running Devices tool window"
     );
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_GLASSES_AVD = new BooleanFlag(
+    EMBEDDED_EMULATOR, "allow.xr.glasses", "Allow XR glasses AVD to run embedded",
+    "Enables running an XR glasses AVD in the Running Devices tool window"
+  );
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.tracking", "Enable hand tracking input mode for XR AVDs",
     "Enables hand tracking input mode for XR AVDs");
@@ -1469,6 +1469,11 @@ public final class StudioFlags {
     "Enable context-menu actions that can generate a Compose Preview corresponding to the selected @Composable"
     );
 
+  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC = new BooleanFlag(
+    COMPOSE, "preview.generate.preview.action.agentic", "Use agents to generate Compose Previews",
+    "Uses agentic approach when generating Compose Previews corresponding to the selected @Composable. This replaces the transform based approach set by compose.preview.generate.preview.action. preview.generate.preview.action must be enabled for the action to be available."
+  );
+
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_EXTRA_PARAMETER_CONTEXT = new BooleanFlag(
     COMPOSE, "preview.generate.extra.parameter.context", "Enable additional parameter context when generating Compose Previews",
     "Enables an experiment of adding extra context when generating Compose Previews. The extra context will include information that should help instantiate parameters required by the Composable method used in the preview."
@@ -1509,6 +1514,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_TOOL = new BooleanFlag(
     COMPOSE, "preview.render.tool", "Enable the Compose Preview render agent tool",
     "If enabled, an agent tool to render Compose Previews will be available for agents.");
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_XR_GLASSES_PREVIEW = new BooleanFlag(
+    COMPOSE, "preview.xr.glasses.preview", "Enable Compose Preview for XR Glasses",
+    "If enabled, Compose Preview will have limited support for XR Glasses when glasses are set as the preview device.");
   //endregion
 
   // region Wear surfaces
