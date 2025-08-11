@@ -822,7 +822,6 @@ android_studio(
     codesign_entitlements = "codesign/entitlements.xml",
     configurations = [
         ":canary",
-        ":nightly",
     ],
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
