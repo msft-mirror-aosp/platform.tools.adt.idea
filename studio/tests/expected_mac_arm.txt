@@ -2221,7 +2221,6 @@ Android Studio Preview.app/Contents/plugins/android/lib/aapt2-proto-8.1.0-101544
 Android Studio Preview.app/Contents/plugins/android/lib/adt-ui.jar
 Android Studio Preview.app/Contents/plugins/android/lib/android-base-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/android-common.jar
-Android Studio Preview.app/Contents/plugins/android/lib/android-extensions-ide.jar
 Android Studio Preview.app/Contents/plugins/android/lib/android-gradle.jar
 Android Studio Preview.app/Contents/plugins/android/lib/android-kotlin.jar
 Android Studio Preview.app/Contents/plugins/android/lib/android-profilers.jar
@@ -3009,6 +3008,8 @@ Android Studio Preview.app/Contents/plugins/gemini/lib/annotation-jvm-1.7.1.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/gemini.so.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/gemini_plugin_proto.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/google-api-services-cloudresourcemanager-v1beta1-rev20240128-2.0.0.jar
+Android Studio Preview.app/Contents/plugins/gemini/lib/jackson-datatype-jdk8-2.18.2.jar
+Android Studio Preview.app/Contents/plugins/gemini/lib/jackson-datatype-jsr310-2.18.2.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/kotlinx-serialization-core-jvm-1.7.3.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/kotlinx-serialization-json-jvm-1.7.3.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/libfeedback_java_proto.jar
@@ -3016,7 +3017,7 @@ Android Studio Preview.app/Contents/plugins/gemini/lib/libgoogle_auth_intellij_l
 Android Studio Preview.app/Contents/plugins/gemini/lib/libserviceusage_v1_java_lib.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/libv1internal_java_rest.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/lucene-queryparser-9.12.0.jar
-Android Studio Preview.app/Contents/plugins/gemini/lib/mcp-kotlin-sdk.jar
+Android Studio Preview.app/Contents/plugins/gemini/lib/mcp-sdk-libraries.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/openai-java-client-okhttp-2.19.1.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/openai-java-core-2.19.1.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/proto-models-1.0.jar

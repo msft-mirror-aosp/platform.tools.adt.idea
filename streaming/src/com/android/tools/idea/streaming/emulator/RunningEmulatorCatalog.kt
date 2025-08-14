@@ -18,15 +18,14 @@ package com.android.tools.idea.streaming.emulator
 import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.GuardedBy
 import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
+import com.android.sdklib.deviceprovisioner.RunningAvd
 import com.android.tools.concurrency.AndroidIoManager
-import com.android.tools.idea.avdmanager.RunningAvd
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.flags.StudioFlags
 import com.google.common.collect.ImmutableSet
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
 import com.intellij.openapi.components.serviceIfCreated
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
@@ -35,9 +34,6 @@ import com.intellij.openapi.util.io.FileUtil.getTempDirectory
 import com.intellij.openapi.util.text.StringUtil.parseInt
 import com.intellij.util.Alarm
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import org.jetbrains.annotations.TestOnly
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
@@ -52,6 +48,9 @@ import java.util.regex.Pattern
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.io.path.deleteIfExists
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import org.jetbrains.annotations.TestOnly
 
 /**
  * Keeps track of Android Emulators running on the local machine under the current user account.
@@ -255,7 +254,7 @@ class RunningEmulatorCatalog : Disposable.Parent {
         for (emulator in addedEmulators) {
           val processHandle = ProcessHandleProvider.getProcessHandle(emulator.emulatorId.pid)
           if (processHandle?.isAlive == true) {
-            val tracker = runningAvdTracker ?: service<RunningAvdTracker>().also { runningAvdTracker = it }
+            val tracker = runningAvdTracker ?: RunningAvdTracker.getInstance().also { runningAvdTracker = it }
             tracker.started(emulator.emulatorId.avdFolder, processHandle,
                             if (emulator.emulatorId.isEmbedded) RunningAvd.RunType.EMBEDDED else RunningAvd.RunType.STANDALONE)
           }

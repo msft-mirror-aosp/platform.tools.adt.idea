@@ -55,7 +55,7 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
       LegacyAllocationCommandHandler trackAllocationHandler =
         new LegacyAllocationCommandHandler(device,
                                            proxy.getEventQueue(),
-                                           proxy.getBytesCache(),
+                                           proxy.getFilePathCache(),
                                            Executors.newSingleThreadExecutor(
                                              new ThreadFactoryBuilder().setNameFormat(MEMORY_PROXY_EXECUTOR_NAME).build()),
                                            StudioLegacyAllocationTracker::new);
@@ -67,11 +67,10 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
         new LegacyCpuTraceCommandHandler(device,
                                          TransportServiceGrpc.newBlockingStub(proxy.getTransportChannel()),
                                          proxy.getEventQueue(),
-                                         proxy.getBytesCache());
+                                         proxy.getFilePathCache());
       proxy.registerProxyCommandHandler(Commands.Command.CommandType.START_TRACE, cpuTraceHandler);
       proxy.registerProxyCommandHandler(Commands.Command.CommandType.STOP_TRACE, cpuTraceHandler);
-    } else if (StudioFlags.PERFETTO_SDK_TRACING.get() &&
-               device.getVersion().getFeatureLevel() >= AndroidVersion.VersionCodes.R) {
+    } else if (device.getVersion().getFeatureLevel() >= AndroidVersion.VersionCodes.R) {
       CpuTraceInterceptCommandHandler cpuTraceHandler =
         new CpuTraceInterceptCommandHandler(device,
                                             TransportServiceGrpc.newBlockingStub(proxy.getTransportChannel()));
@@ -95,7 +94,6 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
       .setCommon(
         configBuilder.getCommonBuilder()
           .setProfilerUnifiedPipeline(true)
-          .setProfilerCustomEventVisualization(StudioFlags.PROFILER_CUSTOM_EVENT_VISUALIZATION.get())
           .setProfilerTaskBasedUx(StudioFlags.PROFILER_TASK_BASED_UX.get()))
       .setCpu(
         Transport.DaemonConfig.CpuConfig.newBuilder()
@@ -114,8 +112,6 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
       .setCommon(
         configBuilder.getCommonBuilder()
           .setProfilerUnifiedPipeline(true)
-          .setProfilerCustomEventVisualization(StudioFlags.PROFILER_CUSTOM_EVENT_VISUALIZATION.get())
-          .setProfilerKeyboardEvent(StudioFlags.PROFILER_KEYBOARD_EVENT.get())
           .setProfilerTaskBasedUx(StudioFlags.PROFILER_TASK_BASED_UX.get()))
       .setMem(
         Agent.AgentConfig.MemoryConfig.newBuilder()

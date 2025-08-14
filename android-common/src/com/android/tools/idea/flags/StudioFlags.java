@@ -19,16 +19,16 @@ import com.android.flags.BooleanFlag;
 import com.android.flags.EnumFlag;
 import com.android.flags.Flag;
 import com.android.flags.FlagGroup;
-import com.android.flags.FlagOverrides;
+import com.android.flags.FlagValueContainer;
 import com.android.flags.Flags;
 import com.android.flags.IntFlag;
 import com.android.flags.LongFlag;
 import com.android.flags.StringFlag;
-import com.android.flags.overrides.DefaultFlagOverrides;
+import com.android.flags.overrides.InMemoryFlagValueContainer;
 import com.android.flags.overrides.PropertyOverrides;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
-import com.android.tools.idea.flags.overrides.FeatureConfigurationOverrides;
+import com.android.tools.idea.flags.overrides.FeatureConfigurationProvider;
 import com.android.tools.idea.flags.overrides.MendelOverrides;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.intellij.openapi.application.ApplicationManager;
@@ -51,23 +51,23 @@ public final class StudioFlags {
 
   @NotNull
   private static Flags createFlags() {
-    FlagOverrides userOverrides;
+    FlagValueContainer userOverrides;
     if (isUnitTestMode()) {
-      userOverrides = new DefaultFlagOverrides();
+      userOverrides = new InMemoryFlagValueContainer();
     }
     else {
       userOverrides = new LazyStudioFlagSettings();
     }
     return new Flags(
+      FeatureConfigurationProvider.Companion.getCurrentFlags(),
       userOverrides,
       new PropertyOverrides(),
       new MendelOverrides(),
-      new ServerFlagOverrides(),
-      new FeatureConfigurationOverrides());
+      new ServerFlagOverrides());
   }
 
   // This class is a workaround for b/355292387: IntelliJ 2024.2 does not allow services to be instantiated inside static initializers.
-  private static class LazyStudioFlagSettings implements FlagOverrides {
+  private static class LazyStudioFlagSettings implements FlagValueContainer {
     @Override
     public void clear() {
       StudioFlagSettings.getInstance().clear();
@@ -93,6 +93,25 @@ public final class StudioFlags {
   @TestOnly
   public static void validate() {
     FLAGS.validate();
+  }
+
+  /**
+   * Overrides the current boolean feature flags with the values coming from a different configuration.
+   * @param config the feature configuration to use
+   */
+  @TestOnly
+  public static void overrideFeatureFlagsForTesting(@NotNull FeatureConfiguration config) {
+    @NotNull FeatureConfigurationProvider values = FeatureConfigurationProvider.Companion.loadValuesForTesting(config);
+
+    for (String entry : values.getEntries()) {
+      Flag<?> flag = FLAGS.getFlag(entry);
+      if (flag != null) {
+        String value = values.get(flag);
+        if (value != null) {
+          FLAGS.getUserOverrides().put(flag, value);
+        }
+      }
+    }
   }
 
   //region New Project Wizard
@@ -173,6 +192,11 @@ public final class StudioFlags {
     "Enable Navigation UI template",
     "Allows the Navigation UI template to be used.");
 
+  public static final Flag<Boolean> NPW_ENABLE_ARCHITECTURE_SAMPLE_TEMPLATE = new BooleanFlag(
+    NPW, "arch.sample.template",
+    "Enable Architecture Sample template",
+    "Allows the Architecture Sample template to be used.");
+
   public static final Flag<Boolean> NPW_NEW_KOTLIN_MULTIPLATFORM_MODULE = new BooleanFlag(
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.");
@@ -185,7 +209,7 @@ public final class StudioFlags {
   public static final Flag<String> NPW_DAEMON_JVM_CRITERIA_REQUIRED_GRADLE_VERSION = new StringFlag(
     NPW, "new.project.daemon.jvm.criteria.gradle.version", "New project Daemon JVM criteria required Gradle version",
     "The Gradle version required to configure Daemon JVM criteria for newly created projects",
-    "9.1");
+    "9.2.0");
   //endregion
 
   //region Memory Usage Reporting
@@ -208,10 +232,6 @@ public final class StudioFlags {
   //region Profiler
   private static final FlagGroup PROFILER = new FlagGroup(FLAGS, "profiler", "Android Profiler");
 
-  public static final Flag<Boolean> PROFILER_ENERGY_PROFILER_ENABLED = new BooleanFlag(
-    PROFILER, "energy", "Enable Energy profiling",
-    "Enable the new energy profiler. It monitors battery usage of the selected app.");
-
   public static final Flag<Boolean> PROFILER_MEMORY_CSV_EXPORT = new BooleanFlag(
     PROFILER, "memory.csv", "Allow exporting entries in memory profiler",
     "Allow exporting entries in the views for heap dump and native/JVM recordings in CSV format.");
@@ -226,15 +246,6 @@ public final class StudioFlags {
     "Toggles the testing mode for more logging and Actions to facilitate automatic testing."
   );
 
-  public static final Flag<Boolean> PROFILER_JANK_DETECTION_UI = new BooleanFlag(
-    PROFILER, "jank.ui", "Enable jank detection UI",
-    "Add a track in the display group showing frame janks."
-  );
-
-  public static final Flag<Boolean> PROFILER_CUSTOM_EVENT_VISUALIZATION = new BooleanFlag(
-    PROFILER, "custom.event.visualization", "Enable Profiler Custom Event Visualization",
-    "When enabled, profiler will track and display events defined through developer APIs");
-
   public static final Flag<PowerProfilerDisplayMode> PROFILER_SYSTEM_TRACE_POWER_PROFILER_DISPLAY_MODE = new EnumFlag<>(
     PROFILER, "power.tracks", "Set display mode of power rails and battery counters in system trace UI",
     "Allows users to customize whether the power rail and battery counter tracks are shown in the system trace UI, " +
@@ -243,21 +254,6 @@ public final class StudioFlags {
     "When set to CUMULATIVE, shows power rails and battery counters in their raw view (cumulative counters). " +
     "When set to DELTA, shows the power rails in a delta view and battery counters in their raw view (cumulative counters).",
     PowerProfilerDisplayMode.DELTA);
-
-  // TODO(b/211154220): Pending user's feedback, either completely remove the keyboard event functionality in
-  //                    Event Timeline or find a proper way to support it for Android S and newer.
-  public static final Flag<Boolean> PROFILER_KEYBOARD_EVENT = new BooleanFlag(
-    PROFILER, "keyboard.event", "Enable keyboard event",
-    "Enable the keyboard event functionality in Event Timeline");
-
-  public static final Flag<Boolean> PERFETTO_SDK_TRACING = new BooleanFlag(
-    PROFILER, "perfetto.sdk.tracing", "Automatically instrument perfetto sdk builds",
-    "A cpu trace intercept command is added that will enable perfetto instrumentation for apps" +
-    " that use the perfetto SDK");
-
-  public static final Flag<Boolean> COMPOSE_TRACING_NAVIGATE_TO_SOURCE = new BooleanFlag(
-    PROFILER, "perfetto.sdk.tracing.compose.navigation", "Navigate-to-source action for Compose Tracing",
-    "Enables navigate-to-source action in Profiler for Compose Tracing slices");
 
   public static final Flag<Boolean> PROFILER_TASK_BASED_UX = new BooleanFlag(
     PROFILER, "task.based.ux", "Task-based UX",
@@ -967,6 +963,13 @@ public final class StudioFlags {
     "However we've done extensive feasibility work to make sure we don't actually need this replacement behaviour, meaning we can disable " +
     "this behaviour completely. This flag is a fail-safe to make sure we can switch this behaviour back to platform's default, if needed."
   );
+
+  public static final Flag<Boolean> PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED = new BooleanFlag(
+    PHASED_SYNC,
+    "dependency.resolution.enabled",
+    "Enables dependency resolution phase in phased sync",
+    "Enables dependency resolution phase in phased sync"
+  );
   //endregion
 
   //region Apk Project System
@@ -1033,11 +1036,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ON_DEVICE_RENDERING = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.on.device.rendering", "Always use on-device rendering",
     "Force using on-device rendering, even when the device is not XR. Used for development only.");
-
-  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_V2_RENDERING = new BooleanFlag(
-    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.v2.rendering", "Enable V2 studio-side rendering",
-    "Enable the new studio-side renderer in embedded mode."
-    );
 
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_HORIZONTAL_SCROLLABLE_COMPONENT_TREE = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.horizontal.scrollable.component.tree",
@@ -1108,6 +1106,9 @@ public final class StudioFlags {
     "The log level used by the screen sharing agent, one of \"verbose\", \"debug\", \"info\", \"warn\" or \"error\";" +
     " the default is \"info\"",
     "");
+  public static final Flag<Boolean> DEVICE_MIRRORING_TRACE_CLIPBOARD_SYNCHRONIZATION = new BooleanFlag(
+    DEVICE_MIRRORING, "trace.clipboard.synchronization", "Enable tracing of clipboard synchronization",
+    "Enable logging of clipboard contents. May include sensitive data. Use with caution.");
   public static final Flag<Integer> DEVICE_MIRRORING_CONNECTION_TIMEOUT_MILLIS = new IntFlag(
     DEVICE_MIRRORING, "connection.timeout", "Connection Timeout for Mirroring",
     "Connection timeout for mirroring in milliseconds",
@@ -2158,6 +2159,11 @@ public final class StudioFlags {
                     "Enable support for GCA Enterprise tier",
                     "Enable support for GCA Enterprise tier");
 
+  public static final Flag<Boolean> STUDIOBOT_USE_UNIFIED_ONBOARDER =
+    new BooleanFlag(STUDIOBOT, "use.unified.onboarder",
+                    "Use unified onboarder",
+                    "Use unified onboarder for login and model onboarding");
+
   public static Flag<Boolean> STUDIOBOT_SHIMMER_PLACEHOLDER =
     new BooleanFlag(STUDIOBOT, "show.shimmer.placeholder",
                     "Enable shimmering placeholder in chat timeline.",
@@ -2175,6 +2181,12 @@ public final class StudioFlags {
                     "When enabled, a setting and various UI is made visible to configure local models, and when provided and" +
                     "enabled it add local model option to Chat model picker.");
 
+  public static Flag<Boolean> REMOTE_MODELS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "remote.models.enabled",
+                    "Add remote models for Chat.",
+                    "When enabled, a setting and various UI is made visible to configure remote models, and when provided and" +
+                    "enabled it add remote model option to Chat model picker.");
+
   public static final Flag<Boolean> STUDIOBOT_INCLUDE_GRADLE_PROJECT_STRUCTURE_TOOLS_BY_DEFAULT =
     new BooleanFlag(STUDIOBOT, "include.gradle.project.structure.tools.by.default",
                     "Enable using Gradle project structure Agent tools by default",
@@ -2189,6 +2201,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "include.deploy.tools.by.default",
                     "Enable using Deployment Agent tools by default",
                     "When enabled, a set of tools allowing the agent to use deployment tools like Live Edit will be included by default.");
+
+  public static final Flag<Boolean> STUDIOBOT_DEPLOY_VIBE_EDIT_AGENT =
+    new BooleanFlag(STUDIOBOT, "deploy.vibe.edit.agent",
+                    "Enable Vibe Edit Agent",
+                    "When enabled, allow launch of Vibe Edit agent.");
 
   public static final Flag<Boolean> GEMINI_AGENT_MODE =
     new BooleanFlag(STUDIOBOT, "agent.mode",
@@ -2242,6 +2259,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "gemini.next.prediction",
                     "Enable next edit/action prediction in the IDE",
                     "Enable next edit/action prediction in the IDE");
+
+  public static final Flag<Boolean> STUDIOBOT_AGENT_EXPERIMENTAL_BUILD_PROMPT =
+    new BooleanFlag(STUDIOBOT, "agent.experimental.build.prompt",
+                    "Enable build-related instructions in the prompt",
+                    "Enable build-related instructions in the prompt");
 
   // endregion STUDIO_BOT
 
@@ -2399,7 +2421,7 @@ public final class StudioFlags {
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.
     // In IDEA: disables unless the user explicitly overrides BUILD_OUTPUT_DOWNLOADS_INFORMATION.
-    return IdeInfo.getInstance().isAndroidStudio() || BUILD_OUTPUT_DOWNLOADS_INFORMATION.isOverridden()
+    return IdeInfo.getInstance().isAndroidStudio() || BUILD_OUTPUT_DOWNLOADS_INFORMATION.isUserOverridden()
            ? BUILD_OUTPUT_DOWNLOADS_INFORMATION.get()
            : false;
   }

@@ -641,7 +641,6 @@ MODULE                        : TestCompositeLib1
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -654,10 +653,8 @@ MODULE                        : TestCompositeLib1
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -716,8 +713,6 @@ MODULE                        : TestCompositeLib1
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
-                        debugWearBundling             : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -771,8 +766,6 @@ MODULE                        : TestCompositeLib1
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
-                        releaseWearBundling           : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -790,7 +783,6 @@ MODULE                        : TestCompositeLib1
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -807,7 +799,6 @@ MODULE                        : TestCompositeLib1
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -821,9 +812,7 @@ MODULE                        : TestCompositeLib1
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -836,10 +825,7 @@ MODULE                        : TestCompositeLib1
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -889,7 +875,6 @@ MODULE                        : TestCompositeLib1
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -902,10 +887,8 @@ MODULE                        : TestCompositeLib1
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -968,7 +951,6 @@ MODULE                        : TestCompositeLib1
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -1026,7 +1008,6 @@ MODULE                        : TestCompositeLib1
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1044,7 +1025,6 @@ MODULE                        : TestCompositeLib1
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -1061,7 +1041,6 @@ MODULE                        : TestCompositeLib1
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -1075,9 +1054,7 @@ MODULE                        : TestCompositeLib1
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -1090,10 +1067,7 @@ MODULE                        : TestCompositeLib1
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -1214,7 +1188,6 @@ MODULE                        : TestCompositeLib1.app
             ResDirectories                : <ROOT>/TestCompositeLib1/app/src/main/res
             AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1229,7 +1202,6 @@ MODULE                        : TestCompositeLib1.app
                     ResDirectories                : <ROOT>/TestCompositeLib1/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1243,7 +1215,6 @@ MODULE                        : TestCompositeLib1.app
                     ResDirectories                : <ROOT>/TestCompositeLib1/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -1265,7 +1236,6 @@ MODULE                        : TestCompositeLib1.app
             ResDirectories                : <ROOT>/TestCompositeLib1/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1280,7 +1250,6 @@ MODULE                        : TestCompositeLib1.app
                     ResDirectories                : <ROOT>/TestCompositeLib1/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1295,7 +1264,6 @@ MODULE                        : TestCompositeLib1.app
                     ResDirectories                : <ROOT>/TestCompositeLib1/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -1318,7 +1286,6 @@ MODULE                        : TestCompositeLib1.app
             ResDirectories                : <ROOT>/TestCompositeLib1/app/src/release/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1333,7 +1300,6 @@ MODULE                        : TestCompositeLib1.app
                     ResDirectories                : <ROOT>/TestCompositeLib1/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -2328,7 +2294,6 @@ MODULE                        : TestCompositeLib1.lib
             ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/main/res
             AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2343,7 +2308,6 @@ MODULE                        : TestCompositeLib1.lib
                     ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2357,7 +2321,6 @@ MODULE                        : TestCompositeLib1.lib
                     ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/test/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -2379,7 +2342,6 @@ MODULE                        : TestCompositeLib1.lib
             ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/debug/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2394,7 +2356,6 @@ MODULE                        : TestCompositeLib1.lib
                     ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2409,7 +2370,6 @@ MODULE                        : TestCompositeLib1.lib
                     ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -2432,7 +2392,6 @@ MODULE                        : TestCompositeLib1.lib
             ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/release/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2447,7 +2406,6 @@ MODULE                        : TestCompositeLib1.lib
                     ResDirectories                : <ROOT>/TestCompositeLib1/lib/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib1/lib/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib1/lib/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib1/lib/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib1/lib/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -3436,7 +3394,6 @@ MODULE                        : TestCompositeLib3
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -3449,10 +3406,8 @@ MODULE                        : TestCompositeLib3
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -3511,8 +3466,6 @@ MODULE                        : TestCompositeLib3
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
-                        debugWearBundling             : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -3566,8 +3519,6 @@ MODULE                        : TestCompositeLib3
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
-                        releaseWearBundling           : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -3585,7 +3536,6 @@ MODULE                        : TestCompositeLib3
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -3602,7 +3552,6 @@ MODULE                        : TestCompositeLib3
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -3616,9 +3565,7 @@ MODULE                        : TestCompositeLib3
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -3631,10 +3578,7 @@ MODULE                        : TestCompositeLib3
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -3676,16 +3620,13 @@ MODULE                        : TestCompositeLib3
                         androidTestDebugCompileOnly   : <empty>
                         androidTestDebugImplementation          : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestReleaseAnnotationProcessor   : <empty>
                         androidTestReleaseCompileOnly : <empty>
                         androidTestReleaseImplementation        : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         archives                      : <empty>
@@ -3709,7 +3650,6 @@ MODULE                        : TestCompositeLib3
                         debugUnitTestAnnotationProcessorClasspath         : <empty>
                         debugUnitTestCompileClasspath : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         lintChecks                    : <empty>
@@ -3728,7 +3668,6 @@ MODULE                        : TestCompositeLib3
                         releaseUnitTestAnnotationProcessorClasspath       : <empty>
                         releaseUnitTestCompileClasspath         : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
@@ -3736,7 +3675,6 @@ MODULE                        : TestCompositeLib3
                         testDebugCompileOnly          : <empty>
                         testDebugImplementation       : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesCompileOnly       : <empty>
@@ -3747,7 +3685,6 @@ MODULE                        : TestCompositeLib3
                         testFixturesDebugCompileOnlyApi         : <empty>
                         testFixturesDebugImplementation         : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesReleaseAnnotationProcessor  : <empty>
                         testFixturesReleaseApi        : <empty>
@@ -3755,18 +3692,13 @@ MODULE                        : TestCompositeLib3
                         testFixturesReleaseCompileOnlyApi       : <empty>
                         testFixturesReleaseImplementation       : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testReleaseAnnotationProcessor          : <empty>
                         testReleaseCompileOnly        : <empty>
                         testReleaseImplementation     : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -3887,7 +3819,6 @@ MODULE                        : TestCompositeLib3.app
             ResDirectories                : <ROOT>/TestCompositeLib3/app/src/main/res
             AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3902,7 +3833,6 @@ MODULE                        : TestCompositeLib3.app
                     ResDirectories                : <ROOT>/TestCompositeLib3/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -3916,7 +3846,6 @@ MODULE                        : TestCompositeLib3.app
                     ResDirectories                : <ROOT>/TestCompositeLib3/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -3938,7 +3867,6 @@ MODULE                        : TestCompositeLib3.app
             ResDirectories                : <ROOT>/TestCompositeLib3/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3953,7 +3881,6 @@ MODULE                        : TestCompositeLib3.app
                     ResDirectories                : <ROOT>/TestCompositeLib3/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3968,7 +3895,6 @@ MODULE                        : TestCompositeLib3.app
                     ResDirectories                : <ROOT>/TestCompositeLib3/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -3991,7 +3917,6 @@ MODULE                        : TestCompositeLib3.app
             ResDirectories                : <ROOT>/TestCompositeLib3/app/src/release/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -4006,7 +3931,6 @@ MODULE                        : TestCompositeLib3.app
                     ResDirectories                : <ROOT>/TestCompositeLib3/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -4979,7 +4903,6 @@ MODULE                        : TestCompositeLib3.lib
             ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/main/res
             AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -4994,7 +4917,6 @@ MODULE                        : TestCompositeLib3.lib
                     ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5008,7 +4930,6 @@ MODULE                        : TestCompositeLib3.lib
                     ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/test/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -5030,7 +4951,6 @@ MODULE                        : TestCompositeLib3.lib
             ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/debug/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5045,7 +4965,6 @@ MODULE                        : TestCompositeLib3.lib
                     ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5060,7 +4979,6 @@ MODULE                        : TestCompositeLib3.lib
                     ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -5083,7 +5001,6 @@ MODULE                        : TestCompositeLib3.lib
             ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/release/res [-]
             AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5098,7 +5015,6 @@ MODULE                        : TestCompositeLib3.lib
                     ResDirectories                : <ROOT>/TestCompositeLib3/lib/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/TestCompositeLib3/lib/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/TestCompositeLib3/lib/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/TestCompositeLib3/lib/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/TestCompositeLib3/lib/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -6309,7 +6225,6 @@ MODULE                        : project
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -6322,10 +6237,8 @@ MODULE                        : project
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -6384,8 +6297,6 @@ MODULE                        : project
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
-                        debugWearBundling             : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -6439,8 +6350,6 @@ MODULE                        : project
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
-                        releaseWearBundling           : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -6458,7 +6367,6 @@ MODULE                        : project
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -6475,7 +6383,6 @@ MODULE                        : project
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -6489,9 +6396,7 @@ MODULE                        : project
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -6504,10 +6409,7 @@ MODULE                        : project
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -6560,7 +6462,6 @@ MODULE                        : project
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -6573,10 +6474,8 @@ MODULE                        : project
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -6639,7 +6538,6 @@ MODULE                        : project
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -6697,7 +6595,6 @@ MODULE                        : project
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -6715,7 +6612,6 @@ MODULE                        : project
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -6732,7 +6628,6 @@ MODULE                        : project
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -6746,9 +6641,7 @@ MODULE                        : project
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -6761,10 +6654,7 @@ MODULE                        : project
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -6885,7 +6775,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/main/res
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6900,7 +6789,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6914,7 +6802,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -6936,7 +6823,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6951,7 +6837,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6966,7 +6851,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -6989,7 +6873,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/release/res [-]
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -7004,7 +6887,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -8003,7 +7885,6 @@ MODULE                        : project.lib
             ResDirectories                : <ROOT>/lib/src/main/res
             AssetsDirectories             : <ROOT>/lib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/lib/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -8018,7 +7899,6 @@ MODULE                        : project.lib
                     ResDirectories                : <ROOT>/lib/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -8032,7 +7912,6 @@ MODULE                        : project.lib
                     ResDirectories                : <ROOT>/lib/src/test/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -8054,7 +7933,6 @@ MODULE                        : project.lib
             ResDirectories                : <ROOT>/lib/src/debug/res [-]
             AssetsDirectories             : <ROOT>/lib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/lib/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -8069,7 +7947,6 @@ MODULE                        : project.lib
                     ResDirectories                : <ROOT>/lib/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -8084,7 +7961,6 @@ MODULE                        : project.lib
                     ResDirectories                : <ROOT>/lib/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -8107,7 +7983,6 @@ MODULE                        : project.lib
             ResDirectories                : <ROOT>/lib/src/release/res [-]
             AssetsDirectories             : <ROOT>/lib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/lib/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -8122,7 +7997,6 @@ MODULE                        : project.lib
                     ResDirectories                : <ROOT>/lib/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig

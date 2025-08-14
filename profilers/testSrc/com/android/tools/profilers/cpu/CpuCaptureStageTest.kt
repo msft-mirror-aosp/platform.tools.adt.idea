@@ -18,7 +18,6 @@ package com.android.tools.profilers.cpu
 import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode
-import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.transport.TransportService
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
@@ -38,9 +37,7 @@ import com.intellij.testFramework.registerServiceInstance
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.io.BufferedReader
-import java.io.FileInputStream
-import java.io.FileReader
+import java.io.File
 
 class CpuCaptureStageTest {
   private val timer = FakeTimer()
@@ -62,16 +59,6 @@ class CpuCaptureStageTest {
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), services, timer)
     // One second must be enough for new devices (and processes) to be picked up
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-  }
-
-  @Test
-  fun savingCaptureHasData() {
-    val data = "Some Data"
-    val traceId = 1234L
-    val file = CpuCaptureStage.saveCapture(traceId, ByteString.copyFromUtf8(data))
-    assertThat(file.name).matches("cpu_trace_$traceId.trace")
-    val reader = BufferedReader(FileReader(file))
-    assertThat(reader.readLine()).isEqualTo(data)
   }
 
   @Test
@@ -171,7 +158,6 @@ class CpuCaptureStageTest {
 
   @Test
   fun trackGroupModelsAreSetForPerfetto() {
-    services.enableJankDetectionUi(false)
     services.setListBoxOptionsMatcher { option -> option.contains("system_server") }
     val stage = CpuCaptureStage.create(profilers, ProfilersTestData.DEFAULT_CONFIG,
                                        CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"), SESSION_ID)
@@ -209,7 +195,6 @@ class CpuCaptureStageTest {
 
   @Test
   fun trackGroupModelsAreSetForPerfettoWithPower() {
-    services.enableJankDetectionUi(false)
     // Enable power rail and battery counter tracks by using a non-HIDE flag value.
     services.setSystemTracePowerProfilerDisplayMode(PowerProfilerDisplayMode.CUMULATIVE)
     val stage = CpuCaptureStage.create(profilers, ProfilersTestData.DEFAULT_CONFIG,
@@ -256,7 +241,6 @@ class CpuCaptureStageTest {
 
   @Test
   fun trackGroupModelsAreSetForPerfettoWithFrameLifecycle() {
-    services.enableJankDetectionUi(false)
     services.setListBoxOptionsMatcher { option -> option.contains("profilertester") }
     val stage = CpuCaptureStage.create(profilers, ProfilersTestData.DEFAULT_CONFIG,
                                        CpuProfilerTestUtils.getTraceFile("perfetto_frame_lifecycle.trace"), SESSION_ID)
@@ -325,15 +309,13 @@ class CpuCaptureStageTest {
   @Test
   fun validTraceIdReturnsCaptureStage() {
     val trace = CpuProfilerTestUtils.getTraceFile("perfetto.trace")
-    val traceBytes = ByteString.readFrom(FileInputStream(trace))
-    transportService.addFile("1", traceBytes)
+    transportService.addFile("1", trace.absolutePath)
     val stage = CpuCaptureStage.create(profilers, ProfilersTestData.DEFAULT_CONFIG, 1)
     assertThat(stage).isNotNull()
   }
 
   @Test
   fun captureHintSelectsProperProcessStringName() {
-    services.enableJankDetectionUi(false)
     services.setListBoxOptionsIndex(-1) // This makes process selector throws if we didn't selected based on name hint first.
     val stage = CpuCaptureStage(profilers, ProfilersTestData.DEFAULT_CONFIG, CpuProfilerTestUtils.getTraceFile("perfetto.trace"),
                                 SESSION_ID, "/system/bin/surfaceflinger", 0)
@@ -345,7 +327,6 @@ class CpuCaptureStageTest {
 
   @Test
   fun captureHintSelectsProperProcessPID() {
-    services.enableJankDetectionUi(false)
     services.setListBoxOptionsIndex(-1) // This makes process selector throws if we didn't selected based on pid hint first.
     val stage = CpuCaptureStage(profilers, ProfilersTestData.DEFAULT_CONFIG, CpuProfilerTestUtils.getTraceFile("perfetto.trace"),
                                 SESSION_ID, null, 709)
@@ -357,7 +338,6 @@ class CpuCaptureStageTest {
 
   @Test
   fun nullCaptureHintSelectsCaptureFromDialog() {
-    services.enableJankDetectionUi(false)
     services.setListBoxOptionsMatcher { option -> option.contains("system_server") }
     val stage = CpuCaptureStage(profilers, ProfilersTestData.DEFAULT_CONFIG, CpuProfilerTestUtils.getTraceFile("perfetto.trace"),
                                 SESSION_ID, null, 0)

@@ -31,6 +31,7 @@ object WFFConstants {
   const val ATTRIBUTE_ID = "id"
   const val ATTRIBUTE_COLORS = "colors"
   const val ATTRIBUTE_SOURCE = "source"
+  const val ATTRIBUTE_EXPRESSION = "expression"
 
   const val TAG_USER_CONFIGURATIONS = "UserConfigurations"
   const val TAG_COLOR_CONFIGURATION = "ColorConfiguration"
@@ -39,6 +40,8 @@ object WFFConstants {
   const val TAG_BOOLEAN_CONFIGURATION = "BooleanConfiguration"
   const val TAG_PHOTOS_CONFIGURATION = "PhotosConfiguration"
   const val TAG_PHOTOS = "Photos"
+  const val TAG_PARAMETER = "Parameter"
+  const val TAG_TEMPLATE = "Template"
 
   /**
    * Attributes that can reference drawable resources.

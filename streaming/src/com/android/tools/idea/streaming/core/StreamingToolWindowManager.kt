@@ -103,6 +103,7 @@ import com.intellij.openapi.wm.impl.InternalDecorator
 import com.intellij.openapi.wm.impl.content.ToolWindowContentUi
 import com.intellij.ui.BadgeIconSupplier
 import com.intellij.ui.ComponentUtil
+import com.intellij.ui.JBColor
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.content.ContentManager
@@ -118,6 +119,15 @@ import com.intellij.util.containers.ComparatorUtil.max
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
+import java.awt.Component
+import java.awt.EventQueue
+import java.awt.event.KeyEvent
+import java.nio.file.Path
+import java.util.function.Supplier
+import javax.swing.JComponent
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -130,15 +140,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
-import java.awt.Component
-import java.awt.EventQueue
-import java.awt.event.KeyEvent
-import java.nio.file.Path
-import java.util.function.Supplier
-import javax.swing.JComponent
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 
 private const val DEVICE_FRAME_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.emulator.frame.visible"
 private const val DEVICE_FRAME_VISIBLE_DEFAULT = true
@@ -699,7 +700,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(
       EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
         emulators.remove(emulator)
         removeEmulatorPanel(emulator)
-        updateLiveIndicator()
       }
     }
   }
@@ -935,7 +935,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   private suspend fun createDeviceActions(): DefaultActionGroup {
     return DefaultActionGroup().apply {
-      val deviceDescriptions = devicesExcludedFromMirroring.values.toTypedArray().sortedBy { it.deviceName }
+      val deviceDescriptions = devicesExcludedFromMirroring.values.toTypedArray().sorted()
       if (deviceDescriptions.isNotEmpty()) {
         add(Separator("Connected Devices"))
         for (deviceDescription in deviceDescriptions) {
@@ -976,15 +976,13 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private suspend fun getStartableVirtualDevices(): List<AvdInfo> {
-    return withContext(Dispatchers.IO) {
-      val avdManager = AvdManagerConnection.getDefaultAvdManagerConnection()
-      val runningAvdFolders = service<RunningAvdTracker>().runningAvds.filter { !it.value.isShuttingDown }.keys
-      avdManager.getAvds(false).filter {
-        it.dataFolderPath !in runningAvdFolders &&
-        findContentByAvdFolder(it.dataFolderPath) == null &&
-        (StudioFlags.EMBEDDED_EMULATOR_ALLOW_XR_HEADSET_AVD.get() || !it.isXrHeadsetDevice) &&
-        (StudioFlags.EMBEDDED_EMULATOR_ALLOW_XR_GLASSES_AVD.get() || !it.isXrGlassesDevice)
-      }
+    val avds = withContext(Dispatchers.IO) { AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(false) }
+    val runningAvdFolders = RunningAvdTracker.getInstance().runningAvds.filter { !it.value.isShuttingDown }.keys
+    return avds.filter {
+      it.dataFolderPath !in runningAvdFolders &&
+      findContentByAvdFolder(it.dataFolderPath) == null &&
+      (StudioFlags.EMBEDDED_EMULATOR_ALLOW_XR_HEADSET_AVD.get() || !it.isXrHeadsetDevice) &&
+      (StudioFlags.EMBEDDED_EMULATOR_ALLOW_XR_GLASSES_AVD.get() || !it.isXrGlassesDevice)
     }
   }
 
@@ -1140,7 +1138,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
 
   private inner class StartDeviceMirroringAction(
     private val device: DeviceDescription,
-  ) : DumbAwareAction(device.deviceName, null, device.config.deviceProperties.icon) {
+  ) : DumbAwareAction(device.htmlDisplayName, null, device.config.deviceProperties.icon) {
 
     override fun actionPerformed(event: AnActionEvent) {
       activateMirroring(device, event.contentManager)
@@ -1184,7 +1182,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(
     override fun actionPerformed(event: AnActionEvent) {
       toolWindowScope.launch(Dispatchers.IO) {
         try {
-          val runningAvd = service<RunningAvdTracker>().runningAvds[avd.dataFolderPath]
+          val runningAvd = RunningAvdTracker.getInstance().runningAvds[avd.dataFolderPath]
           if (runningAvd != null) {
             if (runningAvd.isShuttingDown) {
               try {
@@ -1253,7 +1251,16 @@ internal class StreamingToolWindowManager @AnyThread constructor(
   }
 
   private class DeviceDescription(val deviceName: String, val serialNumber: String, val handle: DeviceHandle,
-                                  val config: DeviceConfiguration)
+                                  val config: DeviceConfiguration) : Comparable<DeviceDescription> {
+
+    val htmlDisplayName: String
+      get() = "<html>$deviceName ${"($serialNumber)".htmlColored(JBColor.GRAY)}</html>"
+
+    override fun compareTo(other: DeviceDescription): Int {
+      val c = deviceName.compareTo(other.deviceName)
+      return if (c != 0) c else serialNumber.compareTo(other.serialNumber)
+    }
+  }
 }
 
 private val logger = Logger.getInstance(StreamingToolWindowManager::class.java)

@@ -65,16 +65,13 @@ MODULE                        : project_sm_src
                         androidTestDebugCompileOnly   : <empty>
                         androidTestDebugImplementation          : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestReleaseAnnotationProcessor   : <empty>
                         androidTestReleaseCompileOnly : <empty>
                         androidTestReleaseImplementation        : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         archives                      : <empty>
@@ -99,8 +96,6 @@ MODULE                        : project_sm_src
                         debugUnitTestAnnotationProcessorClasspath         : <empty>
                         debugUnitTestCompileClasspath : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
-                        debugWearApp                  : <empty>
-                        debugWearBundling             : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         lintChecks                    : <empty>
@@ -120,8 +115,6 @@ MODULE                        : project_sm_src
                         releaseUnitTestAnnotationProcessorClasspath       : <empty>
                         releaseUnitTestCompileClasspath         : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseWearApp                : <empty>
-                        releaseWearBundling           : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
@@ -129,7 +122,6 @@ MODULE                        : project_sm_src
                         testDebugCompileOnly          : <empty>
                         testDebugImplementation       : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesCompileOnly       : <empty>
@@ -140,7 +132,6 @@ MODULE                        : project_sm_src
                         testFixturesDebugCompileOnlyApi         : <empty>
                         testFixturesDebugImplementation         : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesReleaseAnnotationProcessor  : <empty>
                         testFixturesReleaseApi        : <empty>
@@ -148,18 +139,13 @@ MODULE                        : project_sm_src
                         testFixturesReleaseCompileOnlyApi       : <empty>
                         testFixturesReleaseImplementation       : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testReleaseAnnotationProcessor          : <empty>
                         testReleaseCompileOnly        : <empty>
                         testReleaseImplementation     : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -279,7 +265,6 @@ MODULE                        : project_sm_src.app
             ResDirectories                : <ROOT>_sm_src/app/src/main/res
             AssetsDirectories             : <ROOT>_sm_src/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>_sm_src/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>_sm_src/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>_sm_src/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -294,7 +279,6 @@ MODULE                        : project_sm_src.app
                     ResDirectories                : <ROOT>_sm_src/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>_sm_src/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>_sm_src/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -308,7 +292,6 @@ MODULE                        : project_sm_src.app
                     ResDirectories                : <ROOT>_sm_src/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>_sm_src/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>_sm_src/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -330,7 +313,6 @@ MODULE                        : project_sm_src.app
             ResDirectories                : <ROOT>_sm_src/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>_sm_src/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>_sm_src/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>_sm_src/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>_sm_src/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -345,7 +327,6 @@ MODULE                        : project_sm_src.app
                     ResDirectories                : <ROOT>_sm_src/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>_sm_src/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>_sm_src/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -360,7 +341,6 @@ MODULE                        : project_sm_src.app
                     ResDirectories                : <ROOT>_sm_src/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>_sm_src/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>_sm_src/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -383,7 +363,6 @@ MODULE                        : project_sm_src.app
             ResDirectories                : <ROOT>_sm_src/app/src/release/res [-]
             AssetsDirectories             : <ROOT>_sm_src/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>_sm_src/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>_sm_src/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>_sm_src/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -398,7 +377,6 @@ MODULE                        : project_sm_src.app
                     ResDirectories                : <ROOT>_sm_src/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>_sm_src/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>_sm_src/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>_sm_src/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>_sm_src/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig

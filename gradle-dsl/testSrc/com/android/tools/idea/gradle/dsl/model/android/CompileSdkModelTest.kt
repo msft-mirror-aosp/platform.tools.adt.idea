@@ -214,6 +214,23 @@ class CompileSdkModelTest: GradleFileModelTestCase() {
   }
 
   @Test
+  fun testCreateCompileSdkWithZeroMinorRelease() {
+    writeToBuildFile(TestFile.EMPTY_ANDROID_BLOCK)
+    val buildModel = gradleBuildModel
+    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse(CompileSdkPropertyModel.COMPILE_SDK_BLOCK_VERSION)
+
+    val android = buildModel.android()
+    assertNotNull(android)
+
+    val compileSdkVersion = android.compileSdkVersion()
+    assertThat(compileSdkVersion).isNotNull()
+    val config = compileSdkVersion.toCompileSdkConfig()
+    config!!.setReleaseVersion(35,0, null)
+    applyChanges(buildModel)
+    verifyFileContents(myBuildFile, TestFile.CREATE_WITH_ZERO_MINOR_VERSION_EXPECTED)
+  }
+
+  @Test
   fun testReadUpdateCompileSdkValuesWithOldApi() {
     writeToBuildFile(TestFile.EMPTY_ANDROID_BLOCK)
     val buildModel = gradleBuildModel
@@ -254,11 +271,59 @@ class CompileSdkModelTest: GradleFileModelTestCase() {
     val android = buildModel.android()
     assertNotNull(android)
 
-    val compileSdkVersion = android.compileSdkVersion(android.namespace());
+    val compileSdkVersion = android.compileSdkVersion(android.namespace())
     assertThat(compileSdkVersion).isNotNull()
     compileSdkVersion.setValue("android-33")
     applyChanges(buildModel)
     verifyFileContents(myBuildFile, TestFile.WRITE_RELEASE_BLOCK_AFTER_ELEMENT_EXPECTED)
+  }
+
+  @Test
+  fun testWriteCompileSdkAfterElementForOldAgp() {
+    writeToBuildFile(TestFile.WRITE_RELEASE_BLOCK_AFTER_ELEMENT)
+    val buildModel = gradleBuildModel
+    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("8.12.0")
+
+    val android = buildModel.android()
+    assertNotNull(android)
+
+    val compileSdkVersion = android.compileSdkVersion(android.namespace())
+    assertThat(compileSdkVersion).isNotNull()
+    compileSdkVersion.setValue("android-33")
+    applyChanges(buildModel)
+    verifyFileContents(myBuildFile, TestFile.WRITE_RELEASE_BLOCK_AFTER_ELEMENT_OLD_AGP_EXPECTED)
+  }
+
+  @Test
+  fun testPickupNotSavedElementForOldApi() {
+    writeToBuildFile(TestFile.EMPTY_ANDROID_BLOCK)
+    val buildModel = gradleBuildModel
+    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("8.12.0")
+
+    val android = buildModel.android()
+    assertNotNull(android)
+
+    val compileSdkVersion = android.compileSdkVersion()
+    assertThat(compileSdkVersion).isNotNull()
+    compileSdkVersion.setValue(33)
+
+    assertThat(android.compileSdkVersion().getValue(GradlePropertyModel.INTEGER_TYPE)).isEqualTo(33)
+  }
+
+  @Test
+  fun testPickupNotSavedElementForOldNewApi() {
+    writeToBuildFile(TestFile.EMPTY_ANDROID_BLOCK)
+    val buildModel = gradleBuildModel
+    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("8.13.0")
+
+    val android = buildModel.android()
+    assertNotNull(android)
+
+    val compileSdkVersion = android.compileSdkVersion()
+    assertThat(compileSdkVersion).isNotNull()
+    compileSdkVersion.setValue(33)
+
+    assertThat(android.compileSdkVersion().getValue(GradlePropertyModel.INTEGER_TYPE)).isEqualTo(33)
   }
 
   enum class TestFile(val path: @SystemDependent String) : TestFileName {
@@ -274,7 +339,9 @@ class CompileSdkModelTest: GradleFileModelTestCase() {
     CREATE_WITH_EXTENSION_VERSION_EXPECTED("createWithExtensionVersionExpected"),
     CREATE_WITH_PREVIEW_VERSION_EXPECTED("createWithPreviewVersionExpected"),
     CREATE_WITH_ADDON_VERSION_EXPECTED("createWithAddonVersionExpected"),
+    CREATE_WITH_ZERO_MINOR_VERSION_EXPECTED("createWithZeroNumberVersionExpected"),
     WRITE_RELEASE_BLOCK_AFTER_ELEMENT_EXPECTED("releaseBlockAfterElementExpected"),
+    WRITE_RELEASE_BLOCK_AFTER_ELEMENT_OLD_AGP_EXPECTED("releaseBlockAfterElementOldAgpExpected"),
     ;
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {

@@ -149,35 +149,23 @@ public class CpuCaptureStage extends Stage<Timeline> {
     ANALYZING,
   }
 
-  /**
-   * Helper function to save trace data to disk. The file is put in to the users temp directory with the format cpu_trace_[traceid].trace.
-   * If the file exists FileUtil will append numbers to the end making it unique.
-   */
-  @NotNull
-  public static File saveCapture(long traceId, ByteString data) {
-    try {
-      File trace = FileUtil.createTempFile(String.format(Locale.US, "cpu_trace_%d", traceId), ".trace", true);
-      try (FileOutputStream out = new FileOutputStream(trace)) {
-        out.write(data.toByteArray());
-      }
-      return trace;
-    }
-    catch (IOException io) {
-      throw new IllegalStateException("Unable to save trace to disk");
-    }
-  }
-
   @Nullable
   private static File getAndSaveCapture(@NotNull StudioProfilers profilers, long traceId) {
     Transport.BytesRequest traceRequest = Transport.BytesRequest.newBuilder()
       .setStreamId(profilers.getSession().getStreamId())
       .setId(String.valueOf(traceId))
       .build();
-    Transport.BytesResponse traceResponse = profilers.getClient().getTransportClient().getBytes(traceRequest);
-    if (!traceResponse.getContents().isEmpty()) {
-      return saveCapture(traceId, traceResponse.getContents());
+    Transport.FileResponse traceResponse = profilers.getClient().getTransportClient().getFile(traceRequest);
+
+    if (traceResponse.getFilePath().isEmpty()) {
+      return null;
     }
-    return null;
+    File captureFile = new File(traceResponse.getFilePath());
+    if (!captureFile.exists() || captureFile.length() == 0) {
+      return null;
+    }
+
+    return captureFile;
   }
 
   /**
@@ -431,16 +419,10 @@ public class CpuCaptureStage extends Stage<Timeline> {
       CpuAnalysisModel<?> jankModel = AndroidFrameTimelineAnalysisModel.of(capture);
       CpuAnalysisModel<?> framesModel = FramesAnalysisModel.of(capture);
 
-      if (getStudioProfilers().getIdeServices().getFeatureConfig().isJankDetectionUiEnabled()) {
-        if (jankModel != null) {
-          addPinnedCpuAnalysisModel(jankModel);
-        } else if (framesModel != null) {
-          addPinnedCpuAnalysisModel(framesModel);
-        }
-      } else {
-        if (framesModel != null) {
-          addPinnedCpuAnalysisModel(framesModel);
-        }
+      if (jankModel != null) {
+        addPinnedCpuAnalysisModel(jankModel);
+      } else if (framesModel != null) {
+        addPinnedCpuAnalysisModel(framesModel);
       }
     }
     if (SessionsManager.isSessionImported(getStudioProfilers().getSession()) &&
@@ -499,8 +481,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
 
     // In S with both timeline and lifecycle data, we move threads closer to display
     if (capture instanceof SystemTraceCpuCapture && capture.getSystemTraceData() != null &&
-        !capture.getSystemTraceData().getAndroidFrameTimelineEvents().isEmpty() &&
-        getStudioProfilers().getIdeServices().getFeatureConfig().isJankDetectionUiEnabled()) {
+        !capture.getSystemTraceData().getAndroidFrameTimelineEvents().isEmpty()) {
       // Thread states and trace events.
       myTrackGroupModels.add(createThreadsTrackGroup(capture));
       // CPU per-core usage and event etc. Systrace only.
@@ -602,11 +583,9 @@ public class CpuCaptureStage extends Stage<Timeline> {
 
   private Stream<TrackGroupModel> createDisplayPipelineTrackGroups(@NotNull SystemTraceCpuCapture capture) {
     CpuSystemTraceData data = capture.getSystemTraceData();
-    final boolean isJankDetectionOn =
-      getStudioProfilers().getIdeServices().getFeatureConfig().isJankDetectionUiEnabled() &&
-      !data.getAndroidFrameTimelineEvents().isEmpty();
+    final boolean hasFrameTimelineEvents = !data.getAndroidFrameTimelineEvents().isEmpty();
 
-    return isJankDetectionOn
+    return hasFrameTimelineEvents
            ? Stream.of(createJankDetectionTrackGroup(capture))
            : Stream.concat(
              // Display pipeline events, e.g. frames, surfaceflinger. Systrace only.

@@ -793,7 +793,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -806,10 +805,8 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -868,8 +865,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
-                        debugWearBundling             : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -923,8 +918,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
-                        releaseWearBundling           : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -942,7 +935,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -959,7 +951,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -973,9 +964,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -988,10 +977,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -1325,7 +1311,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -1338,10 +1323,8 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
@@ -1404,7 +1387,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -1462,7 +1444,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1480,7 +1461,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -1497,7 +1477,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -1511,9 +1490,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -1526,10 +1503,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -1651,16 +1625,13 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestDebugCompileOnly   : <empty>
                         androidTestDebugImplementation          : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestReleaseAnnotationProcessor   : <empty>
                         androidTestReleaseCompileOnly : <empty>
                         androidTestReleaseImplementation        : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         androidUnitTestApi            : <empty>
                         androidUnitTestApiDependenciesMetadata  : <empty>
                         androidUnitTestCompileOnly    : <empty>
@@ -1733,7 +1704,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         debugUnitTestAnnotationProcessorClasspath         : <empty>
                         debugUnitTestCompileClasspath : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         kotlinBouncyCastleConfiguration         : <empty>
@@ -1776,7 +1746,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         releaseUnitTestAnnotationProcessorClasspath       : <empty>
                         releaseUnitTestCompileClasspath         : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1786,7 +1755,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testDebugCompileOnly          : <empty>
                         testDebugImplementation       : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesCompileOnly       : <empty>
@@ -1797,7 +1765,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesDebugCompileOnlyApi         : <empty>
                         testFixturesDebugImplementation         : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesReleaseAnnotationProcessor  : <empty>
                         testFixturesReleaseApi        : <empty>
@@ -1805,18 +1772,13 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesReleaseCompileOnlyApi       : <empty>
                         testFixturesReleaseImplementation       : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testReleaseAnnotationProcessor          : <empty>
                         testReleaseCompileOnly        : <empty>
                         testReleaseImplementation     : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                     - additionalArtifacts         : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
@@ -2278,16 +2240,13 @@ MODULE                        : NonStandardSourceSetDependencies
                                 androidTestDebugCompileOnly   : <empty>
                                 androidTestDebugImplementation          : <empty>
                                 androidTestDebugRuntimeOnly   : <empty>
-                                androidTestDebugWearApp       : <empty>
                                 androidTestImplementation     : <empty>
                                 androidTestReleaseAnnotationProcessor   : <empty>
                                 androidTestReleaseCompileOnly : <empty>
                                 androidTestReleaseImplementation        : <empty>
                                 androidTestReleaseRuntimeOnly : <empty>
-                                androidTestReleaseWearApp     : <empty>
                                 androidTestRuntimeOnly        : <empty>
                                 androidTestUtil               : <empty>
-                                androidTestWearApp            : <empty>
                                 annotationProcessor           : <empty>
                                 api                           : <empty>
                                 archives                      : <empty>
@@ -2311,7 +2270,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                 debugUnitTestAnnotationProcessorClasspath         : <empty>
                                 debugUnitTestCompileClasspath : <empty>
                                 debugUnitTestRuntimeClasspath : <empty>
-                                debugWearApp                  : <empty>
                                 default                       : <empty>
                                 implementation                : <empty>
                                 lintChecks                    : <empty>
@@ -2330,7 +2288,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                 releaseUnitTestAnnotationProcessorClasspath       : <empty>
                                 releaseUnitTestCompileClasspath         : <empty>
                                 releaseUnitTestRuntimeClasspath         : <empty>
-                                releaseWearApp                : <empty>
                                 runtimeOnly                   : <empty>
                                 testAnnotationProcessor       : <empty>
                                 testCompileOnly               : <empty>
@@ -2338,7 +2295,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                 testDebugCompileOnly          : <empty>
                                 testDebugImplementation       : <empty>
                                 testDebugRuntimeOnly          : <empty>
-                                testDebugWearApp              : <empty>
                                 testFixturesAnnotationProcessor         : <empty>
                                 testFixturesApi               : <empty>
                                 testFixturesCompileOnly       : <empty>
@@ -2349,7 +2305,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                 testFixturesDebugCompileOnlyApi         : <empty>
                                 testFixturesDebugImplementation         : <empty>
                                 testFixturesDebugRuntimeOnly  : <empty>
-                                testFixturesDebugWearApp      : <empty>
                                 testFixturesImplementation    : <empty>
                                 testFixturesReleaseAnnotationProcessor  : <empty>
                                 testFixturesReleaseApi        : <empty>
@@ -2357,18 +2312,13 @@ MODULE                        : NonStandardSourceSetDependencies
                                 testFixturesReleaseCompileOnlyApi       : <empty>
                                 testFixturesReleaseImplementation       : <empty>
                                 testFixturesReleaseRuntimeOnly          : <empty>
-                                testFixturesReleaseWearApp    : <empty>
                                 testFixturesRuntimeOnly       : <empty>
-                                testFixturesWearApp           : <empty>
                                 testImplementation            : <empty>
                                 testReleaseAnnotationProcessor          : <empty>
                                 testReleaseCompileOnly        : <empty>
                                 testReleaseImplementation     : <empty>
                                 testReleaseRuntimeOnly        : <empty>
-                                testReleaseWearApp            : <empty>
                                 testRuntimeOnly               : <empty>
-                                testWearApp                   : <empty>
-                                wearApp                       : <empty>
                         taskModel                     : DefaultGradleTaskModel
                             tasks
                                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -2428,7 +2378,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestDebugImplementationDependenciesMetadata          : <empty>
                         androidTestDebugIntransitiveDependenciesMetadata  : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestImplementation     : <empty>
                         androidTestImplementationDependenciesMetadata     : <empty>
                         androidTestIntransitiveDependenciesMetadata       : <empty>
@@ -2441,14 +2390,12 @@ MODULE                        : NonStandardSourceSetDependencies
                         androidTestReleaseImplementationDependenciesMetadata        : <empty>
                         androidTestReleaseIntransitiveDependenciesMetadata          : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         apiDependenciesMetadata       : <empty>
-                        - archives                    : <ROOT>/lib/build/libs/manual-test-fixtures.jar [-]
+                        archives                      : <empty>
                         compileOnly                   : <empty>
                         compileOnlyApi                : <empty>
                         compileOnlyDependenciesMetadata         : <empty>
@@ -2507,7 +2454,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         debugUnitTestIntransitiveDependenciesMetadata     : <empty>
                         debugUnitTestRuntimeClasspath : <empty>
                         debugUnitTestRuntimeOnly      : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         implementation                : <empty>
                         implementationDependenciesMetadata      : <empty>
@@ -2566,7 +2512,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
                         releaseUnitTestRuntimeClasspath         : <empty>
                         releaseUnitTestRuntimeOnly    : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -2584,7 +2529,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testDebugImplementationDependenciesMetadata       : <empty>
                         testDebugIntransitiveDependenciesMetadata         : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesApiDependenciesMetadata     : <empty>
@@ -2601,7 +2545,6 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesDebugImplementationDependenciesMetadata         : <empty>
                         testFixturesDebugIntransitiveDependenciesMetadata : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesImplementationDependenciesMetadata    : <empty>
                         testFixturesIntransitiveDependenciesMetadata      : <empty>
@@ -2615,9 +2558,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         testFixturesReleaseImplementationDependenciesMetadata       : <empty>
                         testFixturesReleaseIntransitiveDependenciesMetadata         : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testImplementationDependenciesMetadata  : <empty>
                         testIntransitiveDependenciesMetadata    : <empty>
@@ -2630,10 +2571,7 @@ MODULE                        : NonStandardSourceSetDependencies
                         testReleaseImplementationDependenciesMetadata     : <empty>
                         testReleaseIntransitiveDependenciesMetadata       : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                     - additionalArtifacts         : <ROOT>/lib/build/libs/manual-test-fixtures.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
@@ -2769,7 +2707,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
             ResDirectories                : <ROOT>/app/src/main/res [-]
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2784,7 +2721,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     ResDirectories                : <ROOT>/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2798,7 +2734,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     ResDirectories                : <ROOT>/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -2820,7 +2755,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
             ResDirectories                : <ROOT>/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2835,7 +2769,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     ResDirectories                : <ROOT>/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2850,7 +2783,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     ResDirectories                : <ROOT>/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -2873,7 +2805,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
             ResDirectories                : <ROOT>/app/src/release/res [-]
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -2888,7 +2819,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     ResDirectories                : <ROOT>/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -3867,7 +3797,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             ResDirectories                : <ROOT>/feature-a/src/main/res [-]
             AssetsDirectories             : <ROOT>/feature-a/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/feature-a/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/feature-a/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/feature-a/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3882,7 +3811,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     ResDirectories                : <ROOT>/feature-a/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/feature-a/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-a/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -3896,7 +3824,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     ResDirectories                : <ROOT>/feature-a/src/test/res [-]
                     AssetsDirectories             : <ROOT>/feature-a/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-a/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -3918,7 +3845,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             ResDirectories                : <ROOT>/feature-a/src/debug/res [-]
             AssetsDirectories             : <ROOT>/feature-a/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/feature-a/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/feature-a/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/feature-a/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3933,7 +3859,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     ResDirectories                : <ROOT>/feature-a/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/feature-a/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-a/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3948,7 +3873,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     ResDirectories                : <ROOT>/feature-a/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/feature-a/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-a/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -3969,7 +3893,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
             ResDirectories                : <ROOT>/feature-a/src/release/res [-]
             AssetsDirectories             : <ROOT>/feature-a/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/feature-a/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/feature-a/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/feature-a/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -3984,7 +3907,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     ResDirectories                : <ROOT>/feature-a/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/feature-a/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-a/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-a/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-a/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -4942,8 +4864,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             AssetsDirectories             : <ROOT>/feature-b/src/androidMain/assets [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/main/jniLibs [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/androidMain/jniLibs [-]
-            ShadersDirectories            : <ROOT>/feature-b/src/main/shaders [-]
-            ShadersDirectories            : <ROOT>/feature-b/src/androidMain/shaders [-]
             BaselineProfileDirectories    : <ROOT>/feature-b/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -4963,8 +4883,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssetsDirectories             : <ROOT>/feature-b/src/androidInstrumentedTest/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidTest/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidInstrumentedTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidTest/shaders [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidInstrumentedTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4983,8 +4901,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssetsDirectories             : <ROOT>/feature-b/src/androidUnitTest/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/test/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidUnitTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/test/shaders [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidUnitTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -5011,8 +4927,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             AssetsDirectories             : <ROOT>/feature-b/src/androidDebug/assets [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/debug/jniLibs [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/androidDebug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/feature-b/src/debug/shaders [-]
-            ShadersDirectories            : <ROOT>/feature-b/src/androidDebug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/feature-b/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5032,8 +4946,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssetsDirectories             : <ROOT>/feature-b/src/androidInstrumentedTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidTestDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidInstrumentedTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidTestDebug/shaders [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidInstrumentedTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5053,8 +4965,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssetsDirectories             : <ROOT>/feature-b/src/androidUnitTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/testDebug/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidUnitTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/testDebug/shaders [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidUnitTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -5080,8 +4990,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
             AssetsDirectories             : <ROOT>/feature-b/src/androidRelease/assets [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/release/jniLibs [-]
             JniLibsDirectories            : <ROOT>/feature-b/src/androidRelease/jniLibs [-]
-            ShadersDirectories            : <ROOT>/feature-b/src/release/shaders [-]
-            ShadersDirectories            : <ROOT>/feature-b/src/androidRelease/shaders [-]
             BaselineProfileDirectories    : <ROOT>/feature-b/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5101,8 +5009,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     AssetsDirectories             : <ROOT>/feature-b/src/androidUnitTestRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/testRelease/jniLibs [-]
                     JniLibsDirectories            : <ROOT>/feature-b/src/androidUnitTestRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/testRelease/shaders [-]
-                    ShadersDirectories            : <ROOT>/feature-b/src/androidUnitTestRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/feature-b/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -5923,7 +5829,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             ResDirectories                : <ROOT>/kmp-java/sample-test/src/main/res [-]
             AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5938,7 +5843,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     ResDirectories                : <ROOT>/kmp-java/sample-test/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5952,7 +5856,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     ResDirectories                : <ROOT>/kmp-java/sample-test/src/test/res [-]
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -5974,7 +5877,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             ResDirectories                : <ROOT>/kmp-java/sample-test/src/debug/res [-]
             AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -5989,7 +5891,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     ResDirectories                : <ROOT>/kmp-java/sample-test/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6004,7 +5905,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     ResDirectories                : <ROOT>/kmp-java/sample-test/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -6025,7 +5925,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
             ResDirectories                : <ROOT>/kmp-java/sample-test/src/release/res [-]
             AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6040,7 +5939,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     ResDirectories                : <ROOT>/kmp-java/sample-test/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/kmp-java/sample-test/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/kmp-java/sample-test/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/kmp-java/sample-test/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/kmp-java/sample-test/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -6238,7 +6136,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             ResDirectories                : <ROOT>/lib/src/main/res [-]
             AssetsDirectories             : <ROOT>/lib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/lib/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6253,7 +6150,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     ResDirectories                : <ROOT>/lib/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6267,7 +6163,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     ResDirectories                : <ROOT>/lib/src/test/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -6289,7 +6184,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             ResDirectories                : <ROOT>/lib/src/debug/res [-]
             AssetsDirectories             : <ROOT>/lib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/lib/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6304,7 +6198,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     ResDirectories                : <ROOT>/lib/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6319,7 +6212,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     ResDirectories                : <ROOT>/lib/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -6342,7 +6234,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
             ResDirectories                : <ROOT>/lib/src/release/res [-]
             AssetsDirectories             : <ROOT>/lib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/lib/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/lib/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -6357,7 +6248,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     ResDirectories                : <ROOT>/lib/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/lib/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/lib/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/lib/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig

@@ -81,7 +81,6 @@ MODULE                        : MultiFlavor
                         androidTestDebugCompileOnly   : <empty>
                         androidTestDebugImplementation          : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestFirstAbcAnnotationProcessor  : <empty>
                         androidTestFirstAbcCompileOnly          : <empty>
                         androidTestFirstAbcImplementation       : <empty>
@@ -92,35 +91,27 @@ MODULE                        : MultiFlavor
                         androidTestFirstAbcSecondAbcDebugCompileOnly      : <empty>
                         androidTestFirstAbcSecondAbcDebugImplementation   : <empty>
                         androidTestFirstAbcSecondAbcDebugRuntimeOnly      : <empty>
-                        androidTestFirstAbcSecondAbcDebugWearApp          : <empty>
                         androidTestFirstAbcSecondAbcImplementation        : <empty>
                         androidTestFirstAbcSecondAbcRuntimeOnly : <empty>
-                        androidTestFirstAbcSecondAbcWearApp     : <empty>
-                        androidTestFirstAbcWearApp    : <empty>
                         androidTestFirstXyzAnnotationProcessor  : <empty>
                         androidTestFirstXyzCompileOnly          : <empty>
                         androidTestFirstXyzImplementation       : <empty>
                         androidTestFirstXyzRuntimeOnly          : <empty>
-                        androidTestFirstXyzWearApp    : <empty>
                         androidTestImplementation     : <empty>
                         androidTestReleaseAnnotationProcessor   : <empty>
                         androidTestReleaseCompileOnly : <empty>
                         androidTestReleaseImplementation        : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestSecondAbcAnnotationProcessor : <empty>
                         androidTestSecondAbcCompileOnly         : <empty>
                         androidTestSecondAbcImplementation      : <empty>
                         androidTestSecondAbcRuntimeOnly         : <empty>
-                        androidTestSecondAbcWearApp   : <empty>
                         androidTestSecondXyzAnnotationProcessor : <empty>
                         androidTestSecondXyzCompileOnly         : <empty>
                         androidTestSecondXyzImplementation      : <empty>
                         androidTestSecondXyzRuntimeOnly         : <empty>
-                        androidTestSecondXyzWearApp   : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         archives                      : <empty>
@@ -133,7 +124,6 @@ MODULE                        : MultiFlavor
                         debugCompileOnlyApi           : <empty>
                         debugImplementation           : <empty>
                         debugRuntimeOnly              : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         firstAbcAnnotationProcessor   : <empty>
                         firstAbcApi                   : <empty>
@@ -163,8 +153,6 @@ MODULE                        : MultiFlavor
                         firstAbcSecondAbcDebugUnitTestAnnotationProcessorClasspath  : <empty>
                         firstAbcSecondAbcDebugUnitTestCompileClasspath    : <empty>
                         firstAbcSecondAbcDebugUnitTestRuntimeClasspath    : <empty>
-                        firstAbcSecondAbcDebugWearApp : <empty>
-                        firstAbcSecondAbcDebugWearBundling      : <empty>
                         firstAbcSecondAbcImplementation         : <empty>
                         firstAbcSecondAbcReleaseAnnotationProcessor       : <empty>
                         firstAbcSecondAbcReleaseAnnotationProcessorClasspath        : <empty>
@@ -181,18 +169,13 @@ MODULE                        : MultiFlavor
                         firstAbcSecondAbcReleaseUnitTestAnnotationProcessorClasspath          : <empty>
                         firstAbcSecondAbcReleaseUnitTestCompileClasspath  : <empty>
                         firstAbcSecondAbcReleaseUnitTestRuntimeClasspath  : <empty>
-                        firstAbcSecondAbcReleaseWearApp         : <empty>
-                        firstAbcSecondAbcReleaseWearBundling    : <empty>
                         firstAbcSecondAbcRuntimeOnly  : <empty>
-                        firstAbcSecondAbcWearApp      : <empty>
-                        firstAbcWearApp               : <empty>
                         firstXyzAnnotationProcessor   : <empty>
                         firstXyzApi                   : <empty>
                         firstXyzCompileOnly           : <empty>
                         firstXyzCompileOnlyApi        : <empty>
                         firstXyzImplementation        : <empty>
                         firstXyzRuntimeOnly           : <empty>
-                        firstXyzWearApp               : <empty>
                         implementation                : <empty>
                         lintChecks                    : <empty>
                         lintPublish                   : <empty>
@@ -202,7 +185,6 @@ MODULE                        : MultiFlavor
                         releaseCompileOnlyApi         : <empty>
                         releaseImplementation         : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         secondAbcAnnotationProcessor  : <empty>
                         secondAbcApi                  : <empty>
@@ -210,21 +192,18 @@ MODULE                        : MultiFlavor
                         secondAbcCompileOnlyApi       : <empty>
                         secondAbcImplementation       : <empty>
                         secondAbcRuntimeOnly          : <empty>
-                        secondAbcWearApp              : <empty>
                         secondXyzAnnotationProcessor  : <empty>
                         secondXyzApi                  : <empty>
                         secondXyzCompileOnly          : <empty>
                         secondXyzCompileOnlyApi       : <empty>
                         secondXyzImplementation       : <empty>
                         secondXyzRuntimeOnly          : <empty>
-                        secondXyzWearApp              : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
                         testDebugAnnotationProcessor  : <empty>
                         testDebugCompileOnly          : <empty>
                         testDebugImplementation       : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testFirstAbcAnnotationProcessor         : <empty>
                         testFirstAbcCompileOnly       : <empty>
                         testFirstAbcImplementation    : <empty>
@@ -235,21 +214,16 @@ MODULE                        : MultiFlavor
                         testFirstAbcSecondAbcDebugCompileOnly   : <empty>
                         testFirstAbcSecondAbcDebugImplementation          : <empty>
                         testFirstAbcSecondAbcDebugRuntimeOnly   : <empty>
-                        testFirstAbcSecondAbcDebugWearApp       : <empty>
                         testFirstAbcSecondAbcImplementation     : <empty>
                         testFirstAbcSecondAbcReleaseAnnotationProcessor   : <empty>
                         testFirstAbcSecondAbcReleaseCompileOnly : <empty>
                         testFirstAbcSecondAbcReleaseImplementation        : <empty>
                         testFirstAbcSecondAbcReleaseRuntimeOnly : <empty>
-                        testFirstAbcSecondAbcReleaseWearApp     : <empty>
                         testFirstAbcSecondAbcRuntimeOnly        : <empty>
-                        testFirstAbcSecondAbcWearApp  : <empty>
-                        testFirstAbcWearApp           : <empty>
                         testFirstXyzAnnotationProcessor         : <empty>
                         testFirstXyzCompileOnly       : <empty>
                         testFirstXyzImplementation    : <empty>
                         testFirstXyzRuntimeOnly       : <empty>
-                        testFirstXyzWearApp           : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesCompileOnly       : <empty>
@@ -260,21 +234,18 @@ MODULE                        : MultiFlavor
                         testFixturesDebugCompileOnlyApi         : <empty>
                         testFixturesDebugImplementation         : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesFirstAbcAnnotationProcessor : <empty>
                         testFixturesFirstAbcApi       : <empty>
                         testFixturesFirstAbcCompileOnly         : <empty>
                         testFixturesFirstAbcCompileOnlyApi      : <empty>
                         testFixturesFirstAbcImplementation      : <empty>
                         testFixturesFirstAbcRuntimeOnly         : <empty>
-                        testFixturesFirstAbcWearApp   : <empty>
                         testFixturesFirstXyzAnnotationProcessor : <empty>
                         testFixturesFirstXyzApi       : <empty>
                         testFixturesFirstXyzCompileOnly         : <empty>
                         testFixturesFirstXyzCompileOnlyApi      : <empty>
                         testFixturesFirstXyzImplementation      : <empty>
                         testFixturesFirstXyzRuntimeOnly         : <empty>
-                        testFixturesFirstXyzWearApp   : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesReleaseAnnotationProcessor  : <empty>
                         testFixturesReleaseApi        : <empty>
@@ -282,7 +253,6 @@ MODULE                        : MultiFlavor
                         testFixturesReleaseCompileOnlyApi       : <empty>
                         testFixturesReleaseImplementation       : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
                         testFixturesSecondAbcAnnotationProcessor          : <empty>
                         testFixturesSecondAbcApi      : <empty>
@@ -290,34 +260,26 @@ MODULE                        : MultiFlavor
                         testFixturesSecondAbcCompileOnlyApi     : <empty>
                         testFixturesSecondAbcImplementation     : <empty>
                         testFixturesSecondAbcRuntimeOnly        : <empty>
-                        testFixturesSecondAbcWearApp  : <empty>
                         testFixturesSecondXyzAnnotationProcessor          : <empty>
                         testFixturesSecondXyzApi      : <empty>
                         testFixturesSecondXyzCompileOnly        : <empty>
                         testFixturesSecondXyzCompileOnlyApi     : <empty>
                         testFixturesSecondXyzImplementation     : <empty>
                         testFixturesSecondXyzRuntimeOnly        : <empty>
-                        testFixturesSecondXyzWearApp  : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testReleaseAnnotationProcessor          : <empty>
                         testReleaseCompileOnly        : <empty>
                         testReleaseImplementation     : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
                         testSecondAbcAnnotationProcessor        : <empty>
                         testSecondAbcCompileOnly      : <empty>
                         testSecondAbcImplementation   : <empty>
                         testSecondAbcRuntimeOnly      : <empty>
-                        testSecondAbcWearApp          : <empty>
                         testSecondXyzAnnotationProcessor        : <empty>
                         testSecondXyzCompileOnly      : <empty>
                         testSecondXyzImplementation   : <empty>
                         testSecondXyzRuntimeOnly      : <empty>
-                        testSecondXyzWearApp          : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testFirstAbcSecondAbcDebugUnitTest      : testFirstAbcSecondAbcDebugUnitTest (DefaultExternalTask)
@@ -445,7 +407,6 @@ MODULE                        : MultiFlavor.app
             ResDirectories                : <ROOT>/app/src/main/res
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -460,7 +421,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -474,7 +434,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -503,7 +462,6 @@ MODULE                        : MultiFlavor.app
             ResDirectories                : <ROOT>/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -518,7 +476,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -533,7 +490,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -562,7 +518,6 @@ MODULE                        : MultiFlavor.app
             ResDirectories                : <ROOT>/app/src/release/res [-]
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -577,7 +532,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     ProductFlavors
         ProductFlavor
@@ -602,7 +556,6 @@ MODULE                        : MultiFlavor.app
             ResDirectories                : <ROOT>/app/src/firstAbc/res [-]
             AssetsDirectories             : <ROOT>/app/src/firstAbc/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/firstAbc/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/firstAbc/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/firstAbc/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -617,7 +570,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/androidTestFirstAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestFirstAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestFirstAbc/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -631,7 +583,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/testFirstAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testFirstAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testFirstAbc/baselineProfiles [-]
         ProductFlavor
             Name                          : firstXyz
@@ -666,7 +617,6 @@ MODULE                        : MultiFlavor.app
             ResDirectories                : <ROOT>/app/src/secondAbc/res [-]
             AssetsDirectories             : <ROOT>/app/src/secondAbc/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/secondAbc/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/secondAbc/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/secondAbc/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -681,7 +631,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/androidTestSecondAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestSecondAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestSecondAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestSecondAbc/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -695,7 +644,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/testSecondAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testSecondAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testSecondAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testSecondAbc/baselineProfiles [-]
         ProductFlavor
             Name                          : secondXyz
@@ -783,7 +731,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/firstAbcSecondAbcDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/firstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/firstAbcSecondAbcDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/firstAbcSecondAbcDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/firstAbcSecondAbcDebug/baselineProfiles [-]
                 MultiFlavorSourceProvider
                     Name                          : firstAbcSecondAbc
@@ -796,7 +743,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/firstAbcSecondAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/firstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/firstAbcSecondAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/firstAbcSecondAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/firstAbcSecondAbc/baselineProfiles [-]
                 Dependencies
                     compileClasspath
@@ -833,7 +779,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/baselineProfiles [-]
                 MultiFlavorSourceProvider
                     Name                          : androidTestFirstAbcSecondAbc
@@ -845,7 +790,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/androidTestFirstAbcSecondAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestFirstAbcSecondAbc/baselineProfiles [-]
                 Dependencies
                     compileClasspath
@@ -882,7 +826,6 @@ MODULE                        : MultiFlavor.app
                     ResourcesDirectories          : <ROOT>/app/src/testFirstAbcSecondAbcDebug/resources [-]
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testFirstAbcSecondAbcDebug/baselineProfiles [-]
                 MultiFlavorSourceProvider
                     Name                          : testFirstAbcSecondAbc
@@ -894,7 +837,6 @@ MODULE                        : MultiFlavor.app
                     ResDirectories                : <ROOT>/app/src/testFirstAbcSecondAbc/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbc/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testFirstAbcSecondAbc/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testFirstAbcSecondAbc/baselineProfiles [-]
                 Dependencies
                     compileClasspath

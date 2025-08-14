@@ -695,26 +695,21 @@ MODULE                        : project
                         androidTestDebugCompileOnly   : <empty>
                         androidTestDebugImplementation          : <empty>
                         androidTestDebugRuntimeOnly   : <empty>
-                        androidTestDebugWearApp       : <empty>
                         androidTestExampleAnnotationProcessor   : <empty>
                         androidTestExampleCompileOnly : <empty>
                         androidTestExampleDebugAnnotationProcessor        : <empty>
                         androidTestExampleDebugCompileOnly      : <empty>
                         androidTestExampleDebugImplementation   : <empty>
                         androidTestExampleDebugRuntimeOnly      : <empty>
-                        androidTestExampleDebugWearApp          : <empty>
                         androidTestExampleImplementation        : <empty>
                         androidTestExampleRuntimeOnly : <empty>
-                        androidTestExampleWearApp     : <empty>
                         androidTestImplementation     : <empty>
                         androidTestReleaseAnnotationProcessor   : <empty>
                         androidTestReleaseCompileOnly : <empty>
                         androidTestReleaseImplementation        : <empty>
                         androidTestReleaseRuntimeOnly : <empty>
-                        androidTestReleaseWearApp     : <empty>
                         androidTestRuntimeOnly        : <empty>
                         androidTestUtil               : <empty>
-                        androidTestWearApp            : <empty>
                         annotationProcessor           : <empty>
                         api                           : <empty>
                         archives                      : <empty>
@@ -727,7 +722,6 @@ MODULE                        : project
                         debugCompileOnlyApi           : <empty>
                         debugImplementation           : <empty>
                         debugRuntimeOnly              : <empty>
-                        debugWearApp                  : <empty>
                         default                       : <empty>
                         exampleAnnotationProcessor    : <empty>
                         exampleApi                    : <empty>
@@ -751,8 +745,6 @@ MODULE                        : project
                         exampleDebugUnitTestAnnotationProcessorClasspath  : <empty>
                         exampleDebugUnitTestCompileClasspath    : <empty>
                         exampleDebugUnitTestRuntimeClasspath    : <empty>
-                        exampleDebugWearApp           : <empty>
-                        exampleDebugWearBundling      : <empty>
                         exampleImplementation         : <empty>
                         exampleReleaseAnnotationProcessor       : <empty>
                         exampleReleaseAnnotationProcessorClasspath        : <empty>
@@ -769,10 +761,7 @@ MODULE                        : project
                         exampleReleaseUnitTestAnnotationProcessorClasspath          : <empty>
                         exampleReleaseUnitTestCompileClasspath  : <empty>
                         exampleReleaseUnitTestRuntimeClasspath  : <empty>
-                        exampleReleaseWearApp         : <empty>
-                        exampleReleaseWearBundling    : <empty>
                         exampleRuntimeOnly            : <empty>
-                        exampleWearApp                : <empty>
                         implementation                : <empty>
                         lintChecks                    : <empty>
                         lintPublish                   : <empty>
@@ -782,7 +771,6 @@ MODULE                        : project
                         releaseCompileOnlyApi         : <empty>
                         releaseImplementation         : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseWearApp                : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
@@ -790,22 +778,18 @@ MODULE                        : project
                         testDebugCompileOnly          : <empty>
                         testDebugImplementation       : <empty>
                         testDebugRuntimeOnly          : <empty>
-                        testDebugWearApp              : <empty>
                         testExampleAnnotationProcessor          : <empty>
                         testExampleCompileOnly        : <empty>
                         testExampleDebugAnnotationProcessor     : <empty>
                         testExampleDebugCompileOnly   : <empty>
                         testExampleDebugImplementation          : <empty>
                         testExampleDebugRuntimeOnly   : <empty>
-                        testExampleDebugWearApp       : <empty>
                         testExampleImplementation     : <empty>
                         testExampleReleaseAnnotationProcessor   : <empty>
                         testExampleReleaseCompileOnly : <empty>
                         testExampleReleaseImplementation        : <empty>
                         testExampleReleaseRuntimeOnly : <empty>
-                        testExampleReleaseWearApp     : <empty>
                         testExampleRuntimeOnly        : <empty>
-                        testExampleWearApp            : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
                         testFixturesCompileOnly       : <empty>
@@ -816,14 +800,12 @@ MODULE                        : project
                         testFixturesDebugCompileOnlyApi         : <empty>
                         testFixturesDebugImplementation         : <empty>
                         testFixturesDebugRuntimeOnly  : <empty>
-                        testFixturesDebugWearApp      : <empty>
                         testFixturesExampleAnnotationProcessor  : <empty>
                         testFixturesExampleApi        : <empty>
                         testFixturesExampleCompileOnly          : <empty>
                         testFixturesExampleCompileOnlyApi       : <empty>
                         testFixturesExampleImplementation       : <empty>
                         testFixturesExampleRuntimeOnly          : <empty>
-                        testFixturesExampleWearApp    : <empty>
                         testFixturesImplementation    : <empty>
                         testFixturesReleaseAnnotationProcessor  : <empty>
                         testFixturesReleaseApi        : <empty>
@@ -831,18 +813,13 @@ MODULE                        : project
                         testFixturesReleaseCompileOnlyApi       : <empty>
                         testFixturesReleaseImplementation       : <empty>
                         testFixturesReleaseRuntimeOnly          : <empty>
-                        testFixturesReleaseWearApp    : <empty>
                         testFixturesRuntimeOnly       : <empty>
-                        testFixturesWearApp           : <empty>
                         testImplementation            : <empty>
                         testReleaseAnnotationProcessor          : <empty>
                         testReleaseCompileOnly        : <empty>
                         testReleaseImplementation     : <empty>
                         testReleaseRuntimeOnly        : <empty>
-                        testReleaseWearApp            : <empty>
                         testRuntimeOnly               : <empty>
-                        testWearApp                   : <empty>
-                        wearApp                       : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testExampleDebugUnitTest      : testExampleDebugUnitTest (DefaultExternalTask)
@@ -962,7 +939,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/main/res
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -977,7 +953,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/androidTest/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -991,7 +966,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/test/res [-]
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
     BuildTypes
         BuildType
@@ -1013,7 +987,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/debug/res [-]
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1028,7 +1001,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/androidTestDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1043,7 +1015,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/testDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
@@ -1066,7 +1037,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/release/res [-]
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1081,7 +1051,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/testRelease/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     ProductFlavors
         ProductFlavor
@@ -1098,7 +1067,6 @@ MODULE                        : project.app
             ResDirectories                : <ROOT>/app/src/example/res [-]
             AssetsDirectories             : <ROOT>/app/src/example/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/example/jniLibs [-]
-            ShadersDirectories            : <ROOT>/app/src/example/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/example/baselineProfiles [-]
         ExtraSourceProviders
             ExtraSourceProvider
@@ -1113,7 +1081,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/androidTestExample/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestExample/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestExample/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestExample/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestExample/baselineProfiles [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1127,7 +1094,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/testExample/res [-]
                     AssetsDirectories             : <ROOT>/app/src/testExample/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testExample/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testExample/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testExample/baselineProfiles [-]
     SigningConfigs
         SigningConfig
@@ -1189,7 +1155,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/exampleDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/exampleDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/exampleDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/exampleDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/exampleDebug/baselineProfiles [-]
                 Dependencies
                     compileClasspath
@@ -1464,7 +1429,6 @@ MODULE                        : project.app
                     ResDirectories                : <ROOT>/app/src/androidTestExampleDebug/res [-]
                     AssetsDirectories             : <ROOT>/app/src/androidTestExampleDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestExampleDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/androidTestExampleDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestExampleDebug/baselineProfiles [-]
                 Dependencies
                     compileClasspath
@@ -1711,7 +1675,6 @@ MODULE                        : project.app
                     ResourcesDirectories          : <ROOT>/app/src/testExampleDebug/resources [-]
                     AssetsDirectories             : <ROOT>/app/src/testExampleDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testExampleDebug/jniLibs [-]
-                    ShadersDirectories            : <ROOT>/app/src/testExampleDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testExampleDebug/baselineProfiles [-]
                 Dependencies
                     compileClasspath

@@ -20,7 +20,9 @@ import static com.intellij.openapi.util.io.FileUtil.join;
 import static com.intellij.openapi.util.io.FileUtil.writeToFile;
 import static org.mockito.Mockito.when;
 
+import com.android.testutils.SystemPropertyOverrides;
 import com.android.testutils.VirtualTimeScheduler;
+import com.android.tools.analytics.LoggedUsage;
 import com.android.tools.analytics.TestUsageTracker;
 import com.android.tools.analytics.UsageTracker;
 import com.android.tools.idea.IdeInfo;
@@ -28,10 +30,14 @@ import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.projectView.AndroidProjectViewSettingsImpl;
 import com.android.tools.idea.navigator.nodes.AndroidViewProjectNode;
 import com.android.tools.idea.navigator.nodes.android.BuildScriptTreeStructureProvider;
+import com.android.tools.idea.projectsystem.AndroidProjectSystem;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem;
 import com.android.tools.idea.testing.AndroidGradleTestCase;
 import com.android.tools.idea.testing.AndroidGradleTests;
 import com.android.tools.idea.testing.TestModuleUtil;
 import com.android.tools.idea.testing.TestProjectPaths;
+import com.android.tools.idea.util.CommonAndroidUtil;
 import com.android.utils.FileUtils;
 import com.google.common.io.Files;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
@@ -57,8 +63,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Stack;
-import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 // TODO: Test available actions for each node!
@@ -216,11 +222,21 @@ public class AndroidProjectViewTest extends AndroidGradleTestCase {
     assertThat(allNodes).contains(Arrays.asList("app (Android)", "res", "resources.properties (main)"));
   }
 
-  public void testAndroidViewIsDefault() {
-    myPane = createPane();
+  public void testAndroidViewIsDefault() throws Exception {
     IdeInfo ideInfo = Mockito.spy(IdeInfo.getInstance());
     AndroidProjectViewSettingsImpl settings = new AndroidProjectViewSettingsImpl();
     Project project = getProject();
+    GradleProjectSystem mockGradleProjectSystem = Mockito.mock(GradleProjectSystem.class);
+    CommonAndroidUtil commonAndroidUtil = Mockito.mock(CommonAndroidUtil.class);
+    MockedStatic<CommonAndroidUtil> commonAndroidUtilMockedStatic = Mockito.mockStatic(CommonAndroidUtil.class);
+    commonAndroidUtilMockedStatic.when(CommonAndroidUtil::getInstance).thenReturn(commonAndroidUtil);
+    MockedStatic<ProjectSystemUtil> projectSystemUtilMockedStatic = Mockito.mockStatic(ProjectSystemUtil.class);
+    projectSystemUtilMockedStatic.when(() -> ProjectSystemUtil.getProjectSystem(project)).thenReturn(mockGradleProjectSystem);
+    when(mockGradleProjectSystem.isAndroidProjectViewSupported()).thenReturn(true);
+    when(commonAndroidUtil.isAndroidProject(project)).thenReturn(true);
+    myPane = createPane();
+
+    assertThat(myPane.isInitiallyVisible()).isTrue();
 
     when(ideInfo.isAndroidStudio()).thenReturn(false);
     when(ideInfo.isGameTools()).thenReturn(false);
@@ -234,80 +250,139 @@ public class AndroidProjectViewTest extends AndroidGradleTestCase {
     when(ideInfo.isGameTools()).thenReturn(true);
     assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(GameTools)").isTrue();
 
-    System.setProperty("studio.projectview", "true");
-    assertThat(settings.isDefaultToProjectViewEnabled()).isFalse();
-    when(ideInfo.isAndroidStudio()).thenReturn(false);
-    when(ideInfo.isGameTools()).thenReturn(false);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(property)").isFalse();
+    try (SystemPropertyOverrides override = new SystemPropertyOverrides()) {
+      override.setProperty("studio.projectview", "true");
+      assertThat(settings.isDefaultToProjectViewEnabled()).isFalse();
+      when(ideInfo.isAndroidStudio()).thenReturn(false);
+      when(ideInfo.isGameTools()).thenReturn(false);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(property)").isFalse();
 
-    when(ideInfo.isAndroidStudio()).thenReturn(true);
-    when(ideInfo.isGameTools()).thenReturn(false);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio, property)").isFalse();
+      when(ideInfo.isAndroidStudio()).thenReturn(true);
+      when(ideInfo.isGameTools()).thenReturn(false);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio, property)").isFalse();
 
-    when(ideInfo.isAndroidStudio()).thenReturn(false);
-    when(ideInfo.isGameTools()).thenReturn(true);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(GameTools, property)").isFalse();
+      when(ideInfo.isAndroidStudio()).thenReturn(false);
+      when(ideInfo.isGameTools()).thenReturn(true);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(GameTools, property)").isFalse();
 
-    settings.setDefaultToProjectView(true);
-    System.setProperty("studio.projectview", "false");
-    assertThat(settings.isDefaultToProjectViewEnabled()).isTrue();
-    when(ideInfo.isAndroidStudio()).thenReturn(false);
-    when(ideInfo.isGameTools()).thenReturn(false);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(settings)").isFalse();
+      settings.setDefaultToProjectView(true);
+      override.setProperty("studio.projectview", "false");
+      assertThat(settings.isDefaultToProjectViewEnabled()).isTrue();
+      when(ideInfo.isAndroidStudio()).thenReturn(false);
+      when(ideInfo.isGameTools()).thenReturn(false);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(settings)").isFalse();
 
-    when(ideInfo.isAndroidStudio()).thenReturn(true);
-    when(ideInfo.isGameTools()).thenReturn(false);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio, settings)").isFalse();
+      when(ideInfo.isAndroidStudio()).thenReturn(true);
+      when(ideInfo.isGameTools()).thenReturn(false);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio, settings)").isFalse();
 
-    when(ideInfo.isAndroidStudio()).thenReturn(false);
-    when(ideInfo.isGameTools()).thenReturn(true);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(GameTools, settings)").isFalse();
+      when(ideInfo.isAndroidStudio()).thenReturn(false);
+      when(ideInfo.isGameTools()).thenReturn(true);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(GameTools, settings)").isFalse();
+    }
+
+    commonAndroidUtilMockedStatic.close();
+    projectSystemUtilMockedStatic.close();
   }
 
-  public void testAndroidViewIsDefaultMetrics() {
-    myPane = createPane();
+  public void testAndroidViewNotVisibleInUnsupportedProjectSystem() {
     IdeInfo ideInfo = Mockito.spy(IdeInfo.getInstance());
     AndroidProjectViewSettingsImpl settings = new AndroidProjectViewSettingsImpl();
     Project project = getProject();
+    AndroidProjectSystem mockProjectSystem = Mockito.mock(AndroidProjectSystem.class);
+    MockedStatic<ProjectSystemUtil> projectSystemUtilMockedStatic = Mockito.mockStatic(ProjectSystemUtil.class);
+    projectSystemUtilMockedStatic.when(() -> ProjectSystemUtil.getProjectSystem(project)).thenReturn(mockProjectSystem);
+    CommonAndroidUtil commonAndroidUtil = Mockito.mock(CommonAndroidUtil.class);
+    MockedStatic<CommonAndroidUtil> commonAndroidUtilMockedStatic = Mockito.mockStatic(CommonAndroidUtil.class);
+    commonAndroidUtilMockedStatic.when(CommonAndroidUtil::getInstance).thenReturn(commonAndroidUtil);
+    when(mockProjectSystem.isAndroidProjectViewSupported()).thenReturn(false);
+    when(commonAndroidUtil.isAndroidProject(project)).thenReturn(true);
+    myPane = createPane();
 
-    System.setProperty("studio.projectview", "false");
-    settings.setDefaultToProjectView(true);
+    assertThat(myPane.isInitiallyVisible()).isFalse();
+    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault").isFalse();
 
-    TestUsageTracker testUsageTracker = new TestUsageTracker(new VirtualTimeScheduler());
-    UsageTracker.setWriterForTest(testUsageTracker);
+    commonAndroidUtilMockedStatic.close();
+    projectSystemUtilMockedStatic.close();
+  }
 
-    settings.setDefaultToProjectView(false);
-    assertThat(settings.isDefaultToProjectViewEnabled()).isTrue();
-    when(ideInfo.isAndroidStudio()).thenReturn(true);
-    when(ideInfo.isGameTools()).thenReturn(false);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio)").isTrue();
+  public void testAndroidViewNotVisibleInNonAndroidProject() {
+    IdeInfo ideInfo = Mockito.spy(IdeInfo.getInstance());
+    AndroidProjectViewSettingsImpl settings = new AndroidProjectViewSettingsImpl();
+    Project project = getProject();
+    AndroidProjectSystem mockProjectSystem = Mockito.mock(AndroidProjectSystem.class);
+    MockedStatic<ProjectSystemUtil> projectSystemUtilMockedStatic = Mockito.mockStatic(ProjectSystemUtil.class);
+    projectSystemUtilMockedStatic.when(() -> ProjectSystemUtil.getProjectSystem(project)).thenReturn(mockProjectSystem);
+    CommonAndroidUtil commonAndroidUtil = Mockito.mock(CommonAndroidUtil.class);
+    MockedStatic<CommonAndroidUtil> commonAndroidUtilMockedStatic = Mockito.mockStatic(CommonAndroidUtil.class);
+    commonAndroidUtilMockedStatic.when(CommonAndroidUtil::getInstance).thenReturn(commonAndroidUtil);
+    when(mockProjectSystem.isAndroidProjectViewSupported()).thenReturn(true);
+    when(commonAndroidUtil.isAndroidProject(project)).thenReturn(false);
+    myPane = createPane();
 
-    settings.setDefaultToProjectView(true);
-    assertThat(settings.isDefaultToProjectViewEnabled()).isTrue();
-    when(ideInfo.isAndroidStudio()).thenReturn(true);
-    when(ideInfo.isGameTools()).thenReturn(false);
-    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio)").isFalse();
+    assertThat(myPane.isInitiallyVisible()).isFalse();
+    assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault").isFalse();
 
-    // Assert that event is not logged when setting is set to current value
-    settings.setDefaultToProjectView(true);
+    commonAndroidUtilMockedStatic.close();
+    projectSystemUtilMockedStatic.close();
+  }
 
-    List<AndroidStudioEvent> statsEvents = testUsageTracker.getUsages().stream()
-      .map(usage -> usage.getStudioEvent())
-      .filter(event -> event.getKind() == AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT)
-      .collect(Collectors.toList());
-    assertThat(statsEvents.size()).isEqualTo(2);
+  public void testAndroidViewIsDefaultMetrics() throws Exception {
+    myPane = createPane();
+    IdeInfo ideInfo = Mockito.spy(IdeInfo.getInstance());
+    GradleProjectSystem mockGradleProjectSystem = Mockito.mock(GradleProjectSystem.class);
+    CommonAndroidUtil commonAndroidUtil = Mockito.mock(CommonAndroidUtil.class);
+    MockedStatic<CommonAndroidUtil> commonAndroidUtilMockedStatic = Mockito.mockStatic(CommonAndroidUtil.class);
+    MockedStatic<ProjectSystemUtil> projectSystemUtilMockedStatic = Mockito.mockStatic(ProjectSystemUtil.class);
+    commonAndroidUtilMockedStatic.when(CommonAndroidUtil::getInstance).thenReturn(commonAndroidUtil);
+    AndroidProjectViewSettingsImpl settings = new AndroidProjectViewSettingsImpl();
+    Project project = getProject();
+    projectSystemUtilMockedStatic.when(() -> ProjectSystemUtil.getProjectSystem(project)).thenReturn(mockGradleProjectSystem);
+    when(mockGradleProjectSystem.isAndroidProjectViewSupported()).thenReturn(true);
+    when(commonAndroidUtil.isAndroidProject(project)).thenReturn(true);
 
-    AndroidStudioEvent disableDefaultProjectViewEvent = statsEvents.get(0);
-    assertThat(disableDefaultProjectViewEvent.getKind()).isEqualTo(AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT);
-    assertThat(disableDefaultProjectViewEvent.getProjectViewDefaultViewEvent().getDefaultView()).isEqualTo(
-      ProjectViewDefaultViewEvent.DefaultView.ANDROID_VIEW);
+    try (SystemPropertyOverrides override = new SystemPropertyOverrides()) {
+      override.setProperty("studio.projectview", "false");
+      settings.setDefaultToProjectView(true);
 
-    AndroidStudioEvent enableDefaultProjectViewEvent = statsEvents.get(1);
-    assertThat(enableDefaultProjectViewEvent.getKind()).isEqualTo(AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT);
-    assertThat(enableDefaultProjectViewEvent.getProjectViewDefaultViewEvent().getDefaultView()).isEqualTo(
-      ProjectViewDefaultViewEvent.DefaultView.PROJECT_VIEW);
+      TestUsageTracker testUsageTracker = new TestUsageTracker(new VirtualTimeScheduler());
+      UsageTracker.setWriterForTest(testUsageTracker);
+
+      settings.setDefaultToProjectView(false);
+      assertThat(settings.isDefaultToProjectViewEnabled()).isTrue();
+      when(ideInfo.isAndroidStudio()).thenReturn(true);
+      when(ideInfo.isGameTools()).thenReturn(false);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio)").isTrue();
+
+      settings.setDefaultToProjectView(true);
+      assertThat(settings.isDefaultToProjectViewEnabled()).isTrue();
+      when(ideInfo.isAndroidStudio()).thenReturn(true);
+      when(ideInfo.isGameTools()).thenReturn(false);
+      assertThat(myPane.isDefaultPane(project, ideInfo, settings)).named("isDefault(AndroidStudio)").isFalse();
+
+      // Assert that event is not logged when setting is set to current value
+      settings.setDefaultToProjectView(true);
+
+      List<AndroidStudioEvent> statsEvents = testUsageTracker.getUsages().stream()
+        .map(LoggedUsage::getStudioEvent)
+        .filter(event -> event.getKind() == AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT)
+        .toList();
+      assertThat(statsEvents.size()).isEqualTo(2);
+
+      AndroidStudioEvent disableDefaultProjectViewEvent = statsEvents.get(0);
+      assertThat(disableDefaultProjectViewEvent.getKind()).isEqualTo(AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT);
+      assertThat(disableDefaultProjectViewEvent.getProjectViewDefaultViewEvent().getDefaultView()).isEqualTo(
+        ProjectViewDefaultViewEvent.DefaultView.ANDROID_VIEW);
+
+      AndroidStudioEvent enableDefaultProjectViewEvent = statsEvents.get(1);
+      assertThat(enableDefaultProjectViewEvent.getKind()).isEqualTo(AndroidStudioEvent.EventKind.PROJECT_VIEW_DEFAULT_VIEW_EVENT);
+      assertThat(enableDefaultProjectViewEvent.getProjectViewDefaultViewEvent().getDefaultView()).isEqualTo(
+        ProjectViewDefaultViewEvent.DefaultView.PROJECT_VIEW);
+    }
 
     UsageTracker.cleanAfterTesting();
+    commonAndroidUtilMockedStatic.close();
+    projectSystemUtilMockedStatic.close();
   }
 
   private static Set<List<String>> getAllNodes(TestAndroidTreeStructure structure) {

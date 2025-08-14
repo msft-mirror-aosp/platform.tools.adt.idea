@@ -1,6 +1,6 @@
 load("@rules_java//java:defs.bzl", "java_test")
 load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "generate_old_agp_tests_from_list", "get_agp_versions_from_tests_list")
-load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_7_2", "AGP_7_3", "AGP_DATA")
+load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_4_0", "AGP_4_1", "AGP_4_2", "AGP_7_0", "AGP_7_1", "AGP_7_2", "AGP_7_3", "AGP_8_11", "AGP_DATA")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
@@ -149,6 +149,7 @@ maven_repository(
         "@maven//:org.codehaus.mojo.animal-sniffer-annotations_1.17",
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.6.21",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.6.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.9.22",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.4.31",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.6.21",
@@ -156,6 +157,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk7_1.4.32",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.4.31",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.6.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.9.22",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
@@ -347,21 +349,21 @@ tests_list = [
     ),
     dict(
         timeout = "long",
-        agp_version = "LATEST",
+        agp_version = AGP_8_11,
         data = [
             "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
-            "//prebuilts/studio/sdk:build-tools/latest",
-            "//prebuilts/studio/sdk:platforms/latest",
+            "//prebuilts/studio/sdk:platforms/android-34",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
-            "//tools/base/build-system:gradle-distrib",
-        ],
-        gradle_version = "LATEST",
+            "//tools/base/build-system:gradle-distrib-8.13",
+        ] + AGP_DATA[AGP_8_11],
+        gradle_version = "8.13",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],
         maven_deps = [
             ":test_deps",
             "//tools/base/build-system:android_gradle_plugin.zip",
             "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+            "//tools/base/build-system/previous-versions:8.11.0",
         ],
         tags = [
             "block-network",

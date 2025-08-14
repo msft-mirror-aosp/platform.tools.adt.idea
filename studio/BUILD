@@ -131,11 +131,7 @@ studio_plugin(
             "//tools/adt/idea/android-common:intellij.android.common",
             "//tools/adt/idea/jps-model:intellij.android.jps.model",
         ],
-        "android-extensions-ide.jar": [
-            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions.common",
-        ],
         "android-kotlin.jar": [
-            "//tools/adt/idea/android-kotlin:intellij.android.kotlin.extensions",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
             "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.k1",
@@ -718,6 +714,7 @@ studio_plugin(
     name = "com.google.tools.ij.aiplugin",
     directory = "gemini",
     libs = [
+        "//prebuilts/tools/common/m2:anthropic-openai-common-deps",
         "//prebuilts/tools/common/m2:libgoogle_auth_transitive_deps",
         "//prebuilts/tools/common/m2:openai-java-sdk",
         "//prebuilts/tools/common/m2:sqlite-jdbc-3.43.0.0",
@@ -733,7 +730,7 @@ studio_plugin(
         "//tools/vendor/google/ml/aiplugin/core/aicore:aida_proto",
         "//tools/vendor/google/ml/aiplugin/core/aicore:aida_protobuf",
         "//tools/vendor/google/ml/aiplugin/core/aicore:gemini_plugin_proto",
-        "//tools/vendor/google/ml/aiplugin/mcp/client:mcp-kotlin-sdk",
+        "//tools/vendor/modelcontextprotocol/kotlin-sdk:mcp-sdk-libraries",
     ],
     modules = {
         "aiplugin.jar": [
@@ -750,12 +747,13 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/android-plugin/descriptor:aiplugin.android-plugin.descriptor",
             "//tools/vendor/google/ml/aiplugin/backends/local:aiplugin.backends.local",
             "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",
-            "//tools/vendor/google/ml/aiplugin/mcp/client:aiplugin.mcp.client",
+            "//tools/vendor/google/ml/aiplugin/mcp/client:aiplugin.mcp.client.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/rag/indexer:aiplugin.rag.indexer",
             "//tools/vendor/google/ml/aiplugin/sdkcompat:aiplugin.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/cloudcode-core:aiplugin.cloudcode-core",
             "//tools/vendor/google/ml/aiplugin/ij-platform:aiplugin.ij-platform",
             "//tools/vendor/google/ml:aiplugin.login.sdkcompat",
+            "//tools/vendor/modelcontextprotocol/kotlin-sdk:mcp.kotlin-sdk.sdkcompat",
         ],
     },
     resources = {
@@ -770,6 +768,8 @@ studio_plugin(
         ":org.jetbrains.android",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.ktor.client",
+        "@intellij//:intellij.libraries.ktor.client.cio",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
@@ -806,6 +806,7 @@ exports_files([
 android_studio_configuration(
     name = "nightly",
     application_icon = ":nightly-icon",
+    mac_app_name = "Android Studio Nightly",
     version_suffix = "Nightly __BUILD_DAY__",
     version_type = "Nightly",
 )
@@ -813,6 +814,7 @@ android_studio_configuration(
 android_studio_configuration(
     name = "canary",
     application_icon = None,
+    mac_app_name = "Android Studio Preview",
     version_suffix = None,
     version_type = STUDIO_VERSION,
 )

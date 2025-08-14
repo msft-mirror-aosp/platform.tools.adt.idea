@@ -99,12 +99,14 @@ import com.intellij.usages.impl.rules.UsageTypeProvider
 import com.intellij.usages.rules.PsiElementUsage
 import com.intellij.util.Processor
 import com.intellij.util.ThreeState
+import com.intellij.util.concurrency.ThreadingAssertions
 import com.intellij.util.containers.toArray
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet
 import org.jetbrains.android.util.AndroidBundle
 import java.awt.event.ActionEvent
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.function.Supplier
 import javax.swing.AbstractAction
 import javax.swing.Action
@@ -292,6 +294,7 @@ class AgpUpgradeRefactoringProcessor(
     NonConstantRClassDefaultRefactoringProcessor(this),
     REMOVE_SOURCE_SET_JNI_INFO.RefactoringProcessor(this),
     // AGP 9.x
+    JCenterToMavenCentralRefactoringProcessor(this),
     MigratePackagingOptionsToJniLibsAndResourcesRefactoringProcessor(this),
     MIGRATE_FAILURE_RETENTION_TO_EMULATOR_SNAPSHOTS.RefactoringProcessor(this),
     MIGRATE_AAPT_OPTIONS_TO_ANDROID_RESOURCES.RefactoringProcessor(this),
@@ -318,6 +321,9 @@ class AgpUpgradeRefactoringProcessor(
     R8OptimizedResourceShrinkingDefaultRefactoringProcessor(this),
     TargetSdkDefaultRefactoringProcessor(this),
     AppCompileTimeRClassDefaultRefactoringProcessor(this),
+    BuildTypesUnitTestDefaultRefactoringProcessor(this),
+    DisallowUsesSdkInManifestDefaultRefactoringProcessor(this),
+    EnforceUniquePackageNameRefactoringProcessor(this),
     AndroidManifestExtractNativeLibsToUseLegacyPackagingRefactoringProcessor(this),
     AndroidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor(this),
     RemoveImplementationPropertiesRefactoringProcessor(this),
@@ -325,7 +331,8 @@ class AgpUpgradeRefactoringProcessor(
 
     // AGP 10.x
     BlockR8StrictFullModeForKeepRulesProcessor(this),
-    BlockR8OptimizedResourceShrinkingProcessor(this)
+    BlockR8OptimizedResourceShrinkingProcessor(this),
+    BlockUsesSdkInManifestProcessor(this),
   )
 
   val targets = mutableListOf<PsiElement>()
@@ -665,9 +672,7 @@ class AgpUpgradeRefactoringProcessor(
     //
     // Moving to an asynchronous process would involve modifying callers to do the subsequent work after parsing in callbacks.
 
-    DumbService.getInstance(project).runWhenSmart {
-      // we must be in smart mode before starting the modal progress display, otherwise attempts to use indexes in
-      // processors (with e.g. runReadActionInSmartMode) will softlock if indexes are not ready.
+    val runnable = {
       progressManager.runProcessWithProgressSynchronously(
         {
           val indicator = progressManager.progressIndicator
@@ -685,6 +690,18 @@ class AgpUpgradeRefactoringProcessor(
           componentRefactoringProcessors.forEach { it.initializeComponentCaches() }
         },
         commandName, true, project)
+    }
+    if (ApplicationManager.getApplication().isUnitTestMode) {
+      runnable.invoke()
+    }
+    else {
+      ThreadingAssertions.assertBackgroundThread()
+      val future = CompletableFuture<Unit>()
+      DumbService.getInstance(project).runWhenSmart {
+        runnable.invoke()
+        future.complete(Unit)
+      }
+      future.join()
     }
   }
 }

@@ -436,7 +436,7 @@ android-studio/jbr/release
 android-studio/lib/annotations.jar
 android-studio/lib/app.jar
 android-studio/lib/bouncy-castle.jar
-android-studio/lib/build-marker-AI-251.26094.121.2513.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-251.26094.121.__BUILD_NUMBER__
 android-studio/lib/external-system-rt.jar
 android-studio/lib/externalProcess-rt.jar
 android-studio/lib/forms_rt.jar
@@ -2210,7 +2210,6 @@ android-studio/plugins/android/lib/aapt2-proto-8.1.0-10154469.jar
 android-studio/plugins/android/lib/adt-ui.jar
 android-studio/plugins/android/lib/android-base-common.jar
 android-studio/plugins/android/lib/android-common.jar
-android-studio/plugins/android/lib/android-extensions-ide.jar
 android-studio/plugins/android/lib/android-gradle.jar
 android-studio/plugins/android/lib/android-kotlin.jar
 android-studio/plugins/android/lib/android-profilers.jar
@@ -3000,6 +2999,8 @@ android-studio/plugins/gemini/lib/annotation-jvm-1.7.1.jar
 android-studio/plugins/gemini/lib/gemini.so.jar
 android-studio/plugins/gemini/lib/gemini_plugin_proto.jar
 android-studio/plugins/gemini/lib/google-api-services-cloudresourcemanager-v1beta1-rev20240128-2.0.0.jar
+android-studio/plugins/gemini/lib/jackson-datatype-jdk8-2.18.2.jar
+android-studio/plugins/gemini/lib/jackson-datatype-jsr310-2.18.2.jar
 android-studio/plugins/gemini/lib/kotlinx-serialization-core-jvm-1.7.3.jar
 android-studio/plugins/gemini/lib/kotlinx-serialization-json-jvm-1.7.3.jar
 android-studio/plugins/gemini/lib/libfeedback_java_proto.jar
@@ -3007,7 +3008,7 @@ android-studio/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar
 android-studio/plugins/gemini/lib/libserviceusage_v1_java_lib.jar
 android-studio/plugins/gemini/lib/libv1internal_java_rest.jar
 android-studio/plugins/gemini/lib/lucene-queryparser-9.12.0.jar
-android-studio/plugins/gemini/lib/mcp-kotlin-sdk.jar
+android-studio/plugins/gemini/lib/mcp-sdk-libraries.jar
 android-studio/plugins/gemini/lib/openai-java-client-okhttp-2.19.1.jar
 android-studio/plugins/gemini/lib/openai-java-core-2.19.1.jar
 android-studio/plugins/gemini/lib/proto-models-1.0.jar

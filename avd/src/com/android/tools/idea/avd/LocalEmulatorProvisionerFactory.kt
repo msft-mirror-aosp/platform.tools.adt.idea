@@ -20,6 +20,7 @@ import com.android.sdklib.deviceprovisioner.DeviceIcons
 import com.android.sdklib.deviceprovisioner.DeviceProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshot
+import com.android.sdklib.deviceprovisioner.RunningAvd
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.avd.EditVirtualDeviceDialog.Mode
@@ -32,13 +33,14 @@ import com.android.tools.idea.deviceprovisioner.DeviceProvisionerFactory
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.intellij.ide.actions.RevealFileAction
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.Messages
 import icons.StudioIcons
 import java.awt.Component
+import java.nio.file.Path
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 /** Builds a LocalEmulatorProvisionerPlugin with its dependencies provided by Studio. */
@@ -77,12 +79,15 @@ class LocalEmulatorProvisionerFactory : DeviceProvisionerFactory {
 }
 
 private class AvdManagerImpl(val project: Project?) : LocalEmulatorProvisionerPlugin.AvdManager {
+  override val runningAvdsFlow: StateFlow<Map<Path, RunningAvd>>
+    get() = runningAvdTracker.runningAvdsFlow
+
   // Do not cache this; getDefaultAvdManagerConnection() changes when the local SDK path changes.
   private val avdManagerConnection
     get() = AvdManagerConnection.getDefaultAvdManagerConnection()
 
   private val runningAvdTracker
-    get() = service<RunningAvdTracker>()
+    get() = RunningAvdTracker.getInstance()
 
   override suspend fun rescanAvds() =
     withContext(diskIoThread) { avdManagerConnection.getAvds(true) }

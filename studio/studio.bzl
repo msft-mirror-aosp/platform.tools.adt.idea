@@ -33,7 +33,6 @@ IntellijInfo = provider(
         "minor_version": "The minor IntelliJ version",
         "base": "A map from final studio location to the file (all non plugin files)",
         "plugins": "The file maps for all the bundled plugins",
-        "mac_bundle_name": "The application name on Mac, e.g. 'Android Studio Preview.app'",
     },
 )
 
@@ -54,6 +53,7 @@ _ConfigurationInfo = provider(
         "version_type": "Nightly, Canary, Beta, etc.",
         "version_suffix": "If None, auto computed, if provided used instead. Eg. Nightly 2024-10-10.",
         "application_icon": "The application icon to use.",
+        "mac_app_name": "The application name on Mac, e.g. 'Android Studio Preview'",
     },
 )
 
@@ -564,6 +564,10 @@ def _form_version_full(ctx):
             " " +
             str(ctx.attr.version_release_number))
 
+def _form_studio_version_component(intellij_info, studio_micro):
+    """Returns the 4th component of the full 5-component build number, identifying a specific Studio release"""
+    return intellij_info.major_version[2:] + intellij_info.minor_version + studio_micro
+
 def _full_display_version(ctx):
     """Returns the output of _form_version_full with versions applied."""
     intellij_info = ctx.attr.platform[IntellijInfo]
@@ -666,15 +670,18 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
     ret = {}
     ret.update(platform_files)
 
+    (micro, patch) = _split_version(ctx.attr.version_micro_patch)
+    version_component = _form_studio_version_component(ctx.attr.platform[IntellijInfo], micro)
+
     build_txt, stamped_build_txt = _declare_stamped_file(ctx, ret, platform, platform.resource_path + "build.txt")
     args = ctx.actions.args()
     args.add("--info_file", ctx.info_file)
+    args.add("--version_component", version_component)
     args.add("--replace_build_number")
     _stamp(ctx, args, [ctx.info_file], build_txt, stamped_build_txt)
 
     resources_jar, stamped_resources_jar = _declare_stamped_file(ctx, ret, platform, platform.base_path + "lib/resources.jar")
     (_, is_eap) = _get_channel_info(config.version_type)
-    (micro, patch) = _split_version(ctx.attr.version_micro_patch)
     args = ctx.actions.args()
     args.add("--entry", "idea/AndroidStudioApplicationInfo.xml")
     args.add("--version_file", ctx.version_file)
@@ -719,6 +726,7 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
         info_plist, stamped_info_plist = _declare_stamped_file(ctx, ret, platform, platform.base_path + "Info.plist")
         args = ctx.actions.args()
         args.add("--info_file", ctx.info_file)
+        args.add("--version_component", version_component)
         args.add("--replace_build_number")
         args.add("--replace_selector", system_selector)
         _stamp(ctx, args, [ctx.info_file], info_plist, stamped_info_plist)
@@ -741,7 +749,6 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
 
     product_info_json, stamped_product_info_json = _declare_stamped_file(ctx, ret, platform, platform.resource_path + "product-info.json")
     args = ctx.actions.args()
-    args.add("--info_file", ctx.info_file)
     args.add("--build_txt", stamped_build_txt)
     args.add("--stamp_product_info")
     args.add("--replace_selector", system_selector)
@@ -758,6 +765,9 @@ def _stamp_plugin(ctx, platform, platform_files, files, overwrite_plugin_version
     ret.update(files)
     build_txt = platform_files[platform.resource_path + "build.txt"]
 
+    (micro, _) = _split_version(ctx.attr.version_micro_patch)
+    version_component = _form_studio_version_component(ctx.attr.platform[IntellijInfo], micro)
+
     for rel, file in files.items():
         if rel.endswith(".jar"):
             stamped_jar = ctx.actions.declare_file(ctx.attr.name + ".plugin.%s.stamped." % platform.name + rel.replace("/", "_"))
@@ -766,6 +776,7 @@ def _stamp_plugin(ctx, platform, platform_files, files, overwrite_plugin_version
             args = ctx.actions.args()
             args.add("--build_txt", build_txt)
             args.add("--info_file", ctx.info_file)
+            args.add("--version_component", version_component)
             args.add("--entry", "META-INF/plugin.xml")
             args.add("--optional_entry")
             args.add("--replace_build_number")
@@ -774,11 +785,6 @@ def _stamp_plugin(ctx, platform, platform_files, files, overwrite_plugin_version
             _stamp(ctx, args, [build_txt, ctx.info_file], file, stamped_jar)
 
     return ret
-
-def _android_studio_prefix(ctx, platform):
-    if platform == MAC or platform == MAC_ARM:
-        return ctx.attr.platform[IntellijInfo].mac_bundle_name + "/"
-    return "android-studio/"
 
 def _get_external_attributes(all_files):
     attrs = {}
@@ -801,8 +807,8 @@ def _android_studio_os(ctx, platform, added_plugins, out):
     files = []
     all_files = {}
 
-    platform_prefix = _android_studio_prefix(ctx, platform)
     config = ctx.attr.configuration[_ConfigurationInfo]
+    platform_prefix = config.mac_app_name + ".app/" if platform in [MAC, MAC_ARM] else "android-studio/"
 
     platform_files = platform.get(ctx.attr.platform[IntellijInfo].base)
     if config.application_icon:
@@ -1135,6 +1141,7 @@ def _android_studio_configuration_impl(ctx):
         application_icon = ctx.attr.application_icon,
         version_type = ctx.attr.version_type,
         version_suffix = ctx.attr.version_suffix,
+        mac_app_name = ctx.attr.mac_app_name,
     )]
 
 android_studio_configuration = rule(
@@ -1142,6 +1149,7 @@ android_studio_configuration = rule(
         "application_icon": attr.label(providers = [AppIconInfo]),
         "version_type": attr.string(),
         "version_suffix": attr.string(),
+        "mac_app_name": attr.string(mandatory = True),
     },
     implementation = _android_studio_configuration_impl,
 )
@@ -1301,7 +1309,6 @@ def _intellij_platform_impl(ctx):
                 mac_arm = plugin_files_mac_arm,
                 win = plugin_files_win,
             ),
-            mac_bundle_name = ctx.attr.mac_bundle_name,
         ),
     ]
 
@@ -1314,7 +1321,6 @@ _intellij_platform = rule(
         "data": attr.label_list(allow_files = True),
         "studio_data": attr.label(providers = [_StudioDataInfo]),
         "compress": attr.bool(),
-        "mac_bundle_name": attr.string(),
         "_zipper": attr.label(
             default = Label("@bazel_tools//tools/zip:zipper"),
             cfg = "exec",
@@ -1438,7 +1444,6 @@ def intellij_platform(
         minor_version = spec.minor_version,
         exports = [":" + name + "_jars"],
         compress = is_release(),
-        mac_bundle_name = spec.mac_bundle_name,
         package_metadata = [
             ":" + name + "_prebuilt_metadata",
         ],
