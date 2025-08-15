@@ -407,11 +407,12 @@ internal class AndroidSourceRootSyncContributor : GradleSyncContributor {
    */
   private suspend fun configureModulesForSourceSets(
     context: ProjectResolverContext,
-    storage: MutableEntityStorage,
+    storage: ImmutableEntityStorage
   ): SourceSetUpdateResult {
     LOG.debug("Configuring modules for source sets")
     val project = context.project
     val syncOptions = context.getSyncOptions(project)
+    val updatedEntities = MutableEntityStorage.from(storage)
     val allAndroidContexts = context.allBuilds.flatMap { buildModel ->
       buildModel.projects.mapNotNull { projectModel ->
         checkCanceled()
@@ -436,7 +437,7 @@ internal class AndroidSourceRootSyncContributor : GradleSyncContributor {
     val newModuleEntities = allAndroidContexts.flatMap {
       with(it) {
         LOG.debug("Setting up project ${projectModel.path}")
-        val sourceSetModuleEntitiesByArtifact = getAllSourceSetModuleEntities(storage)
+        val sourceSetModuleEntitiesByArtifact = getAllSourceSetModuleEntities(updatedEntities)
 
         val knownArtifactsModuleEntitiesByArtifact = sourceSetModuleEntitiesByArtifact.knownArtifacts
         val knownArtifactsModuleEntities = knownArtifactsModuleEntitiesByArtifact.values
@@ -447,11 +448,11 @@ internal class AndroidSourceRootSyncContributor : GradleSyncContributor {
 
         val testSuiteSourceSetModules = sourceSetModuleEntitiesByArtifact.testSuites.values
 
-        storage.modifyModuleEntity(holderModuleEntity) {
+        updatedEntities.modifyModuleEntity(holderModuleEntity) {
           setJavaSettingsForHolderModule(this)
           setSdkForHolderModule(this)
-          createOrUpdateAndroidGradleFacet(storage, this)
-          createOrUpdateAndroidFacet(storage, this)
+          createOrUpdateAndroidGradleFacet(updatedEntities, this)
+          createOrUpdateAndroidFacet(updatedEntities, this)
           linkModuleGroup(this, knownArtifactsModuleEntitiesByArtifact, testSuiteSourceSetModules)
           // There seems to be a bug in workspace model implementation that requires doing this to update list of changed props
           this.facets = facets
@@ -461,18 +462,18 @@ internal class AndroidSourceRootSyncContributor : GradleSyncContributor {
     }
     val knownSourceSetEntitySources = newModuleEntities.map { it.entitySource }.toSet()
     // Remove orphaned modules. It is important here to first remove then add below to make sure replacement operations work correctly.
-    val removedModules = removeOrphanedModules(allAndroidContexts, knownSourceSetEntitySources, storage)
+    val removedModules = removeOrphanedModules(allAndroidContexts, knownSourceSetEntitySources, updatedEntities)
     val removedModuleNames = removedModules.map { it.name }.toSet()
 
 
     newModuleEntities.forEach { newModuleEntity ->
       // Create or update the entity after doing all the mutations
-      val existingEntity = storage.resolve(ModuleId(newModuleEntity.name))
+      val existingEntity = updatedEntities.resolve(ModuleId(newModuleEntity.name))
       if (existingEntity == null) {
-        storage addEntity newModuleEntity
+        updatedEntities addEntity newModuleEntity
       }
       else {
-        storage.modifyModuleEntity(existingEntity) {
+        updatedEntities.modifyModuleEntity(existingEntity) {
           this.entitySource = newModuleEntity.entitySource
           this.contentRoots = newModuleEntity.contentRoots
           this.exModuleOptions = newModuleEntity.exModuleOptions
@@ -482,7 +483,7 @@ internal class AndroidSourceRootSyncContributor : GradleSyncContributor {
           // Not modifying existing dependencies here because we don't have that info here yet.
         }
       }.also { finalEntity ->
-        updateGradleAndroidModelMapping(storage, finalEntity)
+        updateGradleAndroidModelMapping(updatedEntities, finalEntity)
       }
     }
 

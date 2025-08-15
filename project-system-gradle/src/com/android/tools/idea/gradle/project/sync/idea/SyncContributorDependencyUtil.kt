@@ -238,6 +238,7 @@ internal fun setupAndroidDependenciesForAllProjects(
     LOG.info("No library table found, returning early with no updates")
     return
   }
+  val updatedEntities = MutableEntityStorage.from(storage)
   val ideLibraryModelResolver = buildIdeLibraryModelResolver(context, libraryTable)
   val sourceSetModuleIdToModuleEntityMap = buildSourceSetModuleIdToModuleEntityMap(storage, context, project, phase, allAndroidContexts)
 
@@ -251,7 +252,7 @@ internal fun setupAndroidDependenciesForAllProjects(
   allAndroidContexts.forEach {
     SyncContributorAndroidProjectDependenciesContext(
       it,
-      storage,
+      updatedEntities,
       ideLibraryModelResolver,
       sourceSetModuleIdToModuleEntityMap,
       moduleNameToEntityMap,
