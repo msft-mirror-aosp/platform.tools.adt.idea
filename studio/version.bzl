@@ -3,5 +3,5 @@ visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//t
 
 STUDIO_CODENAME = "Narwhal 3 Feature Drop"
 STUDIO_VERSION = "RC"
-STUDIO_MICRO_PATCH = "3.5"
-STUDIO_RELEASE_NUMBER = 1
+STUDIO_MICRO_PATCH = "3.6"
+STUDIO_RELEASE_NUMBER = 2
