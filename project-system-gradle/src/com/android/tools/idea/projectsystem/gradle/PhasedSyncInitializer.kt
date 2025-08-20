@@ -20,10 +20,10 @@ import com.android.tools.idea.gradle.project.sync.idea.SyncContributorProjectCon
 import com.android.tools.idea.gradle.project.sync.idea.createModuleEntity
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase.Companion.PROJECT_SOURCE_SET_PHASE
 import com.android.tools.idea.gradle.project.sync.idea.resolveHolderModuleName
+import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleId
-import com.intellij.platform.workspace.storage.ImmutableEntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.entities
 import com.intellij.platform.workspace.storage.toBuilder
@@ -34,6 +34,7 @@ import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Companion.PROJECT_MODEL_PHASE
 import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeEntitySource
 import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
+import org.jetbrains.plugins.gradle.service.syncAction.impl.extensions.GradleJpsSyncExtension
 
 /**
  * This is a sync contributor that runs after the platform's content root contributor to fix-up any issues caused by it and makes sure
@@ -43,12 +44,13 @@ import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
  * the issues are fixed. It's worth pointing that there is a longer term plan to remove the bridge data service on the platform.
  */
 @Suppress("UnstableApiUsage")
+@Order(GradleJpsSyncExtension.ORDER - 100)
 internal class FixSyncContributorIssues : GradleSyncExtension {
 
-  override fun updateSyncStorage(
+  override fun updateProjectModel(
     context: ProjectResolverContext,
     syncStorage: MutableEntityStorage,
-    projectStorage: ImmutableEntityStorage,
+    projectStorage: MutableEntityStorage,
     phase: GradleSyncPhase,
   ) {
     if (!StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get()) {
