@@ -355,17 +355,6 @@ abstract class DesignSurface<T : SceneManager>(
     sceneViewPanel.repaint()
   }
 
-  /** Converts a given point that is in view coordinates to viewport coordinates. */
-  @TestOnly
-  fun getCoordinatesOnViewportForTest(viewCoordinates: Point): Point {
-    return SwingUtilities.convertPoint(
-      sceneViewPanel,
-      viewCoordinates.x,
-      viewCoordinates.y,
-      viewport.viewportComponent,
-    )
-  }
-
   fun registerIndicator(indicator: ProgressIndicator) {
     if (project.isDisposed || isDisposed()) {
       return
@@ -799,7 +788,7 @@ abstract class DesignSurface<T : SceneManager>(
   @UiThread
   private fun restoreZoomOrZoomToFit(): Boolean {
     if (!restorePreviousScale()) {
-      zoomController.zoomToFit()
+      notifyZoomToFit()
     }
     return true
   }
@@ -1011,7 +1000,7 @@ abstract class DesignSurface<T : SceneManager>(
         newModel?.let { listOf(it to getOrCreateSceneManager(it)) } ?: emptyList()
       )
       sceneManagers.forEach { it.requestRenderAndWait() }
-      withContext(uiThread) { restoreZoomOrZoomToFit() }
+      withContext(Dispatchers.EDT) { restoreZoomOrZoomToFit() }
     }
   }
 

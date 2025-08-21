@@ -758,9 +758,6 @@ MODULE                        : project
                         exampleReleaseRuntimeClasspath          : <empty>
                         exampleReleaseRuntimeElements : <empty>
                         exampleReleaseRuntimeOnly     : <empty>
-                        exampleReleaseUnitTestAnnotationProcessorClasspath          : <empty>
-                        exampleReleaseUnitTestCompileClasspath  : <empty>
-                        exampleReleaseUnitTestRuntimeClasspath  : <empty>
                         exampleRuntimeOnly            : <empty>
                         implementation                : <empty>
                         lintChecks                    : <empty>
@@ -785,10 +782,6 @@ MODULE                        : project
                         testExampleDebugImplementation          : <empty>
                         testExampleDebugRuntimeOnly   : <empty>
                         testExampleImplementation     : <empty>
-                        testExampleReleaseAnnotationProcessor   : <empty>
-                        testExampleReleaseCompileOnly : <empty>
-                        testExampleReleaseImplementation        : <empty>
-                        testExampleReleaseRuntimeOnly : <empty>
                         testExampleRuntimeOnly        : <empty>
                         testFixturesAnnotationProcessor         : <empty>
                         testFixturesApi               : <empty>
@@ -824,15 +817,11 @@ MODULE                        : project
                     tasks
                         testExampleDebugUnitTest      : testExampleDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testExampleDebugUnitTest
-                        testExampleReleaseUnitTest    : testExampleReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :app:testExampleReleaseUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
                 testExampleDebugUnitTest      : testExampleDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testExampleDebugUnitTest
-                testExampleReleaseUnitTest    : testExampleReleaseUnitTest (DefaultExternalTask)
-                    qName                         : :app:testExampleReleaseUnitTest
 MODULE                        : project.app
     GradleModuleModel
         agpVersion                    : <AGP_VERSION>
@@ -1038,20 +1027,6 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/app/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/kotlin [-]
-                    ResourcesDirectories          : <ROOT>/app/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/app/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     ProductFlavors
         ProductFlavor
             Name                          : example
@@ -1143,7 +1118,7 @@ MODULE                        : project.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateExampleDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/exampleDebug/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/exampleDebug/processExampleDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/exampleDebug/generateExampleDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/exampleDebug/compileExampleDebugJavaWithJavac/classes [-]
                 VariantSourceProvider
                     Name                          : exampleDebug
@@ -1417,7 +1392,7 @@ MODULE                        : project.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateExampleDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/exampleDebugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/exampleDebugAndroidTest/processExampleDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/exampleDebugAndroidTest/generateExampleDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/exampleDebugAndroidTest/compileExampleDebugAndroidTestJavaWithJavac/classes [-]
                 VariantSourceProvider
                     Name                          : androidTestExampleDebug

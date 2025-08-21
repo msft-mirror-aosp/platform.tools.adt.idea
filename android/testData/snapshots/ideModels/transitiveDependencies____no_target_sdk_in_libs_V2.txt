@@ -765,9 +765,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
@@ -803,8 +800,6 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :app:testReleaseUnitTest
             javalib1                      : :javalib1 (DefaultExternalProject)
                 path                          : :javalib1 [-]
                 identityPath                  : :javalib1 [-]
@@ -1073,9 +1068,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
@@ -1111,8 +1103,6 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :library1:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :library1:testReleaseUnitTest
             library2                      : :library2 (DefaultExternalProject)
                 path                          : :library2 [-]
                 identityPath                  : :library2 [-]
@@ -1193,9 +1183,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testCompileOnly               : <empty>
@@ -1231,8 +1218,6 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :library2:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :library2:testReleaseUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
@@ -1240,8 +1225,6 @@ MODULE                        : project
                     qName                         : :javalib1:test
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
-                testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                    qName                         : :app:testReleaseUnitTest
 MODULE                        : project.app
     GradleModuleModel
         agpVersion                    : <AGP_VERSION>
@@ -1448,20 +1431,6 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/app/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/kotlin [-]
-                    ResourcesDirectories          : <ROOT>/app/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/app/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1509,7 +1478,7 @@ MODULE                        : project.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -1810,7 +1779,7 @@ MODULE                        : project.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -2528,20 +2497,6 @@ MODULE                        : project.library1
             AssetsDirectories             : <ROOT>/library1/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/library1/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/library1/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/library1/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/library1/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/library1/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/library1/src/testRelease/kotlin [-]
-                    ResourcesDirectories          : <ROOT>/library1/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/library1/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/library1/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/library1/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/library1/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2706,18 +2661,15 @@ MODULE                        : project.library1
                             androidLibrary                : com.android.support:support-fragment:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                        javaLibrary                   : commons-io:commons-io:2.4@jar
+                        javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-compat:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             javaLibrary                   : com.android.support:collections:28.0.0@jar
                             androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
                             androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
-                        androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
-                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                        javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            javaLibrary                   : com.android.support:collections:28.0.0@jar
                         androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
@@ -2727,30 +2679,6 @@ MODULE                        : project.library1
                             androidLibrary                : com.android.support:loader:28.0.0@aar
                             androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
                             androidLibrary                : com.android.support:print:28.0.0@aar
-                        androidLibrary                : com.android.support:documentfile:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:loader:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
-                            androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
-                            androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
-                        androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
-                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
-                            androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
-                        androidLibrary                : android.arch.core:runtime:1.1.1@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
-                        androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
-                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
-                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
-                        androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:print:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-fragment:28.0.0@aar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
@@ -2758,6 +2686,30 @@ MODULE                        : project.library1
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:loader:28.0.0@aar
                             androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                        androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                        androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                            androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                            androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
+                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                            javaLibrary                   : com.android.support:collections:28.0.0@jar
+                        androidLibrary                : com.android.support:documentfile:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : com.android.support:loader:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                            androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                            androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                        androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : com.android.support:print:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
@@ -2771,6 +2723,16 @@ MODULE                        : project.library1
                             androidLibrary                : com.android.support:swiperefreshlayout:28.0.0@aar
                             androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
                             androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                        androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        javaLibrary                   : android.arch.core:common:1.1.1@jar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                            androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
                         androidLibrary                : com.android.support:customview:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
@@ -2799,20 +2761,13 @@ MODULE                        : project.library1
                         androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
-                        androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                        androidLibrary                : android.arch.core:runtime:1.1.1@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
-                        androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
-                            androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
-                            androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
-                        javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : com.android.support:collections:28.0.0@jar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : android.arch.core:common:1.1.1@jar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : commons-io:commons-io:2.4@jar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                        androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
                 IsSigned                      : false
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
@@ -2826,7 +2781,7 @@ MODULE                        : project.library1
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/library1/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/library1/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/library1/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/library1/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -3594,20 +3549,6 @@ MODULE                        : project.library2
             AssetsDirectories             : <ROOT>/library2/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/library2/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/library2/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/library2/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/library2/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/library2/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/library2/src/testRelease/kotlin [-]
-                    ResourcesDirectories          : <ROOT>/library2/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/library2/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/library2/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/library2/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/library2/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -3777,18 +3718,18 @@ MODULE                        : project.library2
                             androidLibrary                : com.android.support:support-fragment:28.0.0@aar
                             androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
                             androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                        javaLibrary                   : com.google.code.gson:gson:2.2.4@jar
+                        module                        : <ROOT>-:library1-MAIN
+                            androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
+                            javaLibrary                   : commons-io:commons-io:2.4@jar
+                        javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-compat:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             javaLibrary                   : com.android.support:collections:28.0.0@jar
                             androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
                             androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
-                        androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
-                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                        javaLibrary                   : com.android.support:collections:28.0.0@jar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            javaLibrary                   : com.android.support:collections:28.0.0@jar
                         androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
@@ -3798,30 +3739,6 @@ MODULE                        : project.library2
                             androidLibrary                : com.android.support:loader:28.0.0@aar
                             androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
                             androidLibrary                : com.android.support:print:28.0.0@aar
-                        androidLibrary                : com.android.support:documentfile:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:loader:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
-                            androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
-                            androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
-                        androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
-                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
-                            androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
-                        androidLibrary                : android.arch.core:runtime:1.1.1@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
-                        androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
-                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
-                            javaLibrary                   : android.arch.core:common:1.1.1@jar
-                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
-                        androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        androidLibrary                : com.android.support:print:28.0.0@aar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-fragment:28.0.0@aar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
@@ -3829,6 +3746,31 @@ MODULE                        : project.library2
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:loader:28.0.0@aar
                             androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                        androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                        androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                            androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                            androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                        javaLibrary                   : commons-io:commons-io:2.4@jar
+                        androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
+                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                            javaLibrary                   : com.android.support:collections:28.0.0@jar
+                        androidLibrary                : com.android.support:documentfile:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : com.android.support:loader:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                            androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                            androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                        androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : com.android.support:print:28.0.0@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                         androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
@@ -3842,6 +3784,16 @@ MODULE                        : project.library2
                             androidLibrary                : com.android.support:swiperefreshlayout:28.0.0@aar
                             androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
                             androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                        androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        javaLibrary                   : android.arch.core:common:1.1.1@jar
+                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                        androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                            androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
                         androidLibrary                : com.android.support:customview:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
@@ -3870,25 +3822,15 @@ MODULE                        : project.library2
                         androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
                             androidLibrary                : com.android.support:support-compat:28.0.0@aar
-                        androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                        androidLibrary                : android.arch.core:runtime:1.1.1@aar
                             javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                            androidLibrary                : com.android.support:support-compat:28.0.0@aar
-                        androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
-                            androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
-                            androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
-                        javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : com.android.support:collections:28.0.0@jar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : android.arch.core:common:1.1.1@jar
-                            javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
-                        javaLibrary                   : com.google.code.gson:gson:2.2.4@jar
-                        javaLibrary                   : commons-io:commons-io:2.4@jar
-                        javaLibrary                   : __local_aars__:<ROOT>/library2/libs/fakelib.jar:unspecified@jar
-                        module                        : <ROOT>-:library1-MAIN
-                            androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
-                            javaLibrary                   : commons-io:commons-io:2.4@jar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                        androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                            javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                            javaLibrary                   : android.arch.core:common:1.1.1@jar
+                            androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                ProvidedDependencies
+                    - provided                    : ./library2/libs/fakelib.jar
                 IsSigned                      : false
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
@@ -3902,7 +3844,7 @@ MODULE                        : project.library2
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/library2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/library2/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/library2/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/library2/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath

@@ -698,9 +698,6 @@ MODULE                        : project
                         benchmarkRuntimeClasspath     : <empty>
                         benchmarkRuntimeElements      : <empty>
                         benchmarkRuntimeOnly          : <empty>
-                        benchmarkUnitTestAnnotationProcessorClasspath     : <empty>
-                        benchmarkUnitTestCompileClasspath       : <empty>
-                        benchmarkUnitTestRuntimeClasspath       : <empty>
                         compileOnly                   : <empty>
                         compileOnlyApi                : <empty>
                         coreLibraryDesugaring         : <empty>
@@ -738,9 +735,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
                         runtimeOnly                   : <empty>
                         testAnnotationProcessor       : <empty>
                         testBenchmarkAnnotationProcessor        : <empty>
@@ -784,12 +778,8 @@ MODULE                        : project
                         testRuntimeOnly               : <empty>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        testBenchmarkUnitTest         : testBenchmarkUnitTest (DefaultExternalTask)
-                            qName                         : :app:testBenchmarkUnitTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :app:testReleaseUnitTest
             benchmark                     : :benchmark (DefaultExternalProject)
                 path                          : :benchmark [-]
                 identityPath                  : :benchmark [-]
@@ -817,6 +807,7 @@ MODULE                        : project
                         _internal-unified-test-platform-android-test-plugin-result-listener-gradle      : <empty>
                         _internal-unified-test-platform-core    : <empty>
                         _internal-unified-test-platform-launcher          : <empty>
+                        androidApis                   : <empty>
                         androidJdkImage               : <empty>
                         androidTestUtil               : <empty>
                         annotationProcessor           : <empty>
@@ -875,6 +866,7 @@ MODULE                        : project
                         _internal-unified-test-platform-android-test-plugin-result-listener-gradle      : <empty>
                         _internal-unified-test-platform-core    : <empty>
                         _internal-unified-test-platform-launcher          : <empty>
+                        androidApis                   : <empty>
                         androidJdkImage               : <empty>
                         androidTestUtil               : <empty>
                         annotationProcessor           : <empty>
@@ -927,6 +919,7 @@ MODULE                        : project
                         _internal-unified-test-platform-android-test-plugin-result-listener-gradle      : <empty>
                         _internal-unified-test-platform-core    : <empty>
                         _internal-unified-test-platform-launcher          : <empty>
+                        androidApis                   : <empty>
                         androidJdkImage               : <empty>
                         androidTestUtil               : <empty>
                         annotationProcessor           : <empty>
@@ -955,12 +948,8 @@ MODULE                        : project
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                testBenchmarkUnitTest         : testBenchmarkUnitTest (DefaultExternalTask)
-                    qName                         : :app:testBenchmarkUnitTest
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
-                testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                    qName                         : :app:testReleaseUnitTest
 MODULE                        : project.app
     GradleModuleModel
         agpVersion                    : <AGP_VERSION>
@@ -1165,20 +1154,6 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/app/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/kotlin [-]
-                    ResourcesDirectories          : <ROOT>/app/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/app/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
         BuildType
             Name                          : benchmark
             IsDebuggable                  : false
@@ -1199,20 +1174,6 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/benchmark/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/benchmark/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/benchmark/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testBenchmark
-                    Manifest                      : <ROOT>/app/src/testBenchmark/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/app/src/testBenchmark/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testBenchmark/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testBenchmark/kotlin [-]
-                    ResourcesDirectories          : <ROOT>/app/src/testBenchmark/resources [-]
-                    ResDirectories                : <ROOT>/app/src/testBenchmark/res [-]
-                    AssetsDirectories             : <ROOT>/app/src/testBenchmark/assets [-]
-                    JniLibsDirectories            : <ROOT>/app/src/testBenchmark/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/app/src/testBenchmark/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1266,7 +1227,7 @@ MODULE                        : project.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -1291,7 +1252,7 @@ MODULE                        : project.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -1494,7 +1455,7 @@ MODULE                        : project.benchmark
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateBenchmarkSources
                 GeneratedSourceFolders        : <ROOT>/benchmark/build/generated/ap_generated_sources/benchmark/out [-]
-                ClassesFolder                 : <ROOT>/benchmark/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/benchmark/processBenchmarkResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/benchmark/build/intermediates/compile_r_class_jar/benchmark/generateBenchmarkRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/benchmark/build/intermediates/javac/benchmark/compileBenchmarkJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -1952,7 +1913,7 @@ MODULE                        : project.test
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/test/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/test/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/test/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/test/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath
@@ -2409,7 +2370,7 @@ MODULE                        : project.test2
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/test2/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/test2/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/test2/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/test2/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
                     compileClasspath

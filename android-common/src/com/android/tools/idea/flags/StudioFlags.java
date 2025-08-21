@@ -697,6 +697,14 @@ public final class StudioFlags {
     "Enable automatic stack trace deobfuscation using R8 Retrace",
     "Automatically load a proguard mapping file if the R8 map ID of the stack trace matches the mapping file in the build directory"
   );
+
+  public static final Flag<Long> LOGCAT_AUTO_DEOBFUSCATE_CACHE_TIME_MS = new LongFlag(
+    LOGCAT,
+    "auto.deobfuscate.release.map.sec",
+    "Amount of time in milliseconds before releasing mapping cache",
+    "Amount of time in milliseconds before releasing mapping cache",
+    TimeUnit.MINUTES.toMillis(2)
+  );
   //endregion
 
   //region Project System
@@ -1490,6 +1498,11 @@ public final class StudioFlags {
     "Enables a button to fix with AI UI Check errors showing in the error panel"
     );
 
+  public static final Flag<Boolean> COMPOSE_RENDER_ERROR_FIX_WITH_AI = new BooleanFlag(
+    COMPOSE, "render.error.fix.with.ai", "Enable fix with AI button to fix",
+    "Enables a button to fix with AI render errors related to previews"
+  );
+
   public static final Flag<Boolean> COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI = new BooleanFlag(
     COMPOSE, "transform.ui.with.ai", "Enable action to transform UI with Gemini",
     "Enables a context-menu action to transform UI with Gemini."
@@ -2065,6 +2078,11 @@ public final class StudioFlags {
                     "Enable Stop Button",
                     "When enabled, the query box will show a button to stop ongoing responses.");
 
+  public static final Flag<Boolean> STUDIOBOT_CHAT_MULTIPLE_SESSIONS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.multiple.sessions",
+                    "Enable multiple sessions in gemini window",
+                    "When enabled, allows creating and selecting different sessions for the gemini Chat/Agent window.");
+
   public static final Flag<Boolean> COMMIT_MESSAGE_SUGGESTION =
     new BooleanFlag(STUDIOBOT, "commit.message.suggestion",
                     "Use ML model to suggest commit messages",
@@ -2489,6 +2507,23 @@ public final class StudioFlags {
       "https://developer.android.com/studio/releases#service-compat"
     );
   // endregion deprecation policy
+
+  // region Device Explorer
+  private static final FlagGroup DEVICE_EXPLORER = new FlagGroup(FLAGS, "deviceexplorer", "Device Explorer");
+  public static final Flag<Boolean> CLEAR_APP_DATA_ACTION =
+    new BooleanFlag(
+      DEVICE_EXPLORER,
+      "clear.app.data.action",
+      "Show an action for Clear App Data",
+      "Show an action for Clear App Data");
+  public static final Flag<Boolean> UNINSTALL_APP_ACTION =
+    new BooleanFlag(
+      DEVICE_EXPLORER,
+      "uninstall.app.action",
+      "Show an action for Uninstall App",
+      "Show an action for Uninstall App");
+  // endregion Device Explorer
+
 
   private StudioFlags() { }
 

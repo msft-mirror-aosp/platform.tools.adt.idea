@@ -23,10 +23,18 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.ParallelAndroidTestReportUiEvent
+import com.intellij.execution.impl.ConsoleViewImpl
+import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.editor.LogicalPosition
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.EdtTestUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.ui.UIUtil
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -193,7 +201,7 @@ class DetailsViewContentViewTest {
 
     assertThat(view.myBenchmarkView.text).isEqualTo("test benchmark message\n")
     assertThat(view.myBenchmarkTab.isHidden).isFalse()
-    assertThat(view.lastSelectedTab).isEqualTo(view.myBenchmarkTab)
+    assertThat(view.tabs.selectedInfo).isEqualTo(view.myBenchmarkTab)
   }
 
   @Test
@@ -254,7 +262,77 @@ class DetailsViewContentViewTest {
     assertThat(view.myJourneyScreenshotsTab.isHidden).isFalse()
   }
 
+  @Test
+  fun logsTabIsSelectedWhenErrorProvidedAndUserHasNotYetSelectedATab() {
+    val view = DetailsViewContentView(disposableRule.disposable, projectRule.project, mockLogger)
+
+    view.setLogcat("This is a test\n")
+    view.setErrorStackTrace("error stack trace")
+
+    assertThat(view.tabs.selectedInfo).isEqualTo(view.logsTab)
+  }
+
+  @Test
+  fun logsAreAutomaticallyScrolledToTheEnd() {
+    val view = DetailsViewContentView(disposableRule.disposable, projectRule.project, mockLogger)
+
+    view.setLogcat("This is a test\n".repeat(100))
+    view.setErrorStackTrace("error stack trace")
+
+    view.myLogsView.waitAllRequests()
+
+    assertThat(view.myLogsView.editor!!.caretModel.logicalPosition.line).isEqualTo(
+      view.myLogsView.editor!!.document.lineCount - 1)
+  }
+
+  @Test
+  fun logsTabIsNotSelectedWhenErrorProvidedAndUserHasAlreadySelectedADifferentTab() {
+    val view = DetailsViewContentView(disposableRule.disposable, projectRule.project, mockLogger)
+    view.tabs.select(view.myDeviceInfoTab, false)
+
+    view.refreshLogsView()
+    view.setErrorStackTrace("error stack trace")
+
+    assertThat(view.tabs.selectedInfo).isEqualTo(view.myDeviceInfoTab)
+  }
+
+  @Test
+  fun journeysTabIsSelectedByDefaultWhenUserHasntSelectedATabYet() {
+    val view = DetailsViewContentView(disposableRule.disposable, projectRule.project, mockLogger)
+
+    view.setAdditionalTestArtifacts(mapOf(
+      "Journeys.ActionPerformed.action1.screenshotPath" to "/path/to/screenshot.png",
+      "Journeys.ActionPerformed.action1.description" to "The action taken",
+      "Journeys.ActionPerformed.action1.modelReasoning" to "The reasoning behind the action"
+    ))
+    view.setLogcat("test logcat message")
+    view.setErrorStackTrace("error stack trace") // The Journeys tab should be selected even though there is an error stack trace
+
+    assertThat(view.tabs.selectedInfo).isEqualTo(view.myJourneyScreenshotsTab)
+  }
+
   private fun device(id: String, name: String): AndroidDevice {
     return AndroidDevice(id, name, name, AndroidDeviceType.LOCAL_EMULATOR, AndroidVersion(29))
+  }
+
+  @Test
+  fun `minimal console view test`() {
+    runInEdtAndWait {
+      // 1. Create a plain console view
+      val console = ConsoleViewImpl(projectRule.project, true)
+      Disposer.register(disposableRule.disposable, console)
+
+      // Force the lazy initialization of the internal editor.
+      console.component
+
+      // 2. Print directly to it
+      console.clear()
+      console.print("Hello, World!", ConsoleViewContentType.NORMAL_OUTPUT)
+
+      console.waitAllRequests()
+
+      // 4. Assert
+      assertThat(console.editor!!.document.text).isEqualTo("Hello, World!")
+    }
   }
 }

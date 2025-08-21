@@ -983,7 +983,6 @@ MODULE                        : project
                         kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
                         kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                         kotlinCompilerPluginClasspathRelease    : <empty>
-                        kotlinCompilerPluginClasspathReleaseUnitTest      : <empty>
                         kotlinInternalAbiValidation   : <empty>
                         kotlinKlibCommonizerClasspath : <empty>
                         kotlinNativeCompilerPluginClasspath     : <empty>
@@ -1013,21 +1012,6 @@ MODULE                        : project
                         releaseRuntimeOnly            : <empty>
                         - releaseSourcesElements      : <ROOT>/ads-sdk-implementation/build/libs/ads-sdk-implementation-sources.jar [-]
                         - releaseSourcesElements-published      : <ROOT>/ads-sdk-implementation/build/libs/ads-sdk-implementation-sources.jar [-]
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestApi            : <empty>
-                        releaseUnitTestApiDependenciesMetadata  : <empty>
-                        releaseUnitTestCompilationApi : <empty>
-                        releaseUnitTestCompilationCompileOnly   : <empty>
-                        releaseUnitTestCompilationImplementation          : <empty>
-                        releaseUnitTestCompilationRuntimeOnly   : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestCompileOnly    : <empty>
-                        releaseUnitTestCompileOnlyDependenciesMetadata    : <empty>
-                        releaseUnitTestImplementation : <empty>
-                        releaseUnitTestImplementationDependenciesMetadata : <empty>
-                        releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseUnitTestRuntimeOnly    : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1092,8 +1076,6 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :ads-sdk-implementation:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :ads-sdk-implementation:testReleaseUnitTest
             app                           : :app (DefaultExternalProject)
                 path                          : :app [-]
                 identityPath                  : :app [-]
@@ -1221,7 +1203,6 @@ MODULE                        : project
                         kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
                         kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                         kotlinCompilerPluginClasspathRelease    : <empty>
-                        kotlinCompilerPluginClasspathReleaseUnitTest      : <empty>
                         kotlinInternalAbiValidation   : <empty>
                         kotlinKlibCommonizerClasspath : <empty>
                         kotlinNativeCompilerPluginClasspath     : <empty>
@@ -1247,21 +1228,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestApi            : <empty>
-                        releaseUnitTestApiDependenciesMetadata  : <empty>
-                        releaseUnitTestCompilationApi : <empty>
-                        releaseUnitTestCompilationCompileOnly   : <empty>
-                        releaseUnitTestCompilationImplementation          : <empty>
-                        releaseUnitTestCompilationRuntimeOnly   : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestCompileOnly    : <empty>
-                        releaseUnitTestCompileOnlyDependenciesMetadata    : <empty>
-                        releaseUnitTestImplementation : <empty>
-                        releaseUnitTestImplementationDependenciesMetadata : <empty>
-                        releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseUnitTestRuntimeOnly    : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1326,8 +1292,6 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :app:testReleaseUnitTest
             app-with-dynamic-feature      : :app-with-dynamic-feature (DefaultExternalProject)
                 path                          : :app-with-dynamic-feature [-]
                 identityPath                  : :app-with-dynamic-feature [-]
@@ -1455,7 +1419,6 @@ MODULE                        : project
                         kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
                         kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                         kotlinCompilerPluginClasspathRelease    : <empty>
-                        kotlinCompilerPluginClasspathReleaseUnitTest      : <empty>
                         kotlinInternalAbiValidation   : <empty>
                         kotlinKlibCommonizerClasspath : <empty>
                         kotlinNativeCompilerPluginClasspath     : <empty>
@@ -1481,21 +1444,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestApi            : <empty>
-                        releaseUnitTestApiDependenciesMetadata  : <empty>
-                        releaseUnitTestCompilationApi : <empty>
-                        releaseUnitTestCompilationCompileOnly   : <empty>
-                        releaseUnitTestCompilationImplementation          : <empty>
-                        releaseUnitTestCompilationRuntimeOnly   : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestCompileOnly    : <empty>
-                        releaseUnitTestCompileOnlyDependenciesMetadata    : <empty>
-                        releaseUnitTestImplementation : <empty>
-                        releaseUnitTestImplementationDependenciesMetadata : <empty>
-                        releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseUnitTestRuntimeOnly    : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1560,8 +1508,6 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app-with-dynamic-feature:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :app-with-dynamic-feature:testReleaseUnitTest
             feature                       : :feature (DefaultExternalProject)
                 path                          : :feature [-]
                 identityPath                  : :feature [-]
@@ -1689,7 +1635,6 @@ MODULE                        : project
                         kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
                         kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                         kotlinCompilerPluginClasspathRelease    : <empty>
-                        kotlinCompilerPluginClasspathReleaseUnitTest      : <empty>
                         kotlinInternalAbiValidation   : <empty>
                         kotlinKlibCommonizerClasspath : <empty>
                         kotlinNativeCompilerPluginClasspath     : <empty>
@@ -1715,21 +1660,6 @@ MODULE                        : project
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestApi            : <empty>
-                        releaseUnitTestApiDependenciesMetadata  : <empty>
-                        releaseUnitTestCompilationApi : <empty>
-                        releaseUnitTestCompilationCompileOnly   : <empty>
-                        releaseUnitTestCompilationImplementation          : <empty>
-                        releaseUnitTestCompilationRuntimeOnly   : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestCompileOnly    : <empty>
-                        releaseUnitTestCompileOnlyDependenciesMetadata    : <empty>
-                        releaseUnitTestImplementation : <empty>
-                        releaseUnitTestImplementationDependenciesMetadata : <empty>
-                        releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseUnitTestRuntimeOnly    : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1794,15 +1724,11 @@ MODULE                        : project
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :feature:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :feature:testReleaseUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :ads-sdk-implementation:testDebugUnitTest
-                testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                    qName                         : :ads-sdk-implementation:testReleaseUnitTest
 MODULE                        : project.ads-sdk
     GradleModuleModel
         gradlePath                    : :ads-sdk
@@ -2009,20 +1935,6 @@ MODULE                        : project.ads-sdk-implementation
             AssetsDirectories             : <ROOT>/ads-sdk-implementation/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/ads-sdk-implementation/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/ads-sdk-implementation/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/ads-sdk-implementation/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/ads-sdk-implementation/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/ads-sdk-implementation/src/testRelease/kotlin [-]
-                    KotlinDirectories             : <ROOT>/ads-sdk-implementation/src/testRelease/java [-]
-                    ResourcesDirectories          : <ROOT>/ads-sdk-implementation/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/ads-sdk-implementation/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/ads-sdk-implementation/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/ads-sdk-implementation/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/ads-sdk-implementation/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2084,21 +1996,21 @@ MODULE                        : project.ads-sdk-implementation
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
+                        unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-core|1.6.3|org.gradle.category>library, org.gradle.libraryelements>jar, org.gradle.status>release, org.gradle.usage>java-api, org.jetbrains.kotlin.platform.type>jvm|org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.3
+                            javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.3@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.3@jar
                             unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-bom|1.6.3|org.gradle.category>platform, org.gradle.status>release, org.gradle.usage>java-api|org.jetbrains.kotlinx:kotlinx-coroutines-bom-derived-platform:1.6.3
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION>@jar
                             unknown                       : org.jetbrains.kotlin|kotlin-stdlib-common|<KOTLIN_VERSION>|org.gradle.category>library, org.gradle.status>release|org.jetbrains.kotlin:kotlin-stdlib-common:<KOTLIN_VERSION>
+                        unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-bom|1.6.3|org.gradle.category>platform, org.gradle.status>release, org.gradle.usage>java-api|org.jetbrains.kotlinx:kotlinx-coroutines-bom-derived-platform:1.6.3
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk8:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>@jar
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>@jar
-                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-core|1.6.3|org.gradle.category>library, org.gradle.libraryelements>jar, org.gradle.status>release, org.gradle.usage>java-api, org.jetbrains.kotlin.platform.type>jvm|org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.3
-                            javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.3@jar
-                        unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-bom|1.6.3|org.gradle.category>platform, org.gradle.status>release, org.gradle.usage>java-api|org.jetbrains.kotlinx:kotlinx-coroutines-bom-derived-platform:1.6.3
                         unknown                       : org.jetbrains.kotlin|kotlin-stdlib-common|<KOTLIN_VERSION>|org.gradle.category>library, org.gradle.status>release|org.jetbrains.kotlin:kotlin-stdlib-common:<KOTLIN_VERSION>
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 IsSigned                      : false
                 CodeShrinker                  : null
@@ -2113,7 +2025,7 @@ MODULE                        : project.ads-sdk-implementation
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/ads-sdk-implementation/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/ads-sdk-implementation/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/ads-sdk-implementation/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/ads-sdk-implementation/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/ads-sdk-implementation/build/tmp/kotlin-classes/debugAndroidTest [-]
                 Dependencies
@@ -2516,20 +2428,6 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/app/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/kotlin [-]
-                    KotlinDirectories             : <ROOT>/app/src/testRelease/java [-]
-                    ResourcesDirectories          : <ROOT>/app/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/app/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/app/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2577,7 +2475,7 @@ MODULE                        : project.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/tmp/kotlin-classes/debug [-]
                 Dependencies
@@ -2594,11 +2492,11 @@ MODULE                        : project.app
                         androidLibrary                : androidx.core:core:1.7.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
                         androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
@@ -2609,7 +2507,7 @@ MODULE                        : project.app
                         androidLibrary                : androidx.activity:activity:1.2.4@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                             androidLibrary                : androidx.savedstate:savedstate:1.1.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.1@aar
@@ -2623,7 +2521,7 @@ MODULE                        : project.app
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.fragment:fragment:1.3.6@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
@@ -2649,10 +2547,10 @@ MODULE                        : project.app
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
-                            androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
-                        androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                         androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
@@ -2682,7 +2580,7 @@ MODULE                        : project.app
                         androidLibrary                : androidx.test:core:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.test:monitor:1.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.test:monitor:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -2690,7 +2588,7 @@ MODULE                        : project.app
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : __local_asars__:<ROOT>/ads-sdk/build/intermediates/stub_jar/single/privacySandboxClassesJarStubs/sdk-interface-descriptors.jar:unspecified@jar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
@@ -2857,14 +2755,21 @@ MODULE                        : project.app
                         javaLibrary                   : junit:junit:4.12@jar
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                ProvidedDependencies
+                    - provided                    : androidx.arch.core:core-runtime:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-common:2.3.1
+                    - provided                    : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                 RuntimeOnlyClasses
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.1.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/libs/repackaged.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-views-helper-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-process-2.4.0/jars/classes.jar
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-runtime-2.4.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/startup-runtime-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/tracing-1.0.0/jars/classes.jar
                     - class                       : <M2>/androidx/concurrent/concurrent-futures/1.0.0/concurrent-futures-1.0.0.jar
+                    - class                       : <M2>/androidx/lifecycle/lifecycle-common/2.4.0/lifecycle-common-2.4.0.jar
                     - class                       : <M2>/androidx/resourceinspection/resourceinspection-annotation/1.0.0/resourceinspection-annotation-1.0.0.jar
                     - class                       : <M2>/com/google/guava/listenablefuture/1.0/listenablefuture-1.0.jar
                 ApplicationId                 : com.example.rubidumconsumer
@@ -2887,7 +2792,7 @@ MODULE                        : project.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/tmp/kotlin-classes/debugAndroidTest [-]
                 Dependencies
@@ -3134,11 +3039,11 @@ MODULE                        : project.app
                         androidLibrary                : androidx.core:core:1.7.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
                         androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
@@ -3149,7 +3054,7 @@ MODULE                        : project.app
                         androidLibrary                : androidx.activity:activity:1.2.4@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                             androidLibrary                : androidx.savedstate:savedstate:1.1.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.1@aar
@@ -3163,7 +3068,7 @@ MODULE                        : project.app
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.fragment:fragment:1.3.6@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
@@ -3189,10 +3094,10 @@ MODULE                        : project.app
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
-                            androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
-                        androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                         androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
@@ -3222,7 +3127,7 @@ MODULE                        : project.app
                         androidLibrary                : androidx.test:core:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.test:monitor:1.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.test:monitor:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -3230,7 +3135,7 @@ MODULE                        : project.app
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : __local_asars__:<ROOT>/ads-sdk/build/intermediates/stub_jar/single/privacySandboxClassesJarStubs/sdk-interface-descriptors.jar:unspecified@jar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
@@ -3404,14 +3309,21 @@ MODULE                        : project.app
                             javaLibrary                   : __local_asars__:<ROOT>/ads-sdk/build/intermediates/stub_jar/single/privacySandboxClassesJarStubs/sdk-interface-descriptors.jar:unspecified@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.4.1@aar
                             androidLibrary                : androidx.test.ext:junit:1.1.3@aar
+                ProvidedDependencies
+                    - provided                    : androidx.arch.core:core-runtime:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-common:2.3.1
+                    - provided                    : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                 RuntimeOnlyClasses
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.1.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/libs/repackaged.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-views-helper-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-process-2.4.0/jars/classes.jar
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-runtime-2.4.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/startup-runtime-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/tracing-1.0.0/jars/classes.jar
                     - class                       : <M2>/androidx/concurrent/concurrent-futures/1.0.0/concurrent-futures-1.0.0.jar
+                    - class                       : <M2>/androidx/lifecycle/lifecycle-common/2.4.0/lifecycle-common-2.4.0.jar
                     - class                       : <M2>/androidx/resourceinspection/resourceinspection-annotation/1.0.0/resourceinspection-annotation-1.0.0.jar
                     - class                       : <M2>/com/google/guava/listenablefuture/1.0/listenablefuture-1.0.jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
@@ -3700,20 +3612,6 @@ MODULE                        : project.app-with-dynamic-feature
             AssetsDirectories             : <ROOT>/app-with-dynamic-feature/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app-with-dynamic-feature/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app-with-dynamic-feature/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/app-with-dynamic-feature/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/app-with-dynamic-feature/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/app-with-dynamic-feature/src/testRelease/kotlin [-]
-                    KotlinDirectories             : <ROOT>/app-with-dynamic-feature/src/testRelease/java [-]
-                    ResourcesDirectories          : <ROOT>/app-with-dynamic-feature/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/app-with-dynamic-feature/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/app-with-dynamic-feature/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/app-with-dynamic-feature/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/app-with-dynamic-feature/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -3761,7 +3659,7 @@ MODULE                        : project.app-with-dynamic-feature
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/tmp/kotlin-classes/debug [-]
                 Dependencies
@@ -3778,11 +3676,11 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.core:core:1.7.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
                         androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
@@ -3793,7 +3691,7 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.activity:activity:1.2.4@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                             androidLibrary                : androidx.savedstate:savedstate:1.1.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.1@aar
@@ -3807,7 +3705,7 @@ MODULE                        : project.app-with-dynamic-feature
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.fragment:fragment:1.3.6@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
@@ -3833,10 +3731,10 @@ MODULE                        : project.app-with-dynamic-feature
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
-                            androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
-                        androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                         androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
@@ -3866,7 +3764,7 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.test:core:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.test:monitor:1.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.test:monitor:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -3874,7 +3772,7 @@ MODULE                        : project.app-with-dynamic-feature
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : __local_asars__:<ROOT>/ads-sdk/build/intermediates/stub_jar/single/privacySandboxClassesJarStubs/sdk-interface-descriptors.jar:unspecified@jar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
@@ -4041,14 +3939,21 @@ MODULE                        : project.app-with-dynamic-feature
                         javaLibrary                   : junit:junit:4.12@jar
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                ProvidedDependencies
+                    - provided                    : androidx.arch.core:core-runtime:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-common:2.3.1
+                    - provided                    : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                 RuntimeOnlyClasses
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.1.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/libs/repackaged.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-views-helper-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-process-2.4.0/jars/classes.jar
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-runtime-2.4.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/startup-runtime-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/tracing-1.0.0/jars/classes.jar
                     - class                       : <M2>/androidx/concurrent/concurrent-futures/1.0.0/concurrent-futures-1.0.0.jar
+                    - class                       : <M2>/androidx/lifecycle/lifecycle-common/2.4.0/lifecycle-common-2.4.0.jar
                     - class                       : <M2>/androidx/resourceinspection/resourceinspection-annotation/1.0.0/resourceinspection-annotation-1.0.0.jar
                     - class                       : <M2>/com/google/guava/listenablefuture/1.0/listenablefuture-1.0.jar
                 ApplicationId                 : com.example.rubidumconsumer
@@ -4071,7 +3976,7 @@ MODULE                        : project.app-with-dynamic-feature
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app-with-dynamic-feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/app-with-dynamic-feature/build/tmp/kotlin-classes/debugAndroidTest [-]
                 Dependencies
@@ -4084,7 +3989,7 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.test:core:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.test:monitor:1.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.test:monitor:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         androidLibrary                : androidx.test:rules:1.3.0@aar
@@ -4122,7 +4027,7 @@ MODULE                        : project.app-with-dynamic-feature
                             androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
                         androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
@@ -4147,7 +4052,7 @@ MODULE                        : project.app-with-dynamic-feature
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.fragment:fragment:1.3.6@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
@@ -4202,7 +4107,7 @@ MODULE                        : project.app-with-dynamic-feature
                             javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1@jar
                         javaLibrary                   : com.squareup:javawriter:2.1.1@jar
@@ -4280,6 +4185,7 @@ MODULE                        : project.app-with-dynamic-feature
                     - provided                    : androidx.drawerlayout:drawerlayout:1.0.0@aar
                     - provided                    : androidx.fragment:fragment:1.3.6@aar
                     - provided                    : androidx.interpolator:interpolator:1.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-common:2.3.1
                     - provided                    : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                     - provided                    : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
                     - provided                    : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
@@ -4293,6 +4199,8 @@ MODULE                        : project.app-with-dynamic-feature
                     - provided                    : androidx.viewpager:viewpager:1.0.0@aar
                     - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                     - provided                    : org.jetbrains:annotations:13.0
+                RuntimeOnlyClasses
+                    - class                       : <M2>/androidx/lifecycle/lifecycle-common/2.4.0/lifecycle-common-2.4.0.jar
                 ApplicationId                 : com.example.rubidumconsumer.test
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -4330,11 +4238,11 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.core:core:1.7.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
                         androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.1.1@aar
@@ -4345,7 +4253,7 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.activity:activity:1.2.4@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.4.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                             androidLibrary                : androidx.savedstate:savedstate:1.1.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel-savedstate:2.3.1@aar
@@ -4359,7 +4267,7 @@ MODULE                        : project.app-with-dynamic-feature
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.fragment:fragment:1.3.6@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.core:core:1.7.0@aar
@@ -4385,10 +4293,10 @@ MODULE                        : project.app-with-dynamic-feature
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.3.1@aar
                         androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
-                            androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.3.1@aar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
-                        androidLibrary                : androidx.arch.core:core-runtime:2.1.0@aar
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                         androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
@@ -4418,7 +4326,7 @@ MODULE                        : project.app-with-dynamic-feature
                         androidLibrary                : androidx.test:core:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                             androidLibrary                : androidx.test:monitor:1.4.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                         androidLibrary                : androidx.test:monitor:1.4.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -4426,7 +4334,7 @@ MODULE                        : project.app-with-dynamic-feature
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : __local_asars__:<ROOT>/ads-sdk/build/intermediates/stub_jar/single/privacySandboxClassesJarStubs/sdk-interface-descriptors.jar:unspecified@jar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.4.0@jar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.3.1@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
                         javaLibrary                   : androidx.arch.core:core-common:2.1.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.3.0@jar
@@ -4600,14 +4508,21 @@ MODULE                        : project.app-with-dynamic-feature
                             javaLibrary                   : __local_asars__:<ROOT>/ads-sdk/build/intermediates/stub_jar/single/privacySandboxClassesJarStubs/sdk-interface-descriptors.jar:unspecified@jar
                             androidLibrary                : androidx.appcompat:appcompat:1.4.1@aar
                             androidLibrary                : androidx.test.ext:junit:1.1.3@aar
+                ProvidedDependencies
+                    - provided                    : androidx.arch.core:core-runtime:2.0.0@aar
+                    - provided                    : androidx.lifecycle:lifecycle-common:2.3.1
+                    - provided                    : androidx.lifecycle:lifecycle-runtime:2.3.1@aar
                 RuntimeOnlyClasses
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.1.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-1.0.0/jars/libs/repackaged.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/emoji2-views-helper-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-process-2.4.0/jars/classes.jar
+                    - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-runtime-2.4.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/startup-runtime-1.0.0/jars/classes.jar
                     - class                       : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/tracing-1.0.0/jars/classes.jar
                     - class                       : <M2>/androidx/concurrent/concurrent-futures/1.0.0/concurrent-futures-1.0.0.jar
+                    - class                       : <M2>/androidx/lifecycle/lifecycle-common/2.4.0/lifecycle-common-2.4.0.jar
                     - class                       : <M2>/androidx/resourceinspection/resourceinspection-annotation/1.0.0/resourceinspection-annotation-1.0.0.jar
                     - class                       : <M2>/com/google/guava/listenablefuture/1.0/listenablefuture-1.0.jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
@@ -4891,20 +4806,6 @@ MODULE                        : project.feature
             AssetsDirectories             : <ROOT>/feature/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/feature/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/feature/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/feature/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/feature/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/feature/src/testRelease/kotlin [-]
-                    KotlinDirectories             : <ROOT>/feature/src/testRelease/java [-]
-                    ResourcesDirectories          : <ROOT>/feature/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/feature/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/feature/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/feature/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/feature/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -4939,7 +4840,7 @@ MODULE                        : project.feature
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/feature/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/feature/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/feature/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/feature/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/feature/build/tmp/kotlin-classes/debug [-]
                 Dependencies
@@ -5168,7 +5069,7 @@ MODULE                        : project.feature
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/feature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/feature/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/feature/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/feature/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/feature/build/tmp/kotlin-classes/debugAndroidTest [-]
                 Dependencies

@@ -746,6 +746,8 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/android-plugin:aiplugin.android-plugin",
             "//tools/vendor/google/ml/aiplugin/android-plugin/descriptor:aiplugin.android-plugin.descriptor",
             "//tools/vendor/google/ml/aiplugin/backends/local:aiplugin.backends.local",
+            "//tools/vendor/google/ml/aiplugin/editor/prediction-services:aiplugin.editor.prediction-services",
+            "//tools/vendor/google/ml/aiplugin/editor/prediction:aiplugin.editor.prediction",
             "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",
             "//tools/vendor/google/ml/aiplugin/mcp/client:aiplugin.mcp.client.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/rag/indexer:aiplugin.rag.indexer",
@@ -1141,8 +1143,6 @@ iml_module(
     ],
     test_srcs = ["integration/intellij.android.studio.integration/testSrc"],
     visibility = ["//visibility:public"],
-    # do not sort: must match IML order
-    deps = ["@intellij//:com.intellij.java"],
 )
 
 iml_test(
@@ -1270,6 +1270,7 @@ iml_module(
         "@intellij//:intellij.platform.clouds",
         "@intellij//:intellij.platform.collaborationTools",
         "@intellij//:intellij.platform.compose",
+        "@intellij//:intellij.platform.compose.markdown",
         "@intellij//:intellij.platform.coverage",
         "@intellij//:intellij.platform.coverage.agent",
         "@intellij//:intellij.platform.debugger.impl.backend",
@@ -1292,6 +1293,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmStrikethrough",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.images",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.kernel.backend",
@@ -1381,6 +1383,7 @@ iml_module(
         "@intellij//:intellij.platform.clouds",
         "@intellij//:intellij.platform.collaborationTools",
         "@intellij//:intellij.platform.compose",
+        "@intellij//:intellij.platform.compose.markdown",
         "@intellij//:intellij.platform.coverage",
         "@intellij//:intellij.platform.coverage.agent",
         "@intellij//:intellij.platform.debugger.impl.backend",
@@ -1403,6 +1406,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmAlerts",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmStrikethrough",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
+        "@intellij//:intellij.platform.jewel.markdown.extensions.images",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.kernel.backend",

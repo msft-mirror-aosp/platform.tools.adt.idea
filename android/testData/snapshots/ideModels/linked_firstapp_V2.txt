@@ -714,7 +714,6 @@ MODULE                        : My_First_App
                                 kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
                                 kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                                 kotlinCompilerPluginClasspathRelease    : <empty>
-                                kotlinCompilerPluginClasspathReleaseUnitTest      : <empty>
                                 kotlinInternalAbiValidation   : <empty>
                                 kotlinKlibCommonizerClasspath : <empty>
                                 kotlinNativeCompilerPluginClasspath     : <empty>
@@ -744,21 +743,6 @@ MODULE                        : My_First_App
                                 releaseRuntimeOnly            : <empty>
                                 - releaseSourcesElements      : <ROOT>/shared/mysharedlibrary/build/libs/mysharedlibrary-sources.jar [-]
                                 - releaseSourcesElements-published      : <ROOT>/shared/mysharedlibrary/build/libs/mysharedlibrary-sources.jar [-]
-                                releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                                releaseUnitTestApi            : <empty>
-                                releaseUnitTestApiDependenciesMetadata  : <empty>
-                                releaseUnitTestCompilationApi : <empty>
-                                releaseUnitTestCompilationCompileOnly   : <empty>
-                                releaseUnitTestCompilationImplementation          : <empty>
-                                releaseUnitTestCompilationRuntimeOnly   : <empty>
-                                releaseUnitTestCompileClasspath         : <empty>
-                                releaseUnitTestCompileOnly    : <empty>
-                                releaseUnitTestCompileOnlyDependenciesMetadata    : <empty>
-                                releaseUnitTestImplementation : <empty>
-                                releaseUnitTestImplementationDependenciesMetadata : <empty>
-                                releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
-                                releaseUnitTestRuntimeClasspath         : <empty>
-                                releaseUnitTestRuntimeOnly    : <empty>
                                 runtimeOnly                   : <empty>
                                 swiftExportClasspath          : <empty>
                                 swiftExportClasspathResolvable          : <empty>
@@ -823,8 +807,6 @@ MODULE                        : My_First_App
                             tasks
                                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                                     qName                         : :app:mysharedlibrary:testDebugUnitTest
-                                testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                                    qName                         : :app:mysharedlibrary:testReleaseUnitTest
                 sourceSetModel                : DefaultGradleSourceSetModel
                     sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
@@ -941,7 +923,6 @@ MODULE                        : My_First_App
                         kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
                         kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                         kotlinCompilerPluginClasspathRelease    : <empty>
-                        kotlinCompilerPluginClasspathReleaseUnitTest      : <empty>
                         kotlinInternalAbiValidation   : <empty>
                         kotlinKlibCommonizerClasspath : <empty>
                         kotlinNativeCompilerPluginClasspath     : <empty>
@@ -967,21 +948,6 @@ MODULE                        : My_First_App
                         releaseRuntimeClasspath       : <empty>
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
-                        releaseUnitTestAnnotationProcessorClasspath       : <empty>
-                        releaseUnitTestApi            : <empty>
-                        releaseUnitTestApiDependenciesMetadata  : <empty>
-                        releaseUnitTestCompilationApi : <empty>
-                        releaseUnitTestCompilationCompileOnly   : <empty>
-                        releaseUnitTestCompilationImplementation          : <empty>
-                        releaseUnitTestCompilationRuntimeOnly   : <empty>
-                        releaseUnitTestCompileClasspath         : <empty>
-                        releaseUnitTestCompileOnly    : <empty>
-                        releaseUnitTestCompileOnlyDependenciesMetadata    : <empty>
-                        releaseUnitTestImplementation : <empty>
-                        releaseUnitTestImplementationDependenciesMetadata : <empty>
-                        releaseUnitTestIntransitiveDependenciesMetadata   : <empty>
-                        releaseUnitTestRuntimeClasspath         : <empty>
-                        releaseUnitTestRuntimeOnly    : <empty>
                         runtimeOnly                   : <empty>
                         swiftExportClasspath          : <empty>
                         swiftExportClasspathResolvable          : <empty>
@@ -1046,15 +1012,11 @@ MODULE                        : My_First_App
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
-                        testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                            qName                         : :app:testReleaseUnitTest
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
-                testReleaseUnitTest           : testReleaseUnitTest (DefaultExternalTask)
-                    qName                         : :app:testReleaseUnitTest
 MODULE                        : My_First_App.app
     GradleModuleModel
         agpVersion                    : <AGP_VERSION>
@@ -1261,20 +1223,6 @@ MODULE                        : My_First_App.app
             AssetsDirectories             : <ROOT>/firstapp/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/firstapp/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/firstapp/app/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/firstapp/app/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/firstapp/app/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/firstapp/app/src/testRelease/kotlin [-]
-                    KotlinDirectories             : <ROOT>/firstapp/app/src/testRelease/java [-]
-                    ResourcesDirectories          : <ROOT>/firstapp/app/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/firstapp/app/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/firstapp/app/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/firstapp/app/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/firstapp/app/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1322,7 +1270,7 @@ MODULE                        : My_First_App.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/firstapp/app/build/generated/ap_generated_sources/debug/out [-]
-                ClassesFolder                 : <ROOT>/firstapp/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debug/processDebugResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/firstapp/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/firstapp/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debug [-]
                 Dependencies
@@ -1598,7 +1546,7 @@ MODULE                        : My_First_App.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/firstapp/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/firstapp/app/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/firstapp/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/firstapp/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/firstapp/app/build/tmp/kotlin-classes/debugAndroidTest [-]
                 Dependencies
@@ -2337,20 +2285,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
             AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/release/baselineProfiles [-]
-        ExtraSourceProviders
-            ExtraSourceProvider
-                ArtifactName                  : _unit_test_
-                SourceProvider
-                    Name                          : testRelease
-                    Manifest                      : <ROOT>/shared/mysharedlibrary/src/testRelease/AndroidManifest.xml [-]
-                    JavaDirectories               : <ROOT>/shared/mysharedlibrary/src/testRelease/java [-]
-                    KotlinDirectories             : <ROOT>/shared/mysharedlibrary/src/testRelease/kotlin [-]
-                    KotlinDirectories             : <ROOT>/shared/mysharedlibrary/src/testRelease/java [-]
-                    ResourcesDirectories          : <ROOT>/shared/mysharedlibrary/src/testRelease/resources [-]
-                    ResDirectories                : <ROOT>/shared/mysharedlibrary/src/testRelease/res [-]
-                    AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/testRelease/assets [-]
-                    JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/testRelease/jniLibs [-]
-                    BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/testRelease/baselineProfiles [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2515,6 +2449,8 @@ MODULE                        : My_First_App.app.mysharedlibrary
                         javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                     runtimeClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.appcompat:appcompat:1.0.2@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                             androidLibrary                : androidx.core:core:1.0.1@aar
@@ -2524,18 +2460,16 @@ MODULE                        : My_First_App.app.mysharedlibrary
                             androidLibrary                : androidx.fragment:fragment:1.0.0@aar
                             androidLibrary                : androidx.vectordrawable:vectordrawable:1.0.1@aar
                             androidLibrary                : androidx.vectordrawable:vectordrawable-animated:1.0.0@aar
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                         androidLibrary                : androidx.core:core:1.0.1@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                             javaLibrary                   : androidx.collection:collection:1.0.0@jar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.0.0@aar
                             androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.0.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.0.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0@jar
-                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
+                        javaLibrary                   : androidx.collection:collection:1.0.0@jar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                            javaLibrary                   : androidx.collection:collection:1.0.0@jar
                         androidLibrary                : androidx.cursoradapter:cursoradapter:1.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                         androidLibrary                : androidx.legacy:legacy-support-core-utils:1.0.0@aar
@@ -2545,30 +2479,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
                             androidLibrary                : androidx.loader:loader:1.0.0@aar
                             androidLibrary                : androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar
                             androidLibrary                : androidx.print:print:1.0.0@aar
-                        androidLibrary                : androidx.documentfile:documentfile:1.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        androidLibrary                : androidx.loader:loader:1.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                            androidLibrary                : androidx.core:core:1.0.1@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
-                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
-                            androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar
-                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
-                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
-                        androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar
-                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0@jar
-                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
-                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
-                        androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        androidLibrary                : androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        androidLibrary                : androidx.print:print:1.0.0@aar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                         androidLibrary                : androidx.fragment:fragment:1.0.0@aar
                             androidLibrary                : androidx.core:core:1.0.1@aar
                             androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
@@ -2576,6 +2486,31 @@ MODULE                        : My_First_App.app.mysharedlibrary
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                             androidLibrary                : androidx.loader:loader:1.0.0@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar
+                        androidLibrary                : androidx.vectordrawable:vectordrawable:1.0.1@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                            androidLibrary                : androidx.core:core:1.0.1@aar
+                        androidLibrary                : androidx.vectordrawable:vectordrawable-animated:1.0.0@aar
+                            androidLibrary                : androidx.vectordrawable:vectordrawable:1.0.1@aar
+                            androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.0.0@aar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0@jar
+                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                        androidLibrary                : androidx.versionedparcelable:versionedparcelable:1.0.0@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                            javaLibrary                   : androidx.collection:collection:1.0.0@jar
+                        androidLibrary                : androidx.documentfile:documentfile:1.0.0@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                        androidLibrary                : androidx.loader:loader:1.0.0@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                            androidLibrary                : androidx.core:core:1.0.1@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar
+                        androidLibrary                : androidx.localbroadcastmanager:localbroadcastmanager:1.0.0@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                        androidLibrary                : androidx.print:print:1.0.0@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                         androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                             androidLibrary                : androidx.core:core:1.0.1@aar
@@ -2589,6 +2524,16 @@ MODULE                        : My_First_App.app.mysharedlibrary
                             androidLibrary                : androidx.swiperefreshlayout:swiperefreshlayout:1.0.0@aar
                             androidLibrary                : androidx.asynclayoutinflater:asynclayoutinflater:1.0.0@aar
                             androidLibrary                : androidx.cursoradapter:cursoradapter:1.0.0@aar
+                        androidLibrary                : androidx.lifecycle:lifecycle-viewmodel:2.0.0@aar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0@jar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                        javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
+                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.0.0@aar
+                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
+                            androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar
+                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
                         androidLibrary                : androidx.customview:customview:1.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                             androidLibrary                : androidx.core:core:1.0.1@aar
@@ -2617,24 +2562,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
                         androidLibrary                : androidx.asynclayoutinflater:asynclayoutinflater:1.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
                             androidLibrary                : androidx.core:core:1.0.1@aar
-                        androidLibrary                : androidx.vectordrawable:vectordrawable:1.0.1@aar
+                        androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                            androidLibrary                : androidx.core:core:1.0.1@aar
-                        androidLibrary                : androidx.vectordrawable:vectordrawable-animated:1.0.0@aar
-                            androidLibrary                : androidx.vectordrawable:vectordrawable:1.0.1@aar
-                            androidLibrary                : androidx.legacy:legacy-support-core-ui:1.0.0@aar
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib-jdk7:<KOTLIN_VERSION>@jar
-                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        javaLibrary                   : androidx.collection:collection:1.0.0@jar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0@jar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
-                        javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
-                            javaLibrary                   : androidx.annotation:annotation:1.0.0@jar
+                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
+                        androidLibrary                : androidx.lifecycle:lifecycle-livedata-core:2.0.0@aar
+                            javaLibrary                   : androidx.lifecycle:lifecycle-common:2.0.0@jar
+                            javaLibrary                   : androidx.arch.core:core-common:2.0.0@jar
+                            androidLibrary                : androidx.arch.core:core-runtime:2.0.0@aar
                 IsSigned                      : false
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
@@ -2648,7 +2582,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/shared/mysharedlibrary/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-                ClassesFolder                 : <ROOT>/shared/mysharedlibrary/build/intermediates/compile_and_runtime_not_namespaced_r_class_jar/debugAndroidTest/processDebugAndroidTestResources/R.jar [-]
+                ClassesFolder                 : <ROOT>/shared/mysharedlibrary/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 ClassesFolder                 : <ROOT>/shared/mysharedlibrary/build/tmp/kotlin-classes/debugAndroidTest [-]
                 Dependencies

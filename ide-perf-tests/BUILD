@@ -133,6 +133,7 @@ maven_repository(
         "@maven//:androidx.appcompat.appcompat_1.0.2",
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.benchmark.benchmark-gradle-plugin_1.2.4",
+        "@maven//:androidx.collection.collection_1.4.0",
         "@maven//:androidx.compose.compiler.compiler_1.2.0",
         "@maven//:androidx.compose.ui.ui-test-junit4_1.2.0",
         "@maven//:androidx.compose.ui.ui-tooling_1.2.0",
@@ -200,7 +201,7 @@ maven_repository(
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.jdeferred.jdeferred-android-aar_1.2.3",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.0.21",
-        "@maven//:org.jetbrains.kotlin.plugin.parcelize.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin_2.2.20-Beta1",  # Used by com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest
+        "@maven//:org.jetbrains.kotlin.plugin.parcelize.org.jetbrains.kotlin.plugin.parcelize.gradle.plugin_2.2.20-RC",  # Used by com.android.tools.idea.benchmarks.tests.JetNewsBenchmarkTest
         "@maven//:org.mockito.mockito-core_5.12.0",
     ],
 )

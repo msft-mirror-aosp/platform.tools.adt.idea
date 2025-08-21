@@ -6,20 +6,20 @@ plugins {
 kotlin {
   androidLibrary {
     withJava()
-    withAndroidTestOnJvmBuilder {
+    withHostTestBuilder {
       compilationName = "unitTest"
       defaultSourceSetName = "androidUnitTest"
     }.configure {
       isIncludeAndroidResources = true
     }
 
-    withAndroidTestOnDeviceBuilder {
+    withDeviceTestBuilder {
       sourceSetTreeName = "test"
       compilationName = "instrumentedTest"
       defaultSourceSetName = "androidInstrumentedTest"
     }
 
-    compilations.withType(com.android.build.api.dsl.KotlinMultiplatformAndroidTestOnDeviceCompilation::class.java) {
+    compilations.withType(com.android.build.api.dsl.KotlinMultiplatformAndroidDeviceTestCompilation::class.java) {
       instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -27,10 +27,14 @@ kotlin {
     compileSdk = 33
     minSdk = 22
 
-    dependencyVariantSelection {
-      buildTypes.add("debug")
-      productFlavors.put("type", mutableListOf("typeone"))
-      productFlavors.put("mode", mutableListOf("modetwo"))
+    localDependencySelection {
+      selectBuildTypeFrom.add("debug")
+      productFlavorDimension("type") {
+        selectFrom.set(listOf("typeone"))
+      }
+      productFlavorDimension("mode") {
+        selectFrom.set(listOf("modetwo"))
+      }
     }
 
     aarMetadata.minAgpVersion = "7.2.0"
