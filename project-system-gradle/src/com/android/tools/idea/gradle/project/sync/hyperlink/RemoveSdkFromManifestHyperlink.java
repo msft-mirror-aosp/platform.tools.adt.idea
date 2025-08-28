@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.gradle.project.sync.hyperlink;
 
+import static com.android.tools.idea.gradle.dsl.model.android.AndroidModelUtilsKt.android;
+
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
@@ -49,7 +51,7 @@ public class RemoveSdkFromManifestHyperlink extends SyncIssueNotificationHyperli
     for (Module module : modules) {
       GradleBuildModel buildModel = projectBuildModel.getModuleBuildModel(module);
       if (buildModel != null) {
-        ResolvedPropertyModel propertyInBuildFile = property.getBuildFileFunction().apply(buildModel.android().defaultConfig());
+        ResolvedPropertyModel propertyInBuildFile = property.getBuildFileFunction().apply(android(buildModel).defaultConfig());
         if (propertyInBuildFile.getValueType() == NONE) {
           // property is not in build file.
           return String.format("Move %s to build file%s and sync project", property.getPropertyName(), modules.size() > 1 ? "s" : "");

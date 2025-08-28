@@ -17,8 +17,6 @@ package com.android.tools.idea.gradle.dsl.model
 
 import com.android.tools.idea.gradle.dsl.api.BuildScriptModel
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
-import com.android.tools.idea.gradle.dsl.api.android.AndroidDeclarativeModel
-import com.android.tools.idea.gradle.dsl.api.android.AndroidModel
 import com.android.tools.idea.gradle.dsl.api.configurations.ConfigurationsModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel
@@ -26,8 +24,6 @@ import com.android.tools.idea.gradle.dsl.api.java.JavaModel
 import com.android.tools.idea.gradle.dsl.api.kotlin.KotlinModel
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel
 import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel
-import com.android.tools.idea.gradle.dsl.model.android.AndroidDeclarativeModelImpl
-import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl
 import com.android.tools.idea.gradle.dsl.model.build.BuildScriptModelImpl
 import com.android.tools.idea.gradle.dsl.model.build.EmptyBuildScriptModel
 import com.android.tools.idea.gradle.dsl.model.configurations.ConfigurationsModelImpl
@@ -75,14 +71,13 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
 
   override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> {
     return when (kind) {
-      DECLARATIVE -> DECLARATIVE_ROOT_ELEMENTS_MAP
+      DECLARATIVE -> mapOf()
       else -> DEFAULT_ROOT_ELEMENTS_MAP
     }
   }
 
   companion object {
     private val DEFAULT_ROOT_ELEMENTS_MAP = mapOf(
-      "android" to AndroidDslElement.ANDROID,
       "buildscript" to BuildScriptDslElement.BUILDSCRIPT,
       "configurations" to ConfigurationsDslElement.CONFIGURATIONS,
       "dependencies" to DependenciesDslElement.DEPENDENCIES,
@@ -93,26 +88,7 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
       "subprojects" to SubProjectsDslElement.SUBPROJECTS,
       "plugins" to PluginsDslElement.PLUGINS)
 
-    private val DECLARATIVE_ROOT_ELEMENTS_MAP = mapOf(
-      "androidApp" to AndroidDslElement.ANDROID_APP,
-      "androidLibrary" to AndroidDslElement.ANDROID_LIBRARY
-    )
-
-    private fun declarativeBuilder(file: GradleBuildFile): AndroidDeclarativeModel {
-      file.getPropertyElement(AndroidDslElement.ANDROID_APP)?.let { element ->
-        return AndroidDeclarativeModelImpl(element)
-      }
-      file.getPropertyElement(AndroidDslElement.ANDROID_LIBRARY)?.let { element ->
-        return AndroidDeclarativeModelImpl(element)
-      }
-      // TODO throw exception for now but need to create add element mechanism
-      throw IllegalStateException("Cannot create android[App|Library] dsl element")
-    }
-
     private val DEFAULT_ROOT_AVAILABLE_MODELS = listOf<BlockModelBuilder<*, GradleBuildFile>>(
-      AndroidModel::class.java from {
-        AndroidModelImpl(it.ensurePropertyElement(AndroidDslElement.ANDROID))
-      },
       BuildScriptModel::class.java from {
         BuildScriptModelImpl(it.ensurePropertyElementAt(BuildScriptDslElement.BUILDSCRIPT, 0))
       },
@@ -154,7 +130,6 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
     )
 
     private val DECLARATIVE_ROOT_AVAILABLE_MODELS = listOf<BlockModelBuilder<*, GradleBuildFile>>(
-      AndroidDeclarativeModel::class.java from { declarativeBuilder(it) },
       BuildScriptModel::class.java from { EmptyBuildScriptModel() },
       ConfigurationsModel::class.java from { EmptyConfigurationsModelImpl() },
       DependenciesModel::class.java from { EmptyDependenciesModelImpl() },
