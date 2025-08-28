@@ -13,6 +13,24 @@ package(
 )
 
 app_icon(
+    name = "stable-icon",
+    icns = "stable/studio.icns",
+    ico = "stable/studio.ico",
+    png = "stable/studio.png",
+    svg = "stable/studio.svg",
+    svg_small = "stable/studio-small.svg",
+)
+
+app_icon(
+    name = "preview-icon",
+    icns = "preview/studio.icns",
+    ico = "preview/studio.ico",
+    png = "preview/studio.png",
+    svg = "preview/studio.svg",
+    svg_small = "preview/studio-small.svg",
+)
+
+app_icon(
     name = "nightly-icon",
     icns = "nightly/studio.icns",
     ico = "nightly/studio.ico",
@@ -222,6 +240,7 @@ studio_plugin(
             "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector.gradle",
             "//tools/adt/idea/layout-ui:intellij.android.layout-ui",
             "//tools/adt/idea/logcat:intellij.android.logcat",
+            "//tools/vendor/google/login:google-login",
             "//tools/adt/idea/mlkit:intellij.android.mlkit",
             "//tools/adt/idea/nav/safeargs:intellij.android.nav.safeargs",
             "//tools/adt/idea/nav/safeargs/common:intellij.android.nav.safeargs.common",
@@ -379,9 +398,6 @@ studio_plugin(
         ],
         "memory-usage.jar": [
             "//tools/adt/idea/memory-usage",
-        ],
-        "google-login.jar": [
-            "//tools/studio/google/cloud/tools/google-login-plugin:google-login-as",
         ],
     },
     resources = {
@@ -736,6 +752,7 @@ studio_plugin(
         "aiplugin.jar": [
             "//tools/vendor/google/ml/aiplugin/model/api:aiplugin.model.api",
             "//tools/vendor/google/ml/aiplugin/core/primitives:aiplugin.core.primitives",
+            "//tools/vendor/google/ml/aiplugin/core/terminal:aiplugin.core.terminal",
             "//tools/vendor/google/ml/aiplugin/core/aicore:aiplugin.core.aicore",
             "//tools/vendor/google/ml/aiplugin/agents/agents-core:aiplugin.agents.agents-core",
             "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
@@ -782,6 +799,7 @@ studio_plugin(
         "@intellij//:intellij.platform.vcs.log.impl",
         "@intellij//:org.intellij.groovy",
         "@intellij//:org.jetbrains.kotlin",
+        "@intellij//:org.jetbrains.plugins.terminal",
     ],
 )
 
@@ -808,6 +826,7 @@ exports_files([
 android_studio_configuration(
     name = "nightly",
     application_icon = ":nightly-icon",
+    flag_level = "NIGHTLY",
     mac_app_name = "Android Studio Nightly",
     version_suffix = "Nightly __BUILD_DAY__",
     version_type = "Nightly",
@@ -815,7 +834,8 @@ android_studio_configuration(
 
 android_studio_configuration(
     name = "canary",
-    application_icon = None,
+    application_icon = ":preview-icon",
+    flag_level = "PREVIEW",
     mac_app_name = "Android Studio Preview",
     version_suffix = None,
     version_type = STUDIO_VERSION,
@@ -1076,7 +1096,7 @@ iml_module(
         "//tools/vendor/google/firebase",
         "//tools/studio/google/cloud/testing/directaccess",
         "//tools/studio/google/cloud/testing/firebase-testing",
-        "//tools/studio/google/cloud/tools/google-login-plugin:google-login-as",
+        "//tools/vendor/google/login:google-login",
         "//tools/adt/idea/smali:intellij.android.smali",
         "//tools/studio/google/cloud/testing/test-recorder",
         "//tools/vendor/google/url-assistant",

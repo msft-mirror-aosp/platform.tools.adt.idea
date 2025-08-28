@@ -138,8 +138,7 @@ public class BlazeQueryParser {
 
     long now = System.nanoTime();
     final var visitors = new RuleVisitors();
-    for (Map.Entry<Label, QueryData.SourceFile> sourceFileEntry :
-        query.getSourceFilesMap().entrySet()) {
+    for (var sourceFileEntry : query.getSourceFilesMap().entrySet()) {
       if (sourceFileEntry.getKey().getWorkspace().isEmpty()) {
         graphBuilder.addSourceFileLabel(sourceFileEntry.getKey());
       } else {
@@ -148,7 +147,7 @@ public class BlazeQueryParser {
                 "Skipping unsupported non-root workspace source: " + sourceFileEntry.getValue()));
       }
     }
-    for (Map.Entry<Label, QueryData.Rule> ruleEntry : query.getRulesMap().entrySet()) {
+    for (var ruleEntry : query.getRulesMap().entrySet()) {
       ProjectTarget.Builder targetBuilder = ProjectTarget.builder();
 
       QueryData.Rule rule = ruleEntry.getValue();
@@ -165,8 +164,8 @@ public class BlazeQueryParser {
       if (!rule.mainClass().isEmpty()) {
         targetBuilder.mainClass(rule.mainClass());
       }
-      if (rule.testRule().isPresent()) {
-        targetBuilder.testRule(rule.testRule().get());
+      if (rule.testRule() != null) {
+        targetBuilder.testRule(rule.testRule());
       }
 
       visitors.visit(this, ruleEntry.getKey(), rule, targetBuilder);
@@ -214,10 +213,10 @@ public class BlazeQueryParser {
     javaDeps.addAll(thisDeps);
 
     if (RuleKinds.isAndroid(rule.ruleClass())) {
-      if (rule.manifest().isPresent()) {
+      if (rule.manifest() != null) {
         targetBuilder
             .sourceLabelsBuilder()
-            .put(SourceType.ANDROID_MANIFEST, rule.manifest().get());
+            .put(SourceType.ANDROID_MANIFEST, rule.manifest());
       }
     }
   }

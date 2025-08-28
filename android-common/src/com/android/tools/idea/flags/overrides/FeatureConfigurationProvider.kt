@@ -18,6 +18,7 @@ package com.android.tools.idea.flags.overrides
 import com.android.flags.Flag
 import com.android.flags.FlagValueProvider
 import com.android.tools.idea.flags.FeatureConfiguration
+import com.android.tools.idea.flags.StudioFlags
 import com.android.utils.associateNotNull
 import com.google.common.annotations.VisibleForTesting
 import java.io.InputStream
@@ -36,10 +37,24 @@ import java.io.InputStream
  * since it's not actually an override.
  */
 class FeatureConfigurationProvider private constructor(
-  private val values: Map<String, String>
+  private val values: Map<String, FeatureConfiguration>
 ): FlagValueProvider {
 
-  override fun get(flag: Flag<*>): String? = values[flag.id]
+  private val currentConfig: FeatureConfiguration get() =
+      StudioFlags.FLAG_LEVEL.get()
+
+  override fun get(flag: Flag<*>): String? = getValueById(flag.id)
+
+  /** For display in the studio flags dialog */
+  fun getConfigurationExplanation(flag: Flag<*>): String? = values[flag.id]?.let { flagConfiguration ->
+    val prefix = if (currentConfig.stabilityLevel > flagConfiguration.stabilityLevel) "Disabled by default. Enabled only in" else "Enabled only in"
+    when(flagConfiguration) {
+      FeatureConfiguration.INTERNAL -> "$prefix internal builds"
+      FeatureConfiguration.NIGHTLY ->  "$prefix internal and nightly builds"
+      FeatureConfiguration.PREVIEW -> "$prefix internal, nightly and canary builds"
+      FeatureConfiguration.COMPLETE -> null // Only tag flags that vary between channels.
+    }
+  }
 
   @VisibleForTesting
   fun getEntries(): Set<String> {
@@ -47,7 +62,7 @@ class FeatureConfigurationProvider private constructor(
   }
 
   @VisibleForTesting
-  fun getValueById(flagId: String): String? = values[flagId]
+  fun getValueById(flagId: String): String? = values[flagId]?.let { currentConfig.stabilityLevel <= it.stabilityLevel }?.toString()
 
   companion object {
     /** Returns the current IDE feature flags configuration as a stream. */
@@ -64,7 +79,6 @@ class FeatureConfigurationProvider private constructor(
     @VisibleForTesting
     fun loadValues(
       inputStream: InputStream = featureFlagsResourceStream(),
-      currentConfig: FeatureConfiguration = FeatureConfiguration.current,
     ): FeatureConfigurationProvider {
       val configsByName = FeatureConfiguration.entries.associateBy { it.name }
 
@@ -73,17 +87,12 @@ class FeatureConfigurationProvider private constructor(
           reader.readLines().filter { !it.startsWith("#") }.associateNotNull {
             val tokens = parseLine(it) ?: return@associateNotNull null
             val flagConfig = configsByName[tokens.second] ?: return@associateNotNull null
-            tokens.first to (currentConfig.stabilityLevel <= flagConfig.stabilityLevel).toString()
+            tokens.first to flagConfig
           }
         }
       }
 
       return FeatureConfigurationProvider(map)
-    }
-
-    @VisibleForTesting
-    fun loadValuesForTesting(currentConfig: FeatureConfiguration): FeatureConfigurationProvider {
-      return loadValues(currentConfig = currentConfig)
     }
 
     @VisibleForTesting

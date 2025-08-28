@@ -19,7 +19,7 @@
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.api" />
     <orderEntry type="module" module-name="intellij.android.app-quality-insights.play-vitals.model" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
-    <orderEntry type="module" module-name="google-login-as" />
+    <orderEntry type="module" module-name="google-login" />
     <orderEntry type="library" name="javax-inject" level="project" />
     <orderEntry type="module" module-name="intellij.android.core" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
@@ -27,5 +27,6 @@
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
     <orderEntry type="module" module-name="intellij.android.artwork-compose" />
+    <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
   </component>
 </module>

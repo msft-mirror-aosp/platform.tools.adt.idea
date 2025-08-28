@@ -19,7 +19,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.idea.blaze.qsync.query.QuerySummaryTestUtil.createProtoForPackages;
 
 import com.google.common.base.Preconditions;
-import com.google.common.truth.Truth8;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.qsync.testdata.TestData;
 import java.io.IOException;
@@ -81,7 +82,7 @@ public class QuerySummaryTest {
     assertThat(qs.getRulesMap().keySet()).contains(android);
     QueryData.Rule rule = qs.getRulesMap().get(android);
     assertThat(rule.manifest())
-        .isEqualTo(Optional.of(android.siblingWithName("AndroidManifest.xml")));
+        .isEqualTo(android.siblingWithName("AndroidManifest.xml"));
   }
 
   @Test
@@ -112,31 +113,6 @@ public class QuerySummaryTest {
   }
 
   @Test
-  public void testGetParentPackage_noparent() {
-    QuerySummary summary = QuerySummaryImpl.create(createProtoForPackages("//my/build/package:rule"));
-    Truth8.assertThat(summary.getParentPackage(Path.of("my/build/package"))).isEmpty();
-  }
-
-  @Test
-  public void testGetParentPackage_directParent() {
-    QuerySummary summary =
-        QuerySummaryImpl.create(
-            createProtoForPackages(
-                "//my/build/package:rule", "//my/build/package/subpackage:rule"));
-    Truth8.assertThat(summary.getParentPackage(Path.of("my/build/package/subpackage")))
-        .hasValue(Path.of("my/build/package"));
-  }
-
-  @Test
-  public void testGetParentPackage_indirectParent() {
-    QuerySummary summary =
-        QuerySummaryImpl.create(
-            createProtoForPackages("//my/build/package:rule", "//my/build/package/sub1/sub2:rule"));
-    Truth8.assertThat(summary.getParentPackage(Path.of("my/build/package/sub1/sub2")))
-        .hasValue(Path.of("my/build/package"));
-  }
-
-  @Test
   public void testBuildIncludes() throws IOException {
     QuerySummary qs =
         QuerySummaryImpl.create(QuerySpec.QueryStrategy.PLAIN, TestData.BUILDINCLUDES_QUERY.getQueryOutputPath().toFile());
@@ -150,14 +126,14 @@ public class QuerySummaryTest {
         );
     assertThat(qs.getReverseSubincludeMap())
         .containsExactly(
-            TestData.ROOT.resolve("buildincludes/sub/includes/includes.bzl"),
-            TestData.ROOT.resolve("buildincludes/sub/includes/BUILD"),
-            TestData.ROOT.resolve("buildincludes/sub/includes/includes.bzl"),
-            TestData.ROOT.resolve("buildincludes/sub/BUILD"),
-            TestData.ROOT.resolve("buildincludes/sub/includes/includes.bzl"),
-            TestData.ROOT.resolve("buildincludes/BUILD"),
-            TestData.ROOT.resolve("buildincludes/sub/includes/includes2.bzl"),
+          TestData.ROOT.resolve("buildincludes/sub/includes/includes.bzl"),
+          ImmutableSet.of(TestData.ROOT.resolve("buildincludes/sub/includes/BUILD"),
+                           TestData.ROOT.resolve("buildincludes/sub/BUILD"),
+                           TestData.ROOT.resolve("buildincludes/BUILD")),
+          TestData.ROOT.resolve("buildincludes/sub/includes/includes2.bzl"),
+          ImmutableSet.of(
             TestData.ROOT.resolve("buildincludes/BUILD")
+          )
         );
   }
 
@@ -194,6 +170,14 @@ public class QuerySummaryTest {
   public void testCreate_proto() throws IOException {
     QuerySummary qs =
       QuerySummaryImpl.create(QuerySpec.QueryStrategy.PLAIN, TestData.JAVA_LIBRARY_NO_DEPS_QUERY.getQueryOutputPath().toFile());
+
+    assertThat(qs.protoForSerializationOnly().getQueryStrategy()).isEqualTo(Query.Summary.QueryStrategy.QUERY_STRATEGY_PLAIN);
+  }
+
+  @Test
+  public void testDifferentAttributeTypes() throws IOException {
+    QuerySummary qs =
+      QuerySummaryImpl.create(QuerySpec.QueryStrategy.PLAIN, TestData.CUSTOMRULE_QUERY.getQueryOutputPath().toFile());
 
     assertThat(qs.protoForSerializationOnly().getQueryStrategy()).isEqualTo(Query.Summary.QueryStrategy.QUERY_STRATEGY_PLAIN);
   }

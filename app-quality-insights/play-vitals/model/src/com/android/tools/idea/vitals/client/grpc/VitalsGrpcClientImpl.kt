@@ -15,16 +15,14 @@
  */
 package com.android.tools.idea.vitals.client.grpc
 
-import com.android.annotations.concurrency.WorkerThread
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.IssueDetails
 import com.android.tools.idea.insights.IssueId
+import com.android.tools.idea.insights.StackTraceGroupParser
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.client.AppConnection
 import com.android.tools.idea.insights.client.QueryFilters
-import com.android.tools.idea.insights.client.channelBuilderForAddress
 import com.android.tools.idea.insights.client.retryRpc
 import com.android.tools.idea.vitals.datamodel.Dimension
 import com.android.tools.idea.vitals.datamodel.DimensionType
@@ -49,17 +47,13 @@ import com.google.play.developer.reporting.SearchErrorReportsRequest
 import com.google.play.developer.reporting.TimelineSpec
 import com.google.play.developer.reporting.VitalsErrorsServiceGrpc
 import com.google.type.TimeZone
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.util.Disposer
-import com.intellij.util.IncorrectOperationException
+import io.grpc.Channel
 import io.grpc.ClientInterceptor
-import io.grpc.ManagedChannel
 import java.time.ZoneId
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.guava.await
 
-class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: ClientInterceptor) :
+class VitalsGrpcClientImpl(channel: Channel, authTokenInterceptor: ClientInterceptor) :
   VitalsGrpcClient {
 
   private val vitalsReportingServiceGrpcClient =
@@ -157,7 +151,8 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
             AggregationPeriod.DAILY -> TimeGranularity.DAILY
             AggregationPeriod.FULL_RANGE -> TimeGranularity.FULL_RANGE
             else -> {
-              LOG.warn("${it.aggregationPeriod} is not recognized.")
+              Logger.getInstance(VitalsGrpcClientImpl::class.java)
+                .warn("${it.aggregationPeriod} is not recognized.")
               return@mapNotNull null
             }
           }
@@ -214,6 +209,7 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
     connection: Connection,
     filters: QueryFilters,
     reportIds: List<String>,
+    stackTraceGroupParser: StackTraceGroupParser,
   ): List<Event> {
     val errorReports = mutableListOf<Event>()
     val requestBase =
@@ -236,7 +232,7 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
     do {
       val request = requestBase.apply { pageToken = nextPageToken }.build()
       val response = retryRpc { vitalsErrorGrpcClient.searchErrorReports(request).await() }
-      errorReports.addAll(response.errorReportsList.map { it.toSampleEvent() })
+      errorReports.addAll(response.errorReportsList.map { it.toSampleEvent(stackTraceGroupParser) })
       nextPageToken = response.nextPageToken
     } while (nextPageToken.isNotEmpty())
     return errorReports
@@ -246,6 +242,7 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
     connection: Connection,
     filters: QueryFilters,
     issueId: IssueId,
+    stackTraceGroupParser: StackTraceGroupParser,
   ): Event {
     val searchErrorReportsRequest =
       SearchErrorReportsRequest.newBuilder()
@@ -268,31 +265,7 @@ class VitalsGrpcClientImpl(channel: ManagedChannel, authTokenInterceptor: Client
 
     return retryRpc { vitalsErrorGrpcClient.searchErrorReports(searchErrorReportsRequest).await() }
       .errorReportsList
-      .map { it.toSampleEvent() }
+      .map { it.toSampleEvent(stackTraceGroupParser) }
       .firstOrNull() ?: Event.EMPTY
-  }
-
-  companion object {
-    private val LOG = Logger.getInstance(VitalsGrpcClientImpl::class.java)
-
-    @WorkerThread
-    fun create(parentDisposable: Disposable, interceptor: ClientInterceptor): VitalsGrpcClientImpl {
-      val address = StudioFlags.PLAY_VITALS_GRPC_SERVER.get()
-      LOG.info("Play Vitals gRpc server connected at $address")
-      return VitalsGrpcClientImpl(
-        channel =
-          channelBuilderForAddress(address).useTransportSecurity().build().also {
-            try {
-              Disposer.register(parentDisposable) {
-                it.shutdown()
-                it.awaitTermination(1, TimeUnit.SECONDS)
-              }
-            } catch (e: IncorrectOperationException) {
-              it.shutdownNow()
-            }
-          },
-        authTokenInterceptor = interceptor,
-      )
-    }
   }
 }

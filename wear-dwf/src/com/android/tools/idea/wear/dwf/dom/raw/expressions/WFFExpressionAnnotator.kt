@@ -15,14 +15,15 @@
  */
 package com.android.tools.idea.wear.dwf.dom.raw.expressions
 
-import com.android.SdkConstants.ATTR_TYPE
 import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.wear.dwf.WFFConstants
 import com.android.tools.idea.wear.dwf.WFFConstants.DataSources
 import com.android.tools.idea.wear.dwf.WearDwfBundle.message
 import com.android.tools.idea.wear.dwf.dom.raw.CurrentWFFVersionService
 import com.android.tools.idea.wear.dwf.dom.raw.configurations.UserConfigurationReference
-import com.android.tools.wear.wff.WFFVersion
+import com.android.tools.idea.wear.dwf.dom.raw.findDataSourceDefinition
+import com.android.tools.idea.wear.dwf.dom.raw.isReference
+import com.android.tools.idea.wear.dwf.dom.raw.isUserConfiguration
+import com.android.tools.wear.wff.WFFVersion.WFFVersion4
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
@@ -36,144 +37,109 @@ import com.intellij.psi.util.parentOfType
  */
 class WFFExpressionAnnotator() : Annotator {
   override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-    val wffVersion =
-      element.getModuleSystem()?.module?.let { module ->
-        CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module)?.wffVersion
-      }
     when (element) {
-      is WFFExpressionFunctionId -> annotateFunctionId(wffVersion, element, holder)
-      is WFFExpressionDataSourceOrConfiguration ->
-        annotateDataSourceOrConfiguration(wffVersion, element, holder)
+      is WFFExpressionFunctionId -> annotateFunctionId(element, holder)
+      is WFFExpressionDataSource -> annotateDataSource(element, holder)
     }
   }
 
-  private fun annotateDataSourceOrConfiguration(
-    wffVersion: WFFVersion?,
-    sourceType: WFFExpressionDataSourceOrConfiguration,
-    holder: AnnotationHolder,
-  ) {
+  private fun annotateDataSource(dataSource: WFFExpressionDataSource, holder: AnnotationHolder) {
     when {
-      sourceType.id.text.startsWith(WFFConstants.CONFIGURATION_PREFIX) ->
-        annotateConfiguration(sourceType, holder)
-      else -> annotateDataSourceId(wffVersion, sourceType.id, holder)
+      dataSource.isUserConfiguration() -> annotateConfiguration(dataSource, holder)
+      dataSource.isReference() -> annotateReference(dataSource, holder)
+      else -> annotatePredefinedDataSource(dataSource, holder)
     }
   }
 
-  private fun annotateDataSourceId(
-    wffVersion: WFFVersion?,
-    dataSourceId: PsiElement,
+  private fun annotatePredefinedDataSource(
+    dataSource: WFFExpressionDataSource,
     holder: AnnotationHolder,
   ) {
-    val dataSource =
-      if (dataSourceId.isComplicationDataSource()) {
-        dataSourceId.findComplicationDataSource()
-      } else {
-        dataSourceId.findStaticDataSource() ?: dataSourceId.findPatternDataSource()
-      }
-    // The data source can be a complication data source used under the wrong type. This will
-    // be reported as an error by InvalidComplicationDataSourceLocationInspection
-    val isDataSourceUnknown =
-      dataSource == null && DataSources.COMPLICATION_ALL.none { it.id == dataSourceId.text }
-    if (isDataSourceUnknown) {
-      holder
-        .newAnnotation(
-          HighlightSeverity.ERROR,
-          message("wff.expression.annotator.unknown.datasource"),
-        )
-        .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
-        .range(dataSourceId)
-        .create()
-    } else if (
-      dataSource != null && wffVersion != null && wffVersion < dataSource.requiredVersion
-    ) {
-      // TODO(b/436560081): move this to a local inspection, this annotator should only highlight
-      // unknown data sources
-      holder
-        .newAnnotation(
-          HighlightSeverity.ERROR,
-          message(
-            "wff.expression.annotator.unavailable.datasource",
-            dataSource.requiredVersion.version,
-          ),
-        )
-        .range(dataSourceId)
-        .create()
-    }
-    holder
-      .newSilentAnnotation(HighlightSeverity.INFORMATION)
-      .range(dataSourceId)
-      .textAttributes(WFFExpressionTextAttributes.DATA_SOURCE.key)
-      .create()
+    annotateSymbol(
+      holder,
+      element = dataSource.id,
+      textAttributes = WFFExpressionTextAttributes.DATA_SOURCE,
+      // The data source can be a complication data source used under the wrong type. This will
+      // be reported as an error by InvalidComplicationDataSourceLocationInspection
+      isUnknown =
+        dataSource.findDataSourceDefinition() == null &&
+          DataSources.COMPLICATION_ALL.none { it.id == dataSource.id.text },
+      unknownMessage = message("wff.expression.annotator.unknown.datasource"),
+    )
   }
 
-  private fun annotateFunctionId(
-    wffVersion: WFFVersion?,
-    functionId: WFFExpressionFunctionId,
-    holder: AnnotationHolder,
-  ) {
-    val function = findFunction(functionId.text)
-    if (function == null) {
-      holder
-        .newAnnotation(
-          HighlightSeverity.ERROR,
-          message("wff.expression.annotator.unknown.function"),
-        )
-        .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
-        .range(functionId)
-        .create()
-    } else if (wffVersion != null && wffVersion < function.requiredVersion) {
-      holder
-        .newAnnotation(
-          HighlightSeverity.ERROR,
-          message("wff.expression.annotator.unavailable.function", function.requiredVersion.version),
-        )
-        .range(functionId)
-        .create()
-    }
-    holder
-      .newSilentAnnotation(HighlightSeverity.INFORMATION)
-      .range(functionId)
-      .textAttributes(WFFExpressionTextAttributes.FUNCTION_ID.key)
-      .create()
+  private fun annotateFunctionId(functionId: WFFExpressionFunctionId, holder: AnnotationHolder) {
+    annotateSymbol(
+      holder,
+      element = functionId,
+      textAttributes = WFFExpressionTextAttributes.FUNCTION_ID,
+      isUnknown = findFunction(functionId.text) == null,
+      unknownMessage = message("wff.expression.annotator.unknown.function"),
+    )
   }
 
   private fun annotateConfiguration(
-    configuration: WFFExpressionDataSourceOrConfiguration,
+    configuration: WFFExpressionDataSource,
     holder: AnnotationHolder,
   ) {
-    val reference =
-      configuration
-        .parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
-        ?.references
-        ?.filterIsInstance<UserConfigurationReference>()
-        ?.firstOrNull()
-    if (reference?.resolve() == null) {
+    annotateSymbol(
+      holder,
+      configuration.id,
+      WFFExpressionTextAttributes.CONFIGURATION,
+      isUnknown = configuration.userConfigurationReference?.resolve() == null,
+      message("wff.expression.annotator.unknown.configuration"),
+    )
+  }
+
+  private fun annotateReference(reference: WFFExpressionDataSource, holder: AnnotationHolder) {
+    val currentWFFVersion =
+      reference.getModuleSystem()?.module?.let { module ->
+        CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module)?.wffVersion
+      }
+    val versionSupportsReferences = currentWFFVersion != null && currentWFFVersion >= WFFVersion4
+    annotateSymbol(
+      holder = holder,
+      element = reference.id,
+      textAttributes = WFFExpressionTextAttributes.REFERENCE,
+      // When the version does not support references, the use of a reference will be reported as
+      // needing a higher version
+      isUnknown = versionSupportsReferences && reference.referenceTagReference?.resolve() == null,
+      unknownMessage = message("wff.expression.annotator.unknown.reference"),
+    )
+  }
+
+  private fun annotateSymbol(
+    holder: AnnotationHolder,
+    element: PsiElement,
+    textAttributes: WFFExpressionTextAttributes,
+    isUnknown: Boolean,
+    unknownMessage: String,
+  ) {
+    if (isUnknown) {
       holder
-        .newAnnotation(
-          HighlightSeverity.ERROR,
-          message("wff.expression.annotator.unknown.configuration"),
-        )
+        .newAnnotation(HighlightSeverity.ERROR, unknownMessage)
         .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
-        .range(configuration.id)
+        .range(element)
         .create()
     }
     holder
       .newSilentAnnotation(HighlightSeverity.INFORMATION)
-      .range(configuration.id)
-      .textAttributes(WFFExpressionTextAttributes.CONFIGURATION.key)
+      .range(element)
+      .textAttributes(textAttributes.key)
       .create()
   }
 
-  private fun PsiElement.isComplicationDataSource() =
-    text.startsWith(WFFConstants.COMPLICATION_PREFIX)
+  private val WFFExpressionDataSource.userConfigurationReference
+    get() =
+      parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
+        ?.references
+        ?.filterIsInstance<UserConfigurationReference>()
+        ?.firstOrNull()
 
-  private fun PsiElement.findComplicationDataSource(): StaticDataSource? {
-    val complicationType = getParentComplicationTag(this)?.getAttribute(ATTR_TYPE)?.value
-    return DataSources.COMPLICATION_BY_TYPE[complicationType]?.find { it.id == text }
-  }
-
-  private fun PsiElement.findStaticDataSource() = DataSources.ALL_STATIC_BY_ID[text]
-
-  private fun PsiElement.findPatternDataSource() =
-    DataSources.ALL_PATTERNS.find { it.pattern.matches(text) }
+  private val WFFExpressionDataSource.referenceTagReference
+    get() =
+      parentOfType<WFFExpressionLiteralExpr>(withSelf = true)
+        ?.references
+        ?.filterIsInstance<ReferenceTagReference>()
+        ?.firstOrNull()
 }

@@ -20,7 +20,8 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.createAndroidProjectBuilderForDefaultTestProjectStructure
 import com.android.tools.idea.wear.dwf.dom.raw.overrideCurrentWFFVersion
 import com.android.tools.wear.wff.WFFVersion.WFFVersion1
-import com.android.tools.wear.wff.WFFVersion.WFFVersion2
+import com.android.tools.wear.wff.WFFVersion.WFFVersion3
+import com.android.tools.wear.wff.WFFVersion.WFFVersion4
 import com.google.common.truth.Truth.assertThat
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.editor.colors.CodeInsightColors
@@ -73,34 +74,6 @@ class WFFExpressionAnnotatorTest {
   }
 
   @Test
-  fun `function ids requiring a higher WFF version are annotated with an error`() {
-    overrideCurrentWFFVersion(WFFVersion2, projectRule.testRootDisposable)
-
-    // floor requires version 1, icuBestText version 2 which are both ok
-    // extractColorFromColors requires version 4 which is higher than the current
-    fixture.configureByText(
-      WFFExpressionFileType,
-      "floor(10) + icuBestText() * extractColorFromColors()",
-    )
-
-    val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
-    assertThat(error.text).isEqualTo("extractColorFromColors")
-    assertThat(error.forcedTextAttributesKey).isEqualTo(CodeInsightColors.ERRORS_ATTRIBUTES)
-    assertThat(error.toolTip).isEqualTo("<html>This function requires WFF version 4</html>")
-  }
-
-  @Test
-  fun `function ids are not annotated with errors if the current WFF version is null`() {
-    overrideCurrentWFFVersion(null, projectRule.testRootDisposable)
-
-    // extractColorFromColors requires version 4
-    fixture.configureByText(WFFExpressionFileType, "extractColorFromColors()")
-
-    val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-    assertThat(errors).isEmpty()
-  }
-
-  @Test
   fun `data sources are annotated`() {
     fixture.configureByText(WFFExpressionFileType, "[WEEK_IN_MONTH] * [UNKNOWN_DATA_SOURCE]")
 
@@ -120,34 +93,6 @@ class WFFExpressionAnnotatorTest {
     assertThat(error.forcedTextAttributesKey)
       .isEqualTo(CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES)
     assertThat(error.toolTip).isEqualTo("<html>Unknown data source</html>")
-  }
-
-  @Test
-  fun `data sources requiring a higher WFF version are annotated with an error`() {
-    overrideCurrentWFFVersion(WFFVersion2, projectRule.testRootDisposable)
-
-    // UTC_TIMESTAMP requires version 1, FIRST_DAY_OF_WEEK version 2 which are both ok
-    // HOURS_SINCE_EPOCH requires version 3 which is higher than the current
-    fixture.configureByText(
-      WFFExpressionFileType,
-      "[UTC_TIMESTAMP] + [FIRST_DAY_OF_WEEK] + [HOURS_SINCE_EPOCH]",
-    )
-
-    val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
-    assertThat(error.text).isEqualTo("HOURS_SINCE_EPOCH")
-    assertThat(error.forcedTextAttributesKey).isEqualTo(CodeInsightColors.ERRORS_ATTRIBUTES)
-    assertThat(error.toolTip).isEqualTo("<html>This data source requires WFF version 3</html>")
-  }
-
-  @Test
-  fun `data sources are not annotated with errors if the current WFF version is null`() {
-    overrideCurrentWFFVersion(null, projectRule.testRootDisposable)
-
-    // HOURS_SINCE_EPOCH requires version 3
-    fixture.configureByText(WFFExpressionFileType, "[HOURS_SINCE_EPOCH]")
-
-    val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-    assertThat(errors).isEmpty()
   }
 
   @Test
@@ -225,90 +170,6 @@ class WFFExpressionAnnotatorTest {
     assertThat(errors[1].toolTip).isEqualTo("<html>Unknown data source</html>")
   }
 
-  // Regression test for b/436552607
-  @Test
-  fun `complication data source is not reported as requiring version 2`() {
-    // wrap in a watch face file to get the complication type
-    val watchFaceFile =
-      fixture.addFileToProject(
-        "res/raw/watch_face.xml",
-        // language=XML
-        """
-      <WatchFace>
-        <Scene>
-          <ComplicationSlot>
-            <Complication type="SHORT_TEXT">
-              <PartText>
-                  <Text>
-                      <BitmapFont>
-                          <Template>%s
-                              <Parameter expression="[COMPLICATION.TEXT]" />
-                          </Template>
-                      </BitmapFont>
-                  </Text>
-              </PartText>
-            </Complication>
-          </ComplicationSlot>
-        </Scene>
-      </WatchFace>
-      """
-          .trimIndent(),
-      )
-
-    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
-
-    overrideCurrentWFFVersion(WFFVersion1, projectRule.testRootDisposable)
-
-    fixture.checkHighlighting()
-  }
-
-  // Regression test for b/436552607
-  @Test
-  fun `complication data source is reported as requiring version 2`() {
-    // wrap in a watch face file to get the complication type
-    val watchFaceFile =
-      fixture.addFileToProject(
-        "res/raw/watch_face.xml",
-        // language=XML
-        """
-      <WatchFace>
-        <Scene>
-          <ComplicationSlot>
-            <Complication type="WEIGHTED_ELEMENTS">
-              <PartText>
-                  <Text>
-                      <BitmapFont>
-                          <Template>%s
-                              <Parameter expression="[COMPLICATION.TEXT]" />
-                          </Template>
-                      </BitmapFont>
-                  </Text>
-              </PartText>
-            </Complication>
-          </ComplicationSlot>
-        </Scene>
-      </WatchFace>
-      """
-          .trimIndent(),
-      )
-
-    overrideCurrentWFFVersion(WFFVersion1, projectRule.testRootDisposable)
-    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
-
-    var errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-    assertThat(errors).hasSize(1)
-    assertThat(errors[0].text).isEqualTo("COMPLICATION.TEXT")
-    assertThat(errors[0].forcedTextAttributesKey).isEqualTo(CodeInsightColors.ERRORS_ATTRIBUTES)
-    assertThat(errors[0].toolTip).isEqualTo("<html>This data source requires WFF version 2</html>")
-
-    // Once we use version 2, there should no longer be any errors
-    overrideCurrentWFFVersion(WFFVersion2, projectRule.testRootDisposable)
-    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
-
-    errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-    assertThat(errors).isEmpty()
-  }
-
   // Regression test for b/436562054
   @Test
   fun `known complication data source in wrong location is not reported as unknown`() {
@@ -344,6 +205,96 @@ class WFFExpressionAnnotatorTest {
     fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
 
     val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+    assertThat(errors).isEmpty()
+  }
+
+  @Test
+  fun `references are annotated`() {
+    overrideCurrentWFFVersion(WFFVersion4, projectRule.testRootDisposable)
+    // wrap in a watch face file for the references to resolve
+    val watchFaceFile =
+      fixture.addFileToProject(
+        "res/raw/watch_face.xml",
+        // language=XML
+        """
+        <WatchFace>
+          <PartText><Reference name="someReference" /></PartText>
+          <Parameter expression="[REFERENCE.someReference] * [REFERENCE.unknownReference]" />
+        </WatchFace>
+      """
+          .trimIndent(),
+      )
+
+    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
+
+    val infos = fixture.doHighlighting().filter { it.severity == HighlightSeverity.INFORMATION }
+    assertThat(infos).hasSize(2)
+    assertThat(infos[0].text).isEqualTo("REFERENCE.someReference")
+    assertThat(infos[0].forcedTextAttributesKey)
+      .isEqualTo(WFFExpressionTextAttributes.REFERENCE.key)
+    assertThat(infos[1].text).isEqualTo("REFERENCE.unknownReference")
+    assertThat(infos[1].forcedTextAttributesKey)
+      .isEqualTo(WFFExpressionTextAttributes.REFERENCE.key)
+  }
+
+  @Test
+  fun `unknown references are annotated as unknown when the WFF version is 4`() {
+    overrideCurrentWFFVersion(WFFVersion4, projectRule.testRootDisposable)
+    // wrap in a watch face file for the references to resolve
+    val watchFaceFile =
+      fixture.addFileToProject(
+        "res/raw/watch_face.xml",
+        // language=XML
+        """
+        <WatchFace>
+          <Scene>
+            <PartText>
+              <Reference name="headerPosition" />
+            </PartText>
+            <PartDraw>
+              <Transform target="x" value="[REFERENCE.headerPosition]" />
+            </PartDraw>
+            <PartDraw>
+              <Transform target="x" value="[REFERENCE.unknownReference]" />
+            </PartDraw>
+          </Scene>
+        </WatchFace>
+      """
+          .trimIndent(),
+      )
+
+    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
+
+    val error = fixture.doHighlighting(HighlightSeverity.ERROR).single()
+    assertThat(error.text).isEqualTo("REFERENCE.unknownReference")
+    assertThat(error.forcedTextAttributesKey)
+      .isEqualTo(CodeInsightColors.WRONG_REFERENCES_ATTRIBUTES)
+    assertThat(error.toolTip).isEqualTo("<html>Unknown reference</html>")
+  }
+
+  @Test
+  fun `unknown references are not annotated as unknown when the WFF version is lower than 4`() {
+    overrideCurrentWFFVersion(WFFVersion3, projectRule.testRootDisposable)
+    // wrap in a watch face file for the references to resolve
+    val watchFaceFile =
+      fixture.addFileToProject(
+        "res/raw/watch_face.xml",
+        // language=XML
+        """
+        <WatchFace>
+          <Scene>
+            <PartDraw>
+              <Transform target="x" value="[REFERENCE.unknownReference]" />
+            </PartDraw>
+          </Scene>
+        </WatchFace>
+      """
+          .trimIndent(),
+      )
+
+    fixture.configureFromExistingVirtualFile(watchFaceFile.virtualFile)
+
+    val errors = fixture.doHighlighting(HighlightSeverity.ERROR)
     assertThat(errors).isEmpty()
   }
 }

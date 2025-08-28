@@ -48,9 +48,12 @@ import org.junit.runner.Description
  */
 class AndroidGradleProjectRule(
   val workspaceRelativeTestDataPath: @SystemIndependent String = "tools/adt/idea/android/testData",
-  private val agpVersionSoftwareEnvironment: AgpVersionSoftwareEnvironment =
+  val additionalRepositories: Collection<File> = listOf(),
+  internal val agpVersionSoftwareEnvironment: AgpVersionSoftwareEnvironment =
     AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
 ) : NamedExternalResource() {
+  constructor(agpVersion : AgpVersionSoftwareEnvironment): this(agpVersionSoftwareEnvironment = agpVersion)
+
   /**
    * This rule is a thin wrapper around [AndroidGradleTestCase], which we delegate to to handle any
    * heavy lifting.
@@ -65,6 +68,8 @@ class AndroidGradleProjectRule(
 
     override fun getTestDataDirectoryWorkspaceRelativePath(): @SystemIndependent String =
       workspaceRelativeTestDataPath
+
+    override fun getAdditionalRepos(): Collection<File> = additionalRepositories
 
     fun invokeTasks(
       project: Project,
@@ -131,7 +136,7 @@ class AndroidGradleProjectRule(
   @JvmOverloads
   fun load(
     projectPath: String,
-    agpVersion: AgpVersionSoftwareEnvironment = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
+    agpVersion: AgpVersionSoftwareEnvironment = agpVersionSoftwareEnvironment,
     ndkVersion: String? = null,
     preLoad: ((projectRoot: File) -> Unit)? = null,
   ) =
@@ -162,7 +167,7 @@ class AndroidGradleProjectRule(
     ndkVersion: String? = null,
     preLoad: ((projectRoot: File) -> Unit)? = null,
   ) {
-    val resolvedAgpVersion = (agpVersion ?: AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST).resolve()
+    val resolvedAgpVersion = (agpVersion ?: agpVersionSoftwareEnvironment).resolve()
 
     fun afterCreate(project: Project) {
       overrideProjectGradleJdkPathWithVersion(
@@ -229,7 +234,7 @@ class EdtAndroidGradleProjectRule(private val projectRule: AndroidGradleProjectR
   fun loadProject(
     projectPath: String,
     chosenModuleName: String? = null,
-    agpVersion: AgpVersionSoftwareEnvironment = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
+    agpVersion: AgpVersionSoftwareEnvironment = projectRule.agpVersionSoftwareEnvironment,
     ndkVersion: String? = null,
     preLoad: ((File) -> Unit)? = null
   ) = projectRule.loadProject(projectPath, chosenModuleName, agpVersion, ndkVersion, preLoad)

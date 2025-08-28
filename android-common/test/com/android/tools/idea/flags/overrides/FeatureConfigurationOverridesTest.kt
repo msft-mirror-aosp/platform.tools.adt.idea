@@ -15,12 +15,22 @@
  */
 package com.android.tools.idea.flags.overrides
 
+import com.android.flags.BooleanFlag
+import com.android.flags.FlagGroup
+import com.android.flags.Flags
+import com.android.flags.junit.FlagRule
 import com.android.tools.idea.flags.FeatureConfiguration
+import com.android.tools.idea.flags.StudioFlags
 import com.android.utils.associateNotNull
 import com.google.common.truth.Truth
+import com.google.common.truth.Truth.assertThat
+import org.junit.Rule
 import org.junit.Test
 
 class FeatureConfigurationOverridesTest {
+
+  @get:Rule
+  val studioFlagRule = FlagRule(StudioFlags.FLAG_LEVEL)
 
   @Test
   fun testEmpty() {
@@ -40,8 +50,9 @@ class FeatureConfigurationOverridesTest {
     group1.flag3=COMPLETE:2025
     """.trimIndent()
 
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.INTERNAL)
     Truth.assertThat(
-      FeatureConfigurationProvider.loadValues(content.byteInputStream(), FeatureConfiguration.INTERNAL).toMap()
+      FeatureConfigurationProvider.loadValues(content.byteInputStream()).toMap()
     ).containsExactly(
       "group1.flag1", "true",
       "group1.flag2", "true",
@@ -57,9 +68,9 @@ class FeatureConfigurationOverridesTest {
     group1.flag2=PREVIEW
     group1.flag3=COMPLETE:2025
     """.trimIndent()
-
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.PREVIEW)
     Truth.assertThat(
-      FeatureConfigurationProvider.loadValues(content.byteInputStream(), FeatureConfiguration.PREVIEW).toMap()
+      FeatureConfigurationProvider.loadValues(content.byteInputStream()).toMap()
     ).containsExactly(
       "group1.flag1", "false",
       "group1.flag2", "true",
@@ -75,9 +86,9 @@ class FeatureConfigurationOverridesTest {
     group1.flag2=PREVIEW
     group1.flag3=COMPLETE:2025
     """.trimIndent()
-
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.COMPLETE)
     Truth.assertThat(
-      FeatureConfigurationProvider.loadValues(content.byteInputStream(), FeatureConfiguration.COMPLETE).toMap()
+      FeatureConfigurationProvider.loadValues(content.byteInputStream()).toMap()
     ).containsExactly(
       "group1.flag1", "false",
       "group1.flag2", "false",
@@ -85,8 +96,65 @@ class FeatureConfigurationOverridesTest {
     )
   }
 
+
+  @Test
+  fun testDebugInfo() {
+    val content = """
+    #some comments
+    group1.flagInternal=INTERNAL
+    group1.flagNightly=NIGHTLY
+    group1.flagPreview=PREVIEW
+    group1.flagComplete=COMPLETE:2025
+    """.trimIndent()
+
+    val flags = Flags()
+    val group = FlagGroup(flags, "group1", "display")
+    val offFlag = BooleanFlag(group, "flagOff", "name_c", "description_z")
+    val internalFlag = BooleanFlag(group, "flagInternal", "name_a", "description_a")
+    val nightlyFlag = BooleanFlag(group, "flagNightly", "name_b", "description_b")
+    val previewFlag = BooleanFlag(group, "flagPreview", "name_b", "description_b")
+    val completeFlag = BooleanFlag(group, "flagComplete", "name_c", "description_c")
+
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.INTERNAL)
+    FeatureConfigurationProvider.loadValues(content.byteInputStream()).let { internal ->
+      assertThat(internal.getConfigurationExplanation(offFlag)).isNull()
+      assertThat(internal.getConfigurationExplanation(internalFlag)).isEqualTo("Enabled only in internal builds")
+      assertThat(internal.getConfigurationExplanation(nightlyFlag)).isEqualTo("Enabled only in internal and nightly builds")
+      assertThat(internal.getConfigurationExplanation(previewFlag)).isEqualTo("Enabled only in internal, nightly and canary builds")
+      assertThat(internal.getConfigurationExplanation(completeFlag)).isNull()
+    }
+
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.NIGHTLY)
+    FeatureConfigurationProvider.loadValues(content.byteInputStream()).let { nightly ->
+      assertThat(nightly.getConfigurationExplanation(offFlag)).isNull()
+      assertThat(nightly.getConfigurationExplanation(internalFlag)).isEqualTo("Disabled by default. Enabled only in internal builds")
+      assertThat(nightly.getConfigurationExplanation(nightlyFlag)).isEqualTo("Enabled only in internal and nightly builds")
+      assertThat(nightly.getConfigurationExplanation(previewFlag)).isEqualTo("Enabled only in internal, nightly and canary builds")
+      assertThat(nightly.getConfigurationExplanation(completeFlag)).isNull()
+    }
+
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.PREVIEW)
+    FeatureConfigurationProvider.loadValues(content.byteInputStream()).let { preview ->
+      assertThat(preview.getConfigurationExplanation(offFlag)).isNull()
+      assertThat(preview.getConfigurationExplanation(internalFlag)).isEqualTo("Disabled by default. Enabled only in internal builds")
+      assertThat(preview.getConfigurationExplanation(nightlyFlag)).isEqualTo("Disabled by default. Enabled only in internal and nightly builds")
+      assertThat(preview.getConfigurationExplanation(previewFlag)).isEqualTo("Enabled only in internal, nightly and canary builds")
+      assertThat(preview.getConfigurationExplanation(completeFlag)).isNull()
+    }
+
+    StudioFlags.FLAG_LEVEL.override(FeatureConfiguration.COMPLETE)
+    FeatureConfigurationProvider.loadValues(content.byteInputStream()).let { complete ->
+      assertThat(complete.getConfigurationExplanation(offFlag)).isNull()
+      assertThat(complete.getConfigurationExplanation(internalFlag)).isEqualTo("Disabled by default. Enabled only in internal builds")
+      assertThat(complete.getConfigurationExplanation(nightlyFlag)).isEqualTo("Disabled by default. Enabled only in internal and nightly builds")
+      assertThat(complete.getConfigurationExplanation(previewFlag)).isEqualTo("Disabled by default. Enabled only in internal, nightly and canary builds")
+      assertThat(complete.getConfigurationExplanation(completeFlag)).isNull()
+    }
+  }
+
   @Test
   fun testUnitTest() {
+    StudioFlags.FLAG_LEVEL.clearOverride()
     // Unit test should match to DEV channel.
 
     val content = """
@@ -116,7 +184,7 @@ class FeatureConfigurationOverridesTest {
     """.trimIndent()
 
     Truth.assertThat(
-      FeatureConfigurationProvider.loadValues(content.byteInputStream(), FeatureConfiguration.INTERNAL).toMap()
+      FeatureConfigurationProvider.loadValues(content.byteInputStream()).toMap()
     ).containsExactly(
       "group1.flag1", "true",
       "group1.flag2", "true",
@@ -134,7 +202,7 @@ class FeatureConfigurationOverridesTest {
     """.trimIndent()
 
     Truth.assertThat(
-      FeatureConfigurationProvider.loadValues(content.byteInputStream(), FeatureConfiguration.INTERNAL).toMap()
+      FeatureConfigurationProvider.loadValues(content.byteInputStream()).toMap()
     ).containsExactly(
       "group1.flag1", "true",
       "group1.flag2", "true",

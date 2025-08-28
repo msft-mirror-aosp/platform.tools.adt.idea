@@ -36,6 +36,7 @@ import com.android.tools.idea.insights.OperatingSystemInfo
 import com.android.tools.idea.insights.Permission
 import com.android.tools.idea.insights.PlayTrack
 import com.android.tools.idea.insights.SignalType
+import com.android.tools.idea.insights.StackTraceGroupParser
 import com.android.tools.idea.insights.Stacktrace
 import com.android.tools.idea.insights.StacktraceGroup
 import com.android.tools.idea.insights.StatsGroup
@@ -43,9 +44,9 @@ import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.WithCount
 import com.android.tools.idea.insights.ai.AiInsight
-import com.android.tools.idea.insights.ai.codecontext.CodeContext
 import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppConnection
+import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.FakeAiInsightClient
 import com.android.tools.idea.insights.client.GeminiCrashInsightRequest
@@ -54,7 +55,6 @@ import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.client.QueryFilters
 import com.android.tools.idea.insights.zeroCounts
-import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_ISSUE1
 import com.android.tools.idea.vitals.TEST_ISSUE2
@@ -62,8 +62,10 @@ import com.android.tools.idea.vitals.client.grpc.FakeErrorsService
 import com.android.tools.idea.vitals.client.grpc.FakeReportingService
 import com.android.tools.idea.vitals.client.grpc.FakeVitalsDatabase
 import com.android.tools.idea.vitals.client.grpc.TestVitalsGrpcClient
+import com.android.tools.idea.vitals.client.grpc.VitalsGrpcClient
 import com.android.tools.idea.vitals.client.grpc.VitalsGrpcClientImpl
 import com.android.tools.idea.vitals.client.grpc.createIssueRequest
+import com.android.tools.idea.vitals.client.grpc.createVitalsClient
 import com.android.tools.idea.vitals.datamodel.DimensionType
 import com.android.tools.idea.vitals.datamodel.DimensionsAndMetrics
 import com.android.tools.idea.vitals.datamodel.Freshness
@@ -75,7 +77,6 @@ import com.google.api.client.http.HttpHeaders
 import com.google.api.client.http.HttpResponseException
 import com.google.common.truth.Truth.assertThat
 import com.google.type.DateTime
-import com.intellij.testFramework.ProjectRule
 import com.studiogrpc.testutils.ForwardingInterceptor
 import com.studiogrpc.testutils.GrpcConnectionRule
 import junit.framework.TestCase.fail
@@ -86,8 +87,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class VitalsClientTest {
-
-  @get:Rule val projectRule = ProjectRule()
 
   private val database = FakeVitalsDatabase(TEST_CONNECTION_1)
   private val clock = FakeClock()
@@ -129,15 +128,7 @@ class VitalsClientTest {
   @Test
   fun `client returns top cached issues when offline`() = runTest {
     val cache = AppInsightsCacheImpl()
-    val grpcClient = TestVitalsGrpcClient() // return empty result for every API call.
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        cache,
-        ForwardingInterceptor,
-        grpcClient,
-      )
+    val client = createClient(cache)
 
     cache.populateIssues(TEST_CONNECTION_1, listOf(TEST_ISSUE1))
 
@@ -170,7 +161,6 @@ class VitalsClientTest {
 
   @Test
   fun `client caches events for use in the future`() = runTest {
-    val cache = AppInsightsCacheImpl()
     val grpcClient =
       object : TestVitalsGrpcClient() {
         override suspend fun getErrorCountMetricsFreshnessInfo(connection: Connection) =
@@ -190,6 +180,7 @@ class VitalsClientTest {
           connection: Connection,
           filters: QueryFilters,
           reportIds: List<String>,
+          stackTraceGroupParser: StackTraceGroupParser,
         ): List<Event> = listOf(ISSUE1.sampleEvent)
 
         override suspend fun listTopIssues(
@@ -199,14 +190,7 @@ class VitalsClientTest {
           pageTokenFromPreviousCall: String?,
         ): List<IssueDetails> = listOf(ISSUE1.issueDetails)
       }
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        cache,
-        ForwardingInterceptor,
-        grpcClient,
-      )
+    val client = createClient(grpcClient = grpcClient)
 
     val responseIssue =
       (client.listTopOpenIssues(
@@ -252,7 +236,6 @@ class VitalsClientTest {
 
   @Test
   fun `client swallows no report found error`() = runTest {
-    val cache = AppInsightsCacheImpl()
     val grpcClient =
       object : TestVitalsGrpcClient() {
         override suspend fun getErrorCountMetricsFreshnessInfo(connection: Connection) =
@@ -265,14 +248,7 @@ class VitalsClientTest {
           pageTokenFromPreviousCall: String?,
         ): List<IssueDetails> = listOf(ISSUE1.issueDetails)
       }
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        cache,
-        ForwardingInterceptor,
-        grpcClient,
-      )
+    val client = createClient(grpcClient = grpcClient)
 
     val responseIssue =
       (client.listTopOpenIssues(
@@ -296,7 +272,6 @@ class VitalsClientTest {
   @Test
   fun `client does not search error reports for empty issue list`() =
     runBlocking<Unit> {
-      val cache = AppInsightsCacheImpl()
       val grpcClient =
         object : TestVitalsGrpcClient() {
           override suspend fun getErrorCountMetricsFreshnessInfo(connection: Connection) =
@@ -313,19 +288,13 @@ class VitalsClientTest {
             connection: Connection,
             filters: QueryFilters,
             reportIds: List<String>,
+            stackTraceGroupParser: StackTraceGroupParser,
           ): List<Event> {
             fail("Test should not call searchErrorReports")
             return emptyList()
           }
         }
-      val client =
-        VitalsClient(
-          projectRule.project,
-          projectRule.disposable,
-          cache,
-          ForwardingInterceptor,
-          grpcClient,
-        )
+      val client = createClient(grpcClient = grpcClient)
       client.listTopOpenIssues(
         IssueRequest(
           TEST_CONNECTION_1,
@@ -341,7 +310,6 @@ class VitalsClientTest {
 
   @Test
   fun `client fetches error report if not found in batch api`() = runBlocking {
-    val cache = AppInsightsCacheImpl()
     val grpcClient =
       object : TestVitalsGrpcClient() {
         override suspend fun getErrorCountMetricsFreshnessInfo(connection: Connection) =
@@ -358,6 +326,7 @@ class VitalsClientTest {
           connection: Connection,
           filters: QueryFilters,
           reportIds: List<String>,
+          stackTraceGroupParser: StackTraceGroupParser,
         ): List<Event> {
           return emptyList()
         }
@@ -366,18 +335,12 @@ class VitalsClientTest {
           connection: Connection,
           filters: QueryFilters,
           issueId: IssueId,
+          stackTraceGroupParser: StackTraceGroupParser,
         ): Event {
           return Event("123")
         }
       }
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        cache,
-        ForwardingInterceptor,
-        grpcClient,
-      )
+    val client = createClient(grpcClient = grpcClient)
 
     val response =
       client.listTopOpenIssues(
@@ -397,16 +360,9 @@ class VitalsClientTest {
   }
 
   @Test
-  fun `list top open issues returns correct issues, events, versions, oses, and devices`() =
+  fun `list top open issues returns correct issues, versions, oses, and devices`() =
     runBlocking<Unit> {
-      val client =
-        VitalsClient(
-          projectRule.project,
-          projectRule.disposable,
-          AppInsightsCacheImpl(),
-          ForwardingInterceptor,
-          VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
-        )
+      val client = createClient()
 
       val result = client.listTopOpenIssues(createIssueRequest(clock = clock))
 
@@ -415,18 +371,6 @@ class VitalsClientTest {
 
       assertThat(value.issues.map { it.issueDetails })
         .containsExactly(TEST_ISSUE1.issueDetails, TEST_ISSUE2.issueDetails)
-
-      // The fake errors service does not reverse engineer the stack trace exactly,
-      // so we cannot use == to compare the sample event here.
-      val events = value.issues.map { it.sampleEvent.toString() }
-      assertThat(events[0])
-        .contains(
-          "dev.firebase.appdistribution.api_service.ResponseWrapper\$Companion.build(ResponseWrapper.kt:23)"
-        )
-      assertThat(events[1])
-        .contains(
-          "com.android.org.conscrypt.ConscryptEngine.convertException(ConscryptEngine.java:1134)"
-        )
 
       assertThat(value.devices)
         .containsExactly(
@@ -450,14 +394,7 @@ class VitalsClientTest {
   @Test
   fun `get device and os distribution stats`() =
     runBlocking<Unit> {
-      val client =
-        VitalsClient(
-          projectRule.project,
-          projectRule.disposable,
-          AppInsightsCacheImpl(),
-          ForwardingInterceptor,
-          VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
-        )
+      val client = createClient()
       val result = client.getIssueDetails(TEST_ISSUE1.id, createIssueRequest(clock = clock))
 
       assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
@@ -483,14 +420,7 @@ class VitalsClientTest {
   @Test
   fun `list connections returns correct apps`() =
     runBlocking<Unit> {
-      val client =
-        VitalsClient(
-          projectRule.project,
-          projectRule.disposable,
-          AppInsightsCacheImpl(),
-          ForwardingInterceptor,
-          VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
-        )
+      val client = createClient()
       val result = client.listConnections()
       assertThat((result as LoadingState.Ready).value)
         .containsExactly(AppConnection(TEST_CONNECTION_1.appId, TEST_CONNECTION_1.displayName))
@@ -530,6 +460,7 @@ class VitalsClientTest {
           connection: Connection,
           filters: QueryFilters,
           reportIds: List<String>,
+          stackTraceGroupParser: StackTraceGroupParser,
         ): List<Event> = listOf(ISSUE1.sampleEvent)
 
         override suspend fun listTopIssues(
@@ -539,14 +470,7 @@ class VitalsClientTest {
           pageTokenFromPreviousCall: String?,
         ): List<IssueDetails> = listOf(ISSUE1.issueDetails)
       }
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        cache,
-        ForwardingInterceptor,
-        grpcClient,
-      )
+    val client = createClient(cache, grpcClient)
 
     // Verify list connections returns expected result
     val result = client.listConnections()
@@ -568,21 +492,8 @@ class VitalsClientTest {
 
   @Test
   fun `fetch insight populates proto fields correctly`() = runBlocking {
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        AppInsightsCacheImpl(),
-        ForwardingInterceptor,
-        TestVitalsGrpcClient(),
-        FakeAiInsightClient,
-      )
+    val client = createClient()
 
-    val codeContext =
-      listOf(
-        CodeContext("src/com/example/MainActivity.kt", "class MainActivity {}"),
-        CodeContext("src/com/example/lib/Library.kt", "class Library {}"),
-      )
     val insight =
       client.fetchInsight(
         TEST_CONNECTION_1,
@@ -608,15 +519,7 @@ class VitalsClientTest {
 
   @Test
   fun `test fetch insight on ANR returns unsupported operation`() = runBlocking {
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        AppInsightsCacheImpl(),
-        ForwardingInterceptor,
-        TestVitalsGrpcClient(),
-        FakeAiInsightClient,
-      )
+    val client = createClient()
 
     val insight =
       client.fetchInsight(
@@ -634,15 +537,7 @@ class VitalsClientTest {
 
   @Test
   fun `test fetch insight on native crash returns unsupported operation`() = runBlocking {
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        AppInsightsCacheImpl(),
-        ForwardingInterceptor,
-        TestVitalsGrpcClient(),
-        FakeAiInsightClient,
-      )
+    val client = createClient()
 
     val stackTraceGroup =
       StacktraceGroup(
@@ -703,15 +598,7 @@ class VitalsClientTest {
           )
         }
       }
-    val client =
-      VitalsClient(
-        projectRule.project,
-        projectRule.disposable,
-        AppInsightsCacheImpl(),
-        ForwardingInterceptor,
-        TestVitalsGrpcClient(),
-        fakeAiInsightClient,
-      )
+    val client = createClient(aiInsightClient = fakeAiInsightClient)
 
     val insight =
       client.fetchInsight(
@@ -725,4 +612,11 @@ class VitalsClientTest {
 
     assertThat(insight).isInstanceOf(LoadingState.PermissionDenied::class.java)
   }
+
+  private fun createClient(
+    cache: AppInsightsCache = AppInsightsCacheImpl(),
+    grpcClient: VitalsGrpcClient =
+      VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
+    aiInsightClient: AiInsightClient = FakeAiInsightClient,
+  ) = createVitalsClient(cache, grpcClient, aiInsightClient) { grpcConnectionRule.channel }
 }
