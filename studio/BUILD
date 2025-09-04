@@ -4,7 +4,7 @@ load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 load("//tools/adt/idea/studio:studio.bzl", "android_studio", "android_studio_configuration", "studio_plugin")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
-load(":version.bzl", "STUDIO_CODENAME", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
+load(":version.bzl", "STUDIO_CODENAME", "STUDIO_CONFIG", "STUDIO_MICRO_PATCH", "STUDIO_RELEASE_NUMBER", "STUDIO_VERSION")
 
 package(
     default_package_metadata = [
@@ -12,11 +12,23 @@ package(
     ],
 )
 
+exports_files(
+    [
+        "preview/studio_splash.png",
+        "preview/studio_splash@2x.png",
+        "stable/studio_splash.png",
+        "stable/studio_splash@2x.png",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 app_icon(
     name = "stable-icon",
     icns = "stable/studio.icns",
     ico = "stable/studio.ico",
     png = "stable/studio.png",
+    splash = "stable/studio_splash.png",
+    splash2x = "stable/studio_splash@2x.png",
     svg = "stable/studio.svg",
     svg_small = "stable/studio-small.svg",
 )
@@ -26,6 +38,8 @@ app_icon(
     icns = "preview/studio.icns",
     ico = "preview/studio.ico",
     png = "preview/studio.png",
+    splash = "preview/studio_splash.png",
+    splash2x = "preview/studio_splash@2x.png",
     svg = "preview/studio.svg",
     svg_small = "preview/studio-small.svg",
 )
@@ -35,6 +49,8 @@ app_icon(
     icns = "nightly/studio.icns",
     ico = "nightly/studio.ico",
     png = "nightly/studio.png",
+    splash = "preview/studio_splash.png",
+    splash2x = "preview/studio_splash@2x.png",
     svg = "nightly/studio.svg",
     svg_small = "nightly/studio-small.svg",
 )
@@ -826,6 +842,7 @@ exports_files([
 android_studio_configuration(
     name = "nightly",
     application_icon = ":nightly-icon",
+    enable_debug_flags = True,
     flag_level = "NIGHTLY",
     mac_app_name = "Android Studio Nightly",
     version_suffix = "Nightly __BUILD_DAY__",
@@ -835,8 +852,18 @@ android_studio_configuration(
 android_studio_configuration(
     name = "canary",
     application_icon = ":preview-icon",
+    enable_debug_flags = True,
     flag_level = "PREVIEW",
     mac_app_name = "Android Studio Preview",
+    version_suffix = None,
+    version_type = STUDIO_VERSION,
+)
+
+android_studio_configuration(
+    name = "stable",
+    application_icon = ":stable-icon",
+    flag_level = "COMPLETE",
+    mac_app_name = "Android Studio",
     version_suffix = None,
     version_type = STUDIO_VERSION,
 )
@@ -847,10 +874,11 @@ android_studio(
     configurations = [
         ":canary",
         ":nightly",
+        ":stable",
     ],
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
-    legacy_default_configuration = "canary",
+    legacy_default_configuration = STUDIO_CONFIG,
     platform = "@intellij//:intellij-sdk",
     plugins = [
         ":org.jetbrains.android",
@@ -945,6 +973,32 @@ py_test(
     data = [":update_sdk_files"],
     env = {
         "update_sdk_files": "$(locations :update_sdk_files)",
+    },
+    tags = [
+        "noci:studio-win",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "update_sherlock_sdk_files",
+    srcs = [
+        "intellij.py",
+        "mkspec.py",
+        "update_sdk.py",
+        "update_sherlock_sdk.py",
+    ],
+)
+
+py_test(
+    name = "test_update_sherlock_sdk",
+    srcs = [
+        "tests/test_update_sherlock_sdk.py",
+        "tests/test_utils.py",
+    ],
+    data = [":update_sherlock_sdk_files"],
+    env = {
+        "update_sherlock_sdk_files": "$(locations :update_sherlock_sdk_files)",
     },
     tags = [
         "noci:studio-win",
@@ -1176,6 +1230,20 @@ iml_test(
     ],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpTest",
+)
+
+iml_test(
+    name = "SherlockStartUpTest",
+    intellij_platform = "sherlock-sdk",
+    module = ":intellij.android.studio.integration",
+    tags_linux = ["block-network"],
+    tags_mac = [
+        "ci:studio-mac",
+        "ci:studio-mac-arm",
+        "cpu:4",
+    ],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.SherlockStartUpTest",
 )
 
 iml_test(

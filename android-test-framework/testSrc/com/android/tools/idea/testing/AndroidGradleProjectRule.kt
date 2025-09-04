@@ -58,36 +58,29 @@ class AndroidGradleProjectRule(
    * This rule is a thin wrapper around [AndroidGradleTestCase], which we delegate to to handle any
    * heavy lifting.
    */
+  @Suppress("JUnitMalformedDeclaration", "DEPRECATION")
   @Ignore(
     "TestCase used here for its internal logic, not to run tests. Tests will be run by the class that uses this rule."
   )
-  private inner class DelegateGradleTestCase :
-    AndroidGradleTestCase(agpVersionSoftwareEnvironment) {
+  private inner class DelegateGradleTestCase : AndroidGradleTestCase(agpVersionSoftwareEnvironment, workspaceRelativeTestDataPath) {
     val fixture: CodeInsightTestFixture
       get() = myFixture
 
-    override fun getTestDataDirectoryWorkspaceRelativePath(): @SystemIndependent String =
-      workspaceRelativeTestDataPath
-
     override fun getAdditionalRepos(): Collection<File> = additionalRepositories
 
-    fun invokeTasks(
+    fun invokeGradleTasks(
       project: Project,
       timeoutMillis: Long?,
       vararg tasks: String,
     ): GradleInvocationResult {
-      return invokeGradleTasks(project, timeoutMillis, *tasks)
+      return AndroidGradleTests.invokeGradleTasks(project, timeoutMillis, *tasks)
     }
 
-    fun <T: GradleBuildResult> doInvokeGradle(
+    fun <T: GradleBuildResult> invokeGradle(
       project: Project,
-      gradleInvocationTask: Function<GradleBuildInvoker, ListenableFuture<T>?>
+      invocation: Function<GradleBuildInvoker, ListenableFuture<T>?>
     ): T {
-      return invokeGradle(project, gradleInvocationTask)
-    }
-
-    public override fun generateSources() { // Changes visibility only.
-      super.generateSources()
+      return AndroidGradleTests.invokeGradle(project, invocation)
     }
   }
 
@@ -142,7 +135,6 @@ class AndroidGradleProjectRule(
   ) =
     loadProject(
       projectPath = projectPath,
-      chosenModuleName = null,
       agpVersion = agpVersion,
       ndkVersion = ndkVersion,
       preLoad = preLoad,
@@ -153,16 +145,12 @@ class AndroidGradleProjectRule(
    * [CodeInsightTestFixture.setTestDataPath] method before calling this method.
    * Project may be synced for test purposes
    *
-   * @param chosenModuleName If specified, which module will be used.
-   * @param gradleVersion If specified, which Gradle version will be used.
-   * @param agpVersion If specified, which AGP version will be used.
-   * @param kotlinVersion If specified, which kotlin version will be used.
+   * @param agpVersion If specified, which AGP software environment version will be used.
    * @param ndkVersion If specified, which NDK version will be used.
    */
   @JvmOverloads
   fun loadProject(
     projectPath: String,
-    chosenModuleName: String? = null,
     agpVersion: AgpVersionSoftwareEnvironment? = null,
     ndkVersion: String? = null,
     preLoad: ((projectRoot: File) -> Unit)? = null,
@@ -183,9 +171,9 @@ class AndroidGradleProjectRule(
 
         preLoad(rootFile)
         delegateTestCase.importProject(resolvedAgpVersion.jdkVersion)
-        delegateTestCase.prepareProjectForTest(project, chosenModuleName)
+        delegateTestCase.prepareProjectForTest(project)
       } else {
-        delegateTestCase.loadProject(projectPath, chosenModuleName, resolvedAgpVersion, ndkVersion)
+        delegateTestCase.loadProject(projectPath, resolvedAgpVersion, ndkVersion)
       }
     }
   }
@@ -208,11 +196,11 @@ class AndroidGradleProjectRule(
   }
 
   fun invokeTasks(timeoutMillis: Long?, vararg tasks: String): GradleInvocationResult {
-    return delegateTestCase.invokeTasks(project, timeoutMillis, *tasks)
+    return delegateTestCase.invokeGradleTasks(project, timeoutMillis, *tasks)
   }
 
-  fun <T: GradleBuildResult> invokeGradle(gradleInvocationTask: Function<GradleBuildInvoker, ListenableFuture<T>?>): T {
-    return delegateTestCase.doInvokeGradle(project, gradleInvocationTask)
+  fun <T: GradleBuildResult> invokeGradle(invocation: Function<GradleBuildInvoker, ListenableFuture<T>?>): T {
+    return delegateTestCase.invokeGradle(project, invocation)
   }
 
   fun resolveTestDataPath(relativePath: String): File =
@@ -233,11 +221,10 @@ class EdtAndroidGradleProjectRule(private val projectRule: AndroidGradleProjectR
   @JvmOverloads
   fun loadProject(
     projectPath: String,
-    chosenModuleName: String? = null,
     agpVersion: AgpVersionSoftwareEnvironment = projectRule.agpVersionSoftwareEnvironment,
     ndkVersion: String? = null,
     preLoad: ((File) -> Unit)? = null
-  ) = projectRule.loadProject(projectPath, chosenModuleName, agpVersion, ndkVersion, preLoad)
+  ) = projectRule.loadProject(projectPath, agpVersion, ndkVersion, preLoad)
 }
 
 fun AndroidGradleProjectRule.onEdt(): EdtAndroidGradleProjectRule =

@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.model
 
 import com.android.ide.common.gradle.Component
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import java.io.File
 
 /**
@@ -57,7 +58,7 @@ sealed interface IdeArtifactLibrary : IdeLibrary {
   val docJar: File?
 }
 
-interface IdeAndroidLibrary : IdeArtifactLibrary {
+sealed interface IdeAndroidLibrary : IdeArtifactLibrary {
   /** Returns the artifact location.  */
   val artifact: File?
 
@@ -137,51 +138,12 @@ interface IdeAndroidLibrary : IdeArtifactLibrary {
   val symbolFile: File
 }
 
-interface IdeJavaLibrary : IdeArtifactLibrary {
+sealed interface IdeJavaLibrary : IdeArtifactLibrary {
   /** Returns the artifact location.  */
   val artifact: File
 }
 
-/**
- * A source set in an IDE module group.
- */
-interface IdeModuleSourceSet {
-  val sourceSetName: String
-  val canBeConsumed: Boolean
-}
-
-/**
- * An Android or Java well-known source set in an IDE module group.
- *
- * Android source sets names are pre-defined and cannot be changed in Gradle configuration by users. In Java, Test Suites and KMP worlds source set
- * naming is more flexible. Note tha in case of source set name collision the original intent is assumed.
- */
-enum class IdeModuleWellKnownSourceSet(
-  override val sourceSetName: String,
-  override val canBeConsumed: Boolean
-) : IdeModuleSourceSet {
-  /**
-   * An Android source set or a special source set in Java/KMP, which is built by default Gradle tasks and on which other
-   * project would depend on unless intentionally changed in the Gradle configuration.
-   */
-  MAIN("main", true),
-
-  /**
-   * A source set with text fixtures supported by the Android Gradle plugin and 'java-test-fixtures' plugin.
-   */
-  TEST_FIXTURES("testFixtures", true),
-
-  UNIT_TEST("unitTest", false),
-  ANDROID_TEST("androidTest", false),
-  SCREENSHOT_TEST("screenshotTest", false);
-
-  companion object {
-    private val nameToValue = values().associateBy { it.sourceSetName }
-    fun fromName(name: String): IdeModuleWellKnownSourceSet? = nameToValue[name]
-  }
-}
-
-interface IdeModuleLibrary : IdeLibrary {
+sealed interface IdeModuleLibrary : IdeLibrary {
   /**
    * Returns the gradle path.
    */
@@ -204,7 +166,7 @@ interface IdeModuleLibrary : IdeLibrary {
   val sourceSet: IdeModuleSourceSet
 }
 
-interface IdeUnknownLibrary: IdeLibrary {
+sealed interface IdeUnknownLibrary: IdeLibrary {
   val key: String
 }
 

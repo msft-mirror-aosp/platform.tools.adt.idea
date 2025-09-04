@@ -814,7 +814,7 @@ void Controller::ProcessXrVelocity(const XrVelocityMessage& message) {
   XrSimulatedInputManager::InjectHeadMovementVelocity(jni_, data);
 }
 
-void Controller::XrRecenter(const XrRecenterMessage& message) {
+void Controller::XrRecenter(const XrRecenterMessage& message) {  //nolint:unparam
   XrSimulatedInputManager::Recenter(jni_);
 }
 
@@ -989,7 +989,8 @@ void Controller::SendPendingDisplayEvents() {
       }
     } else {
       DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni_, display_id);
-      if (display_info.IsValid() && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0) {
+      if (display_id == PRIMARY_DISPLAY_ID ||
+          (display_info.IsValid() && display_info.IsOn() && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0)) {
         if ((Agent::flags() & TURN_OFF_DISPLAY_WHILE_MIRRORING) != 0 && display_info.IsOn()) {
           // Turn the display off if it was turned on for whatever reason.
           Log::D("Display %d turned on. Turning it off again.", display_id);
@@ -1063,7 +1064,7 @@ map<int32_t, DisplayInfo> Controller::GetDisplays() {
   map<int32_t, DisplayInfo> displays;
   for (auto display_id: display_ids) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni_, display_id);
-    if (display_info.logical_size.width > 0 && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0) {
+    if (display_info.IsValid() && display_info.IsOn() && (display_info.flags & DisplayInfo::FLAG_PRIVATE) == 0) {
       displays[display_id] = display_info;
     }
   }

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.model
 
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import java.io.File
 
 /**
@@ -39,13 +40,13 @@ sealed interface IdeUnresolvedLibrary {
 
 sealed interface IdeUnresolvedArtifactLibrary : IdeUnresolvedLibrary
 
-interface IdeUnresolvedAndroidLibrary : IdeUnresolvedArtifactLibrary, IdeAndroidLibrary
+sealed interface IdeUnresolvedAndroidLibrary : IdeUnresolvedArtifactLibrary, IdeAndroidLibrary
 
-interface IdeUnresolvedJavaLibrary : IdeUnresolvedArtifactLibrary, IdeJavaLibrary
+sealed interface IdeUnresolvedJavaLibrary : IdeUnresolvedArtifactLibrary, IdeJavaLibrary
 
-interface IdeUnresolvedUnknownLibrary : IdeUnresolvedLibrary, IdeUnknownLibrary
+sealed interface IdeUnresolvedUnknownLibrary : IdeUnresolvedLibrary, IdeUnknownLibrary
 
-interface IdeUnresolvedModuleLibrary : IdeUnresolvedLibrary {
+sealed interface IdeUnresolvedModuleLibrary : IdeUnresolvedLibrary {
   /**
    * Returns the gradle path.
    */

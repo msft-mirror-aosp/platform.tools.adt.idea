@@ -24,7 +24,7 @@ import com.android.ide.common.repository.GoogleMavenRepositoryV2
 import com.android.testutils.AssumeUtil
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
+import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.repositories.RepositoryUrlManager
 import com.android.tools.idea.projectsystem.gradle.GradleDependencyCompatibilityAnalyzer
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
@@ -596,22 +596,22 @@ private fun ideAndroidLibrary(artifactAddress: String) =
       component = Component.parse(artifactAddress),
       name = "",
       folder = File("libraryFolder").resolve(artifactAddress.replace(':', '-')),
-      _manifest = "manifest.xml",
-      _compileJarFiles = listOf("file.jar"),
-      _runtimeJarFiles = listOf("api.jar"),
-      _resFolder = "res",
-      _resStaticLibrary = "libraryFolder/res.apk",
-      _assetsFolder = "assets",
-      _jniFolder = "jni",
-      _aidlFolder = "aidl",
-      _renderscriptFolder = "renderscriptFolder",
-      _proguardRules = "proguardRules",
-      _lintJar = "lint.jar",
-      _srcJars = listOf("src.jar", "sample.jar"),
-      _docJar = "doc.jar",
-      _externalAnnotations = "externalAnnotations",
-      _publicResources = "publicResources",
-      _artifact = "artifactFile",
-      _symbolFile = "symbolFile"
+      manifest = File("manifest.xml"),
+      compileJarFiles = listOf(File("file.jar")),
+      runtimeJarFiles = listOf(File("api.jar")),
+      resFolder = File("res"),
+      resStaticLibrary = File("libraryFolder/res.apk"),
+      assetsFolder = File("assets"),
+      jniFolder = File("jni"),
+      aidlFolder = File("aidl"),
+      renderscriptFolder = File("renderscriptFolder"),
+      proguardRules = File("proguardRules"),
+      lintJar = File("lint.jar"),
+      srcJars = listOf(File("src.jar"), File("sample.jar")),
+      docJar = File("doc.jar"),
+      externalAnnotations = File("externalAnnotations"),
+      publicResources = File("publicResources"),
+      artifact = File("artifactFile"),
+      symbolFile = File("symbolFile")
     )
   )

@@ -16,6 +16,7 @@
 package com.android.tools.idea.flags;
 
 import com.android.flags.BooleanFlag;
+import com.android.flags.DebugFlag;
 import com.android.flags.EnumFlag;
 import com.android.flags.Flag;
 import com.android.flags.FlagGroup;
@@ -105,6 +106,30 @@ public final class StudioFlags {
     "Sets the flag configuration level",
     "Changes the configuration level that controls the flag defaults. Changing the value of this flag requires restarting Android Studio",
     FeatureConfiguration.Companion.getCurrent());
+
+  //region Studio.Diagnostic
+  private static final FlagGroup STUDIO_DIAGNOSTIC = new FlagGroup(FLAGS, "studio.diagnostic", "Android Studio Diagnostics");
+  public static final Flag<Boolean> ENABLE_THREADING_CHECKER_AGENT = new DebugFlag(
+    STUDIO_DIAGNOSTIC, "threading.agent.enable", "Enable the threading checker agent",
+    "If enabled, the threading checker agent will be attached automatically to the running studio process.");
+
+  public static final Flag<Boolean> HIGHER_DEFAULT_MAX_FREEZE_REPORTS_COUNT = new DebugFlag(
+    STUDIO_DIAGNOSTIC, "freeze.maxreports.highdefault", "Upload more freeze reports",
+    "Use a higher default value for the max number of freeze reports to send");
+
+  public static final Flag<Boolean> HIGHER_DEFAULT_MAX_JFR_REPORTS_COUNT = new DebugFlag(
+    STUDIO_DIAGNOSTIC, "jfr.maxreports.highdefault", "Upload more jfr reports",
+    "Use a higher default value for the max number of jfr reports to send");
+
+  public static final Flag<Boolean> HIGHER_DEFAULT_UI_FREEZE_REPORTS_COUNT = new DebugFlag(
+    STUDIO_DIAGNOSTIC, "uifreezesampling.maxreports.highdefault", "Collect more ui freeze sampling reports",
+    "Use a higher default value for the max number of ui freeze sampling reports to collect");
+
+  public static final Flag<Boolean> REPORT_MANIFEST_INDEX_ERRORS_AS_CRASHES = new DebugFlag(
+    STUDIO_DIAGNOSTIC, "manifestindex.treaterrorsascrashes", "Treat Manifest Index query errors as crashes",
+    "Report manifest query index errors using Logger.error, which results in them being treted as crashes, and reported for" +
+    "opt-in developers.");
+  //endregion
 
   //region New Project Wizard
   private static final FlagGroup NPW = new FlagGroup(FLAGS, "npw", "New Project Wizard");
@@ -206,6 +231,10 @@ public final class StudioFlags {
 
   //region Memory Usage Reporting
   private static final FlagGroup MEMORY_USAGE_REPORTING = new FlagGroup(FLAGS, "memory.usage.reporting", "Memory Usage Reporting");
+
+  public static final Flag<Boolean> ENABLE_HEAP_REPORT_DIAGNOSTICS_DEFAULT = new DebugFlag(
+    MEMORY_USAGE_REPORTING, "enable.heap.report.diagnostics", "Enable heap report monitoring by default",
+    "If enabled, heap reports will be enabled even if the server flag for collecting them was not available.");
 
   public static final Flag<Boolean> USE_DISPOSER_TREE_REFERENCES = new BooleanFlag(
     MEMORY_USAGE_REPORTING, "use.disposer.tree.references", "Memory report collection traversal will use disposer tree reference.",
@@ -2061,10 +2090,10 @@ public final class StudioFlags {
                     "Enable the Recent Files macro in the context drawer",
                     "This macro attaches the most recently opened files' (but not including the currently open one's) paths and contents with chat queries.");
 
-  public static final Flag<Boolean> STUDIOBOT_AGENT_MD_FILES_CONTEXT =
-    new BooleanFlag(STUDIOBOT, "agent.md.files.context",
-                    "Enable the AGENT.md Files macro in the context drawer",
-                    "This macro attaches AGENT.md or GEMINI.md Files under directories of the current file and its recursive parents.");
+  public static final Flag<Boolean> STUDIOBOT_AGENTS_MD_FILES_CONTEXT =
+    new BooleanFlag(STUDIOBOT, "agents.md.files.context",
+                    "Enable the AGENTS.md Files macro in the context drawer",
+                    "This macro attaches AGENTS.md or GEMINI.md Files under directories of the current file and its recursive parents.");
 
   public static final Flag<Boolean> STUDIOBOT_ASK_GEMINI_INCLUDE_BUILD_FILES_IN_CONTEXT =
     new BooleanFlag(STUDIOBOT, "askgemini.include.build.files.in.context",
@@ -2209,11 +2238,6 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "support.gias.enterprise",
                     "Enable support for GCA Enterprise tier",
                     "Enable support for GCA Enterprise tier");
-
-  public static final Flag<Boolean> STUDIOBOT_USE_UNIFIED_ONBOARDER =
-    new BooleanFlag(STUDIOBOT, "use.unified.onboarder",
-                    "Use unified onboarder",
-                    "Use unified onboarder for login and model onboarding");
 
   public static Flag<Boolean> STUDIOBOT_SHIMMER_PLACEHOLDER =
     new BooleanFlag(STUDIOBOT, "show.shimmer.placeholder",

@@ -293,6 +293,12 @@
                     serviceImplementation="com.google.idea.blaze.base.targetmaps.TransitiveDependencyMap"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.settings.BlazeImportSettingsManager"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.status.BlazeSyncStatusStateManager"/>
+    <projectService
+        serviceInterface="com.google.idea.blaze.common.artifact.BuildArtifactCache"
+        serviceImplementation="com.google.idea.blaze.base.qsync.BuildArtifactCacheDirectory" />
+    <projectService
+        serviceInterface="com.google.idea.blaze.common.artifact.BuildArtifactCache$CleanRequest"
+        serviceImplementation="com.google.idea.blaze.base.qsync.CacheCleaner" />
     <applicationService serviceImplementation="com.google.idea.blaze.base.settings.BlazeUserSettings" id="BlazeUserSettings"/>
     <applicationService serviceImplementation="com.google.idea.blaze.base.sync.autosync.AutoSyncSettings" order="after BlazeUserSettings"/>
     <projectService serviceInterface="com.google.idea.blaze.base.lang.buildfile.language.semantics.BuildLanguageSpecProvider"
@@ -369,6 +375,7 @@
     <notificationGroup displayType="BALLOON" id="BuildifierBinaryMissing"/>
     <notificationGroup displayType="BALLOON" id="AddToProject" />
     <notificationGroup displayType="STICKY_BALLOON" id="QuerySyncPromo" />
+    <notificationGroup displayType="STICKY_BALLOON" id="ASwB Legacy Sync Mode" />
     <notificationGroup displayType="BALLOON" id="QuerySyncBuild" />
     <cachesInvalidator implementation="com.google.idea.blaze.base.qsync.action.ResetQuerySyncAction$CachesInvalidator"/>
   </extensions>
@@ -643,7 +650,6 @@
   </projectListeners>
 
   <extensions defaultExtensionNs="com.intellij">
-    <indexedRootsProvider implementation="com.google.idea.blaze.base.project.indexing.WarmUpTriggeringIndexableSetContributor" />
     <lang.jvm.bytecodeAnalysisSuppressor implementation="com.google.idea.blaze.base.project.analysis.ijar.IjarAnalysisSuppressor" />
   </extensions>
 

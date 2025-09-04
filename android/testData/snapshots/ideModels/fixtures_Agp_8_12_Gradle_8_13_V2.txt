@@ -1090,7 +1090,7 @@ MODULE                        : project.app
     ProjectType                   : PROJECT_TYPE_APP
     CompileTarget                 : android-35
     BuildFolder                   : <ROOT>/app/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 35.0.0
     IsBaseSplit                   : true
     GroupId                       : project
     Namespace                     : google.simpleapplication
@@ -1255,7 +1255,7 @@ MODULE                        : project.app
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
-            ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-8.12.0 [-]
+            ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-8.12.0 [-]
             ProguardFiles                 : <ROOT>/app/proguard-rules.pro
             IsDebuggable                  : false
             IsJniDebuggable               : false
@@ -2230,7 +2230,7 @@ MODULE                        : project.lib
     ProjectType                   : PROJECT_TYPE_LIBRARY
     CompileTarget                 : android-35
     BuildFolder                   : <ROOT>/lib/build
-    buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
+    buildToolsVersion             : 35.0.0
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.lib

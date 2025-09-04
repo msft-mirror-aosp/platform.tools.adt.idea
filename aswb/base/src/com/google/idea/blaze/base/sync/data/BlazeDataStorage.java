@@ -15,31 +15,21 @@
  */
 package com.google.idea.blaze.base.sync.data;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.base.logging.LoggedDirectoryProvider;
-import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
-import com.google.idea.blaze.base.qsync.ProjectLoaderImpl;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
-import com.google.idea.blaze.qsync.deps.ArtifactDirectories;
-import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.project.Project;
 import java.io.File;
-import java.nio.file.Path;
-import java.util.Collection;
 import java.util.Optional;
 
 /** Defines where we store our blaze project data. */
 public class BlazeDataStorage {
   public static final String WORKSPACE_MODULE_NAME = ".workspace";
-  public static final String BLAZE_DATA_SUBDIRECTORY = ".blaze";
   public static final String PROJECT_DATA_SUBDIRECTORY = getProjectDataSubdirectory();
 
   private static String getProjectDataSubdirectory() {
@@ -56,8 +46,12 @@ public class BlazeDataStorage {
     }
   }
 
-  public static File getProjectDataDir(BlazeImportSettings importSettings) {
-    return new File(importSettings.getProjectDataDirectory(), BLAZE_DATA_SUBDIRECTORY);
+  /**
+   * DO NOT USE! Project subdirectories will need to be registered and described so that their location can be redirected by policy.
+   */
+  @java.lang.Deprecated
+  public static File getProjectDataDirDoNotUse(BlazeImportSettings importSettings) {
+    return new File(importSettings.getProjectDataDirectory(), ".blaze");
   }
 
   public static File getProjectCacheDir(Project project, String locationHash) {
@@ -75,32 +69,6 @@ public class BlazeDataStorage {
   }
 
   /**
-   * DO NOT USE: Returns a best-effort list of all project data directories used by the IDE.
-   */
-  public static Collection<Path> getMaybeAllProjectDataDirs(Project project) {
-    BlazeImportSettings importSettings = BlazeImportSettingsManager.getInstance(project)
-      .getImportSettings();
-    if (importSettings == null) {
-      throw new IllegalStateException("BlazeImportSettings unavailable");
-    }
-    WorkspaceRoot workspaceRoot = WorkspaceRoot.fromProjectSafe(project);
-    if (workspaceRoot == null) {
-      throw new IllegalStateException("workspaceRoot unavailable");
-    }
-    final var pathResolver =
-      ProjectPath.Resolver.create(
-        workspaceRoot.path(),
-        Path.of(
-          importSettings
-            .getProjectDataDirectory()));
-    return ImmutableList.of(
-      getProjectDataDir(importSettings).toPath(),
-      pathResolver.resolve(ArtifactDirectories.ROOT),
-      ProjectLoaderImpl.getBuildCachePath(project)
-    );
-  }
-
-  /**
    * Configuration which includes the plugin's own project-specific data directory (used for
    * artifacts related to IntelliJ's project setup - module configurations, locally cached jars,
    * locally cached remote outputs) in the logged metrics.
@@ -111,7 +79,7 @@ public class BlazeDataStorage {
     public Optional<LoggedDirectory> getLoggedDirectory(Project project) {
       return Optional.ofNullable(
               BlazeImportSettingsManager.getInstance(project).getImportSettings())
-          .map(BlazeDataStorage::getProjectDataDir)
+          .map(BlazeDataStorage::getProjectDataDirDoNotUse)
           .map(
               file ->
                   LoggedDirectory.builder()

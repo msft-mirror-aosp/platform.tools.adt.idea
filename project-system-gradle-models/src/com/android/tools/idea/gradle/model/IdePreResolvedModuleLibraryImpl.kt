@@ -1,0 +1,158 @@
+/*
+ * Copyright (C) 2025 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tools.idea.gradle.model
+
+import com.android.tools.idea.gradle.model.impl.FileImpl
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.toImpl
+import java.io.File
+import java.io.Serializable
+import org.jetbrains.annotations.TestOnly
+
+data class IdePreResolvedModuleLibraryImpl constructor(
+  override val buildId: String,
+  override val projectPath: String,
+  override val variant: String?,
+  override val lintJar: FileImpl?,
+  override val sourceSet: IdeModuleSourceSet
+) : IdePreResolvedModuleLibrary, Serializable {
+
+  constructor(
+    buildId: String,
+    projectPath: String,
+    variant: String?,
+    lintJar: File?,
+    sourceSet: IdeModuleSourceSet
+  ) : this(
+    buildId = buildId,
+    projectPath = projectPath,
+    variant = variant,
+    lintJar = lintJar?.toImpl(),
+    sourceSet = sourceSet
+  )
+
+  // Used for serialization by the IDE.
+  @Suppress("unused")
+  constructor() : this(
+    buildId = "",
+    projectPath = "",
+    variant = null,
+    lintJar = null,
+    sourceSet = IdeModuleWellKnownSourceSet.MAIN
+  )
+
+  @get:TestOnly
+  val displayName: String get() = moduleLibraryDisplayName(buildId, projectPath, variant, sourceSet)
+}
+
+data class IdeUnresolvedKmpAndroidModuleLibraryImpl(
+  override val buildId: String,
+  override val projectPath: String,
+  override val lintJar: FileImpl?,
+): IdeUnresolvedKmpAndroidModuleLibrary, Serializable {
+
+  constructor(
+    buildId: String,
+    projectPath: String,
+    lintJar: File?
+  ) : this(
+    buildId = buildId,
+    projectPath = projectPath,
+    lintJar = lintJar?.toImpl()
+  )
+
+  // Used for serialization by the IDE.
+  @Suppress("unused")
+  constructor() : this(
+    buildId = "",
+    projectPath = "",
+    lintJar = null,
+  )
+}
+
+data class IdeUnresolvedModuleLibraryImpl constructor(
+  override val buildId: String,
+  override val projectPath: String,
+  override val variant: String?,
+  override val lintJar: FileImpl?,
+  override val artifact: FileImpl
+) : IdeUnresolvedModuleLibrary, Serializable {
+
+  constructor(
+    buildId: String,
+    projectPath: String,
+    variant: String?,
+    lintJar: File?,
+    artifact: File
+  ) : this(
+    buildId = buildId,
+    projectPath = projectPath,
+    variant = variant,
+    lintJar = lintJar?.toImpl(),
+    artifact = artifact.toImpl()
+  )
+
+  // Used for serialization by the IDE.
+  @Suppress("unused")
+  constructor() : this(
+    buildId = "",
+    projectPath = "",
+    variant = null,
+    lintJar = null,
+    artifact = FileImpl("")
+  )
+
+  @get:TestOnly
+  val displayName: String get() = moduleLibraryDisplayName(buildId, projectPath, variant, null)
+}
+
+data class IdeModuleLibraryImpl constructor(
+  override val buildId: String,
+  override val projectPath: String,
+  override val variant: String?,
+  override val lintJar: FileImpl?,
+  override val sourceSet: IdeModuleSourceSet
+) : IdeModuleLibrary, Serializable {
+
+  constructor(
+    buildId: String,
+    projectPath: String,
+    variant: String?,
+    lintJar: File?,
+    sourceSet: IdeModuleSourceSet
+  ) : this(
+    buildId = buildId,
+    projectPath = projectPath,
+    variant = variant,
+    lintJar = lintJar?.toImpl(),
+    sourceSet = sourceSet
+  )
+
+  @get:TestOnly
+  val displayName: String get() = moduleLibraryDisplayName(buildId, projectPath, variant, sourceSet)
+}
+
+internal fun moduleLibraryDisplayName(
+  buildId: String,
+  projectPath: String,
+  variant: String?,
+  sourceSet: IdeModuleSourceSet?
+): String {
+  val variantPart = if (!variant.isNullOrEmpty()) "@$variant" else ""
+  val sourceSetPart = sourceSet?.takeUnless { it == IdeModuleWellKnownSourceSet.MAIN }?.let { "/$it" }.orEmpty()
+  return "$buildId:$projectPath$variantPart$sourceSetPart"
+}

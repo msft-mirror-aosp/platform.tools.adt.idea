@@ -96,10 +96,10 @@ class AndroidModuleDescriptorsTest {
       )
       assertThat(compileSdkVersion.parsedValue.asTestValue(), equalTo(AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk))
 
-      assertThat(sourceCompatibility.resolved.asTestValue(), equalTo(LanguageLevel.JDK_1_8))
+      assertThat(sourceCompatibility.resolved.asTestValue(), equalTo(LanguageLevel.JDK_11))
       assertThat(sourceCompatibility.parsedValue.asTestValue(), nullValue())
 
-      assertThat(targetCompatibility.resolved.asTestValue(), equalTo(LanguageLevel.JDK_1_8))
+      assertThat(targetCompatibility.resolved.asTestValue(), equalTo(LanguageLevel.JDK_11))
       assertThat(targetCompatibility.parsedValue.asTestValue(), nullValue())
 
       assertThat(kotlinJvmTarget.resolved.asTestValue(), nullValue())
@@ -145,6 +145,23 @@ class AndroidModuleDescriptorsTest {
     }
   }
 
+  @Test
+  fun testGetCompileSdkWithExtensionPropertyKotlin() {
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION.withAdditionalPatch { root ->
+      root.resolve("app/build.gradle")
+        .replaceInContent("compileSdkVersion $latestAgpCompileSdk", "compileSdk $latestAgpCompileSdk" +
+                                                                    "\ncompileSdkExtension 0")
+    })
+    preparedProject.open { resolvedProject ->
+      val project = PsProjectImpl(resolvedProject)
+      val appModule = project.findModuleByName("app") as PsAndroidModule
+
+      val compileSdkVersion = AndroidModuleDescriptors.compileSdkVersion.bind(appModule).getValue()
+      assertThat(compileSdkVersion.parsedValue.asTestValue(), equalTo("android-${latestAgpCompileSdk}-ext0"))
+    }
+  }
+
   private fun doTestSetProperties(resolvedProject: Project) {
     // Note: this test does not attempt to sync because it won't succeed without installing older SDKs, and because
     //  we manipulate KotlinOptions without in fact having a Kotlin plugin applied.
@@ -157,7 +174,7 @@ class AndroidModuleDescriptorsTest {
     appModule.viewBindingEnabled = true.asParsed()
     appModule.includeDependenciesInfoInApk = false.asParsed()
     appModule.buildToolsVersion = ParsedValue.Set.Parsed(dslText = DslText.Reference("varProGuardFiles[0]"), value = null)
-    appModule.sourceCompatibility = LanguageLevel.JDK_1_8.asParsed()
+    appModule.sourceCompatibility = LanguageLevel.JDK_11.asParsed()
     appModule.targetCompatibility = LanguageLevel.JDK_11.asParsed()
     appModule.kotlinJvmTarget = LanguageLevel.JDK_17.asParsed()
 
@@ -172,7 +189,7 @@ class AndroidModuleDescriptorsTest {
       assertThat(compileSdkVersion.parsedValue.asTestValue(), equalTo("25"))
       assertThat(viewBindingEnabled.parsedValue.asTestValue(), equalTo(true))
       assertThat(includeDependenciesInfoInApk.parsedValue.asTestValue(), equalTo(false))
-      assertThat(sourceCompatibility.parsedValue.asTestValue(), equalTo(LanguageLevel.JDK_1_8))
+      assertThat(sourceCompatibility.parsedValue.asTestValue(), equalTo(LanguageLevel.JDK_11))
       assertThat(targetCompatibility.parsedValue.asTestValue(), equalTo(LanguageLevel.JDK_11))
       assertThat(kotlinJvmTarget.parsedValue.asTestValue(), equalTo(LanguageLevel.JDK_17))
       assertThat(appModule.parsedModel?.android()?.compileSdkVersion()?.getValue(OBJECT_TYPE), equalTo<Any>(25))
@@ -375,6 +392,57 @@ class AndroidModuleDescriptorsTest {
       assertThat(config?.getVersion()?.toHash(), equalTo<Any>("android-36.1-ext2"))
       assertThat(appModule.parsedModel?.android()?.compileSdkMinor()?.getValue(OBJECT_TYPE), equalTo<Any>(null))
       assertThat(appModule.parsedModel?.android()?.compileSdkExtension()?.getValue(OBJECT_TYPE), equalTo<Any>(null))
+    }
+
+    verifyValues(appModule)
+    appModule.applyChanges()
+    verifyValues(appModule)
+  }
+
+  @Test
+  fun testSetCompileSdkPropertiesCompileSdkOldDslGroovy() {
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY.withAdditionalPatch { root ->
+      root.resolve("app/build.gradle")
+        .replaceInContent("compileSdkVersion $latestAgpCompileSdk", "compileSdk $latestAgpCompileSdk" +
+                                                                    "\ncompileSdkExtension 2")
+    })
+    preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
+      doTestSetCompileSdkPropertiesCompileSdkOldDsl(resolvedProject)
+    }
+  }
+
+  @Test
+  fun testSetCompileSdkPropertiesCompileSdkOldDslKts() {
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_KOTLIN.withAdditionalPatch { root ->
+      root.resolve("app/build.gradle.kts")
+        .replaceInContent("compileSdkVersion($latestAgpCompileSdk)", "compileSdk = $latestAgpCompileSdk" +
+                                                                    "\ncompileSdkExtension = 2")
+    })
+    preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
+      doTestSetCompileSdkPropertiesCompileSdkOldDsl(resolvedProject)
+    }
+  }
+
+  private fun doTestSetCompileSdkPropertiesCompileSdkOldDsl(resolvedProject: Project, ) {
+    val project = PsProjectImpl(resolvedProject).also { it.testResolve() }
+
+    val appModule = project.findModuleByName("app") as PsAndroidModule
+    assertThat(appModule, notNullValue())
+
+    appModule.compileSdkVersion = "android-36-ext2".asParsed()
+
+    fun verifyValues(appModule: PsAndroidModule) {
+      val compileSdkVersion = AndroidModuleDescriptors.compileSdkVersion.bind(appModule).getValue()
+
+      assertThat(compileSdkVersion.parsedValue.asTestValue(), equalTo("android-36-ext2"))
+      val config = appModule.parsedModel?.android()?.compileSdkVersion()?.toCompileSdkConfig()
+      assertNull(config)
+      assertThat(appModule.parsedModel?.android()?.compileSdkVersion()?.getValue(OBJECT_TYPE), equalTo<Any>(36))
+      //TODO: test setting compileSdkMinor when possible - minor versions are only supported for compile SDK 36 and above
+      assertThat(appModule.parsedModel?.android()?.compileSdkMinor()?.getValue(OBJECT_TYPE), equalTo<Any>(null))
+      assertThat(appModule.parsedModel?.android()?.compileSdkExtension()?.getValue(OBJECT_TYPE), equalTo<Any>(2))
     }
 
     verifyValues(appModule)

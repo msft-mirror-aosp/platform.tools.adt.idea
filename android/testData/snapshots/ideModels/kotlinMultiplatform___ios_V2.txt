@@ -1352,14 +1352,14 @@ MODULE                        : kotlinMultiPlatform.app
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -2429,14 +2429,14 @@ MODULE                        : kotlinMultiPlatform.module2
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true

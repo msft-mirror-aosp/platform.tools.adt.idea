@@ -2278,14 +2278,14 @@ MODULE                        : project.app
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -2454,7 +2454,7 @@ MODULE                        : project.app
             Name                          : release
             ApplicationIdSuffix           : suffix
             VersionNameSuffix             : vsuffix
-            ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]
             ProguardFiles                 : <ROOT>/app/proguard-rules.txt
             ProguardFiles                 : <ROOT>/app/proguard-rules2.txt [-]
             IsDebuggable                  : false
@@ -3733,14 +3733,14 @@ MODULE                        : project.dyn_feature
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -4024,14 +4024,14 @@ MODULE                        : project.lib
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -4147,7 +4147,7 @@ MODULE                        : project.lib
                     BaselineProfileDirectories    : <ROOT>/lib/src/testDebug/baselineProfiles [-]
         BuildType
             Name                          : release
-            ProguardFiles                 : <ROOT>/lib/build/intermediates/default_proguard_files/global/proguard-android.txt-<AGP_VERSION> [-]
+            ProguardFiles                 : <ROOT>/lib/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]
             ProguardFiles                 : <ROOT>/lib/proguard-rules.txt
             ConsumerProguardFiles         : <ROOT>/lib/other.pro
             IsDebuggable                  : false
@@ -5019,14 +5019,14 @@ MODULE                        : project.nested1
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -5294,14 +5294,14 @@ MODULE                        : project.nested1.deep
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -5579,14 +5579,14 @@ MODULE                        : project.nested2
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -5987,14 +5987,14 @@ MODULE                        : project.nested2.deep
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true
@@ -6274,14 +6274,14 @@ MODULE                        : project.nested2.trans.deep2
         SarifReport                   : false
     JavaCompileOptions
         Encoding                      : UTF-8
-        SourceCompatibility           : 1.8
-        TargetCompatibility           : 1.8
+        SourceCompatibility           : 11
+        TargetCompatibility           : 11
         IsCoreLibraryDesugaringEnabled          : false
     AgpFlags
         ApplicationRClassConstantIds  : false
         AestRClassConstantIds         : false
         TransitiveRClasses            : false
-        UseAndroidX                   : false
+        UseAndroidX                   : true
         UsesCompose                   : false
         MlModelBindingEnabled         : false
         AndroidResourcesEnabled       : true

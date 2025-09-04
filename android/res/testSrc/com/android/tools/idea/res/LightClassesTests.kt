@@ -23,8 +23,8 @@ import com.android.ide.common.rendering.api.ResourceReference
 import com.android.resources.ResourceType
 import com.android.testutils.TestUtils
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
-import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
+import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.MergedManifestModificationListener
 import com.android.tools.idea.model.TestAndroidModel.Companion.namespaced
@@ -220,7 +220,7 @@ abstract class SingleModuleLightClassesTestBase {
     )
 
     if (packageNameForNamespacing != null) {
-      AndroidModel.set(myFacet, namespaced(myFacet))
+      AndroidModel.setForTests(myFacet, namespaced(myFacet))
       updatePrimaryManifest(myFacet) { `package`.value = packageNameForNamespacing }
       LocalResourceManager.getInstance(myFacet.module)!!.invalidateAttributeDefinitions()
     }
@@ -1643,7 +1643,7 @@ class NamespacedModuleWithAarLightClassesTest {
       SdkConstants.FN_ANDROID_MANIFEST_XML,
     )
 
-    AndroidModel.set(myFacet, namespaced(myFacet))
+    AndroidModel.setForTests(myFacet, namespaced(myFacet))
     updatePrimaryManifest(myFacet) { `package`.value = "p1.p2" }
     LocalResourceManager.getInstance(myFacet.module)!!.invalidateAttributeDefinitions()
     addBinaryAarDependency(myModule)

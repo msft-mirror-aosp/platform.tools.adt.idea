@@ -44,6 +44,7 @@ import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.LlmPrompt
 import com.android.tools.idea.preview.createOrReuseModelForPreviewElement
 import com.android.tools.idea.preview.find.PreviewElementProvider
+import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.updatePreviewsAndRefresh
 import com.android.tools.idea.projectsystem.NamedIdeaSourceProviderBuilder
 import com.android.tools.idea.projectsystem.SourceProviderManager
@@ -102,7 +103,7 @@ private fun configureLayoutlibSceneManagerForPreviewElement(
   configureLayoutlibSceneManager(
     layoutlibSceneManager,
     showDecorations = displaySettings.showDecoration,
-    isInteractive = false,
+    previewMode = PreviewMode.Default(),
     requestPrivateClassLoader = false,
     runVisualAnalysis = false,
     quality = 1f,
@@ -624,8 +625,7 @@ class FakeStudioBotActionFactory : ComposeStudioBotActionFactory {
 
   override fun transformPreviewAction() = fakeAction
 
-  override fun fixComposeAccessibilityAction(visualLintIssues: List<VisualLintRenderIssue>) =
-    fakeAction
+  override fun fixVisualLintIssuesAction(visualLintIssues: List<VisualLintRenderIssue>) = fakeAction
 
   override fun fixComposeRenderIssueAction(issues: List<Issue>) = fakeAction
 

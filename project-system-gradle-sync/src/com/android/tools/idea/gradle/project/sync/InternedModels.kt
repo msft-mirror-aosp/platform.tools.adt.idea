@@ -22,18 +22,17 @@ import com.android.tools.idea.gradle.model.ClasspathType
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
-import com.android.tools.idea.gradle.model.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.IdeUnresolvedLibrary
 import com.android.tools.idea.gradle.model.IdeUnresolvedUnknownLibrary
 import com.android.tools.idea.gradle.model.LibraryReference
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
+import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
-import com.android.tools.idea.gradle.model.impl.IdeJavaLibraryImpl
+import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import org.jetbrains.annotations.VisibleForTesting
 import java.io.File
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.Comparator
 import kotlin.concurrent.withLock
 import kotlin.math.min
 

@@ -38,12 +38,12 @@ import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnown
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
-import com.android.tools.idea.gradle.model.IdeModuleSourceSet
-import com.android.tools.idea.gradle.model.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
-import com.android.tools.idea.gradle.model.impl.IdeAndroidLibraryImpl
+import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl
@@ -59,18 +59,17 @@ import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl
-import com.android.tools.idea.gradle.model.impl.IdeJavaLibraryImpl
+import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl
-import com.android.tools.idea.gradle.model.impl.IdePreResolvedModuleLibraryImpl
+import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl
@@ -91,7 +90,6 @@ import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
 import com.android.tools.idea.gradle.project.importing.withAfterCreate
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
-import com.android.tools.idea.gradle.project.model.GradleAndroidModelDataImpl
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
 import com.android.tools.idea.gradle.project.model.NdkModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
@@ -339,7 +337,38 @@ data class JavaModuleModelBuilder(
 }
 
 data class AndroidModuleDependency(val moduleGradlePath: String, val variant: String?)
-data class AndroidLibraryDependency(val library: IdeAndroidLibraryImpl)
+data class AndroidLibraryDependency(val library: IdeAndroidLibraryImpl) {
+  companion object {
+    fun fromAddress(address: String): AndroidLibraryDependency {
+      val folder = File("libraryFolder").resolve(address.replace(':', '-'))
+      return AndroidLibraryDependency(
+        IdeAndroidLibraryImpl(
+          address,
+          Component.parse(address),
+          "Gradle: $address",
+          folder = folder,
+          manifest = folder.resolve("AndroidManifest.xml"),
+          compileJarFiles = listOf(folder.resolve("file.jar")),
+          runtimeJarFiles = listOf(folder.resolve("api.jar")),
+          resFolder = folder.resolve("res"),
+          resStaticLibrary = folder.resolve("res.apk"),
+          assetsFolder = folder.resolve("assets"),
+          jniFolder = folder.resolve("jni"),
+          aidlFolder = folder.resolve("aidl"),
+          renderscriptFolder = folder.resolve("renderscriptFolder"),
+          proguardRules = folder.resolve("proguardRules"),
+          lintJar = folder.resolve("lint.jar"),
+          srcJars = listOf(folder.resolve("src.jar"), folder.resolve("sample.jar")),
+          docJar = folder.resolve("doc.jar"),
+          externalAnnotations = folder.resolve("externalAnnotations"),
+          publicResources = folder.resolve("publicResources"),
+          artifact = folder.resolve("artifactFile"),
+          symbolFile = folder.resolve("symbolFile")
+        )
+      )
+    }
+  }
+}
 data class JavaLibraryDependency(val library: IdeJavaLibraryImpl) {
   companion object {
     fun forJar(jarFile: File): JavaLibraryDependency {
@@ -1715,7 +1744,10 @@ private fun setupTestProjectFromAndroidModelCore(
     resolveArtifact = { null },
     resolveKmpAndroidMainSourceSet = { null }
   ).buildResolvedLibraryTable(unresolvedTable)
-  val libraryResolver = IdeLibraryModelResolverImpl.fromLibraryTables(resolvedTable, null)
+  val libraryResolver = IdeLibraryModelResolverImpl.fromLibraryTables(
+    resolvedTable,
+    null
+  )
   projectDataNode.createChild(
     AndroidProjectKeys.IDE_COMPOSITE_BUILD_MAP,
     IdeCompositeBuildMapImpl(
@@ -1806,7 +1838,7 @@ private fun createAndroidModuleDataNode(
     )
   )
 
-  val gradleAndroidModel = GradleAndroidModelDataImpl.create(
+  val gradleAndroidModel = GradleAndroidModelData.create(
     qualifiedModuleName,
     moduleBasePath,
     androidProject,
@@ -2334,7 +2366,9 @@ data class OpenPreparedProjectOptions @JvmOverloads constructor(
   val disableKtsRelatedIndexing: Boolean = false,
   val reportProjectSizeUsage: Boolean = false,
   val overrideProjectGradleJdkPath: File? = null,
-  val onProjectCreated: Project.() -> Unit = {}
+  val onProjectCreated: Project.() -> Unit = {},
+  // Only relevant when re-opening a project that already is set to switch variants
+  val skipSwitchingVariants: Boolean = false,
 )
 
 fun OpenPreparedProjectOptions.withoutKtsRelatedIndexing(): OpenPreparedProjectOptions = copy(disableKtsRelatedIndexing = true)

@@ -30,6 +30,7 @@
  */
 package com.android.tools.idea.gradle.project.upgrade.integration
 
+import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.junit4.OldAgpSuite
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_8_11
@@ -40,9 +41,10 @@ import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_1
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_2
 import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_7_3
-import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.ALL_DEPRECATIONS
-import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.BASIC
-import com.android.tools.idea.gradle.util.CompatibleGradleVersion
+import com.android.tools.idea.gradle.project.upgrade.integration.TestAGPVersion.V_8_0
+import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.FROM_AGP_40_ALL_DEPRECATIONS
+import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.FROM_AGP_40_BASIC
+import com.android.tools.idea.gradle.project.upgrade.integration.TestProject.FROM_AGP_80_BASIC
 import com.android.utils.FileUtils
 import com.intellij.openapi.projectRoots.JavaSdkVersion
 
@@ -52,10 +54,11 @@ import com.intellij.openapi.projectRoots.JavaSdkVersion
  * between which we test running upgrades.
  */
 enum class TestProject(
-  val path: String
+  vararg val path: String
 ){
-  BASIC("Basic"),
-  ALL_DEPRECATIONS("AllDeprecations")
+  FROM_AGP_40_BASIC("FromAgp40", "Basic"),
+  FROM_AGP_40_ALL_DEPRECATIONS("FromAgp40", "AllDeprecations"),
+  FROM_AGP_80_BASIC("FromAgp80", "Basic"),
 }
 
 /**
@@ -66,19 +69,19 @@ enum class TestProject(
  */
 enum class TestAGPVersion(
   val agpVersion: String?,
-  val gradleVersion: CompatibleGradleVersion,
   val jdkVersion: JavaSdkVersion? = null,
   val kotlinVersion: String = "1.3.72",
-  val compileSdkVersion: AndroidVersion = AndroidVersion(34)
+  val compileSdkVersion: AndroidVersion = AndroidVersion(AndroidApiLevel(34))
 ) {
-  V_4_0("4.0.0", CompatibleGradleVersion.VERSION_6_1_1, jdkVersion = JavaSdkVersion.JDK_11),
-  V_4_1("4.1.0", CompatibleGradleVersion.VERSION_6_5, jdkVersion = JavaSdkVersion.JDK_11),
-  V_4_2("4.2.0", CompatibleGradleVersion.VERSION_6_7_1, jdkVersion = JavaSdkVersion.JDK_11),
-  V_7_0("7.0.0", CompatibleGradleVersion.VERSION_7_0_2, jdkVersion = JavaSdkVersion.JDK_11),
-  V_7_1("7.1.0", CompatibleGradleVersion.VERSION_7_2, jdkVersion = JavaSdkVersion.JDK_11),
-  V_7_2("7.2.0", CompatibleGradleVersion.VERSION_7_3_3, jdkVersion = JavaSdkVersion.JDK_11),
-  V_7_3("7.3.0", CompatibleGradleVersion.VERSION_7_4, jdkVersion = JavaSdkVersion.JDK_11, kotlinVersion = "1.6.21"),
-  V_8_11("8.11.0", CompatibleGradleVersion.VERSION_8_13, kotlinVersion = "1.6.21", jdkVersion = JavaSdkVersion.JDK_17),
+  V_4_0("4.0.0", jdkVersion = JavaSdkVersion.JDK_11),
+  V_4_1("4.1.0", jdkVersion = JavaSdkVersion.JDK_11),
+  V_4_2("4.2.0", jdkVersion = JavaSdkVersion.JDK_11),
+  V_7_0("7.0.0", jdkVersion = JavaSdkVersion.JDK_11),
+  V_7_1("7.1.0", jdkVersion = JavaSdkVersion.JDK_11),
+  V_7_2("7.2.0", jdkVersion = JavaSdkVersion.JDK_11),
+  V_7_3("7.3.0", jdkVersion = JavaSdkVersion.JDK_11, kotlinVersion = "1.6.21"),
+  V_8_0("8.0.2", jdkVersion = JavaSdkVersion.JDK_17, kotlinVersion = "1.6.21"),
+  V_8_11("8.11.0", jdkVersion = JavaSdkVersion.JDK_17, kotlinVersion = "1.6.21"),
 }
 
 /**
@@ -97,40 +100,42 @@ enum class AUATestProjectState(
   val basePath: String,
   val patchPath: String? = null,
 ) {
-  BASIC_4_0(BASIC, V_4_0, minimalState = true, basePath = "4.0.0"),
-  BASIC_4_1(BASIC, V_4_1, minimalState = true, basePath = "4.0.0", patchPath = "4.1.0"),
-  BASIC_4_2(BASIC, V_4_2, minimalState = true, basePath = "4.0.0", patchPath = "4.2.0"),
-  BASIC_7_0(BASIC, V_7_0, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
+  BASIC_4_0(FROM_AGP_40_BASIC, V_4_0, minimalState = true, basePath = "4.0.0"),
+  BASIC_4_1(FROM_AGP_40_BASIC, V_4_1, minimalState = true, basePath = "4.0.0", patchPath = "4.1.0"),
+  BASIC_4_2(FROM_AGP_40_BASIC, V_4_2, minimalState = true, basePath = "4.0.0", patchPath = "4.2.0"),
+  BASIC_7_0(FROM_AGP_40_BASIC, V_7_0, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
-  BASIC_7_1(BASIC, V_7_1, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
+  BASIC_7_1(FROM_AGP_40_BASIC, V_7_1, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
-  BASIC_7_2(BASIC, V_7_2, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
+  BASIC_7_2(FROM_AGP_40_BASIC, V_7_2, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
   // No changes from 7.0 apart from versions so reuse the same files.
-  BASIC_7_3(BASIC, V_7_3, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
-  BASIC_8_11_MIN(BASIC, V_8_11, minimalState = true, basePath = "4.0.0", patchPath = "dev-minimal"),
-  BASIC_8_11_FULL(BASIC, V_8_11, minimalState = false, basePath = "4.0.0", patchPath = "dev-upgraded"),
+  BASIC_7_3(FROM_AGP_40_BASIC, V_7_3, minimalState = true, basePath = "4.0.0", patchPath = "7.0.0"),
+  BASIC_8_11_MIN(FROM_AGP_40_BASIC, V_8_11, minimalState = true, basePath = "4.0.0", patchPath = "dev-minimal"),
+  BASIC_8_11_FULL(FROM_AGP_40_BASIC, V_8_11, minimalState = false, basePath = "4.0.0", patchPath = "dev-upgraded"),
 
-  ALL_DEPRECATIONS_4_2_MIN(ALL_DEPRECATIONS, V_4_2, minimalState = true, basePath = "4.2.0-base"),
-  ALL_DEPRECATIONS_4_2_FULL(ALL_DEPRECATIONS, V_4_2, minimalState = false, basePath = "4.2.0-base", patchPath = "4.2.0-upgraded"),
-  ALL_DEPRECATIONS_7_0_MIN(ALL_DEPRECATIONS, V_7_0, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
-  ALL_DEPRECATIONS_7_0_FULL(ALL_DEPRECATIONS, V_7_0, minimalState = false, basePath = "4.2.0-base", patchPath = "7.0.0-upgraded"),
+  ALL_DEPRECATIONS_4_2_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_4_2, minimalState = true, basePath = "4.2.0-base"),
+  ALL_DEPRECATIONS_4_2_FULL(FROM_AGP_40_ALL_DEPRECATIONS, V_4_2, minimalState = false, basePath = "4.2.0-base", patchPath = "4.2.0-upgraded"),
+  ALL_DEPRECATIONS_7_0_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_0, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
+  ALL_DEPRECATIONS_7_0_FULL(FROM_AGP_40_ALL_DEPRECATIONS, V_7_0, minimalState = false, basePath = "4.2.0-base", patchPath = "7.0.0-upgraded"),
   // No changes from 7.0 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_1_MIN(ALL_DEPRECATIONS, V_7_1, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
-  ALL_DEPRECATIONS_7_1_FULL(ALL_DEPRECATIONS, V_7_1, minimalState = false, basePath = "4.2.0-base", patchPath = "7.1.0-upgraded"),
+  ALL_DEPRECATIONS_7_1_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_1, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
+  ALL_DEPRECATIONS_7_1_FULL(FROM_AGP_40_ALL_DEPRECATIONS, V_7_1, minimalState = false, basePath = "4.2.0-base", patchPath = "7.1.0-upgraded"),
   // No changes from 7.0 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_2_MIN(ALL_DEPRECATIONS, V_7_2, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
+  ALL_DEPRECATIONS_7_2_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_2, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
   // No changes from 7.1 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_2_FULL(ALL_DEPRECATIONS, V_7_2, minimalState = false, basePath = "4.2.0-base", patchPath = "7.1.0-upgraded"),
+  ALL_DEPRECATIONS_7_2_FULL(FROM_AGP_40_ALL_DEPRECATIONS, V_7_2, minimalState = false, basePath = "4.2.0-base", patchPath = "7.1.0-upgraded"),
   // No changes from 7.0 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_3_MIN(ALL_DEPRECATIONS, V_7_3, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
+  ALL_DEPRECATIONS_7_3_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_7_3, minimalState = true, basePath = "4.2.0-base", patchPath = "7.0.0-minimal"),
   // No changes from 7.1 apart from versions so reuse the same files.
-  ALL_DEPRECATIONS_7_3_FULL(ALL_DEPRECATIONS, V_7_3, minimalState = false, basePath = "4.2.0-base", patchPath = "7.1.0-upgraded"),
-  ALL_DEPRECATIONS_8_11_MIN(ALL_DEPRECATIONS, V_8_11, minimalState = true, basePath = "4.2.0-base", patchPath = "dev-minimal"),
-  ALL_DEPRECATIONS_8_11_FULL(ALL_DEPRECATIONS, V_8_11, minimalState = false, basePath = "4.2.0-base", patchPath = "dev-upgraded"),
+  ALL_DEPRECATIONS_7_3_FULL(FROM_AGP_40_ALL_DEPRECATIONS, V_7_3, minimalState = false, basePath = "4.2.0-base", patchPath = "7.1.0-upgraded"),
+  ALL_DEPRECATIONS_8_11_MIN(FROM_AGP_40_ALL_DEPRECATIONS, V_8_11, minimalState = true, basePath = "4.2.0-base", patchPath = "dev-minimal"),
+  ALL_DEPRECATIONS_8_11_FULL(FROM_AGP_40_ALL_DEPRECATIONS, V_8_11, minimalState = false, basePath = "4.2.0-base", patchPath = "dev-upgraded"),
+
+  FROM_80_BASIC_8_0(FROM_AGP_80_BASIC, V_8_0, minimalState = true, basePath = "8.0.0"),
   ;
 
-  fun projectBasePath() = FileUtils.join(project.path, basePath)
-  fun projectPatchPath() = patchPath?.let { FileUtils.join(project.path, it) }
+  fun projectBasePath() = FileUtils.join(*project.path, basePath)
+  fun projectPatchPath() = patchPath?.let { FileUtils.join(*project.path, it) }
 }
 
 class UpgradeTestCase(
