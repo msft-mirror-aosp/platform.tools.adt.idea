@@ -19,6 +19,7 @@ import com.android.SdkConstants.DOT_JAR
 import com.android.SdkConstants.FN_ANNOTATIONS_ZIP
 import com.android.builder.model.v2.models.VariantDependenciesAdjacencyList
 import com.android.ide.gradle.model.composites.BuildMap
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactName
@@ -28,6 +29,7 @@ import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
 import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
@@ -71,12 +73,12 @@ import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.ImmutableEntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.util.PathUtil
+import java.io.File
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.jetbrains.plugins.gradle.model.GradleSourceSetModel
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncProjectConfigurator.project
-import java.io.File
 
 private val LOG = currentClassLogger()
 
@@ -112,12 +114,15 @@ private class SyncContributorAndroidProjectDependenciesContext(
   val knownEntitySources = mutableSetOf<EntitySource>(androidProjectContext.holderModuleEntity.entitySource)
   val knownModuleNames = mutableSetOf<String>()
 
-
-  /** Populates the dependencies of the module corresponding to the given artifact.  */
   fun IdeDependenciesCore.populateDependenciesForModule(scope: DependencyScope, name: IdeArtifactName) {
     val wellKnownSourceSetName = name.toWellKnownSourceSet().sourceSetName
-    val moduleName = "${androidProjectContext.resolveModuleName()}.$wellKnownSourceSetName"
-    val entitySource = AndroidGradleSourceSetEntitySource(androidProjectContext.projectEntitySource, wellKnownSourceSetName)
+    populateDependenciesForModule(scope, wellKnownSourceSetName)
+  }
+
+  /** Populates the dependencies of the module corresponding to the given artifact.  */
+  fun IdeDependenciesCore.populateDependenciesForModule(scope: DependencyScope, sourceSetName: String) {
+    val moduleName = "${androidProjectContext.resolveModuleName()}.$sourceSetName"
+    val entitySource = AndroidGradleSourceSetEntitySource(androidProjectContext.projectEntitySource, sourceSetName)
 
     knownEntitySources += entitySource
     knownModuleNames += moduleName
@@ -313,6 +318,13 @@ private fun SyncContributorAndroidProjectDependenciesContext.populateDependencie
   ideVariant.hostTestArtifacts.forEach { it.compileClasspathCore.populateDependenciesForModule(DependencyScope.TEST, it.name)}
   ideVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.let {
     it.compileClasspathCore.populateDependenciesForModule(DependencyScope.TEST, it.name)
+  }
+
+  if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+    // TODO(445381129): Pass the dependencies through once they have been added to the test suite artifact
+    ideVariant.testSuiteArtifacts.forEach { testSuite ->
+      IdeDependenciesCoreDirect(emptyList()).populateDependenciesForModule(DependencyScope.TEST, testSuite.suiteName)
+    }
   }
 
   val allKnownModuleEntities = listOfNotNull(moduleNameToEntityMap[androidProjectContext.resolveModuleName()]) +
