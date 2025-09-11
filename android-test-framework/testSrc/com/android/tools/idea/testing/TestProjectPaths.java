@@ -13,7 +13,6 @@ public final class TestProjectPaths {
   public static final String APP_WITH_LIB_WITH_SAMPLES = "projects/appWithLibWithSamples";
   public static final String APPLICATION_ID_SUFFIX = "projects/applicationIdSuffix";
   public static final String APPLICATION_ID_VARIANT_API = "projects/applicationIdViaVariantApi";
-  public static final String APPLICATION_ID_VARIANT_API_BROKEN = "projects/applicationIdViaVariantApiBroken";
   public static final String APP_WITH_ACTIVITY_IN_LIB = "projects/appWithActivityInLib";
 
   public static final String BASIC = "projects/basic";
@@ -28,7 +27,6 @@ public final class TestProjectPaths {
   public static final String DEPENDENT_MODULES = "projects/dependentModules";
   public static final String DEPENDENT_NATIVE_MODULES = "projects/dependentNativeModules";
   public static final String DYNAMIC_APP = "projects/dynamicApp";
-  public static final String DYNAMIC_APP_WITH_VARIANTS = "projects/dynamicAppWithVariants";
   public static final String ETR_WITH_ANDROIDX = "projects/EtrWithAndroidx";
   public static final String ETR_WITHOUT_ANDROIDX = "projects/EtrTestProject";
   public static final String HELLO_JNI = "projects/helloJni";
@@ -107,7 +105,6 @@ public final class TestProjectPaths {
   public static final String SIMPLE_APPLICATION_WITH_DUPLICATES = "projects/simpleApplicationWithDuplicates";
   public static final String SIMPLE_APP_WITH_OLDER_SUPPORT_LIB = "projects/simpleAppWithOlderSupportLib";
   public static final String SIMPLE_APP_WITH_SCREENSHOT_TEST = "projects/simpleApplicationWithScreenshot";
-  public static final String SIMPLE_APP_ANDROID_TEST_DISABLED = "projects/simpleApplicationAndroidTestDisabled";
   public static final String SPLIT_BUILD_FILES = "projects/splitBuildFiles";
   public static final String SYNC_MULTIPROJECT = "projects/sync/multiproject";
   public static final String TEST_ARTIFACTS_ILLEGAL_IDENTIFIERS = "projects/testArtifacts/illegalIdentifiers";

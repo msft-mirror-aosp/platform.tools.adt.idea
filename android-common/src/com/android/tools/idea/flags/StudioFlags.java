@@ -19,6 +19,7 @@ import com.android.flags.BooleanFlag;
 import com.android.flags.DebugFlag;
 import com.android.flags.EnumFlag;
 import com.android.flags.Flag;
+import com.android.flags.FlagDefault;
 import com.android.flags.FlagGroup;
 import com.android.flags.FlagValueContainer;
 import com.android.flags.Flags;
@@ -61,7 +62,7 @@ public final class StudioFlags {
       userOverrides = new LazyStudioFlagSettings();
     }
     return new Flags(
-      FeatureConfigurationProvider.Companion.getCurrentFlags(),
+      FeatureConfigurationProvider.getCurrentFlags(),
       userOverrides,
       new PropertyOverrides(),
       new MendelOverrides(),
@@ -105,7 +106,13 @@ public final class StudioFlags {
     "configuration.level",
     "Sets the flag configuration level",
     "Changes the configuration level that controls the flag defaults. Changing the value of this flag requires restarting Android Studio",
-    FeatureConfiguration.Companion.getCurrent());
+    new FlagDefault<>("Delayed default for FeatureConfiguration") { // use a FlagDefault to avoid calling getCurrent() during cinit
+      @Override
+      public FeatureConfiguration get() {
+        return FeatureConfiguration.getCurrent();
+      }
+    },
+    FeatureConfiguration.class);
 
   //region Studio.Diagnostic
   private static final FlagGroup STUDIO_DIAGNOSTIC = new FlagGroup(FLAGS, "studio.diagnostic", "Android Studio Diagnostics");
@@ -310,6 +317,13 @@ public final class StudioFlags {
     "Configure the max size of the cache used by GradleClassFileFinder",
     "Allow configuring the maximum number of file references to be kept.",
     150L
+  );
+
+  public static final Flag<Boolean> DYNAMIC_MATERIAL_SYMBOLS = new BooleanFlag(
+    DESIGN_TOOLS,
+    "assetstudio.dynamic.material.symbols",
+    "Render Material Symbols Dynamically",
+    "Render Material Symbols as customizable layout files. When enabled deprecates Material Icons"
   );
   //endregion
 
@@ -1117,6 +1131,17 @@ public final class StudioFlags {
     "Horizontal scroll for layout inspector component tree",
     "When this flag is enabled, we enable horizontal scrolling for the Layout Inspector's component tree."
     );
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.state.reads", "Enable Recomposition State Reads",
+    "Enable display of state read stacktrace for recompositions."
+    );
+
+  public static final Flag<Integer> DYNAMIC_LAYOUT_INSPECTOR_MAX_RECOMPOSITIONS_WITH_STATE_READS = new IntFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.max.recompositions.with.state.reads",
+    "Max recompositions with state reads",
+    "When dynamic state reads are observed: limit the recompositions the agent caches state reads for.", 20
+  );
   //endregion
 
   //region Embedded Emulator
@@ -2120,6 +2145,11 @@ public final class StudioFlags {
                     "Enable Model Context Protocol (MCP) support",
                     "Allows the agent to use custom tools provided by Model Context Protocol (MCP) servers");
 
+  public static final Flag<Boolean> STUDIOBOT_MCP_UI_SERVERS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mcp.ui.servers.enabled",
+                    "Enable Model Context Protocol (MCP) Servers List UI",
+                    "Displays the connection status and tools of configured servers in the settings panel");
+
   public static final Flag<Boolean> STUDIOBOT_SCROLL_TO_BOTTOM_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.scroll.to.bottom",
                     "Enable AutoScroll Button",
@@ -2186,6 +2216,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "studiobot.apply.changes.action",
                     "Enable the apply changes action",
                     "When enabled, applies the code block from the chat to the open editor");
+
+  public static final Flag<Boolean> STUDIOBOT_REPLACE_TEXT_TOOL_ENABLED =
+    new BooleanFlag(STUDIOBOT, "replace.text.tool.enabled",
+                    "Enable the replace text tool",
+                    "When enabled, adds the replace text tool to a set of default tools");
 
   public static final Flag<Boolean> STUDIOBOT_ATTACHMENTS =
     new BooleanFlag(STUDIOBOT, "attachments",
@@ -2282,6 +2317,11 @@ public final class StudioFlags {
                     "Enable Vibe Edit Agent",
                     "When enabled, allow launch of Vibe Edit agent.");
 
+  public static final Flag<Boolean> STUDIOBOT_DEVICE_TOOLS =
+    new BooleanFlag(STUDIOBOT, "include.device.tools",
+                    "Enable using device tools",
+                    "Enables a set of tools allowing the agent to list and activate devices.");
+
   public static final Flag<Boolean> GEMINI_AGENT_MODE =
     new BooleanFlag(STUDIOBOT, "agent.mode",
                     "Enable agent mode.",
@@ -2301,6 +2341,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "agent.changes.drawer",
                     "Enable the Agent Changes Drawer",
                     "Enables the 'Agent Changes Drawer' for viewing and reviewing changes made by agent tool calls.");
+
+  public static final Flag<Boolean> GEMINI_WEB_SEARCH_TOOL_ENABLED =
+    new BooleanFlag(STUDIOBOT, "web.search.tool",
+                    "Enable web search tool",
+                    "Enables the 'Web Search Tool' as builtin tools.");
 
   public enum DasherSupportMode {
     /**

@@ -784,8 +784,20 @@ MODULE                        : project
                         debugRuntimeElements          : <empty>
                         debugRuntimeOnly              : <empty>
                         debugScreenshotTestAnnotationProcessorClasspath   : <empty>
+                        debugScreenshotTestApi        : <empty>
+                        debugScreenshotTestApiDependenciesMetadata        : <empty>
+                        debugScreenshotTestCompilationApi       : <empty>
+                        debugScreenshotTestCompilationCompileOnly         : <empty>
+                        debugScreenshotTestCompilationImplementation      : <empty>
+                        debugScreenshotTestCompilationRuntimeOnly         : <empty>
                         debugScreenshotTestCompileClasspath     : <empty>
+                        debugScreenshotTestCompileOnly          : <empty>
+                        debugScreenshotTestCompileOnlyDependenciesMetadata          : <empty>
+                        debugScreenshotTestImplementation       : <empty>
+                        debugScreenshotTestImplementationDependenciesMetadata       : <empty>
+                        debugScreenshotTestIntransitiveDependenciesMetadata         : <empty>
                         debugScreenshotTestRuntimeClasspath     : <empty>
+                        debugScreenshotTestRuntimeOnly          : <empty>
                         debugUnitTestAnnotationProcessorClasspath         : <empty>
                         debugUnitTestApi              : <empty>
                         debugUnitTestApiDependenciesMetadata    : <empty>
@@ -810,8 +822,10 @@ MODULE                        : project
                         kotlinCompilerPluginClasspath : <empty>
                         kotlinCompilerPluginClasspathDebug      : <empty>
                         kotlinCompilerPluginClasspathDebugAndroidTest     : <empty>
+                        kotlinCompilerPluginClasspathDebugScreenshotTest  : <empty>
                         kotlinCompilerPluginClasspathDebugUnitTest        : <empty>
                         kotlinCompilerPluginClasspathRelease    : <empty>
+                        kotlinCompilerPluginClasspathReleaseScreenshotTest          : <empty>
                         kotlinInternalAbiValidation   : <empty>
                         kotlinKlibCommonizerClasspath : <empty>
                         kotlinNativeCompilerPluginClasspath     : <empty>
@@ -838,8 +852,20 @@ MODULE                        : project
                         releaseRuntimeElements        : <empty>
                         releaseRuntimeOnly            : <empty>
                         releaseScreenshotTestAnnotationProcessorClasspath : <empty>
+                        releaseScreenshotTestApi      : <empty>
+                        releaseScreenshotTestApiDependenciesMetadata      : <empty>
+                        releaseScreenshotTestCompilationApi     : <empty>
+                        releaseScreenshotTestCompilationCompileOnly       : <empty>
+                        releaseScreenshotTestCompilationImplementation    : <empty>
+                        releaseScreenshotTestCompilationRuntimeOnly       : <empty>
                         releaseScreenshotTestCompileClasspath   : <empty>
+                        releaseScreenshotTestCompileOnly        : <empty>
+                        releaseScreenshotTestCompileOnlyDependenciesMetadata        : <empty>
+                        releaseScreenshotTestImplementation     : <empty>
+                        releaseScreenshotTestImplementationDependenciesMetadata     : <empty>
+                        releaseScreenshotTestIntransitiveDependenciesMetadata       : <empty>
                         releaseScreenshotTestRuntimeClasspath   : <empty>
+                        releaseScreenshotTestRuntimeOnly        : <empty>
                         runtimeOnly                   : <empty>
                         screenshotTestAnnotationProcessor       : <empty>
                         screenshotTestApi             : <empty>
@@ -1497,7 +1523,6 @@ MODULE                        : project.app
                     BundleTaskOutputListingFile   : <ROOT>/app/build/intermediates/bundle_ide_redirect_file/debug/createDebugBundleListingFileRedirect/redirect.txt [-]
                     ApkFromBundleTaskName         : extractApksForDebug
                     ApkFromBundleTaskOutputListingFile      : <ROOT>/app/build/intermediates/apk_from_bundle_ide_redirect_file/debug/createDebugApksFromBundleListingFileRedirect/redirect.txt [-]
-                GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/debug [-]
                 DesugaredMethodFiles          : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
             AndroidTestArtifact
                 Name                          : ANDROID_TEST
@@ -1742,7 +1767,6 @@ MODULE                        : project.app
                 BuildTasksAndOutputInformation
                     AssembleTaskName              : assembleDebugAndroidTest
                     AssembleTaskOutputListingFile : <ROOT>/app/build/intermediates/apk_ide_redirect_file/debugAndroidTest/createDebugAndroidTestApkListingFileRedirect/redirect.txt [-]
-                GeneratedResourceFolders      : <ROOT>/app/build/generated/res/resValues/androidTest/debug [-]
                 DesugaredMethodFiles          : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
                 TestOptions
                     AnimationsDisabled            : false
@@ -2318,6 +2342,7 @@ MODULE                        : project.app
             debug                         : <empty>
             - debugAndroidTest            : debug
             - debugAndroidTest            : main
+            debugScreenshotTest           : <empty>
             - debugUnitTest               : debug
             - debugUnitTest               : main
         compilerArgumentsBySourceSet
@@ -2357,6 +2382,23 @@ MODULE                        : project.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     useFirLT                      : true
+            debugScreenshotTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugScreenshotTest/compileDebugScreenshotTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noJdk                         : true
+                    noReflect                     : true
+                    noStdlib                      : true
+                    serializeIr                   : none
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
@@ -2379,14 +2421,17 @@ MODULE                        : project.app
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
             major                         : 2
             minor                         : 2
-            patch                         : 0
-            versionString                 : 2.2.0
+            patch                         : 10
+            versionString                 : 2.2.10
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
             debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugScreenshotTest           : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
             debugUnitTest                 : KotlinTaskPropertiesImpl

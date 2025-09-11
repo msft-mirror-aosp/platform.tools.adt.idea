@@ -19,7 +19,10 @@ import com.google.idea.blaze.base.bazel.BazelVersion;
 import com.google.idea.blaze.base.model.BlazeVersionData;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
+import com.google.idea.blaze.base.settings.Blaze;
+import com.google.idea.blaze.base.settings.BlazeImportSettings;
 import com.google.idea.blaze.base.settings.BuildSystemName;
+import com.intellij.openapi.project.Project;
 
 /** Verifies that the available Bazel version is supported by this plugin. */
 public class BazelVersionChecker implements BuildSystemVersionChecker {
@@ -27,8 +30,8 @@ public class BazelVersionChecker implements BuildSystemVersionChecker {
   private static final BazelVersion OLDEST_SUPPORTED_VERSION = new BazelVersion(4, 0, 0);
 
   @Override
-  public boolean versionSupported(BlazeContext context, BlazeVersionData version) {
-    if (version.buildSystem() != BuildSystemName.Bazel) {
+  public boolean versionSupported(Project project, BlazeContext context, BlazeVersionData version) {
+    if (version.buildSystem() != BuildSystemName.Bazel || Blaze.getProjectType(project) != BlazeImportSettings.ProjectType.ASPECT_SYNC) {
       return true;
     }
     if (version.bazelIsAtLeastVersion(OLDEST_SUPPORTED_VERSION)) {

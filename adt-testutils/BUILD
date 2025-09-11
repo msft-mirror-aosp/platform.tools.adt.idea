@@ -19,6 +19,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:truth",
         "@intellij//:org.toml.lang",
         "@intellij//:test-framework",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
     ],
     test_srcs = ["src/main/java"],
     visibility = ["//visibility:public"],
@@ -30,6 +31,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:opentest4j",
         "//tools/adt/idea/studio:studio-sdk-all-modules",
         "//prebuilts/tools/common/m2:junit-jupiter-api-5.9.2",
+        "//prebuilts/tools/common/m2:junit-platform-commons-1.9.2",
+        "//prebuilts/tools/common/m2:junit-platform-engine-1.9.2",
     ],
     # do not sort: must match IML order
     deps = [

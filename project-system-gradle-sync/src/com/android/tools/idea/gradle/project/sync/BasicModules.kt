@@ -94,7 +94,7 @@ enum class ModelFeature(
   HAS_RUN_TEST_IN_SEPARATE_PROCESS(AgpVersion.parse("8.3.0-alpha11")),
   USES_ABSOLUTE_GRADLE_BUILD_PATHS_IN_DEPENDENCY_MODEL(AgpVersion.parse("8.2.0-alpha13")),
   HAS_ADJACENCY_LIST_DEPENDENCY_GRAPH(AgpVersion.parse("8.2.0-alpha03")),
-  HAS_SCREENSHOT_TESTS_SUPPORT(AgpVersion.parse("8.4.0-alpha07")),
+  TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS(AgpVersion.parse("8.4.0-alpha07")),
   HAS_EXPERIMENTAL_PROPERTIES(AgpVersion.parse("8.6.0-alpha01")),
   HAS_DATA_BINDING(ModelVersion(9)),
   HAS_PROJECT_GRAPH_MODEL(ModelVersion(10, 0)),
@@ -104,6 +104,7 @@ enum class ModelFeature(
   HAS_SOURCES_LIST_AND_JAVADOC_IN_VARIANT_DEPENDENCIES(ModelVersion(14, 0)),
   HAS_BUILD_AWARE_PROJECT_GRAPH(ModelVersion(15, 0)),
   HAS_TEST_SUITES(ModelVersion(16, 0)),
+  HAS_R8_MAPPING_FILE_PATH(ModelVersion(18, 0)),
   ;
 
   init {

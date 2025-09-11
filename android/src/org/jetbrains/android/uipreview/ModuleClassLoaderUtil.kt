@@ -82,24 +82,8 @@ private val additionalLibraries: List<Path>
     return arrayListOf(File(layoutlibDistributionPath, relativeCoroutineLibPath).toPath())
   }
 
-val Module.externalLibraries: List<Path>
+val BuildTargetReference.externalLibraries: List<Path>
   get() = additionalLibraries + getLibraryDependenciesJars()
-
-/**
- * Utility for gathering the list of external libraries, coming from the Android counterpart of a common module.
- *
- * If the module is an Android module, it returns an empty list.
- *
- * If the module is not an Android module,
- * the list of external libraries will be the list of external libraries for its Android counterpart if it is present.
- * Otherwise, it will be an empty list.
- */
-private val Module.externalLibrariesForCommon: List<Path>
-  get() = if (isAndroidModule()) {
-    listOf()
-  } else {
-    findAndroidModule()?.externalLibraries.orEmpty()
-  }
 
 /**
  * Package name used to "re-package" certain classes that would conflict with the ones in the Studio class loader.
@@ -148,8 +132,7 @@ internal class ModuleClassLoaderImpl(buildTargetReference: BuildTargetReference,
    * For common source sets, external libraries required for rendering the preview might come from the Android counterpart.
    * Hence, we are adding them here.
    */
-  val externalLibraries = buildTargetReference.module.externalLibraries +
-                          buildTargetReference.module.externalLibrariesForCommon
+  val externalLibraries = buildTargetReference.externalLibraries
 
   /**
    * Class loader for classes and resources contained in [externalLibraries].

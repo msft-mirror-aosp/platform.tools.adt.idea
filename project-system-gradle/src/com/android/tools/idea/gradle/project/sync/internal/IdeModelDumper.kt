@@ -53,6 +53,7 @@ import com.android.tools.idea.gradle.model.IdeVariantBuildInformation
 import com.android.tools.idea.gradle.model.IdeVariantCore
 import com.android.tools.idea.gradle.model.IdeViewBindingOptions
 import com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable
+import com.android.tools.idea.gradle.model.lookup
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
@@ -179,12 +180,12 @@ fun ProjectDumper.dumpAndroidIdeModel(
   }
 }
 
-fun ProjectDumper.dumpAllVariantsSyncAndroidModuleModel(gradleAndroidModel: GradleAndroidDependencyModel, projectPath: String) {
+fun ProjectDumper.dumpAllVariantsSyncAndroidModuleModel(project: Project, gradleAndroidModel: GradleAndroidDependencyModel, projectPath: String) {
   nest(File(projectPath), "PROJECT") {
     with(ideModelDumper(this)) {
       gradleAndroidModel.let { gradleAndroidModel ->
         dump(gradleAndroidModel.androidProject)
-        dumpLibraryTable(gradleAndroidModel.project)
+        dumpLibraryTable(project)
         // Dump all the fetched Ide variants.
         head("IdeVariants")
         nest {
@@ -467,6 +468,8 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
       prop("SigningConfigName") { ideAndroidArtifact.signingConfigName }
       prop("IsSigned") { ideAndroidArtifact.isSigned.toString() }
       prop("CodeShrinker") { ideAndroidArtifact.codeShrinker.toString() }
+      prop("MappingR8File") { ideAndroidArtifact.mappingR8TextFile?.path?.toPrintablePath() }
+
       dump(ideAndroidArtifact.buildInformation)
       ideAndroidArtifact.generatedResourceFolders.forEach { prop("GeneratedResourceFolders") { it.path.toPrintablePath() } }
       ideAndroidArtifact.generatedAssetFolders.forEach { prop("GeneratedAssetFolders") { it.path.toPrintablePath() } }

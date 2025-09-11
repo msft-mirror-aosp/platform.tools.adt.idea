@@ -32,6 +32,7 @@ import com.android.tools.idea.layoutinspector.runningdevices.actions.SwapVertica
 import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
 import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
 import com.android.tools.idea.layoutinspector.runningdevices.actions.VerticalSplitAction
+import com.android.tools.idea.layoutinspector.runningdevices.ui.STATE_READ_SPLITTER_NAME
 import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.LayoutInspectorRenderer
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.tree.RootPanel
@@ -133,12 +134,12 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
   uiConfig: UiConfig,
   content: Component,
   container: Container,
-  displayView: AbstractDisplayView,
+  displays: List<AbstractDisplayView>,
 ) {
   val workbench =
     when (uiConfig) {
       UiConfig.HORIZONTAL -> {
-        val splitter = content.allParents().filterIsInstance<Splitter>().first()
+        val splitter = findSplitter(content)!!
         val workbench =
           splitter.allChildren().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
@@ -151,7 +152,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.HORIZONTAL_SWAP -> {
-        val splitter = content.allParents().filterIsInstance<Splitter>().first()
+        val splitter = findSplitter(content)!!
         val workbench =
           splitter.allChildren().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
@@ -164,7 +165,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.VERTICAL -> {
-        assertThat(content.allParents().filterIsInstance<Splitter>()).isEmpty()
+        assertThat(findSplitter(content)).isNull()
         val workbench = content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
         val left = workbench.getBottomComponents(Side.LEFT)?.first()!!
@@ -176,7 +177,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.VERTICAL_SWAP -> {
-        assertThat(content.allParents().filterIsInstance<Splitter>()).isEmpty()
+        assertThat(findSplitter(content)).isNull()
         val workbench = content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
         val left = workbench.getBottomComponents(Side.LEFT)?.first()!!
@@ -188,7 +189,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.LEFT_VERTICAL -> {
-        assertThat(content.allParents().filterIsInstance<Splitter>()).isEmpty()
+        assertThat(findSplitter(content)).isNull()
         val workbench = content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
         val topLeft = workbench.getTopComponents(Side.LEFT)?.first()!!
@@ -200,7 +201,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.LEFT_VERTICAL_SWAP -> {
-        assertThat(content.allParents().filterIsInstance<Splitter>()).isEmpty()
+        assertThat(findSplitter(content)).isNull()
         val workbench = content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
         val topLeft = workbench.getTopComponents(Side.LEFT)?.first()!!
@@ -212,7 +213,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.RIGHT_VERTICAL -> {
-        assertThat(content.allParents().filterIsInstance<Splitter>()).isEmpty()
+        assertThat(findSplitter(content)).isNull()
         val workbench = content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
         val topRight = workbench.getTopComponents(Side.RIGHT)?.first()!!
@@ -224,7 +225,7 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
         workbench
       }
       UiConfig.RIGHT_VERTICAL_SWAP -> {
-        assertThat(content.allParents().filterIsInstance<Splitter>()).isEmpty()
+        assertThat(findSplitter(content)).isNull()
         val workbench = content.allParents().filterIsInstance<WorkBench<LayoutInspector>>().first()
 
         val topRight = workbench.getTopComponents(Side.RIGHT)?.first()!!
@@ -248,10 +249,17 @@ inline fun <reified T : LayoutInspectorRenderer> verifyUiInjected(
   val inspectorBanner = container.allChildren().filterIsInstance<InspectorBanner>().first()
   assertThat(inspectorBanner).isNotNull()
 
-  assertThat(displayView.allChildren().filterIsInstance<T>()).hasSize(1)
+  displays.forEach { displayView ->
+    assertThat(displayView.allChildren().filterIsInstance<T>()).hasSize(1)
+  }
 }
 
-fun verifyUiRemoved(content: Component, container: Container, displayView: AbstractDisplayView) {
+fun findSplitter(content: Component): Splitter? =
+  content.allParents().filterIsInstance<Splitter>().singleOrNull {
+    it.name != STATE_READ_SPLITTER_NAME
+  }
+
+fun verifyUiRemoved(content: Component, container: Container, displays: List<AbstractDisplayView>) {
   assertThat(content.allParents().filterIsInstance<Splitter>()).hasSize(0)
   assertThat(content.allParents().filterIsInstance<WorkBench<LayoutInspector>>()).hasSize(0)
   assertThat(container.allChildren().filterIsInstance<WorkBench<LayoutInspector>>()).hasSize(0)
@@ -267,7 +275,9 @@ fun verifyUiRemoved(content: Component, container: Container, displayView: Abstr
   val inspectorBanner = container.allChildren().filterIsInstance<InspectorBanner>()
   assertThat(inspectorBanner).hasSize(0)
 
-  assertThat(displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>()).hasSize(0)
+  displays.forEach { displayView ->
+    assertThat(displayView.allChildren().filterIsInstance<LayoutInspectorRenderer>()).hasSize(0)
+  }
 }
 
 fun verifyToolbar(container: Container, shouldContainProcessPicker: Boolean) {

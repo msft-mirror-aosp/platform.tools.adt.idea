@@ -87,7 +87,7 @@ string GetVideoEncoderDetails(const CodecInfo& codec_info, int32_t width, int32_
   Jni jni = Jvm::GetJni();
   JClass clazz = jni.GetClass("com/android/tools/screensharing/CodecInfo");
   jmethodID method = clazz.GetStaticMethod("getVideoEncoderDetails", "(Ljava/lang/String;Ljava/lang/String;II)Ljava/lang/String;");
-  JObject details = clazz.CallStaticObjectMethod(method, JString(jni, codec_name).ref(), JString(jni, mime_type).ref(), width, height);
+  JObject details = clazz.CallStaticObjectMethod(jni, method, JString(jni, codec_name).ref(), JString(jni, mime_type).ref(), width, height);
   if (details.IsNull()) {
     return "Failed to obtain parameters of " + codec_info.name;
   }
@@ -312,16 +312,12 @@ void DisplayStreamer::Run() {
         // Write an empty video packet.
         int64_t timestamp = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
         packet_header.origination_timestamp_us = timestamp;
-        if (presentation_timestamp_offset_ == 0) {
-          presentation_timestamp_offset_ = timestamp;
-        }
-        packet_header.presentation_timestamp_us = timestamp - presentation_timestamp_offset_;
         packet_header.packet_size = 0;
         if (Log::IsEnabled(Log::Level::VERBOSE)) {
           Log::V("Display %d: writing an video packet", display_id_);
         }
         auto res = writer_->Write(&packet_header, VideoPacketHeader::SIZE);
-        if (res != SocketWriter::Result::SUCCESS && res != SocketWriter::Result::SUCCESS_AFTER_BLOCKING) {
+        if (res == SocketWriter::Result::DISCONNECTED) {
           stop_reason = FrameStreamStopReason::END_OF_STREAM;
         }
       }
@@ -400,7 +396,7 @@ DisplayStreamer::FrameStreamStopReason DisplayStreamer::ProcessFramesUntilCodecS
     auto res = writer_->Write(packet_header, VideoPacketHeader::SIZE, codec_buffer.buffer(), codec_buffer.size());
     if (res == SocketWriter::Result::SUCCESS_AFTER_BLOCKING) {
       request_sync_frame = true;
-    } else if (res != SocketWriter::Result::SUCCESS) {
+    } else if (res == SocketWriter::Result::DISCONNECTED) {
       continue_streaming = false;
     }
     if (!codec_buffer.IsConfig()) {

@@ -26,6 +26,7 @@ import com.android.tools.componenttree.api.createIntColumn
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.common.showViewContextMenu
+import com.android.tools.idea.layoutinspector.hasCapability
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.IconProvider
@@ -36,7 +37,9 @@ import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.model.ViewNode.Companion.readAccess
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
+import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
+import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.snapshots.FileEditorInspectorClient
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.CommonActionsManager
@@ -188,6 +191,8 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
         maxInt = { inspectorModel?.maxRecomposition?.count ?: 0 },
         minInt = { 0 },
         headerRenderer = createCountsHeader(),
+        actionEnabled = { item -> isShowRecompositionDetailsEnabled(item.view) },
+        action = { item, _, _ -> showRecompositionDetails(item.view) },
       )
 
     val recompositionChildCountColumn =
@@ -329,16 +334,17 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
         layoutInspector?.treeSettings?.showRecompositions ?: false &&
           layoutInspector?.currentClient?.isConnected ?: false &&
           layoutInspector?.currentClient !is FileEditorInspectorClient &&
-          layoutInspector
-            ?.currentClient
-            ?.capabilities
-            ?.contains(InspectorClient.Capability.HAS_LINE_NUMBER_INFORMATION) ?: false
+          layoutInspector.hasCapability(Capability.HAS_LINE_NUMBER_INFORMATION)
       val showChildCounts =
         show && StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_RECOMPOSITION_PARENT_COUNTS.get()
       interactions.setHeaderVisibility(show)
       interactions.setColumnVisibility(1, show)
       interactions.setColumnVisibility(2, showChildCounts)
       interactions.setColumnVisibility(3, show)
+      if (!show) {
+        // When recompositions are hidden we want to stop showing recomposition details as well.
+        inspectorModel?.stateReadsNode = null
+      }
     }
   }
 
@@ -677,6 +683,19 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
   @Suppress("UNUSED_PARAMETER")
   private fun handleConnectionChange(client: InspectorClient?) {
     updateRecompositionColumnVisibility()
+  }
+
+  private fun isShowRecompositionDetailsEnabled(view: ViewNode): Boolean {
+    return StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS.get() &&
+      layoutInspector.hasCapability(Capability.CAN_OBSERVE_RECOMPOSE_STATE_READS) &&
+      view.recompositions.count > 0 &&
+      LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
+  }
+
+  private fun showRecompositionDetails(view: ViewNode) {
+    if (isShowRecompositionDetailsEnabled(view)) {
+      inspectorModel?.stateReadsNode = view
+    }
   }
 
   private class TreeAction(private val action: (ActionEvent) -> Unit) : AbstractAction() {

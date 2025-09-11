@@ -48,9 +48,10 @@ fun getReferences(literalExpr: WFFExpressionLiteralExpr): Array<PsiReference> {
  * language is injected in. Otherwise, we attempt to use the current file.
  */
 fun getWatchFaceFile(element: PsiElement): XmlFile? {
-  val injectedLanguageManager = InjectedLanguageManager.getInstance(element.project)
-  val psiFile = injectedLanguageManager.getTopLevelFile(element) ?: element.containingFile
-  return psiFile as? XmlFile
+  val injectionHostFile =
+    InjectedLanguageManager.getInstance(element.project).getInjectionHost(element)?.containingFile
+      as? XmlFile
+  return injectionHostFile ?: element.containingFile as? XmlFile
 }
 
 /**
@@ -94,7 +95,7 @@ private fun referenceTagRefence(
   watchFaceFile: XmlFile,
 ): ReferenceTagReference? {
   if (!literalExpr.isIdOrDataSource()) return null
-  val module = literalExpr.getModuleSystem()?.module ?: return null
+  val module = watchFaceFile.getModuleSystem()?.module ?: return null
   val currentWFFVersion = CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module)
   if (currentWFFVersion == null || currentWFFVersion.wffVersion < WFFVersion4) return null
   return ReferenceTagReference(literalExpr, watchFaceFile)

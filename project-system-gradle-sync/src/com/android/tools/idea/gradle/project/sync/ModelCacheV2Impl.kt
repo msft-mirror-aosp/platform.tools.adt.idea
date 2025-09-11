@@ -105,13 +105,13 @@ import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl
 import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
+import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl
 import com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
-import com.android.tools.idea.gradle.model.impl.IdeSourceProviderImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
@@ -154,11 +154,11 @@ fun modelCacheV2Impl(
 
   /** If AGP has absolute Gradle build path used in [ProjectInfo.buildId], or it uses the Gradle build name that we need to patch. */
 
-  fun sourceProviderFrom(provider: SourceProvider): IdeSourceProviderImpl {
+  fun sourceProviderFrom(provider: SourceProvider): IdeSourceProvider {
     val folder: File? = provider.manifestFile?.let { it.parentFile?.deduplicateFile() }
     fun File.makeRelativeAndDeduplicate(): String = (if (folder != null) relativeToOrSelf(folder) else this).path.deduplicate()
     fun Collection<File>.makeRelativeAndDeduplicate(): List<String> = map { it.makeRelativeAndDeduplicate() }
-    return IdeSourceProviderImpl(
+    return IdeSourceProvider(
       name = provider.name.deduplicate(),
       folder = folder,
       manifestFile = provider.manifestFile?.makeRelativeAndDeduplicate(),
@@ -182,9 +182,9 @@ fun modelCacheV2Impl(
     )
   }
 
-  fun sourceProviderFrom(name: String, providers: Collection<File>): IdeSourceProviderImpl {
+  fun sourceProviderFrom(name: String, providers: Collection<File>): IdeSourceProvider {
     fun File.makeRelativeAndDeduplicate(): String = relativeToOrSelf(providers.first()).path.deduplicate()
-    return IdeSourceProviderImpl(
+    return IdeSourceProvider(
       name = name.deduplicate(),
       // so far, we only support a single source in test APK, but this will need to be revisited.
       folder = providers.first(),
@@ -204,7 +204,7 @@ fun modelCacheV2Impl(
     )
   }
 
-  fun sourceProviderFrom(source: TestSuiteSource): IdeSourceProviderImpl {
+  fun sourceProviderFrom(source: TestSuiteSource): IdeSourceProvider {
     return if (source.folders?.isNotEmpty() ?: false) {
       sourceProviderFrom(source.name, source.folders!!)
     } else {
@@ -389,7 +389,7 @@ fun modelCacheV2Impl(
       productFlavor = productFlavorFrom(productFlavor),
       sourceProvider = container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it) },
       extraSourceProviders = mutableListOf<IdeExtraSourceProviderImpl>().apply {
-        if (modelVersions[ModelFeature.HAS_SCREENSHOT_TESTS_SUPPORT]) {
+        if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
           container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider -> this.add(sourceProviderContainerFrom(it)) }
           container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider -> this.add(sourceProviderContainerFrom(it)) }
         } else {
@@ -407,7 +407,7 @@ fun modelCacheV2Impl(
     return IdeSourceProviderContainerImpl(
       sourceProvider = container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it) },
       extraSourceProviders = mutableListOf<IdeExtraSourceProviderImpl>().apply {
-        if (modelVersions[ModelFeature.HAS_SCREENSHOT_TESTS_SUPPORT]) {
+        if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
           container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider -> this.add(sourceProviderContainerFrom(it)) }
           container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider -> this.add(sourceProviderContainerFrom(it)) }
         } else {
@@ -453,7 +453,7 @@ fun modelCacheV2Impl(
       buildType = buildTypeFrom(buildType),
       sourceProvider = container?.sourceProvider?.let { sourceProviderFrom(it) },
       extraSourceProviders = mutableListOf<IdeExtraSourceProviderImpl>().apply {
-        if (modelVersions[ModelFeature.HAS_SCREENSHOT_TESTS_SUPPORT]) {
+        if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
           container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider -> this.add(sourceProviderContainerFrom(it)) }
           container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider -> this.add(sourceProviderContainerFrom(it)) }
         } else {
@@ -841,7 +841,8 @@ fun modelCacheV2Impl(
       desugaredMethodsFiles = getDesugaredMethodsList(artifact, fallbackDesugaredMethodsFiles).toList(),
       generatedClassPaths = if (modelVersions[ModelFeature.HAS_GENERATED_CLASSPATHS]) artifact.generatedClassPaths else emptyMap(),
       bytecodeTransforms = if (modelVersions[ModelFeature.HAS_BYTECODE_TRANSFORMS]) artifact.bytecodeTransformations.toIdeModels().toList() else null,
-      generatedAssetFolders = if (modelVersions[ModelFeature.HAS_GENERATED_ASSETS]) artifact.generatedAssetsFolders.deduplicateFiles().distinct() else listOf()
+      generatedAssetFolders = if (modelVersions[ModelFeature.HAS_GENERATED_ASSETS]) artifact.generatedAssetsFolders.deduplicateFiles().distinct() else listOf(),
+      mappingR8TextFile = if (modelVersions[ModelFeature.HAS_R8_MAPPING_FILE_PATH]) artifact.mappingR8TextFile else null
     )
   }
 
@@ -983,7 +984,7 @@ fun modelCacheV2Impl(
   }
 
   fun hostTestArtifactsFrom(variant: Variant, basicVariant: BasicVariant): List<IdeJavaArtifactCoreImpl> {
-    return if (modelVersions[ModelFeature.HAS_SCREENSHOT_TESTS_SUPPORT]) {
+    return if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
       variant.hostTestArtifacts.map { (k, v) ->
         javaArtifactFrom(convertArtifactName(k), basicVariant.hostTestArtifacts[k]!!, v)
       }
@@ -1044,7 +1045,7 @@ fun modelCacheV2Impl(
     fallbackDesugaredMethodsFiles: List<File>,
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ): List<IdeAndroidArtifactCoreImpl> {
-    return if (modelVersions[ModelFeature.HAS_SCREENSHOT_TESTS_SUPPORT]) {
+    return if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
       variant.deviceTestArtifacts.map { (k, v) ->
         androidArtifactFrom(convertArtifactName(k), basicVariant.deviceTestArtifacts[k]!!, variantName, legacyAndroidGradlePluginProperties,
                             fallbackDesugaredMethodsFiles, v)
