@@ -2,7 +2,7 @@
 visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//tools/vendor/google/aswb"])
 
 STUDIO_CODENAME = "Narwhal 4 Feature Drop"
-STUDIO_CONFIG = "canary"
-STUDIO_VERSION = "Canary"
-STUDIO_MICRO_PATCH = "4.5"
-STUDIO_RELEASE_NUMBER = 5
+STUDIO_CONFIG = "stable"
+STUDIO_VERSION = "RC"
+STUDIO_MICRO_PATCH = "4.6"
+STUDIO_RELEASE_NUMBER = 1

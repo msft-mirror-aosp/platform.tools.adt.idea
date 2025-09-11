@@ -875,7 +875,6 @@ android_studio(
     codesign_entitlements = "codesign/entitlements.xml",
     configurations = [
         ":canary",
-        ":nightly",
         ":stable",
     ],
     generate_package_metadata = True,
