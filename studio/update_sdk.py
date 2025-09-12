@@ -188,7 +188,7 @@ sudo apt install android-fetch-artifact""")
   ]
   for artifact in artifacts:
     subprocess.check_call([
-      fetch_artifact, *auth_flags, "--bid", bid, "--target", "IntelliJ", artifact, dir
+      fetch_artifact, *auth_flags, "--bid", bid, "--target", "studio_IntelliJ", artifact, dir
     ])
 
   return dir
