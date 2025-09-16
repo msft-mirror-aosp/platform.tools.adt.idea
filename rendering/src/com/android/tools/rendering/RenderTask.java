@@ -256,6 +256,7 @@ public class RenderTask {
              boolean reportOutOfDateUserClasses,
              @NotNull RenderAsyncActionExecutor.RenderingTopic topic,
              boolean useCustomInflater,
+             boolean useLoadViewFallbacks,
              @NotNull TestEventListener testEventListener,
              float animatorDurationScale) throws NoDeviceException {
     myTracker = tracker;
@@ -303,7 +304,8 @@ public class RenderTask {
                                           actionBarHandler,
                                           parserFactory,
                                           moduleClassLoader,
-                                          useCustomInflater));
+                                          useCustomInflater,
+                                          useLoadViewFallbacks));
       if (renderContextModule.getResourceIdManager().getFinalIdsUsed()) {
         myLayoutlibCallback.loadAndParseRClass();
       }
