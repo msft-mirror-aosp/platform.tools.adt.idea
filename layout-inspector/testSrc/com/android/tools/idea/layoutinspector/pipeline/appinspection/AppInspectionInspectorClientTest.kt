@@ -1320,7 +1320,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
       else FakePackage.FakeLocalPackage("mySysImg-$apiLevel", sdkRoot.resolve("mySysImg"))
     sdkPackage.setRevision(Revision(revision))
     val packageDetails =
-      AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType()
+      AndroidSdkHandler.sysImgModule.createLatestFactory().createSysImgDetailsType()
     packageDetails.apiLevel = apiLevel
     tag?.let { packageDetails.tags.add(it) }
     sdkPackage.typeDetails = packageDetails as TypeDetails
