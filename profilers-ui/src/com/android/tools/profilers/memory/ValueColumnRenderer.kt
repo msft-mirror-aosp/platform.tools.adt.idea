@@ -87,7 +87,11 @@ open class ValueColumnRenderer : ColoredTreeCellRenderer() {
         referenceInstance.valueType == ARRAY -> referenceInstance.getStackedIcon(ARRAY_STACK, Db_array)
         else -> referenceInstance.getStackedIcon(FIELD_STACK, IconManager.getInstance().getPlatformIcon(PlatformIcons.Field))
       }
-      is InstanceObject -> getStackedIcon(INTERFACE_STACK, INTERFACE_ICON)
+      is InstanceObject -> when (valueType) {
+        ValueObject.ValueType.CLASS -> CLASS_ICON
+        ARRAY -> getStackedIcon(ARRAY_STACK, Db_array)
+        else -> getStackedIcon(INTERFACE_STACK, INTERFACE_ICON)
+      }
       else -> INTERFACE_ICON
     }
 
