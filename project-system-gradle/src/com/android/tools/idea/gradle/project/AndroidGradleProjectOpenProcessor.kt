@@ -55,7 +55,7 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
     return GradleProjects.canImportAsGradleProject(file)
   }
 
-  override fun doOpenProject(virtualFile: VirtualFile, projectToClose: Project?, forceOpenInNewFrame: Boolean): Project? {
+  override suspend fun openProjectAsync(virtualFile: VirtualFile, projectToClose: Project?, forceOpenInNewFrame: Boolean): Project? {
     val importTarget = findGradleTarget(virtualFile) ?: return null
     val adjustedOpenTarget =
         if (importTarget.isDirectory) importTarget
