@@ -33,13 +33,6 @@ import com.intellij.util.download.impl.DownloadableFileDescriptionImpl
 import com.intellij.util.io.createDirectories
 import com.intellij.util.io.createParentDirectories
 import com.intellij.util.io.delete
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.mockito.Mockito
-import org.mockito.kotlin.whenever
 import java.io.File
 import java.net.URL
 import java.nio.file.Path
@@ -48,11 +41,19 @@ import kotlin.io.path.createTempDirectory
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.test.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.mockito.Mockito
+import org.mockito.kotlin.whenever
 
 private const val HOST = "my.host.com"
 private const val PATTERN = "/s/i/{family}/{icon}/v{version}/{asset}"
 private const val NOT_EXECUTABLE_PREFIX = ")]}'\n"
-private const val OLD_METADATA_CONTENT = """)]}'
+private const val OLD_METADATA_CONTENT =
+  """)]}'
 {
   "host": "$HOST",
   "asset_url_pattern": "$PATTERN",
@@ -65,19 +66,23 @@ private const val OLD_METADATA_CONTENT = """)]}'
       "version": 1,
       "unsupported_families": [],
       "categories": [],
-      "tags": []
+      "tags": [],
+      "codepoint": 59530
     },
     {
       "name": "my_icon_2",
       "version": 1,
       "unsupported_families": [],
       "categories": [],
-      "tags": []
+      "tags": [],
+      "codepoint": 59574
     }
-  ]
+  ],
+  "categories": []
 }
 """
-private const val NEW_METADATA_CONTENT = """)]}'
+private const val NEW_METADATA_CONTENT =
+  """)]}'
 {
   "host": "$HOST",
   "asset_url_pattern": "$PATTERN",
@@ -94,9 +99,11 @@ private const val NEW_METADATA_CONTENT = """)]}'
         "plaît",
         "respond",
         "répondez"
-      ]
+      ],
+      "codepoint": 59530
     }
-  ]
+  ],
+  "categories": []
 }
 """
 

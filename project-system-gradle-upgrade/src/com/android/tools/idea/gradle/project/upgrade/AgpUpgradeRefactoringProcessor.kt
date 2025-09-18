@@ -102,7 +102,6 @@ import com.intellij.util.ThreeState
 import com.intellij.util.concurrency.ThreadingAssertions
 import com.intellij.util.containers.toArray
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet
-import org.jetbrains.android.util.AndroidBundle
 import java.awt.event.ActionEvent
 import java.io.File
 import java.util.UUID
@@ -287,10 +286,10 @@ class AgpUpgradeRefactoringProcessor(
     // AGP 8.x
     R8FullModeDefaultRefactoringProcessor(this),
     RenderScriptDefaultRefactoringProcessor(this),
+    BuildConfigDefaultRefactoringProcessor(this),
     AndroidManifestPackageToNamespaceRefactoringProcessor(this),
     AidlDefaultRefactoringProcessor(this),
     NonTransitiveRClassDefaultRefactoringProcessor(this),
-    BuildConfigDefaultRefactoringProcessor(this),
     NonConstantRClassDefaultRefactoringProcessor(this),
     REMOVE_SOURCE_SET_JNI_INFO.RefactoringProcessor(this),
     // AGP 9.x
@@ -351,10 +350,10 @@ class AgpUpgradeRefactoringProcessor(
         return targets.toArray(PsiElement.EMPTY_ARRAY)
       }
 
-      override fun getProcessedElementsHeader() = AndroidBundle.message("project.upgrade.agpUpgradeRefactoringProcessor.usageView.header")
+      override fun getProcessedElementsHeader() = AgpUpgradeBundle.message("agpUpgradeRefactoringProcessor.usageView.header")
 
       /** see [ComponentGroupingRuleProvider] for an explanation of this override */
-      override fun getCodeReferencesText(usagesCount: Int, filesCount: Int) = AndroidBundle.message("project.upgrade.references.text")
+      override fun getCodeReferencesText(usagesCount: Int, filesCount: Int) = AgpUpgradeBundle.message("references.text")
     }
   }
 
@@ -425,7 +424,7 @@ class AgpUpgradeRefactoringProcessor(
 
   private fun createPresentation(descriptor: UsageViewDescriptor, usages: Array<Usage>): UsageViewPresentation {
     val presentation = UsageViewPresentation()
-    presentation.tabText = AndroidBundle.message("project.upgrade.usageView.tabText")
+    presentation.tabText = AgpUpgradeBundle.message("usageView.tabText")
     presentation.targetsNodeText = descriptor.processedElementsHeader
     presentation.isShowReadOnlyStatusAsRed = true
     presentation.isShowCancelButton = true
@@ -597,8 +596,8 @@ class AgpUpgradeRefactoringProcessor(
           previewExecutedCallback?.invoke()
         }
       }
-      val canNotMakeString = AndroidBundle.message("project.upgrade.usageView.need.reRun")
-      val label = AndroidBundle.message("project.upgrade.usageView.doAction")
+      val canNotMakeString = AgpUpgradeBundle.message("usageView.need.reRun")
+      val label = AgpUpgradeBundle.message("usageView.doAction")
       usageView.addPerformOperationAction(refactoringRunnable, commandName, canNotMakeString, label, false)
     }
     usageView.setRerunAction(object : AbstractAction() {
@@ -654,7 +653,7 @@ class AgpUpgradeRefactoringProcessor(
     })
   }
 
-  var myCommandName: String = AndroidBundle.message("project.upgrade.agpUpgradeRefactoringProcessor.commandName", current, new)
+  var myCommandName: String = AgpUpgradeBundle.message("agpUpgradeRefactoringProcessor.commandName", current, new)
 
   override fun getCommandName() = myCommandName
 
@@ -713,8 +712,8 @@ internal fun notifyCancelledUpgrade(project: Project, current: AgpVersion) {
   // TODO(xof): this is now only called from the forced upgrade flow, where this notification is probably not the right one: we should
   //  probably re-show the forced upgrade modal dialog instead.
   val notification = UpgradeSuggestion(
-    AndroidBundle.message("project.upgrade.notifyCancelledUpgrade.title"),
-    AndroidBundle.message("project.upgrade.notifyCancelledUpgrade.body"),
+    AgpUpgradeBundle.message("notifyCancelledUpgrade.title"),
+    AgpUpgradeBundle.message("notifyCancelledUpgrade.body"),
     project,
     current
   )

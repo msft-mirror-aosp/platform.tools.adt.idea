@@ -626,9 +626,7 @@ class FakeStudioBotActionFactory : ComposeStudioBotActionFactory {
 
   override fun fixVisualLintIssuesAction() = fakeAction
 
-  override fun fixComposeRenderIssueAction(issues: List<Issue>) = fakeAction
-
-  override fun alignUiToTargetImageAction(): AnAction? = fakeAction
+  override fun fixComposeRenderIssueAction(renderIssues: List<Issue>) = fakeAction
 
   override fun previewAgentsDropDownAction(): AnAction? = fakeAction
 }

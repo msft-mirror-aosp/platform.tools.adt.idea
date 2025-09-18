@@ -36,7 +36,7 @@ void KeyCharacterMap::Initialize() {
     JClass key_character_map_class = jni_.GetClass("android/view/KeyCharacterMap");
     jmethodID load_method = key_character_map_class.GetStaticMethod("load", "(I)Landroid/view/KeyCharacterMap;");
     get_events_method_ = key_character_map_class.GetMethod("getEvents", "([C)[Landroid/view/KeyEvent;");
-    java_object_ = key_character_map_class.CallStaticObjectMethod(load_method, VIRTUAL_KEYBOARD);
+    java_object_ = key_character_map_class.CallStaticObjectMethod(jni_, load_method, VIRTUAL_KEYBOARD);
     if (java_object_.IsNull()) {
       Log::Fatal(KEY_CHARACTER_MAP_ERROR, jni_.GetAndClearException(), "Unable to load a android.view.KeyCharacterMap");
     }
@@ -46,7 +46,7 @@ void KeyCharacterMap::Initialize() {
 
 JObjectArray KeyCharacterMap::GetEvents(const uint16_t* chars, int num_chars) {
   Initialize();
-  return JObjectArray(java_object_.CallObjectMethod(jni_, get_events_method_, JCharArray::Create(jni_, num_chars, chars).ref()));
+  return JObjectArray(java_object_.CallObjectMethod(jni_, get_events_method_, JCharArray(jni_, num_chars, chars).ref()));
 }
 
 }  // namespace screensharing

@@ -74,14 +74,6 @@ JObject JObject::CallObjectMethod(JNIEnv* jni_env, jmethodID method, ...) const 
   return result;
 }
 
-bool JObject::CallBooleanMethod(jmethodID method, ...) const {
-  va_list args;
-  va_start(args, method);
-  jboolean result = GetJni()->CallBooleanMethodV(ref_, method, args);
-  va_end(args);
-  return result != JNI_FALSE;
-}
-
 bool JObject::CallBooleanMethod(JNIEnv* jni_env, jmethodID method, ...) const {
   va_list args;
   va_start(args, method);
@@ -106,26 +98,10 @@ int32_t JObject::CallIntMethod(JNIEnv* jni_env, jmethodID method, ...) const {
   return result;
 }
 
-int8_t JObject::CallByteMethod(jmethodID method, ...) const {
-  va_list args;
-  va_start(args, method);
-  int8_t result = GetJni()->CallIntMethodV(ref_, method, args);
-  va_end(args);
-  return result;
-}
-
 int8_t JObject::CallByteMethod(JNIEnv* jni_env, jmethodID method, ...) const {
   va_list args;
   va_start(args, method);
   int8_t result = jni_env->CallByteMethodV(ref_, method, args);
-  va_end(args);
-  return result;
-}
-
-float JObject::CallFloatMethod(jmethodID method, ...) const {
-  va_list args;
-  va_start(args, method);
-  float result = GetJni()->CallIntMethodV(ref_, method, args);
   va_end(args);
   return result;
 }
@@ -318,15 +294,6 @@ string JClass::GetName(JNIEnv* jni_env) const {
   return JString(jni_env, name).GetValue();
 }
 
-JObject JClass::NewObject(jmethodID constructor, ...) const {
-  JNIEnv* jni_env = GetJni();
-  va_list args;
-  va_start(args, constructor);
-  JObject result(jni_env, jni_env->NewObjectV(ref(), constructor, args));
-  va_end(args);
-  return result;
-}
-
 JObject JClass::NewObject(JNIEnv* jni_env, jmethodID constructor, ...) const {
   va_list args;
   va_start(args, constructor);
@@ -344,28 +311,18 @@ JObject JClass::NewObject(JNIEnv* jni_env, jmethodID constructor, ...) const {
   return result;
 }
 
-JObject JClass::CallStaticObjectMethod(jmethodID method, ...) const {
-  JNIEnv* jni_env = GetJni();
-  va_list args;
-  va_start(args, method);
-  JObject result(jni_env, jni_env->CallStaticObjectMethodV(ref(), method, args));
-  va_end(args);
-  return result;
+JObjectArray JClass::NewObjectArray(int32_t length, jobject initial_element) const {
+  return NewObjectArray(GetJni(), length, initial_element);
+}
+
+JObjectArray JClass::NewObjectArray(JNIEnv* jni_env, int32_t length, jobject initial_element) const {
+  return JObjectArray(jni_env, jni_env->NewObjectArray(length, ref(), initial_element));
 }
 
 JObject JClass::CallStaticObjectMethod(JNIEnv* jni_env, jmethodID method, ...) const {
   va_list args;
   va_start(args, method);
   JObject result(jni_env, jni_env->CallStaticObjectMethodV(ref(), method, args));
-  va_end(args);
-  return result;
-}
-
-int32_t JClass::CallStaticIntMethod(jmethodID method, ...) const {
-  JNIEnv* jni_env = GetJni();
-  va_list args;
-  va_start(args, method);
-  int32_t result = jni_env->CallStaticIntMethodV(ref(), method, args);
   va_end(args);
   return result;
 }
@@ -378,22 +335,11 @@ int32_t JClass::CallStaticIntMethod(JNIEnv* jni_env, jmethodID method, ...) cons
   return result;
 }
 
-void JClass::CallStaticVoidMethod(jmethodID method, ...) const {
-  va_list args;
-  va_start(args, method);
-  GetJni()->CallStaticVoidMethodV(ref(), method, args);
-  va_end(args);
-}
-
 void JClass::CallStaticVoidMethod(JNIEnv* jni_env, jmethodID method, ...) const {
   va_list args;
   va_start(args, method);
   jni_env->CallStaticVoidMethodV(ref(), method, args);
   va_end(args);
-}
-
-JObjectArray JClass::NewObjectArray(JNIEnv* jni_env, int32_t length, jobject initialElement) const {
-  return JObjectArray(jni_env, jni_env->NewObjectArray(length, ref(), initialElement));
 }
 
 JString::JString(JNIEnv* jni_env, const char* value)
@@ -440,6 +386,23 @@ void JString::InitializeStatics(Jni jni) {
 JClass JString::string_class_;
 jmethodID JString::value_of_method_ = nullptr;
 
+JObject JObjectArray::GetElement(JNIEnv* jni_env, int32_t index) const {
+  return JObject(jni_env, jni_env->GetObjectArrayElement(ref(), index));
+}
+
+void JObjectArray::SetElement(JNIEnv* jni_env, int32_t index, const JObject& element) const {
+  jni_env->SetObjectArrayElement(ref(), index, element);
+}
+
+JCharArray::JCharArray(JNIEnv* jni_env, int32_t length)
+    : JRef(jni_env, jni_env->NewCharArray(length)) {
+}
+
+JCharArray::JCharArray(JNIEnv* jni_env, int32_t length, const uint16_t* elements)
+    : JRef(jni_env, jni_env->NewCharArray(length)) {
+  SetRegion(jni_env, 0, length, elements);
+}
+
 JShortArray::JShortArray(JNIEnv* jni_env, int32_t length)
     : JRef(jni_env, jni_env->NewShortArray(length)),
       length_(length) {
@@ -449,12 +412,13 @@ void JShortArray::GetRegion(JNIEnv* jni_env, int32_t start, int32_t len, int16_t
   jni_env->GetShortArrayRegion(ref(), start, len, buf);
 }
 
-JObject JObjectArray::GetElement(JNIEnv* jni_env, int32_t index) const {
-  return JObject(jni_env, jni_env->GetObjectArrayElement(ref(), index));
+JFloatArray::JFloatArray(JNIEnv* jni_env, int32_t length)
+    : JRef(jni_env, jni_env->NewFloatArray(length)) {
 }
 
-void JObjectArray::SetElement(JNIEnv* jni_env, int32_t index, const JObject& element) const {
-  jni_env->SetObjectArrayElement(ref(), index, element);
+JFloatArray::JFloatArray(JNIEnv* jni_env, int32_t length, const float* elements)
+    : JRef(jni_env, jni_env->NewFloatArray(length)) {
+  SetRegion(jni_env, 0, length, elements);
 }
 
 JClass Jni::GetClass(const char* name) const {
@@ -463,26 +427,6 @@ JClass Jni::GetClass(const char* name) const {
     Log::Fatal(CLASS_NOT_FOUND, "Unable to find the %s class", name);
   }
   return JClass(jni_env_, clazz);
-}
-
-JCharArray JCharArray::Create(JNIEnv* jni_env, int32_t length) {
-  return JCharArray(jni_env, jni_env->NewCharArray(length));
-}
-
-JCharArray JCharArray::Create(JNIEnv* jni_env, int32_t length, const uint16_t* chars) {
-  JCharArray array = Create(jni_env, length);
-  array.SetRegion(jni_env, 0, length, chars);
-  return array;
-}
-
-JFloatArray JFloatArray::Create(JNIEnv* jni_env, int32_t length) {
-  return JFloatArray(jni_env, jni_env->NewFloatArray(length));
-}
-
-JFloatArray JFloatArray::Create(JNIEnv* jni_env, int32_t length, const float* elements) {
-  JFloatArray array = Create(jni_env, length);
-  array.SetRegion(jni_env, 0, length, elements);
-  return array;
 }
 
 std::vector<int64_t> Jni::GetElements(jlongArray array) const {
@@ -519,8 +463,9 @@ string JThrowable::Describe() const {
 }
 
 int32_t JNumber::IntValue() {
-  InitializeStatics(GetJni());
-  return CallIntMethod(int_value_method_);
+  Jni jni = GetJni();
+  InitializeStatics(jni);
+  return CallIntMethod(jni, int_value_method_);
 }
 
 void JNumber::InitializeStatics(Jni jni) {
@@ -536,7 +481,7 @@ jmethodID JNumber::int_value_method_ = nullptr;
 JIterator JIterable::Iterator() {
   JNIEnv* jni = GetJni();
   InitializeStatics(jni);
-  return JIterator(CallObjectMethod(iterator_method_));
+  return JIterator(CallObjectMethod(jni, iterator_method_));
 }
 
 void JIterable::InitializeStatics(Jni jni) {
@@ -588,7 +533,7 @@ void Jvm::DetachCurrentThread() {
   jni->ExceptionClear();
   JClass system = jni.GetClass("java/lang/System");
   jmethodID exit_method = system.GetStaticMethod(jni, "exit", "(I)V");
-  system.CallStaticVoidMethod(exit_method, exitCode);
+  system.CallStaticVoidMethod(jni, exit_method, exitCode);
   assert(false);
 }
 

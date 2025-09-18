@@ -21,6 +21,7 @@ import com.android.testutils.TestUtils.getSdk
 import com.android.tools.idea.gradle.project.sync.internal.ProjectDumper
 import com.android.tools.idea.gradle.project.sync.internal.dump
 import com.android.tools.idea.gradle.project.sync.internal.dumpAndroidIdeModel
+import com.android.tools.idea.gradle.project.sync.internal.isKotlinBuildScript
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.testing.nameProperties
 import com.intellij.openapi.Disposable
@@ -148,9 +149,11 @@ fun ModuleDumpWithType.filterOutExpectedInconsistencies() = copy(
     !line.contains("BUILD_TASKS") // We don't set up tasks in phased sync
   })
 
-fun Project.dumpModules(knownAndroidPaths: Set<File>) =
-  ModuleDumpWithType(
-    rootModuleNames = modules
+fun Project.dumpModules(knownAndroidPaths: Set<File>): ModuleDumpWithType {
+  // Filter KTS modules since with IntelliJ 2025.2 there are differences between intermediate and full sync b/431159711
+  val modulesFiltered = modules.filter { !it.isKotlinBuildScript }
+  return ModuleDumpWithType(
+    rootModuleNames = modulesFiltered
       .groupBy {
         ExternalSystemModulePropertyManager.getInstance(it).getLinkedProjectPath()
       }.mapValues {
@@ -160,11 +163,12 @@ fun Project.dumpModules(knownAndroidPaths: Set<File>) =
       }.values.map {
         it.name
       },
-    phasedSyncModuleNames = modules.filter { it.moduleFilePath.isEmpty() }.map { it.name },
-    androidModuleNames = modules.filter { it.projectDirectory() in knownAndroidPaths }.map { it.name },
+    phasedSyncModuleNames = modulesFiltered.filter { it.moduleFilePath.isEmpty() }.map { it.name },
+    androidModuleNames = modulesFiltered.filter { it.projectDirectory() in knownAndroidPaths }.map { it.name },
     projectStructure = dumpAllModuleEntries(),
     ideModels = dumpAllIdeModels()
   )
+}
 
 private fun Project.dumpAllModuleEntries() : Sequence<String> {
   val dumper = createDumper()
@@ -183,14 +187,6 @@ private fun Project.dumpAllIdeModels() : Sequence<String> {
       kaptModels = { null },
       mppModels = { null },
       externalProjects = { null },
-      // We have full variant information set up in the GradleAndroidModel in phased sync case
-      // without the dependencies, whereas that's not the case formerly.
-      dumpAllVariants = false,
-      // IdeModelDumper dump the root project structure by default, we don't want that here
-      dumpRootModuleProjectStructure = false,
-      // IdeModelDumper dumps only one entry from each linked group to prevent noise, but we should
-      // compare everything here.
-      dumpAllLinkedModules = true
   )
 
   return dumper.toString().nameProperties()
@@ -258,6 +254,6 @@ internal class ModelDumpSyncContributor: GradleSyncContributor {
       }
     }
 
-    intermediateDump = context.project().dumpModules(knownAndroidPaths)
+    intermediateDump = context.project.dumpModules(knownAndroidPaths)
   }
 }

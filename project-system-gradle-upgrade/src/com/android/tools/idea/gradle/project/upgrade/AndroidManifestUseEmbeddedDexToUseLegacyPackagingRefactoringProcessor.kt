@@ -29,7 +29,6 @@ import com.intellij.refactoring.ui.UsageViewDescriptorAdapter
 import com.intellij.usageView.UsageInfo
 import com.intellij.usageView.UsageViewDescriptor
 import com.intellij.usages.impl.rules.UsageType
-import org.jetbrains.android.util.AndroidBundle
 import java.io.File
 
 class AndroidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor : AgpUpgradeComponentRefactoringProcessor {
@@ -58,8 +57,8 @@ class AndroidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor : Ag
     return useEmbeddedDex
   }
 
-  override fun getCommandName(): String = AndroidBundle.message(
-    "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.commandName")
+  override fun getCommandName(): String = AgpUpgradeBundle.message(
+    "androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.commandName")
 
   override val readMoreUrlRedirect = ReadMoreUrlRedirect("use-embedded-dex-deprecated")
 
@@ -99,14 +98,14 @@ class AndroidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor : Ag
         return PsiElement.EMPTY_ARRAY
       }
 
-      override fun getProcessedElementsHeader() = AndroidBundle.message(
-        "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.usageView.header")
+      override fun getProcessedElementsHeader() = AgpUpgradeBundle.message(
+        "androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.usageView.header")
     }
   }
 
   companion object {
-    val ADD_DSL_USE_LEGACY_PACKAGING = UsageType(AndroidBundle.messagePointer(
-      "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.addUseLegacyPackaging.usageType"))
+    val ADD_DSL_USE_LEGACY_PACKAGING = UsageType(AgpUpgradeBundle.messagePointer(
+      "androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.addUseLegacyPackaging.usageType"))
   }
 }
 
@@ -119,6 +118,6 @@ class AddDexUseLegacyPackagingInfo(
     model.android().packaging().dex().useLegacyPackaging().setValue(value)
   }
 
-  override fun getTooltipText(): String = AndroidBundle.message(
-    "project.upgrade.androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.addUseLegacyPackaging.tooltipText")
+  override fun getTooltipText(): String = AgpUpgradeBundle.message(
+    "androidManifestUseEmbeddedDexToUseLegacyPackagingRefactoringProcessor.addUseLegacyPackaging.tooltipText")
 }

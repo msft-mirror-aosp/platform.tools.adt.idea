@@ -31,6 +31,7 @@ import com.android.tools.idea.testing.TestLoggerRule
 import com.android.tools.idea.testing.buildAndWait
 import com.android.tools.idea.testing.withCompileSdk
 import com.android.tools.idea.testing.withTargetSdk
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.rendering.RenderService
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.project.Project
@@ -71,6 +72,8 @@ private class ComposeGradleProjectRuleImpl(
     }
 
     IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project)
+    // Create VisualLintService early to avoid it being created at the time of project disposal
+    VisualLintService.getInstance(projectRule.project)
   }
 
   override fun after(description: Description) {
@@ -81,7 +84,7 @@ private class ComposeGradleProjectRuleImpl(
 
 /**
  * A [TestRule] providing the same behaviour as [AndroidGradleProjectRule] but with the correct
- * setup for rendeering Compose elements.
+ * setup for rendering Compose elements.
  */
 open class ComposeGradleProjectRule(
   projectPath: String,
@@ -92,11 +95,11 @@ open class ComposeGradleProjectRule(
         AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT.withTargetSdk(COMPILE_SDK_VERSION)
           .withCompileSdk(COMPILE_SDK_VERSION)
     ),
-) : TestRule {
-  val project: Project
+) : ComposeProjectBasedTestRule {
+  override val project: Project
     get() = projectRule.project
 
-  val fixture: CodeInsightTestFixture
+  override val fixture: CodeInsightTestFixture
     get() = projectRule.fixture
 
   protected open val delegate: RuleChain =

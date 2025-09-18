@@ -97,6 +97,9 @@ import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.nio.file.Path
 import com.android.ide.common.gradle.Module as ExternalModule
+import com.android.tools.idea.gradle.project.entities.gradleAndroidModel
+import com.android.tools.idea.model.AndroidModel
+import com.intellij.workspaceModel.ide.legacyBridge.findSnapshotModuleEntity
 
 /** Creates a map for the given pairs, filtering out null values. */
 private fun <K, V> notNullMapOf(vararg pairs: Pair<K, V?>): Map<K, V> {
@@ -120,6 +123,12 @@ class GradleModuleSystem(
 ) : AndroidModuleSystem,
     RegisteringModuleSystem<GradleRegisteredDependencyQueryId, GradleRegisteredDependencyId>,
     SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(module.getHolderModule()) {
+
+  override val androidModel: GradleAndroidModel? = module.findSnapshotModuleEntity()?.gradleAndroidModel?.gradleAndroidModel
+
+  override fun setAndroidModel(mutableFacet: AndroidFacet, androidModel: AndroidModel) {
+    error("Not allowed, must be set through Workspace Model!")
+  }
 
   override val type: Type
     get() = when (GradleAndroidModel.get(module)?.androidProject?.projectType) {
@@ -551,7 +560,7 @@ class GradleModuleSystem(
 
   override fun getDynamicFeatureModules(): List<Module> {
     val project = GradleAndroidModel.get(module)?.androidProject ?: return emptyList()
-    val ourGradleProjectPath = gradleProjectPath.toHolder()
+    val ourGradleProjectPath = module.getGradleProjectPath()?.toHolder() ?: return emptyList()
     return project.dynamicFeatures.map { dynamicFeature ->
       val dynamicFeatureGradleProjectPath = ourGradleProjectPath.copy(path = dynamicFeature)
       dynamicFeatureGradleProjectPath.resolveIn(module.project) ?: error("Missing dynamic feature module: $dynamicFeatureGradleProjectPath")

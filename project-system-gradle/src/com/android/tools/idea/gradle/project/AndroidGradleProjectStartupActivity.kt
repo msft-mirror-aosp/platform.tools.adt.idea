@@ -21,6 +21,10 @@ import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
+import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
+import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity
+import com.android.tools.idea.gradle.project.entities.gradleAndroidModel
+import com.android.tools.idea.gradle.project.entities.gradleModuleModel
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.facet.ndk.NativeHeaderRootType
 import com.android.tools.idea.gradle.project.facet.ndk.NativeSourceRootType
@@ -81,9 +85,12 @@ import com.intellij.openapi.roots.OrderRootType
 import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.platform.PlatformProjectOpenProcessor
+import com.intellij.platform.backend.workspace.workspaceModel
+import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
+import com.intellij.platform.PROJECT_LOADED_FROM_CACHE_BUT_HAS_NO_MODULES
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.workspaceModel.ide.JpsProjectLoadingManager
+import com.intellij.workspaceModel.ide.legacyBridge.findModuleEntity
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -190,7 +197,7 @@ private fun subscribeToGradleSettingChanges(project: Project) {
 }
 
 private fun whenAllModulesLoaded(project: Project, callback: () -> Unit) {
-  if (project.getUserData(PlatformProjectOpenProcessor.PROJECT_LOADED_FROM_CACHE_BUT_HAS_NO_MODULES) == true) {
+  if (project.getUserData(PROJECT_LOADED_FROM_CACHE_BUT_HAS_NO_MODULES) == true) {
     // All modules are loaded at this point and JpsProjectLoadingManager.jpsProjectLoaded is not triggered, so invoke callback directly.
     callback()
   } else {
@@ -250,7 +257,7 @@ private suspend fun removeModules(moduleManager: ModuleManager, modules: List<Pa
 
 private class RequestSyncThrowable(val reason: String, val trigger: Trigger) : Throwable()
 
-private fun attachCachedModelsOrTriggerSyncBody(project: Project, gradleProjectInfo: GradleProjectInfo) {
+private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradleProjectInfo: GradleProjectInfo) {
   val moduleManager = ModuleManager.getInstance(project)
   val projectDataManager = ProjectDataManager.getInstance()
 
@@ -401,9 +408,9 @@ private fun attachCachedModelsOrTriggerSyncBody(project: Project, gradleProjectI
       dataKey: Key<T>,
       getModel: (DataNode<*>, Key<T>) -> T?,
       getFacet: (Module) -> V?,
-      attach: V.(T) -> Unit,
+      attach: suspend V.(T) -> Unit,
       validate: T.() -> Boolean = { true }
-    ): (() -> Unit) {
+    ): suspend (() -> Unit) {
       val model = getModel(data.dataNode, dataKey) ?: return { /* No model for datanode/datakey pair */ }
       if (!model.validate()) {
         requestSync("invalid model found for $dataKey in ${data.module.name}")
@@ -424,10 +431,33 @@ private fun attachCachedModelsOrTriggerSyncBody(project: Project, gradleProjectI
         ANDROID_MODEL,
         getModelForMaybeSourceSetDataNode(),
         AndroidFacet::getInstance,
-        { AndroidModel.set(this, data.gradleAndroidModelFactory(it)) },
+        {
+          project.workspaceModel.update("Set GradleAndroidModel for compatibility") { storage ->
+            module.findModuleEntity(storage)?.let { entity ->
+              storage.modifyModuleEntity(entity) {
+                this.gradleAndroidModel = GradleAndroidModelEntity(
+                  entitySource = this@modifyModuleEntity.entitySource,
+                  gradleAndroidModel = data.gradleAndroidModelFactory(it)
+                )
+              }
+            }
+          }
+        },
         validate = GradleAndroidModelData::validate
       ),
-      prepare(GRADLE_MODULE_MODEL, ::getModelFromDataNode, GradleFacet::getInstance, GradleFacet::setGradleModuleModel),
+      prepare(GRADLE_MODULE_MODEL, ::getModelFromDataNode, GradleFacet::getInstance, {
+        project.workspaceModel.update("Set GradleModuleModel for compatibility") { storage ->
+          module.findModuleEntity(storage)?.let { entity ->
+            storage.modifyModuleEntity(entity) {
+              this.gradleModuleModel = GradleModuleModelEntity(
+                entitySource = this@modifyModuleEntity.entitySource,
+                gradleModuleModel = it
+              )
+            }
+          }
+        }
+
+      }),
       prepare(NDK_MODEL, ::getModelFromDataNode, NdkFacet::getInstance, NdkFacet::setNdkModuleModel)
     )
   }

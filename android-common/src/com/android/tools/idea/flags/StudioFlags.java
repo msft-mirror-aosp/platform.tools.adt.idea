@@ -19,6 +19,7 @@ import com.android.flags.BooleanFlag;
 import com.android.flags.DebugFlag;
 import com.android.flags.EnumFlag;
 import com.android.flags.Flag;
+import com.android.flags.FlagDefault;
 import com.android.flags.FlagGroup;
 import com.android.flags.FlagValueContainer;
 import com.android.flags.Flags;
@@ -61,7 +62,7 @@ public final class StudioFlags {
       userOverrides = new LazyStudioFlagSettings();
     }
     return new Flags(
-      FeatureConfigurationProvider.Companion.getCurrentFlags(),
+      FeatureConfigurationProvider.getCurrentFlags(),
       userOverrides,
       new PropertyOverrides(),
       new MendelOverrides(),
@@ -105,7 +106,13 @@ public final class StudioFlags {
     "configuration.level",
     "Sets the flag configuration level",
     "Changes the configuration level that controls the flag defaults. Changing the value of this flag requires restarting Android Studio",
-    FeatureConfiguration.Companion.getCurrent());
+    new FlagDefault<>("Delayed default for FeatureConfiguration") { // use a FlagDefault to avoid calling getCurrent() during cinit
+      @Override
+      public FeatureConfiguration get() {
+        return FeatureConfiguration.getCurrent();
+      }
+    },
+    FeatureConfiguration.class);
 
   //region Studio.Diagnostic
   private static final FlagGroup STUDIO_DIAGNOSTIC = new FlagGroup(FLAGS, "studio.diagnostic", "Android Studio Diagnostics");
@@ -1124,6 +1131,17 @@ public final class StudioFlags {
     "Horizontal scroll for layout inspector component tree",
     "When this flag is enabled, we enable horizontal scrolling for the Layout Inspector's component tree."
     );
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.enable.state.reads", "Enable Recomposition State Reads",
+    "Enable display of state read stacktrace for recompositions."
+    );
+
+  public static final Flag<Integer> DYNAMIC_LAYOUT_INSPECTOR_MAX_RECOMPOSITIONS_WITH_STATE_READS = new IntFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.max.recompositions.with.state.reads",
+    "Max recompositions with state reads",
+    "When dynamic state reads are observed: limit the recompositions the agent caches state reads for.", 20
+  );
   //endregion
 
   //region Embedded Emulator
@@ -1582,10 +1600,6 @@ public final class StudioFlags {
     "Uses agentic approach when performing transform UI with Gemini."
     );
 
-  public static final Flag<Boolean> COMPOSE_CRITIQUE_AGENT_CODE_REWRITE = new BooleanFlag(
-    COMPOSE, "critique.agent.code.rewrite", "Enable action to rewrite UI from Image",
-    "Enables a context-menu action to analyze UI images and rewrite corresponding code to match the target design.");
-
   public static final Flag<Boolean> COMPOSE_PREVIEW_AI_AGENTS_DROPDOWN = new BooleanFlag(
     COMPOSE, "ai.agents.dropdown", "Enable dropdown action to list Compose Preview AI agent actions",
     "Enables a dropdown action that lists actions that trigger AI agent flows related to Compose Previews.");
@@ -1832,6 +1846,14 @@ public final class StudioFlags {
       "direct.access.show.oem.lab.devices",
       "Show OEM lab devices",
       "OEM lab devices are available to users."
+    );
+
+  public static final Flag<Boolean> DIRECT_ACCESS_SHOW_OUTAGE_NOTIFICATIONS =
+    new BooleanFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.show.outage.notifications",
+      "Show outage notifications",
+      "Notifications in device manager for outages from Test Lab."
     );
 
   // endregion Firebase Test Lab
@@ -2102,6 +2124,11 @@ public final class StudioFlags {
                     "Enable the AGENTS.md Files macro in the context drawer",
                     "This macro attaches AGENTS.md or GEMINI.md Files under directories of the current file and its recursive parents.");
 
+  public static final Flag<Boolean> STUDIOBOT_KNOWLEDGE_BASE_RAG =
+    new BooleanFlag(STUDIOBOT, "knowledge.base.rag",
+                    "Enable the Knowledge Base (KB) indexer and search tools",
+                    "KB consists of Android developer docs including libraries.");
+
   public static final Flag<Boolean> STUDIOBOT_ASK_GEMINI_INCLUDE_BUILD_FILES_IN_CONTEXT =
     new BooleanFlag(STUDIOBOT, "askgemini.include.build.files.in.context",
                     "Allow build files in 'Ask Gemini' context",
@@ -2126,6 +2153,16 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "mcp.host.enabled",
                     "Enable Model Context Protocol (MCP) support",
                     "Allows the agent to use custom tools provided by Model Context Protocol (MCP) servers");
+
+  public static final Flag<Boolean> STUDIOBOT_MCP_AUTH_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mcp.auth.enabled",
+                    "Enable MCP Auth via OAuth with MCP Servers",
+                    "Allows connectinos with remote streamableHttp MCP Servers that require OAuth");
+
+  public static final Flag<Boolean> STUDIOBOT_MCP_UI_SERVERS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mcp.ui.servers.enabled",
+                    "Enable Model Context Protocol (MCP) Servers List UI",
+                    "Displays the connection status and tools of configured servers in the settings panel");
 
   public static final Flag<Boolean> STUDIOBOT_SCROLL_TO_BOTTOM_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.scroll.to.bottom",
@@ -2323,6 +2360,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "web.search.tool",
                     "Enable web search tool",
                     "Enables the 'Web Search Tool' as builtin tools.");
+
+  public static final Flag<Boolean> GEMINI_SEND_DURING_RESPONSE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "send.during.response",
+                    "Enable sending queries while a response is streaming.",
+                    "Enables sending queries while a response is streaming. It may be queued or interrupt the stream.");
 
   public enum DasherSupportMode {
     /**

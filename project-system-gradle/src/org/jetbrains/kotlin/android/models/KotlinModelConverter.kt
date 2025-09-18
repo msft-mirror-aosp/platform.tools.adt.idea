@@ -494,7 +494,9 @@ class KotlinModelConverter {
       desugaredMethodsFiles = targetInfo.desugaredMethodsFilesList.convertAndDeduplicate(),
       generatedClassPaths = emptyMap(),
       bytecodeTransforms = null,
-      generatedAssetFolders = emptyList()
+      generatedAssetFolders = emptyList(),
+      mappingR8TextFile = null,
+      mappingR8PartitionFile = null,
     )
 
     val unitTestArtifact = unitTestAndroidCompilation?.let {
@@ -559,7 +561,9 @@ class KotlinModelConverter {
         desugaredMethodsFiles = targetInfo.desugaredMethodsFilesList.convertAndDeduplicate(),
         generatedClassPaths = emptyMap(),
         bytecodeTransforms = null,
-        generatedAssetFolders = emptyList()
+        generatedAssetFolders = emptyList(),
+        mappingR8TextFile = null,
+        mappingR8PartitionFile = null,
       )
     }
 

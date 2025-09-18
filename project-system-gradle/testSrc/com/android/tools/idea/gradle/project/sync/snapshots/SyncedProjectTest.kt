@@ -37,8 +37,6 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.IconManager
 import com.intellij.ui.icons.CoreIconManager
 import java.io.File
-import org.gradle.util.GradleVersion
-import org.junit.Assume.assumeTrue
 import org.junit.Ignore
 import org.junit.Test
 
@@ -73,6 +71,7 @@ abstract class SyncedProjectTest(
   }
 
   @Test
+  @Ignore("b/443339963")
   fun testAndroidKotlinMultiplatform() = testProject(TestProject.ANDROID_KOTLIN_MULTIPLATFORM)
 
   @Test
@@ -227,6 +226,7 @@ abstract class SyncedProjectTest(
   fun testTransitiveDependenciesNoTargetSdkInLibs() = testProject(TestProject.TRANSITIVE_DEPENDENCIES_NO_TARGET_SDK_IN_LIBS)
 
   @Test
+  @Ignore("b/443339963")
   fun testKotlinGradleDsl() = testProject(TestProject.KOTLIN_GRADLE_DSL)
 
   @Test
@@ -293,6 +293,9 @@ abstract class SyncedProjectTest(
   @Test
   fun testAddTestStaticDir() = testProject(TestProject.TEST_STATIC_DIR)
 
+  @Test
+  fun testSimpleApplication_optimization_enabled() = testProject(TestProject.SIMPLE_APPLICATION_OPTIMIZATION_ENABLED)
+
   override fun getTestDefs(testProject: TestProject): List<SyncedProjectTestDef> {
     return tests[testProject].orEmpty()
   }
@@ -330,7 +333,9 @@ class SyncedProjectTestSelfCheck : SyncedProjectTestSelfCheckBase<SyncedProjectT
 
 private fun selfChecks(): List<SyncedProjectTestDef> {
   return listOf(
+    /* TODO(b/429975528): temporarily avoid disabling KTS indexing for IntelliJ 2025.2.
     KotlinScriptIndexingDisabled(AGP_CURRENT)
+    */
   )
 }
 

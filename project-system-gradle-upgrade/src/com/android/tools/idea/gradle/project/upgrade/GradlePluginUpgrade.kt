@@ -24,6 +24,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.plugin.AgpVersions
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
+import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.project.sync.setup.post.TimeBasedReminder
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_INDEPENDENT
@@ -49,7 +50,6 @@ import com.intellij.openapi.vcs.FileStatus
 import com.intellij.openapi.vcs.FileStatusManager
 import com.intellij.util.SystemProperties
 import com.jetbrains.rd.util.first
-import org.jetbrains.android.util.AndroidBundle
 import java.util.concurrent.TimeUnit
 
 private val LOG = Logger.getInstance(LOG_CATEGORY)
@@ -122,10 +122,10 @@ fun recommendPluginUpgrade(project: Project, current: AgpVersion, strongly: Bool
   if (existing.isEmpty()) {
     val notification = when (strongly) {
       false -> UpgradeSuggestion(
-        AndroidBundle.message("project.upgrade.notification.title"), AndroidBundle.message("project.upgrade.notification.body", current), project, current)
+        AgpUpgradeBundle.message("notification.title"), AgpUpgradeBundle.message("notification.body", current), project, current)
       true -> DeprecatedAgpUpgradeWarning(
-        AndroidBundle.message("project.upgrade.deprecated.notification.title"),
-        AndroidBundle.message("project.upgrade.deprecated.notification.body", current, GRADLE_PLUGIN_NEXT_MINIMUM_VERSION),
+        AgpUpgradeBundle.message("deprecated.notification.title"),
+        AgpUpgradeBundle.message("deprecated.notification.body", current, GRADLE_PLUGIN_NEXT_MINIMUM_VERSION),
         project,
         current
       )
@@ -166,8 +166,7 @@ fun performRecommendedPluginUpgrade(
 //  - build-adjacent files (e.g. proguard files, AndroidManifest.xml for the change namespacing R classes)
 internal fun isCleanEnoughProject(project: Project): Boolean {
   ModuleManager.getInstance(project).modules.forEach { module ->
-    val gradleFacet = GradleFacet.getInstance(module) ?: return@forEach
-    val buildFile = gradleFacet.gradleModuleModel?.buildFile ?: return@forEach
+    val buildFile = module.gradleModuleModel?.buildFileAsVirtualFile() ?: return@forEach
     when (FileStatusManager.getInstance(project).getStatus(buildFile)) {
       FileStatus.NOT_CHANGED -> return@forEach
       else -> return false

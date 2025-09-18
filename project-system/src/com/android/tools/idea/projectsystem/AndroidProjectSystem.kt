@@ -18,7 +18,6 @@
 package com.android.tools.idea.projectsystem
 
 import com.android.tools.idea.model.AndroidModel
-import com.android.tools.idea.model.ClassJarProvider
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ApkProvisionException
 import com.android.tools.idea.run.ApplicationIdProvider
@@ -57,11 +56,6 @@ interface AndroidProjectSystem: ModuleHierarchyProvider {
    * Indicates whether this project system supports the Android view
    */
   fun isAndroidProjectViewSupported(): Boolean = false
-
-  /**
-   * Returns path to android.jar
-   */
-  fun getBootClasspath(module: Module): Collection<String>
 
   /**
    * Returns true if the project allows adding new modules.
@@ -132,11 +126,6 @@ interface AndroidProjectSystem: ModuleHierarchyProvider {
    * Returns a source provider describing build configuration files.
    */
   fun getBuildConfigurationSourceProvider(): BuildConfigurationSourceProvider? = null
-
-  /**
-   * @return A provider for finding .class output files and external .jars.
-   */
-  fun getClassJarProvider(): ClassJarProvider
 
   /**
    * Returns a collection of [AndroidFacet]s corresponding to project system entities.  Note that this can be different from the

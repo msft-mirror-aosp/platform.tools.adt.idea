@@ -29,7 +29,10 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
-import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
+import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
+import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity
+import com.android.tools.idea.gradle.project.entities.gradleAndroidModel
+import com.android.tools.idea.gradle.project.entities.gradleModuleModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
@@ -40,7 +43,6 @@ import com.android.tools.idea.gradle.project.sync.computeVariantNameToBeSynced
 import com.android.tools.idea.gradle.project.sync.convert
 import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectResolver.Companion.toIdeDeclaredDependencies
 import com.android.tools.idea.gradle.project.sync.idea.entities.AndroidGradleSourceSetEntitySource
-import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
 import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGroup
 import com.android.tools.idea.sdk.AndroidSdks
@@ -91,7 +93,7 @@ import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_SOURCE_ROOT_E
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_TEST_RESOURCE_ROOT_ENTITY_TYPE_ID
 import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_TEST_ROOT_ENTITY_TYPE_ID
 import org.gradle.tooling.model.GradleProject
-import org.jetbrains.android.facet.AndroidFacet
+import org.gradle.tooling.model.idea.IdeaModule
 import org.jetbrains.android.sdk.AndroidSdkType
 import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.jps.model.java.JavaResourceRootType
@@ -170,6 +172,7 @@ internal class SyncContributorAndroidProjectContext(
   val androidDsl = context.getProjectModel(projectModel, AndroidDsl::class.java)!!
   val gradlePluginModel = context.getProjectModel(projectModel, GradlePluginModel::class.java)!!
   val gradleProject = context.getProjectModel(projectModel, GradleProject::class.java)!!
+  val ideaModule =  context.getProjectModel(projectModel, IdeaModule::class.java)!!
 
   // Need to use Impl version because GradleAndroidModelData expects an immutable implementation.
   val ideAndroidProject = context.getProjectModel(projectModel, IdeAndroidProject::class.java)!! as IdeAndroidProjectImpl
@@ -201,7 +204,7 @@ internal class SyncContributorAndroidProjectContext(
      "Holder module is not populated via Android Gradle source sets for ${projectModel.path}"
    }
 
-  internal val gradleAndroidModelFactory: (String) -> GradleAndroidModelData
+  internal val gradleAndroidModelDataFactory: (String) -> GradleAndroidModelData
     get() = { moduleName ->
       val ideAndroidProject = ideAndroidProject.copy(baseFeature = baseFeature)
       GradleAndroidModelData.create(
@@ -372,10 +375,11 @@ class AndroidSourceRootSyncContributor : GradleSyncContributor {
           setSdkForHolderModule(this)
           createOrUpdateAndroidGradleFacet(updatedEntities, this)
           createOrUpdateAndroidFacet(updatedEntities, this)
+          linkModuleGroup(this, sourceSetModuleEntitiesByArtifact)
+          setExcludeDirectoriesForHolderModule(updatedEntities)
           // There seems to be a bug in workspace model implementation that requires doing this to update list of changed props
           this.facets = facets
         }
-        linkModuleGroup(sourceSetModuleEntitiesByArtifact)
         sourceSetModules
       }
     }
@@ -421,6 +425,18 @@ private fun SyncContributorAndroidProjectContext.setSdkForHolderModule(holderMod
   holderModuleEntity.dependencies += sdk ?: InheritedSdkDependency
 }
 
+private fun SyncContributorAndroidProjectContext.setExcludeDirectoriesForHolderModule(storage: MutableEntityStorage) {
+  // Not using content root index in this case because it specifically avoids settings the project root as a root, but we want that
+  val typeToDirsMap = mapOf(
+    ExternalSystemSourceType.EXCLUDED to ideaModule.contentRoots.flatMap { it.excludeDirectories }.toSet()
+  )
+  val contentRootUrl = typeToDirsMap.values.flatten().reduce { acc, file -> findCommonAncestor(acc, file) }
+
+  storage.modifyModuleEntity(holderModuleEntity) {
+    contentRoots = listOf(createContentRootEntity(name, entitySource, contentRootUrl, typeToDirsMap))
+  }
+}
+
 // helpers
 private fun SyncContributorAndroidProjectContext.getAllSourceSetModuleEntities(): Map<IdeArtifactName, ModuleEntity.Builder> {
   val allSourceSets = getAllSourceSetsFromModels()
@@ -452,22 +468,27 @@ private fun SyncContributorAndroidProjectContext.getAllSourceSetModuleEntities()
   }
 }
 
-private fun SyncContributorAndroidProjectContext.linkModuleGroup(sourceSetModules: Map<IdeArtifactName, ModuleEntity.Builder>) {
+private fun SyncContributorAndroidProjectContext.linkModuleGroup(
+  holderModuleEntity: ModuleEntity.Builder,
+  sourceSetModules: Map<IdeArtifactName, ModuleEntity.Builder>) {
   val androidModuleGroup = getModuleGroup(sourceSetModules)
-  val linkedModuleNames = sourceSetModules.values.map { it.name } + holderModuleEntity.name
-  registerModuleActions(linkedModuleNames.associateWith {
-    { moduleInstance ->
+  val linkedModules = sourceSetModules.values + holderModuleEntity
+  registerModuleActions(linkedModules.associate {
+    it.name to { moduleInstance ->
       moduleInstance.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, androidModuleGroup)
-      val gradleAndroidModelData = gradleAndroidModelFactory(moduleInstance.name)
-      AndroidFacet.getInstance(moduleInstance)?.let {
-        AndroidModel.set(it, GradleAndroidModel.create(project, gradleAndroidModelData))
-      }
-
-      val gradleModuleModel = gradleModuleModelFactory(moduleInstance.name)
-      GradleFacet.getInstance(moduleInstance)
-        ?.setGradleModuleModel(gradleModuleModel)
     }
   })
+  linkedModules.forEach { entity ->
+    val gradleAndroidModelData = gradleAndroidModelDataFactory(entity.name)
+    entity.gradleAndroidModel = GradleAndroidModelEntity(
+      entitySource = entity.entitySource,
+      gradleAndroidModel = GradleAndroidModel.create(project, gradleAndroidModelData)
+    )
+    entity.gradleModuleModel = GradleModuleModelEntity(
+      entitySource = entity.entitySource,
+      gradleModuleModel = gradleModuleModelFactory(entity.name)
+    )
+  }
 }
 
 

@@ -66,6 +66,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.util.concurrency.annotations.RequiresReadLock;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -428,6 +429,12 @@ public class LiveEditProjectMonitor implements Disposable {
       return;
     }
 
+    if (file instanceof LightVirtualFile) {
+      // Ignore any in-memory file changes.
+      LOGGER.info("Ignoring LightVirtualFiles %s", file.getName());
+      return;
+    }
+
     mainThreadExecutor.submit(() -> {
       PsiFile psiFile = ReadAction.compute(() -> getPsiInProject(file));
       if (psiFile == null) {
@@ -643,6 +650,10 @@ public class LiveEditProjectMonitor implements Disposable {
         logLiveEditEvent(event);
       }
 
+      // Even though we have UI to properly display the errors, it is important that we log
+      // LiveUpdateException at least ONCE. This is useful for bug reports as well as test flakes
+      // where we have an unexpected update error.
+      LOGGER.warning("Live Edit Update Error %s %s", e.getMessage(), e.getDetails());
       return true;
     }
 

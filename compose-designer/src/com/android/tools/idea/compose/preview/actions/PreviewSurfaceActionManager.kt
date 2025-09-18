@@ -23,6 +23,7 @@ import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.zoomTargetProvider
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.AnimationInspectorAction
+import com.android.tools.idea.preview.actions.BackNavigationAction
 import com.android.tools.idea.preview.actions.CommonPreviewActionManager
 import com.android.tools.idea.preview.actions.EnableInteractiveAction
 import com.android.tools.idea.preview.actions.JumpToDefinitionAction
@@ -31,6 +32,7 @@ import com.android.tools.idea.preview.actions.ZoomToSelectionAction
 import com.android.tools.idea.preview.actions.disabledIfRefreshingOrHasErrorsOrProjectNeedsBuild
 import com.android.tools.idea.preview.actions.hideIfRenderErrors
 import com.android.tools.idea.preview.actions.visibleOnlyInFocus
+import com.android.tools.idea.preview.actions.visibleOnlyInInteractive
 import com.android.tools.idea.preview.actions.visibleOnlyInStaticPreview
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
@@ -81,14 +83,6 @@ internal class PreviewSurfaceActionManager(
         }
       }
     }
-    // Add an action to rewrite UI from Image.
-    if (StudioFlags.COMPOSE_CRITIQUE_AGENT_CODE_REWRITE.get()) {
-      ComposeStudioBotActionFactory.EP_NAME.extensionList.firstOrNull()?.let {
-        it.alignUiToTargetImageAction()?.let { action ->
-          actionGroup.add(action.visibleOnlyInStaticPreview())
-        }
-      }
-    }
 
     return actionGroup
   }
@@ -106,5 +100,7 @@ internal class PreviewSurfaceActionManager(
         )
         .disabledIfRefreshingOrHasErrorsOrProjectNeedsBuild()
         .hideIfRenderErrors()
-        .visibleOnlyInStaticPreview()
+        .visibleOnlyInStaticPreview() +
+      listOf(BackNavigationAction().visibleOnlyInInteractive())
+        .disabledIfRefreshingOrHasErrorsOrProjectNeedsBuild()
 }

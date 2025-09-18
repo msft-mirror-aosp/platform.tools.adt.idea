@@ -9,6 +9,7 @@ import com.android.tools.idea.common.util.ShowUnderConditionWrapper
 import com.android.tools.idea.compose.preview.ComposeStudioBotActionFactory
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.AnimationInspectorAction
+import com.android.tools.idea.preview.actions.BackNavigationAction
 import com.android.tools.idea.preview.actions.EnableInteractiveAction
 import com.android.tools.idea.preview.actions.JumpToDefinitionAction
 import com.android.tools.idea.preview.actions.ViewInFocusModeAction
@@ -55,7 +56,7 @@ import org.mockito.kotlin.whenever
 // DeployToDeviceAction(),
 // TransformPreviewAction(),
 // FixVisualLintIssuesAction(),
-// AlignUiToTargetImageAction(),
+// BackNavigationAction()
 // in wrappers
 private const val EXPECTED_NUMBER_OF_ACTIONS = 10
 
@@ -88,14 +89,12 @@ class PreviewSurfaceActionManagerTest {
   @After
   fun tearDown() {
     StudioFlags.COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI.clearOverride()
-    StudioFlags.COMPOSE_CRITIQUE_AGENT_CODE_REWRITE.clearOverride()
     StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.clearOverride()
   }
 
   @Test
   fun testAvailableActionsOnPreviewContextMenu() {
     StudioFlags.COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI.override(true)
-    StudioFlags.COMPOSE_CRITIQUE_AGENT_CODE_REWRITE.override(true)
     StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.override(true)
     ExtensionTestUtil.maskExtensions(
       ComposeStudioBotActionFactory.EP_NAME,
@@ -133,20 +132,21 @@ class PreviewSurfaceActionManagerTest {
     assertThat(sceneViewContextActions[3]).isInstanceOf(EnableInteractiveAction::class.java)
     assertThat(sceneViewContextActions[4]).isInstanceOf(DeployToDeviceAction::class.java)
 
+    // The back navigation action is wrapped into the EnableUnderConditionWrapper and then into
+    // the visibleOnlyInInteractive wrapper.
+    val backNavigationAction =
+      ((actions[7] as AnActionWrapper).delegate as AnActionWrapper).delegate
+    assertThat(backNavigationAction).isInstanceOf(BackNavigationAction::class.java)
+
     // Transform Preview action.
     val transformPreviewAction =
-      (actions[7] as ShowGroupUnderConditionWrapper).getChildren(null).single()
+      (actions[8] as ShowGroupUnderConditionWrapper).getChildren(null).single()
     assertThat(transformPreviewAction.templatePresentation.text).isEqualTo("transformPreview")
 
     // Fix Visual Lint Issues action.
     val fixVisualLintIssuesAction =
-      (actions[8] as ShowGroupUnderConditionWrapper).getChildren(null).single()
-    assertThat(fixVisualLintIssuesAction.templatePresentation.text).isEqualTo("fixVisualLintIssues")
-
-    // Align Ui to Image action.
-    val alignUiImageAction =
       (actions[9] as ShowGroupUnderConditionWrapper).getChildren(null).single()
-    assertThat(alignUiImageAction.templatePresentation.text).isEqualTo("alignUi")
+    assertThat(fixVisualLintIssuesAction.templatePresentation.text).isEqualTo("fixVisualLintIssues")
   }
 
   @Test
@@ -301,8 +301,6 @@ class FakeStudioBotActionFactory : ComposeStudioBotActionFactory {
 
   override fun fixComposeRenderIssueAction(renderIssues: List<Issue>): AnAction? =
     fakeAction("fixComposeRender")
-
-  override fun alignUiToTargetImageAction(): AnAction? = fakeAction("alignUi")
 
   override fun previewAgentsDropDownAction(): AnAction? = fakeAction("previewAgents")
 }

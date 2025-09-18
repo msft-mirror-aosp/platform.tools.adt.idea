@@ -54,16 +54,19 @@ import com.android.tools.idea.gradle.model.IdeVariantCore
 import com.android.tools.idea.gradle.model.IdeViewBindingOptions
 import com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable
 import com.android.tools.idea.gradle.model.lookup
-import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
+import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
+import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.project.sync.idea.data.DataNodeCaches
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
+import com.android.tools.idea.projectsystem.gradle.getHolderModule
 import com.android.tools.idea.projectsystem.gradle.isHolderModule
+import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.util.toIoFile
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -97,19 +100,13 @@ fun ProjectDumper.dumpAndroidIdeModel(
   kaptModels: (Module) -> KaptGradleModel?,
   mppModels: (Module) -> KotlinMPPGradleModel?,
   externalProjects: (Module) -> ExternalProject?,
-  // Only the selected variant will be dumped otherwise
-  dumpAllVariants: Boolean = true,
-  // Whether to include the project structure of the root module first as a header
-  dumpRootModuleProjectStructure: Boolean = true,
-  // Whether to dump all modules in a linked group
-  dumpAllLinkedModules: Boolean = false,
 ) {
   val projectRoot = File(project.basePath!!)
   nest(projectRoot, "PROJECT") {
     with(ideModelDumper(this)) {
-      if (dumpRootModuleProjectStructure) {
-      // Android Studio projects always have just one Gradle root, and thus we dump the composite build structure of the root project of a
-      // build located at the root of the IDE project.
+      if (!forSnapshotComparison) {
+        // Android Studio projects always have just one Gradle root, and thus we dump the composite build structure of the root project of a
+        // build located at the root of the IDE project.
         GradleHolderProjectPath(projectRoot.canonicalPath, ":")
           .resolveIn(project)
           ?.let { dump(it) }
@@ -119,16 +116,18 @@ fun ProjectDumper.dumpAndroidIdeModel(
       ModuleManager.getInstance(project).modules.sortedBy { it.name }.forEach { module ->
         head("MODULE") { module.name }
         nest {
-          GradleFacet.getInstance(module)?.gradleModuleModel?.let {
+          module.gradleModuleModel?.let {
             // Skip all but holders to prevent needless spam in the snapshots. All modules
             // point to the same facet.
-            if (!dumpAllLinkedModules && !module.isHolderModule()) return@let
-            dump(it)
+            if (forSnapshotComparison || module.isHolderModule() || module.hasDifferentGradleModuleModelThanHolder()) {
+              dump(it)
+            }
           }
           GradleAndroidModel.get(module)?.let { it ->
             // Skip all but holders to prevent needless spam in the snapshots. All modules
             // point to the same facet.
-            if (!dumpAllLinkedModules && !module.isHolderModule()) return@let
+            val shouldDump = forSnapshotComparison || module.isHolderModule() || module.hasDifferentGradleAndroidModelThanHolder()
+            if (!shouldDump) return@let
             head("CurrentVariantReportedVersions")
             nest {
               StudioAndroidModuleInfo.getInstance(module)?.minSdkVersion?.dump("minSdk")
@@ -141,13 +140,13 @@ fun ProjectDumper.dumpAndroidIdeModel(
             nest {
               if (it is GradleAndroidDependencyModel) {
                 it.variantsWithDependencies.filter { variant ->
-                  dumpAllVariants || variant.name == it.selectedVariantName
+                  forSnapshotComparison || variant.name == it.selectedVariantName
                 }.forEach {
                   dump(it)
                 }
               } else {
                 it.variants.filter { variant ->
-                  dumpAllVariants || variant.name == it.selectedVariantName
+                  forSnapshotComparison || variant.name == it.selectedVariantName
                 }.forEach {
                   dump(it)
                 }
@@ -217,6 +216,7 @@ private val jbModelDumpers = listOf(
       }
     }
   },
+  SpecializedDumper(property = K2JVMCompilerArguments::configurator),
   SpecializedDumper<DefaultExternalSourceSet> { externalSourceSet ->
     head(propertyName)
     nest {
@@ -440,7 +440,9 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
     }
 
     fun dump(libraryTable: IdeResolvedLibraryTable) {
-      val libraryComparator = compareBy<IdeLibrary?> { it?.toLibraryType() }.thenBy { it?.toDisplayString() }
+      val libraryComparator = compareBy<IdeLibrary?> { it?.toLibraryType() }
+        .thenBy { it?.toDisplayString() }
+        .thenBy { (it as? IdeModuleLibrary)?.variant} // variant is not present in the display string
       libraryTable.libraries
         .map { it.sortedWith (libraryComparator) } // sort each list first
         .sortedWith(compareBy(libraryComparator) { it.firstOrNull() } ) // then compare the min elements of lists
@@ -468,6 +470,10 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
       prop("SigningConfigName") { ideAndroidArtifact.signingConfigName }
       prop("IsSigned") { ideAndroidArtifact.isSigned.toString() }
       prop("CodeShrinker") { ideAndroidArtifact.codeShrinker.toString() }
+      prop("MappingR8File") { ideAndroidArtifact.mappingR8TextFile?.path?.toPrintablePath() }
+      prop("PartitionR8File") { ideAndroidArtifact.mappingR8PartitionFile?.path?.toPrintablePath() }
+
+
       dump(ideAndroidArtifact.buildInformation)
       ideAndroidArtifact.generatedResourceFolders.forEach { prop("GeneratedResourceFolders") { it.path.toPrintablePath() } }
       ideAndroidArtifact.generatedAssetFolders.forEach { prop("GeneratedAssetFolders") { it.path.toPrintablePath() } }
@@ -882,11 +888,13 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
         prop("agpVersion") { model.agpVersion?.replaceAgpVersion() }
         prop("gradlePath") { model.gradlePath }
         prop("gradleVersion") { model.gradleVersion?.replaceGradleVersion() }
-        prop("buildFile") { model.buildFile?.path?.toPrintablePath() }
+        if (!projectDumper.forSnapshotComparison) { // skip this in comparison as we don't want the VFS state to affect the outcome
+          prop("buildFile") { model.buildFileAsVirtualFile()?.path?.toPrintablePath() }
+        }
         prop("buildFilePath") { model.buildFilePath?.path?.toPrintablePath() }
         prop("rootFolderPath") { model.rootFolderPath.path.toPrintablePath() }
-        prop("hasSafeArgsJava") { model.hasSafeArgsJavaPlugin().toString() }
-        prop("hasSafeArgsKotlin") { model.hasSafeArgsKotlinPlugin().toString() }
+        prop("hasSafeArgsJava") { model.safeArgsJava.toString() }
+        prop("hasSafeArgsKotlin") { model.safeArgsKotlin.toString() }
         model.taskNames.forEach { prop("- taskNames") { it } }
       }
     }
@@ -953,3 +961,15 @@ class DumpProjectIdeModelAction : InternalDumpAction("IDE Models") {
       .info("Android IDE models dumped to file: " + outputFile.toURI().toURL())
   }
 }
+
+fun  Module.hasDifferentGradleModuleModelThanHolder() =
+  takeIf { it.isLinkedAndroidModule() }?.getHolderModule()?.let { holderModule ->
+    gradleModuleModel?.copy(moduleNameField = holderModule.name) != holderModule.gradleModuleModel
+  } == true
+
+fun  Module.hasDifferentGradleAndroidModelThanHolder() =
+  takeIf { it.isLinkedAndroidModule() }?.getHolderModule()?.let { holderModule ->
+    (GradleAndroidModel.get(this) as GradleAndroidModelImpl).data.copy(moduleNameField =  holderModule.name) !=
+      (GradleAndroidModel.get(holderModule) as GradleAndroidModelImpl).data
+  } == true
+
