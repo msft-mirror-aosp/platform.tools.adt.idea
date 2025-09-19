@@ -15,10 +15,8 @@
  */
 package com.android.tools.compose.debug
 
-import com.android.annotations.concurrency.GuardedBy
 import com.android.tools.compose.isComposableLambdaArgument
-import com.android.tools.idea.flags.StudioFlags
-import com.intellij.openapi.vfs.JarFileSystem
+import com.intellij.openapi.components.service
 import com.intellij.psi.util.CachedValueProvider.Result
 import com.intellij.psi.util.CachedValuesManager
 import kotlin.LazyThreadSafetyMode.NONE
@@ -30,11 +28,9 @@ import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid
 
 class ComposeClassNameCalculator : ClassNameCalculator {
-
-  @GuardedBy("self") private val fileCache = mutableMapOf<String, KtFile>()
-
   override fun getClassNames(file: KtFile): Map<KtElement, String> {
-    val canonicalFile = getCanonicalFIle(file)
+    val cache = file.project.service<CanonicalFileService>()
+    val canonicalFile = cache.getCanonicalFile(file)
     return CachedValuesManager.getCachedValue(canonicalFile) {
       Result(calculate(canonicalFile), canonicalFile)
     }
@@ -61,31 +57,4 @@ class ComposeClassNameCalculator : ClassNameCalculator {
     visitor.visitKtFile(file)
     return result
   }
-
-  private fun getCanonicalFIle(file: KtFile): KtFile {
-    return when {
-      !StudioFlags.COMPOSE_CLASS_NAME_CALCULATOR_CANONICAL_FILE_CACHE.get() -> file
-      file.isInJar -> handleJarFile(file)
-      else -> handleSourceFile(file)
-    }
-  }
-
-  // Use file from cache if exists, otherwise, use self and update cache
-  private fun handleJarFile(file: KtFile): KtFile {
-    return synchronized(fileCache) { fileCache.getOrPut(file.key) { file } }
-  }
-
-  // Prefer source files over jar files so use self and update cache
-  private fun handleSourceFile(file: KtFile): KtFile {
-    return synchronized(fileCache) {
-      fileCache[file.key] = file
-      file
-    }
-  }
 }
-
-private val KtFile.isInJar
-  get() = virtualFile.fileSystem is JarFileSystem
-
-private val KtFile.key
-  get() = "${packageFqName.asString()}.$name"
