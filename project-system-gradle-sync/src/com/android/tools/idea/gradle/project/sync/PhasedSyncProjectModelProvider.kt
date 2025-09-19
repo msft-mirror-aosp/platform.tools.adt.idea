@@ -96,6 +96,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
             ).let { it.exceptions.takeIf { it.isNotEmpty() }?.first()?.let { throw it } ?: it.ignoreExceptionsAndGet()!! }
             gradleProject to AndroidProjectData(
               versions,
+              modelVersions,
               basicAndroidProject,
               androidProject,
               androidDsl,
@@ -113,7 +114,6 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
       }
     }).filterNotNull().forEach { (gradleProject, data) ->
       // Required models
-      modelConsumer.consumeProjectModel(gradleProject, gradleProject, BasicGradleProject::class.java)
       modelConsumer.consumeProjectModel(gradleProject, data.versions, Versions::class.java)
       modelConsumer.consumeProjectModel(gradleProject, data.basicAndroidProject, BasicAndroidProject::class.java)
       modelConsumer.consumeProjectModel(gradleProject, data.androidProject, AndroidProject::class.java)
@@ -125,13 +125,14 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
       // Optional models
       data.kaptGradleModel?.let { modelConsumer.consumeProjectModel(gradleProject, it, KaptGradleModel::class.java) }
       cachedModels.data[gradleProject] = CachedAndroidProjectData(
+        data.modelVersions,
         data.selectedVariantName,
-        data.ideAndroidProject.projectType,
+        data.ideAndroidProject,
         data.shouldSkipRuntimeClassPathForLibraries,
         data.declaredDependencies.allOutgoingProjectDependencies
       )
     }
-    populateGradleProjectAndBuildMapModel(controller, buildModels, modelConsumer, exceptionsPerProject)
+    populateGradleProjectModel(controller, buildModels, modelConsumer, exceptionsPerProject)
     populateIdeaModuleModel(controller, buildModels, modelConsumer)
 
     exceptionsPerProject
@@ -145,7 +146,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
   }
 }
 
-private fun populateGradleProjectAndBuildMapModel(
+private fun populateGradleProjectModel(
   controller: BuildController,
   buildModels: MutableCollection<out GradleBuild>,
   modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
@@ -153,9 +154,6 @@ private fun populateGradleProjectAndBuildMapModel(
 ) {
   buildModels.map { it.rootProject }.distinct().forEach { projectModel ->
     runCatching {
-      controller.findModel(projectModel, BuildMap::class.java)?.let {
-        modelConsumer.consumeProjectModel(projectModel, it, BuildMap::class.java)
-      }
       val basicModelsMap = projectModel.getAllChildren { it.children.toList() }.associateBy { it.path }
 
       controller.findModel(projectModel, GradleProject::class.java)?.let {
@@ -215,6 +213,7 @@ private fun BasicGradleProject.moduleId() = Modules.createUniqueModuleId(project
 
 private data class AndroidProjectData(
   val versions: Versions,
+  val modelVersions: ModelVersions,
   val basicAndroidProject: BasicAndroidProject,
   val androidProject: AndroidProject,
   val androidDsl: AndroidDsl,
