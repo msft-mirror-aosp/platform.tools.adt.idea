@@ -30,5 +30,6 @@ class ConfigurePhasedSyncFlagsRule(
   override fun before() {
     StudioFlags.PHASED_SYNC_ENABLED.override(phasedSyncEnabled)
     StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.override(dependencyResolutionEnabled)
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(dependencyResolutionEnabled)
   }
 }
