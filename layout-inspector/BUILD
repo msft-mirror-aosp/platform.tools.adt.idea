@@ -137,6 +137,7 @@ iml_module(
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
+        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
     ],
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
     test_jvm_flags = select({
