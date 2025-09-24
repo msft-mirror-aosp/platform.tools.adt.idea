@@ -34,7 +34,6 @@ import com.android.tools.idea.adb.wireless.WiFiPairingController
 import com.android.tools.idea.adb.wireless.WiFiPairingService
 import com.android.tools.idea.adb.wireless.v2.ui.WifiAvailableDevicesDialog.Companion.SEARCH_BAR_TEST_TAG
 import com.android.tools.idea.testing.ProjectServiceRule
-import com.android.tools.idea.testing.ProjectServiceRule.Companion.invoke
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
@@ -140,6 +139,17 @@ class WifiAvailableDevicesDialogTest {
   }
 
   @Test
+  fun mdnsSupported_mdnsTrackingNotAvailable_showsAdbVersionTooLowError() = runTest {
+    whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(false)
+    composeTestRule.setContent { wifiAvailableDevicesDialog.WifiDialog() }
+
+    composeTestRule.onNodeWithText("ADB Version Too Low", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Open SDK Manager", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Learn more", substring = true).assertIsDisplayed()
+  }
+
+  @Test
   fun adbVersionTooLow_showsAdbVersionTooLowError() = runTest {
     whenever(mockWiFiPairingService.checkMdnsSupport())
       .thenReturn(MdnsSupportState.AdbVersionTooLow)
@@ -186,6 +196,7 @@ class WifiAvailableDevicesDialogTest {
 
   @Test
   fun mdnsSupported_noDevices_showsEmptyState() = runTest {
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(true)
     whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
     composeTestRule.setContent { wifiAvailableDevicesDialog.WifiDialog() }
 
@@ -197,6 +208,7 @@ class WifiAvailableDevicesDialogTest {
 
   @Test
   fun mdnsSupported_withDevices_showsTable() = runTest {
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(true)
     whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
     val service = createMdnsTlsService("service1", "192.168.1.101", 5555, "Device A", "30")
     adblibMdnsServicesFlow.value = MdnsServices(emptyList(), listOf(service), emptyList())
@@ -209,6 +221,7 @@ class WifiAvailableDevicesDialogTest {
 
   @Test
   fun mdnsSupported_addDevice_updatesTable() = runTest {
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(true)
     whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
     adblibMdnsServicesFlow.value = MdnsServices(emptyList(), emptyList(), emptyList())
     composeTestRule.setContent { wifiAvailableDevicesDialog.WifiDialog() }
@@ -224,6 +237,7 @@ class WifiAvailableDevicesDialogTest {
 
   @Test
   fun mdnsSupported_removeDevice_updatesTable() = runTest {
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(true)
     whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
     val service1 = createMdnsTlsService("service1", "192.168.1.101", 5555, "Device A", "30")
     adblibMdnsServicesFlow.value = MdnsServices(emptyList(), listOf(service1), emptyList())
@@ -238,6 +252,7 @@ class WifiAvailableDevicesDialogTest {
 
   @Test
   fun searchFunctionality_filtersDevices() = runTest {
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(true)
     whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
     val service1 = createMdnsTlsService("service1", "192.168.1.101", 5555, "Device Alpha", "30")
     val service2 = createMdnsTlsService("service2", "192.168.1.102", 5556, "Device Beta", "31")
@@ -266,6 +281,7 @@ class WifiAvailableDevicesDialogTest {
   @Test
   fun pairButtonClick_invokesPairingController() = runTest {
     whenever(mockWiFiPairingService.checkMdnsSupport()).thenReturn(MdnsSupportState.Supported)
+    whenever(mockWiFiPairingService.isTrackMdnsServiceAvailable()).thenReturn(true)
     val service1 = createMdnsTlsService("service1", "192.168.1.101", 5555, "Device A", "30")
     adblibMdnsServicesFlow.value = MdnsServices(emptyList(), listOf(service1), emptyList())
 
