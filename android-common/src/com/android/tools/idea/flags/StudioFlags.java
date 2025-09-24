@@ -2145,6 +2145,11 @@ public final class StudioFlags {
                     "Enable Model Context Protocol (MCP) support",
                     "Allows the agent to use custom tools provided by Model Context Protocol (MCP) servers");
 
+  public static final Flag<Boolean> STUDIOBOT_MCP_SETTINGS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mcp.settings.enabled",
+                    "Enable Model Context Protocol (MCP) Settings Page",
+                    "Enables a settings page that lets users enable mcp, enter mcp.json, and manage servers.");
+
   public static final Flag<Boolean> STUDIOBOT_MCP_UI_SERVERS_ENABLED =
     new BooleanFlag(STUDIOBOT, "mcp.ui.servers.enabled",
                     "Enable Model Context Protocol (MCP) Servers List UI",
