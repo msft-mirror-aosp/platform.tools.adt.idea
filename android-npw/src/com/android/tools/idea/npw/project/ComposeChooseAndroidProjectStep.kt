@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getTemplateTitle
 import com.android.tools.idea.wizard.template.Template
+import com.intellij.openapi.diagnostic.fileLogger
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.UIUtil
@@ -76,7 +77,6 @@ import icons.StudioIconsCompose
 import icons.StudioIllustrationsCompose
 import java.awt.Dimension
 import java.awt.image.BufferedImage
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -458,22 +458,26 @@ private fun TemplateImage(template: Template) {
   if (template == Template.NoActivity) {
     Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
   } else {
-
-    val imageState by
+    val imageBitmap by
       produceState<ImageBitmap?>(initialValue = null, template) {
-        withContext(Dispatchers.IO) {
-          try {
-            val file = File(template.thumb().path().file)
-            val bytes = file.inputStream().use { it.readAllBytes() }
-            value = bytes.decodeToImageBitmap()
-          } catch (_: Exception) {}
-        }
+        value =
+          withContext(Dispatchers.Default) {
+            val iconUrl = template.thumb().path()
+            try {
+              val bytes =
+                withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
+              bytes.decodeToImageBitmap()
+            } catch (e: Exception) {
+              fileLogger().error("Failed to load icon: $iconUrl", e)
+              null
+            }
+          }
       }
 
-    if (imageState == null) {
+    if (imageBitmap == null) {
       Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
     } else {
-      Image(bitmap = imageState!!, contentDescription = "")
+      Image(bitmap = imageBitmap!!, contentDescription = "")
     }
   }
 }
