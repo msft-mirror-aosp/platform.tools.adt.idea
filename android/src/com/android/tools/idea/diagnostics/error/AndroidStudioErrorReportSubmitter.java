@@ -29,11 +29,11 @@ import com.google.wireless.android.sdk.stats.SystemHealthEvent;
 import com.intellij.diagnostic.AbstractMessage;
 import com.intellij.diagnostic.KotlinCompilerCrash;
 import com.intellij.diagnostic.LogMessage;
-import com.intellij.diagnostic.ReportMessages;
 import com.intellij.ide.DataManager;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.ide.plugins.PluginUtil;
 import com.intellij.idea.IdeaLogger;
+import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationListener;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -123,8 +123,7 @@ public class AndroidStudioErrorReportSubmitter extends ErrorReportSubmitter {
         null, "Issue " + token, SubmittedReportInfo.SubmissionStatus.NEW_ISSUE);
       callback.consume(reportInfo);
 
-      ReportMessages.GROUP
-        .createNotification("Report Submitted", NotificationType.INFORMATION)
+      new Notification("Error Report", "Report submitted", NotificationType.INFORMATION)
         .setImportant(false)
         .notify(project);
     };
@@ -133,8 +132,7 @@ public class AndroidStudioErrorReportSubmitter extends ErrorReportSubmitter {
       LOG.warn("Exception occurred during report submission", e);
       String message = AndroidBundle.message("error.report.at.b.android", e.toString());
 
-      ReportMessages.GROUP
-        .createNotification(message, NotificationType.ERROR)
+      new Notification("Error Report", message, NotificationType.ERROR)
         .setListener(NotificationListener.URL_OPENING_LISTENER)
         .setImportant(false)
         .notify(project);
