@@ -16,7 +16,7 @@
 package com.android.tools.idea.layoutinspector.pipeline.appinspection
 
 import com.android.adblib.DeviceSelector
-import com.android.ddmlib.AndroidDebugBridge
+import com.android.adblib.ddmlibcompatibility.testutils.waitForOnlineDevice
 import com.android.fakeadbserver.DeviceState
 import com.android.repository.Revision
 import com.android.repository.api.LocalPackage
@@ -1319,7 +1319,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
     return sdkPackage
   }
 
-  private fun setUpDevice(apiLevel: Int): ProcessDescriptor {
+  private suspend fun setUpDevice(apiLevel: Int): ProcessDescriptor {
     val emulatorPort =
       inspectorRule.adbRule.adbServer
         .connectEmulatorConsole(
@@ -1340,14 +1340,7 @@ class AppInspectionInspectorClientWithUnsupportedApi29 {
           hostConnectionType = DeviceState.HostConnectionType.LOCAL,
         )
         .also { it.deviceStatus = DeviceState.DeviceStatus.ONLINE }
-    // TODO: This test relies on device being found using
-    //  `AndroidDebugBridge.getBridge()?.devices` call (see `AndroidDebugBridge.findDevice`
-    //  in `AdbUtils.kt`). We should make this wait a part of `FakeAdbServerRule.connectDevice`.
-    while (true) {
-      if (AndroidDebugBridge.getBridge()?.devices?.any { it.serialNumber == deviceId } ?: false) {
-        break
-      }
-    }
+    device.waitForOnlineDevice()
 
     val processDescriptor =
       object : ProcessDescriptor {
