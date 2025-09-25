@@ -5,7 +5,6 @@
     <content url="file://$MODULE_DIR$/testSrc">
       <sourceFolder url="file://$MODULE_DIR$/testSrc" isTestSource="true" />
     </content>
-    <content url="file://$AGP_WORKSPACE_LOCATION$/tools/adt/idea/logcat/gradle/testSrc" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
