@@ -32,8 +32,6 @@ public final class AndroidPlugin {
    * Reduces prominence of the Android related UI elements to keep low profile.
    */
   private static void customizeActionsForNonStudio(ActionManager actionManager) {
-    // Move the "Sync Project with Gradle Files" from the File menu to Tools > Android.
-    Actions.moveAction(actionManager, "Android.SyncProject", IdeActions.GROUP_FILE, GROUP_ANDROID_TOOLS, new Constraints(Anchor.FIRST, null));
     // Move the "Sync Project with Gradle Files" toolbar button to a less prominent place.
     Actions.moveAction(actionManager, "Android.MainToolBarGradleGroup", IdeActions.GROUP_MAIN_TOOLBAR, "Android.MainToolBarActionGroup",
                new Constraints(Anchor.LAST, null));

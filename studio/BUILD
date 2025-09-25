@@ -89,6 +89,11 @@ studio_plugin(
         "//prebuilts/tools/common/m2:trace-perfetto-library",
         "//prebuilts/tools/common/m2:oauth2",
         "//prebuilts/tools/common/m2:google-api-services-drive-v3-rev20241027-2.0.0",
+        "//prebuilts/tools/common/m2:shark-2.14",
+        "//prebuilts/tools/common/m2:shark-android-2.14",
+        "//prebuilts/tools/common/m2:shark-graph-2.14",
+        "//prebuilts/tools/common/m2:shark-hprof-2.14",
+        "//prebuilts/tools/common/m2:shark-log-2.14",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/.idea/libraries:android-test-plugin-host-device-info-proto",
@@ -455,9 +460,9 @@ studio_plugin(
         "@intellij//:JUnit",
         "@intellij//:com.intellij.gradle",
         "@intellij//:com.intellij.java",
+        "@intellij//:com.intellij.modules.json",
         "@intellij//:com.intellij.platform.images",
         "@intellij//:com.intellij.properties",
-        "@intellij//:com.intellij.modules.json",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
         "@intellij//:intellij.libraries.grpc",
         "@intellij//:intellij.libraries.grpc.netty.shaded",
@@ -763,6 +768,7 @@ studio_plugin(
         "//prebuilts/tools/common/m2:wire-runtime-jvm-5.3.1",
         "//tools/adt/idea/.idea/libraries:kotlinx-serialization",
         "//tools/adt/idea/.idea/libraries:lucene",
+        "//tools/vendor/google/ml/aiplugin/android:agent_log_proto",
         "//tools/vendor/google/ml/aiplugin/android/journeys:proto-models-1.0",
         "//tools/vendor/google/ml/aiplugin/cloudcode-core:libgoogle_auth_intellij_lib",
         "//tools/vendor/google/ml/aiplugin/cloudcode-core:libfeedback_java_proto",
@@ -815,13 +821,13 @@ studio_plugin(
         "@intellij//:intellij.libraries.compose.foundation.desktop",
         "@intellij//:intellij.libraries.ktor.client",
         "@intellij//:intellij.libraries.ktor.client.cio",
+        "@intellij//:intellij.libraries.lucene.common",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.platform.jewel.foundation",
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
-        "@intellij//:intellij.libraries.lucene.common",
         "@intellij//:intellij.platform.vcs.impl",
         "@intellij//:intellij.platform.vcs.log.impl",
         "@intellij//:org.intellij.groovy",
@@ -1276,7 +1282,12 @@ iml_test(
 
 iml_test(
     name = "UpdateTest",
-    data = [
+    data = select({
+        "@platforms//os:linux": ["//tools/adt/idea/studio:android-studio.linux.zip"],
+        "//tools/base/bazel/platforms:macos-x86_64": ["//tools/adt/idea/studio:android-studio.mac.zip"],
+        "//tools/base/bazel/platforms:macos-arm64": ["//tools/adt/idea/studio:android-studio.mac_arm.zip"],
+        "@platforms//os:windows": ["//tools/adt/idea/studio:android-studio.win.zip"],
+    }) + [
         ":updater",
         ":updater.jar",
     ],
@@ -1289,8 +1300,6 @@ iml_test(
 iml_test(
     name = "WebpSupportTest",
     module = ":intellij.android.studio.integration",
-    # TODO(b/302730760) enable test when WebP support is fully fixed
-    tags = ["manual"],
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.WebpSupportTest",

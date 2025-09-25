@@ -66,10 +66,12 @@ import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl
 import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.IdeSourceProvider
+import com.android.tools.idea.gradle.model.IdeTestSuiteVariantTarget
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl
@@ -154,6 +156,8 @@ import com.intellij.build.events.FinishBuildEvent
 import com.intellij.build.events.MessageEvent
 import com.intellij.build.events.impl.FinishBuildEventImpl
 import com.intellij.build.internal.DummySyncViewManager
+import com.intellij.diagnostic.ThreadDumper
+import com.intellij.diagnostic.dumpCoroutines
 import com.intellij.externalSystem.JavaProjectData
 import com.intellij.gradle.toolingExtension.impl.model.sourceSetModel.DefaultGradleSourceSetModel
 import com.intellij.gradle.toolingExtension.impl.model.taskModel.DefaultGradleTaskModel
@@ -185,6 +189,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.StdModuleTypes.JAVA
 import com.intellij.openapi.progress.blockingContext
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ex.ProjectEx
@@ -209,7 +214,6 @@ import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
-import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
@@ -218,10 +222,10 @@ import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ThrowableConsumer
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.MultiMap
 import com.intellij.util.messages.MessageBusConnection
-import com.intellij.workspaceModel.core.fileIndex.impl.WorkspaceFileIndexImpl
 import com.intellij.workspaceModel.ide.impl.jps.serialization.DelayedProjectSynchronizer
 import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.launch
@@ -259,7 +263,10 @@ import java.util.IdentityHashMap
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import kotlinx.coroutines.runBlocking
 
 data class AndroidProjectModels(
   val androidProject: IdeAndroidProjectImpl,
@@ -447,6 +454,7 @@ interface AndroidProjectStubBuilder {
   val internedModels: InternedModels
   val defaultVariantName: String?
   val includeShadersSources: Boolean
+  val testSuites: List<IdeTestSuiteImpl>
 }
 
 /**
@@ -504,7 +512,7 @@ data class AndroidProjectBuilder(
   val hostTestArtifactsStub: AndroidProjectStubBuilder.(variant: String) -> List<IdeJavaArtifactCoreImpl> =
     { variant -> listOf(buildUnitTestArtifactStub(variant)) },
   val testSuiteArtifactsStub: AndroidProjectStubBuilder.(variant: String) -> List<IdeTestSuiteVariantTargetImpl> =
-    { variant -> listOf(buildTestSuiteArtifactStub(variant)) },
+    { variant -> emptyList() },
   val testFixturesArtifactStub: AndroidProjectStubBuilder.(variant: String) -> IdeAndroidArtifactCoreImpl? =
     { variant -> null },
   val androidModuleDependencyList: AndroidProjectStubBuilder.(variant: String) -> List<AndroidModuleDependency> = { emptyList() },
@@ -519,6 +527,7 @@ data class AndroidProjectBuilder(
   val includeBuildConfigSources: AndroidProjectStubBuilder.() -> Boolean = { false },
   val defaultVariantName: AndroidProjectStubBuilder.() -> String? = { null },
   val includeShadersSources: AndroidProjectStubBuilder.() -> Boolean = { false },
+  val testSuites: AndroidProjectStubBuilder.() -> List<IdeTestSuiteImpl> = { emptyList() }
 ) {
   fun withBuildId(buildId: AndroidProjectStubBuilder.() -> String) =
     copy(buildId = buildId)
@@ -616,7 +625,6 @@ data class AndroidProjectBuilder(
 
   fun withNamespace(namespace: String) = copy(namespace = {namespace})
 
-
   fun build(): AndroidProjectBuilderCore =
     fun(
       projectName: String,
@@ -687,6 +695,7 @@ data class AndroidProjectBuilder(
         override val internedModels: InternedModels get() = internedModels
         override val defaultVariantName: String? get() = defaultVariantName()
         override val includeShadersSources: Boolean get() = includeShadersSources()
+        override val testSuites: List<IdeTestSuiteImpl> get() = testSuites()
       }
       return AndroidProjectModels(
         androidProject = builder.androidProject,
@@ -1376,7 +1385,7 @@ fun AndroidProjectStubBuilder.buildAndroidProjectStub(): IdeAndroidProjectImpl {
     desugarLibraryConfigFiles = listOf(),
     defaultVariantName = defaultVariantName,
     lintJar = null,
-    testSuites = emptyList()
+    testSuites = testSuites
   )
 }
 
@@ -1906,33 +1915,54 @@ private fun createAndroidModuleDataNode(
     null -> {}
   }
 
-  fun IdeBaseArtifactCore.setup() {
-    val sourceSetModuleName = ModuleUtil.getModuleName(this.name)
+  fun setupSourceSetDataNode(
+    sourceSetModuleName: String,
+    sourceSet: IdeModuleSourceSet,
+    isTestSuite: Boolean = false
+  ) {
     val sourceSetModuleId = moduleDataNode.data.id + ":" + sourceSetModuleName
-    val sourceSetDataDataNode = DataNode<GradleSourceSetData>(
+    val sourceSetData = GradleSourceSetData(
+      sourceSetModuleId,
+      moduleDataNode.data.externalName + ":" + sourceSetModuleName,
+      moduleDataNode.data.internalName + "." + sourceSetModuleName,
+      moduleDataNode.data.moduleFileDirectoryPath,
+      moduleDataNode.data.linkedExternalProjectPath
+    )
+    sourceSetData.setProperty("TestSuite", isTestSuite.toString())
+    val sourceSetDataDataNode = DataNode(
       GradleSourceSetData.KEY,
-      GradleSourceSetData(
-        sourceSetModuleId,
-        moduleDataNode.data.externalName + ":" + sourceSetModuleName,
-        moduleDataNode.data.internalName + "." + sourceSetModuleName,
-        moduleDataNode.data.moduleFileDirectoryPath,
-        moduleDataNode.data.linkedExternalProjectPath
-      ),
+      sourceSetData,
       null
     )
     moduleDataNode.addChild(sourceSetDataDataNode)
     mappingRecorder.add(
       moduleDataNode.data.id,
-      GradleSourceSetProjectPath(toSystemIndependentName(gradleRoot.path), gradlePath, name.toWellKnownSourceSet()),
+      GradleSourceSetProjectPath(toSystemIndependentName(gradleRoot.path), gradlePath, sourceSet),
       sourceSetDataDataNode
     )
   }
 
   val selectedVariant = gradleAndroidModel.selectedVariantCore
-  selectedVariant.mainArtifact.setup()
-  selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.setup()
-  selectedVariant.hostTestArtifacts.forEach { it.setup() }
-  selectedVariant.testFixturesArtifact?.setup()
+  selectedVariant.mainArtifact.name.let {
+    setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet())
+  }
+  selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.name?.let {
+    setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet())
+  }
+  selectedVariant.hostTestArtifacts.forEach { artifact ->
+    artifact.name.let {
+      setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet())
+    }
+  }
+  selectedVariant.testFixturesArtifact?.name?.let {
+    setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toWellKnownSourceSet())
+  }
+  selectedVariant.testSuiteArtifacts.forEach { testSuite ->
+    testSuite.suiteName.let {
+      val sourceSet = IdeModuleSourceSetImpl(it, canBeConsumed = false)
+      setupSourceSetDataNode(it, sourceSet, true)
+    }
+  }
   return moduleDataNode
 }
 
@@ -2270,6 +2300,11 @@ interface IntegrationTestEnvironment {
    * The base test directory to be used in tests.
    */
   fun getBaseTestPath(): @SystemDependent String
+
+  /**
+   * Whether to run the body of a prepared project open on the EDT.
+   */
+  val runOpenBodyOnEdt get() = false
 }
 
 /**
@@ -2388,10 +2423,12 @@ fun <T> IntegrationTestEnvironment.openPreparedProject(
   options: OpenPreparedProjectOptions = OpenPreparedProjectOptions(),
   action: (Project) -> T
 ): T {
-  return openPreparedProject(nameToPath(name), options, action)
+  return openPreparedProject(this, nameToPath(name), options, action)
 }
 
+@RequiresBackgroundThread
 private fun <T> openPreparedProject(
+  integrationTestEnvironment: IntegrationTestEnvironment,
   projectPath: File,
   options: OpenPreparedProjectOptions,
   action: (Project) -> T
@@ -2399,11 +2436,35 @@ private fun <T> openPreparedProject(
   // Use per-project code style settings so we never modify the IDE defaults.
   CodeStyleSettingsManager.getInstance().USE_PER_PROJECT_SETTINGS = true;
 
+  fun <T> waitForFuture(future: Future<T>, timeoutMillis: Long): T {
+    val start = System.nanoTime()
+    while (true) {
+      if (!future.isDone) {
+        runInEdtAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+      }
+      try {
+        return future.get(10, TimeUnit.MILLISECONDS)
+      }
+      catch (_: TimeoutException) {}
+      catch (e: Exception) {
+        throw AssertionError(e)
+      }
+      val took = System.nanoTime() - start
+      if (took / 1000000L > timeoutMillis) {
+        throw AssertionError(
+          "The waiting takes too long. " +
+          "Expected to take no more than: " + timeoutMillis + " ms but took: " + (took/1000000L) + " ms\n" +
+          "Thread dump: " + ThreadDumper.dumpThreadsToString() + "\n" +
+          "Coroutine dump: " + dumpCoroutines(null, true, true) + "\n")
+      }
+    }
+  }
+
   fun body(): T {
     val disposable = Disposer.newDisposable()
     try {
-      val project = runInEdtAndGet {
-        PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+      val project = run {
+        runInEdtAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
         var afterCreateCalled = false
 
@@ -2476,15 +2537,18 @@ private fun <T> openPreparedProject(
           DelayedProjectSynchronizer.Util.backgroundPostStartupProjectLoading(project)
           project.service<AndroidGradleProjectStartupActivity.StartupService>().awaitInitialization()
         }
-        PlatformTestUtil.waitForFuture(awaitGradleStartupActivity.asCompletableFuture(), TimeUnit.MINUTES.toMillis(10))
-        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        waitForFuture(awaitGradleStartupActivity.asCompletableFuture(), TimeUnit.MINUTES.toMillis(10))
+        runInEdtAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
         project.maybeOutputDiagnostics()
         project
       }
       try {
         verifyNoSyncIssues(project, options.expectedSyncIssues)
         options.verifyOpened(project)
-        return action(project)
+        return when (integrationTestEnvironment.runOpenBodyOnEdt) {
+          true -> runInEdtAndGet { action(project) }
+          false -> action(project)
+        }
       }
       finally {
         runInEdtAndWait {
@@ -2565,6 +2629,7 @@ fun verifySyncSuccessful(project: Project, disposable: Disposable) {
 private fun verifySyncResult(project: Project, disposable: Disposable, expectedSyncResult: ProjectSystemSyncManager.SyncResult) {
   assertThat(project.getProjectSystem().getSyncManager().getLastSyncResult()).isEqualTo(expectedSyncResult)
   project.verifyModelsAttached()
+  DumbService.getInstance(project).waitForSmartMode()
   var completed = false
   project.runWhenSmartAndSynced(disposable, callback = {
     completed = true

@@ -81,6 +81,7 @@ class StateInspectionPanelIntegrationTest {
     )
     inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
     assertThat(inspectorRule.inspectorClient.isConnected).isTrue()
+    installFakeExtensionPoints(projectRule.testRootDisposable)
   }
 
   @Test
@@ -98,18 +99,21 @@ class StateInspectionPanelIntegrationTest {
 
     waitForCondition(10.seconds) { recompositionText.text == "Recomposition 2" }
     panel.checkContent("state_reads_1_2.txt")
+    panel.checkComposableInspected()
     assertThat(prev.isEnabled).isTrue()
     assertThat(next.isEnabled).isFalse()
 
     ui.click(prev)
     waitForCondition(10.seconds) { recompositionText.text == "Recomposition 1" }
     panel.checkContent("state_reads_1_1.txt")
+    panel.checkComposableInspected()
     assertThat(prev.isEnabled).isFalse()
     assertThat(next.isEnabled).isTrue()
 
     ui.click(next)
     waitForCondition(10.seconds) { recompositionText.text == "Recomposition 2" }
     panel.checkContent("state_reads_1_2.txt")
+    panel.checkComposableInspected()
     assertThat(prev.isEnabled).isTrue()
     assertThat(next.isEnabled).isFalse()
     assertThat(SwingUtilities.isDescendingFrom(recompositionText, panel)).isTrue()
@@ -146,6 +150,7 @@ class StateInspectionPanelIntegrationTest {
     waitForCondition(10.seconds) { recompositionText.text == "Recomposition 3" }
     assertThat(stateReadText.text).isEqualTo("State Reads: 1")
     panel.checkContent("state_reads_1_1.txt")
+    panel.checkComposableInspected()
     assertThat(prev.isEnabled).isFalse()
     assertThat(next.isEnabled).isTrue()
 
@@ -153,6 +158,7 @@ class StateInspectionPanelIntegrationTest {
     waitForCondition(10.seconds) { recompositionText.text == "Recomposition 4" }
     assertThat(stateReadText.text).isEqualTo("State Reads: 2")
     panel.checkContent("state_reads_1_2.txt")
+    panel.checkComposableInspected()
     assertThat(prev.isEnabled).isTrue()
     assertThat(next.isEnabled).isFalse()
 
@@ -160,6 +166,7 @@ class StateInspectionPanelIntegrationTest {
     waitForCondition(10.seconds) { recompositionText.text == "Recomposition 3" }
     assertThat(stateReadText.text).isEqualTo("State Reads: 1")
     panel.checkContent("state_reads_1_1.txt")
+    panel.checkComposableInspected()
     assertThat(prev.isEnabled).isFalse()
     assertThat(next.isEnabled).isTrue()
     assertThat(SwingUtilities.isDescendingFrom(recompositionText, panel)).isTrue()
@@ -178,6 +185,13 @@ class StateInspectionPanelIntegrationTest {
     }
     val editor = getUserData(STATE_READ_EDITOR_KEY)!!
     waitForCondition(10.seconds) { editor.document.text == expectedText }
+  }
+
+  private fun StateInspectionPanel.checkComposableInspected() {
+    val editor = getUserData(STATE_READ_EDITOR_KEY)
+    val data = editor!!.getUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY)
+    assertThat(data?.composable).isEqualTo("Column")
+    assertThat(data?.fileName).isEqualTo("MainActivity.kt")
   }
 
   private fun StateInspectionPanel.buttonWithIcon(icon: Icon): ActionButton =

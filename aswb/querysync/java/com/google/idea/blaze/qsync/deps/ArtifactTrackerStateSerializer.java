@@ -31,15 +31,17 @@ import com.google.idea.blaze.qsync.java.ArtifactTrackerProto.BuildContext;
 import com.google.idea.blaze.qsync.project.ProjectPath;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import javax.annotation.Nullable;
 
 /** Serializes {@link NewArtifactTracker} state to a proto. */
 public class ArtifactTrackerStateSerializer {
 
-  public static final int VERSION = 3;
+  public static final int VERSION = 4;
 
-  private final ArtifactTrackerProto.ArtifactTrackerState.Builder proto =
-      ArtifactTrackerProto.ArtifactTrackerState.newBuilder().setVersion(VERSION);
+  private final ArtifactTrackerState.Builder proto =
+      ArtifactTrackerState.newBuilder().setVersion(VERSION);
   private final Set<String> buildIdsSeen = Sets.newHashSet();
 
   @CanIgnoreReturnValue
@@ -81,29 +83,31 @@ public class ArtifactTrackerStateSerializer {
 
   private void visitJavaInfo(
       JavaArtifactInfo javaInfo, ArtifactTrackerProto.TargetBuildInfo.Builder builder) {
-    builder
-        .getJavaArtifactsBuilder()
+    ArtifactTrackerProto.JavaArtifacts.Builder artifactTrackerProtoBuilder = builder.getJavaArtifactsBuilder();
+    if (javaInfo.ideAar() != null) {
+      artifactTrackerProtoBuilder.setIdeAar(toProto(javaInfo.ideAar()));
+    }
+    artifactTrackerProtoBuilder
         .addAllGenSrcs(toProtos(javaInfo.genSrcs()))
-        .addAllIdeAars(toProtos(javaInfo.ideAars()))
         .addAllJars(toProtos(javaInfo.jars()))
         .addAllSources(javaInfo.sources().stream().map(Path::toString).collect(toImmutableList()))
         .addAllSrcJars(javaInfo.srcJars().stream().map(Path::toString).collect(toImmutableList()))
         .setAndroidResourcesPackage(javaInfo.androidResourcesPackage());
   }
 
+  private Artifact toProto(BuildArtifact artifact) {
+    return Artifact.newBuilder()
+      .setDigest(artifact.digest())
+      .setArtifactPath(artifact.artifactPath().toString())
+      .addAllMetadata(
+          artifact.metadata().values().stream()
+              .map(ArtifactMetadata::toProto)
+              .toList())
+      .build();
+  }
+
   private ImmutableList<Artifact> toProtos(ImmutableCollection<BuildArtifact> artifacts) {
-    return artifacts.stream()
-        .map(
-            artifact ->
-                ArtifactTrackerProto.Artifact.newBuilder()
-                    .setDigest(artifact.digest())
-                    .setArtifactPath(artifact.artifactPath().toString())
-                    .addAllMetadata(
-                        artifact.metadata().values().stream()
-                            .map(ArtifactMetadata::toProto)
-                            .toList())
-                    .build())
-        .collect(toImmutableList());
+    return artifacts.stream().map(this::toProto).collect(toImmutableList());
   }
 
   private void visitCcInfo(
@@ -113,22 +117,38 @@ public class ArtifactTrackerStateSerializer {
         .addAllDefines(ccInfo.defines())
         .addAllIncludeDirectories(
             ccInfo.includeDirectories().stream()
-                .map(ProjectPath::toProto)
+                .map(this::projectPathToProto)
                 .collect(toImmutableList()))
         .addAllQuoteIncludeDirectories(
             ccInfo.quoteIncludeDirectories().stream()
-                .map(ProjectPath::toProto)
+                .map(this::projectPathToProto)
                 .collect(toImmutableList()))
         .addAllSysytemIncludeDirectories(
             ccInfo.systemIncludeDirectories().stream()
-                .map(ProjectPath::toProto)
+                .map(this::projectPathToProto)
                 .collect(toImmutableList()))
         .addAllFrameworkIncludeDirectories(
             ccInfo.frameworkIncludeDirectories().stream()
-                .map(ProjectPath::toProto)
+                .map(this::projectPathToProto)
                 .collect(toImmutableList()))
         .addAllGenHeaders(toProtos(ccInfo.genHeaders()))
         .setToolchainId(ccInfo.toolchainId());
+  }
+
+  private ArtifactTrackerProto.ProjectPath projectPathToProto(ProjectPath projectPath) {
+    if (Objects.requireNonNull(projectPath) instanceof ProjectPath.WorkspaceRelativeProjectPath relativePath) {
+      return ArtifactTrackerProto.ProjectPath.newBuilder().setBase(ArtifactTrackerProto.ProjectPath.Base.WORKSPACE)
+        .setPath(relativePath.relativePath().toString()).build();
+    }
+    else if (projectPath instanceof ProjectPath.ProjectRelativeProjectPath relativePath) {
+      return ArtifactTrackerProto.ProjectPath.newBuilder().setBase(ArtifactTrackerProto.ProjectPath.Base.PROJECT)
+        .setPath(relativePath.relativePath().toString()).build();
+    }
+    else if (projectPath instanceof ProjectPath.AbsoluteProjectPath absolutePath) {
+      return ArtifactTrackerProto.ProjectPath.newBuilder().setBase(ArtifactTrackerProto.ProjectPath.Base.ABSOLUTE)
+        .setPath(absolutePath.absolutePath().toString()).build();
+    }
+    throw new IllegalStateException("Unexpected value: " + projectPath);
   }
 
   private void visitCcToolchain(CcToolchain toolchain) {
@@ -136,12 +156,12 @@ public class ArtifactTrackerStateSerializer {
         toolchain.id(),
         ArtifactTrackerProto.CcToolchain.newBuilder()
             .setCompiler(toolchain.compiler())
-            .setCompilerExecutable(toolchain.compilerExecutable().toProto())
+            .setCompilerExecutable(projectPathToProto(toolchain.compilerExecutable()))
             .setCpu(toolchain.cpu())
             .setTargetGnuSystemName(toolchain.targetGnuSystemName())
             .addAllBuiltInIncludeDirectories(
                 toolchain.builtInIncludeDirectories().stream()
-                    .map(ProjectPath::toProto)
+                    .map(this::projectPathToProto)
                     .collect(toImmutableList()))
             .addAllCOptions(toolchain.cOptions())
             .addAllCppOptions(toolchain.cppOptions())

@@ -128,9 +128,17 @@ class StudioRendererPanel(
 
     // The order of the draw operations matters.
     if (overlay != null) {
-      val bounds = renderModel.inspectorModel.root.layoutBounds
-      g2d.composite = AlphaComposite.SrcOver.derive(renderModel.overlayAlpha.value)
-      g2d.drawImage(overlay, bounds.x, bounds.y, bounds.width, bounds.height, null)
+      val overlayBounds =
+        transform
+          // revert the scale applied to the transform
+          .createInverse()
+          .createTransformedShape(scaledDisplayRectangle)
+          .bounds
+      g2d.drawImage(
+        image = overlay!!,
+        bounds = overlayBounds,
+        alpha = renderModel.overlayAlpha.value,
+      )
     }
     renderModel.recomposingNodes.value.forEach { it.paint(g2d, fill = true) }
     renderModel.visibleNodes.value.forEach { it.paint(g2d) }
@@ -309,10 +317,13 @@ class StudioRendererPanel(
   }
 
   private fun updateOverlay(byteArray: ByteArray?) {
-    if (byteArray != null) {
-      overlay = ImageIO.read(ByteArrayInputStream(byteArray))
-      refresh()
-    }
+    overlay =
+      if (byteArray != null) {
+        ImageIO.read(ByteArrayInputStream(byteArray))
+      } else {
+        null
+      }
+    refresh()
   }
 
   private inner class LayoutInspectorPopupHandler : PopupHandler() {
@@ -400,3 +411,11 @@ private fun Rectangle.scale(physicalToLogicalScale: Double): Rectangle {
 private fun Point2D.scale(scale: Double) = Point2D.Double(x * scale, y * scale)
 
 private fun MouseEvent.coordinates() = Point2D.Double(x.toDouble(), y.toDouble())
+
+private fun Graphics2D.drawImage(image: Image, bounds: Rectangle, alpha: Float) {
+  val previousComposite = composite
+  composite = AlphaComposite.SrcOver.derive(alpha)
+  drawImage(image, bounds.x, bounds.y, bounds.width, bounds.height, null)
+  // Restore the alpha
+  composite = previousComposite
+}

@@ -1649,6 +1649,11 @@ android-studio/plugins/android/lib/sdk-tools.jar
 android-studio/plugins/android/lib/sdklib-sdk-schema.jar
 android-studio/plugins/android/lib/sdklib.jar
 android-studio/plugins/android/lib/shared.jar
+android-studio/plugins/android/lib/shark-2.14.jar
+android-studio/plugins/android/lib/shark-android-2.14.jar
+android-studio/plugins/android/lib/shark-graph-2.14.jar
+android-studio/plugins/android/lib/shark-hprof-2.14.jar
+android-studio/plugins/android/lib/shark-log-2.14.jar
 android-studio/plugins/android/lib/smali-baksmali-3.0.9.jar
 android-studio/plugins/android/lib/smali-dexlib2-3.0.9.jar
 android-studio/plugins/android/lib/smali-util-3.0.9.jar
@@ -2359,6 +2364,7 @@ android-studio/plugins/gemini/lib/jackson-datatype-jdk8-2.18.2.jar
 android-studio/plugins/gemini/lib/jackson-datatype-jsr310-2.18.2.jar
 android-studio/plugins/gemini/lib/kotlinx-serialization-core-jvm-1.8.1.jar
 android-studio/plugins/gemini/lib/kotlinx-serialization-json-jvm-1.8.1.jar
+android-studio/plugins/gemini/lib/libagent_log_proto.jar
 android-studio/plugins/gemini/lib/libfeedback_java_proto.jar
 android-studio/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar
 android-studio/plugins/gemini/lib/libserviceusage_v1_java_lib.jar

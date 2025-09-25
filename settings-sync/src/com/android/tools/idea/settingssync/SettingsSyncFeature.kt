@@ -32,11 +32,11 @@ import com.google.gct.wizard.WizardPage
 import com.google.wireless.android.sdk.stats.GoogleLoginPluginEvent
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.options.ex.Settings
 import icons.StudioIllustrations
 import icons.StudioIllustrationsCompose
 import javax.swing.Icon
-import javax.swing.SwingUtilities
 import org.jetbrains.jewel.ui.icon.IconKey
 
 class SettingsSyncFeature : LoginFeature {
@@ -49,6 +49,9 @@ class SettingsSyncFeature : LoginFeature {
   override val infoUrl: String? = null
 
   override val infoUrlDisplayText: String? = null
+
+  override val permissionInfoUrl: String =
+    "https://d.android.com/r/studio-ui/settings-sync/permissions"
 
   override val settingsAction: AnAction =
     object : AnAction("Configure Backup and Sync") {
@@ -90,7 +93,7 @@ class SettingsSyncFeature : LoginFeature {
       when (loginType) {
         GoogleLoginPluginEvent.LoginType.FEATURE_LOGIN -> {
           // Help user onboard when "allowing" feature in the Google Accounts settings page.
-          SwingUtilities.invokeLater { BackupAndSyncWizard().createDialog(user).showAndGet() }
+          runInEdt { BackupAndSyncWizard().createDialog(user).showAndGet() }
         }
         else -> Unit
       }

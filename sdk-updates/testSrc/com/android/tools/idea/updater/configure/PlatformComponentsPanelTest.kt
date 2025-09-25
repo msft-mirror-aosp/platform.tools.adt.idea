@@ -58,7 +58,7 @@ class PlatformComponentsPanelTest {
   fun testSdkExtensions() {
     val panel = PlatformComponentsPanel(propertiesComponent)
     panel.setConfigurable(myConfigurable)
-    val typeDetails = AndroidSdkHandler.getRepositoryModule().createLatestFactory().createPlatformDetailsType() as TypeDetails
+    val typeDetails = AndroidSdkHandler.repositoryModule.createLatestFactory().createPlatformDetailsType() as TypeDetails
     panel.setPackages(ImmutableMultimap.of(
       AndroidVersion(30), UpdatablePackage(createLocalPackage("android-30", 1, typeDetails = typeDetails)),
       AndroidVersion(30, null, 1, false), UpdatablePackage(createLocalPackage("android-30-ext1", 1, typeDetails = typeDetails)),
@@ -91,7 +91,7 @@ class PlatformComponentsPanelTest {
     //SDKs with AndroidVersion api 0 will be ignored (b/191014630)
     val panel = PlatformComponentsPanel(propertiesComponent)
     panel.setConfigurable(myConfigurable)
-    val typeDetails = AndroidSdkHandler.getRepositoryModule().createLatestFactory().createPlatformDetailsType() as TypeDetails
+    val typeDetails = AndroidSdkHandler.repositoryModule.createLatestFactory().createPlatformDetailsType() as TypeDetails
     panel.setPackages(ImmutableMultimap.of(
       AndroidVersion(30), UpdatablePackage(createLocalPackage("android-30", 1, typeDetails = typeDetails)),
       AndroidVersion(29), UpdatablePackage(createLocalPackage("android-29", 2, typeDetails = typeDetails)),
@@ -117,7 +117,7 @@ class PlatformComponentsPanelTest {
   fun testValidNodes() {
     val panel = PlatformComponentsPanel(propertiesComponent)
     panel.setConfigurable(myConfigurable)
-    val typeDetails = AndroidSdkHandler.getRepositoryModule().createLatestFactory().createPlatformDetailsType() as TypeDetails
+    val typeDetails = AndroidSdkHandler.repositoryModule.createLatestFactory().createPlatformDetailsType() as TypeDetails
     panel.setPackages(ImmutableMultimap.of(
       AndroidVersion(30), UpdatablePackage(createLocalPackage("android-30", 1, typeDetails = typeDetails)),
       AndroidVersion(21), UpdatablePackage(createLocalPackage("android-21", 2, typeDetails = typeDetails)),

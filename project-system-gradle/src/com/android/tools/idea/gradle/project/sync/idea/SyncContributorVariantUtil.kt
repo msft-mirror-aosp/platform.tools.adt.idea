@@ -24,6 +24,8 @@ import com.android.tools.idea.gradle.model.ARTIFACT_NAME_ANDROID_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
 import com.android.tools.idea.gradle.model.IdeArtifactName
+import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toPrintableName
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.project.sync.ModelFeature
 import com.android.tools.idea.gradle.project.sync.ModelVersions
 import com.android.tools.idea.gradle.project.sync.Modules
@@ -32,11 +34,11 @@ import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.isAaptGenerate
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.isDataBindingGeneratedBaseClassesFolder
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.isSafeArgGeneratedSourcesFolder
 import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType
-import org.jetbrains.plugins.gradle.model.GradleLightProject
 import java.io.File
+import org.jetbrains.plugins.gradle.model.GradleLightProject
 
 /** Returns all source sets (main and for a selected variant) for a given gradle project. */
-internal fun SyncContributorAndroidProjectContext.getAllSourceSetsFromModels(): List<SourceSetData> {
+internal fun SyncContributorAndroidProjectContext.getAllSourceSetsFromModels(): Set<SourceSetData> {
   val (buildType, flavors) = basicAndroidProject.variants
     .singleOrNull { it.name == variantName }
     .let { (it?.buildType) to it?.productFlavors.orEmpty() }
@@ -45,7 +47,7 @@ internal fun SyncContributorAndroidProjectContext.getAllSourceSetsFromModels(): 
   return (
     getSourceSetDataForBasicAndroidProject(variantName, buildType, flavors) +
     getSourceSetDataForAndroidProject(variantName)
-  ).onEach { addSourceSetToIndex(it) }
+  ).deduplicate().onEach { addSourceSetToIndex(it) }
 }
 
 
@@ -118,6 +120,16 @@ internal fun SyncContributorAndroidProjectContext.getSourceSetDataForBasicAndroi
   return sourceSets
 }
 
+internal fun SyncContributorAndroidProjectContext.getTestSuiteSourceSetDataForBasicAndroidProject(
+  sources: List<IdeTestSuiteSourceImpl>
+): Map<out ExternalSystemSourceType?, Set<File>> {
+  return sources
+    .map(::createTestSuiteSourceSetData) // Create a map for each source
+    .flatMap { it.entries } // Flatten into a single list of all map entries
+    .groupBy({ it.key }, { it.value }) // Group entries by source type
+    .mapValues { (_, fileSets) -> fileSets.flatten().toSet() } // Merge the sets of files for each source type
+}
+
 @Suppress("DEPRECATION") // Need to be backwards compatible here
 internal fun SyncContributorAndroidProjectContext.getSourceSetDataForAndroidProject(selectedVariantName: String): List<SourceSetData>{
   val sourceSets = mutableListOf<SourceSetData>()
@@ -160,6 +172,16 @@ internal fun SyncContributorAndroidProjectContext.getSelectedVariantArtifact(sou
   }
 }
 
+private fun SyncContributorAndroidProjectContext.createTestSuiteSourceSetData(
+  testSuiteSource: IdeTestSuiteSourceImpl
+): Map<out ExternalSystemSourceType?, Set<File>> {
+  val sourceSetData = mutableMapOf<ExternalSystemSourceType?, MutableSet<File>>()
+  testSuiteSource.sourceProvider.processAll(forTest = true) { path, sourceType ->
+    sourceSetData.getOrPut(sourceType) { mutableSetOf() }.add(File(path))
+  }
+  return sourceSetData
+}
+
 private fun SyncContributorAndroidProjectContext.createSourceSetDataForSourceProvider(name: IdeArtifactName,
                                                  provider: SourceProvider,
                                                  isProduction: Boolean,
@@ -198,7 +220,7 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForAndroidAr
   artifact: AndroidArtifact,
   isProduction: Boolean
 ): List<SourceSetData> {
-  return artifact.generatedSourceFoldersToUse(basicAndroidProject.buildFolder).map {
+  return generatedSourceFoldersToUseForArtifact(name, artifact, basicAndroidProject.buildFolder).map {
     name to mapOf(
       (if (isProduction) ExternalSystemSourceType.SOURCE_GENERATED else ExternalSystemSourceType.TEST_GENERATED) to setOf(it)
     )
@@ -211,19 +233,43 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForAndroidAr
 
 private fun SyncContributorAndroidProjectContext.createSourceSetDataForTestJavaArtifact(name: IdeArtifactName, artifact: JavaArtifact):
   List<SourceSetData> {
-  return artifact.generatedSourceFoldersToUse(basicAndroidProject.buildFolder).map {
+  return generatedSourceFoldersToUseForArtifact(name, artifact, basicAndroidProject.buildFolder).map {
     name to mapOf(
       ExternalSystemSourceType.TEST_GENERATED to setOf(it)
     )
   }
 }
 
-private fun AbstractArtifact.generatedSourceFoldersToUse(buildFolder: File) =
-  generatedSourceFolders.filter {
+private fun SyncContributorAndroidProjectContext.generatedSourceFoldersToUseForArtifact(name: IdeArtifactName, artifact: AbstractArtifact, buildFolder: File): Set<File> =
+  artifact.generatedSourceFolders.filter {
     !isAaptGeneratedSourcesFolder(it, buildFolder) &&
     !isDataBindingGeneratedBaseClassesFolder(it, buildFolder) &&
     !isSafeArgGeneratedSourcesFolder(it, buildFolder)
-  }
+  }.toSet() + findGeneratedSourcesForKapt(name)
 
+private fun SyncContributorAndroidProjectContext.findGeneratedSourcesForKapt(name: IdeArtifactName): Set<File> {
+  if (kaptGradleModel == null || !kaptGradleModel.isEnabled) return emptySet()
+
+  val suffix = if (name == IdeArtifactName.MAIN) {
+    ""
+  } else {
+    name.toPrintableName()
+  }
+  val sourceSet = kaptGradleModel.sourceSets.find { it.sourceSetName == variantName + suffix } ?: return emptySet()
+  return setOfNotNull(sourceSet.generatedSourcesDirFile, sourceSet.generatedKotlinSourcesDirFile)
+}
+
+/** Sometimes the same source set can be provided via multiple means, so deduplicating is necessary */
+private fun List<SourceSetData>.deduplicate(): Set<SourceSetData> {
+  val seen = mutableSetOf<File>()
+  return this.map {(artifactName, filesMap) ->
+    // Remove all but first occurrence of each file and then filter out any elements with empty maps
+    artifactName to filesMap.mapValues { (_, files) ->
+      files.minus(seen).also {
+        seen.addAll(files)
+      }
+    }.filterValues { it.isNotEmpty() }
+  }.filter { it.second.isNotEmpty() }.toSet()
+}
 
 internal fun GradleLightProject.moduleId() = Modules.createUniqueModuleId(projectIdentifier.buildIdentifier.rootDir, path)

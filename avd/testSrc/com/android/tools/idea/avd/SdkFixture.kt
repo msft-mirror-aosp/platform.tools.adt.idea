@@ -140,7 +140,7 @@ class SdkFixture {
       }
     pkg.displayName = displayName
     pkg.typeDetails =
-      AndroidSdkHandler.getSysImgModule().createLatestFactory().createSysImgDetailsType().apply {
+      AndroidSdkHandler.sysImgModule.createLatestFactory().createSysImgDetailsType().apply {
         this.tags.addAll(tags)
         this.abis.addAll(abis)
         this.translatedAbis.addAll(translatedAbis)

@@ -42,16 +42,15 @@ private fun getProjectSpecificResyncIssues(testProject: TestProject) = when(test
     // TODO(b/384022658): Not sure why
     "MODULE (project.androidTest)/Classes"
   )
-  TestProject.KOTLIN_KAPT,
-  TestProject.NEW_SYNC_KOTLIN_TEST -> setOf(
-    "</>kaptKotlin</>",
-    "</>kapt</>"
-  )
   TestProject.MAIN_IN_ROOT -> setOf(
     // This is incorrectly populated as a content root(!) in old sync
     "project</>app</>AndroidManifest.xml",
     // This is incorrectly missing from the old sync content roots
     "project</>app</>src</>debug"
+  )
+  TestProject.TEST_SUITES -> setOf(
+    // TODO(b/445376814): Understand why they are different
+    "MODULE (project.app.second)/CONENT_ENTRY"
   )
   else -> emptySet()
 }
@@ -72,12 +71,6 @@ private fun getProjectSpecificIdeModelResyncIssues(testProject: TestProject) = w
       // TODO(b/384022658): Manifest index affects these values so they fail to populate correctly in some cases
       "/CurrentVariantReportedVersions"
     )
-    // TODO(b/384022658): Info from KaptGradleModel is missing for phased sync entities for now
-    TestProject.KOTLIN_KAPT,
-    TestProject.NEW_SYNC_KOTLIN_TEST -> setOf(
-      "generated/source/kaptKotlin",
-    )
-
     else -> emptySet()
   }
 }

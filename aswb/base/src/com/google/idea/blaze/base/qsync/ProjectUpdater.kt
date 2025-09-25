@@ -1,6 +1,5 @@
 package com.google.idea.blaze.base.qsync
 
-import com.google.common.collect.ImmutableSet
 import com.google.idea.blaze.base.qsync.ProjectUpdater.IdeaUrl.Companion.findFileByUrl
 import com.google.idea.blaze.base.qsync.ProjectUpdater.IdeaUrl.Companion.getOrCreateFromUrl
 import com.google.idea.blaze.base.qsync.entity.BazelEntitySource
@@ -11,7 +10,6 @@ import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.qsync.QuerySyncProjectSnapshot
 import com.google.idea.blaze.qsync.project.BlazeProjectDataStorage.WORKSPACE_MODULE_NAME
 import com.google.idea.blaze.qsync.project.ProjectPath
-import com.google.idea.blaze.qsync.project.ProjectPath.workspaceRelative
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.common.experiments.BoolExperiment
 import com.google.idea.common.experiments.EnumExperiment
@@ -112,8 +110,8 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
   @JvmInline
   value class IdeaUrl private constructor (private val url: String) {
     companion object {
-      fun fromPath(path: Path): IdeaUrl {
-        return IdeaUrl(UrlUtil.pathToIdeaUrl(path))
+      fun fromPath(path: Path, innerJarPath: Path): IdeaUrl {
+        return IdeaUrl(UrlUtil.pathToUrl(path.toString(), innerJarPath))
       }
 
       fun fromJarPath(path: Path, innerJarPath: Path): IdeaUrl {
@@ -164,24 +162,10 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
     private val virtualFileManager = VirtualFileManager.getInstance()
     private val projectBase = Paths.get(project.getBasePath())
     private val projectPathResolver = querySyncProject.projectPathResolver
-    fun ProjectProto.JarDirectory.toIdeaUrl(): IdeaUrl {
-      return IdeaUrl.fromPath(projectBase.resolve(this.path))
-        .also { virtualFileManager.findFileByUrl(it) }  // Register roots in a background thread.
-    }
-
-    fun ProjectProto.LibrarySource.toIdeaUrl(): IdeaUrl {
-      val projectPath = ProjectPath.create(srcjar)
-      return IdeaUrl.fromJarPath(projectPathResolver.resolve(projectPath), projectPath.innerJarPath())
-        .also { virtualFileManager.findFileByUrl(it) }  // Register roots in a background thread.
-    }
-
-    fun ProjectProto.ProjectPath.toIdeaUrl(): IdeaUrl {
-      val sourceFolderProjectPath = ProjectPath.create(this)
-      return sourceFolderProjectPath.toIdeaUrl()
-    }
 
     fun ProjectPath.toIdeaUrl(): IdeaUrl {
-      return IdeaUrl.fromPath(projectPathResolver.resolve(this))
+      return IdeaUrl.fromPath(projectPathResolver.resolve(this), innerPath)
+        .also { virtualFileManager.findFileByUrl(it) }  // Register roots in a background thread.
     }
 
     fun ModuleData.Companion.from(
@@ -194,9 +178,9 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
 
     fun LibraryData.Companion.from(library: ProjectProto.Library): LibraryData {
       return LibraryData(
-        name = LibraryName.from(library.name),
+        name = LibraryName.from(library.name.toString()),
         jarUrls = library.classesJarList.map { it.toIdeaUrl() },
-        sourceUrls = library.sourcesList.filter { it.hasSrcjar() }.map { it.toIdeaUrl() },
+        sourceUrls = library.sourcesList.map { it.toIdeaUrl() },
       )
     }
 
@@ -204,12 +188,12 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
       return LibraryData(
         name = LibraryName.from(name),
         jarUrls = libraries.flatMap { it.classesJarList }.map { it.toIdeaUrl() },
-        sourceUrls = libraries.flatMap { it.sourcesList }.filter { it.hasSrcjar() }.map { it.toIdeaUrl() },
+        sourceUrls = libraries.flatMap { it.sourcesList }.map { it.toIdeaUrl() },
       )
     }
 
     fun SourceRootData.Companion.from(
-      projectPath: ProjectProto.ProjectPath,
+      projectPath: ProjectPath,
       isTest: Boolean,
       isGenerated: Boolean,
       packagePrefix: String,
@@ -223,9 +207,9 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
     }
 
     fun ContentRootData.Companion.from(
-      root: ProjectProto.ProjectPath,
+      root: ProjectPath,
       sources: List<ProjectProto.SourceFolder>,
-      excludedRoots: List<String>,
+      excludedRoots: List<ProjectPath>,
     ): ContentRootData {
       return ContentRootData(
         url = root.toIdeaUrl(),
@@ -236,18 +220,18 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
             it.isGenerated,
             it.packagePrefix)
         },
-        excludedRoots = excludedRoots.map { workspaceRelative(Path.of(it)).toIdeaUrl() },
+        excludedRoots = excludedRoots.map { it.toIdeaUrl() },
       )
     }
 
     fun ProjectData.Companion.from(project: ProjectProto.Project): ProjectData {
       val libraries = when (projectStructureExperiment.value) {
         ProjectStructure.LIBRARY_PER_TARGET ->
-          project.libraryList.map { LibraryData.from(it) }
+          project.libraries.values.map { LibraryData.from(it) }
 
         ProjectStructure.SHARDED_LIBRARY -> let {
           val shards = libraryShardsExperiment.value.toULong()
-          project.libraryList
+          project.libraries.values
             .groupBy { it.name.hashCode().toULong() % shards }
             .map {
               LibraryData.from("Lib ${it.key}", it.value)
@@ -255,9 +239,9 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
         }
       }
       return ProjectData(
-        modules = project.modulesList.map {
-          ModuleData.from(it, libraries.map { it.name }, it.contentEntriesList.map {
-            ContentRootData.from(it.root, sources = it.sourcesList, excludedRoots = it.excludesList)
+        modules = project.modules.map {
+          ModuleData.from(it, libraries.map { it.name }, it.contentEntries.values.map {
+            ContentRootData.from(it.root, sources = it.sourceFolders, excludedRoots = it.excludes)
           })
         },
         libraries = libraries,
@@ -362,9 +346,9 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
       for (syncPlugin in BlazeQuerySyncPlugin.EP_NAME.extensions) {
         syncPlugin.updateProjectSettingsForQuerySync(project, context, querySyncProject.projectViewSet)
       }
-      for (moduleSpec in spec.getModulesList()) {
+      for (moduleSpec in spec.modules) {
         val module =
-          models.findIdeModule(moduleSpec.getName())!!
+          models.findIdeModule(moduleSpec.name)!!
         val workspaceLanguageSettings =
           LanguageSupport.createWorkspaceLanguageSettings(querySyncProject.projectViewSet)
         for (syncPlugin in BlazeQuerySyncPlugin.EP_NAME.extensions) {
@@ -378,11 +362,8 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
             models,
             querySyncProject.workspaceRoot,
             module,
-            ImmutableSet.copyOf<String?>(moduleSpec.androidResourceDirectoriesList),
-            ImmutableSet.builder<String?>()
-              .addAll(moduleSpec.androidSourcePackagesList)
-              .addAll(moduleSpec.androidCustomPackagesList)
-              .build(),
+            moduleSpec.androidResourceDirectories.map { it.relativePath.toString() }.toSet(),
+            moduleSpec.androidSourcePackages.toSet() + moduleSpec.androidCustomPackages.toSet(),
             workspaceLanguageSettings
           )
         }

@@ -109,11 +109,12 @@ public class ProjectArtifactStore {
       Path root = projectDir.resolve(entry.getKey());
       ArtifactDirectoryUpdate dirUpdate =
           new ArtifactDirectoryUpdate(
+              entry.getKey(),
               artifactCache,
               root,
               entry.getValue());
       try {
-        incompleteTargets.addAll(dirUpdate.update());
+        incompleteTargets.addAll(dirUpdate.update(context));
       } catch (IOException e) {
         exceptions.add(e);
       }

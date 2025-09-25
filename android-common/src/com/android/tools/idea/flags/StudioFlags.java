@@ -211,6 +211,11 @@ public final class StudioFlags {
     "Enable XR template",
     "Allows the XR template to be used.");
 
+  public static final Flag<Boolean> NPW_ENABLE_XR_GLASSES_TEMPLATE = new BooleanFlag(
+    NPW, "xr.glasses.template",
+    "Enable XR Glasses template",
+    "Allows the XR Glasses template to be used.");
+
   public static final Flag<Boolean> NPW_ENABLE_NAVIGATION_UI_TEMPLATE = new BooleanFlag(
     NPW, "navigationui.template",
     "Enable Navigation UI template",
@@ -1230,6 +1235,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_XR_SIMULATED_PASSTHROUGH = new BooleanFlag(
     DEVICE_MIRRORING, "xr.simulated.passthrough", "Enable Simulated Passthrough for XR Headsets",
     "Enable simulated passthrough for XR headsets");
+  public static final Flag<Boolean> DEVICE_MIRRORING_B386236480_TESTING = new DebugFlag(
+    DEVICE_MIRRORING, "b386236480.testing", "Turn device screen off on Android versions affected by b/386236480",
+    "If enabled, Studio will turn off the screen of a mirrored device even if that device is affected by b/386236480.");
 
   //endregion
 
@@ -1603,6 +1611,14 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_AI_AGENTS_DROPDOWN = new BooleanFlag(
     COMPOSE, "ai.agents.dropdown", "Enable dropdown action to list Compose Preview AI agent actions",
     "Enables a dropdown action that lists actions that trigger AI agent flows related to Compose Previews.");
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_SCREENSHOT_TO_CODE = new BooleanFlag(
+    COMPOSE, "preview.screenshot.to.code", "Enable screenshot to code action",
+    "Enables an action to generate compose code from a screenshot.");
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_MATCH_UI_AGENT = new BooleanFlag(
+    COMPOSE, "preview.match.ui.agent", "Enable an action to match the preview to a target image",
+    "Enables an action that triggers an agent that will match a Compose Preview to a user-provided target image.");
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_CODE_TO_PREVIEW_NAVIGATION = new BooleanFlag(
     COMPOSE, "preview.code.to.preview.navigation", "Enable the highlighting of preview components when clicking on code",
@@ -2124,6 +2140,11 @@ public final class StudioFlags {
                     "Enable the AGENTS.md Files macro in the context drawer",
                     "This macro attaches AGENTS.md or GEMINI.md Files under directories of the current file and its recursive parents.");
 
+  public static final Flag<Boolean> STUDIOBOT_AGENTS_MD_GENERATION =
+    new BooleanFlag(STUDIOBOT, "agents.md.generation",
+                    "Enable an action to generate AGENTS.md files",
+                    "When enabled, add an action as a right click menu of the file browser. The action will generate AGENTS.md files under directories of the current file and its recursive children.");
+
   public static final Flag<Boolean> STUDIOBOT_KNOWLEDGE_BASE_RAG =
     new BooleanFlag(STUDIOBOT, "knowledge.base.rag",
                     "Enable the Knowledge Base (KB) indexer and search tools",
@@ -2158,6 +2179,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "mcp.auth.enabled",
                     "Enable MCP Auth via OAuth with MCP Servers",
                     "Allows connectinos with remote streamableHttp MCP Servers that require OAuth");
+
+  public static final Flag<Boolean> STUDIOBOT_MCP_SETTINGS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mcp.settings.enabled",
+                    "Enable Model Context Protocol (MCP) Settings Page",
+                    "Enables a settings page that lets users enable mcp, enter mcp.json, and manage servers.");
 
   public static final Flag<Boolean> STUDIOBOT_MCP_UI_SERVERS_ENABLED =
     new BooleanFlag(STUDIOBOT, "mcp.ui.servers.enabled",
@@ -2409,6 +2435,11 @@ public final class StudioFlags {
                     "Enable build-related instructions in the prompt",
                     "Enable build-related instructions in the prompt");
 
+  public static final Flag<Boolean> GEMINI_STATE_INSPECTION_AGENT =
+    new BooleanFlag(STUDIOBOT, "layout.inspector.state.inspection.agent",
+                    "Enable Gemini State Inspection Agent for the Layout Inspector.",
+                    "Enables the agent that helps with explaining state read exception traces.");
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
@@ -2533,6 +2564,14 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.recording", "Enable Journeys with Gemini recording",
     "Enable recording of Journeys with Gemini"
   );
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_EDITOR_DISABLE_XML_SPACE_PRESERVE = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "journeys.with.gemini.editor.disable.xml.space.preserve", "Disable insertion of 'xml:space:\"preserve\" attribute",
+    "Disable insertion of 'xml:space:\"preserve\" attribute when editing a Journey XML file."
+  );
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_TEST_SUITE = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.test.suite", "Enable Journeys with Gemini test suite",
+    "Toggles IDE support for Journeys tests configured as AGP test suites"
+  );
   // endregion JOURNEYS_WITH_GEMINI
 
   // region WIZARD_MIGRATION
@@ -2650,6 +2689,16 @@ public final class StudioFlags {
       "Show an action for Uninstall App");
   // endregion Device Explorer
 
+  // region AGP Test Suites
+  private static final FlagGroup AGP_TEST_SUITES = new FlagGroup(FLAGS, "agp.test.suites", "AGP Test Suites");
+  public static final Flag<Boolean> AGP_TEST_SUITES_ENABLED =
+    new BooleanFlag(
+      AGP_TEST_SUITES,
+      "enabled",
+      "Enable IDE support for AGP test suites",
+      "Enables IDE support for AGP test suites"
+    );
+  // endregion AGP Test Suites
 
   private StudioFlags() { }
 

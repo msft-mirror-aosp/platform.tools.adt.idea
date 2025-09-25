@@ -32,6 +32,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.ui.components.JBLoadingPanel
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -64,6 +65,11 @@ class RootPanelTest {
       override val version = "version"
       override val codename = "codename"
     }
+
+  @Before
+  fun setUp() {
+    layoutInspectorRule.attachDevice(MODERN_DEVICE)
+  }
 
   @Test
   fun testProcessNotDebuggablePanelIsShown() = withEmbeddedLayoutInspector {

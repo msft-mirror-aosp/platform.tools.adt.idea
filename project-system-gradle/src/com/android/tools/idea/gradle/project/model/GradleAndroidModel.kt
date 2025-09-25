@@ -35,6 +35,7 @@ import com.android.tools.idea.gradle.model.IdeJavaArtifact
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeTestOptions
+import com.android.tools.idea.gradle.model.IdeTestSuite
 import com.android.tools.idea.gradle.model.IdeVariant
 import com.android.tools.idea.gradle.model.IdeVariantCore
 import com.android.tools.idea.gradle.model.filteredVariantNames
@@ -62,10 +63,10 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.pom.java.LanguageLevel
 import com.jetbrains.rd.util.getOrCreate
-import org.jetbrains.android.facet.AndroidFacet
 import java.io.File
 import java.util.EnumSet
 import java.util.Locale
+import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
@@ -324,6 +325,9 @@ open class GradleAndroidModelImpl(
 
   @VisibleForTesting
   fun containsTheSameDataAs(that: GradleAndroidModel) = data == (that as? GradleAndroidModelImpl)?.data
+
+  override val testSuites: List<IdeTestSuite>
+    get() = androidProject.testSuites
 }
 
 @VisibleForTesting
@@ -405,6 +409,7 @@ sealed interface GradleAndroidModel: AndroidModel {
   fun getArtifactCoreForAndroidTest(): IdeAndroidArtifactCore?
   fun getGradleConnectedTestTaskNameForSelectedVariant(): String
   val mainArtifact: IdeAndroidArtifactCore
+  val testSuites: List<IdeTestSuite>
 }
 
 @VisibleForTesting

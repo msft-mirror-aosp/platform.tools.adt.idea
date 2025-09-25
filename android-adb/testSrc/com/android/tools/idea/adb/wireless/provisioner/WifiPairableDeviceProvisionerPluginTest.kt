@@ -16,6 +16,10 @@
 package com.android.tools.idea.adb.wireless.provisioner
 
 import com.android.adblib.AdbFeatures
+import com.android.adblib.AdbSession
+import com.android.adblib.ConnectedDevice
+import com.android.adblib.CoroutineScopeCache
+import com.android.adblib.DeviceInfo
 import com.android.adblib.MdnsServices
 import com.android.adblib.MdnsTlsService
 import com.android.adblib.MdnsTrackServiceInfo
@@ -24,14 +28,17 @@ import com.android.adblib.ServiceInstanceName
 import com.android.tools.idea.adb.wireless.AdbCommandResult
 import com.android.tools.idea.adb.wireless.AdbOnlineDevice
 import com.android.tools.idea.adb.wireless.AdbServiceWrapper
+import com.android.tools.idea.adb.wireless.MockWiFiPairingNotificationService
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService
 import com.android.tools.idea.adb.wireless.PairingResult
 import com.android.tools.idea.adb.wireless.TrackingMdnsService
 import com.android.tools.idea.adb.wireless.WiFiPairingController
 import com.android.tools.idea.adb.wireless.v2.ui.WifiPairableDevicesPersistentStateComponent
+import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.testing.ApplicationServiceRule
 import com.android.tools.idea.testing.ProjectServiceRule
 import com.google.common.truth.Truth.assertThat
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
@@ -39,11 +46,14 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.common.waitUntil
+import icons.StudioIcons
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.isActive
@@ -66,6 +76,7 @@ class WifiPairableDeviceProvisionerPluginTest {
   private val adbService = FakeAdbServiceWrapper()
   private lateinit var pairingController: WiFiPairingController
   private val pairDevicesService = mock<PairDevicesUsingWiFiService>()
+  private lateinit var notificationService: MockWiFiPairingNotificationService
   private val mockPersistentService = mock<WifiPairableDevicesPersistentStateComponent>()
 
   private val projectRule = ProjectRule()
@@ -90,6 +101,7 @@ class WifiPairableDeviceProvisionerPluginTest {
   @Before
   fun setUp() {
     pairingController = mock()
+    notificationService = MockWiFiPairingNotificationService(project)
     whenever(pairDevicesService.createPairingDialogController(any())).thenReturn(pairingController)
     adbService.setMdnsTrackServicesFlow(mdnsFlow)
     adbService.setHostFeatures(listOf(AdbFeatures.TRACK_MDNS_SERVICE))
@@ -100,7 +112,8 @@ class WifiPairableDeviceProvisionerPluginTest {
   fun pluginDoesNothing_whenMdnsTrackingNotSupported() = runTest {
     adbService.setHostFeatures(emptyList())
     mdnsFlow.value = createMdnsTlsService("service1")
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).isEmpty()
@@ -109,7 +122,8 @@ class WifiPairableDeviceProvisionerPluginTest {
   @Test
   fun newMdnsService_createsDeviceHandle() = runTest {
     mdnsFlow.value = createMdnsTlsService("service1")
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).hasSize(1)
@@ -122,7 +136,8 @@ class WifiPairableDeviceProvisionerPluginTest {
   @Test
   fun newMdnsService_withNullModel_createsDeviceHandleWithFallbackName() = runTest {
     mdnsFlow.value = createMdnsTlsService("service1", model = null)
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).hasSize(1)
@@ -134,8 +149,26 @@ class WifiPairableDeviceProvisionerPluginTest {
 
   @Test
   fun knownDevices_areIgnored() = runTest {
-    mdnsFlow.value = createMdnsTlsService("service1", knownDevice = true)
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    mdnsFlow.value = createMdnsTlsService("adb-35121FDJH000R8-fYN6pK")
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
+    val cache: CoroutineScopeCache = mock()
+    whenever(cache.scope).thenReturn(backgroundScope)
+    plugin.claim(
+      object : ConnectedDevice {
+        override val session: AdbSession
+          get() = TODO("Not yet implemented")
+
+        override val cache: CoroutineScopeCache
+          get() = cache
+
+        override val deviceInfoFlow: StateFlow<DeviceInfo>
+          get() = _deviceInfoFlow
+
+        private val _deviceInfoFlow: MutableStateFlow<DeviceInfo> =
+          MutableStateFlow(DeviceInfo("adb-35121FDJH000R8-fYN6pK._adb-tls-connect._tcp", mock()))
+      }
+    )
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).isEmpty()
@@ -145,7 +178,8 @@ class WifiPairableDeviceProvisionerPluginTest {
   fun hiddenDevices_areIgnored() = runTest {
     doReturn(MutableStateFlow(setOf("service1"))).whenever(mockPersistentService).hiddenDevices
     mdnsFlow.value = createMdnsTlsService("service1")
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).isEmpty()
@@ -154,7 +188,8 @@ class WifiPairableDeviceProvisionerPluginTest {
   @Test
   fun pairAction_launchesPairingDialog() = runTest {
     mdnsFlow.value = createMdnsTlsService("service1", "My Pixel", "1.2.3.4", 1234)
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     val handle = plugin.devices.value.first()
@@ -173,9 +208,35 @@ class WifiPairableDeviceProvisionerPluginTest {
   }
 
   @Test
+  fun hideAction_addsDeviceToHiddenList() = runTest {
+    mdnsFlow.value = createMdnsTlsService("service1", "My Pixel", "1.2.3.4", 1234)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
+    advanceTimeBy(6000) // Past initial delay
+
+    val handle = plugin.devices.value.first()
+    handle.hideDeviceAction!!.hide()
+
+    verify(mockPersistentService).addHiddenDevice("service1")
+
+    val (title, content, type, icon) =
+      pumpEventsAndWaitForFuture(
+        notificationService.showBalloonTracker.consume(),
+        5,
+        TimeUnit.SECONDS,
+      )
+    assertThat(title).isEqualTo("My Pixel is now hidden")
+    assertThat(content)
+      .isEqualTo("You can view and pair all devices by using the Wi-Fi pairing dialog.")
+    assertThat(type).isEqualTo(NotificationType.INFORMATION)
+    assertThat(icon).isEqualTo(StudioIcons.Common.SUCCESS)
+  }
+
+  @Test
   fun handleScopeIsCancelled_onRemoval() = runTest {
     mdnsFlow.value = createMdnsTlsService("service1", "My Pixel", "1.2.3.4", 1234)
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     val handle = plugin.devices.value.first()
@@ -197,7 +258,8 @@ class WifiPairableDeviceProvisionerPluginTest {
       }
     }
     adbService.setMdnsTrackServicesFlow(failingFlow)
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(5500) // Initial delay
 
     assertThat(plugin.devices.value).isEmpty()
@@ -217,7 +279,8 @@ class WifiPairableDeviceProvisionerPluginTest {
         throw CancellationException()
       }
     adbService.setMdnsTrackServicesFlow(flow)
-    val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project)
+    val plugin =
+      WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(attempts).isEqualTo(1)

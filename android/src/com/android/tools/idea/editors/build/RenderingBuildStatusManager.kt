@@ -37,10 +37,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.ThrowableComputable
 import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
@@ -57,7 +55,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.uipreview.ModuleClassLoaderOverlays
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport
+import org.jetbrains.kotlin.fileClasses.isJvmMultifileClassFile
 import org.jetbrains.kotlin.idea.util.projectStructure.module
+import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.analysisContext
 
 /**
  * This represents the build status of the project artifacts used to render previews without taking
@@ -231,9 +234,9 @@ private class RenderingBuildStatusManagerImpl(
                 }
 
               fun handleSuccess(scope: GlobalSearchScope): ProjectBuildStatus {
-                SlowOperations.allowSlowOperations(
-                  ThrowableComputable { preparedMarkUpToDateAction.markUpToDate(scope) }
-                )
+                SlowOperations.knownIssue("IDEA-359567").use {
+                  preparedMarkUpToDateAction.markUpToDate(scope)
+                }
                 // Clear the resources out of date flag
                 areResourcesOutOfDateFlow.value = false
                 return ProjectBuildStatus.Built
@@ -361,13 +364,36 @@ private class RenderingBuildStatusManagerImpl(
   override fun getResourcesListenerForTest(): ResourceChangeListener = resourceChangeListener
 
   private suspend fun editorHasExistingClassFile(): Boolean {
-    val editorFile: PsiFile = runReadAction { editorFilePtr.element } ?: return false
-    val psiClassOwner = editorFile as? PsiClassOwner ?: return false
+    val psiFile: PsiFile = readAction { editorFilePtr.element } ?: return false
     val classFileFinder = classFinderFactory(buildTargetReference)
 
-    return readAction { psiClassOwner.classes.mapNotNull { it.qualifiedName } }
-      .any() {
+    return readAction {
+      psiFile.findClassesFqNames()
+    }
+      .any {
         classFileFinder(it)
       }
+  }
+
+  private fun PsiFile.findClassesFqNames(): List<String> {
+    return when (this) {
+      is KtFile -> kotlinClassDeclarations()
+      is PsiClassOwner -> classes.mapNotNull { it.qualifiedName }
+      else -> listOf()
+    }
+  }
+
+  private fun KtFile.kotlinClassDeclarations(): List<String> =
+    declarations.filterIsInstance<KtClassOrObject>().mapNotNull { ktClass -> ktClass.fqName?.asString() } + fetchTopLevelClasses(this)
+
+  private fun fetchTopLevelClasses(file: KtFile): List<String> = buildList {
+    if (!file.isJvmMultifileClassFile && !file.hasTopLevelCallables()) return@buildList
+
+    val kotlinAsJavaSupport = KotlinAsJavaSupport.getInstance(file.project)
+    if (file.analysisContext == null) {
+      kotlinAsJavaSupport.getLightFacade(file)?.qualifiedName?.let(this::add)
+    } else {
+      kotlinAsJavaSupport.createFacadeForSyntheticFile(file).qualifiedName?.let(this::add)
+    }
   }
 }

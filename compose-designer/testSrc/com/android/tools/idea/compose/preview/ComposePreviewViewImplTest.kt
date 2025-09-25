@@ -94,6 +94,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
 private fun configureLayoutlibSceneManagerForPreviewElement(
   displaySettings: PreviewDisplaySettings,
@@ -107,6 +109,7 @@ private fun configureLayoutlibSceneManagerForPreviewElement(
     runVisualAnalysis = false,
     quality = 1f,
     disableAnimation = false,
+    useLoadViewFallbacks = false,
   )
 
 /** Converts an [InstructionsPanel] into text that can be easily used in assertions. */
@@ -123,10 +126,29 @@ private fun InstructionsPanel.toDisplayText(): String =
     }
     .joinToString("")
 
-class ComposePreviewViewImplTest {
+@RunWith(Parameterized::class)
+class ComposePreviewViewImplTest(generatePreviewFlag: Boolean, screenshotToCodeFlag: Boolean) {
   @get:Rule val projectRule = AndroidProjectRule.withSdk()
 
-  @get:Rule val flagRule = FlagRule(StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW)
+  @get:Rule
+  val generatePreviewFlagRule =
+    FlagRule(StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW, generatePreviewFlag)
+  @get:Rule
+  val screenshotToCodeFlagRule =
+    FlagRule(StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE, screenshotToCodeFlag)
+
+  companion object {
+    @JvmStatic
+    @Parameterized.Parameters(name = "generatePreview={0}, screenshotToCode={1}")
+    fun data(): Collection<Array<Boolean>> {
+      return listOf(
+        arrayOf(true, true),
+        arrayOf(true, false),
+        arrayOf(false, true),
+        arrayOf(false, false),
+      )
+    }
+  }
 
   private val project: Project
     get() = projectRule.project
@@ -350,14 +372,17 @@ class ComposePreviewViewImplTest {
   fun `empty preview state when flag is disabled`() {
     StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW.override(false)
     geminiPluginApi.contextAllowed = true
-    checkEmptyPreviewState(showAutoGenerateAction = false)
+    checkEmptyPreviewState(
+      showAutoGenerateAction = false,
+      showScreenshotToAction = StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE.get(),
+    )
   }
 
   @Test
   fun `empty preview state when context-sharing is disabled`() {
     StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW.override(true)
     geminiPluginApi.contextAllowed = false
-    checkEmptyPreviewState(showAutoGenerateAction = false)
+    checkEmptyPreviewState(showAutoGenerateAction = false, showScreenshotToAction = false)
   }
 
   @Test
@@ -365,14 +390,20 @@ class ComposePreviewViewImplTest {
     StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW.override(true)
     geminiPluginApi.contextAllowed = true
     fakeStudioBotActionFactory.isNullPreviewGeneratorAction = true
-    checkEmptyPreviewState(showAutoGenerateAction = false)
+    checkEmptyPreviewState(
+      showAutoGenerateAction = false,
+      showScreenshotToAction = StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE.get(),
+    )
   }
 
   @Test
   fun `empty preview state when flag and context-sharing are enabled`() {
     StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW.override(true)
     geminiPluginApi.contextAllowed = true
-    checkEmptyPreviewState(showAutoGenerateAction = true)
+    checkEmptyPreviewState(
+      showAutoGenerateAction = true,
+      showScreenshotToAction = StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE.get(),
+    )
   }
 
   @Test
@@ -387,10 +418,40 @@ class ComposePreviewViewImplTest {
       wolfTheProblemSolver,
       fixture.testRootDisposable,
     )
-    checkEmptyPreviewState(showAutoGenerateAction = false)
+    checkEmptyPreviewState(showAutoGenerateAction = false, showScreenshotToAction = false)
   }
 
-  private fun checkEmptyPreviewState(showAutoGenerateAction: Boolean) = runBlocking {
+  @Test
+  fun `empty preview state when screenshot to code flag is disabled`() {
+    geminiPluginApi.contextAllowed = true
+    StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE.override(false)
+    checkEmptyPreviewState(
+      showAutoGenerateAction = StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW.get(),
+      showScreenshotToAction = false,
+    )
+  }
+
+  @Test
+  fun `empty preview state when screenshot to code flag is enabled`() {
+    geminiPluginApi.contextAllowed = true
+    StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE.override(true)
+    checkEmptyPreviewState(
+      showAutoGenerateAction = StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW.get(),
+      showScreenshotToAction = true,
+    )
+  }
+
+  @Test
+  fun `empty preview state when context-sharing is disable, screenshot to code flag is enabled`() {
+    geminiPluginApi.contextAllowed = false
+    StudioFlags.COMPOSE_PREVIEW_SCREENSHOT_TO_CODE.override(true)
+    checkEmptyPreviewState(showAutoGenerateAction = false, showScreenshotToAction = false)
+  }
+
+  private fun checkEmptyPreviewState(
+    showAutoGenerateAction: Boolean,
+    showScreenshotToAction: Boolean,
+  ) = runBlocking {
     previewView.hasRendered = true
     previewView.hasContent = false
     runBlocking { previewView.updateVisibilityAndNotifications() }
@@ -408,6 +469,7 @@ class ComposePreviewViewImplTest {
             "Note: syntax errors could cause existing previews not to be found.",
             "[Using the Compose preview]",
             if (showAutoGenerateAction) "[Auto-generate Compose Previews for this file]" else null,
+            if (showScreenshotToAction) "[Generate Code From Screenshot]" else null,
           )
           .joinToString("\n"),
         instructionPanel?.toDisplayText(),
@@ -629,4 +691,12 @@ class FakeStudioBotActionFactory : ComposeStudioBotActionFactory {
   override fun fixComposeRenderIssueAction(renderIssues: List<Issue>) = fakeAction
 
   override fun previewAgentsDropDownAction(): AnAction? = fakeAction
+
+  override fun screenshotToCodeAction(): AnAction {
+    return object : AnAction("Generate Code From Screenshot") {
+      override fun actionPerformed(e: AnActionEvent) {
+        return
+      }
+    }
+  }
 }

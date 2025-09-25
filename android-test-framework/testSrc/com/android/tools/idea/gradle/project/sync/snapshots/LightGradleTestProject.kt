@@ -32,7 +32,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.createTestOpenProjectOptions
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import java.io.File
 import java.nio.file.Path
 
@@ -63,11 +65,9 @@ interface LightGradleTestProject : TestProjectDefinition {
         )
       }
 
+      @RequiresBackgroundThread
       private fun <T> openProject(body: (project: Project, projectRoot: File) -> T): T {
         val options = createTestOpenProjectOptions(true)
-        if (ApplicationManager.getApplication().isDispatchThread) {
-          PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-        }
         val project =
           ProjectManagerEx.getInstanceEx()
             .openProject(
@@ -79,7 +79,10 @@ interface LightGradleTestProject : TestProjectDefinition {
           invokeAndWaitIfNeeded {
             setupTestProjectFromAndroidModel(project, preparedProject.root, *modelBuilders.toTypedArray())
           }
-          body(project, preparedProject.root)
+          when (integrationTestEnvironment.runOpenBodyOnEdt) {
+            true -> runInEdtAndGet { body(project, preparedProject.root) }
+            false -> body(project, preparedProject.root)
+          }
         } finally {
           runInEdtAndWait {
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)

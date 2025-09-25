@@ -19,25 +19,20 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.google.idea.blaze.common.Interners;
 import com.google.idea.blaze.common.Label;
-import com.google.idea.blaze.common.vcs.VcsState;
 import com.google.idea.blaze.qsync.artifacts.ArtifactMetadata;
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact;
 import com.google.idea.blaze.qsync.java.ArtifactTrackerProto;
 import com.google.idea.blaze.qsync.java.ArtifactTrackerProto.Metadata;
 import com.google.idea.blaze.qsync.project.ProjectPath;
-import com.google.idea.blaze.qsync.project.SnapshotDeserializer;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Function;
 
 /** Deserializes {@link NewArtifactTracker} state from a proto. */
@@ -98,16 +93,26 @@ public class ArtifactTrackerStateDeserializer {
         CcToolchain.builder()
             .id(id)
             .compiler(proto.getCompiler())
-            .compilerExecutable(ProjectPath.create(proto.getCompilerExecutable()))
+            .compilerExecutable(projectPathFrom(proto.getCompilerExecutable()))
             .cpu(proto.getCpu())
             .targetGnuSystemName(proto.getTargetGnuSystemName())
             .builtInIncludeDirectories(
                 proto.getBuiltInIncludeDirectoriesList().stream()
-                    .map(ProjectPath::create)
+                    .map(this::projectPathFrom)
                     .collect(toImmutableList()))
             .cOptions(ImmutableList.copyOf(proto.getCOptionsList()))
             .cppOptions(ImmutableList.copyOf(proto.getCppOptionsList()))
             .build());
+  }
+
+  private ProjectPath projectPathFrom(ArtifactTrackerProto.ProjectPath p) {
+    return switch(p.getBase()) {
+      case UNSPECIFIED -> throw new IllegalStateException("Unexpected value: " + p);
+      case WORKSPACE -> ProjectPath.workspaceRelative(Path.of(p.getPath()));
+      case PROJECT -> ProjectPath.projectRelative(Path.of(p.getPath()));
+      case ABSOLUTE -> ProjectPath.absolute(Path.of(p.getPath()));
+      case UNRECOGNIZED -> throw new IllegalStateException("Unexpected value: " + p);
+    };
   }
 
   private JavaArtifactInfo convertJavaArtifactInfo(
@@ -117,7 +122,7 @@ public class ArtifactTrackerStateDeserializer {
         .setIsExternalDependency(proto.getIsExternalDependency())
         .setJars(toArtifactList(proto.getJarsList(), owner))
         .setOutputJars(toArtifactList(proto.getOutputJarsList(), owner))
-        .setIdeAars(toArtifactList(proto.getIdeAarsList(), owner))
+        .setIdeAar(proto.hasIdeAar() ? toArtifact(proto.getIdeAar(), owner) : null)
         .setGenSrcs(toArtifactList(proto.getGenSrcsList(), owner))
         .setSources(proto.getSourcesList().stream().map(Path::of).collect(toImmutableSet()))
         .setSrcJars(proto.getSrcJarsList().stream().map(Path::of).collect(toImmutableSet()))
@@ -132,35 +137,36 @@ public class ArtifactTrackerStateDeserializer {
         .defines(proto.getDefinesList())
         .includeDirectories(
             proto.getIncludeDirectoriesList().stream()
-                .map(ProjectPath::create)
+                .map(this::projectPathFrom)
                 .collect(toImmutableList()))
         .quoteIncludeDirectories(
             proto.getQuoteIncludeDirectoriesList().stream()
-                .map(ProjectPath::create)
+                .map(this::projectPathFrom)
                 .collect(toImmutableList()))
         .systemIncludeDirectories(
             proto.getSysytemIncludeDirectoriesList().stream()
-                .map(ProjectPath::create)
+                .map(this::projectPathFrom)
                 .collect(toImmutableList()))
         .frameworkIncludeDirectories(
             proto.getFrameworkIncludeDirectoriesList().stream()
-                .map(ProjectPath::create)
+                .map(this::projectPathFrom)
                 .collect(toImmutableList()))
         .genHeaders(toArtifactList(proto.getGenHeadersList(), owner))
         .toolchainId(proto.getToolchainId())
         .build();
   }
 
+  private BuildArtifact toArtifact(ArtifactTrackerProto.Artifact a, Label owner) {
+    return BuildArtifact.create(
+      a.getDigest(),
+      Path.of(a.getArtifactPath()),
+      owner,
+      toArtifactMap(a.getMetadataList()));
+  }
   private ImmutableList<BuildArtifact> toArtifactList(
       List<ArtifactTrackerProto.Artifact> protos, Label owner) {
     return protos.stream()
-        .map(
-            a ->
-                BuildArtifact.create(
-                    a.getDigest(),
-                    Path.of(a.getArtifactPath()),
-                    owner,
-                    toArtifactMap(a.getMetadataList())))
+        .map(a ->toArtifact(a, owner))
         .collect(toImmutableList());
   }
 

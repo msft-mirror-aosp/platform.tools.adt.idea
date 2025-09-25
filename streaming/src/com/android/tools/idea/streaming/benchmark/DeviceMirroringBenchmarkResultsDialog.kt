@@ -42,6 +42,7 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 /** Dialog to display results for device mirroring benchmarking. */
+@Suppress("UnstableApiUsage")
 class DeviceMirroringBenchmarkResultsDialog(private val deviceName: String, private val results: Benchmarker.Results<Point>) {
   init {
     require(results.percentiles.values.isNotEmpty()) { "Must provide some values!" }
@@ -86,7 +87,7 @@ class DeviceMirroringBenchmarkResultsDialog(private val deviceName: String, priv
       createActions = { listOf(CloseDialogAction()) })
   }
 
-  private inner class CloseDialogAction : AbstractAction(CommonBundle.getCloseButtonText()) {
+  private class CloseDialogAction : AbstractAction(CommonBundle.getCloseButtonText()) {
     override fun actionPerformed(event: ActionEvent) {
       val wrapper = DialogWrapper.findInstance(event.source as? Component)
       wrapper?.close(DialogWrapper.CLOSE_EXIT_CODE)
