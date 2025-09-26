@@ -90,10 +90,10 @@ import org.jetbrains.annotations.TestOnly;
 public class WorkBench<T> extends JBLayeredPane implements Disposable {
   private static Logger LOG = Logger.getInstance(WorkBench.class);
 
+  private final Project myProject;
   private final String myName;
   private final PropertiesComponent myPropertiesComponent;
   private final WorkBenchManager myWorkBenchManager;
-  private final DetachedToolWindowManager myDetachedToolWindowManager;
   private final FileEditorManager myFileEditorManager;
   private final List<ToolWindowDefinition<T>> myToolDefinitions;
   private final SideModel<T> myModel;
@@ -125,8 +125,7 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
                    @Nullable FileEditor fileEditor,
                    @NotNull Disposable parentDisposable,
                    int delayTimeMs) {
-    this(project, name, fileEditor, InitParams.createParams(project), DetachedToolWindowManager.getInstance(project),
-         delayTimeMs);
+    this(project, name, fileEditor, InitParams.createParams(project), delayTimeMs);
 
     Disposer.register(parentDisposable, this);
   }
@@ -196,7 +195,9 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
       myWorkBenchManager.register(this);
       KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", myMyPropertyChangeListener);
     }
-    myDetachedToolWindowManager.updateToolWindowsForWorkBench(this);
+    if (!myProject.isDisposed()) {
+      DetachedToolWindowManager.getInstance(myProject).updateToolWindowsForWorkBench(this);
+    }
     if (mySplitter.getInnerComponent() == null) {
       // Remove the borders from one of the side panels if there is no center component:
       Objects.requireNonNull(mySplitter.getFirstComponent()).setBorder(JBUI.Borders.empty());
@@ -303,20 +304,25 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     if (LOG.isDebugEnabled()) {
       LOG.debug("setFileEditor " + fileEditor);
     }
-    myDetachedToolWindowManager.unregister(myFileEditor);
-    myDetachedToolWindowManager.register(fileEditor, this);
+    if (!myProject.isDisposed()) {
+      DetachedToolWindowManager.getInstance(myProject).unregister(myFileEditor);
+      DetachedToolWindowManager.getInstance(myProject).register(fileEditor, this);
+    }
     myFileEditor = fileEditor;
     if (fileEditor != null && isCurrentEditor(fileEditor)) {
-      myDetachedToolWindowManager.updateToolWindowsForWorkBench(this);
+      if (!myProject.isDisposed()) {
+        DetachedToolWindowManager.getInstance(myProject).updateToolWindowsForWorkBench(this);
+      }
     }
   }
 
-  @Override
   public void dispose() {
     LOG.debug("dispose");
     isDisposed = true;
     myWorkBenchManager.unregister(this);
-    myDetachedToolWindowManager.unregister(myFileEditor);
+    if (!myProject.isDisposed()) {
+      DetachedToolWindowManager.getInstance(myProject).unregister(myFileEditor);
+    }
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", myMyPropertyChangeListener);
     setToolContext(null);
     myModel.clearContextAndTools();
@@ -332,18 +338,16 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
 
   // ----------------------------------- Implementation --------------------------------------------------------------- //
 
-  @VisibleForTesting
   WorkBench(@NotNull Project project,
             @NotNull String name,
             @Nullable FileEditor fileEditor,
             @NotNull InitParams<T> params,
-            @NotNull DetachedToolWindowManager detachedToolWindowManager,
             int startDelayMs) {
+    myProject = project;
     myName = name;
     myFileEditor = fileEditor;
     myPropertiesComponent = PropertiesComponent.getInstance();
     myWorkBenchManager = WorkBenchManager.getInstance();
-    myDetachedToolWindowManager = detachedToolWindowManager;
     myFileEditorManager = FileEditorManager.getInstance(project);
     myToolDefinitions = new ArrayList<>(4);
     myModel = params.myModel;
@@ -394,7 +398,9 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     // our detached (floating) tool windows and hide detached tool windows from other workbenches.
     if (SwingUtilities.isDescendingFrom(newComponent, this) &&
         (oldComponent == null || !SwingUtilities.isDescendingFrom(oldComponent, this))) {
-      myDetachedToolWindowManager.updateToolWindowsForWorkBench(this);
+      if (!myProject.isDisposed()) {
+        DetachedToolWindowManager.getInstance(myProject).updateToolWindowsForWorkBench(this);
+      }
     }
   }
 
@@ -601,7 +607,9 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
 
       case UPDATE_DETACHED_WINDOW:
         myWorkBenchManager.updateOtherWorkBenches(this);
-        myDetachedToolWindowManager.updateToolWindowsForWorkBench(this);
+        if (!myProject.isDisposed()) {
+          DetachedToolWindowManager.getInstance(myProject).updateToolWindowsForWorkBench(this);
+        }
         break;
 
       case LOCAL_UPDATE:
