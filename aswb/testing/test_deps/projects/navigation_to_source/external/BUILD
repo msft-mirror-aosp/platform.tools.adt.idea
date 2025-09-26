@@ -1,12 +1,19 @@
 load("@rules_java//java:defs.bzl", "java_import", "java_library")
+load("@rules_jvm_external//private/rules:jvm_import.bzl", "jvm_import")
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
 load("@rules_pkg//pkg:mappings.bzl", "strip_prefix")
 load("@rules_pkg//pkg:pkg.bzl", "pkg_zip")
 
-package(default_visibility = ["//navigation_to_source_java:__subpackages__"])
+package(default_visibility = ["//navigation_to_source:__subpackages__"])
 
 java_library(
-    name = "external",
+    name = "external_java",
     srcs = ["java/com/example/external/ExternalJavaSource.java"],
+)
+
+kt_jvm_library(
+    name = "external_kt",
+    srcs = ["kt/com/example/external/ExternalKtSource.kt"],
 )
 
 # Build the srcjar as a library:
