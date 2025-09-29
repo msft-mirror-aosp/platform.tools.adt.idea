@@ -47,6 +47,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -54,6 +55,7 @@ import fleet.util.async.firstNotNull
 import java.nio.file.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetRecompositionStateReadResponse
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Parameter.Type
@@ -69,7 +71,6 @@ class StateInspectionModelTest {
   private val projectRule = ProjectRule()
   @get:Rule val chain = RuleChain(projectRule, disposableRule)
 
-  private lateinit var disposable: Disposable
   private lateinit var inspectorModel: InspectorModel
   private lateinit var compose1: ComposeViewNode
   private lateinit var compose2: ComposeViewNode
@@ -100,9 +101,8 @@ class StateInspectionModelTest {
 
   @Before
   fun before() {
-    disposable = disposableRule.disposable
     inspectorModel =
-      model(disposable, projectRule.project) {
+      model(disposableRule.disposable, projectRule.project) {
         view(ROOT, 2, 4, 6, 8, qualifiedName = "rootType") {
           view(VIEW1, 0, 0, 100, 200) {
             compose(
@@ -128,8 +128,8 @@ class StateInspectionModelTest {
   }
 
   @Test
-  fun testDefaults() = runTest {
-    val client = FakeClient(projectRule.project, this, disposable)
+  fun testDefaults() = runTestWithDisposable { disposable ->
+    val client = FakeClient(projectRule.project, inspectorModel, this, disposable)
     val model = StateInspectionModelImpl(inspectorModel, this, treeSettings, { client }, disposable)
     assertThat(model.show.value).isFalse()
     assertThat(model.recompositionText.value).isEqualTo("")
@@ -139,9 +139,9 @@ class StateInspectionModelTest {
   }
 
   @Test
-  fun testNodeSelectedInForAllMode() = runTest {
+  fun testNodeSelectedInForAllMode() = runTestWithDisposable { disposable ->
     treeSettings.observeStateReadsForAll = true
-    val client = FakeClient(projectRule.project, this, disposable)
+    val client = FakeClient(projectRule.project, inspectorModel, this, disposable)
     val model = StateInspectionModelImpl(inspectorModel, this, treeSettings, { client }, disposable)
     inspectorModel.stateReadsNode = compose1
     testScheduler.advanceUntilIdle()
@@ -185,9 +185,9 @@ class StateInspectionModelTest {
   }
 
   @Test
-  fun testNodeSelectedInOnDemandMode() = runTest {
+  fun testNodeSelectedInOnDemandMode() = runTestWithDisposable { disposable ->
     treeSettings.observeStateReadsForAll = false
-    val client = FakeClient(projectRule.project, this, disposable)
+    val client = FakeClient(projectRule.project, inspectorModel, this, disposable)
     val model = StateInspectionModelImpl(inspectorModel, this, treeSettings, { client }, disposable)
     assertThat(model.updates.value).isEqualTo(1)
 
@@ -273,9 +273,9 @@ class StateInspectionModelTest {
   }
 
   @Test
-  fun testPrevAndNext() = runTest {
+  fun testPrevAndNext() = runTestWithDisposable { disposable ->
     treeSettings.observeStateReadsForAll = false
-    val client = FakeClient(projectRule.project, this, disposable)
+    val client = FakeClient(projectRule.project, inspectorModel, this, disposable)
     val model = StateInspectionModelImpl(inspectorModel, this, treeSettings, { client }, disposable)
     assertThat(model.updates.value).isEqualTo(1)
 
@@ -339,9 +339,9 @@ class StateInspectionModelTest {
   }
 
   @Test
-  fun testMinimizeForAll() = runTest {
+  fun testMinimizeForAll() = runTestWithDisposable { disposable ->
     treeSettings.observeStateReadsForAll = true
-    val client = FakeClient(projectRule.project, this, disposable)
+    val client = FakeClient(projectRule.project, inspectorModel, this, disposable)
     val model = StateInspectionModelImpl(inspectorModel, this, treeSettings, { client }, disposable)
     assertThat(model.show.value).isFalse()
 
@@ -362,9 +362,9 @@ class StateInspectionModelTest {
   }
 
   @Test
-  fun testMinimizeOnDemand() = runTest {
+  fun testMinimizeOnDemand() = runTestWithDisposable { disposable ->
     treeSettings.observeStateReadsForAll = false
-    val client = FakeClient(projectRule.project, this, disposable)
+    val client = FakeClient(projectRule.project, inspectorModel, this, disposable)
     val model = StateInspectionModelImpl(inspectorModel, this, treeSettings, { client }, disposable)
     assertThat(model.show.value).isFalse()
 
@@ -428,8 +428,21 @@ class StateInspectionModelTest {
     )
   }
 
-  private class FakeClient(project: Project, scope: CoroutineScope, disposable: Disposable) :
-    FakeInspectorClient(project, MODERN_DEVICE.createProcess(), scope, disposable) {
+  private fun runTestWithDisposable(testBody: suspend TestScope.(disposable: Disposable) -> Unit) {
+    val disposable = Disposer.newDisposable()
+    Disposer.register(disposableRule.disposable, disposable)
+    runTest {
+      testBody(disposable)
+      Disposer.dispose(disposable)
+    }
+  }
+
+  private class FakeClient(
+    project: Project,
+    private val inspectorModel: InspectorModel,
+    scope: CoroutineScope,
+    disposable: Disposable,
+  ) : FakeInspectorClient(project, MODERN_DEVICE.createProcess(), scope, disposable) {
     private val holder = MutableStateFlow<ResultHolder?>(null)
     var requestedNode: ComposeViewNode? = null
       private set
@@ -441,16 +454,11 @@ class StateInspectionModelTest {
       holder.value = ResultHolder(result)
     }
 
-    override suspend fun getRecompositionStateReadsFromCache(
-      view: ComposeViewNode,
-      recomposition: Int,
-    ): RecomposeStateReadResult? {
+    override suspend fun requestRecompositionStateReads(view: ComposeViewNode, recomposition: Int) {
       requestedNode = view
       requestedRecomposition = recomposition
-
-      val result = holder.firstNotNull().result
+      inspectorModel.stateReadsModel.stateReads.emit(holder.firstNotNull<ResultHolder>().result)
       holder.value = null
-      return result
     }
 
     private class ResultHolder(val result: RecomposeStateReadResult?)
@@ -496,9 +504,9 @@ class StateInspectionModelTest {
     override val provider: PropertiesProvider
       get() = throw NotImplementedError()
 
-    override suspend fun getRecompositionStateReadsFromCache(
+    override suspend fun requestRecompositionStateReads(
       view: ComposeViewNode,
       recomposition: Int,
-    ): RecomposeStateReadResult? = null
+    ) {}
   }
 }

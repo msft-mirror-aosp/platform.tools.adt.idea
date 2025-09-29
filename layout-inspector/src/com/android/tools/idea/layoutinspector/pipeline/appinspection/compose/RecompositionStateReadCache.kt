@@ -18,11 +18,8 @@ package com.android.tools.idea.layoutinspector.pipeline.appinspection.compose
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.InspectorModel.StateReadsNodeListener
-import com.android.tools.idea.layoutinspector.properties.ViewNodeAndResourceLookup
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
-import fleet.util.async.firstNotNull
 import java.util.WeakHashMap
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.RecompositionStateRead
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.RecompositionStateReadEvent
@@ -53,14 +50,11 @@ class RecompositionStateReadCache(
     }
   }
 
-  suspend fun getRecomposeStateReads(
-    node: ComposeViewNode,
-    recomposition: Int,
-  ): RecomposeStateReadResult? {
+  suspend fun requestRecomposeStateReads(node: ComposeViewNode, recomposition: Int) {
     return if (treeSettings.observeStateReadsForAll) {
-      trackAllCache.getRecomposeStateReads(node, recomposition)
+      trackAllCache.requestRecomposeStateReads(node, recomposition)
     } else {
-      onDemandCache.getRecomposeStateReads(node, recomposition)
+      onDemandCache.requestRecomposeStateReads(node, recomposition)
     }
   }
 
@@ -90,22 +84,20 @@ class RecompositionStateReadCache(
    */
   private class StateReadForAllCache(
     private val client: ComposeLayoutInspectorClient?,
-    private val lookup: ViewNodeAndResourceLookup,
+    private val model: InspectorModel,
   ) {
     private val cache: MutableMap<Key, List<RecomposeStateReadData>> = WeakHashMap()
     // These values may not be exact, since the agent may discard state reads at any time.
     private val firstRecompositions = mutableMapOf<Int, Int>()
 
-    suspend fun getRecomposeStateReads(
-      node: ComposeViewNode,
-      recomposition: Int,
-    ): RecomposeStateReadResult? {
+    suspend fun requestRecomposeStateReads(node: ComposeViewNode, recomposition: Int) {
       val key = Key(node.anchorHash, recomposition)
-      cache[key]?.let {
-        val firstRecomposition = firstRecompositions[node.anchorHash] ?: 1
-        return RecomposeStateReadResult(node, recomposition, it, firstRecomposition)
-      }
-      return fetchDataFor(node, recomposition)
+      val result =
+        cache[key]?.let {
+          val firstRecomposition = firstRecompositions[node.anchorHash] ?: 1
+          RecomposeStateReadResult(node, recomposition, it, firstRecomposition)
+        } ?: fetchDataFor(node, recomposition)
+      model.stateReadsModel.stateReads.tryEmit(result)
     }
 
     fun clear() {
@@ -117,9 +109,11 @@ class RecompositionStateReadCache(
       node: ComposeViewNode,
       recomposition: Int,
     ): RecomposeStateReadResult? {
-      val response =
-        client?.getRecompositionStateReads(node.anchorHash, recomposition) ?: return null
-      val reads = convertStateRead(response, lookup)
+      val response = client?.getRecompositionStateReads(node.anchorHash, recomposition)
+      if (response == null || response.read == RecompositionStateRead.getDefaultInstance()) {
+        return null
+      }
+      val reads = convertStateRead(response, model)
       val firstRecomposition = response.firstRecomposition
       val actualRecomposition = response.read.recompositionNumber
       val key = Key(node.anchorHash, actualRecomposition)
@@ -136,12 +130,11 @@ class RecompositionStateReadCache(
    */
   private class OnDemandStateReadCache(
     private val client: ComposeLayoutInspectorClient?,
-    private val lookup: ViewNodeAndResourceLookup,
+    private val model: InspectorModel,
   ) {
     private val lock = Any()
     private var anchorHashObserved = 0
     private val cache = mutableMapOf<Key, List<RecomposeStateReadData>>()
-    private val firstRecompositionWithStateReads = MutableStateFlow<Key?>(null)
     private var firstRecomposition = 0
 
     suspend fun startObserving(node: ComposeViewNode) {
@@ -152,28 +145,30 @@ class RecompositionStateReadCache(
       }
     }
 
-    suspend fun getRecomposeStateReads(
-      node: ComposeViewNode,
-      recomposition: Int,
-    ): RecomposeStateReadResult? {
+    suspend fun requestRecomposeStateReads(node: ComposeViewNode, recomposition: Int) {
       val key = Key(node.anchorHash, recomposition)
-      cache[key]?.let {
-        return RecomposeStateReadResult(node, recomposition, it, firstRecomposition)
-      }
-      return fetchDataFor(node, recomposition)
+      val result =
+        cache[key]?.let { RecomposeStateReadResult(node, recomposition, it, firstRecomposition) }
+          ?: fetchDataFor(node, recomposition)
+      model.stateReadsModel.stateReads.tryEmit(result)
     }
 
     fun handleEvent(event: RecompositionStateReadEvent) {
       synchronized(lock) {
-        if (event.anchorHash != anchorHashObserved) {
+        val node = model.stateReadsNode as? ComposeViewNode ?: return
+        if (event.anchorHash != node.anchorHash) {
           return
         }
         val cacheWasEmpty = cache.isEmpty()
-        convertStateReadEvent(event, lookup) { recomposition, readList ->
+        convertStateReadEvent(event, model) { recomposition, readList ->
           cache[Key(anchorHashObserved, recomposition)] = readList
         }
         if (cacheWasEmpty && cache.isNotEmpty()) {
-          firstRecompositionWithStateReads.value = cache.keys.first()
+          val first = cache.keys.first()
+          firstRecomposition = first.recomposition
+          model.stateReadsModel.stateReads.tryEmit(
+            RecomposeStateReadResult(node, firstRecomposition, cache[first]!!, firstRecomposition)
+          )
         }
       }
     }
@@ -183,7 +178,6 @@ class RecompositionStateReadCache(
         cache.clear()
         firstRecomposition = 0
         anchorHashObserved = 0
-        releasePossibleWaitingFetch()
       }
     }
 
@@ -206,7 +200,7 @@ class RecompositionStateReadCache(
         }
         if (response.read != RecompositionStateRead.getDefaultInstance()) {
           // The state reads existed on the device: return it now.
-          val reads = convertStateRead(response, lookup)
+          val reads = convertStateRead(response, model)
           val key = Key(response.anchorHash, response.read.recompositionNumber)
           cache[key] = reads
           return RecomposeStateReadResult(
@@ -217,27 +211,7 @@ class RecompositionStateReadCache(
           )
         }
       }
-      // The state reads did not exist on the device. Wait for the first event to
-      // be received:
-      val newKey = firstRecompositionWithStateReads.firstNotNull()
-      synchronized(lock) {
-        firstRecompositionWithStateReads.value = null
-        if (newKey.anchorHash != node.anchorHash || newKey.anchorHash != anchorHashObserved) {
-          // If this is not the composable we are looking for: ignore the result
-          return null
-        }
-        // Otherwise the result should be in the cache already: return it.
-        val list = cache[newKey] ?: return null
-        firstRecomposition = newKey.recomposition
-        return RecomposeStateReadResult(node, newKey.recomposition, list, firstRecomposition)
-      }
-    }
-
-    private fun releasePossibleWaitingFetch() {
-      synchronized(lock) {
-        firstRecompositionWithStateReads.value = Key(-1, -1)
-        firstRecompositionWithStateReads.value = null
-      }
+      return null
     }
   }
 }
