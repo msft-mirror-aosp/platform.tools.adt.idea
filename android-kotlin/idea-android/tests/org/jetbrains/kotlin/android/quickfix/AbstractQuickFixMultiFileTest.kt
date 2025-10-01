@@ -88,7 +88,7 @@ abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureAdtTes
 
     myFixture.configureByFiles(*testFiles.toTypedArray())
 
-    if (KotlinPluginModeProvider.isK2Mode() && InTextDirectivesUtils.isDirectiveDefined(originalFileText, "// SKIP-K2")) {
+    if (KotlinPluginModeProvider.isK1Mode() && InTextDirectivesUtils.isDirectiveDefined(originalFileText, "// SKIP-K1")) {
       return
     }
 
