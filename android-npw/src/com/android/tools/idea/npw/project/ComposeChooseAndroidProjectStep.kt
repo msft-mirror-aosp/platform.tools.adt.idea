@@ -90,7 +90,6 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
@@ -311,14 +310,16 @@ private fun NewProjectWizardWithGemini(
     ) {
       attachedImages.forEach { AttachedImage(it) }
     }
-    Row(modifier = Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-      IconButton(modifier = Modifier.padding(end = 2.dp), onClick = onAttachImage) {
-        Icon(
-          key = StudioIconsCompose.LayoutEditor.Properties.ImagePicker,
-          contentDescription = null,
-        )
-      }
-      Text(text = "Attach images")
+    Row(
+      modifier =
+        Modifier.padding(4.dp)
+          .clickable(interactionSource = null, indication = null, onClick = onAttachImage)
+          .padding(4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Icon(key = StudioIconsCompose.LayoutEditor.Properties.ImagePicker, contentDescription = null)
+      Text(text = "Attach images", style = JewelTheme.defaultTextStyle.merge(fontSize = 11.sp))
     }
   }
 }
