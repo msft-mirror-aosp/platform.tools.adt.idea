@@ -186,6 +186,11 @@ class WifiPairableDeviceProvisionerPlugin(
         continue
       }
 
+      if (serviceName.startsWith("adb-EMULATOR")) {
+        // It's not possible to pair emulators.
+        continue
+      }
+
       val handle =
         this.deviceHandles[serviceName]
           ?: run {
@@ -209,7 +214,8 @@ class WifiPairableDeviceProvisionerPlugin(
                     isVirtual = false
                     isRemote = false
                     populateDeviceInfoProto(PLUGIN_ID, null, emptyMap(), randomConnectionId())
-                  }
+                  },
+                status = "Available for Wi-Fi pairing",
               ),
               project,
               notificationService,

@@ -23,12 +23,10 @@ import com.google.common.io.MoreFiles
 import com.google.idea.blaze.base.bazel.BuildSystem
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
-import com.google.idea.blaze.base.plugin.BazelVersionChecker
 import com.google.idea.blaze.base.plugin.BuildSystemVersionChecker
 import com.google.idea.blaze.base.projectview.ProjectViewSet
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.settings.BlazeImportSettings
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager
 import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver
 import com.google.idea.blaze.base.targetmaps.SourceToTargetMap
@@ -41,7 +39,6 @@ import com.google.idea.blaze.common.vcs.VcsState
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.BlazeQueryParser
 import com.google.idea.blaze.qsync.ProjectBuilder
-import com.google.idea.blaze.qsync.ProjectProtoTransform
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
@@ -49,6 +46,7 @@ import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.TargetsToBuild
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.intellij.openapi.project.Project
 import java.io.IOException
 import java.nio.file.Path
@@ -104,7 +102,7 @@ class QuerySyncProject(
   val workspaceLanguageSettings: WorkspaceLanguageSettings,
   val sourceToTargetMap: QuerySyncSourceToTargetMap,
   override val buildSystem: BuildSystem,
-  val projectProtoTransforms: ProjectProtoTransform.Registry,
+  val projectProtoUpdateOperations: Collection<ProjectProtoUpdateOperation>,
   val handledRuleKinds: Set<String>,
 ) : ReadonlyQuerySyncProject {
   override val projectData: QuerySyncProjectData
@@ -251,7 +249,7 @@ class QuerySyncProject(
         queryData,
         graph,
         artifactTrackerState,
-        projectProtoTransforms.composedTransform
+        projectProtoUpdateOperations
       )
     return CreateProjectStructureResult(newProjectStructure, artifactTrackerState)
   }

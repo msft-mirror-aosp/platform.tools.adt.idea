@@ -22,6 +22,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.npw.model.NewProjectModel
@@ -30,6 +31,12 @@ import com.android.tools.idea.npw.template.TemplateResolver
 import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.Template.NoActivity
 import com.android.tools.idea.wizard.template.WizardUiContext
+import com.intellij.openapi.fileChooser.FileChooser
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.VirtualFile
+
+private val extensionList = listOf("jpg", "jpeg", "png")
 
 abstract class ChooseAndroidProjectEntry() {
   @Composable abstract fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean)
@@ -80,6 +87,7 @@ class FormFactorProjectEntry(
 
 class GeminiProjectEntry() : ChooseAndroidProjectEntry() {
   val textFieldState = TextFieldState()
+  val attachedImages = SnapshotStateList<VirtualFile>()
 
   @Composable
   override fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean) {
@@ -88,7 +96,40 @@ class GeminiProjectEntry() : ChooseAndroidProjectEntry() {
 
   @Composable
   override fun AndroidProjectEntryDetails() {
-    GeminiRightPanel(textFieldState, GeminiPluginApi.getInstance().isAvailable(), true)
+    GeminiRightPanel(
+      textFieldState = textFieldState,
+      geminiPluginAvailable = GeminiPluginApi.getInstance().isAvailable(),
+      hasContextSharing = true,
+      attachedImages = attachedImages,
+      onAttachImage = {
+        val selectedFiles =
+          FileChooser.chooseFiles(
+            FileChooserDescriptor(
+                /* chooseFiles = */ true,
+                /* chooseFolders = */ false,
+                /* chooseJars = */ false,
+                /* chooseJarsAsFiles = */ false,
+                /* chooseJarContents = */ false,
+                /* chooseMultiple = */ true,
+              )
+              .withExtensionFilter("Image files", *extensionList.toTypedArray()),
+            /* project = */ null,
+            /* toSelect = */ null,
+          )
+
+        selectedFiles.forEach { selectedFile ->
+          // Show an error dialog if the file exceeds the maximum allowed size
+          if (selectedFile.length > 25 * 1024 * 1024) {
+            Messages.showErrorDialog(
+              "Attachments should not exceed the maximum file size (25 MB).",
+              "Maximum File Size Exceeded",
+            )
+          } else {
+            attachedImages += selectedFile
+          }
+        }
+      },
+    )
   }
 
   override val canGoForward = derivedStateOf { textFieldState.text.isNotEmpty() }
@@ -101,5 +142,6 @@ class GeminiProjectEntry() : ChooseAndroidProjectEntry() {
       TemplateResolver.getAllTemplates().firstOrNull { it.name == baseTemplateName }
     newProjectModuleModel.newRenderTemplate.setNullableValue(templateToUse ?: NoActivity)
     model.prompt.set(textFieldState.text.toString())
+    model.imageAttachments.set(attachedImages)
   }
 }

@@ -31,4 +31,7 @@ public interface UsesPermissionSdk23 extends ManifestElementWithName {
 
     @SubTagList("specific-purpose")
     List<SpecificPurpose> getSpecificPurposes();
+
+    @SubTagList("general-purpose")
+    List<GeneralPurpose> getGeneralPurposes();
 }

@@ -1872,6 +1872,24 @@ public final class StudioFlags {
       "Notifications in device manager for outages from Test Lab."
     );
 
+  public static final Flag<String> DIRECT_ACCESS_SHOW_OUTAGE_NOTIFICATIONS_SERVICE_KEY =
+    new StringFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.show.outage.notifications.service.key",
+      "Device Streaming outage notifications service key",
+      "Service key for Device Streaming outage notifications in device manager.",
+      "XAmF3juu1qZ8jNAVhv29" // service key for Test Lab
+    );
+
+  public static final Flag<String> DIRECT_ACCESS_SHOW_OUTAGE_NOTIFICATIONS_URL =
+    new StringFlag(
+      FIREBASE_TEST_LAB,
+      "direct.access.show.outage.notifications.url",
+      "Device Streaming outage notifications URL",
+      "URL for Device Streaming outage notifications in device manager.",
+      "status.firebase.google.com"
+    );
+
   // endregion Firebase Test Lab
 
   // region App Insights
@@ -2204,6 +2222,16 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "agent.query.status.banner.enabled",
                     "Enable query status banner in Agent Mode Timeline",
                     "When enabled, the agent mode timeline will show a banner showing thinking stream and tool usage of an ongoing response.");
+
+  public static final Flag<Boolean> STUDIOBOT_PLAN_TOOL_ENABLED =
+    new BooleanFlag(STUDIOBOT, "agent.plan.tool.enabled",
+                    "Enable planning tool for the agent and showing the plan in the thinker",
+                    "When enabled, the agent mode will be able to use the plan tool and we will display the current plan state in the thinker (query status banner).");
+
+  public static final Flag<Boolean> STUDIOBOT_TLDR_MODE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "agent.tldr.mode.enabled",
+                    "Enable tl;dr mode for the agent",
+                    "When enabled, the agent timeline UI will show a summary of each plan step execution.");
 
   public static final Flag<Boolean> STUDIOBOT_STOP_BUTTON_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.stop.button.enabled",
@@ -2572,6 +2600,24 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.test.suite", "Enable Journeys with Gemini test suite",
     "Toggles IDE support for Journeys tests configured as AGP test suites"
   );
+  public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JOURNEYS_ENGINE_DEP = new StringFlag(
+    JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.journeys.engine.dep",
+    "The name of the Journeys test engine dependency used by the Journeys test suite",
+    "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
+    "com.android.tools.journeys:journeys-junit-engine:0.0.1-dev"
+  );
+  public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JUNIT_PLATFORM_ENGINE_DEP = new StringFlag(
+    JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.junit.platform.engine.dep",
+    "The name of the JUnit Platform Engine dependency used by the Journeys test suite",
+    "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
+    "org.junit.platform:junit-platform-engine:1.13.4"
+  );
+  public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JUNIT_PLATFORM_LAUNCHER_DEP = new StringFlag(
+    JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.junit.platform.launcher.dep",
+    "The name of the JUnit Platform Launcher dependency used by the Journeys test suite",
+    "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
+    "org.junit.platform:junit-platform-launcher:1.13.4"
+  );
   // endregion JOURNEYS_WITH_GEMINI
 
   // region WIZARD_MIGRATION
@@ -2637,12 +2683,26 @@ public final class StudioFlags {
 
   // region Wifi 2.0
   private static final FlagGroup WIFI_V2 = new FlagGroup(FLAGS, "wifiv2", "Wifi V2");
-  public static final Flag<Boolean> WIFI_V2_ENABLED =
+  public static final Flag<Boolean> WIFI_V2_DIALOG =
     new BooleanFlag(
       WIFI_V2,
-      "enable",
-      "Enable Wifi 2.0",
-      "Enable Wifi 2.0 feature");
+      "wifiv2.dialog.enable",
+      "Enable Wifi 2.0 dialog",
+      "Enable Wifi 2.0 dialog");
+
+  public static final Flag<Boolean> WIFI_V2_DEVICE_MANAGER =
+    new BooleanFlag(
+      WIFI_V2,
+      "wifiv2.device.manager.enable",
+      "Enable Wifi 2.0 in device manager",
+      "Show wifi pairable devices in device manager");
+
+  public static final Flag<Boolean> WIFI_V2_DEVICE_MANAGER_HIDE_SETTINGS =
+    new BooleanFlag(
+      WIFI_V2,
+      "wifiv2.hide.settings.enable",
+      "Wifi pairable devices in device manager hide settings",
+      "Enable settings to hide wifi pairable devices in device manager");
   // endregion Wifi 2.0
 
   // region Benchmark Survey

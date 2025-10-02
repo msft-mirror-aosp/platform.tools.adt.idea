@@ -24,8 +24,11 @@ import com.google.idea.blaze.qsync.java.WorkspaceResolvingPackageReader;
 import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.google.idea.blaze.qsync.project.PostQuerySyncData;
 import com.google.idea.blaze.qsync.project.ProjectProto.Project;
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate;
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 
 /**
  * Project refresher creates an appropriate {@link RefreshOperation} based on the project and
@@ -59,7 +62,7 @@ public class ProjectBuilder {
     PostQuerySyncData postQuerySyncData,
     BuildGraphData graph,
     ArtifactTracker.State artifactTrackerState,
-    ProjectProtoTransform projectProtoTransform)
+    Collection<? extends ProjectProtoUpdateOperation> projectProtoUpdates)
       throws BuildException {
     Path effectiveWorkspaceRoot =
         postQuerySyncData.vcsState().flatMap(s -> s.workspaceSnapshotPath).orElse(workspaceRoot);
@@ -75,7 +78,10 @@ public class ProjectBuilder {
             context,
             postQuerySyncData.projectDefinition(),
             executor);
-    return projectProtoTransform.apply(
-      graphToProjectConverter.createProject(graph), graph, artifactTrackerState, context);
+    final var update = new ProjectProtoUpdate(graphToProjectConverter.createProject(graph));
+    for (ProjectProtoUpdateOperation updateOperation : projectProtoUpdates) {
+      updateOperation.update(update, graph, artifactTrackerState, context);
+    }
+    return update.build();
   }
 }

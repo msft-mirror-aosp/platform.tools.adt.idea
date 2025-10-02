@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.qsync.java
 
-import com.google.common.base.Joiner
 import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth
 import com.google.idea.blaze.common.Label
@@ -23,17 +22,18 @@ import com.google.idea.blaze.common.NoopContext
 import com.google.idea.blaze.qsync.QuerySyncTestUtils
 import com.google.idea.blaze.qsync.TestDataSyncRunner
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact
+import com.google.idea.blaze.qsync.deps.ArtifactDirectories
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext
 import com.google.idea.blaze.qsync.deps.JavaArtifactInfo
-import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import com.google.idea.blaze.qsync.deps.TargetBuildInfo
 import com.google.idea.blaze.qsync.java.JavaArtifactMetadata.AarResPackage
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.testdata.TestData
-import com.google.protobuf.TextFormat
 import java.nio.file.Path
+import java.time.Instant
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +43,8 @@ import org.mockito.junit.MockitoRule
 
 @RunWith(JUnit4::class)
 class AddDependencyAarsTest {
+  val buildTimestamp = Instant.now()
+
   @get:Rule
   val mockito: MockitoRule = MockitoJUnit.rule()
 
@@ -60,9 +62,9 @@ class AddDependencyAarsTest {
       AddDependencyAars(original.queryData().projectDefinition(), aarPackageMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
+      ProjectProtoUpdate(original.project())
 
-    addAars.update(update, ArtifactTracker.State.EMPTY, NoopContext())
+    addAars.update(update, original.graph(), ArtifactTracker.State.EMPTY, NoopContext())
     val newProject = update.build()
 
     Truth.assertThat(newProject.libraries).isEqualTo(original.project().libraries)
@@ -79,10 +81,11 @@ class AddDependencyAarsTest {
       AddDependencyAars(original.queryData().projectDefinition(), aarPackageMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
+      ProjectProtoUpdate(original.project())
 
     addAars.update(
       update,
+      original.graph(),
       ArtifactTracker.State.forTargets(
         TargetBuildInfo.forJavaTarget(
           JavaArtifactInfo.empty(Label.of("//path/to:dep")).toBuilder()
@@ -99,7 +102,7 @@ class AddDependencyAarsTest {
                 )
             )
             .build(),
-          DependencyBuildContext.NONE
+          DependencyBuildContext.create("", buildTimestamp)
         )
       ), NoopContext()
     )
@@ -124,11 +127,12 @@ class AddDependencyAarsTest {
       .isEqualTo(
         ProjectProto.ArtifactDirectories(
           directoriesMap = mapOf(
-            ".bazel/buildout" to ProjectProto.ArtifactDirectoryContents(
+            ArtifactDirectories.DEFAULT to ProjectProto.ArtifactDirectoryContents(
               contents = mapOf(
                 "path/to/dep.aar" to ProjectProto.ProjectArtifact(
                   target = Label.of("//path/to:dep"),
                   buildArtifact = ProjectProto.BuildArtifact("aardigest"),
+                  fromBuild = buildTimestamp,
                   transform = ProjectProto.ProjectArtifact.ArtifactTransform.UNZIP,
                 )
               )
@@ -147,11 +151,13 @@ class AddDependencyAarsTest {
       AddDependencyAars(original.queryData().projectDefinition(), aarPackageMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
+      ProjectProtoUpdate(original.project())
 
     addAars.update(
       update,
+      original.graph(),
       ArtifactTracker.State.forJavaArtifacts(
+        DependencyBuildContext.create("", buildTimestamp),
         ImmutableList.of(
           JavaArtifactInfo.empty(Label.of("//path/to:dep")).toBuilder()
             .setIdeAar(
@@ -176,13 +182,13 @@ class AddDependencyAarsTest {
       .isEqualTo(
         ProjectProto.ArtifactDirectories(
           directoriesMap = mapOf(
-            ".bazel/buildout" to ProjectProto.ArtifactDirectoryContents(
+            ArtifactDirectories.DEFAULT to ProjectProto.ArtifactDirectoryContents(
               contents = mapOf(
                 "path/to/dep.aar" to ProjectProto.ProjectArtifact(
                   target = Label.of("//path/to:dep"),
                   buildArtifact = ProjectProto.BuildArtifact("aardigest"),
+                  fromBuild = buildTimestamp,
                   transform = ProjectProto.ProjectArtifact.ArtifactTransform.UNZIP,
-
                   )
               )
             )

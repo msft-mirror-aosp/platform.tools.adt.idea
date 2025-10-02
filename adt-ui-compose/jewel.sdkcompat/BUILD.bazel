@@ -31,7 +31,10 @@ iml_module(
 iml_module(
     name = "jewel.sdkcompat.251",
     srcs = ["api251"],
-    compatible_intellij_platforms = ["intellij_ce_2025_1"],
+    compatible_intellij_platforms = [
+        "intellij_ce_2025_1",
+        "sherlock-sdk",
+    ],
     iml_files = ["jewel.sdkcompat.iml"],
     visibility = ["//visibility:public"],
     exports = [
@@ -116,6 +119,7 @@ iml_alias(
         "intellij_ce_2024_3": "jewel.sdkcompat.243",
         "intellij_ce_2025_1": "jewel.sdkcompat.251",
         "intellij_ce_2025_2": "jewel.sdkcompat.252",
+        "sherlock-sdk": "jewel.sdkcompat.251",
     },
     visibility = ["//visibility:public"],
 )

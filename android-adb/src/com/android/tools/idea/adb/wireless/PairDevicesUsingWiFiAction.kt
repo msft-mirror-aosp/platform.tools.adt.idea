@@ -15,20 +15,13 @@
  */
 package com.android.tools.idea.adb.wireless
 
-import com.android.adblib.AdbFeatures.TRACK_MDNS_SERVICE
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.adb.wireless.v2.ui.WifiAvailableDevicesDialog
-import com.android.tools.idea.adblib.AdbLibService
-import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.DumbAwareAction
 import icons.StudioIcons
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** The action to show the [WiFiPairingDialog] window. */
 class PairDevicesUsingWiFiAction : DumbAwareAction(StudioIcons.Avd.PAIR_OVER_WIFI) {
@@ -41,24 +34,13 @@ class PairDevicesUsingWiFiAction : DumbAwareAction(StudioIcons.Avd.PAIR_OVER_WIF
   @UiThread
   override fun actionPerformed(event: AnActionEvent) {
     val project = event.project ?: return
-    if (!StudioFlags.WIFI_V2_ENABLED.get()) {
+    if (!StudioFlags.WIFI_V2_DIALOG.get()) {
       PairDevicesUsingWiFiService.getInstance(project).createPairingDialogController().showDialog()
       return
     }
-    project.coroutineScope.launch(Dispatchers.Default) {
-      val hostFeatures = AdbLibService.getSession(project).hostServices.hostFeatures()
-      withContext(Dispatchers.EDT) {
-        if (hostFeatures.contains(TRACK_MDNS_SERVICE)) {
-          val wifiPairingService =
-            WiFiPairingServiceImpl(RandomProvider(), AdbServiceWrapperAdbLibImpl(project))
-          WifiAvailableDevicesDialog(project, wifiPairingService).showDialog()
-        } else {
-          PairDevicesUsingWiFiService.getInstance(project)
-            .createPairingDialogController()
-            .showDialog()
-        }
-      }
-    }
+    val wifiPairingService =
+      WiFiPairingServiceImpl(RandomProvider(), AdbServiceWrapperAdbLibImpl(project))
+    WifiAvailableDevicesDialog(project, wifiPairingService).showDialog()
   }
 
   companion object {

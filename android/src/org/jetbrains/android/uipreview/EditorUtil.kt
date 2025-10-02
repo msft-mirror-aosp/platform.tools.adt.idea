@@ -52,8 +52,8 @@ object EditorUtil {
     val psiFile = PsiManager.getInstance(project).findFile(file) ?: return
     val currentPane = ProjectView.getInstance(project).currentProjectViewPane ?: return
 
-    SlowOperations.allowSlowOperations(
-      ThrowableComputable { ProjectViewSelectInPaneTarget(project, currentPane, true).select(psiFile, false) }
-    )
+    SlowOperations.knownIssue("b/322952957").use {
+      ProjectViewSelectInPaneTarget(project, currentPane, true).select(psiFile, false)
+    }
   }
 }

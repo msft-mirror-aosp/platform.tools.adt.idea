@@ -22,7 +22,6 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_ANDROID_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_TEST_FIXTURES
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
-import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidArtifact
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeAndroidProject
@@ -74,7 +73,6 @@ import com.android.tools.lint.model.LintModelMavenName.Companion.NON_MAVEN
 import com.android.tools.lint.model.LintModelModule
 import com.android.tools.lint.model.LintModelModuleLoader
 import com.android.tools.lint.model.LintModelModuleType
-import com.android.tools.lint.model.LintModelNamespacingMode
 import com.android.tools.lint.model.LintModelResourceField
 import com.android.tools.lint.model.LintModelSerialization
 import com.android.tools.lint.model.LintModelSeverity
@@ -546,7 +544,6 @@ class LintModelFactory : LintModelModuleLoader {
       viewBinding = usesViewBinding(project, agpVersion),
       coreLibraryDesugaringEnabled =
         project.javaCompileOptions?.isCoreLibraryDesugaringEnabled == true,
-      namespacingMode = getNamespacingMode(project),
     )
   }
 
@@ -568,13 +565,6 @@ class LintModelFactory : LintModelModuleLoader {
 
   private fun getAgpVersion(project: IdeAndroidProject): AgpVersion? {
     return AgpVersion.tryParse(project.agpVersion)
-  }
-
-  private fun getNamespacingMode(project: IdeAndroidProject): LintModelNamespacingMode {
-    return when (project.aaptOptions.namespacing) {
-      IdeAaptOptions.Namespacing.DISABLED -> LintModelNamespacingMode.DISABLED
-      IdeAaptOptions.Namespacing.REQUIRED -> LintModelNamespacingMode.REQUIRED
-    }
   }
 
   private fun getMavenName(androidProject: IdeAndroidProject): LintModelMavenName? {

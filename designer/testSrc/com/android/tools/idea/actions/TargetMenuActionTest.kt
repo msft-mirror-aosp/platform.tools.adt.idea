@@ -22,13 +22,13 @@ import com.android.tools.adtui.actions.prettyPrintActions
 import com.android.tools.idea.actions.TargetMenuAction.SetTargetAction
 import com.android.tools.idea.configurations.ConfigurationForFile
 import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.module.AndroidModuleInfo
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
-import okhttp3.internal.platform.Jdk9Platform.Companion.majorVersion
 import org.jetbrains.android.AndroidTestCase
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.spy
@@ -155,6 +155,36 @@ class TargetMenuActionTest : AndroidTestCase() {
         assertFalse(Toggleable.isSelected(event.presentation))
       }
     }
+  }
+
+  fun testUpdateApiLevels() {
+    val file = runInEdtAndGet {
+      myFixture.addFileToProject("res/layout/layout.xml", "<LinearLayout/>")
+    }
+    val manager = createSpiedConfigurationManager()
+    val config = spy(ConfigurationForFile(file.virtualFile, manager, FolderConfiguration()))
+    val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(config))
+    val menuAction = TargetMenuAction()
+
+    // Set an initial target
+    val initialTarget = manager.targets.find { it.version.apiLevel == 28 }!!
+    config.target = initialTarget
+    assertThat(config.target!!.version.apiLevel).isEqualTo(28)
+
+    // Now, change the minSdkVersion of the module and check that the target has been updated
+    val moduleInfo = mock<AndroidModuleInfo>()
+    whenever(moduleInfo.minSdkVersion).thenReturn(AndroidVersion(30))
+    val configModule = mock<com.android.tools.idea.configurations.StudioConfigurationModelModule>()
+    whenever(configModule.androidModuleInfo).thenReturn(moduleInfo)
+    doReturn(configModule).whenever(config).configModule
+
+    // Trigger the update
+    menuAction.update(TestActionEvent.createTestEvent(dataContext))
+
+    // Check that the target has been updated to a valid one (>= 30)
+    val newTarget = config.target
+    assertThat(newTarget).isNotNull()
+    assertThat(newTarget!!.version.apiLevel).isEqualTo(30)
   }
 
   private fun createSpiedConfigurationManager(): ConfigurationManager {

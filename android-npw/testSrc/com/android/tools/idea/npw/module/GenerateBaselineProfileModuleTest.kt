@@ -248,6 +248,7 @@ class GenerateBaselineProfileModuleTest {
         isCompose = false,
         useGenericLocalTests = true,
         useGenericInstrumentedTests = true,
+        currentVariant = "debug",
       )
 
     runWriteCommandAction(projectRule.project) {

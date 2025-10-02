@@ -29,7 +29,7 @@ import com.google.idea.blaze.qsync.artifacts.BuildArtifact
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext
 import com.google.idea.blaze.qsync.deps.JavaArtifactInfo
-import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import com.google.idea.blaze.qsync.deps.TargetBuildInfo
 import com.google.idea.blaze.qsync.java.JavaArtifactMetadata.SrcJarJavaPackageRoots
 import com.google.idea.blaze.qsync.project.ProjectPath
@@ -73,9 +73,9 @@ class AddDependencyGenSrcsJarsTest {
   @Throws(Exception::class)
   private fun no_deps_built(addGenSrcJars: AddDependencyGenSrcsJars) {
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
+      ProjectProtoUpdate(original.project())
 
-    addGenSrcJars.update(update, ArtifactTracker.State.EMPTY, NoopContext())
+    addGenSrcJars.update(update, original.graph(), ArtifactTracker.State.EMPTY, NoopContext())
 
     val newProject = update.build()
 
@@ -98,6 +98,7 @@ class AddDependencyGenSrcsJarsTest {
 
     val artifactState =
       ArtifactTracker.State.forJavaArtifacts(
+        DependencyBuildContext.NONE,
         JavaArtifactInfo.empty(testProject.getAssumedOnlyLabel()).toBuilder()
           .setGenSrcs(
             ImmutableList.of(
@@ -112,8 +113,8 @@ class AddDependencyGenSrcsJarsTest {
       )
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    addGenSrcJars.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    addGenSrcJars.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
 
     Mockito.verify<BuildArtifactCache?>(cache, Mockito.never()).get(ArgumentMatchers.any())
@@ -171,8 +172,8 @@ class AddDependencyGenSrcsJarsTest {
       )
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    addGenSrcJars.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    addGenSrcJars.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
 
     Truth.assertThat(newProject.libraries.values).containsExactly(*expectedLibraries)
@@ -221,8 +222,8 @@ class AddDependencyGenSrcsJarsTest {
       )
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    addGenSrcJars.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    addGenSrcJars.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
 
     Truth.assertThat(newProject.libraries.values).containsExactly(*expectedLibraries)

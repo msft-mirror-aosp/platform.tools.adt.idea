@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,29 +47,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.tools.adtui.ImageUtils
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getTemplateTitle
 import com.android.tools.idea.wizard.template.Template
+import com.intellij.openapi.diagnostic.fileLogger
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.UIUtil
 import icons.StudioIconsCompose
 import icons.StudioIllustrationsCompose
-import java.io.File
+import java.awt.Dimension
+import java.awt.image.BufferedImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
@@ -81,10 +90,12 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
+import org.jetbrains.jewel.ui.theme.textAreaStyle
 
 // This should be unified with com.android.studio.ml.bot.ui.compose.timeline.emptystate.Greeting.kt
 internal val brandColor1 = Color(0xFF3186FF)
@@ -214,6 +225,8 @@ internal fun GeminiRightPanel(
   textFieldState: TextFieldState,
   geminiPluginAvailable: Boolean,
   hasContextSharing: Boolean,
+  attachedImages: List<VirtualFile>,
+  onAttachImage: () -> Unit,
 ) {
   Column(
     modifier = Modifier.fillMaxSize(),
@@ -225,7 +238,7 @@ internal fun GeminiRightPanel(
     } else if (!hasContextSharing) {
       PermissionsError("Enable project context sharing to continue.")
     } else {
-      NewProjectWizardWithGemini(textFieldState)
+      NewProjectWizardWithGemini(textFieldState, attachedImages, onAttachImage)
     }
   }
 }
@@ -247,9 +260,14 @@ private fun PermissionsError(text: String) {
 }
 
 @Composable
-private fun NewProjectWizardWithGemini(textFieldState: TextFieldState) {
+private fun NewProjectWizardWithGemini(
+  textFieldState: TextFieldState,
+  attachedImages: List<VirtualFile>,
+  onAttachImage: () -> Unit,
+) {
   // Need to do animation here.
   val brush = CssGradientBrush(angleDegrees = -16.0, colors = colors, stops = stops, scaleX = 4f)
+  val shape = RoundedCornerShape(4.dp)
 
   Text(
     modifier = Modifier.padding(bottom = 8.dp),
@@ -270,13 +288,63 @@ private fun NewProjectWizardWithGemini(textFieldState: TextFieldState) {
         color = JewelTheme.globalColors.text.info,
       ),
   )
-  TextArea(
+  Column(
     modifier =
-      Modifier.size(450.dp, 150.dp)
-        .testTag(ChooseAndroidProjectStepLayoutTags.RightPanel.geminiTextArea),
-    state = textFieldState,
-    placeholder = { Text(text = "Ask Gemini to create a to-do list app") },
-  )
+      Modifier.border(1.dp, JewelTheme.textAreaStyle.colors.border, shape)
+        .background(JewelTheme.textAreaStyle.colors.background, shape)
+        .padding(4.dp)
+  ) {
+    TextArea(
+      modifier =
+        Modifier.size(450.dp, 118.dp)
+          .testTag(ChooseAndroidProjectStepLayoutTags.RightPanel.geminiTextArea),
+      state = textFieldState,
+      undecorated = true,
+      placeholder = { Text(text = "Ask Gemini to create a to-do list app") },
+    )
+    FlowRow(
+      modifier = Modifier.padding(4.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      maxItemsInEachRow = 4,
+      maxLines = 3,
+    ) {
+      attachedImages.forEach { AttachedImage(it) }
+    }
+    Row(modifier = Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+      IconButton(modifier = Modifier.padding(end = 2.dp), onClick = onAttachImage) {
+        Icon(
+          key = StudioIconsCompose.LayoutEditor.Properties.ImagePicker,
+          contentDescription = null,
+        )
+      }
+      Text(text = "Attach images")
+    }
+  }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun AttachedImage(virtualFile: VirtualFile) {
+  val bufferedImageState by
+    produceState<BufferedImage?>(initialValue = null, virtualFile) {
+      withContext(Dispatchers.IO) {
+        try {
+          // Use com.android.studio.ml.bot.AdtUiImageUtils.readImageAtScale if this gets moved to
+          // aiplugin.
+          value = ImageUtils.readImageAtScale(virtualFile.inputStream, Dimension(768, 768))
+        } catch (_: Exception) {}
+      }
+    }
+
+  bufferedImageState?.let {
+    Image(
+      painter = it.toPainter(),
+      modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)),
+      contentScale = ContentScale.Crop,
+      contentDescription = "Attached image: ${virtualFile.name}",
+    )
+  }
 }
 
 @Composable
@@ -390,22 +458,26 @@ private fun TemplateImage(template: Template) {
   if (template == Template.NoActivity) {
     Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
   } else {
-
-    val imageState by
+    val imageBitmap by
       produceState<ImageBitmap?>(initialValue = null, template) {
-        withContext(Dispatchers.IO) {
-          try {
-            val file = File(template.thumb().path().file)
-            val bytes = file.inputStream().use { it.readAllBytes() }
-            value = bytes.decodeToImageBitmap()
-          } catch (_: Exception) {}
-        }
+        value =
+          withContext(Dispatchers.Default) {
+            val iconUrl = template.thumb().path()
+            try {
+              val bytes =
+                withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
+              bytes.decodeToImageBitmap()
+            } catch (e: Exception) {
+              fileLogger().error("Failed to load icon: $iconUrl", e)
+              null
+            }
+          }
       }
 
-    if (imageState == null) {
+    if (imageBitmap == null) {
       Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
     } else {
-      Image(bitmap = imageState!!, contentDescription = "")
+      Image(bitmap = imageBitmap!!, contentDescription = "")
     }
   }
 }

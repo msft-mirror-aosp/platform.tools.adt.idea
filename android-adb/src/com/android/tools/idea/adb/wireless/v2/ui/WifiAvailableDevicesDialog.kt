@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,10 +77,11 @@ import icons.StudioIconsCompose
 import javax.swing.JComponent
 import kotlin.collections.forEach
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.map
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.styling.LocalLinkStyle
 
@@ -104,10 +106,17 @@ class WifiAvailableDevicesDialog(
   internal fun WifiDialog() {
     val state by
       produceState<MdnsSupportState?>(null) {
-        value = wifiPairingService.checkMdnsSupport()
-        if (value == MdnsSupportState.Supported) {
-          startTrackingMdnsServices()
+        val supportState = wifiPairingService.checkMdnsSupport()
+        if (supportState != MdnsSupportState.Supported) {
+          value = supportState
+          return@produceState
         }
+        if (!wifiPairingService.isTrackMdnsServiceAvailable()) {
+          value = MdnsSupportState.AdbVersionTooLow
+          return@produceState
+        }
+        value = supportState
+        trackMdnsServices()
       }
 
     when (state) {
@@ -185,7 +194,7 @@ class WifiAvailableDevicesDialog(
         project,
         true,
         DialogWrapper.IdeModalityType.IDE,
-        title = "Pair new devices over Wi-Fi",
+        title = "Pair devices over Wi-Fi",
         isModal = true,
         hasOkButton = false,
         cancelButtonText = "Close",
@@ -196,11 +205,16 @@ class WifiAvailableDevicesDialog(
     dialog.init()
   }
 
-  private suspend fun startTrackingMdnsServices() {
+  private suspend fun trackMdnsServices() {
     wifiPairingService
       .trackMdnsServices()
       .map { it.tlsMdnsServices.toSet() }
       .trackSetChanges()
+      // It's not possible to pair emulators.
+      .filterNot {
+        it is SetChange.Add &&
+          it.value.service.serviceInstanceName.instance.startsWith("adb-EMULATOR")
+      }
       .collect {
         when (it) {
           is SetChange.Remove -> {
@@ -336,8 +350,23 @@ class WifiAvailableDevicesDialog(
 
   private val columns =
     listOf<TableColumn<MdnsTlsService>>(
-      TableColumn("", TableColumnWidth.Fixed(16.dp)) { device, _ ->
-        IconButton(
+      TableTextColumn<MdnsTlsService>(
+        "Name",
+        TableColumnWidth.Weighted(2f),
+        attribute = { buildDeviceName(it.service) },
+        maxLines = 2,
+      ),
+      TableTextColumn(
+        "IP Address & Port",
+        TableColumnWidth.Weighted(2f),
+        attribute = { "${it.service.ipv4}:${it.service.port}" },
+      ),
+      TableTextColumn<MdnsTlsService>(
+        "API",
+        attribute = { it.service.buildVersionSdkFull ?: "Unknown" },
+      ),
+      TableColumn("", TableColumnWidth.Weighted(1f)) { device, _ ->
+        OutlinedButton(
           onClick = {
             val controller =
               PairDevicesUsingWiFiService.getInstance(project)
@@ -352,30 +381,16 @@ class WifiAvailableDevicesDialog(
             controller.showDialog()
           }
         ) {
-          Icon(
-            key = StudioIconsCompose.Avd.PairOverWifi,
-            contentDescription = "pair device over wifi",
-          )
+          Row {
+            Icon(
+              key = StudioIconsCompose.Avd.PairOverWifi,
+              contentDescription = "pair device over wifi",
+            )
+            Spacer(Modifier.width(4.dp))
+            Text("Pair")
+          }
         }
       },
-      TableTextColumn<MdnsTlsService>(
-        "Name",
-        TableColumnWidth.Weighted(2f),
-        attribute = { buildDeviceName(it.service) },
-        maxLines = 2,
-      ),
-      TableTextColumn("IP Address & Port", attribute = { "${it.service.ipv4}:${it.service.port}" }),
-      TableTextColumn(
-        "Serial Number",
-        attribute = {
-          it.service.serviceInstanceName.instance.substringAfter("-").substringBefore("-")
-        },
-      ),
-      TableTextColumn<MdnsTlsService>(
-        "API",
-        width = TableColumnWidth.ToFit("API", extraPadding = 16.dp),
-        attribute = { it.service.buildVersionSdkFull ?: "Unknown" },
-      ),
     )
 
   fun showDialog() {

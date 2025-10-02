@@ -30,17 +30,17 @@ import com.google.idea.blaze.common.NoopContext;
 import com.google.idea.blaze.qsync.QuerySyncProjectSnapshot;
 import com.google.idea.blaze.qsync.TestDataSyncRunner;
 import com.google.idea.blaze.qsync.artifacts.DigestMap;
+import com.google.idea.blaze.qsync.deps.ArtifactDirectories;
 import com.google.idea.blaze.qsync.deps.ArtifactTracker;
 import com.google.idea.blaze.qsync.deps.ArtifactTracker.State;
 import com.google.idea.blaze.qsync.deps.CcToolchain;
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext;
-import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate;
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate;
 import com.google.idea.blaze.qsync.deps.TargetBuildInfo;
 import com.google.idea.blaze.qsync.java.PackageStatementParser;
 import com.google.idea.blaze.qsync.java.cc.CcCompilationInfoOuterClass.CcCompilationInfo;
 import com.google.idea.blaze.qsync.java.cc.CcCompilationInfoOuterClass.CcTargetInfo;
 import com.google.idea.blaze.qsync.java.cc.CcCompilationInfoOuterClass.CcToolchainInfo;
-import com.google.idea.blaze.qsync.project.LanguageClassProto.LanguageClass;
 import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.google.idea.blaze.qsync.project.ProjectProto;
 import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilationContext;
@@ -81,10 +81,10 @@ public class ConfigureCcCompilationTest {
   public void empty() throws Exception {
     QuerySyncProjectSnapshot original = syncRunner.sync(TestData.CC_LIBRARY_QUERY);
     ProjectProtoUpdate update =
-        new ProjectProtoUpdate(original.project(), original.graph(), context);
+        new ProjectProtoUpdate(original.project());
     ConfigureCcCompilation ccConfig =
         new ConfigureCcCompilation(ArtifactTracker.State.EMPTY, update);
-    ccConfig.update();
+    ccConfig.update(original.graph(), context);
     ProjectProto.Project project = update.build();
     assertThat(project.getCcWorkspace()).isEqualTo(CcWorkspace.getDefaultInstance());
   }
@@ -93,7 +93,7 @@ public class ConfigureCcCompilationTest {
   public void basics() throws Exception {
     QuerySyncProjectSnapshot original = syncRunner.sync(TestData.CC_LIBRARY_QUERY);
     ProjectProtoUpdate update =
-        new ProjectProtoUpdate(original.project(), original.graph(), context);
+        new ProjectProtoUpdate(original.project());
 
     Label ccTargetLabel = getOnlyElement(TestData.CC_LIBRARY_QUERY.getAssumedLabels());
     CcCompilationInfo compilationInfo =
@@ -134,7 +134,7 @@ public class ConfigureCcCompilationTest {
 
     ConfigureCcCompilation ccConfig =
         new ConfigureCcCompilation(toArtifactState(compilationInfo), update);
-    ccConfig.update();
+    ccConfig.update(original.graph(), context);
 
     ProjectProto.Project project = update.build();
 
@@ -206,7 +206,7 @@ public class ConfigureCcCompilationTest {
             project
                 .getArtifactDirectories()
                 .getDirectoriesMap()
-                .get(".bazel/buildout")
+                .get(ArtifactDirectories.DEFAULT)
                 .getContents()
                 .keySet())
         .containsExactly(
@@ -221,7 +221,7 @@ public class ConfigureCcCompilationTest {
   public void multi_srcs_share_flagset() throws Exception {
     QuerySyncProjectSnapshot original = syncRunner.sync(TestData.CC_MULTISRC_QUERY);
     ProjectProtoUpdate update =
-        new ProjectProtoUpdate(original.project(), original.graph(), context);
+        new ProjectProtoUpdate(original.project());
     Path pkgPath = getOnlyElement(TestData.CC_MULTISRC_QUERY.getRelativeSourcePaths());
     ImmutableList<Label> labels =
         ImmutableList.of(
@@ -253,7 +253,7 @@ public class ConfigureCcCompilationTest {
             .build();
 
     ConfigureCcCompilation ccConfig = new ConfigureCcCompilation(toArtifactState(ccCi), update);
-    ccConfig.update();
+    ccConfig.update(original.graph(), context);
 
     ProjectProto.Project project = update.build();
 

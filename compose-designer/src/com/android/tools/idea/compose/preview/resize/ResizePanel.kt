@@ -35,6 +35,8 @@ import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.preview.Colors
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
+import com.android.tools.preview.MAX_DIMENSION_DP
+import com.android.tools.preview.MIN_DIMENSION_DP
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
@@ -63,7 +65,6 @@ import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.JBUI.scale
 import com.intellij.util.ui.UIUtil.invokeLaterIfNeeded
 import java.awt.BorderLayout
-import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.event.ActionListener
 import java.awt.event.FocusAdapter
@@ -80,11 +81,6 @@ import javax.swing.text.AttributeSet
 import javax.swing.text.DocumentFilter
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
-
-private const val TEXT_FIELD_WIDTH = 60
-
-private const val MINIMUM_SIZE_DP = 1
-private const val MAXIMUM_SIZE_DP = 5000
 
 /**
  * Panel that allows resizing the preview by selecting a device or entering custom dimensions. It is
@@ -191,6 +187,7 @@ class ResizePanel(parentDisposable: Disposable) :
     currentSceneManager?.sceneRenderConfiguration?.clearOverrideRenderSize = true
     currentSceneManager?.forceNextResizeToUseOriginalSize = true
     currentConfiguration?.setEffectiveDevice(originalDeviceSnapshot, originalDeviceStateSnapshot)
+    dimensionInputsAction.updateTextFieldsFromConfiguration()
     ComposeResizeToolingUsageTracker.logResizeReverted(
       currentSceneManager?.scene?.designSurface,
       currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
@@ -223,6 +220,7 @@ class ResizePanel(parentDisposable: Disposable) :
   private fun handleDeviceSelection(selectedItem: Device) {
     dimensionInputsAction.resetErrors()
     currentConfiguration?.setEffectiveDevice(selectedItem, selectedItem.defaultState)
+    dimensionInputsAction.updateTextFieldsFromConfiguration()
     ComposeResizeToolingUsageTracker.logResizeStopped(
       currentSceneManager?.scene?.designSurface,
       currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
@@ -276,6 +274,17 @@ class ResizePanel(parentDisposable: Disposable) :
 
   override fun dispose() {
     clearAndHide()
+  }
+
+  override fun setVisible(isVisible: Boolean) {
+    if (this.isVisible == isVisible) return
+    if (isVisible) {
+      // When the panel is becoming visible, ensure that the text fields are updated from the
+      // current configuration. This is to prevent stale values from being displayed, for example
+      // when the user has cleared the text fields and hidden the panel.
+      dimensionInputsAction.updateTextFieldsFromConfiguration()
+    }
+    super.setVisible(isVisible)
   }
 
   @TestOnly
@@ -379,7 +388,7 @@ class ResizePanel(parentDisposable: Disposable) :
       }
     }
 
-    private fun updateTextFieldsFromConfiguration() {
+    fun updateTextFieldsFromConfiguration() {
       resetErrors()
       val config = currentConfiguration ?: return
       val (wDp, hDp) = config.deviceSizeDp()
@@ -393,8 +402,8 @@ class ResizePanel(parentDisposable: Disposable) :
     }
 
     private fun createDimensionTextField(valueName: String): IntegerField {
-      return IntegerField(valueName, MINIMUM_SIZE_DP, MAXIMUM_SIZE_DP).apply {
-        preferredSize = Dimension(scale(TEXT_FIELD_WIDTH), preferredSize.height)
+      return IntegerField(valueName, MIN_DIMENSION_DP, MAX_DIMENSION_DP).apply {
+        columns = 4
         (document as? AbstractDocument)?.documentFilter =
           object : DocumentFilter() {
             override fun insertString(

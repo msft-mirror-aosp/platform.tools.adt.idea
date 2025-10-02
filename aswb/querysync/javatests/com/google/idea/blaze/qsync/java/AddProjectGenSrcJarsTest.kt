@@ -26,7 +26,7 @@ import com.google.idea.blaze.qsync.artifacts.BuildArtifact
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext
 import com.google.idea.blaze.qsync.deps.JavaArtifactInfo
-import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import com.google.idea.blaze.qsync.deps.TargetBuildInfo
 import com.google.idea.blaze.qsync.java.JavaArtifactMetadata.SrcJarPrefixedJavaPackageRoots
 import com.google.idea.blaze.qsync.java.SrcJarInnerPathFinder.JarPath
@@ -58,6 +58,7 @@ class AddProjectGenSrcJarsTest {
 
     val artifactState =
       ArtifactTracker.State.forJavaArtifacts(
+        DependencyBuildContext.NONE,
         JavaArtifactInfo.empty(of("//java/com/google/common/collect:collect")).toBuilder()
           .setGenSrcs(
             ImmutableList.of(
@@ -75,8 +76,8 @@ class AddProjectGenSrcJarsTest {
       AddProjectGenSrcJars(original.queryData().projectDefinition(), innerPathsMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    javaDeps.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    javaDeps.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
     Truth.assertThat(newProject.libraries).isEqualTo(original.project().libraries)
     Truth.assertThat(newProject.modules).isEqualTo(original.project().modules)
@@ -116,8 +117,8 @@ class AddProjectGenSrcJarsTest {
       AddProjectGenSrcJars(original.queryData().projectDefinition(), innerPathsMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    javaDeps.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    javaDeps.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
     Truth.assertThat(newProject.libraries).isEqualTo(original.project().libraries)
     val workspace = newProject.modules[0]
@@ -174,8 +175,8 @@ class AddProjectGenSrcJarsTest {
       AddProjectGenSrcJars(original.queryData().projectDefinition(), innerPathsMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    javaDeps.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    javaDeps.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
     Truth.assertThat(newProject.libraries).isEqualTo(original.project().libraries)
     val workspace = newProject.modules[0]
@@ -227,8 +228,8 @@ class AddProjectGenSrcJarsTest {
       AddProjectGenSrcJars(original.queryData().projectDefinition(), innerPathsMetadata)
 
     val update =
-      ProjectProtoUpdate(original.project(), original.graph(), NoopContext())
-    javaDeps.update(update, artifactState, NoopContext())
+      ProjectProtoUpdate(original.project())
+    javaDeps.update(update, original.graph(), artifactState, NoopContext())
     val newProject = update.build()
     Truth.assertThat(newProject.libraries).isEqualTo(original.project().libraries)
     val workspace = newProject.modules[0]

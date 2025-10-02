@@ -13,5 +13,11 @@ android {
       enableForTestFailures true
       maxSnapshotsForTestFailures 4
     }
+    suites {
+      journeysTest {
+      }
+      otherTestSuite {
+      }
+    }
   }
 }

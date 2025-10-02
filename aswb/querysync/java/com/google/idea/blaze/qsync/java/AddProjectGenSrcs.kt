@@ -24,9 +24,10 @@ import com.google.idea.blaze.qsync.artifacts.BuildArtifact
 import com.google.idea.blaze.qsync.deps.ArtifactDirectories
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext
-import com.google.idea.blaze.qsync.deps.ProjectProtoUpdate
-import com.google.idea.blaze.qsync.deps.ProjectProtoUpdateOperation
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.google.idea.blaze.qsync.deps.TargetBuildInfo
+import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.TestSourceGlobMatcher
 import java.nio.file.Path
@@ -90,11 +91,10 @@ class AddProjectGenSrcs(
   @Throws(BuildException::class)
   override fun update(
     update: ProjectProtoUpdate,
+    buildGraph: BuildGraphData,
     artifactState: ArtifactTracker.State,
     context: Context<*>
   ) {
-    val javaSrc = update.artifactDirectory(ArtifactDirectories.JAVA_GEN_SRC)
-    val javatestsSrc = update.artifactDirectory(ArtifactDirectories.JAVA_GEN_TESTSRC)
     val srcsByJavaPath = mutableMapOf<Path, MutableList<ArtifactWithOrigin>>()
     val missingPackageArtifacts = mutableListOf<BuildArtifact>()
     // @@aswb_generated_sources// is a temporary generated sources anchor used unitl we can split generated sources
@@ -121,7 +121,7 @@ class AddProjectGenSrcs(
       }
       if (!missingPackageArtifacts.isEmpty()) {
         val showSourcesLimit = 10
-        update.context().output(
+        context.output(
           PrintOutput.error(
             "WARNING: Ignoring %d generated source file(s) due to missing package info:\n  %s",
             missingPackageArtifacts.size,
@@ -132,18 +132,16 @@ class AddProjectGenSrcs(
             ) { it.artifactPath().toString() }
           )
         )
-        update.context().setHasWarnings()
+        context.setHasWarnings()
       }
-      for (entry in srcsByJavaPath.entries) {
+      val destinationToChosenArtifact = srcsByJavaPath.entries.map { entry ->
         val finalDest = entry.key
         val candidates: MutableCollection<ArtifactWithOrigin> = entry.value
         // before warning, check that the conflicting sources do actually differ. If they're the
         // same artifact underneath, there's no actual conflict.
         val uniqueDigests = candidates.map { it.artifact.digest() }.distinct().count()
         if (uniqueDigests > 1) {
-          update
-            .context()
-            .output(
+          context.output(
               PrintOutput.error(
                 ("WARNING: your project contains conflicting generated java sources for:\n"
                  + "  %s\n"
@@ -159,25 +157,42 @@ class AddProjectGenSrcs(
                   }
               )
             )
-          update.context().setHasWarnings()
+          context.setHasWarnings()
         }
 
         val chosen = candidates.minOrNull() ?: error("No candidates")
-        if (testSourceMatcher.matches(chosen.artifact.target().getBuildPackagePath())) {
-          javatestsSrc.addIfNewer(finalDest, chosen.artifact, chosen.origin)
-        }
-        else {
-          javaSrc.addIfNewer(finalDest, chosen.artifact, chosen.origin)
+        finalDest to chosen
+      }
+
+      val (testSrcs, srcs) =
+        destinationToChosenArtifact.partition { (_, chosen) -> testSourceMatcher.matches(chosen.artifact.target().getBuildPackagePath()) }
+
+      if (srcs.isNotEmpty()) {
+        update.artifactDirectory(ArtifactDirectories.JAVA_GEN_SRC) {
+          for ((finalDest, chosen) in srcs) {
+            addIfNewer(finalDest, chosen.artifact, chosen.origin)
+          }
+          contentEntry(ArtifactDirectories.JAVA_GEN_SRC) {
+            addSourceRoot(
+              root = ArtifactDirectories.JAVA_GEN_SRC,
+              javaPackage = "",
+              isTest = false,
+              isGenerated = true
+            )
+          }
         }
       }
-      for (gensrcDir in listOf(javaSrc, javatestsSrc)) {
-        if (!gensrcDir.isEmpty) {
-          val path = gensrcDir.root()
-          contentEntry(path) {
+
+      if (testSrcs.isNotEmpty()) {
+        update.artifactDirectory(ArtifactDirectories.JAVA_GEN_TESTSRC) {
+          for ((finalDest, chosen) in testSrcs) {
+            addIfNewer(finalDest, chosen.artifact, chosen.origin)
+          }
+          contentEntry(ArtifactDirectories.JAVA_GEN_TESTSRC) {
             addSourceRoot(
-              root = path,
+              root = ArtifactDirectories.JAVA_GEN_TESTSRC,
               javaPackage = "",
-              isTest = gensrcDir === javatestsSrc,
+              isTest = true,
               isGenerated = true
             )
           }
