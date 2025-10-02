@@ -155,7 +155,6 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
       )
     }
     populateGradleProjectModel(controller, buildModels, modelConsumer, exceptionsPerProject)
-    populateIdeaModuleModel(controller, buildModels, modelConsumer)
 
     exceptionsPerProject
       .groupBy ({ it.first }) { it.second }
@@ -188,25 +187,6 @@ private fun populateGradleProjectModel(
     }
   }
 }
-
-private fun populateIdeaModuleModel(
-  controller: BuildController,
-  buildModels: MutableCollection<out GradleBuild>,
-  modelConsumer: ProjectImportModelProvider.GradleModelConsumer
-) {
-  buildModels.mapNotNull { buildModel ->
-    val modulesByPathMap = controller.findModel(buildModel, IdeaProject::class.java)?.let {
-      it.getAllChildren().associateBy { it.gradleProject.path }
-    } ?: return@mapNotNull null
-
-    buildModel.getAllChildren().forEach { gradleProject ->
-      modulesByPathMap[gradleProject.path]?.let {
-        modelConsumer.consumeProjectModel(gradleProject, it, IdeaModule::class.java)
-      }
-    }
-  }
-}
-
 
 
 private val LOG = logger<PhasedSyncProjectModelProvider>()
@@ -264,11 +244,7 @@ internal inline fun <reified T> BuildController.fetchModel(gradleProject: BasicG
     findModel(gradleProject, T::class.java)
   }
 
-private fun IdeaProject.getAllChildren() = modules.flatMap { it.getAllChildren { it.children.filterIsInstance<IdeaModule>().toList() }}
-
-private fun GradleBuild.getAllChildren() = rootProject.getAllChildren { it.children.toList() }
-
-private fun <T> T.getAllChildren(childrenFunction: (T) -> List<out T>): List<T> {
+fun <T> T.getAllChildren(childrenFunction: (T) -> List<out T>): List<T> {
   val result = mutableListOf<T>(this)
   val stack = ArrayDeque<T>(result)
   while(stack.isNotEmpty()) {
