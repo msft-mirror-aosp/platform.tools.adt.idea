@@ -17,7 +17,6 @@ package com.android.tools.idea.layoutinspector.pipeline.appinspection.inspectors
 
 import kotlin.test.fail
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Command
-import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Event
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetAllParametersResponse
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetComposablesResponse
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetParameterDetailsResponse
@@ -26,12 +25,11 @@ import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.GetReco
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Response
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsResponse
 
-fun FakeInspector.Connection<Event>.sendEvent(init: Event.Builder.() -> Unit) {
-  sendEvent(Event.newBuilder().apply(init).build())
-}
+class FakeComposeLayoutInspector : FakeInspector<Command, Response, Nothing>(DisabledConnection()) {
 
-class FakeComposeLayoutInspector(connection: Connection<Event>) :
-  FakeInspector<Command, Response, Event>(connection) {
+  private class DisabledConnection : Connection<Nothing>() {
+    override fun sendEvent(event: Nothing) = throw NotImplementedError()
+  }
 
   override fun handleCommandImpl(command: Command): Response {
     return when (command.specializedCase) {

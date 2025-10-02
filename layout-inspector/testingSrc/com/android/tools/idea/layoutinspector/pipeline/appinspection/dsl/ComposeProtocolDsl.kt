@@ -28,12 +28,11 @@ import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Paramet
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.ParameterGroup
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.ParameterReference
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Quad
-import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.RecompositionStateRead
-import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.RecompositionStateReadEvent
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Rect
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.Resource
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StackTraceLine
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StateRead
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StateReadGroup
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StringEntry
 
 // example: "at androidx.compose.runtime.CompositionImpl.recordReadOf(Composition.kt:1015)"
@@ -157,14 +156,10 @@ class RecompositionStateReadResponseBuilder {
     builder.anchorHash = value
   }
 
-  fun FirstRecomposition(value: Int) {
-    builder.firstRecomposition = value
-  }
-
-  fun RecompositionStateRead(init: RecompositionStateReadBuilder.() -> Unit) {
-    val read = RecompositionStateReadBuilder(strings)
+  fun StateReadGroup(init: StateReadGroupBuilder.() -> Unit) {
+    val read = StateReadGroupBuilder(strings)
     read.init()
-    builder.read = read.build()
+    builder.addRead(read.build())
   }
 
   fun build(): GetRecompositionStateReadResponse {
@@ -173,36 +168,8 @@ class RecompositionStateReadResponseBuilder {
   }
 }
 
-fun MakeRecompositionStateReadEvent(
-  init: RecompositionStateReadEventBuilder.() -> Unit
-): RecompositionStateReadEvent {
-  val builder = RecompositionStateReadEventBuilder()
-  builder.init()
-  return builder.build()
-}
-
-class RecompositionStateReadEventBuilder {
-  private val builder = RecompositionStateReadEvent.newBuilder()
-  private val strings = TestStringTable()
-
-  fun AnchorHash(value: Int) {
-    builder.anchorHash = value
-  }
-
-  fun RecompositionStateRead(init: RecompositionStateReadBuilder.() -> Unit) {
-    val read = RecompositionStateReadBuilder(strings)
-    read.init()
-    builder.addRead(read.build())
-  }
-
-  fun build(): RecompositionStateReadEvent {
-    builder.addAllStrings(strings.asComposeStrings())
-    return builder.build()
-  }
-}
-
-class RecompositionStateReadBuilder(private val strings: TestStringTable) {
-  private val builder = RecompositionStateRead.newBuilder()
+class StateReadGroupBuilder(private val strings: TestStringTable) {
+  private val builder = StateReadGroup.newBuilder()
 
   fun Recomposition(value: Int) {
     builder.recompositionNumber = value
@@ -214,7 +181,7 @@ class RecompositionStateReadBuilder(private val strings: TestStringTable) {
     builder.addRead(read.build())
   }
 
-  fun build(): RecompositionStateRead = builder.build()
+  fun build(): StateReadGroup = builder.build()
 }
 
 class StateReadBuilder(private val strings: TestStringTable) {
