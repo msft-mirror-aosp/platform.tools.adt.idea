@@ -124,7 +124,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
               androidDsl,
               controller.findModel(gradleProject, DeclaredDependencies::class.java),
               controller.findModel(gradleProject, GradlePluginModel::class.java),
-              controller.findModel(gradleProject, KaptGradleModel::class.java),
+              controller.fetchModel<KaptGradleModel>(gradleProject, selectedVariantName),
               ideAndroidProject,
               selectedVariantName,
               shouldSkipRuntimeClasspathForLibraries(androidProject.flags, gradlePropertiesModel)
