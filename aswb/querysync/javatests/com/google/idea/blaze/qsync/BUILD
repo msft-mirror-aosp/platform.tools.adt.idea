@@ -1,15 +1,16 @@
 load("//tools/adt/idea/aswb:build-visibility.bzl", "DEFAULT_TEST_VISIBILITY")
+load("//tools/adt/idea/aswb/build_defs:build_defs.bzl", "aswb_library")
 load("//tools/adt/idea/aswb/testing:test_defs.bzl", "aswb_test")
 
 package(default_visibility = DEFAULT_TEST_VISIBILITY)
 
-java_library(
+aswb_library(
     name = "TestUtils",
     testonly = 1,
     srcs = [
         "GraphToProjectConvertersForTests.java",
         "QuerySyncTestUtils.java",
-        "TestDataSyncRunner.java",
+        "TestDataSyncRunner.kt",
     ],
     visibility = [
         ":__subpackages__",
@@ -26,6 +27,7 @@ java_library(
         "//tools/adt/idea/aswb/shared:vcs",
         "//tools/adt/idea/aswb/shared/javatests/com/google/idea/blaze/common:test_utils",
         "//tools/adt/idea/aswb/third_party/java/auto_value",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "@maven//:com.google.guava.guava",
     ],
 )
@@ -81,10 +83,10 @@ java_test(
     ],
 )
 
-java_test(
+aswb_test(
     name = "ProjectRefresherTest",
     size = "small",
-    srcs = ["ProjectRefresherTest.java"],
+    srcs = ["ProjectRefresherTest.kt"],
     deps = [
         ":TestUtils",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
@@ -93,6 +95,7 @@ java_test(
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/query:querysummary_java_proto",
         "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/query:QuerySummaryTestUtil",
         "//tools/adt/idea/aswb/shared:vcs",
+        "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
