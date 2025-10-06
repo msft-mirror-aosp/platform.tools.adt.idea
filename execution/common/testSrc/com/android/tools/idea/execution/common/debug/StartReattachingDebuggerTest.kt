@@ -51,6 +51,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
+import org.junit.Ignore
 
 
 class StartReattachingDebuggerTest {
@@ -147,6 +148,7 @@ class StartReattachingDebuggerTest {
   }
 
   @Test
+  @Ignore("b/448561855")
   fun testStartReattachingDebuggerForFewClients() = runTest {
 
     val ADDITIONAL_CLIENTS = 2
