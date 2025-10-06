@@ -20,10 +20,6 @@ import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.UiCheckInstance
 import com.android.tools.idea.preview.uicheck.UiCheckModeFilter
-import com.android.tools.idea.rendering.ElapsedTimeMeasurement
-import com.android.tools.idea.rendering.HeapSnapshotMemoryUseMeasurement
-import com.android.tools.idea.rendering.LayoutlibNativeMemoryMeasurement
-import com.android.tools.perflogger.Metric
 import com.intellij.testFramework.assertInstanceOf
 import kotlin.time.Duration.Companion.seconds
 import org.junit.Assert.assertEquals
@@ -70,32 +66,7 @@ class PerfgateComposeUiCheckGradleTest : PerfgateComposeGradleTestBase() {
             .value
             .asCollection()
             .size,
-        listOf(
-          // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-          // and render.
-          ElapsedTimeMeasurement(Metric("uiCheckMode_refresh_time")),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            null,
-            Metric("uiCheckMode_total_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "rendering",
-            Metric("uiCheckMode_rendering_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutEditor",
-            Metric("uiCheckMode_layoutEditor_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutlib",
-            Metric("uiCheckMode_layoutlib_memory"),
-          ),
-          LayoutlibNativeMemoryMeasurement(Metric("uiCheckMode_layoutlib_native_memory")),
-        ),
+        measurements = buildMeasurements("uiCheckMode"),
         nSamples = 1, // run it only once as this test takes a long time
         minRefreshTimeout = 120,
       )

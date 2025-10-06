@@ -16,10 +16,6 @@
 package com.android.tools.idea.rendering.gradle
 
 import com.android.tools.idea.concurrency.asCollection
-import com.android.tools.idea.rendering.ElapsedTimeMeasurement
-import com.android.tools.idea.rendering.HeapSnapshotMemoryUseMeasurement
-import com.android.tools.idea.rendering.LayoutlibNativeMemoryMeasurement
-import com.android.tools.perflogger.Metric
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Test
@@ -35,36 +31,7 @@ class PerfgateComposeStandardGradleTest : PerfgateComposeGradleTestBase() {
         .asCollection()
         .size,
     )
-    addPreviewsAndMeasure(
-      4,
-      5,
-      listOf(
-        // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-        // and render.
-        ElapsedTimeMeasurement(Metric("standard_5_previews_refresh_time")),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          null,
-          Metric("standard_5_previews_total_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "rendering",
-          Metric("standard_5_previews_rendering_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutEditor",
-          Metric("standard_5_previews_layoutEditor_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutlib",
-          Metric("standard_5_previews_layoutlib_memory"),
-        ),
-        LayoutlibNativeMemoryMeasurement(Metric("standard_5_previews_layoutlib_native_memory")),
-      ),
-    )
+    addPreviewsAndMeasure(4, 5, buildMeasurements("standard_5_previews"))
   }
 
   @Test
@@ -77,35 +44,6 @@ class PerfgateComposeStandardGradleTest : PerfgateComposeGradleTestBase() {
         .asCollection()
         .size,
     )
-    addPreviewsAndMeasure(
-      29,
-      30,
-      listOf(
-        // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-        // and render.
-        ElapsedTimeMeasurement(Metric("standard_30_previews_refresh_time")),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          null,
-          Metric("standard_30_previews_total_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "rendering",
-          Metric("standard_30_previews_rendering_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutEditor",
-          Metric("standard_30_previews_layoutEditor_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutlib",
-          Metric("standard_30_previews_layoutlib_memory"),
-        ),
-        LayoutlibNativeMemoryMeasurement(Metric("standard_30_previews_layoutlib_native_memory")),
-      ),
-    )
+    addPreviewsAndMeasure(29, 30, buildMeasurements("standard_30_previews"))
   }
 }

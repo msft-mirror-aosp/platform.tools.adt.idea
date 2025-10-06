@@ -19,6 +19,9 @@ import com.android.tools.idea.compose.ComposePreviewFakeUiGradleRule
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.TestComposePreviewView
 import com.android.tools.idea.concurrency.asCollection
+import com.android.tools.idea.rendering.ElapsedTimeMeasurement
+import com.android.tools.idea.rendering.HeapSnapshotMemoryUseMeasurement
+import com.android.tools.idea.rendering.LayoutlibNativeMemoryMeasurement
 import com.android.tools.idea.rendering.MetricMeasurement
 import com.android.tools.idea.rendering.NUMBER_OF_WARM_UP
 import com.android.tools.idea.rendering.SIMPLE_COMPOSE_PROJECT_PATH
@@ -27,6 +30,7 @@ import com.android.tools.idea.testing.executeAndSave
 import com.android.tools.idea.testing.insertText
 import com.android.tools.idea.testing.moveCaret
 import com.android.tools.perflogger.Benchmark
+import com.android.tools.perflogger.Metric
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
@@ -79,6 +83,34 @@ open class PerfgateComposeGradleTestBase {
       composePreviewRepresentation.requestRefreshForTest()
     }
   }
+
+  protected fun buildMeasurements(namePrefix: String): List<MetricMeasurement<Unit>> =
+    listOf(
+      // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
+      // and render.
+      ElapsedTimeMeasurement(Metric("${namePrefix}_refresh_time")),
+      HeapSnapshotMemoryUseMeasurement(
+        "android:designTools",
+        null,
+        Metric("${namePrefix}_total_memory"),
+      ),
+      HeapSnapshotMemoryUseMeasurement(
+        "android:designTools",
+        "rendering",
+        Metric("${namePrefix}_rendering_memory"),
+      ),
+      HeapSnapshotMemoryUseMeasurement(
+        "android:designTools",
+        "layoutEditor",
+        Metric("${namePrefix}_layoutEditor_memory"),
+      ),
+      HeapSnapshotMemoryUseMeasurement(
+        "android:designTools",
+        "layoutlib",
+        Metric("${namePrefix}_layoutlib_memory"),
+      ),
+      LayoutlibNativeMemoryMeasurement(Metric("${namePrefix}_layoutlib_native_memory")),
+    )
 
   /**
    * First, without using the [measurements], add [nPreviewsToAdd] @Previews on top of the

@@ -18,11 +18,7 @@ package com.android.tools.idea.rendering.gradle
 import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.compose.preview.getComposePreviewManagerKeyForTests
 import com.android.tools.idea.concurrency.asCollection
-import com.android.tools.idea.rendering.ElapsedTimeMeasurement
-import com.android.tools.idea.rendering.HeapSnapshotMemoryUseMeasurement
-import com.android.tools.idea.rendering.LayoutlibNativeMemoryMeasurement
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
-import com.android.tools.perflogger.Metric
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteActionAndWait
@@ -51,36 +47,7 @@ class PerfgateComposeEssentialsGradleTest : PerfgateComposeGradleTestBase() {
         .size,
     )
     setUpEssentialsMode()
-    addPreviewsAndMeasure(
-      4,
-      1,
-      listOf(
-        // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-        // and render.
-        ElapsedTimeMeasurement(Metric("essentials_5_previews_refresh_time")),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          null,
-          Metric("essentials_5_previews_total_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "rendering",
-          Metric("essentials_5_previews_rendering_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutEditor",
-          Metric("essentials_5_previews_layoutEditor_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutlib",
-          Metric("essentials_5_previews_layoutlib_memory"),
-        ),
-        LayoutlibNativeMemoryMeasurement(Metric("essentials_5_previews_layoutlib_native_memory")),
-      ),
-    )
+    addPreviewsAndMeasure(4, 1, buildMeasurements("essentials_5_previews"))
   }
 
   @Test
@@ -94,36 +61,7 @@ class PerfgateComposeEssentialsGradleTest : PerfgateComposeGradleTestBase() {
         .size,
     )
     setUpEssentialsMode()
-    addPreviewsAndMeasure(
-      29,
-      1,
-      listOf(
-        // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-        // and render.
-        ElapsedTimeMeasurement(Metric("essentials_30_previews_refresh_time")),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          null,
-          Metric("essentials_30_previews_total_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "rendering",
-          Metric("essentials_30_previews_rendering_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutEditor",
-          Metric("essentials_30_previews_layoutEditor_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutlib",
-          Metric("essentials_30_previews_layoutlib_memory"),
-        ),
-        LayoutlibNativeMemoryMeasurement(Metric("essentials_30_previews_layoutlib_native_memory")),
-      ),
-    )
+    addPreviewsAndMeasure(29, 1, buildMeasurements("essentials_30_previews"))
   }
 
   @Test
@@ -137,36 +75,7 @@ class PerfgateComposeEssentialsGradleTest : PerfgateComposeGradleTestBase() {
         .size,
     )
     setUpEssentialsMode()
-    addPreviewsAndMeasure(
-      499,
-      1,
-      listOf(
-        // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-        // and render.
-        ElapsedTimeMeasurement(Metric("essentials_500_previews_refresh_time")),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          null,
-          Metric("essentials_500_previews_total_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "rendering",
-          Metric("essentials_500_previews_rendering_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutEditor",
-          Metric("essentials_500_previews_layoutEditor_memory"),
-        ),
-        HeapSnapshotMemoryUseMeasurement(
-          "android:designTools",
-          "layoutlib",
-          Metric("essentials_500_previews_layoutlib_memory"),
-        ),
-        LayoutlibNativeMemoryMeasurement(Metric("essentials_500_previews_layoutlib_native_memory")),
-      ),
-    )
+    addPreviewsAndMeasure(499, 1, buildMeasurements("essentials_500_previews"))
   }
 
   private fun setUpEssentialsMode() = runBlocking {
