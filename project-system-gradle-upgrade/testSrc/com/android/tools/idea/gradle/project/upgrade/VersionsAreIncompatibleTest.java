@@ -24,7 +24,7 @@ import org.junit.runners.Parameterized;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static com.android.SdkConstants.GRADLE_PLUGIN_MINIMUM_VERSION;
+import static com.android.SdkConstants.GRADLE_PLUGIN_MINIMUM_FORCED_UPGRADE_VERSION;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -112,7 +112,7 @@ public class VersionsAreIncompatibleTest {
 
   @Test
   public void testVersionsAreIncompatible() {
-    assertTrue("adjust test cases for new GRADLE_PLUGIN_MINIMUM_VERSION", myCurrent.compareTo(GRADLE_PLUGIN_MINIMUM_VERSION) >= 0);
+    assertTrue("adjust test cases for new GRADLE_PLUGIN_MINIMUM_FORCED_UPGRADE_VERSION", myCurrent.compareTo(GRADLE_PLUGIN_MINIMUM_FORCED_UPGRADE_VERSION) >= 0);
     boolean forced = GradlePluginUpgrade.versionsAreIncompatible(myCurrent, myRecommended);
     assertEquals("are current " + myCurrent + " and latestKnown " + myRecommended + " compatible?", myForceUpgrade, forced);
     boolean forcedFromOldVersion = GradlePluginUpgrade.versionsAreIncompatible(unsupportedVersion, myRecommended);
