@@ -15,7 +15,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../../../bazel-bin/tools/adt/idea/app-quality-insights/play-vitals/model/proto/libplay_vitals_java_proto.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../../bazel-bin/tools/adt/idea/app-quality-insights/play-vitals/model/proto/play_vitals_kt_proto.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -26,6 +26,7 @@
     <orderEntry type="module" module-name="android.sdktools.flags" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
+    <orderEntry type="library" name="protobuf-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
