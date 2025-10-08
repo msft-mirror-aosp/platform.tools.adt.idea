@@ -16,11 +16,10 @@
 package com.android.tools.idea.logcat.service
 
 import com.android.adblib.AdbSession
-import com.android.adblib.ddmlibcompatibility.testutils.connectTestDevice
-import com.android.adblib.ddmlibcompatibility.testutils.createAdbSession
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
-import com.android.ddmlib.testing.FakeAdbRule
+import com.android.adblib.testingutils.FakeAdbServerProvider
+import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.FakeAdbServer
 import com.android.fakeadbserver.ShellProtocolType
@@ -78,9 +77,17 @@ private val LAST_MESSAGE =
 class LogcatServiceImplTest {
   private val projectRule = ProjectRule()
   private val initAdbLibApplicationServiceRule = InitAdbLibApplicationServiceRule()
-  private val fakeAdb = FakeAdbRule()
+  private val logcatHandler = CheckFormatLogcatHandler()
+  private val logcatHandler_v2 = CheckFormatLogcatHandler(ShellProtocolType.SHELL_V2)
+  private val fakeAdbServerProviderRule = FakeAdbServerProviderRule {
+    installDefaultCommandHandlers()
+    installDeviceHandler(logcatHandler)
+    installDeviceHandler(logcatHandler_v2)
+  }
   private val closeables = CloseablesRule()
   private val disposableRule = DisposableRule()
+  lateinit var fakeAdb: FakeAdbServerProvider
+    private set
 
   @get:Rule
   val rule =
@@ -88,7 +95,7 @@ class LogcatServiceImplTest {
       projectRule,
       initAdbLibApplicationServiceRule,
       WaitForIndexRule(projectRule),
-      fakeAdb,
+      fakeAdbServerProviderRule,
       closeables,
       disposableRule,
     )
@@ -108,6 +115,7 @@ class LogcatServiceImplTest {
 
   @Before
   fun setUp() {
+    fakeAdb = fakeAdbServerProviderRule.fakeAdb
     fakeProcessNameMonitor.addProcessName("device", 1, "app-1.1", "process-1.1")
   }
 
@@ -115,9 +123,14 @@ class LogcatServiceImplTest {
   fun readLogcat_launchesLogcat_sdk30(): Unit = runBlocking {
     val device = device30
     val service = logcatServiceImpl()
-    val logcatHandler = CheckFormatLogcatHandler()
-    fakeAdb.addDeviceCommandHandler(logcatHandler)
-    fakeAdb.connectTestDevice(device.serialNumber, sdk = AndroidApiLevel(30))
+    fakeAdb.connectDevice(
+      device.serialNumber,
+      manufacturer = "mfg",
+      deviceModel = "model",
+      release = "10.0.0",
+      sdk = AndroidApiLevel(30),
+      hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+    )
 
     val job = launch { service.readLogcat(device).collect {} }
     yieldUntil { logcatHandler.lastDeviceId == device.serialNumber }
@@ -130,9 +143,14 @@ class LogcatServiceImplTest {
   fun readLogcat_launchesLogcat_sdk23() = runBlocking {
     val device = device23
     val service = logcatServiceImpl()
-    val logcatHandler = CheckFormatLogcatHandler()
-    fakeAdb.addDeviceCommandHandler(logcatHandler)
-    fakeAdb.connectTestDevice(device.serialNumber, sdk = AndroidApiLevel(23))
+    fakeAdb.connectDevice(
+      device.serialNumber,
+      manufacturer = "mfg",
+      deviceModel = "model",
+      release = "10.0.0",
+      sdk = AndroidApiLevel(23),
+      hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+    )
 
     val job = launch {
       try {
@@ -150,9 +168,14 @@ class LogcatServiceImplTest {
   @Test
   fun readLogcat_newMessagesOnly_launchesLogcat_sdk21(): Unit = runBlocking {
     val service = logcatServiceImpl()
-    val logcatHandler = CheckFormatLogcatHandler()
-    fakeAdb.addDeviceCommandHandler(logcatHandler)
-    fakeAdb.connectTestDevice("device", sdk = AndroidApiLevel(21))
+    fakeAdb.connectDevice(
+      "device",
+      manufacturer = "mfg",
+      deviceModel = "model",
+      release = "10.0.0",
+      sdk = AndroidApiLevel(21),
+      hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+    )
 
     val job = launch {
       service.readLogcat("device", AndroidApiLevel(21), newMessagesOnly = true).collect {}
@@ -167,33 +190,43 @@ class LogcatServiceImplTest {
   fun readLogcat_launchesLogcat_sdk36(): Unit = runBlocking {
     val service = logcatServiceImpl()
 
-    val logcatHandler = CheckFormatLogcatHandler(ShellProtocolType.SHELL_V2)
-    fakeAdb.addDeviceCommandHandler(logcatHandler)
-    fakeAdb.connectTestDevice("device", sdk = AndroidApiLevel(36))
+    fakeAdb.connectDevice(
+      "device",
+      manufacturer = "mfg",
+      deviceModel = "model",
+      release = "10.0.0",
+      sdk = AndroidApiLevel(36),
+      hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+    )
 
     val job = launch {
       service.readLogcat("device", AndroidApiLevel(36), newMessagesOnly = false).collect {}
     }
-    yieldUntil { logcatHandler.lastDeviceId == "device" }
+    yieldUntil { logcatHandler_v2.lastDeviceId == "device" }
     job.cancel()
 
-    assertThat(logcatHandler.lastArgs).isEqualTo("--proto")
+    assertThat(logcatHandler_v2.lastArgs).isEqualTo("--proto")
   }
 
   @Test
   fun readLogcat_newMessagesOnly_launchesLogcat_sdk36(): Unit = runBlocking {
     val service = logcatServiceImpl()
-    val logcatHandler = CheckFormatLogcatHandler(ShellProtocolType.SHELL_V2)
-    fakeAdb.addDeviceCommandHandler(logcatHandler)
-    fakeAdb.connectTestDevice("device", sdk = AndroidApiLevel(36))
+    fakeAdb.connectDevice(
+      "device",
+      manufacturer = "mfg",
+      deviceModel = "model",
+      release = "10.0.0",
+      sdk = AndroidApiLevel(36),
+      hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+    )
 
     val job = launch {
       service.readLogcat("device", AndroidApiLevel(36), newMessagesOnly = true).collect {}
     }
-    yieldUntil { logcatHandler.lastDeviceId == "device" }
+    yieldUntil { logcatHandler_v2.lastDeviceId == "device" }
     job.cancel()
 
-    assertThat(logcatHandler.lastArgs).isEqualTo("--proto -T 1")
+    assertThat(logcatHandler_v2.lastArgs).isEqualTo("--proto -T 1")
   }
 
   /**
@@ -204,8 +237,16 @@ class LogcatServiceImplTest {
   fun readLogcat_50000SimpleLines() = runBlocking {
     val logcat = TestResources.getFile("/logcatFiles/logcat-50000.txt").readText()
     val service = logcatServiceImpl()
-    val (_, deviceState) =
-      fakeAdb.connectTestDevice(device30.serialNumber, sdk = AndroidApiLevel(30))
+    val deviceState =
+      fakeAdb.connectDevice(
+        device30.serialNumber,
+        manufacturer = "mfg",
+        deviceModel = "model",
+        release = "10.0.0",
+        sdk = AndroidApiLevel(30),
+        hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+      )
+
     // Break up the logcat into chunks to put more pressure of the code that collects them.
     logcat.chunked(10000).forEach { deviceState.addLogcatMessage(it) }
     deviceState.addLogcatMessage(LAST_MESSAGE)
@@ -227,8 +268,15 @@ class LogcatServiceImplTest {
   @Test
   fun readLogcat_withTimeout() = runBlocking {
     val service = logcatServiceImpl()
-    val (_, deviceState) =
-      fakeAdb.connectTestDevice(device30.serialNumber, sdk = AndroidApiLevel(30))
+    val deviceState =
+      fakeAdb.connectDevice(
+        device30.serialNumber,
+        manufacturer = "mfg",
+        deviceModel = "model",
+        release = "10.0.0",
+        sdk = AndroidApiLevel(30),
+        hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+      )
     deviceState.addLogcatMessage(rawLogcatMessage(Instant.EPOCH, "Message1"))
 
     val (messages, duration) =
@@ -251,8 +299,15 @@ class LogcatServiceImplTest {
   fun readLogcat_actualLogcatFromDevice() = runBlocking {
     val logcat = TestResources.getFile("/logcatFiles/real-logcat-from-device.txt").readText()
     val service = logcatServiceImpl()
-    val (_, deviceState) =
-      fakeAdb.connectTestDevice(device30.serialNumber, sdk = AndroidApiLevel(30))
+    val deviceState =
+      fakeAdb.connectDevice(
+        device30.serialNumber,
+        manufacturer = "mfg",
+        deviceModel = "model",
+        release = "10.0.0",
+        sdk = AndroidApiLevel(30),
+        hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+      )
     // Break up the logcat into chunks to put more pressure of the code that collects them.
     logcat.chunked(10000).forEach { deviceState.addLogcatMessage(it) }
     deviceState.addLogcatMessage(LAST_MESSAGE)
@@ -305,10 +360,17 @@ class LogcatServiceImplTest {
     val service =
       logcatServiceImpl(
         lastMessageDelayMs = SECONDS.toMillis(10),
-        fakeAdb.createAdbSession(closeables),
+        fakeAdbServerProviderRule.adbSession,
       )
-    val (_, deviceState) =
-      fakeAdb.connectTestDevice(device30.serialNumber, sdk = AndroidApiLevel(30))
+    val deviceState =
+      fakeAdb.connectDevice(
+        device30.serialNumber,
+        manufacturer = "mfg",
+        deviceModel = "model",
+        release = "10.0.0",
+        sdk = AndroidApiLevel(30),
+        hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+      )
     deviceState.addLogcatMessage(logcat)
 
     val messages = mutableListOf<LogcatMessage>()
@@ -351,9 +413,14 @@ class LogcatServiceImplTest {
   fun clearLogcat_launchesLogcat() = runBlocking {
     val device = device23
     val service = logcatServiceImpl()
-    val logcatHandler = CheckFormatLogcatHandler()
-    fakeAdb.addDeviceCommandHandler(logcatHandler)
-    fakeAdb.connectTestDevice(device.serialNumber, sdk = AndroidApiLevel(23))
+    fakeAdb.connectDevice(
+      device.serialNumber,
+      manufacturer = "mfg",
+      deviceModel = "model",
+      release = "10.0.0",
+      sdk = AndroidApiLevel(23),
+      hostConnectionType = DeviceState.HostConnectionType.LOCAL,
+    )
 
     val job = launch { service.clearLogcat(device.serialNumber) }
     yieldUntil { logcatHandler.lastDeviceId == device.serialNumber }
@@ -364,7 +431,7 @@ class LogcatServiceImplTest {
 
   private fun logcatServiceImpl(
     lastMessageDelayMs: Long = 100L,
-    adbSession: AdbSession = fakeAdb.createAdbSession(closeables),
+    adbSession: AdbSession = fakeAdbServerProviderRule.adbSession,
   ): LogcatServiceImpl {
     project.registerOrReplaceServiceInstance(
       AdbLibService::class.java,
