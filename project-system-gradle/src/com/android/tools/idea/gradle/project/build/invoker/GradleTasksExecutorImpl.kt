@@ -46,9 +46,12 @@ import com.google.common.util.concurrent.SettableFuture
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_STALE_CHANGES
 import com.intellij.compiler.CompilerConfiguration
 import com.intellij.compiler.CompilerManagerImpl
+import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.notification.NotificationsManager
+import com.intellij.notification.impl.NotificationsManagerImpl
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.compiler.CompilerManager
@@ -211,6 +214,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         val isRunBuildAction = buildAction != null
         val gradleTasks = myRequest.gradleTasks
         val executingTasksText = "Executing tasks: $gradleTasks in project $gradleRootProjectPath"
+        expireOldEvents()
         addToEventLog(executingTasksText, MessageType.INFO)
         val id = myRequest.taskId
         val taskListener = myListener
@@ -455,6 +459,11 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
 
     private fun addToEventLog(message: String, type: MessageType) {
       LOGGING_NOTIFICATION.createNotification(message, type).notify(myProject)
+    }
+
+    private fun expireOldEvents() {
+      val notifications = NotificationsManagerImpl.getNotificationsManager().getNotificationsOfType(Notification::class.java, myProject)
+      notifications.filter { it.groupId == LOGGING_NOTIFICATION.displayId }.forEach { it.expire() }
     }
 
     private fun attemptToStopBuild() {
