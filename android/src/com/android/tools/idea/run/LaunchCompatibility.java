@@ -150,6 +150,10 @@ public class LaunchCompatibility {
       }
     }
 
+    if (device.supportsFeature(IDevice.HardwareFeature.XR_GLASSES)) {
+      return new LaunchCompatibility(State.WARNING, "XR Glasses can not run application");
+    }
+
     // we are done with checks for platform targets
     if (projectTarget.isPlatform()) {
       return YES;
