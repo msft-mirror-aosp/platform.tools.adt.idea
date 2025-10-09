@@ -22,9 +22,10 @@ import com.intellij.platform.workspace.storage.EntityType
 import com.intellij.platform.workspace.storage.GeneratedCodeApiVersion
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.WorkspaceEntity
-import com.intellij.platform.workspace.storage.annotations.Child
+import com.intellij.platform.workspace.storage.annotations.Parent
 
 interface GradleModuleModelEntity : WorkspaceEntity {
+  @Parent
   val module: ModuleEntity
   val gradleModuleModel: GradleModuleModel
 
@@ -67,5 +68,5 @@ var ModuleEntity.Builder.gradleModuleModel: GradleModuleModelEntity.Builder?
   by WorkspaceEntity.extensionBuilder(GradleModuleModelEntity::class.java)
 //endregion
 
-val ModuleEntity.gradleModuleModel: @Child GradleModuleModelEntity?
+val ModuleEntity.gradleModuleModel: GradleModuleModelEntity?
   by WorkspaceEntity.extension()
