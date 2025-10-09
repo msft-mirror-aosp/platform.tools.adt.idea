@@ -17,10 +17,6 @@ package com.android.tools.idea.rendering.gradle
 
 import com.android.tools.idea.compose.preview.ComposePreviewRefreshType
 import com.android.tools.idea.concurrency.asCollection
-import com.android.tools.idea.rendering.ElapsedTimeMeasurement
-import com.android.tools.idea.rendering.HeapSnapshotMemoryUseMeasurement
-import com.android.tools.idea.rendering.LayoutlibNativeMemoryMeasurement
-import com.android.tools.perflogger.Metric
 import kotlin.random.Random
 import org.junit.Assert
 import org.junit.Test
@@ -40,34 +36,7 @@ class PerfgateComposeRenderQualityGradleTest : PerfgateComposeGradleTestBase() {
       addPreviewsAndMeasure(
         4,
         5,
-        listOf(
-          // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-          // and render.
-          ElapsedTimeMeasurement(Metric("renderQualityEnabled_5_previews_refresh_time")),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            null,
-            Metric("renderQualityEnabled_5_previews_total_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "rendering",
-            Metric("renderQualityEnabled_5_previews_rendering_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutEditor",
-            Metric("renderQualityEnabled_5_previews_layoutEditor_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutlib",
-            Metric("renderQualityEnabled_5_previews_layoutlib_memory"),
-          ),
-          LayoutlibNativeMemoryMeasurement(
-            Metric("renderQualityEnabled_5_previews_layoutlib_native_memory")
-          ),
-        ),
+        buildMeasurements("renderQualityEnabled_5_previews"),
         measuredRunnable = ::qualityRefresh,
       )
     }
@@ -86,34 +55,7 @@ class PerfgateComposeRenderQualityGradleTest : PerfgateComposeGradleTestBase() {
       addPreviewsAndMeasure(
         29,
         30,
-        listOf(
-          // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-          // and render.
-          ElapsedTimeMeasurement(Metric("renderQualityEnabled_30_previews_refresh_time")),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            null,
-            Metric("renderQualityEnabled_30_previews_total_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "rendering",
-            Metric("renderQualityEnabled_30_previews_rendering_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutEditor",
-            Metric("renderQualityEnabled_30_previews_layoutEditor_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutlib",
-            Metric("renderQualityEnabled_30_previews_layoutlib_memory"),
-          ),
-          LayoutlibNativeMemoryMeasurement(
-            Metric("renderQualityEnabled_30_previews_layoutlib_native_memory")
-          ),
-        ),
+        buildMeasurements("renderQualityEnabled_30_previews"),
         measuredRunnable = ::qualityRefresh,
       )
     }
@@ -132,34 +74,7 @@ class PerfgateComposeRenderQualityGradleTest : PerfgateComposeGradleTestBase() {
       addPreviewsAndMeasure(
         199,
         200,
-        listOf(
-          // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
-          // and render.
-          ElapsedTimeMeasurement(Metric("renderQualityEnabled_200_previews_refresh_time")),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            null,
-            Metric("renderQualityEnabled_200_previews_total_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "rendering",
-            Metric("renderQualityEnabled_200_previews_rendering_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutEditor",
-            Metric("renderQualityEnabled_200_previews_layoutEditor_memory"),
-          ),
-          HeapSnapshotMemoryUseMeasurement(
-            "android:designTools",
-            "layoutlib",
-            Metric("renderQualityEnabled_200_previews_layoutlib_memory"),
-          ),
-          LayoutlibNativeMemoryMeasurement(
-            Metric("renderQualityEnabled_200_previews_layoutlib_native_memory")
-          ),
-        ),
+        buildMeasurements("renderQualityEnabled_200_previews"),
         measuredRunnable = ::qualityRefresh,
       )
     }

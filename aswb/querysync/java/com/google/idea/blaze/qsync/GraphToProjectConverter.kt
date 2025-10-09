@@ -19,16 +19,11 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
-import com.google.common.collect.Maps
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListeningExecutorService
-import com.google.common.util.concurrent.Uninterruptibles
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.common.RuleKinds
 import com.google.idea.blaze.exception.BuildException
-import com.google.idea.blaze.qsync.java.PackageReader
 import com.google.idea.blaze.qsync.project.BlazeProjectDataStorage
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -40,19 +35,15 @@ import com.google.idea.blaze.qsync.query.PackageSet
 import java.nio.file.Path
 import java.util.Collections
 import java.util.Comparator.comparingInt
-import java.util.PriorityQueue
 import java.util.TreeSet
-import java.util.concurrent.ExecutionException
 import kotlin.jvm.optionals.getOrNull
+import kotlinx.coroutines.runBlocking
 
 /** Converts a {@link BuildGraphDataImpl} instance into a project proto. */
 class GraphToProjectConverter(
-  private val packageReader: PackageReader,
-  private val parallelPackageReader: PackageReader.ParallelReader,
-  private val fileExistenceCheck: (Path) -> Boolean,
+  private val javaPackagePrefixReader: JavaPackagePrefixReader,
   private val context: Context<*>,
   private val projectDefinition: ProjectDefinition,
-  private val executor: ListeningExecutorService,
 ) {
 
   /**
@@ -99,15 +90,10 @@ class GraphToProjectConverter(
   @Throws(BuildException::class)
   fun calculateJavaRootSources(
     context: Context<*>,
-    srcFiles: Collection<Path>,
+    sourceFiles: Collection<Path>,
     packages: PackageSet,
   ): Map<Path, Map<Path, String>> {
-
-    // A map from package to the file chosen to represent it.
-    val chosenFiles = chooseTopLevelFiles(srcFiles, packages)
-
-    // A map from a directory to its prefix
-    val prefixes = readPackages(context, chosenFiles)
+    val prefixes = runBlocking { javaPackagePrefixReader.readPrefixes(context, packages, sourceFiles) }
 
     // All packages split by their content roots
     val rootToPrefix = splitByRoot(prefixes)
@@ -130,7 +116,7 @@ class GraphToProjectConverter(
       .mapNotNull { it.parent }
       .distinct()
       .mapNotNull {
-        SourceFolder(root = it, contentRoot = projectDefinition.getIncludingContentRoot(it).getOrNull() ?: return@mapNotNull null)
+        SourceFolder(root = it, contentRoot = projectDefinition.getIncludingContentRoot(it) ?: return@mapNotNull null)
       }
       .groupBy({ it.contentRoot }, { it.contentRoot.relativize(it.root) })
   }
@@ -138,7 +124,7 @@ class GraphToProjectConverter(
   @VisibleForTesting
   fun splitByRoot(prefixes: Map<Path, String>): ImmutableMap<Path, ImmutableMap<Path, String>> {
     val split: ImmutableMap.Builder<Path, ImmutableMap<Path, String>> = ImmutableMap.builder()
-    for (root in projectDefinition.projectIncludes()) {
+    for (root in projectDefinition.projectIncludes) {
       val inRoot: ImmutableMap.Builder<Path, String> = ImmutableMap.builder()
       for (pkg in prefixes.entries) {
         val rel = pkg.key
@@ -152,71 +138,7 @@ class GraphToProjectConverter(
     return split.buildKeepingLast()
   }
 
-  @Throws(BuildException::class)
-  private fun readPackages(context: Context<*>, files: List<Path>): ImmutableMap<Path, String> {
-    val now = System.currentTimeMillis()
-    val allPackages = parallelPackageReader.readPackages(context, packageReader, files)
-    val elapsed = System.currentTimeMillis() - now
-    context.output(PrintOutput.log("%-10d Java files read (%d ms)", files.size, elapsed))
-
-    val prefixes: ImmutableMap.Builder<Path, String> = ImmutableMap.builder()
-    allPackages.forEach { (path, pkg) -> prefixes.put(path.parent, pkg) }
-    return prefixes.buildOrThrow()
-  }
-
-  @VisibleForTesting
-  @Throws(BuildException::class)
-  protected fun chooseTopLevelFiles(files: Collection<Path>, packages: PackageSet): List<Path> {
-
-    val filesByPath = files.groupBy { it.parent }
-    // A map from directory to the candidate chosen to represent that directory
-    // We filter out non-existent files, but without checking for the existence of all files as
-    // that slows things down unnecessarily.
-    val candidates: MutableMap<Path, Path> = Maps.newConcurrentMap()
-    val futures = filesByPath.keys.map { dir ->
-      executor.submit(
-        {
-          // We use a priority queue to find the first element without sorting, since in most
-          // cases we only need the first element.
-          val dirFiles: PriorityQueue<Path> = PriorityQueue(Comparator.comparing(Path::getFileName))
-          dirFiles.addAll(filesByPath[dir].orEmpty())
-          var candidate = dirFiles.poll()
-          while (candidate != null && !fileExistenceCheck(candidate)) {
-            candidate = dirFiles.poll()
-          }
-          if (candidate != null) {
-            candidates.put(dir, candidate)
-          }
-        })
-    }
-
-    try {
-      Uninterruptibles.getUninterruptibly(Futures.allAsList(futures))
-    }
-    catch (e: ExecutionException) {
-      throw BuildException(e)
-    }
-
-    // Filter the files that are top level files only
-    return candidates.values.filter { file -> isTopLevel(packages, candidates, file) }
-  }
-
   companion object {
-    private fun isTopLevel(packages: PackageSet, candidates: Map<Path, Path>, file: Path): Boolean {
-      var dir = relativeParentOf(file)
-      while (dir != null) {
-        val existing = candidates.get(dir)
-        if (existing != null && existing != file) {
-          return false
-        }
-        if (packages.contains(dir)) {
-          return true
-        }
-        dir = relativeParentOf(dir)
-      }
-      return false
-    }
-
     private fun relativeParentOf(path: Path): Path? {
       Preconditions.checkState(!path.isAbsolute())
       if (path.toString().isEmpty()) {
@@ -397,7 +319,7 @@ class GraphToProjectConverter(
           pref = parentPackageOf(pref)
         }
         if (dir != null && pref != null) {
-          dirWants.computeIfAbsent(dir) { it -> hashSetOf() }.add(pref)
+          dirWants.computeIfAbsent(dir) { hashSetOf() }.add(pref)
         }
       }
       return dirWants
@@ -453,14 +375,15 @@ class GraphToProjectConverter(
     val workspaceModule: ProjectProto.Module.Builder =
       ProjectProto.Module.Builder(name = BlazeProjectDataStorage.WORKSPACE_MODULE_NAME).also {
         //          .setType(ProjectProto.ModuleType.MODULE_TYPE_DEFAULT)
+        it.isAndroidModule = projectDefinition.isAndroidWorkspace
         it.androidResourceDirectories.addAll(androidResDirs.map { ProjectPath.workspaceRelative(it) })
         it.androidSourcePackages.addAll(androidResPackages)
         it.androidCustomPackages.addAll(graph.getAllCustomPackages())
       }
 
-    val excludesByRootDirectory = projectDefinition.getExcludesByRootDirectory()
+    val excludesByRootDirectory = projectDefinition.excludesByRootDirectory
     val testSourceGlobMatcher = TestSourceGlobMatcher.create(projectDefinition)
-    for (dir in projectDefinition.projectIncludes()) {
+    for (dir in projectDefinition.projectIncludes) {
       val sourceRootsWithPrefixes = javaSourceRoots.get(dir).orEmpty()
       val sourceFolders =
         sourceRootsWithPrefixes.entries.map { entry ->
@@ -487,7 +410,7 @@ class GraphToProjectConverter(
           }
           else null
         }
-      val excludes = excludesByRootDirectory.get(dir).map { exclude -> ProjectPath.workspaceRelative(exclude) }
+      val excludes = excludesByRootDirectory[dir].orEmpty().map { exclude -> ProjectPath.workspaceRelative(exclude) }
       val contentEntry =
         ProjectProto.ContentEntry(root = ProjectPath.workspaceRelative(dir), sourceFolders = sourceFolders, excludes = excludes)
       workspaceModule.contentEntries[contentEntry.root] = contentEntry

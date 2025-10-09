@@ -262,11 +262,11 @@ class AndroidGradleConfigurationProducersTest {
   @Test
   fun testKotlinMultiplatformUnitTestRunConfigurationFromDirectory() {
     projectRule.loadProject(ANDROID_KOTLIN_MULTIPLATFORM)
-    val configuration = createAndroidGradleTestConfigurationFromDirectory(project, "kmpFirstLib/src/androidUnitTest")
+    val configuration = createAndroidGradleTestConfigurationFromDirectory(project, "kmpFirstLib/src/androidHostTest")
     assertThat(configuration).isNotNull()
     assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidUnitTest",
-      ":kmpFirstLib:testAndroidUnitTest",
+      ":kmpFirstLib:cleanTestAndroidHostTest",
+      ":kmpFirstLib:testAndroidHostTest",
     )
   }
 
@@ -276,8 +276,8 @@ class AndroidGradleConfigurationProducersTest {
     val configuration = createAndroidGradleTestConfigurationFromClass(project, "com.example.kmpfirstlib.KmpAndroidFirstLibClassTest")
     assertThat(configuration).isNotNull()
     assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidUnitTest",
-      ":kmpFirstLib:testAndroidUnitTest",
+      ":kmpFirstLib:cleanTestAndroidHostTest",
+      ":kmpFirstLib:testAndroidHostTest",
       "--tests", "\"com.example.kmpfirstlib.KmpAndroidFirstLibClassTest\""
     )
   }
@@ -288,8 +288,8 @@ class AndroidGradleConfigurationProducersTest {
     val configuration = createAndroidGradleTestConfigurationFromMethod(project, "com.example.kmpfirstlib.KmpAndroidFirstLibClassTest", "testThatPasses")
     assertThat(configuration).isNotNull()
     assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidUnitTest",
-      ":kmpFirstLib:testAndroidUnitTest",
+      ":kmpFirstLib:cleanTestAndroidHostTest",
+      ":kmpFirstLib:testAndroidHostTest",
       "--tests", "\"com.example.kmpfirstlib.KmpAndroidFirstLibClassTest.testThatPasses\""
     )
   }
@@ -300,8 +300,8 @@ class AndroidGradleConfigurationProducersTest {
     val configuration = createAndroidGradleTestConfigurationFromClass(project, "com.example.kmpfirstlib.KmpCommonFirstLibClassTest")
     assertThat(configuration).isNotNull()
     assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidUnitTest",
-      ":kmpFirstLib:testAndroidUnitTest",
+      ":kmpFirstLib:cleanTestAndroidHostTest",
+      ":kmpFirstLib:testAndroidHostTest",
       "--tests", "\"com.example.kmpfirstlib.KmpCommonFirstLibClassTest\""
     )
   }

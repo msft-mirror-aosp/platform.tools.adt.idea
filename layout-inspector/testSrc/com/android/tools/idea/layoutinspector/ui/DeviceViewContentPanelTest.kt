@@ -36,7 +36,6 @@ import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.idea.appinspection.ide.ui.SelectProcessAction
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.layoutinspector.LAYOUT_INSPECTOR_DATA_KEY
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.common.SelectViewAction
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
@@ -58,6 +57,7 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.Screenshot
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.view.ViewAndroidWindow
 import com.android.tools.idea.layoutinspector.resource.data.Display
+import com.android.tools.idea.layoutinspector.tree.GotoDeclaration
 import com.android.tools.idea.layoutinspector.tree.GotoDeclarationAction
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.DropDownActionWithButton
@@ -748,7 +748,7 @@ class DeviceViewContentPanelTest {
     assertThat(model.selection).isSameAs(model[VIEW1]!!)
 
     fakeUi.mouse.doubleClick(27, 35)
-    runDispatching { GotoDeclarationAction.lastAction?.join() }
+    runDispatching { GotoDeclaration.lastAction?.join() }
     fileOpenCaptureRule.checkEditor("activity_main.xml", 7, "<TextView")
   }
 

@@ -21,7 +21,6 @@ iml_module(
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/android:intellij.android.core",
-        "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
     ],
 )
 

@@ -50,7 +50,8 @@ private data class Durations(
   val gradleAfterAndroidExecution: Duration,
   val ide: Duration,
   val finishTimestamp: Instant,
-  val gradle: Duration = gradleConfiguration + gradleBeforeAndroidExecution + gradleAndroidExecution + gradleAfterAndroidExecution,
+  val gradleModelBuilding: Duration = gradleBeforeAndroidExecution + gradleAndroidExecution + gradleAfterAndroidExecution,
+  val gradle: Duration = gradleModelBuilding + gradleConfiguration,
   val total: Duration = gradle + ide
 ) {
   override fun toString() = """
@@ -58,9 +59,10 @@ total: ${total.inWholeSeconds}s
   -   ide: ${ide.inWholeSeconds}s
   -gradle: ${gradle.inWholeSeconds}s
     -configuration: ${gradleConfiguration.inWholeSeconds}s
-    -beforeAndroid: ${gradleBeforeAndroidExecution.inWholeSeconds}s
-    -      android: ${gradleAndroidExecution.inWholeSeconds}s
-    - afterAndroid: ${gradleAfterAndroidExecution.inWholeSeconds}s
+    -modelBuilding: ${gradleModelBuilding.inWholeSeconds}s
+      -beforeAndroid: ${gradleBeforeAndroidExecution.inWholeSeconds}s
+      -      android: ${gradleAndroidExecution.inWholeSeconds}s
+      - afterAndroid: ${gradleAfterAndroidExecution.inWholeSeconds}s
   """.trimIndent()
 }
 
@@ -71,7 +73,7 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int, val projectToCompareAgain
 
   override fun before() {
     StudioFlags.SYNC_STATS_OUTPUT_DIRECTORY.override(OUTPUT_DIRECTORY)
-    MeasurementPluginConfig.configureAndApply(OUTPUT_DIRECTORY, captureTypes = setOf(CaptureType.TIMESTAMP), CaptureJfrRule.shouldEnable())
+    MeasurementPluginConfig.configureAndApply(OUTPUT_DIRECTORY, captureTypes = setOf(CaptureType.TIMESTAMP), CaptureJfrRule.shouldEnableDaemon())
   }
 
   val listener = object : GradleSyncListenerWithRoot {
@@ -80,10 +82,10 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int, val projectToCompareAgain
     }
 
     override fun syncSucceeded(project: Project, rootProjectPath: @SystemIndependent String) {
-      val configurationFinishedTimestamp = getTimestampForCheckpoint(MeasurementCheckpoint.CONFIGURATION_FINISHED.name)
-      val androidStartedTimestamp = getTimestampForCheckpoint(AndroidMeasurementCheckpoint.ANDROID_STARTED.name)
-      val androidFinishedTimestamp = getTimestampForCheckpoint(AndroidMeasurementCheckpoint.ANDROID_FINISHED.name)
-      val gradleSyncFinishedTimestamp = getTimestampForCheckpoint(MeasurementCheckpoint.SYNC_FINISHED.name)
+      val configurationFinishedTimestamp = getTimestampForCheckpoint(MeasurementCheckpoint.CONFIGURATION_FINISHED.name)!!
+      val androidStartedTimestamp = getTimestampForCheckpoint(AndroidMeasurementCheckpoint.ANDROID_STARTED.name) ?: configurationFinishedTimestamp
+      val gradleSyncFinishedTimestamp = getTimestampForCheckpoint(MeasurementCheckpoint.SYNC_FINISHED.name)!!
+      val androidFinishedTimestamp = getTimestampForCheckpoint(AndroidMeasurementCheckpoint.ANDROID_FINISHED.name) ?: gradleSyncFinishedTimestamp
       val ideFinishedTimestamp = Clock.System.now()
 
       val result = Durations(
@@ -110,6 +112,7 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int, val projectToCompareAgain
       }
       listOf(
         "${prefix}Gradle_Configuration_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleConfiguration, analyzed = true),
+        "${prefix}Gradle_Model_Building_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleModelBuilding, analyzed = true),
         "${prefix}Gradle_Before_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleBeforeAndroidExecution, analyzed = false),
         "${prefix}Gradle_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleAndroidExecution, analyzed = true),
         "${prefix}Gradle_After_Android_Execution_Ms" to TimestampedMeasurement(value.finishTimestamp, value.gradleAfterAndroidExecution, analyzed = false),
@@ -128,8 +131,10 @@ class MeasureSyncExecutionTimeRule(val syncCount: Int, val projectToCompareAgain
       recordCpuMeasurement("${projectName}_$type", values, isMetricAnalyzed, metricToCompareAgainst)
     }
   }
-  private fun getTimestampForCheckpoint(checkpointName: String): Instant {
-    val file = File(OUTPUT_DIRECTORY).walk().first { it.nameWithoutExtension.endsWith(checkpointName) && !processedFiles.contains(it.name)}
+  private fun getTimestampForCheckpoint(checkpointName: String): Instant? {
+    val file = File(OUTPUT_DIRECTORY).walk().firstOrNull {
+      it.nameWithoutExtension.endsWith(checkpointName) && !processedFiles.contains(it.name)
+    } ?: return null
     return Instant.fromEpochMilliseconds(file.name.substringBefore('_').toLong()).also {
       processedFiles.add(file.name)
     }

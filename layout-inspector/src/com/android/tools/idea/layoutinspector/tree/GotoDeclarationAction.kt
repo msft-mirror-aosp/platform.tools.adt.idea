@@ -17,7 +17,6 @@ package com.android.tools.idea.layoutinspector.tree
 
 import com.android.annotations.concurrency.Slow
 import com.android.tools.idea.concurrency.AndroidDispatchers
-import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.NO_COMPOSE_SOURCE_INFO_APP_KEY
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
@@ -25,6 +24,7 @@ import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
+import com.android.tools.idea.layoutinspector.ui.LayoutInspectorRootPanel
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -42,14 +42,12 @@ const val NO_COMPOSE_SOURCE_INFO_NODE_INLINED_KEY = "no.compose.source.info.node
 
 /** Action for navigating to the currently selected node in the layout inspector. */
 object GotoDeclarationAction : AnAction("Go To Declaration") {
-  @get:VisibleForTesting var lastAction: Job? = null
-
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
   override fun actionPerformed(event: AnActionEvent) {
-    val inspector = LayoutInspector.get(event) ?: return
+    val inspector = LayoutInspectorRootPanel.get(event) ?: return
     inspector.currentClient.stats.gotoSourceFromTreeActionMenu(event)
-    navigateToSelectedView(
+    GotoDeclaration.navigateToSelectedView(
       inspector.coroutineScope,
       inspector.inspectorModel,
       inspector.currentClient,
@@ -58,7 +56,7 @@ object GotoDeclarationAction : AnAction("Go To Declaration") {
   }
 
   override fun update(event: AnActionEvent) {
-    val inspector = LayoutInspector.get(event)
+    val inspector = LayoutInspectorRootPanel.get(event)
     val hasSourceCodeInfo = inspector?.inspectorModel?.selection?.hasSourceCodeInformation ?: true
     // Finding the navigatable is expensive. Only perform a cheap check on update:
     event.presentation.isEnabled =
@@ -67,6 +65,10 @@ object GotoDeclarationAction : AnAction("Go To Declaration") {
       if (hasSourceCodeInfo) "Go To Declaration"
       else "Go To Declaration (No Source Information Found)"
   }
+}
+
+object GotoDeclaration {
+  @get:VisibleForTesting var lastAction: Job? = null
 
   fun navigateToSelectedView(
     coroutineScope: CoroutineScope,

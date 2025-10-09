@@ -126,10 +126,6 @@ class GradleModuleSystem(
 
   override val androidModel: GradleAndroidModel? = module.findSnapshotModuleEntity()?.gradleAndroidModel?.gradleAndroidModel
 
-  override fun setAndroidModel(mutableFacet: AndroidFacet, androidModel: AndroidModel) {
-    error("Not allowed, must be set through Workspace Model!")
-  }
-
   override val type: Type
     get() = when (GradleAndroidModel.get(module)?.androidProject?.projectType) {
       IdeAndroidProjectType.PROJECT_TYPE_APP -> Type.TYPE_APP
@@ -474,6 +470,7 @@ class GradleModuleSystem(
       ScopeType.ANDROID_TEST -> androidTestModule?.getModuleWithDependenciesAndLibrariesScope(true)
       ScopeType.TEST_FIXTURES -> fixturesModule?.getModuleWithDependenciesAndLibrariesScope(true)
       ScopeType.SCREENSHOT_TEST -> screenshotTestModule?.getModuleWithDependenciesAndLibrariesScope(true)
+      ScopeType.TEST_SUITE -> throw RuntimeException("TestSuite scope not supported")
     } ?: GlobalSearchScope.EMPTY_SCOPE
   }
 

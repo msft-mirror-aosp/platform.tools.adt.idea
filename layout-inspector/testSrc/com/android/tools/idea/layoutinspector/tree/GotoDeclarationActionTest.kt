@@ -18,7 +18,6 @@ package com.android.tools.idea.layoutinspector.tree
 import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.layoutinspector.LAYOUT_INSPECTOR_DATA_KEY
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.NO_COMPOSE_SOURCE_INFO_APP_KEY
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
@@ -31,6 +30,7 @@ import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
+import com.android.tools.idea.layoutinspector.ui.LAYOUT_INSPECTOR_DATA_KEY
 import com.android.tools.idea.layoutinspector.util.DemoExample
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -74,7 +74,7 @@ class GotoDeclarationActionTest {
     GotoDeclarationAction.update(event)
     assertThat(event.presentation.isEnabled).isTrue()
     GotoDeclarationAction.actionPerformed(event)
-    runBlocking { GotoDeclarationAction.lastAction?.join() }
+    runBlocking { GotoDeclaration.lastAction?.join() }
     fileOpenCaptureRule.checkEditor("demo.xml", 9, "<TextView")
     checkStats(stats, clickCount = 1)
   }
@@ -87,7 +87,7 @@ class GotoDeclarationActionTest {
     val notificationModel = NotificationModel(projectRule.project)
     val event = createEvent(model, stats, notificationModel)
     GotoDeclarationAction.actionPerformed(event)
-    runBlocking { GotoDeclarationAction.lastAction?.join() }
+    runBlocking { GotoDeclaration.lastAction?.join() }
     assertThat(notificationModel.notifications).hasSize(1)
     assertThat(notificationModel.notifications.first().message)
       .isEqualTo(
@@ -95,7 +95,7 @@ class GotoDeclarationActionTest {
       )
     model.setSelection(model[5], SelectionOrigin.INTERNAL)
     GotoDeclarationAction.actionPerformed(event)
-    runBlocking { GotoDeclarationAction.lastAction?.join() }
+    runBlocking { GotoDeclaration.lastAction?.join() }
     assertThat(notificationModel.notifications).hasSize(1)
     assertThat(notificationModel.notifications.first().message)
       .isEqualTo(
@@ -112,7 +112,7 @@ class GotoDeclarationActionTest {
     GotoDeclarationAction.update(event)
     assertThat(event.presentation.isEnabled).isTrue()
     GotoDeclarationAction.actionPerformed(event)
-    runBlocking { GotoDeclarationAction.lastAction?.join() }
+    runBlocking { GotoDeclaration.lastAction?.join() }
     fileOpenCaptureRule.checkEditor(
       "MyCompose.kt",
       17,
@@ -147,7 +147,7 @@ class GotoDeclarationActionTest {
 
     val capabilities = setOf(InspectorClient.Capability.SUPPORTS_COMPOSE)
     val inspector = createLayoutInspector(model, stats, capabilities, notificationModel)
-    GotoDeclarationAction.navigateToSelectedView(
+    GotoDeclaration.navigateToSelectedView(
       inspector.coroutineScope,
       model,
       inspector.currentClient,
@@ -171,7 +171,7 @@ class GotoDeclarationActionTest {
     notificationModel.addNotification(VIEW_NOT_FOUND_KEY, "View not found")
 
     val inspector = createLayoutInspector(model, stats, setOf(), notificationModel)
-    GotoDeclarationAction.navigateToSelectedView(
+    GotoDeclaration.navigateToSelectedView(
       inspector.coroutineScope,
       model,
       inspector.currentClient,
@@ -202,7 +202,7 @@ class GotoDeclarationActionTest {
 
     val capabilities = setOf(InspectorClient.Capability.SUPPORTS_COMPOSE)
     val inspector = createLayoutInspector(model, stats, capabilities, notificationModel)
-    GotoDeclarationAction.navigateToSelectedView(
+    GotoDeclaration.navigateToSelectedView(
       inspector.coroutineScope,
       model,
       inspector.currentClient,
@@ -232,7 +232,7 @@ class GotoDeclarationActionTest {
     )
 
     val inspector = createLayoutInspector(model, stats, setOf(), notificationModel)
-    GotoDeclarationAction.navigateToSelectedView(
+    GotoDeclaration.navigateToSelectedView(
       inspector.coroutineScope,
       model,
       inspector.currentClient,
@@ -254,7 +254,7 @@ class GotoDeclarationActionTest {
     GotoDeclarationAction.update(event)
     assertThat(event.presentation.isEnabled).isTrue()
     GotoDeclarationAction.actionPerformed(event)
-    runBlocking { GotoDeclarationAction.lastAction?.join() }
+    runBlocking { GotoDeclaration.lastAction?.join() }
     fileOpenCaptureRule.checkEditor("MyCompose.kt", 8, "Text(text = \"Hello \$name!\")")
     checkStats(stats, clickCount = 1)
   }

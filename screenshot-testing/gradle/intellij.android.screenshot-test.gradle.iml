@@ -12,6 +12,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="studio-sdk" level="project" />
     <orderEntry type="library" name="studio-plugin-com.intellij.java" level="project" />
+    <orderEntry type="library" name="studio-plugin-com.intellij.gradle" level="project" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.screenshot-test" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" />

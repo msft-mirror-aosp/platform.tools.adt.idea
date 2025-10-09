@@ -519,6 +519,7 @@ aswb_library(
     deps = [
         ":base",
         ":unit_test_utils",
+        "//tools/adt/idea/aswb/aswb:aswb_lib",
         "//tools/adt/idea/aswb/proto:proto_deps",
         "//tools/adt/idea/aswb/shared:artifact",
         "//tools/adt/idea/aswb/shared:vcs",

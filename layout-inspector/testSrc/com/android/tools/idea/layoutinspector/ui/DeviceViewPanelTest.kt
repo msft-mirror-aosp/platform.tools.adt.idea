@@ -48,7 +48,6 @@ import com.android.tools.idea.appinspection.test.TestProcessDiscovery
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.layoutinspector.InspectorClientProvider
-import com.android.tools.idea.layoutinspector.LAYOUT_INSPECTOR_DATA_KEY
 import com.android.tools.idea.layoutinspector.LEGACY_DEVICE
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
@@ -74,7 +73,7 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspecti
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
 import com.android.tools.idea.layoutinspector.resource.data.Display
 import com.android.tools.idea.layoutinspector.runningdevices.withEmbeddedLayoutInspector
-import com.android.tools.idea.layoutinspector.tree.GotoDeclarationAction
+import com.android.tools.idea.layoutinspector.tree.GotoDeclaration
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.ICON_LEGACY_PHONE
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.INITIAL_LAYER_SPACING
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.SelectDeviceAction
@@ -488,7 +487,7 @@ class DeviceViewPanelWithFullInspectorTest {
     // Press ctrl-B / command-B when the selectedView is selected:
     model.setSelection(model[selectedView], SelectionOrigin.INTERNAL)
     dispatcher.dispatchKeyEvent(KeyEvent(panel, KeyEvent.KEY_PRESSED, 0, modifier, VK_B, 'B'))
-    runDispatching { GotoDeclarationAction.lastAction?.join() }
+    runDispatching { GotoDeclaration.lastAction?.join() }
     UIUtil.dispatchAllInvocationEvents()
   }
 

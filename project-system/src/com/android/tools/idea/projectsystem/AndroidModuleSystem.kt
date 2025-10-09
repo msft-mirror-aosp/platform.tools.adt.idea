@@ -23,7 +23,6 @@ import com.android.ide.common.repository.WellKnownMavenArtifactId
 import com.android.manifmerger.ManifestSystemProperty
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.model.AndroidModel
-import com.android.tools.idea.model.AndroidModel.Companion.ANDROID_MODEL_KEY
 import com.android.tools.idea.run.ApkProvisionException
 import com.android.tools.idea.run.ApplicationIdProvider
 import com.android.tools.idea.util.androidFacet
@@ -33,26 +32,15 @@ import com.google.wireless.android.sdk.stats.TestLibraries
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
-import org.jetbrains.android.facet.AndroidFacet
 import java.nio.file.Path
+import org.jetbrains.android.facet.AndroidFacet
 
 /**
  * Provides a build-system-agnostic interface to the build system. Instances of this interface
  * contain methods that apply to a specific [Module].
  */
 interface AndroidModuleSystem: SampleDataDirectoryProvider, ModuleHierarchyProvider {
-  val androidModel: AndroidModel? get() = module.androidFacet?.getUserData(ANDROID_MODEL_KEY)
-
-  /**
-   * Sets the [AndroidModel] for the module.
-   *
-   * Facet is a parameter to be able to provide backwards compatible default implementation.
-   *
-   * The facet needs to be provided because in this case it's expected to be still under
-   * initialization (i.e. not yet committed), and can't be retrieved via facet manager.
-   */
-  fun setAndroidModel(mutableFacet: AndroidFacet, androidModel: AndroidModel) =
-    mutableFacet.putUserData(ANDROID_MODEL_KEY, androidModel)
+  val androidModel: AndroidModel? get() = null
 
   enum class Type {
     TYPE_NON_ANDROID,
@@ -395,20 +383,21 @@ enum class ScopeType {
   UNIT_TEST,
   TEST_FIXTURES,
   SCREENSHOT_TEST,
+  TEST_SUITE
   ;
 
   /** Converts this [ScopeType] to a [Boolean], so it can be used with APIs that don't distinguish between test types. */
   val isForTest
     get() = when (this) {
       MAIN, TEST_FIXTURES -> false
-      ANDROID_TEST, UNIT_TEST, SCREENSHOT_TEST -> true
+      ANDROID_TEST, UNIT_TEST, SCREENSHOT_TEST, TEST_SUITE -> true
     }
 
   /** Returns true if this [ScopeType] can contain Android resources. */
   val canHaveAndroidResources
     get() = when (this) {
       TEST_FIXTURES, UNIT_TEST -> false
-      MAIN, ANDROID_TEST, SCREENSHOT_TEST -> true
+      MAIN, ANDROID_TEST, SCREENSHOT_TEST, TEST_SUITE -> true
     }
 }
 

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.api;
 
-import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
 import com.android.tools.idea.gradle.dsl.api.configurations.ConfigurationsModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel;
@@ -110,9 +109,6 @@ public interface GradleBuildModel extends GradleDslContextModel, GradleFileModel
    */
   @Nullable
   PsiElement getPluginsPsiElement();
-
-  @NotNull
-  AndroidModel android();
 
   @NotNull
   BuildScriptModel buildscript();

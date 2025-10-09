@@ -30,7 +30,7 @@ import java.nio.file.Path;
 /** Serializes a {@link PostQuerySyncData} instance to a proto message. */
 public class SnapshotSerializer {
 
-  public static final int PROTO_VERSION = 2;
+  public static final int PROTO_VERSION = 3;
 
   static final ImmutableBiMap<Operation, SnapshotProto.WorkspaceFileChange.VcsOperation> OP_MAP =
       ImmutableBiMap.of(
@@ -63,21 +63,22 @@ public class SnapshotSerializer {
 
   private void visitProjectDefinition(ProjectDefinition projectDefinition) {
     SnapshotProto.ProjectDefinition.Builder proto = this.proto.getProjectDefinitionBuilder();
-    projectDefinition.projectIncludes().stream()
+    projectDefinition.getProjectIncludes().stream()
         .map(Path::toString)
         .forEach(proto::addIncludePaths);
-    projectDefinition.projectExcludes().stream()
+    projectDefinition.getProjectExcludes().stream()
         .map(Path::toString)
         .forEach(proto::addExcludePaths);
-    proto.setDeriveTargetsFromDirectories(projectDefinition.deriveTargetsFromDirectories());
-    projectDefinition.targetPatterns().stream().map(TargetPattern::toString).forEach(proto::addTargetPatterns);
-    projectDefinition.systemExcludes().stream()
+    proto.setDeriveTargetsFromDirectories(projectDefinition.getDeriveTargetsFromDirectories());
+    projectDefinition.getTargetPatterns().stream().map(TargetPattern::toString).forEach(proto::addTargetPatterns);
+    projectDefinition.getSystemExcludes().stream()
         .map(Path::toString)
         .forEach(proto::addSystemExcludes);
-    projectDefinition.languageClasses().stream()
+    proto.setIsAndroidWorkspace(projectDefinition.isAndroidWorkspace());
+    projectDefinition.getLanguageClasses().stream()
         .map(l -> l.protoValue)
         .forEach(proto::addLanguageClasses);
-    projectDefinition.testSources().forEach(proto::addTestSources);
+    projectDefinition.getTestSources().forEach(proto::addTestSources);
   }
 
   private void visitVcsState(VcsState vcsState) {

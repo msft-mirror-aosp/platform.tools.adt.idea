@@ -75,6 +75,7 @@ public class TestDataSyncRunner {
             new PackageReader.ParallelReader.SingleThreadedForTests(),
             v -> true,
             context,
+            true,
             projectDefinition,
             newDirectExecutorService());
     Project project = converter.createProject(buildGraphData);

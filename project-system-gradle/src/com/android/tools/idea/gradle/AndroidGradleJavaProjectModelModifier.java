@@ -20,6 +20,7 @@ import static com.android.tools.idea.gradle.dsl.api.dependencies.CommonConfigura
 import static com.android.tools.idea.gradle.dsl.api.dependencies.CommonConfigurationNames.IMPLEMENTATION;
 import static com.android.tools.idea.gradle.dsl.api.dependencies.CommonConfigurationNames.SCREENSHOT_TEST_IMPLEMENTATION;
 import static com.android.tools.idea.gradle.dsl.api.dependencies.CommonConfigurationNames.TEST_IMPLEMENTATION;
+import static com.android.tools.idea.gradle.dsl.model.android.AndroidModelUtilsKt.android;
 import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.getGradleProjectPath;
 import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_MODIFIER_ACTION_REDONE;
 import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_MODIFIER_ACTION_UNDONE;
@@ -70,7 +71,7 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.command.undo.BasicUndoableAction;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.command.undo.UnexpectedUndoException;
-import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
@@ -115,7 +116,7 @@ public class AndroidGradleJavaProjectModelModifier extends JavaProjectModelModif
   @Override
   public Promise<Void> addModuleDependency(@NotNull Module from, @NotNull Module to, @NotNull DependencyScope scope, boolean exported) {
     Project project = from.getProject();
-    VirtualFile openedFile = FileEditorManagerEx.getInstanceEx(from.getProject()).getCurrentFile();
+    VirtualFile openedFile = FileEditorManager.getInstance(from.getProject()).getCurrentFile();
     GradleProjectPath gradlePath = getGradleProjectPath(to);
     GradleBuildModel buildModel = GradleBuildModel.get(from);
 
@@ -170,7 +171,7 @@ public class AndroidGradleJavaProjectModelModifier extends JavaProjectModelModif
     }
     Project project = firstModule.getProject();
 
-    VirtualFile openedFile = FileEditorManagerEx.getInstanceEx(firstModule.getProject()).getCurrentFile();
+    VirtualFile openedFile = FileEditorManager.getInstance(firstModule.getProject()).getCurrentFile();
     ProjectBuildModel projectBuildModel = ProjectBuildModel.get(project);
 
     List<GradleFileModel> buildModelsToUpdate = new ArrayList<>();
@@ -220,7 +221,7 @@ public class AndroidGradleJavaProjectModelModifier extends JavaProjectModelModif
     javaPluginNames.retainAll(JAVA_PLUGIN_IDENTIFIERS);
 
     if (!androidPluginNames.isEmpty()) {
-      AndroidModel android = buildModel.android();
+      AndroidModel android = android(buildModel);
       CompileOptionsModel compileOptions = android.compileOptions();
       compileOptions.sourceCompatibility().setLanguageLevel(level);
       compileOptions.targetCompatibility().setLanguageLevel(level);

@@ -153,6 +153,7 @@ studio_plugin(
         "//tools/data-binding:compilerCommon.antlr.shaded",
         "//tools/adt/idea/build-attribution:build-analysis-results-proto",
         "//tools/adt/idea/android-common:libandroid-core-proto",
+        "//tools/adt/idea/testartifacts:libjourneys-java-proto",
     ],
     license_files = [
         "//prebuilts/r8:license",
@@ -780,6 +781,7 @@ studio_plugin(
         "//tools/vendor/google/ml/aiplugin/core/aicore:aida_protobuf",
         "//tools/vendor/google/ml/aiplugin/core/aicore:gemini_plugin_proto",
         "//tools/vendor/modelcontextprotocol/kotlin-sdk:mcp-sdk-libraries",
+        "//tools/vendor/google/ml/aiplugin/android/journeys/gradle:libjourneys-java-proto",
     ],
     modules = {
         "aiplugin.jar": [
@@ -1159,6 +1161,7 @@ iml_module(
     name = "studio",
     srcs = ["src"],
     iml_files = ["studio.iml"],
+    resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
