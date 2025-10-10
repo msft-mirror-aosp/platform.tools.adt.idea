@@ -99,13 +99,15 @@ import javax.swing.JTable
 import javax.swing.event.TreeModelEvent
 import javax.swing.tree.TreeModel
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StateReadSettings
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsCommand
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsResponse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestName
-import org.mockito.Mockito.verify
-import org.mockito.kotlin.mock
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 private const val USER_PKG = 123
@@ -268,7 +270,12 @@ class LayoutInspectorTreePanelTest {
       LayoutInspectorComposeProtocol.Response.newBuilder()
         .apply {
           updateSettingsResponse =
-            LayoutInspectorComposeProtocol.UpdateSettingsResponse.getDefaultInstance()
+            UpdateSettingsResponse.newBuilder()
+              .apply {
+                addSupportedStateReadKind(StateReadSettings.Kind.ALL)
+                addSupportedStateReadKind(StateReadSettings.Kind.BY_ID)
+              }
+              .build()
         }
         .build()
     }
@@ -1134,6 +1141,40 @@ class LayoutInspectorTreePanelTest {
     assertThat(inspectorRule.inspector.inspectorModel.selectionListeners.size()).isEqualTo(0)
     assertThat(inspectorRule.inspector.inspectorModel.connectionListeners.size()).isEqualTo(0)
     assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(3)
+  }
+
+  @RunsInEdt
+  @Test
+  fun testStateReadPanelActivation() {
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS.overrideForTest(
+      true,
+      projectRule.testRootDisposable,
+    )
+    val panel = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val inspector = inspectorRule.inspector
+    inspector.treeSettings.showRecompositions = true
+    setToolContext(panel, inspector)
+    UIUtil.dispatchAllInvocationEvents()
+    val tree = panel.tree
+    val table = panel.focusComponent as JTable
+    table.setUI(HeadlessTableUI())
+    tree.setUI(HeadlessTreeUI())
+    TreeUtil.expandAll(tree)
+    val model = inspectorRule.inspectorModel
+    val compose1 = model[COMPOSE1] as ComposeViewNode
+    inspectorRule.inspectorModel.setSelection(compose1, SelectionOrigin.INTERNAL)
+    table.setBounds(0, 0, 500, 1000)
+    val ui = FakeUi(table)
+    val row = table.selectedRow
+    val bounds = table.getCellRect(row, 1, true)
+    ui.mouse.click(bounds.centerX.toInt(), bounds.centerY.toInt())
+    // Expect no state reads selected since the node is not being observed:
+    assertThat(model.stateReadsNode).isNull()
+
+    model.stateReadsModel.observeNode(compose1)
+    ui.mouse.click(bounds.centerX.toInt(), bounds.centerY.toInt())
+    // Expect state reads selected for compose1:
+    assertThat(model.stateReadsNode).isEqualTo(compose1)
   }
 
   private fun setToolContext(tree: LayoutInspectorTreePanel, inspector: LayoutInspector) {
