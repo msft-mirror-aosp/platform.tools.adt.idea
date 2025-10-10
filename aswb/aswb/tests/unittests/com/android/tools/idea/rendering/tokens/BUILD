@@ -21,7 +21,11 @@ intellij_integration_test_suite(
     size = "large",
     srcs = ["BazelBuildServicesTest.java"],
     data = [
+        "//prebuilts/studio/jdk:jdk21",
+        "//prebuilts/studio/jdk/jbr-next:bundle",
         "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:ndk",
+        "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
         "//prebuilts/tools/common/m2:all",
         "//tools/adt/idea/aswb/testing/test_deps:repository_cache",
