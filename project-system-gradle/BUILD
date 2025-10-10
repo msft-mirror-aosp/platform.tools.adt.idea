@@ -610,6 +610,7 @@ iml_module(
         "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
         "@intellij//:intellij.spellchecker",
         "@intellij//:intellij.properties.backend.psi",
+        "//tools/adt/idea/.idea/libraries:equalsverifier",
     ],
     test_jvm_flags = ["-Didea.skip.indices.initialization=true"],
     test_resources = ["testResources"],
