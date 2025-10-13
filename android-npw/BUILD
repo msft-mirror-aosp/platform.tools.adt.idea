@@ -177,6 +177,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/ml-api:intellij.android.ml-api",
         "//tools/adt/idea/jps-model:intellij.android.jps.model",
+        "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle.tests",
     ],
     test_resources = ["testResources"],
     test_srcs = ["testSrc"],
