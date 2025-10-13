@@ -40,7 +40,6 @@ import com.android.tools.idea.gradle.dsl.model.repositories.EmptyRepositoriesMod
 import com.android.tools.idea.gradle.dsl.model.repositories.RepositoriesModelImpl
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.DECLARATIVE
-import com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement
 import com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement
 import com.android.tools.idea.gradle.dsl.parser.build.BuildScriptDslElement
 import com.android.tools.idea.gradle.dsl.parser.build.SubProjectsDslElement
