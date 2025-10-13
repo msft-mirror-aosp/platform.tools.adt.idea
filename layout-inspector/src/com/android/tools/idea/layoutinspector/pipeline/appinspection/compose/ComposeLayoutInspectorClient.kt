@@ -44,8 +44,8 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLaunchMoni
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AttachErrorInfo
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.toAttachErrorInfo
 import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.All
+import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.None
 import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.Some
-import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.Some.Companion.None
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.Token
@@ -693,7 +693,7 @@ class ComposeLayoutInspectorClient(
               keepRecomposeCounts = keepRecompositionCounts
               stateReadSettingsBuilder.apply {
                 when (observations) {
-                  None -> noneBuilder
+                  is None -> noneBuilder
                   is All -> allBuilder.maxStateReads = maxStateReads
                   is Some -> {
                     byIdBuilder.addAllComposableToObserve(observations.nodes.map { it.anchorHash })
