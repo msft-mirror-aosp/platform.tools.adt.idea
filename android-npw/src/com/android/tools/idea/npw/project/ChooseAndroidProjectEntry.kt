@@ -23,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.model.NewProjectModuleModel
@@ -135,11 +134,8 @@ class GeminiProjectEntry() : ChooseAndroidProjectEntry() {
   override val canGoForward = derivedStateOf { textFieldState.text.isNotEmpty() }
 
   override fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel) {
-    val baseTemplateName =
-      if (StudioFlags.NPW_ENABLE_ARCHITECTURE_SAMPLE_TEMPLATE.get()) "Architecture Sample"
-      else "Empty Activity"
     val templateToUse =
-      TemplateResolver.getAllTemplates().firstOrNull { it.name == baseTemplateName }
+      TemplateResolver.getAllTemplates().firstOrNull { it.name == "Architecture Sample" }
     newProjectModuleModel.newRenderTemplate.setNullableValue(templateToUse ?: NoActivity)
     model.prompt.set(textFieldState.text.toString())
     model.imageAttachments.set(attachedImages)
