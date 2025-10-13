@@ -25,6 +25,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.onChild
@@ -181,6 +182,29 @@ class AdditionalSettingsPanelTest {
 
     // Assert
     assertThat(state.device.expandedStorage).isEqualTo(initialExpandedStorage)
+  }
+
+  @Test
+  fun xrGlassesBackgroundValidation() {
+    val device = TestDevices.aiGlasses()
+    val fileSystem = createInMemoryFileSystem()
+
+    val state = configureDevicePanelState(device)
+
+    rule.setContent {
+      provideCompositionLocals {
+        CompositionLocalProvider(LocalFileSystem provides fileSystem) {
+          AdditionalSettingsPanel(state)
+        }
+      }
+    }
+
+    rule.onNode(hasText("None") and hasTestTag("GlassesEnvironmentDropdown")).assertIsDisplayed()
+    rule.onNodeWithTag("GlassesEnvironmentDropdown").performClick()
+    rule.onNodeWithText(defaultEnvironments().first().fileName).performClick()
+    rule.waitForIdle()
+
+    assertThat(state.device.environment).isEqualTo(defaultEnvironments().first().toPath())
   }
 
   @Test
