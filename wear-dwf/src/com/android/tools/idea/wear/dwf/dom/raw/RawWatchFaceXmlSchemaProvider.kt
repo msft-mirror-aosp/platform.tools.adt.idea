@@ -20,7 +20,9 @@ import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.resources.ResourceType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.model.MergedManifestSnapshotComputeListener
+import com.android.tools.idea.projectsystem.AndroidModuleSystem.Type
 import com.android.tools.idea.projectsystem.getAndroidFacets
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.getSourceAsVirtualFile
 import com.android.tools.idea.stats.ManifestMergerStatsTracker.MergeResult
@@ -31,8 +33,6 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.ProjectActivity
-import com.intellij.openapi.startup.StartupActivity
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtilCore
@@ -62,6 +62,8 @@ class RawWatchfaceXmlSchemaProvider() : XmlSchemaProvider() {
 
   override fun getSchema(url: @NonNls String, module: Module?, baseFile: PsiFile): XmlFile? {
     if (module == null) return null
+    // We only want to initialize the service on demand when a declarative watch face file is opened
+    RawWatchFaceXmlSchemaUpdater.initializeService(module.project)
     val (schemaVersion, isFallback) =
       CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module) ?: return null
 
@@ -78,13 +80,6 @@ class RawWatchfaceXmlSchemaProvider() : XmlSchemaProvider() {
   override fun isAvailable(file: XmlFile) =
     StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_XML_EDITOR_SUPPORT.get() &&
       isDeclarativeWatchFaceFile(file)
-}
-
-/** [StartupActivity] that activates [RawWatchFaceXmlSchemaUpdater] */
-private class RawWatchFaceXmlSchemaUpdaterStartupActivity : ProjectActivity {
-  override suspend fun execute(project: Project) {
-    project.service<RawWatchFaceXmlSchemaUpdater>()
-  }
 }
 
 /**
@@ -120,11 +115,9 @@ private class RawWatchFaceXmlSchemaUpdater private constructor(val project: Proj
 
   override fun snapshotCreationEnded(token: Any, duration: Duration, result: MergeResult) {
     if (result != MergeResult.SUCCESS) return
-
-    val declarativeWatchFaceFiles = project.getDeclarativeWatchFaceFiles()
-    if (declarativeWatchFaceFiles.isEmpty()) return
-
-    ApplicationManager.getApplication().invokeLaterOnWriteThread {
+    ApplicationManager.getApplication().invokeLater {
+      val declarativeWatchFaceFiles = project.getDeclarativeWatchFaceFiles()
+      if (declarativeWatchFaceFiles.isEmpty()) return@invokeLater
       // reparse the files for the caches to be dropped and the schemas recomputed with
       // the latest merged manifest
       FileContentUtilCore.reparseFiles(declarativeWatchFaceFiles)
@@ -137,8 +130,9 @@ private class RawWatchFaceXmlSchemaUpdater private constructor(val project: Proj
 
   private fun Project.getDeclarativeWatchFaceFiles() =
     getAndroidFacets()
+      .filter { it.getModuleSystem().type == Type.TYPE_APP }
       .flatMap { facet ->
-        StudioResourceRepositoryManager.getProjectResources(facet).getResources(
+        StudioResourceRepositoryManager.getModuleResources(facet).getResources(
           ResourceNamespace.RES_AUTO,
           ResourceType.RAW,
         ) {
@@ -147,4 +141,8 @@ private class RawWatchFaceXmlSchemaUpdater private constructor(val project: Proj
         }
       }
       .mapNotNull { it.getSourceAsVirtualFile() }
+
+  companion object {
+    fun initializeService(project: Project) = project.service<RawWatchFaceXmlSchemaUpdater>()
+  }
 }
