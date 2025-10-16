@@ -87,6 +87,7 @@ import org.jetbrains.jewel.foundation.lazy.SelectionMode
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.ActionButton
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
@@ -310,16 +311,18 @@ private fun NewProjectWizardWithGemini(
     ) {
       attachedImages.forEach { AttachedImage(it) }
     }
-    Row(
-      modifier =
-        Modifier.padding(4.dp)
-          .clickable(interactionSource = null, indication = null, onClick = onAttachImage)
-          .padding(4.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-      Icon(key = StudioIconsCompose.LayoutEditor.Properties.ImagePicker, contentDescription = null)
-      Text(text = "Attach images", style = JewelTheme.defaultTextStyle.merge(fontSize = 11.sp))
+
+    ActionButton(onClick = onAttachImage) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Icon(
+          key = StudioIconsCompose.LayoutEditor.Properties.ImagePicker,
+          contentDescription = null,
+        )
+        Text(text = "Attach images", style = JewelTheme.defaultTextStyle.merge(fontSize = 11.sp))
+      }
     }
   }
 }
