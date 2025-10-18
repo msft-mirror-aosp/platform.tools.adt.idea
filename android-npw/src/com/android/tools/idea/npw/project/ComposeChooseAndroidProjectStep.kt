@@ -179,8 +179,8 @@ internal fun GeminiListCell(isSelected: Boolean, isFocused: Boolean) {
       thickness = 3.dp,
     )
     ListCell(
-      text = "Create with Gemini...",
-      iconKey = StudioIconsCompose.StudioBot.Logo,
+      text = "Create with AI...",
+      iconKey = StudioIconsCompose.StudioBot.GenericAiAction,
       isSelected = isSelected,
       isFocused = isFocused,
     )
