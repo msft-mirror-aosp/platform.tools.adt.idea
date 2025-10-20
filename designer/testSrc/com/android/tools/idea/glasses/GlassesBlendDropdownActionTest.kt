@@ -16,7 +16,7 @@
 package com.android.tools.idea.glasses
 
 import com.android.flags.junit.FlagRule
-import com.android.sdklib.SystemImageTags.XR_GLASSES_TAG
+import com.android.sdklib.SystemImageTags.AI_GLASSES_TAG
 import com.android.sdklib.SystemImageTags.XR_HEADSET_TAG
 import com.android.sdklib.devices.Device
 import com.android.tools.configurations.Configuration
@@ -37,7 +37,7 @@ class GlassesBlendDropdownActionTest {
 
   @get:Rule val applicationRule = ApplicationRule()
 
-  @get:Rule val flagRule = FlagRule(StudioFlags.COMPOSE_PREVIEW_XR_GLASSES_PREVIEW, true)
+  @get:Rule val flagRule = FlagRule(StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW, true)
 
   @Test
   fun `action is not visible when device is not glasses`() {
@@ -47,7 +47,7 @@ class GlassesBlendDropdownActionTest {
 
   @Test
   fun `action is visible when device is glasses`() {
-    val event = setUpDeviceAndActionVisibility(XR_GLASSES_TAG.id)
+    val event = setUpDeviceAndActionVisibility(AI_GLASSES_TAG.id)
     assertThat(event.presentation.isEnabledAndVisible).isTrue()
   }
 
