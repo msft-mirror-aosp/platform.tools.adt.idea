@@ -233,8 +233,7 @@ internal class SyncContributorAndroidProjectContext(
         gradleProject.buildScript.sourceFile,
         context.projectGradleVersion,
         versions.agpVersionAsString,
-        gradlePluginModel.hasSafeArgsJava(),
-        gradlePluginModel.hasSafeArgsKotlin()
+        gradlePluginModel
       )
     }
 
