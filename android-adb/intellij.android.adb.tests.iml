@@ -57,6 +57,7 @@
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.ddmlibcompatibility" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.adb" />
 </module>
