@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getTemplateTitle
 import com.android.tools.idea.wizard.template.FormFactor
@@ -50,7 +49,7 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
     val entries = mutableListOf<ChooseAndroidProjectEntry>()
     withContext(Dispatchers.IO) {
       formFactorSupplier.get().forEach { entries.add(createFormFactorEntry(it)) }
-      if (StudioFlags.GEMINI_NEW_PROJECT_AGENT.get()) entries.add(createGeminiEntry())
+      entries.addAll(AndroidProjectEntryProvider.getAllProjectEntries())
     }
     chooseAndroidProjectEntries = entries
     isLoading = false
@@ -75,6 +74,4 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
       getDefaultSelectedTemplateIndex(templates),
     )
   }
-
-  private fun createGeminiEntry() = GeminiProjectEntry()
 }

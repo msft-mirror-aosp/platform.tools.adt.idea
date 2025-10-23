@@ -24,20 +24,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,76 +43,41 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toPainter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.android.tools.adtui.ImageUtils
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getTemplateTitle
 import com.android.tools.idea.wizard.template.Template
 import com.intellij.openapi.diagnostic.fileLogger
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.UIUtil
-import icons.StudioIconsCompose
 import icons.StudioIllustrationsCompose
-import java.awt.Dimension
-import java.awt.image.BufferedImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
-import org.jetbrains.jewel.bridge.medium
 import org.jetbrains.jewel.bridge.toComposeColor
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
 import org.jetbrains.jewel.foundation.lazy.SelectionMode
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.ActionButton
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.TextArea
-import org.jetbrains.jewel.ui.component.Typography
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
-import org.jetbrains.jewel.ui.theme.textAreaStyle
 
-// This should be unified with com.android.studio.ml.bot.ui.compose.timeline.emptystate.Greeting.kt
-internal val brandColor1 = Color(0xFF3186FF)
-internal val brandColor2 = Color(0xFF346BF1)
-internal val brandColor3 = Color(0xFF4FA0FF)
-val colors =
-  listOf(
-    brandColor1,
-    brandColor2,
-    brandColor3,
-    brandColor3,
-    brandColor2,
-    brandColor1,
-    brandColor2,
-    brandColor3,
-    Color.Transparent,
-    Color.Transparent,
-  )
-val stops = listOf(0f, .09f, .2f, .24f, .35f, .44f, .5f, .56f, .75f, 1f)
 private val templateCellSize = 192.dp
 
 @Composable
@@ -173,24 +134,7 @@ private fun LeftSidePanel(
 }
 
 @Composable
-internal fun GeminiListCell(isSelected: Boolean, isFocused: Boolean) {
-  Column {
-    Divider(
-      modifier = Modifier.width(260.dp).padding(horizontal = 20.dp, vertical = 8.dp),
-      orientation = Orientation.Horizontal,
-      thickness = 3.dp,
-    )
-    ListCell(
-      text = "Create with AI...",
-      iconKey = StudioIconsCompose.StudioBot.GenericAiAction,
-      isSelected = isSelected,
-      isFocused = isFocused,
-    )
-  }
-}
-
-@Composable
-internal fun ListCell(
+fun ProjectEntryListCell(
   text: String,
   iconKey: IconKey? = null,
   isSelected: Boolean,
@@ -220,134 +164,6 @@ internal fun ListCell(
 @Composable
 private fun RightSidePanel(selectedEntry: ChooseAndroidProjectEntry?) {
   selectedEntry?.AndroidProjectEntryDetails()
-}
-
-@Composable
-internal fun GeminiRightPanel(
-  textFieldState: TextFieldState,
-  geminiPluginAvailable: Boolean,
-  hasContextSharing: Boolean,
-  attachedImages: List<VirtualFile>,
-  onAttachImage: () -> Unit,
-) {
-  Column(
-    modifier = Modifier.fillMaxSize(),
-    verticalArrangement = Arrangement.Center,
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    if (!geminiPluginAvailable) {
-      PermissionsError("Log in to Gemini to create a new project.")
-    } else if (!hasContextSharing) {
-      PermissionsError("Enable project context sharing to continue.")
-    } else {
-      NewProjectWizardWithGemini(textFieldState, attachedImages, onAttachImage)
-    }
-  }
-}
-
-@Composable
-private fun PermissionsError(text: String) {
-  Text(
-    modifier =
-      Modifier.padding(bottom = 24.dp)
-        .testTag(ChooseAndroidProjectStepLayoutTags.RightPanel.geminiErrorText),
-    text = text,
-    style =
-      JewelTheme.defaultTextStyle.merge(
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        fontWeight = FontWeight(500),
-      ),
-  )
-}
-
-@Composable
-private fun NewProjectWizardWithGemini(
-  textFieldState: TextFieldState,
-  attachedImages: List<VirtualFile>,
-  onAttachImage: () -> Unit,
-) {
-  // Need to do animation here.
-  val brush = CssGradientBrush(angleDegrees = -16.0, colors = colors, stops = stops, scaleX = 4f)
-  val shape = RoundedCornerShape(4.dp)
-
-  Text(
-    modifier = Modifier.padding(bottom = 8.dp),
-    text = "What do you want to build?",
-    style =
-      JewelTheme.defaultTextStyle
-        .merge(fontSize = 24.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1).sp)
-        .copy(brush = brush),
-  )
-  Text(
-    modifier = Modifier.padding(bottom = 24.dp),
-    text = "Bring your app to life faster",
-    style =
-      JewelTheme.defaultTextStyle.merge(
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        fontWeight = FontWeight(500),
-        color = JewelTheme.globalColors.text.info,
-      ),
-  )
-  Column(
-    modifier =
-      Modifier.border(1.dp, JewelTheme.textAreaStyle.colors.border, shape)
-        .background(JewelTheme.textAreaStyle.colors.background, shape)
-        .padding(4.dp)
-  ) {
-    TextArea(
-      modifier =
-        Modifier.size(450.dp, 118.dp)
-          .testTag(ChooseAndroidProjectStepLayoutTags.RightPanel.geminiTextArea),
-      state = textFieldState,
-      undecorated = true,
-      placeholder = { Text(text = "Ask Gemini to create a to-do list app") },
-    )
-    FlowRow(
-      modifier = Modifier.padding(4.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      maxItemsInEachRow = 4,
-      maxLines = 3,
-    ) {
-      attachedImages.forEach { AttachedImage(it) }
-    }
-
-    ActionButton(onClick = onAttachImage) {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-      ) {
-        Icon(key = StudioIconsCompose.LayoutEditor.Palette.ImageSwitcher, contentDescription = null)
-        Text(text = "Attach Images", style = Typography.medium())
-      }
-    }
-  }
-}
-
-@OptIn(ExperimentalResourceApi::class)
-@Composable
-private fun AttachedImage(virtualFile: VirtualFile) {
-  val bufferedImageState by
-    produceState<BufferedImage?>(initialValue = null, virtualFile) {
-      withContext(Dispatchers.IO) {
-        try {
-          // Use com.android.studio.ml.bot.AdtUiImageUtils.readImageAtScale if this gets moved to
-          // aiplugin.
-          value = ImageUtils.readImageAtScale(virtualFile.inputStream, Dimension(768, 768))
-        } catch (_: Exception) {}
-      }
-    }
-
-  bufferedImageState?.let {
-    Image(
-      painter = it.toPainter(),
-      modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)),
-      contentScale = ContentScale.Crop,
-      contentDescription = "Attached image: ${virtualFile.name}",
-    )
-  }
 }
 
 @Composable

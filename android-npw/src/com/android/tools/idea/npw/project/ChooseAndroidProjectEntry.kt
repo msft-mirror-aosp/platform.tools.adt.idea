@@ -15,52 +15,54 @@
  */
 package com.android.tools.idea.npw.project
 
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.model.NewProjectModuleModel
-import com.android.tools.idea.npw.template.TemplateResolver
 import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.Template.NoActivity
 import com.android.tools.idea.wizard.template.WizardUiContext
-import com.intellij.openapi.fileChooser.FileChooser
-import com.intellij.openapi.fileChooser.FileChooserDescriptor
-import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.extensions.ExtensionPointName
 
-private val extensionList = listOf("jpg", "jpeg", "png")
+interface ChooseAndroidProjectEntry {
+  @Composable fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean)
 
-abstract class ChooseAndroidProjectEntry() {
-  @Composable abstract fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean)
+  @Composable fun AndroidProjectEntryDetails()
 
-  @Composable abstract fun AndroidProjectEntryDetails()
+  val canGoForward: State<Boolean>
 
-  abstract val canGoForward: State<Boolean>
+  fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel)
+}
 
-  abstract fun onProceeding(
-    newProjectModuleModel: NewProjectModuleModel,
-    model: NewProjectModel,
-  ): Unit
+// FormFactor entries are automatically included and don't implement AndroidProjectEntryProvider
+interface AndroidProjectEntryProvider {
+  fun getProjectEntries(): List<ChooseAndroidProjectEntry>
+
+  companion object {
+    val EP_NAME =
+      ExtensionPointName.create<AndroidProjectEntryProvider>(
+        "com.android.androidProjectEntryProvider"
+      )
+
+    fun getAllProjectEntries(): List<ChooseAndroidProjectEntry> =
+      EP_NAME.extensionList.flatMap { it.getProjectEntries() }
+  }
 }
 
 class FormFactorProjectEntry(
   val formFactorTitle: String,
   val templates: List<Template>,
   selectedTemplate: Template?,
-) : ChooseAndroidProjectEntry() {
+) : ChooseAndroidProjectEntry {
   var selectedTemplate by mutableStateOf(selectedTemplate)
 
   @Composable
   override fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean) {
-    ListCell(formFactorTitle, null, isSelected, isFocused)
+    ProjectEntryListCell(formFactorTitle, null, isSelected, isFocused)
   }
 
   @Composable
@@ -82,65 +84,5 @@ class FormFactorProjectEntry(
       newProjectModuleModel.extraRenderTemplateModel.newTemplate =
         if (hasExtraDetailStep) template else NoActivity
     }
-  }
-}
-
-class GeminiProjectEntry() : ChooseAndroidProjectEntry() {
-  val textFieldState = TextFieldState()
-  val attachedImages = SnapshotStateList<VirtualFile>()
-
-  @Composable
-  override fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean) {
-    GeminiListCell(isSelected, isFocused)
-  }
-
-  @Composable
-  override fun AndroidProjectEntryDetails() {
-    GeminiRightPanel(
-      textFieldState = textFieldState,
-      geminiPluginAvailable = GeminiPluginApi.getInstance().isAvailable(),
-      hasContextSharing = true,
-      attachedImages = attachedImages,
-      onAttachImage = {
-        val selectedFiles =
-          FileChooser.chooseFiles(
-            FileChooserDescriptor(
-                /* chooseFiles = */ true,
-                /* chooseFolders = */ false,
-                /* chooseJars = */ false,
-                /* chooseJarsAsFiles = */ false,
-                /* chooseJarContents = */ false,
-                /* chooseMultiple = */ true,
-              )
-              .withExtensionFilter("Image files", *extensionList.toTypedArray()),
-            /* project = */ null,
-            /* toSelect = */ null,
-          )
-
-        selectedFiles.forEach { selectedFile ->
-          // Show an error dialog if the file exceeds the maximum allowed size
-          if (selectedFile.length > 25 * 1024 * 1024) {
-            Messages.showErrorDialog(
-              "Attachments should not exceed the maximum file size (25 MB).",
-              "Maximum File Size Exceeded",
-            )
-          } else {
-            attachedImages += selectedFile
-          }
-        }
-      },
-    )
-  }
-
-  override val canGoForward = derivedStateOf { textFieldState.text.isNotEmpty() }
-
-  override fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel) {
-    val templateToUse =
-      TemplateResolver.getAllTemplates().firstOrNull {
-        it.name == StudioFlags.NPW_AI_STARTER_TEMPLATE.get()
-      }
-    newProjectModuleModel.newRenderTemplate.setNullableValue(templateToUse ?: NoActivity)
-    model.prompt.set(textFieldState.text.toString())
-    model.imageAttachments.set(attachedImages)
   }
 }

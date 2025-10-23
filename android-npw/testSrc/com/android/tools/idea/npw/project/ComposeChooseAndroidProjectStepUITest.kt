@@ -17,21 +17,14 @@ package com.android.tools.idea.npw.project
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsFocused
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onChildren
-import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gemini.GeminiPluginApi
-import com.android.tools.idea.gemini.LlmPrompt
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
-import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.wizard.template.FormFactor
-import com.intellij.openapi.project.Project
-import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
 import java.util.function.Supplier
 import kotlin.test.assertEquals
@@ -121,75 +114,5 @@ class ComposeChooseAndroidProjectStepUITest {
       mobileTemplates[mobileTemplates.size - 1].name,
       (model.chooseAndroidProjectEntries[0] as FormFactorProjectEntry).selectedTemplate?.name,
     )
-  }
-
-  @Test
-  fun showNewProjectWizardWithGemini() = runTest {
-    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(true)
-    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
-    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
-    val fakeGeminiPluginApi =
-      object : GeminiPluginApi {
-        override val MAX_QUERY_CHARS: Int
-          get() = 1
-
-        override fun isAvailable(): Boolean = true
-
-        override fun sendChatQuery(
-          project: Project,
-          prompt: LlmPrompt,
-          displayText: String?,
-          requestSource: GeminiPluginApi.RequestSource,
-        ) {}
-
-        override fun stageChatQuery(
-          project: Project,
-          prompt: String,
-          requestSource: GeminiPluginApi.RequestSource,
-        ) {}
-      }
-
-    ExtensionTestUtil.maskExtensions(
-      GeminiPluginApi.EP_NAME,
-      listOf(fakeGeminiPluginApi),
-      projectRule.disposable,
-    )
-    model.getAndroidProjectEntries()
-
-    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
-
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column)
-      .onChildren()
-      .assertCountEquals(FormFactor.entries.size + 1)
-      .onLast()
-      .performClick()
-
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.geminiTextArea)
-      .assertExists()
-      .assertTextContains("Ask Gemini to create a to-do list app")
-  }
-
-  @Test
-  fun showNewProjectAgentErrorOnNoAiAvailability() = runTest {
-    StudioFlags.GEMINI_NEW_PROJECT_AGENT.override(true)
-    val formFactorSupplier = Supplier<List<FormFactor>> { FormFactor.entries }
-    val model = ChooseAndroidProjectStepModel(formFactorSupplier)
-    model.getAndroidProjectEntries()
-
-    composeTestRule.setContent { ChooseAndroidProjectStepUI(model = model) }
-
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column)
-      .onChildren()
-      .assertCountEquals(FormFactor.entries.size + 1)
-      .onLast()
-      .performClick()
-
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.geminiErrorText)
-      .assertExists()
-      .assertTextContains("Log in to Gemini to create a new project.")
   }
 }
