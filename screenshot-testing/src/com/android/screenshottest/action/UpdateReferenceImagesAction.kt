@@ -15,26 +15,22 @@
  */
 package com.android.screenshottest.action
 
-import com.android.screenshottest.ScreenshotTestBuildSystemAdapter
-import com.android.screenshottest.ui.UpdateReferenceImagesDialog
-import com.android.screenshottest.util.ScreenshotTestRunner
-import com.android.screenshottest.util.TestResultParser
-import com.google.common.annotations.VisibleForTesting
+import com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestSuiteView
+import com.intellij.execution.ExecutorRegistry
 import com.intellij.execution.actions.ConfigurationContext
+import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.runners.ExecutionUtil
+import com.intellij.execution.impl.RunManagerImpl
+import com.android.screenshottest.ui.UpdateReferenceImagesDialog
+import com.android.screenshottest.listener.UpdateScreenshotTestResultsListener
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.externalSystem.task.TaskCallback
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.util.PsiTreeUtil
-import java.io.File
-import org.jetbrains.android.util.AndroidUtils
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -56,65 +52,22 @@ class UpdateReferenceImagesAction : AnAction(
   override fun actionPerformed(e: AnActionEvent) {
     val context = ConfigurationContext.getFromEvent(e)
     val project = context.project ?: return
-    val module = AndroidUtils.getAndroidModule(context) ?: return
-    val psiFile = e.getData(CommonDataKeys.PSI_FILE) as? KtFile ?: return
-    val triggerElement: PsiElement? = context.location?.psiElement
-
+    val module = context.module ?: return
+    val psiFile = context.location?.psiElement?.containingFile as? KtFile ?: return
     val previewFunctions = findPreviewTestFunctions(psiFile)
-    if (previewFunctions.isEmpty()) {
-      return
-    }
 
-    val testClassFqns = determineTestClassFqns(previewFunctions)
-    if (testClassFqns.isEmpty()) {
-      LOG.warn("Could not determine fully qualified names for test classes.")
-      return
-    }
+    val validateRunconfigSettings = context.createConfigurationsFromContext()?.firstOrNull()?.configurationSettings
+                           ?: return
+    val updateRunconfigSettings = RunManagerImpl.getInstanceImpl(project).createConfiguration(validateRunconfigSettings.configuration, validateRunconfigSettings.factory)
+    updateRunconfigSettings.isTemporary = true
+    updateRunconfigSettings.isActivateToolWindowBeforeRun = false
+    val executor = ExecutorRegistry.getInstance().getExecutorById(DefaultRunExecutor.EXECUTOR_ID) ?: return
 
-    val dialog = ApplicationManager.getApplication().runReadAction<UpdateReferenceImagesDialog> {
-      UpdateReferenceImagesDialog(project, previewFunctions, module, triggerElement)
-    }
+    val dialog = UpdateReferenceImagesDialog(project, previewFunctions, module, context.psiLocation)
 
-    val taskRunner = ScreenshotTestRunner(project, module)
-    val callback = object : TaskCallback {
-      override fun onSuccess() = onTaskFinished(module, dialog)
-      override fun onFailure() {
-        LOG.warn("Screenshot 'validate' task finished with a failure, which is expected. Parsing results.")
-        onTaskFinished(module, dialog)
-      }
-    }
-
-    taskRunner.run(testClassFqns, callback)
+    project.messageBus.connect(dialog.disposable).subscribe(AndroidTestSuiteView.ANDROID_TEST_SUITE_TOPIC, UpdateScreenshotTestResultsListener(dialog))
+    ExecutionUtil.runConfiguration(updateRunconfigSettings, executor)
     dialog.show()
-  }
-
-  private fun onTaskFinished(module: Module, dialog: UpdateReferenceImagesDialog) {
-    ApplicationManager.getApplication().invokeLater {
-      LOG.info("Screenshot 'validate' task finished. Refreshing VFS before parsing results.")
-
-      val projectSystem = ScreenshotTestBuildSystemAdapter.EP_NAME.extensionList.firstOrNull()
-      if (projectSystem == null) {
-        LOG.error("ScreenshotTestBuildSystemAdapter extension not found. Cannot refresh VFS.")
-        dialog.onBuildFinished(TestResultParser.parse(module))
-        return@invokeLater
-      }
-
-      val modulePathStr = projectSystem.getLinkedExternalProjectPath(module)
-      if (modulePathStr == null) {
-        LOG.error("Could not get module project path for ${module.name}. Cannot refresh VFS.")
-        dialog.onBuildFinished(TestResultParser.parse(module))
-        return@invokeLater
-      }
-
-      val buildDir = File(modulePathStr, "build")
-      val screenshotOutputDir = buildDir.resolve("outputs/screenshotTest-results/preview")
-
-      LocalFileSystem.getInstance().refreshIoFiles(listOf(screenshotOutputDir), true, true) {
-        LOG.info("VFS refresh complete. Parsing test results.")
-        val testResults = TestResultParser.parse(module)
-        dialog.onBuildFinished(testResults)
-      }
-    }
   }
 
   @VisibleForTesting

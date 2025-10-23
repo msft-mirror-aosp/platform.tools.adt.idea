@@ -15,7 +15,7 @@ package com.android.tools.idea.gradle.dsl.model.ext
 
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
-import com.android.tools.idea.gradle.dsl.model.android.android
+import com.android.tools.idea.gradle.dsl.android.model.android.android
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.BIG_DECIMAL_TYPE
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.BOOLEAN_TYPE
@@ -47,6 +47,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.RawText
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.model.GradleBuildModelImpl
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
+import com.android.tools.idea.gradle.dsl.model.MyTestDslElement
 import com.android.tools.idea.gradle.dsl.model.android.BuildTypeModelImpl
 import com.android.tools.idea.gradle.dsl.model.notifications.CircularApplication
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpression
@@ -3356,6 +3357,22 @@ verifyPropertyModel(depModel, STRING_TYPE, "goodbye", STRING, DERIVED, 0)*/
   }
 
   @Test
+  fun testNullGetReferredElement() {
+    writeToBuildFile(TestFile.EMPTY_BUILDSCRIPT_EXT)
+
+    val mainBuildModel = gradleBuildModel
+    val propertiesElement = mainBuildModel.buildscript().ext().rawElement as GradlePropertiesDslElement
+    val newProperty = GradlePropertyModelBuilder.create(propertiesElement, "name").build()
+    val reference = ReferenceTo(newProperty, mainBuildModel.buildscript().ext())
+    assertThrows(
+      java.lang.IllegalStateException::class.java,
+      "ReferredElement (rawElement of elementModel) is null"
+    ) {
+      reference.referredElement
+    }
+  }
+
+  @Test
   fun testReferenceToMapElement() {
     writeToBuildFile(TestFile.REFERENCE_TO_MAP_ELEMENT)
 
@@ -4042,6 +4059,7 @@ verifyPropertyModel(depModel, STRING_TYPE, "goodbye", STRING, DERIVED, 0)*/
     REWRITE_PROPERTIES_EXPECTED("rewritePropertiesExpected"),
     PROJECT_VARIABLE_CIRCULARITY("projectVariableCircularity"),
     PROJECT_VARIABLE_CIRCULARITY_MAP("projectVariableCircularityMap"),
+    EMPTY_BUILDSCRIPT_EXT("emptyBuildScriptExt"),
     ;
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {

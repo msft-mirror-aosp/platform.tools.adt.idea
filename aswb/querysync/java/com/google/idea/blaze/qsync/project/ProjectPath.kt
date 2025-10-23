@@ -16,7 +16,9 @@
 package com.google.idea.blaze.qsync.project
 
 import com.google.common.base.Preconditions
+import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.annotations.TestOnly
 
 /** A path to a project artifact, either in the workspace or the project directory.  */
@@ -27,15 +29,21 @@ sealed interface ProjectPath: ProjectProtoModel {
   @TestOnly
   fun getTestValue(): String
 
+  sealed interface SourceCodeRepositoryRelativeProjectPath: ProjectPath
+
   @JvmRecord
-  data class WorkspaceRelativeProjectPath(val relativePath: Path, override val innerPath: Path): ProjectPath{
+  data class WorkspaceRelativeProjectPath(val relativePath: Path, override val innerPath: Path): SourceCodeRepositoryRelativeProjectPath {
     override fun resolveChild(child: Path) = copy(relativePath = relativePath.resolve(child))
     override fun withInnerJarPath(innerPath: Path) = copy(innerPath = innerPath)
     override fun getTestValue(): String = testValue(relativePath, innerPath)
   }
 
   @JvmRecord
-  data class ExternalRepositoryRelativeProjectPath(val externalRepositoryName: String, val relativePath: Path, override val innerPath: Path): ProjectPath{
+  data class ExternalRepositoryRelativeProjectPath(
+    val externalRepositoryName: String,
+    val relativePath: Path,
+    override val innerPath: Path,
+  ): SourceCodeRepositoryRelativeProjectPath {
     override fun resolveChild(child: Path) = copy(relativePath = relativePath.resolve(child))
     override fun withInnerJarPath(innerPath: Path) = copy(innerPath = innerPath)
     override fun getTestValue(): String = testValue(relativePath, innerPath)
@@ -77,12 +85,65 @@ sealed interface ProjectPath: ProjectProtoModel {
     }
   }
 
+  interface ExternalRepositoryFinder {
+    fun find(name: String): Path?
+
+    companion object{
+      private val known: MutableMap<Path, Boolean> = ConcurrentHashMap();
+      @JvmStatic
+      fun createAndPrepare(workspaceRoot: Path): ExternalRepositoryFinder {
+        val outputBase = runCatching {
+          // External repositories are supported by Bazel only.
+          // See https://bazel.build/remote/output-directories: bazel-out is a symlink to $output_base/execroot/_main/bazel_out
+          val bazelOut = workspaceRoot.resolve("bazel-out")
+          if (Files.exists(bazelOut))
+            bazelOut.toRealPath().resolve("../../..").toRealPath()
+          else
+            workspaceRoot
+        }.getOrDefault(workspaceRoot)
+
+        return object: ExternalRepositoryFinder{
+          override fun find(name: String): Path? {
+            return outputBase
+              .resolve("external")
+              .resolve(name)
+              .takeIf { path ->
+                known.computeIfAbsent(path) {
+                  Files.exists(it) &&
+                  !(
+                    // Paths pointing into the <workspace>/external itself do not need to be redirected through `.external` dir.
+                    Files.isSymbolicLink(path) &&
+                    Files.readSymbolicLink(path) == workspaceRoot.resolve("external").resolve(name)
+                   )
+                }
+              }
+          }
+        }
+      }
+
+      @JvmStatic
+      @TestOnly
+      fun createEmptyForTests(): ExternalRepositoryFinder {
+        return object: ExternalRepositoryFinder {
+          override fun find(name: String): Path? = null
+        }
+      }
+    }
+  }
+
   companion object {
-    @JvmField
-    val WORKSPACE_ROOT: WorkspaceRelativeProjectPath = WorkspaceRelativeProjectPath(relativePath = Path.of(""), innerPath = Path.of(""))
+    @JvmStatic
+    fun workspaceRelative(relativePath: Path, externalRepositoryFinder: ExternalRepositoryFinder): SourceCodeRepositoryRelativeProjectPath {
+      val (externalRepositoryName, remainder) = relativePath.maybeExternalRepositoryName(externalRepositoryFinder)
+      return when (externalRepositoryName) {
+        null -> WorkspaceRelativeProjectPath(relativePath, innerPath = Path.of(""))
+        else -> ExternalRepositoryRelativeProjectPath(externalRepositoryName, remainder, innerPath = Path.of(""))
+      }
+    }
 
     @JvmStatic
-    fun workspaceRelative(relativePath: Path): WorkspaceRelativeProjectPath {
+    @TestOnly
+    fun workspaceRelativeForTests(relativePath: Path): SourceCodeRepositoryRelativeProjectPath {
       return WorkspaceRelativeProjectPath(relativePath = relativePath, innerPath = Path.of(""))
     }
 
@@ -102,6 +163,17 @@ sealed interface ProjectPath: ProjectProtoModel {
       return AbsoluteProjectPath(absolutePath = absolutePath, innerPath = Path.of(""))
     }
   }
+}
+
+private fun Path.maybeExternalRepositoryName(externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder): Pair<String?, Path> {
+  // See https://bazel.build/remote/output-directories
+  if (nameCount > 1 && startsWith(Path.of("external"))) {
+    val name = getName(1).toString()
+    if (externalRepositoryFinder.find(name) != null) {
+      return name to subpath(2, nameCount)
+    }
+  }
+  return null to this
 }
 
 private fun testValue(relativePath: Path, innerPath: Path): String {

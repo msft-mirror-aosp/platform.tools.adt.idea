@@ -226,6 +226,12 @@ public final class StudioFlags {
     "Enable Architecture Sample template",
     "Allows the Architecture Sample template to be used.");
 
+  public static final Flag<String> NPW_AI_STARTER_TEMPLATE = new StringFlag(
+    NPW, "ai.starter.template",
+    "AI Starter base template",
+    "The name of the template to start with for the New Project Agent",
+    "AI Starter");
+
   public static final Flag<Boolean> NPW_ENABLE_BASIC_WATCH_FACE_TEMPLATE = new BooleanFlag(
     NPW, "watchface.template",
     "Enable Basic Watch Face template",
@@ -335,6 +341,10 @@ public final class StudioFlags {
     "Render Material Symbols Dynamically",
     "Render Material Symbols as customizable layout files. When enabled deprecates Material Icons"
   );
+
+  public static final Flag<Boolean> GENERATE_VECTOR_DRAWABLE_TOOL = new BooleanFlag(
+    DESIGN_TOOLS, "generate.vector.drawable.tool", "Enable the Generate Vector Drawable agent tool",
+    "If enabled, an agent tool to generate vector drawables will be available for agents.");
   //endregion
 
   //region Layout Editor
@@ -1718,6 +1728,13 @@ public final class StudioFlags {
     APP_INSPECTION, "use.experimental.database.inspector", "Use experimental Database Inspector",
     "Use experimental Database Inspector"
   );
+
+  public static final Flag<Boolean> APP_INSPECTION_ENABLE_ADDITIONAL_SQL_DRIVER = new BooleanFlag(
+    APP_INSPECTION,
+    "additional.sql.drivers.enable",
+    "Allow user to provide an additional SQLiteDriver class",
+    "Allow user to provide an additional SQLiteDriver class"
+  );
   // endregion
 
   // region Network Inspector
@@ -2307,6 +2324,11 @@ public final class StudioFlags {
                     "Enable action to add attachments",
                     "When enabled, enables the actions to manage attachments");
 
+  public static final Flag<Boolean> STUDIOBOT_ASK_USER_TOOL_ENABLED =
+    new BooleanFlag(STUDIOBOT, "ask.user.tool.enabled",
+                    "Enable the AskUserTool",
+                    "When enabled, adds the AskUserTool to a set of default tools");
+
   // rate limits are controlled by server flags
   public static final Flag<Integer> STUDIOBOT_COMPLETIONS_PER_HOUR =
     new IntFlag(STUDIOBOT, "completions.per.hour",
@@ -2436,6 +2458,21 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "send.during.response",
                     "Enable sending queries while a response is streaming.",
                     "Enables sending queries while a response is streaming. It may be queued or interrupt the stream.");
+
+  public static final Flag<Boolean> STUDIOBOT_EDIT_CHAT_REQUEST_BUTTON_ENABLED =
+    new BooleanFlag(STUDIOBOT, "edit.chat.request.button.enabled",
+                    "Enable editing past chat queries.",
+                    "Enable editing past chat queries by hovering and clicking an edit button.");
+
+  public static final Flag<Boolean> STUDIOBOT_DELETE_CHAT_REQUEST_BUTTON_ENABLED =
+    new BooleanFlag(STUDIOBOT, "delete.chat.request.button.enabled",
+                    "Enable deleting past chat queries.",
+                    "Enable delete past chat queries by hovering and clicking a delete button.");
+
+  public static final Flag<Boolean> STUDIOBOT_REGENERATE_CHAT_REQUEST_BUTTON_ENABLED =
+    new BooleanFlag(STUDIOBOT, "regenerate.chat.request.button.enabled",
+                    "Enable regenerating past chat queries.",
+                    "Enable regenerating past chat queries by hovering and clicking a regenerate button.");
 
   public enum DasherSupportMode {
     /**

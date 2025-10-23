@@ -24,19 +24,18 @@ import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.common.RuleKinds
 import com.google.idea.blaze.exception.BuildException
-import com.google.idea.blaze.qsync.project.BlazeProjectDataStorage
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectTarget.SourceType
 import com.google.idea.blaze.qsync.project.TestSourceGlobMatcher
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import com.google.idea.blaze.qsync.query.PackageSet
 import java.nio.file.Path
 import java.util.Collections
 import java.util.Comparator.comparingInt
 import java.util.TreeSet
-import kotlin.jvm.optionals.getOrNull
 import kotlinx.coroutines.runBlocking
 
 /** Converts a {@link BuildGraphDataImpl} instance into a project proto. */
@@ -185,12 +184,8 @@ class GraphToProjectConverter(
      */
     @VisibleForTesting
     @JvmStatic
-    fun mergeCompatibleSourceRoots(srcRoots: ImmutableMap<Path, ImmutableMap<Path, String>>): ImmutableMap<Path, ImmutableMap<Path, String>> {
-      val result: ImmutableMap.Builder<Path, ImmutableMap<Path, String>> = ImmutableMap.builder()
-      for (contentRoot in srcRoots.entries) {
-        result.put(contentRoot.key, mergeSourceRoots(contentRoot.value))
-      }
-      return result.buildOrThrow()
+    fun mergeCompatibleSourceRoots(srcRoots: Map<Path, Map<Path, String>>): Map<Path, Map<Path, String>> {
+      return srcRoots.mapValues { mergeSourceRoots(it.value) }
     }
 
     /**
@@ -352,7 +347,17 @@ class GraphToProjectConverter(
   }
 
   @Throws(BuildException::class)
-  fun createProject(graph: BuildGraphData): ProjectProto.Project {
+  fun createProject(graph: BuildGraphData, externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder, update: ProjectProtoUpdate) {
+    update.module(Label.of("@aswb_workspace_module//")) {
+      createModule(graph, externalRepositoryFinder)
+    }
+  }
+
+  fun ProjectProtoUpdate.ModuleUpdater.createModule(graph: BuildGraphData, externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder) {
+    if (projectDefinition.isAndroidWorkspace) {
+      markAsAndroidModule()
+    }
+
     val javaSourceRoots = calculateJavaRootSources(context, graph.getJavaSourceFiles(), graph.packages())
     val rootToNonJavaSource = nonJavaSourceFolders(graph.getSourceFilesByRuleKindAndType({ t -> !RuleKinds.isJava(t) }, *SourceType.all()))
     // Note: according to:
@@ -368,60 +373,45 @@ class GraphToProjectConverter(
         .map(Path::getParent)
         .distinct()
         .toSet()
-    val androidResPackages = setOf<String>()
 
     context.output(PrintOutput.log("%-10d Android resource directories", androidResDirs.size))
 
-    val workspaceModule: ProjectProto.Module.Builder =
-      ProjectProto.Module.Builder(name = BlazeProjectDataStorage.WORKSPACE_MODULE_NAME).also {
-        //          .setType(ProjectProto.ModuleType.MODULE_TYPE_DEFAULT)
-        it.isAndroidModule = projectDefinition.isAndroidWorkspace
-        it.androidResourceDirectories.addAll(androidResDirs.map { ProjectPath.workspaceRelative(it) })
-        it.androidSourcePackages.addAll(androidResPackages)
-        it.androidCustomPackages.addAll(graph.getAllCustomPackages())
-      }
+    addAndroidResourceDirectories(androidResDirs.map { ProjectPath.workspaceRelative(it, externalRepositoryFinder) })
+    graph.getAllCustomPackages().forEach { addAndroidCustomPackage(it) }
 
     val excludesByRootDirectory = projectDefinition.excludesByRootDirectory
     val testSourceGlobMatcher = TestSourceGlobMatcher.create(projectDefinition)
     for (dir in projectDefinition.projectIncludes) {
       val sourceRootsWithPrefixes = javaSourceRoots.get(dir).orEmpty()
-      val sourceFolders =
-        sourceRootsWithPrefixes.entries.map { entry ->
+      contentEntry(ProjectPath.workspaceRelative(dir, externalRepositoryFinder)) {
+        sourceRootsWithPrefixes.entries.forEach { entry ->
           val path = dir.resolve(entry.key)
-          ProjectProto.SourceFolder(
-            projectPath = ProjectPath.workspaceRelative(path),
+          addSourceRoot(
+            root = ProjectPath.workspaceRelative(path, externalRepositoryFinder),
             isGenerated = false,
             isTest = testSourceGlobMatcher.matches(path),
-            packagePrefix = entry.value
+            javaPackage = entry.value
           )
-        } +
-        rootToNonJavaSource.get(dir).orEmpty().mapNotNull { nonJavaDirPath ->
-          if (javaSourceRoots.get(dir).orEmpty().keys
-              .none { p -> p.toString().isEmpty() || nonJavaDirPath.startsWith(p) }) {
+        }
+        rootToNonJavaSource[dir]?.forEach { nonJavaDirPath ->
+          if (javaSourceRoots[dir].orEmpty().keys.none { it.toString().isEmpty() || nonJavaDirPath.startsWith(it) }) {
             val path = dir.resolve(nonJavaDirPath)
             // TODO(b/305743519): make java source properties like package prefix specific to java
             // source folders only.
-            ProjectProto.SourceFolder(
-              projectPath = ProjectPath.workspaceRelative(path),
+            addSourceRoot(
+              root = ProjectPath.workspaceRelative(path, externalRepositoryFinder),
               isGenerated = false,
               isTest = testSourceGlobMatcher.matches(path),
-              packagePrefix = ""
+              javaPackage = ""
             )
           }
-          else null
         }
-      val excludes = excludesByRootDirectory[dir].orEmpty().map { exclude -> ProjectPath.workspaceRelative(exclude) }
-      val contentEntry =
-        ProjectProto.ContentEntry(root = ProjectPath.workspaceRelative(dir), sourceFolders = sourceFolders, excludes = excludes)
-      workspaceModule.contentEntries[contentEntry.root] = contentEntry
+        addExcludes(
+          excludesByRootDirectory[dir]?.map { exclude -> ProjectPath.workspaceRelative(exclude, externalRepositoryFinder) }.orEmpty())
+      }
     }
 
-    val activeLanguages = graph.getActiveLanguages()
-
-    return ProjectProto.Project.Builder().also {
-      it.modules.add(workspaceModule)
-      it.activeLanguages.addAll(activeLanguages)
-    }.build()
+    addLanguages(graph.getActiveLanguages())
   }
 
   /**
@@ -432,8 +422,8 @@ class GraphToProjectConverter(
   @VisibleForTesting
   fun computeAndroidSourcePackages(
     androidSourceFiles: List<Path>,
-    rootToPrefix: ImmutableMap<Path, ImmutableMap<Path, String>>,
-  ): ImmutableSet<String> {
+    rootToPrefix: Map<Path, Map<Path, String>>,
+  ): Set<String> {
     val androidSourcePackages: ImmutableSet.Builder<String> = ImmutableSet.builder()
 
     // Map entries are sorted by path length to ensure that, if the map contains keys k1 and k2,

@@ -91,7 +91,7 @@ iml_module(
         "//tools/base/build-system/previous-versions:3.5.0",
         "//tools/base/build-system/previous-versions:4.0.0",
         "//tools/base/build-system/previous-versions:4.1.0",
-        "//tools/base/build-system/previous-versions:4.2.0",
+        "//tools/base/build-system/previous-versions:4.2.2",
         "//tools/base/build-system/previous-versions:7.0.0",
         "//tools/base/build-system/previous-versions:7.1.0",
         "//tools/base/build-system/previous-versions:7.2.0",

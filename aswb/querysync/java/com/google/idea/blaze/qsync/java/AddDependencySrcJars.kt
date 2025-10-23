@@ -40,7 +40,8 @@ class AddDependencySrcJars(
     update: ProjectProtoUpdate,
     buildGraph: BuildGraphData,
     artifactState: ArtifactTracker.State,
-    context: Context<*>
+    context: Context<*>,
+    externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
   ) {
     for (target in artifactState.targets()) {
       val javaInfo = target.javaInfo().getOrNull() ?: continue
@@ -52,14 +53,13 @@ class AddDependencySrcJars(
           addSourceJars(
             javaInfo.srcJars().flatMap { srcJar ->
               // these are workspace relative srcjar paths.
-              val jarPath = ProjectPath.workspaceRelative(srcJar)
               srcJarInnerPathFinder
                 .findInnerJarPaths(
-                  pathResolver.resolve(jarPath).toFile(),
+                  pathResolver.resolve(srcJar).toFile(),
                   AllowPackagePrefixes.EMPTY_PACKAGE_PREFIXES_ONLY,
                   srcJar.toString()
                 )
-                .map { jarPath.withInnerJarPath(it.path()) }
+                .map { srcJar.withInnerJarPath(it.path()) }
             }
           )
         }

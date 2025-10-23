@@ -109,9 +109,11 @@ class EditVirtualDeviceDialogTest {
     }
 
     fun parseIniFile(): Map<String, String> =
-      AvdManager.parseIniFile(
-        PathFileWrapper(sdkFixture.avdRoot.resolve("Pixel_7.avd").resolve("config.ini")),
-        null,
+      checkNotNull(
+        AvdManager.parseIniFile(
+          PathFileWrapper(sdkFixture.avdRoot.resolve("Pixel_7.avd").resolve("config.ini")),
+          null,
+        )
       )
   }
 

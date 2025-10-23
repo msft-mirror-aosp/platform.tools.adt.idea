@@ -18,11 +18,13 @@ package com.android.tools.idea.gradle.project.sync.idea
 import com.android.SdkConstants.DOT_JAR
 import com.android.SdkConstants.FN_ANNOTATIONS_ZIP
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toWellKnownSourceSet
 import com.android.tools.idea.gradle.model.IdeDependenciesCore
+import com.android.tools.idea.gradle.model.IdeJavaArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
@@ -31,6 +33,7 @@ import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTable
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
@@ -59,8 +62,10 @@ import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.exModuleOptions
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntitySource
+import com.intellij.platform.workspace.storage.EntityStorage
 import com.intellij.platform.workspace.storage.ImmutableEntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
+import com.intellij.platform.workspace.storage.url.VirtualFileUrl
 import com.intellij.util.PathUtil
 import java.io.File
 import org.jetbrains.plugins.gradle.model.GradleSourceSetModel
@@ -91,8 +96,8 @@ private class SyncContributorAndroidProjectDependenciesContext(
   val moduleNameToEntityMap: Map<String, ModuleEntity>,
   // Library id map is mutable to track newly created entities
   val libraryIdToEntityMap: MutableMap<LibraryId, LibraryEntity>,
+  val libraryRootPathCache: MutableMap<File, VirtualFileUrl>,
 ) {
-  val knownEntitySources = mutableSetOf<EntitySource>(androidProjectContext.holderModuleEntity.entitySource)
   val knownModuleNames = mutableSetOf<String>()
 
   fun IdeDependenciesCore.populateDependenciesForModule(scope: DependencyScope, name: IdeArtifactName) {
@@ -104,8 +109,14 @@ private class SyncContributorAndroidProjectDependenciesContext(
   fun IdeDependenciesCore.populateDependenciesForModule(scope: DependencyScope, sourceSetName: String) {
     val moduleName = "${androidProjectContext.resolveModuleName()}.$sourceSetName"
     val entitySource = AndroidGradleSourceSetEntitySource(androidProjectContext.projectEntitySource, sourceSetName)
+    val moduleEntity = moduleNameToEntityMap[moduleName]
+    if (moduleEntity == null) {
+      LOG.error("Expected module not found: $moduleName")
+      return
+    }
 
-    knownEntitySources += entitySource
+    val existingDependencies = moduleEntity.dependencies.toSet()
+
     knownModuleNames += moduleName
 
     dependencies.flatMap { ideLibraryModelResolver.resolve(it) }.mapNotNull {
@@ -127,14 +138,15 @@ private class SyncContributorAndroidProjectDependenciesContext(
             )
           }
         else -> null
+      }.takeIf { it !in existingDependencies }
+    }.distinct().let { dependenciesToAdd: List<ModuleDependencyItem> ->
+      if(LOG.isTraceEnabled) {
+        LOG.trace("Adding dependencies for $moduleName: $dependenciesToAdd")
       }
-    }.distinct().let { newDependencies: List<ModuleDependencyItem> ->
-      val moduleEntity = moduleNameToEntityMap[moduleName]!!
-      val existingDependencies = moduleEntity.dependencies
-      val dependenciesToAdd = newDependencies.filter { it !in existingDependencies }
-      LOG.trace("Adding dependencies for $moduleName: $dependenciesToAdd")
-      updatedEntities.modifyModuleEntity(moduleEntity) {
-        dependencies.addAll(dependenciesToAdd)
+      if (dependenciesToAdd.isNotEmpty()) {
+        updatedEntities.modifyModuleEntity(moduleEntity) {
+          dependencies.addAll(dependenciesToAdd)
+        }
       }
     }
   }
@@ -149,12 +161,13 @@ private class SyncContributorAndroidProjectDependenciesContext(
   fun IdeArtifactLibrary.processName() = "Gradle: $name"
 
   /** Converts a file to the exact format required by the platform .*/
-  fun File.toLibraryRootPath() = androidProjectContext.virtualFileUrlManager.getOrCreateFromUrl(VfsUtil.getUrlForLibraryRoot(this))
+  fun File.toLibraryRootPath() = libraryRootPathCache.computeIfAbsent(this) {
+    androidProjectContext.virtualFileUrlManager.getOrCreateFromUrl(VfsUtil.getUrlForLibraryRoot(this))
+  }
 
   /* Creates a library entity or find an existing one from storage, also counting any newly created ones. */
-  fun getOrCreateLibraryEntity(moduleName: String, libraryEntityProvider: () -> LibraryEntity.Builder): LibraryEntity {
-    val libraryEntityToBeAdded = libraryEntityProvider()
-    fun lookup(tableId: LibraryTableId) = libraryIdToEntityMap[LibraryId(libraryEntityToBeAdded.name, tableId)]
+  fun getOrCreateLibraryEntity(moduleName: String, name: String, libraryEntityProvider: () -> LibraryEntity.Builder): LibraryEntity {
+    fun lookup(tableId: LibraryTableId) = libraryIdToEntityMap[LibraryId(name, tableId)]
     // Look up existing modules, reducing specificity of the table each time
     val existingProjectLibrary = lookup(LibraryTableId.ModuleLibraryTableId(ModuleId(moduleName)))
                                  ?: lookup(LibraryTableId.ProjectLibraryTableId)
@@ -163,9 +176,9 @@ private class SyncContributorAndroidProjectDependenciesContext(
       return existingProjectLibrary
     }
 
-    return libraryIdToEntityMap.computeIfAbsent(LibraryId(libraryEntityToBeAdded.name, LibraryTableId.ProjectLibraryTableId)) {
-      LOG.trace("Creating new library entity in project table: ${libraryEntityToBeAdded.name}")
-      updatedEntities addEntity libraryEntityToBeAdded
+    return libraryIdToEntityMap.computeIfAbsent(LibraryId(name, LibraryTableId.ProjectLibraryTableId)) {
+      LOG.trace("Creating new library entity in project table: $name")
+      updatedEntities addEntity libraryEntityProvider()
     }
   }
 
@@ -183,7 +196,7 @@ private class SyncContributorAndroidProjectDependenciesContext(
 
 
   fun IdeJavaLibrary.getOrCreateLibraryEntity(entitySource: AndroidGradleSourceSetEntitySource, moduleName: String) =
-    getOrCreateLibraryEntity(moduleName) {
+    getOrCreateLibraryEntity(moduleName, processName()) {
       LibraryEntity(
         processName(),
         LibraryTableId.ProjectLibraryTableId,
@@ -198,7 +211,7 @@ private class SyncContributorAndroidProjectDependenciesContext(
 
 
   fun IdeAndroidLibrary.getOrCreateLibraryEntity(entitySource: AndroidGradleSourceSetEntitySource, moduleName: String) =
-    getOrCreateLibraryEntity(moduleName) {
+    getOrCreateLibraryEntity(moduleName, processName()) {
       LibraryEntity(
         processName(),
         LibraryTableId.ProjectLibraryTableId,
@@ -215,56 +228,57 @@ private class SyncContributorAndroidProjectDependenciesContext(
 internal suspend fun setupAndroidDependenciesForAllProjects(
   context: ProjectResolverContext,
   allAndroidContexts: List<SyncContributorAndroidProjectContext>,
-  storage: ImmutableEntityStorage
-) : SourceSetUpdateResult {
+  storage: MutableEntityStorage
+) {
   val project = context.project()
 
   val libraryTable = context.getRootModel(IdeUnresolvedLibraryTableImpl::class.java) ?: run {
     LOG.info("No library table found, returning early with no updates")
-    return SourceSetUpdateResult(updatedStorage = storage, knownEntitySources = emptySet())
+    return
   }
-  val updatedEntities = MutableEntityStorage.from(storage)
   val ideLibraryModelResolver: IdeLibraryModelResolver = buildIdeLibraryModelResolver(context, libraryTable)
   val sourceSetModuleIdToModuleEntityMap = buildSourceSetModuleIdToModuleEntityMap(storage, context, project, allAndroidContexts)
 
   // Make the storage state into a mutable one to be able track newly created entities.
   val libraryIdToEntityMap: MutableMap<LibraryId, LibraryEntity> =
-    updatedEntities.entities(LibraryEntity::class.java).associateBy { it.symbolicId }.toMutableMap()
+    storage.entities(LibraryEntity::class.java).associateBy { it.symbolicId }.toMutableMap()
   val moduleNameToEntityMap: Map<String, ModuleEntity> =
-    updatedEntities.entities(ModuleEntity::class.java).associateBy { it.name }
+    storage.entities(ModuleEntity::class.java).associateBy { it.name }
+  val libraryRootPathCache = mutableMapOf<File, VirtualFileUrl>()
 
-  val allKnownEntitySources = allAndroidContexts.flatMap {
+  allAndroidContexts.forEach {
     SyncContributorAndroidProjectDependenciesContext(
       it,
-      updatedEntities,
+      storage,
       ideLibraryModelResolver,
       sourceSetModuleIdToModuleEntityMap,
       moduleNameToEntityMap,
       libraryIdToEntityMap,
+      libraryRootPathCache
     ).populateDependenciesForAndroidProject()
   }
-
-  return SourceSetUpdateResult (
-    updatedStorage = updatedEntities,
-    knownEntitySources = allKnownEntitySources.toSet()
-  )
 }
 
 
-private fun SyncContributorAndroidProjectDependenciesContext.populateDependenciesForAndroidProject() : Set<EntitySource> {
-  val ideVariant: IdeVariantCoreImpl = with(androidProjectContext) { context.getProjectModel(projectModel, IdeVariantCore::class.java)} as IdeVariantCoreImpl? ?: return emptySet()
-  ideVariant.mainArtifact.let { it.compileClasspathCore.populateDependenciesForModule(DependencyScope.COMPILE, it.name) }
-  ideVariant.testFixturesArtifact?.let { it.compileClasspathCore.populateDependenciesForModule(DependencyScope.COMPILE, it.name) }
-  ideVariant.hostTestArtifacts.forEach { it.compileClasspathCore.populateDependenciesForModule(DependencyScope.TEST, it.name)}
-  ideVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.let {
-    it.compileClasspathCore.populateDependenciesForModule(DependencyScope.TEST, it.name)
+private fun SyncContributorAndroidProjectDependenciesContext.populateDependenciesForAndroidProject() {
+  val ideVariant: IdeVariantCoreImpl = with(androidProjectContext) {
+    context.getProjectModel(projectModel, IdeVariantCore::class.java)
+  } as IdeVariantCoreImpl? ?: return
+  val classpathsToProcess = listOfNotNull(
+    ideVariant.mainArtifact.asCompileDependency(),
+    ideVariant.testFixturesArtifact?.asCompileDependency(),
+    ideVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.asTestDependency(),
+  ) + ideVariant.hostTestArtifacts.map {
+    it.asTestDependency()
+  } + if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+    // TODO(445381129): Pass the dependencies through once they have been added to the test suite artifact
+    ideVariant.testSuiteArtifacts.map { it.asEmptyTestDependency() }
+  } else {
+    emptyList()
   }
 
-  if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-    // TODO(445381129): Pass the dependencies through once they have been added to the test suite artifact
-    ideVariant.testSuiteArtifacts.forEach { testSuite ->
-      IdeDependenciesCoreDirect(emptyList()).populateDependenciesForModule(DependencyScope.TEST, testSuite.suiteName)
-    }
+  classpathsToProcess.forEach { (name, classpath, scope) ->
+    classpath.populateDependenciesForModule(scope, name)
   }
 
   val allKnownModuleEntities = listOfNotNull(moduleNameToEntityMap[androidProjectContext.resolveModuleName()]) +
@@ -280,8 +294,6 @@ private fun SyncContributorAndroidProjectDependenciesContext.populateDependencie
       )
     }
   }
-
-  return knownEntitySources
 }
 
 // Helpers, maps, etc.
@@ -337,7 +349,7 @@ private fun buildJarArtifactToSourceSetMapFromPlatformModels(context: ProjectRes
 
 /** Returns the mapping from [SourceSetModuleId] to module entities for all projects. */
 private fun buildSourceSetModuleIdToModuleEntityMap(
-  storage: ImmutableEntityStorage,
+  storage: EntityStorage,
   context: ProjectResolverContext,
   project: Project,
   allAndroidContexts: List<SyncContributorAndroidProjectContext>
@@ -395,3 +407,9 @@ private fun buildAndroidSourceSetModuleIdsMap(
     }
   }
 }.toMap()
+
+
+private fun IdeAndroidArtifactCore.asCompileDependency() = Triple(name.toWellKnownSourceSet().sourceSetName, compileClasspathCore, DependencyScope.COMPILE)
+private fun IdeAndroidArtifactCore.asTestDependency() = Triple(name.toWellKnownSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
+private fun IdeJavaArtifactCore.asTestDependency() = Triple(name.toWellKnownSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
+private fun IdeTestSuiteVariantTargetImpl.asEmptyTestDependency() = Triple(suiteName, IdeDependenciesCoreDirect(emptyList()), DependencyScope.TEST)

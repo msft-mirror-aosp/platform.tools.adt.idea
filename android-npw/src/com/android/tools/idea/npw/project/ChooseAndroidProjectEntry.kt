@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.model.NewProjectModuleModel
@@ -135,7 +136,9 @@ class GeminiProjectEntry() : ChooseAndroidProjectEntry() {
 
   override fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel) {
     val templateToUse =
-      TemplateResolver.getAllTemplates().firstOrNull { it.name == "Architecture Sample" }
+      TemplateResolver.getAllTemplates().firstOrNull {
+        it.name == StudioFlags.NPW_AI_STARTER_TEMPLATE.get()
+      }
     newProjectModuleModel.newRenderTemplate.setNullableValue(templateToUse ?: NoActivity)
     model.prompt.set(textFieldState.text.toString())
     model.imageAttachments.set(attachedImages)

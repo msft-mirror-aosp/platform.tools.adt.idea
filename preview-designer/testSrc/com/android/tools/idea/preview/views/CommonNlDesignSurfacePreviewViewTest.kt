@@ -22,7 +22,6 @@ import com.android.tools.adtui.instructions.TextInstruction
 import com.android.tools.adtui.stdui.UrlData
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.intellij.openapi.project.Project
@@ -33,6 +32,7 @@ import java.awt.Dimension
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -48,7 +48,7 @@ private fun InstructionsPanel.toDisplayText(): String =
       when (it) {
         is TextInstruction -> it.text
         is NewRowInstruction -> "\n"
-        is HyperlinkInstruction -> "[${it.displayText}]"
+        is HyperlinkInstruction -> "[${it.displayTextForTests}]"
         else -> null
       }
     }
@@ -93,7 +93,7 @@ class CommonNlDesignSurfacePreviewViewTest {
 
   @Test
   fun testShowLoading() =
-    runBlocking(workerThread) {
+    runBlocking(Dispatchers.Default) {
       withContext(uiThread) {
         previewView.showLoadingMessage("Loading foo")
         fakeUi.root.validate()
@@ -117,7 +117,7 @@ class CommonNlDesignSurfacePreviewViewTest {
 
   @Test
   fun testErrorMessage() =
-    runBlocking(workerThread) {
+    runBlocking(Dispatchers.Default) {
       withContext(uiThread) {
         previewView.showErrorMessage(
           "error foo happened",

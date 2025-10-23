@@ -15,7 +15,6 @@
  */
 package com.google.idea.blaze.qsync.java
 
-import com.google.common.collect.ImmutableSet
 import com.google.common.truth.Truth
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.Label.Companion.of
@@ -93,7 +92,8 @@ class AddDependencySrcJarsTest {
     val update =
       ProjectProtoUpdate(original.project)
 
-    addSrcJars.update(update, original.graph, ArtifactTracker.State.EMPTY, NoopContext())
+    addSrcJars.update(update, original.graph, ArtifactTracker.State.EMPTY, NoopContext(),
+                      ProjectPath.ExternalRepositoryFinder.createEmptyForTests())
 
     val newProject = update.build()
 
@@ -116,7 +116,8 @@ class AddDependencySrcJarsTest {
       ProjectProto.Library(
         name = Label.of("//java/com/google/common/collect:collect"),
         classesJarList = emptyList(),
-        sourcesList = listOf(ProjectPath.workspaceRelative(Path.of("source/path/external.srcjar")).withInnerJarPath(Path.of("root")))
+        sourcesList = listOf(
+          ProjectPath.workspaceRelativeForTests(Path.of("source/path/external.srcjar")).withInnerJarPath(Path.of("root")))
       )
     )
   }
@@ -140,14 +141,14 @@ class AddDependencySrcJarsTest {
       ArtifactTracker.State.forJavaArtifacts(
         DependencyBuildContext.NONE,
         JavaArtifactInfo.empty(of("//java/com/google/common/collect:collect")).toBuilder()
-          .setSrcJars(ImmutableSet.of(Path.of("source/path/external.srcjar")))
+          .setSrcJars(setOf<ProjectPath>(ProjectPath.workspaceRelativeForTests(Path.of("source/path/external.srcjar"))))
           .build()
       )
 
     val update =
       ProjectProtoUpdate(original.project)
 
-    addSrcJars.update(update, original.graph, artifactState, NoopContext())
+    addSrcJars.update(update, original.graph, artifactState, NoopContext(), ProjectPath.ExternalRepositoryFinder.createEmptyForTests())
 
     val newProject = update.build()
 

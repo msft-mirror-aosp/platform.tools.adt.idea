@@ -407,7 +407,7 @@ data class BuildGraphDataImpl(
 
   /** Returns a list of all the java source files of the project, relative to the workspace root.  */
   override fun getJavaSourceFiles(): List<Path> {
-    return getSourceFilesByRuleKindAndType(RuleKinds::isJava, SourceType.REGULAR)
+    return getSourceFilesByRuleKindAndType(RuleKinds::isJava, SourceType.REGULAR_JVM)
   }
 
   override fun getSourceFilesByRuleKindAndType(
@@ -441,7 +441,7 @@ data class BuildGraphDataImpl(
    * workspace root.
    */
   override fun getAndroidSourceFiles(): List<Path> =
-    getSourceFilesByRuleKindAndType(RuleKinds::isAndroid, SourceType.REGULAR)
+    getSourceFilesByRuleKindAndType(RuleKinds::isAndroid, SourceType.REGULAR_JVM)
 
   override fun getAndroidResourceFiles(): List<Path> =
     getSourceFilesByRuleKindAndType(RuleKinds::isAndroid, SourceType.ANDROID_RESOURCES)
@@ -580,7 +580,7 @@ data class BuildGraphDataImpl(
   override fun computeWholeProjectTargets(projectDefinition: ProjectDefinition): RequestedTargets {
     val effectiveTargetPatterns = projectDefinition.effectiveTargetPatterns
     return computeRequestedTargets(
-      storage.allSupportedTargets.getTargets().filter { effectiveTargetPatterns.inScope(it) == INCLUDED }.toList()
+      storage.allSupportedTargets.getTargets().filter { effectiveTargetPatterns.inScope(it).status == INCLUDED }.toList()
     )
   }
 
@@ -633,19 +633,13 @@ data class BuildGraphDataImpl(
   }
 
   private fun Collection<Label>.transitiveClosure(): Sequence<ProjectTarget> {
-    val seen = HashSet<Label>()
-    val queue = ArrayDeque(this)
-    return sequence {
-      while (!queue.isEmpty()) {
-        val target = queue.removeFirst()
-        val targetInfo = storage.targetMap[target] ?: continue
-        yield(targetInfo)
-        val dependencyTracking = getDependencyTrackingIncludeExternalDependencies(targetInfo)
-        if (dependencyTracking) {
-          queue.addAll(targetInfo.deps().filter { seen.add(it) })
-        }
+    return traverseDag(
+      valueEmitter = { storage.targetMap[it] },
+      edgeSelector = { _, targetInfo ->
+        val isKnownTargetWithTrackedDependencies = (targetInfo != null) && getDependencyTrackingIncludeExternalDependencies(targetInfo)
+        if (isKnownTargetWithTrackedDependencies) targetInfo.deps() else emptyList()
       }
-    }
+    )
   }
 
   companion object {
@@ -679,4 +673,32 @@ data class BuildGraphDataImpl(
   }
 }
 
-private val SUPPORTED_SOURCE_TYPES = setOf(SourceType.REGULAR, SourceType.ANDROID_RESOURCES, SourceType.ANDROID_MANIFEST)
+private val SUPPORTED_SOURCE_TYPES = setOf(
+  SourceType.REGULAR_JVM,
+  SourceType.REGULAR_CC,
+  SourceType.REGULAR_PROTO,
+  SourceType.ANDROID_RESOURCES,
+  SourceType.ANDROID_MANIFEST
+)
+
+/**
+ * Traverse the graph defined by [edgeSelector] and return a sequence of values produced by [valueEmitter].
+ */
+@VisibleForTesting
+inline fun <N, V> Collection<N>.traverseDag(
+  crossinline valueEmitter: (N) -> V?,
+  crossinline edgeSelector: (node: N, emittedValue: V?) -> Collection<N>,
+): Sequence<V> {
+  val seen = HashSet<N>(this)
+  val queue = ArrayDeque(this)
+  return sequence {
+    while (!queue.isEmpty()) {
+      val node = queue.removeFirst()
+      val value = valueEmitter(node)
+      if (value != null) {
+        yield(value)
+      }
+      queue.addAll(edgeSelector(node, value).filter { seen.add(it) })
+    }
+  }
+}

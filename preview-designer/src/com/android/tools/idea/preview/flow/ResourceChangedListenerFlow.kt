@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.preview.flow
 
-import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.concurrency.disposableCallbackFlow
 import com.android.tools.idea.res.ResourceNotificationManager
 import com.android.tools.idea.util.androidFacet
@@ -24,6 +23,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.util.Disposer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -49,5 +49,5 @@ fun resourceChangedFlow(
     }
     resourceNotificationManager.addListener(resourceChangeListener, facet, null, null)
 
-    onConnected?.let { launch(AndroidDispatchers.workerThread) { it() } }
+    onConnected?.let { launch(Dispatchers.Default) { it() } }
   }

@@ -43,6 +43,7 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
+        "//tools/adt/idea/gradle-dsl-android:intellij.android.gradle.dsl.android",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/base/testutils:studio.android.sdktools.testutils",
@@ -253,7 +254,7 @@ tests_list = [
             ":test_deps",
             "//tools/base/build-system:android_gradle_plugin.zip",
             "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-            "//tools/base/build-system/previous-versions:4.2.0",
+            "//tools/base/build-system/previous-versions:4.2.2",
             "//tools/base/build-system/previous-versions:kgp1.3.72",
         ],
         tags = [

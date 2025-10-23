@@ -24,8 +24,6 @@ import com.google.idea.blaze.qsync.deps.CcCompilationInfo
 import com.google.idea.blaze.qsync.deps.CcToolchain
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext
 import com.google.idea.blaze.qsync.project.BuildGraphData
-import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
-import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilationContext
@@ -35,14 +33,18 @@ import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilerSettings
 import com.google.idea.blaze.qsync.project.ProjectProto.CcLanguage
 import com.google.idea.blaze.qsync.project.ProjectProto.CcSourceFile
 import com.google.idea.blaze.qsync.project.ProjectTarget.SourceType
+import com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
+import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.intellij.util.containers.orNull
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Adds C/C++ compilation information and headers to the project proto. */
 class ConfigureCcCompilation(
+  private val externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
   private val artifactState: State,
-  private val update: ProjectProtoUpdate
+  private val update: ProjectProtoUpdate,
 ) {
   /** An update operation to configure CC compilation. */
   class UpdateOperation : ProjectProtoUpdateOperation {
@@ -51,8 +53,9 @@ class ConfigureCcCompilation(
       buildGraph: BuildGraphData,
       artifactState: State,
       context: Context<*>,
+      externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
     ) {
-      ConfigureCcCompilation(artifactState, update).update(buildGraph, context)
+      ConfigureCcCompilation(externalRepositoryFinder, artifactState, update).update(buildGraph, context)
     }
   }
 
@@ -80,7 +83,7 @@ class ConfigureCcCompilation(
   private inner class Visitor(
     private val context: Context<*>,
     private val buildGraph: BuildGraphData,
-    private val workspaceUpdater: ProjectProtoUpdate.CcWorkspaceUpdater
+    private val workspaceUpdater: ProjectProtoUpdate.CcWorkspaceUpdater,
   ) {
 
     fun visitToolchainMap(toolchainInfoMap: Map<String, CcToolchain>) {
@@ -98,13 +101,6 @@ class ConfigureCcCompilation(
     }
 
     fun visitTarget(ccInfo: CcCompilationInfo, buildContext: DependencyBuildContext) {
-      val projectTarget =
-        buildGraph.getProjectTarget(ccInfo.target())
-        // This target is no longer present in the project. Ignore it.
-        // We should really clean up the dependency cache itself to remove any artifacts relating to
-        // no-longer-present targets, but that will be a lot more work. For now, just ensure we
-        // don't crash.
-        ?: return
       val toolchain = artifactState.ccToolchainMap()[ccInfo.toolchainId()] ?: let {
         context.output(PrintOutput.error("Cannot find toolchain with id: '${ccInfo.toolchainId()}' referred to from ${ccInfo.target()}"))
         return@visitTarget
@@ -112,7 +108,7 @@ class ConfigureCcCompilation(
 
       val targetFlags =
         buildList {
-          addAll(projectTarget.copts().map { makeStringFlag(it, "") })
+          addAll(ccInfo.copts().map { makeStringFlag(it, "") })
           addAll(ccInfo.defines().map { makeStringFlag("-D", it) })
           addAll(ccInfo.includeDirectories().map { makePathFlag("-I", it) })
           addAll(ccInfo.quoteIncludeDirectories().map { p -> makePathFlag("-iquote", p) })
@@ -124,7 +120,7 @@ class ConfigureCcCompilation(
         .mapNotNull { srcPath ->
           val lang = getLanguage(srcPath) ?: return@mapNotNull null
           CcSourceFile(
-            workspacePath = ProjectPath.workspaceRelative(srcPath),
+            workspacePath = ProjectPath.WorkspaceRelativeProjectPath(srcPath, EMPTY_PATH),
             language = lang,
           )
         }
@@ -152,6 +148,16 @@ class ConfigureCcCompilation(
           for (artifact in ccInfo.genHeaders()) {
             addIfNewer(artifact.artifactPath(), artifact, buildContext)
           }
+        }
+      }
+      update.artifactDirectory(ProjectPath.projectRelative(Path.of(QuerySyncProjectDirectory.EXTERNAL_REPOSITORIES.directoryName))){
+        (ccInfo.collectArtifactRepositoryNames() + toolchain.collectArtifactRepositoryNames()).forEach { externalRepositoryName ->
+          addExternalRepository(
+            repositoryName = externalRepositoryName,
+            absolutePath = externalRepositoryFinder.find(externalRepositoryName)
+                           ?: error("External repository $externalRepositoryName not found"),
+            buildContext = buildContext
+          )
         }
       }
     }
@@ -213,3 +219,33 @@ class ConfigureCcCompilation(
       setOf("h", "hh", "hpp", "hxx", "inc", "inl", "H", "S", "a", "lo", "so", "o")
   }
 }
+
+private fun CcCompilationInfo.collectArtifactRepositoryNames(): Set<String> {
+  return buildSet {
+    collectExternalRepositoryNameFrom(frameworkIncludeDirectories())
+    collectExternalRepositoryNameFrom(includeDirectories())
+    collectExternalRepositoryNameFrom(quoteIncludeDirectories())
+    collectExternalRepositoryNameFrom(systemIncludeDirectories())
+  }
+}
+
+private fun CcToolchain.collectArtifactRepositoryNames(): Set<String> {
+  return buildSet {
+    collectExternalRepositoryNameFrom(compilerExecutable())
+    collectExternalRepositoryNameFrom(builtInIncludeDirectories())
+  }
+}
+
+private fun MutableSet<String>.collectExternalRepositoryNameFrom(paths: Collection<ProjectPath>) {
+  paths.forEach { collectExternalRepositoryNameFrom(it) }
+}
+
+private fun MutableSet<String>.collectExternalRepositoryNameFrom(path: ProjectPath) {
+  val externalRepositoryName = (path as? ProjectPath.ExternalRepositoryRelativeProjectPath)?.externalRepositoryName
+  if (externalRepositoryName != null) {
+    add(externalRepositoryName)
+  }
+}
+
+private val EMPTY_PATH = Path.of("")
+

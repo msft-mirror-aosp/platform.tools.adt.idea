@@ -80,7 +80,7 @@ generate_old_agp_tests_from_list(
             gradle_version = GRADLE_6_7_1,
             ignore_other_tests = True,
             maven_deps = [
-                "//tools/base/build-system/previous-versions:4.2.0",
+                "//tools/base/build-system/previous-versions:4.2.2",
                 "//tools/adt/idea/apkanalyzer/gradle/integration-tests/projects/simpleApplication:deps",
             ],
             tags = [

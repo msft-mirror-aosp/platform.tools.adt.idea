@@ -37,6 +37,8 @@ import java.util.List;
 public abstract class CcCompilationInfo {
   public abstract Label target();
 
+  public abstract ImmutableList<String> copts();
+
   public abstract ImmutableList<String> defines();
 
   public abstract ImmutableList<ProjectPath> includeDirectories();
@@ -65,26 +67,29 @@ public abstract class CcCompilationInfo {
     return new AutoValue_CcCompilationInfo.Builder();
   }
 
-  public static CcCompilationInfo create(CcTargetInfo targetInfo, DigestMap digestMap) {
+  public static CcCompilationInfo create(CcTargetInfo targetInfo,
+                                         DigestMap digestMap,
+                                         ProjectPath.ExternalRepositoryFinder externalRepositoryFinder) {
     Label target = Label.of(targetInfo.getLabel());
     return builder()
         .target(target)
+        .copts(ImmutableList.copyOf(targetInfo.getCoptsList()))
         .defines(ImmutableList.copyOf(targetInfo.getDefinesList()))
         .includeDirectories(
             targetInfo.getIncludeDirectoriesList().stream()
-                .map(ArtifactDirectories::forCcInclude)
+                .map(it -> ArtifactDirectories.forCcInclude(it, externalRepositoryFinder))
                 .collect(toImmutableList()))
         .quoteIncludeDirectories(
             targetInfo.getQuoteIncludeDirectoriesList().stream()
-                .map(ArtifactDirectories::forCcInclude)
+                .map(it -> ArtifactDirectories.forCcInclude(it, externalRepositoryFinder))
                 .collect(toImmutableList()))
         .systemIncludeDirectories(
             targetInfo.getSystemIncludeDirectoriesList().stream()
-                .map(ArtifactDirectories::forCcInclude)
+                .map(it -> ArtifactDirectories.forCcInclude(it, externalRepositoryFinder))
                 .collect(toImmutableList()))
         .frameworkIncludeDirectories(
             targetInfo.getFrameworkIncludeDirectoriesList().stream()
-                .map(ArtifactDirectories::forCcInclude)
+                .map(it -> ArtifactDirectories.forCcInclude(it, externalRepositoryFinder))
                 .collect(toImmutableList()))
         .genHeaders(
             BuildArtifact.fromProtos(
@@ -98,6 +103,8 @@ public abstract class CcCompilationInfo {
   public abstract static class Builder {
 
     public abstract Builder target(Label value);
+
+    public abstract Builder copts(List<String> value);
 
     public abstract Builder defines(List<String> value);
 

@@ -120,7 +120,7 @@ constructor(
         IJ_LOG.error("Could not find Android SDK!", e)
       }
     }
-    return listOf(*avdManager.allAvds)
+    return avdManager.allAvds
   }
 
   /** Delete the given AVD if it exists. */

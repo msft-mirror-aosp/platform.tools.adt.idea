@@ -129,9 +129,11 @@ class AddDeviceWizardTest {
       assertThat(Files.list(avdRoot).map { it.fileName.toString() }.toList())
         .containsExactly("Automotive_Portrait.avd", "Automotive_Portrait.ini")
       val properties =
-        AvdManager.parseIniFile(
-          PathFileWrapper(avdRoot.resolve("Automotive_Portrait.avd").resolve("config.ini")),
-          null,
+        checkNotNull(
+          AvdManager.parseIniFile(
+            PathFileWrapper(avdRoot.resolve("Automotive_Portrait.avd").resolve("config.ini")),
+            null,
+          )
         )
       assertThat(properties[ConfigKey.CAMERA_FRONT]).isEqualTo("none")
     }

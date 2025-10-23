@@ -24,10 +24,10 @@ import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_17
 import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8
 
 // This Gradle version is exclusively used for the Sync Comparison Benchmarks and gets updated frequently. Please do not use for other purposes
-const val GRADLE_SNAPSHOT_VERSION = "9.2.0-20251003015528+0000"
+const val GRADLE_SNAPSHOT_VERSION = "9.2.0-20251017013220+0000"
 const val GRADLE_DECLARATIVE_SNAPSHOT_VERSION = "9.1.0-20250726001724+0000"
 // For available versions: https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
-const val KOTLIN_SNAPSHOT_VERSION = "2.3.0-dev-9885"
+const val KOTLIN_SNAPSHOT_VERSION = "2.3.20-dev-825"
 
 /**
  * An AGP Version definition to be used in AGP integration tests.
@@ -74,7 +74,7 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
 
   AGP_40(agpVersion = "4.0.0", gradleVersion = "6.1.1", jdkVersion = JDK_11, kotlinVersion = "1.5.21", modelVersion = ModelVersion.V1, compileSdk = "32"),
   AGP_41(agpVersion = "4.1.0", gradleVersion = "6.7.1", jdkVersion = JDK_11, kotlinVersion = "1.7.20", modelVersion = ModelVersion.V1, compileSdk = "32"),
-  AGP_42(agpVersion = "4.2.0", gradleVersion = "6.7.1", jdkVersion = JDK_11, kotlinVersion = "1.7.20", modelVersion = ModelVersion.V1, compileSdk = "32"),
+  AGP_42(agpVersion = "4.2.2", gradleVersion = "6.7.1", jdkVersion = JDK_11, kotlinVersion = "1.7.20", modelVersion = ModelVersion.V1, compileSdk = "32"),
 
   // Version constraints set by KGP:
   //   - KGP 1.8 only supports Gradle 6.8.3+
@@ -221,4 +221,11 @@ private fun AgpVersionSoftwareEnvironmentDescriptor.agpSuffix(): String = when (
 
 private fun AgpVersionSoftwareEnvironmentDescriptor.gradleSuffix(): String {
   return gradleVersion?.let { "Gradle_${it}_" }.orEmpty()
+}
+
+/**
+ * Returns the built-in Kotlin version associated with the AGP version.
+ */
+fun AgpVersionSoftwareEnvironmentDescriptor.getBuiltInKotlinVersion(): String? {
+  return if (agpVersion == null) "2.2.10" else null
 }

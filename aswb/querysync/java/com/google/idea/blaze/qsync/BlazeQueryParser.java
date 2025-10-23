@@ -119,7 +119,7 @@ public class BlazeQueryParser {
   }
 
   public BlazeQueryParser(
-      QuerySummary query, Context<?> context, ImmutableSet<String> handledRuleKinds) {
+      QuerySummary query, Context<?> context, Set<String> handledRuleKinds) {
     this.context = context;
     this.alwaysBuildRuleKinds = Sets.difference(ALWAYS_BUILD_RULE_KINDS, handledRuleKinds);
     this.query = query;
@@ -193,7 +193,7 @@ public class BlazeQueryParser {
   private void visitProtoRule(Label unused, QueryData.Rule rule, ProjectTarget.Builder targetBuilder) {
     targetBuilder
         .sourceLabelsBuilder()
-        .putAll(SourceType.REGULAR, expandFileGroupValues(rule.sources()));
+        .putAll(SourceType.REGULAR_PROTO, expandFileGroupValues(rule.sources()));
 
     Set<Label> thisDeps = Sets.newHashSet(rule.deps());
     targetBuilder.depsBuilder().addAll(thisDeps);
@@ -205,7 +205,7 @@ public class BlazeQueryParser {
     targetBuilder.languagesBuilder().add(QuerySyncLanguage.JVM);
     targetBuilder
         .sourceLabelsBuilder()
-        .putAll(SourceType.REGULAR, expandFileGroupValues(rule.sources()))
+        .putAll(SourceType.REGULAR_JVM, expandFileGroupValues(rule.sources()))
         .putAll(SourceType.ANDROID_RESOURCES, expandFileGroupValues(rule.resourceFiles()))
         .putAll(SourceType.AIDL, expandFileGroupValues(rule.idlSources()));
 
@@ -230,7 +230,7 @@ public class BlazeQueryParser {
     targetBuilder.coptsBuilder().addAll(rule.copts());
     targetBuilder
         .sourceLabelsBuilder()
-        .putAll(SourceType.REGULAR, expandFileGroupValues(rule.sources()))
+        .putAll(SourceType.REGULAR_CC, expandFileGroupValues(rule.sources()))
         .putAll(SourceType.CC_HEADERS, expandFileGroupValues(rule.hdrs()));
 
     Set<Label> thisDeps = Sets.newHashSet(rule.deps());
