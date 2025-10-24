@@ -29,6 +29,7 @@ import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.project.FacetBasedApplicationProjectContext
 import com.android.tools.idea.projectsystem.getModuleSystem
+import com.android.tools.idea.run.AndroidRunConfiguration.Companion.CURRENT_SCHEMA_VERSION
 import com.android.tools.idea.run.activity.DefaultStartActivityFlagsProvider
 import com.android.tools.idea.run.activity.InstantAppStartActivityFlagsProvider
 import com.android.tools.idea.run.activity.launch.DeepLinkLaunch
@@ -70,13 +71,13 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.stream.Collectors
+import javax.swing.Icon
 import org.jdom.Element
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.VisibleForTesting
-import java.util.stream.Collectors
-import javax.swing.Icon
 
 /**
  * Run Configuration used for running Android Apps (and Instant Apps) locally on a device/emulator.
@@ -166,8 +167,10 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
   override fun validate(executor: Executor?, quickFixCallback: Runnable?): MutableList<ValidationError> {
     val errors = super.validate(executor, quickFixCallback).toMutableList()
     if (StudioFlags.BACKUP_ENABLED.get()) {
-      val section = BackupManager.getInstance(project).getRestoreRunConfigSection(project)
-      errors.addAll(section.validate(this@AndroidRunConfiguration))
+      val section = BackupManager.tryGetInstance(project)?.getRestoreRunConfigSection(project)
+      if (section != null) {
+        errors.addAll(section.validate(this@AndroidRunConfiguration))
+      }
     }
     return errors
   }
