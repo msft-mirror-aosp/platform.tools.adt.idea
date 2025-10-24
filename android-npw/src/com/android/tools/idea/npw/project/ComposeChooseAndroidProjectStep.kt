@@ -81,6 +81,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.jetbrains.jewel.bridge.medium
 import org.jetbrains.jewel.bridge.toComposeColor
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
 import org.jetbrains.jewel.foundation.lazy.SelectionMode
@@ -93,6 +94,7 @@ import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
+import org.jetbrains.jewel.ui.component.Typography
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.theme.textAreaStyle
@@ -317,11 +319,8 @@ private fun NewProjectWizardWithGemini(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
       ) {
-        Icon(
-          key = StudioIconsCompose.LayoutEditor.Properties.ImagePicker,
-          contentDescription = null,
-        )
-        Text(text = "Attach images", style = JewelTheme.defaultTextStyle.merge(fontSize = 11.sp))
+        Icon(key = StudioIconsCompose.LayoutEditor.Palette.ImageSwitcher, contentDescription = null)
+        Text(text = "Attach Images", style = Typography.medium())
       }
     }
   }
