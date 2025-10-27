@@ -542,7 +542,7 @@ class DeclarativeCompletionContributor : CompletionContributor() {
 
   private fun insertAssignmentValue(type: ElementType): InsertHandler<LookupElement?> = InsertHandler { context: InsertionContext, _: LookupElement ->
     context.editor.run {
-      val file = virtualFile.toPsiFile(context.project)
+      val file = virtualFile?.toPsiFile(context.project)
       val element = file?.findElementAt(caretModel.offset)
       context.commitDocument()
       when (type) {
