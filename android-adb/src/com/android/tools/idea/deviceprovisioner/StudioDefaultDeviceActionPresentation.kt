@@ -38,4 +38,6 @@ object StudioDefaultDeviceActionPresentation : DeviceAction.DefaultPresentation 
   override val repairDeviceAction = Presentation("Start", StudioIcons.Misc.BUILD_TYPE, true)
   override val pairDeviceAction = Presentation("Pair", StudioIcons.Avd.PAIR_OVER_WIFI, true)
   override val hideDeviceAction = Presentation("Hide", StudioIcons.Common.REMOVE, true)
+  override val pairGlassesAction = Presentation("Pair Glasses", StudioIcons.Common.LINK, true)
+  override val unpairGlassesAction = Presentation("Unpair Glasses", StudioIcons.Common.REMOVE, true)
 }
