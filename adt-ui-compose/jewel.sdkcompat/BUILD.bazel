@@ -2,6 +2,34 @@ load("//tools/base/bazel:bazel.bzl", "iml_alias", "iml_module")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 
 iml_module(
+    name = "jewel.sdkcompat.253",
+    compatible_intellij_platforms = ["intellij_2025_3"],
+    iml_files = ["jewel.sdkcompat.iml"],
+    visibility = ["//visibility:public"],
+    exports = [
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+    ],
+    deps = [
+        "@intellij//:intellij-sdk",
+        "@intellij//:intellij.platform.jewel.foundation",
+        "@intellij//:intellij.platform.jewel.ideLafBridge",
+        "@intellij//:intellij.platform.jewel.markdown.core",
+        "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
+        "@intellij//:intellij.platform.jewel.ui",
+        "@intellij//:intellij.libraries.skiko",
+        "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
+    ],
+)
+
+iml_module(
     name = "jewel.sdkcompat.252",
     srcs = ["api252"],
     compatible_intellij_platforms = ["intellij_ce_2025_2"],
@@ -84,7 +112,7 @@ jvm_import(
 # managed by go/iml_to_build
 iml_module(
     name = "jewel.sdkcompat.main",
-    srcs = ["api252"],
+    srcs = ["api253"],
     iml_files = ["jewel.sdkcompat.iml"],
     kotlin_use_compose = True,
     visibility = ["//visibility:public"],
@@ -97,6 +125,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
     ],
     # do not sort: must match IML order
     deps = [
@@ -108,6 +137,7 @@ iml_module(
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
+        "@intellij//:intellij.libraries.compose.runtime.desktop",
     ],
 )
 
@@ -119,6 +149,7 @@ iml_alias(
         "intellij_ce_2024_3": "jewel.sdkcompat.243",
         "intellij_ce_2025_1": "jewel.sdkcompat.251",
         "intellij_ce_2025_2": "jewel.sdkcompat.252",
+        "intellij_2025_3": "jewel.sdkcompat.253",
         "sherlock-sdk": "jewel.sdkcompat.251",
     },
     visibility = ["//visibility:public"],
