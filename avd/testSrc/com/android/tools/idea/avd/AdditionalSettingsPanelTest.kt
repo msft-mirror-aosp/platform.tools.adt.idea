@@ -24,6 +24,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.filterToOne
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -399,7 +400,7 @@ private fun SemanticsNodeInteractionsProvider.onRamDropdown() =
     .filterToOne(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.DropdownList))
 
 private fun SemanticsNodeInteractionsProvider.onRamDropdownPopupChildren() =
-  onNode(isPopup()).onChild().onChildren()
+  onNode(isPopup()).onChild().onChildren().filterToOne(hasScrollAction()).onChildren()
 
 private fun SemanticsNodeInteractionsProvider.onVMHeapSizeTextField() =
   onNodeWithTag("VMHeapSizeRow").onChildren().filterToOne(hasSetTextAction())
