@@ -19,7 +19,6 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
-import com.google.common.collect.ImmutableSetMultimap
 import com.google.common.collect.Queues
 import com.google.common.graph.Traverser
 import com.google.idea.blaze.common.Context
@@ -27,6 +26,7 @@ import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.common.RuleKinds
 import com.google.idea.blaze.common.TargetPattern.ScopeStatus.INCLUDED
+import com.google.idea.blaze.common.TargetPatternCollection
 import com.google.idea.blaze.common.TargetTree
 import com.google.idea.blaze.qsync.project.BuildGraphDataImpl.Location.Companion.Location
 import com.google.idea.blaze.qsync.project.ProjectTarget.SourceType
@@ -36,7 +36,6 @@ import com.google.idea.blaze.qsync.query.PackageSet
 import java.nio.file.Path
 import java.util.Collections
 import java.util.Queue
-import java.util.function.Consumer
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.jvm.optionals.getOrNull
@@ -50,13 +49,16 @@ import kotlin.jvm.optionals.getOrNull
  */
 @JvmRecord
 data class BuildGraphDataImpl(
+  private val projectDefinitionTargetPatterns: TargetPatternCollection,
   @VisibleForTesting @JvmField val storage: Storage,
   private val sourceOwners: Map<Label, List<Label>>,
   private val alwaysBuildTargets: Set<Label>,
-  private val rdeps: ImmutableSetMultimap<Label, Label>,
+  private val rdeps: Map<Label, Deps<out Label>>,
   private val packages: PackageSet,
   override val externalDependencyCountForStatsOnly: Int,
 ) : BuildGraphData {
+
+  class Deps<T> (val deps: MutableSet<T> = mutableSetOf())
 
   override fun packages(): PackageSet = packages
 
@@ -73,7 +75,7 @@ data class BuildGraphDataImpl(
       path = path?.parent
       val probe = path ?: Path.of("")
       val probeNameCount = path?.nameCount ?: 0
-      if (this.packages.contains(probe)) {
+      if (packages.contains(probe)) {
         return Label.of("//$probe:" + file.subpath(probeNameCount, file.nameCount).toString())
       }
     } while (path != null)
@@ -263,11 +265,12 @@ data class BuildGraphDataImpl(
       private val targetMapBuilder = ImmutableMap.builder<Label, ProjectTarget>()
       private val allTargetLabelsBuilder = ImmutableSet.builder<Label>()
 
-      fun build(alwaysBuildRules: Set<String>): BuildGraphDataImpl {
+      fun build(projectDefinitionTargetPatterns: TargetPatternCollection, alwaysBuildRules: Set<String>): BuildGraphDataImpl {
         val storage = Storage(sourceFileLabelsBuilder.build(), targetMapBuilder.build(), allTargetLabelsBuilder.build())
         val sourceOwners = computeSourceOwners(storage)
         val alwaysBuildTargets = computeAlwaysBuildTargets(storage, sourceOwners, alwaysBuildRules)
         return BuildGraphDataImpl(
+          projectDefinitionTargetPatterns,
           storage,
           sourceOwners,
           alwaysBuildTargets,
@@ -320,16 +323,17 @@ data class BuildGraphDataImpl(
             .toSet()
         }
 
-        private fun computeRdeps(storage: Storage): ImmutableSetMultimap<Label, Label> {
-          val rdeps = ImmutableSetMultimap.builder<Label, Label>()
-          for (target in storage.targetMap.values) {
-            for (rdep in target.deps()) {
-              rdeps.put(rdep, target.label())
+        private fun computeRdeps(storage: Storage): Map<Label, Deps<out Label>> {
+          return buildMap<Label, Deps<Label>> {
+            fun rdepsOf(node: Label): Deps<Label> = this@buildMap.getOrPut(node) { Deps() }
+
+            for (target in storage.targetMap.values) {
+              for (rdep in target.deps()) {
+                rdepsOf(rdep).deps.add(target.label())
+              }
+              target.testRule().ifPresent { testRule -> rdepsOf(testRule).deps.add(target.label()) }
             }
-            val testRule = target.testRule()
-            testRule.ifPresent(Consumer { rdeps.put(it, target.label()) })
           }
-          return rdeps.build()
         }
 
         private fun computePackages(storage: Storage): PackageSet {
@@ -393,7 +397,7 @@ data class BuildGraphDataImpl(
   }
 
   override fun getSourceFileOwners(label: Label): Set<Label> {
-    return this.sourceOwners[label]?.toSet().orEmpty()
+    return sourceOwners[label]?.toSet().orEmpty()
   }
 
   @Deprecated(
@@ -408,32 +412,23 @@ data class BuildGraphDataImpl(
   /** Returns a list of all the java source files of the project, relative to the workspace root.  */
   override fun getJavaSourceFiles(): List<Path> {
     return getSourceFilesByRuleKindAndType(RuleKinds::isJava, SourceType.REGULAR_JVM)
+      .values
+      .flatten()
   }
 
   override fun getSourceFilesByRuleKindAndType(
     ruleKindPredicate: (String) -> Boolean, vararg sourceTypes: SourceType
-  ): List<Path> {
-    return pathListFromSourceFileLabelsOnly(sourcesByRuleKindAndType(ruleKindPredicate, *sourceTypes))
-  }
-
-  private fun sourcesByRuleKindAndType(
-    ruleKindPredicate: (String) -> Boolean, vararg sourceTypes: SourceType,
-  ): Set<Label> {
+  ): Map<Label, List<Path>> {
     return storage.targetMap.values.asSequence()
       .filter { ruleKindPredicate(it.kind()) }
-      .map { it.sourceLabels() }
-      .flatMap {
-        sourceTypes.flatMap { type -> it[type].orEmpty() }
+      .map { target ->
+        target.label() to
+          sourceTypes.flatMap { target.sourceLabels()[it] }
+            .filter { storage.sourceFileLabels.contains(it) }
+            .map { it.toFilePath() }
       }
-      .toSet()
-  }
-
-  private fun pathListFromSourceFileLabelsOnly(labels: Collection<Label>): List<Path> {
-    return labels
-      .asSequence()
-      .filter { storage.sourceFileLabels.contains(it) }
-      .map { it.toFilePath() }
-      .toList()
+      .filter { it.second.isNotEmpty() }
+      .toMap()
   }
 
   /**
@@ -442,9 +437,13 @@ data class BuildGraphDataImpl(
    */
   override fun getAndroidSourceFiles(): List<Path> =
     getSourceFilesByRuleKindAndType(RuleKinds::isAndroid, SourceType.REGULAR_JVM)
+      .values
+      .flatten()
 
   override fun getAndroidResourceFiles(): List<Path> =
     getSourceFilesByRuleKindAndType(RuleKinds::isAndroid, SourceType.ANDROID_RESOURCES)
+      .values
+      .flatten()
 
   /** Returns a list of custom_package fields that used by current project.  */
   override fun getAllCustomPackages(): Set<String> {
@@ -518,7 +517,7 @@ data class BuildGraphDataImpl(
     while (!queue.isEmpty()) {
       val target = queue.removeFirst()
       val targetInfo = storage.targetMap[target]
-      if (targetInfo == null || this.alwaysBuildTargets.contains(target)) {
+      if (targetInfo == null || alwaysBuildTargets.contains(target)) {
         // External dependency.
         externalDeps.add(target)
         continue
@@ -577,10 +576,9 @@ data class BuildGraphDataImpl(
     }
   }
 
-  override fun computeWholeProjectTargets(projectDefinition: ProjectDefinition): RequestedTargets {
-    val effectiveTargetPatterns = projectDefinition.effectiveTargetPatterns
+  override fun computeWholeProjectTargets(): RequestedTargets {
     return computeRequestedTargets(
-      storage.allSupportedTargets.getTargets().filter { effectiveTargetPatterns.inScope(it).status == INCLUDED }.toList()
+      storage.allSupportedTargets.getTargets().filter { projectDefinitionTargetPatterns.inScope(it).status == INCLUDED }.toList()
     )
   }
 
@@ -592,7 +590,7 @@ data class BuildGraphDataImpl(
       )
     )
     context.output(PrintOutput.log("%-10d Java sources", getJavaSourceFiles().size))
-    context.output(PrintOutput.log("%-10d Packages", this.packages.size()))
+    context.output(PrintOutput.log("%-10d Packages", packages.size()))
     context.output(
       PrintOutput.log(
         "%-10d External dependencies",
@@ -619,7 +617,7 @@ data class BuildGraphDataImpl(
   }
 
   private fun getRdeps(target: Label): Set<Label> {
-    return rdeps[target].orEmpty()
+    return rdeps[target]?.deps.orEmpty()
   }
 
   /**

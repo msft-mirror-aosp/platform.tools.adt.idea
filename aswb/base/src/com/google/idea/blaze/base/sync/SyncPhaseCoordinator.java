@@ -804,8 +804,6 @@ final class SyncPhaseCoordinator {
       syncListener.onSyncComplete(
           project,
           context,
-          BlazeImportSettingsManager.getInstance(project).getImportSettings(),
-          projectViewSet,
           buildIds,
           blazeProjectData,
           syncParams.syncMode(),

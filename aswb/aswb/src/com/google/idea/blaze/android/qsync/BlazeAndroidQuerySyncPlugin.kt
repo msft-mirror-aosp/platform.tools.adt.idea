@@ -22,34 +22,27 @@ import com.google.idea.blaze.android.sdk.BlazeSdkProvider
 import com.google.idea.blaze.android.sync.model.idea.BlazeAndroidModel
 import com.google.idea.blaze.android.sync.sdk.AndroidSdkFromProjectView
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
-import com.google.idea.blaze.base.model.primitives.WorkspaceType
-import com.google.idea.blaze.base.projectview.ProjectViewManager
-import com.google.idea.blaze.base.projectview.ProjectViewSet
 import com.google.idea.blaze.base.qsync.BlazeQuerySyncPlugin
-import com.google.idea.blaze.base.sync.projectview.LanguageSupport
-import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings
+import com.google.idea.blaze.base.qsync.QuerySyncLanguageSettings
 import com.google.idea.blaze.common.Context
-import com.google.idea.blaze.java.projectview.JavaLanguageLevelSection
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.LanguageLevelProjectExtension
 import com.intellij.openapi.roots.ex.ProjectRootManagerEx
-import com.intellij.pom.java.LanguageLevel
 
 /** ASwB sync plugin.  */
 class BlazeAndroidQuerySyncPlugin : BlazeQuerySyncPlugin {
   override fun updateProjectSettingsForQuerySync(
-    project: Project, context: Context<*>, projectViewSet: ProjectViewSet
+    project: Project, context: Context<*>, languageSettings: QuerySyncLanguageSettings
   ) {
-    if (!isAndroidWorkspace(LanguageSupport.createWorkspaceLanguageSettings(projectViewSet))) {
-      return
-    }
+    val android = languageSettings.android as? QuerySyncLanguageSettings.Android.Settings ?: return
     val androidSdkPlatform =
-      AndroidSdkFromProjectView.getAndroidSdkPlatform(context, projectViewSet) ?: error("Android SDK platform not found. See build output.")
+      AndroidSdkFromProjectView.getAndroidSdkPlatform(context, project, android.sdk, android.minSdk)
+      ?: error("Android SDK platform not found. See build output.")
     val sdk = BlazeSdkProvider.getInstance().findSdk(androidSdkPlatform.androidSdk)
               ?: error("Cannot find SDK entry for ${androidSdkPlatform.androidSdk}")
-    val javaLanguageLevel = JavaLanguageLevelSection.getLanguageLevel(projectViewSet, LanguageLevel.JDK_21)
+    val javaLanguageLevel = languageSettings.java.languageLevel
     val rootManager = ProjectRootManagerEx.getInstanceEx(project)
     rootManager.setProjectSdk(sdk)
     val ext = LanguageLevelProjectExtension.getInstance(project)
@@ -62,16 +55,11 @@ class BlazeAndroidQuerySyncPlugin : BlazeQuerySyncPlugin {
     workspaceRoot: WorkspaceRoot,
     workspaceModule: Module,
     androidSourcePackages: Set<String>,
-    workspaceLanguageSettings: WorkspaceLanguageSettings
+    languageSettings: QuerySyncLanguageSettings
   ) {
-    if (!isAndroidWorkspace(workspaceLanguageSettings)) {
-      return
-    }
-
-    // Set AndroidModel for this AndroidFacet
-    val projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet()
-    val androidSdkPlatform = AndroidSdkFromProjectView.getAndroidSdkPlatform(context, projectViewSet)
-
+    val android = languageSettings.android as? QuerySyncLanguageSettings.Android.Settings ?: return
+    val androidSdkPlatform =
+      AndroidSdkFromProjectView.getAndroidSdkPlatform(context, project, android.sdk, android.minSdk)
     val androidModel =
       BlazeAndroidModel(
         project,
@@ -87,11 +75,5 @@ class BlazeAndroidQuerySyncPlugin : BlazeQuerySyncPlugin {
     rClassBuilder.addWorkspacePackages(androidSourcePackages)
     // TODO(b/283282438): Make Preview work with resources in project's res folder in Query Sync
     BlazeLightResourceClassService.getInstance(project).installRClasses(rClassBuilder)
-  }
-
-  companion object {
-    private fun isAndroidWorkspace(workspaceLanguageSettings: WorkspaceLanguageSettings): Boolean {
-      return workspaceLanguageSettings.isWorkspaceType(WorkspaceType.ANDROID)
-    }
   }
 }

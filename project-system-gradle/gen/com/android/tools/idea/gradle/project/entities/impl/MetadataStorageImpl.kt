@@ -62,8 +62,7 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
         
         typeMetadata = EntityMetadata(fqName = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", entityDataFqName = "com.android.tools.idea.gradle.project.entities.impl.GradleAndroidModelEntityData", supertypes = listOf("com.intellij.platform.workspace.storage.WorkspaceEntity"), properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "entitySource", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.EntitySource")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "module", valueType = ValueTypeMetadata.EntityReference(connectionType = ConnectionId.ConnectionType.ONE_TO_ONE, entityFqName = "com.intellij.platform.workspace.jps.entities.ModuleEntity", isChild = false, isNullable = false), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "gradleAndroidModel", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModel", subclasses = listOf(FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl"),
-FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModelImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "activeSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "aidlDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "pathString", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("java.io.File",
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "gradleAndroidModel", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "activeSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "aidlDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "pathString", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("java.io.File",
 "java.io.Serializable",
 "kotlin.Comparable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "aidlDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
@@ -106,10 +105,10 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "preview", valueType = primitiveTypeIntNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "previewKind", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.ide.common.repository.AgpVersion\$PreviewKind", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("BETA",
+"kotlin.Enum"), values = listOf("ALPHA",
+"BETA",
 "DEV",
 "NONE",
-"ALPHA",
 "RC"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "previewType", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("java.lang.Comparable",
 "kotlin.Comparable"))), withDefault = false),
@@ -126,11 +125,13 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 "com.android.tools.idea.projectsystem.TestComponentType\$HostTest",
 "java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("UNIT_TEST",
-"SCREENSHOT_TEST"))), supertypes = listOf("com.android.tools.idea.projectsystem.TestComponentType"))),
+"kotlin.Enum"), values = listOf("SCREENSHOT_TEST",
+"UNIT_TEST"))), supertypes = listOf("com.android.tools.idea.projectsystem.TestComponentType"))),
 ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allTestFixturesSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allTestSuiteSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "androidProject", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "aaptOptions", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "namespacing", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
 "kotlin.Enum"), values = listOf("DISABLED",
@@ -179,11 +180,11 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bytecodeTransforms", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "description", valueType = primitiveTypeStringNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "type", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("JACOCO_INSTRUMENTATION",
-"MODIFIES_PROJECT_CLASS_FILES",
-"MODIFIES_ALL_CLASS_FILES",
+"kotlin.Enum"), values = listOf("ASM_API_ALL",
 "ASM_API_PROJECT",
-"ASM_API_ALL"))), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeBytecodeTransformation",
+"JACOCO_INSTRUMENTATION",
+"MODIFIES_ALL_CLASS_FILES",
+"MODIFIES_PROJECT_CLASS_FILES"))), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeBytecodeTransformation",
 "java.io.Serializable")))), primitive = primitiveTypeListNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classesFolder", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "codeShrinker", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.CodeShrinker", properties = listOf(), supertypes = listOf("java.io.Serializable",
@@ -223,11 +224,11 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "multiFlavorSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("SCREENSHOT_TEST",
-"UNIT_TEST",
+"kotlin.Enum"), values = listOf("ANDROID_TEST",
 "MAIN",
-"ANDROID_TEST",
-"TEST_FIXTURES"))), withDefault = false),
+"SCREENSHOT_TEST",
+"TEST_FIXTURES",
+"UNIT_TEST"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "privacySandboxSdkInfo", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalApkSplitFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalApkSplitTask", valueType = primitiveTypeStringNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "outputListingFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
@@ -240,9 +241,9 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testOptions", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "animationsDisabled", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "execution", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("HOST",
+"kotlin.Enum"), values = listOf("ANDROIDX_TEST_ORCHESTRATOR",
 "ANDROID_TEST_ORCHESTRATOR",
-"ANDROIDX_TEST_ORCHESTRATOR"))), withDefault = false),
+"HOST"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "instrumentedTestTaskName", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeTestOptions",
 "java.io.Serializable"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "unresolvedDependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "cause", valueType = primitiveTypeStringNullable, withDefault = false),
@@ -472,14 +473,14 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "projectType", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeAndroidProjectType", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
 "kotlin.Enum"), values = listOf("PROJECT_TYPE_APP",
-"PROJECT_TYPE_LIBRARY",
-"PROJECT_TYPE_TEST",
 "PROJECT_TYPE_ATOM",
-"PROJECT_TYPE_INSTANTAPP",
-"PROJECT_TYPE_FEATURE",
 "PROJECT_TYPE_DYNAMIC_FEATURE",
+"PROJECT_TYPE_FEATURE",
+"PROJECT_TYPE_FUSED_LIBRARY",
+"PROJECT_TYPE_INSTANTAPP",
 "PROJECT_TYPE_KOTLIN_MULTIPLATFORM",
-"PROJECT_TYPE_FUSED_LIBRARY"))), withDefault = false),
+"PROJECT_TYPE_LIBRARY",
+"PROJECT_TYPE_TEST"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resourcePrefix", valueType = primitiveTypeStringNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "signingConfigs", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "keyAlias", valueType = primitiveTypeStringNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = primitiveTypeStringNotNullable, withDefault = false),
@@ -525,36 +526,15 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "defaultSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "desugaring", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.lint.detector.api.Desugaring", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "constant", valueType = primitiveTypeIntNotNullable, withDefault = false)), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("LAMBDAS",
-"TRY_WITH_RESOURCES",
-"TYPE_ANNOTATIONS",
+"kotlin.Enum"), values = listOf("INTERFACE_METHODS",
 "JAVA_8_LIBRARY",
+"LAMBDAS",
 "METHOD_REFERENCES",
-"INTERFACE_METHODS")))), primitive = primitiveTypeSetNotNullable), withDefault = false),
+"TRY_WITH_RESOURCES",
+"TYPE_ANNOTATIONS")))), primitive = primitiveTypeSetNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deviceTestSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest")),
 ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "features", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures", properties = listOf(), supertypes = listOf())), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "filteredDebuggableVariants", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "filteredVariantNames", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "gradleAndroidModel", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "activeSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "agpVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.ide.common.repository.AgpVersion")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allApplicationIds", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allDeviceTestSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest")),
-ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allHostTestSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest")),
-ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "allTestFixturesSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "androidProject", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "applicationId", valueType = primitiveTypeStringNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildTypeNames", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "data", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelData")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "declaredDependencies", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "defaultSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "desugaring", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.lint.detector.api.Desugaring"))), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deviceTestSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest")),
-ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "features", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "filteredDebuggableVariants", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "filteredVariantNames", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "hostTestSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest")),
@@ -588,36 +568,36 @@ ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNull
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resValues", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
 ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.projectmodel.DynamicResourceValue", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "type", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.resources.ResourceType", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("INTEGER",
-"OVERLAYABLE",
-"INTERPOLATOR",
-"BOOL",
-"ATTR",
-"STYLEABLE",
-"MIPMAP",
-"STYLE_ITEM",
-"STRING",
+"kotlin.Enum"), values = listOf("AAPT",
 "ANIM",
 "ANIMATOR",
-"DIMEN",
-"XML",
-"ID",
-"SAMPLE_DATA",
-"DRAWABLE",
-"COLOR",
-"MACRO",
-"TRANSITION",
-"LAYOUT",
-"FRACTION",
-"MENU",
-"RAW",
-"NAVIGATION",
-"STYLE",
-"FONT",
-"AAPT",
 "ARRAY",
+"ATTR",
+"BOOL",
+"COLOR",
+"DIMEN",
+"DRAWABLE",
+"FONT",
+"FRACTION",
+"ID",
+"INTEGER",
+"INTERPOLATOR",
+"LAYOUT",
+"MACRO",
+"MENU",
+"MIPMAP",
+"NAVIGATION",
+"OVERLAYABLE",
+"PLURALS",
 "PUBLIC",
-"PLURALS"))), withDefault = false),
+"RAW",
+"SAMPLE_DATA",
+"STRING",
+"STYLE",
+"STYLEABLE",
+"STYLE_ITEM",
+"TRANSITION",
+"XML"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "value", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf()))), primitive = primitiveTypeMapNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resourcePrefix", valueType = primitiveTypeStringNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "rootDirPath", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")), withDefault = false),
@@ -627,32 +607,234 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "selectedVariantName", valueType = primitiveTypeStringNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "supportedAbis", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.sdklib.devices.Abi", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("ARMEABI",
+"kotlin.Enum"), values = listOf("ARM64_V8A",
+"ARMEABI",
 "ARMEABI_V7A",
-"ARM64_V8A",
-"X86",
-"X86_64",
 "MIPS",
 "MIPS64",
-"RISCV64")))), primitive = primitiveTypeSetNotNullable), withDefault = false),
+"RISCV64",
+"X86",
+"X86_64")))), primitive = primitiveTypeSetNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetSdkVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.sdklib.AndroidVersion")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testExecutionOption", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.model.TestExecutionOption", properties = listOf(), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("HOST",
+"kotlin.Enum"), values = listOf("ANDROIDX_TEST_ORCHESTRATOR",
 "ANDROID_TEST_ORCHESTRATOR",
-"ANDROIDX_TEST_ORCHESTRATOR"))), withDefault = false),
+"HOST"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testFixturesSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testOptions", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.model.TestOptions", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "animationsDisabled", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "executionOption", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.model.TestExecutionOption")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "instrumentationRunner", valueType = primitiveTypeStringNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "instrumentationRunnerArguments", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
 primitiveTypeStringNotNullable), primitive = primitiveTypeMapNotNullable), withDefault = false)), supertypes = listOf())), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testSuiteSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testSuites", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "variants", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionCode", valueType = primitiveTypeIntNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.project.model.GradleAndroidModel",
 "com.android.tools.idea.model.AndroidModel"))), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "hostTestSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest")),
-ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "ideLibraryModelResolver", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "globalLibraryTable", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "libraries", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeLibrary", subclasses = listOf(FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildId", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resolvedVariant", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildType", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "consumerProguardFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "pathString", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("java.io.File",
+"java.io.Serializable",
+"kotlin.Comparable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "core", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildType", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "consumerProguardFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deprecatedPreMergedApplicationId", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deprecatedPreMergedTestApplicationId", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "desugaredMethodsFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deviceTestArtifacts", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "abiFilters", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalRuntimeApks", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "applicationId", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assembleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildInformation", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "apkFromBundleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "apkFromBundleTaskOutputListingFile", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assembleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assembleTaskOutputListingFile", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bundleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bundleTaskOutputListingFile", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeBuildTasksAndOutputInformation",
+"java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bytecodeTransforms", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "description", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "type", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", properties = listOf(), supertypes = listOf("java.io.Serializable",
+"kotlin.Comparable",
+"kotlin.Enum"), values = listOf("ASM_API_ALL",
+"ASM_API_PROJECT",
+"JACOCO_INSTRUMENTATION",
+"MODIFIES_ALL_CLASS_FILES",
+"MODIFIES_PROJECT_CLASS_FILES"))), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeBytecodeTransformation",
+"java.io.Serializable")))), primitive = primitiveTypeListNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classesFolder", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "codeShrinker", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.CodeShrinker", properties = listOf(), supertypes = listOf("java.io.Serializable",
+"kotlin.Comparable",
+"kotlin.Enum"), values = listOf("PROGUARD",
+"R8"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileClasspathCore", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl", subclasses = listOf(FinalClassMetadata.ObjectMetadata(fqName = "com.android.tools.idea.gradle.model.impl.ThrowingIdeDependencies", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "dependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeDependenciesCore",
+"com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl",
+"java.io.Serializable")),
+FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "dependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "dependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeIntNotNullable), primitive = primitiveTypeListNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "target", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.LibraryReference", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "libraryIndex", valueType = primitiveTypeIntNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resolverType", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.ResolverType", properties = listOf(), supertypes = listOf("java.io.Serializable",
+"kotlin.Comparable",
+"kotlin.Enum"), values = listOf("GLOBAL",
+"KMP_ANDROID"))), withDefault = false)), supertypes = listOf("java.io.Serializable"))), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeDependencyCore",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeDependenciesCore",
+"com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl",
+"java.io.Serializable")),
+FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreRef", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "dependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "index", valueType = primitiveTypeIntNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "referee", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect")), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeDependenciesCore",
+"com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl",
+"java.io.Serializable"))), supertypes = listOf("com.android.tools.idea.gradle.model.IdeDependenciesCore",
+"java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "desugaredMethodsFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "generatedAssetFolders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "generatedClassPaths", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "generatedResourceFolders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "generatedSourceFolders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "ideSetupTaskNames", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "isSigned", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "isTestArtifact", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mappingR8PartitionFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mappingR8TextFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "multiFlavorSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "aidlDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "aidlDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assetsDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assetsDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "baselineProfileDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "baselineProfileDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "customSourceDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "directory", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "myFolder", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "path", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "sourceTypeName", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeCustomSourceDirectory",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "customSourceDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "folderField", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "javaDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "javaDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "jniLibsDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "jniLibsDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "kotlinDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "kotlinDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "manifestFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "manifestFileField", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mlModelsDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mlModelsDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "nameField", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "renderscriptDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "renderscriptDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resourcesDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resourcesDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "shadersDirectories", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "shadersDirectoriesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName", properties = listOf(), supertypes = listOf("java.io.Serializable",
+"kotlin.Comparable",
+"kotlin.Enum"), values = listOf("ANDROID_TEST",
+"MAIN",
+"SCREENSHOT_TEST",
+"TEST_FIXTURES",
+"UNIT_TEST"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "privacySandboxSdkInfo", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalApkSplitFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalApkSplitTask", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "outputListingFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "outputListingLegacyFile", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "task", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "taskLegacy", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdePrivacySandboxSdkInfo",
+"java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "runtimeClasspathCore", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "signingConfigName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testOptions", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "animationsDisabled", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "execution", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution", properties = listOf(), supertypes = listOf("java.io.Serializable",
+"kotlin.Comparable",
+"kotlin.Enum"), values = listOf("ANDROIDX_TEST_ORCHESTRATOR",
+"ANDROID_TEST_ORCHESTRATOR",
+"HOST"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "instrumentedTestTaskName", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeTestOptions",
+"java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "unresolvedDependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "cause", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeUnresolvedDependency",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "variantSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeAndroidArtifactCore",
+"com.android.tools.idea.gradle.model.IdeBaseArtifactCore",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "displayName", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "experimentalProperties", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+primitiveTypeStringNotNullable), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "hostTestArtifacts", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assembleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bytecodeTransforms", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"))), primitive = primitiveTypeListNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classesFolder", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileClasspathCore", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "generatedClassPaths", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "generatedSourceFolders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "ideSetupTaskNames", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "isTestArtifact", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mockablePlatformJar", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "multiFlavorSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "runtimeClasspathCore", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "unresolvedDependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "variantSourceProvider", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeBaseArtifactCore",
+"com.android.tools.idea.gradle.model.IdeJavaArtifactCore",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "instantAppCompatible", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mainArtifact", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "manifestPlaceholders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+primitiveTypeStringNotNullable), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "maxSdkVersion", valueType = primitiveTypeIntNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "minSdkVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "apiLevel", valueType = primitiveTypeIntNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "apiString", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "codename", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeApiVersion",
+"java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "productFlavors", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "proguardFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resValues", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "name", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "type", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "value", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeClassField",
+"java.io.Serializable")))), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resourceConfigurations", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "runTestInSeparateProcess", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetSdkVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testFixturesArtifact", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testInstrumentationRunner", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testInstrumentationRunnerArguments", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
+primitiveTypeStringNotNullable), primitive = primitiveTypeMapNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testSuiteArtifacts", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "suiteName", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetedVariantName", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targets", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetName", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetedDevices", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testTaskName", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeTestSuiteTarget",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeTestSuiteVariantTarget",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testedTargetVariants", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetProjectPath", valueType = primitiveTypeStringNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetVariant", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeTestedTargetVariant",
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "vectorDrawablesUseSupportLibrary", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionCode", valueType = primitiveTypeIntNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionNameSuffix", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionNameWithSuffix", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeVariantCore",
+"com.android.tools.idea.gradle.model.IdeVariantHeader",
+"com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable",
+"java.io.Serializable"))), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deprecatedPreMergedApplicationId", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deprecatedPreMergedTestApplicationId", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "desugaredMethodsFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deviceTestArtifacts", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "abiFilters", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalRuntimeApks", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "applicationId", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assembleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildInformation", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bytecodeTransforms", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"))), primitive = primitiveTypeListNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classesFolder", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "codeShrinker", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.CodeShrinker")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileClasspath", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeDependencies", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classpath", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "libraries", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeLibrary", subclasses = listOf(FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildId", valueType = primitiveTypeStringNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "displayName", valueType = primitiveTypeStringNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "lintJar", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "projectPath", valueType = primitiveTypeStringNotNullable, withDefault = false),
@@ -660,11 +842,11 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "sourceSetName", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet",
 "java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("SCREENSHOT_TEST",
-"UNIT_TEST",
+"kotlin.Enum"), values = listOf("ANDROID_TEST",
 "MAIN",
-"ANDROID_TEST",
-"TEST_FIXTURES")),
+"SCREENSHOT_TEST",
+"TEST_FIXTURES",
+"UNIT_TEST")),
 FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "canBeConsumed", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "sourceSetName", valueType = primitiveTypeStringNotNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet",
 "java.io.Serializable"))), supertypes = listOf())), withDefault = false),
@@ -740,11 +922,11 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "previewSupremum", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.ide.common.gradle.Version")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "separators", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(fqName = "com.android.ide.common.gradle.Separator", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "char", valueType = primitiveTypeCharNullable, withDefault = false)), supertypes = listOf("java.io.Serializable",
 "kotlin.Comparable",
-"kotlin.Enum"), values = listOf("EMPTY",
+"kotlin.Enum"), values = listOf("DASH",
 "DOT",
-"DASH",
-"UNDERSCORE",
-"PLUS")))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("java.io.Serializable",
+"EMPTY",
+"PLUS",
+"UNDERSCORE")))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("java.io.Serializable",
 "java.lang.Comparable",
 "kotlin.Comparable"))), withDefault = false)), supertypes = listOf("java.io.Serializable"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "docJar", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")), withDefault = false),
@@ -780,27 +962,12 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 "com.android.tools.idea.gradle.model.IdeUnresolvedArtifactLibrary",
 "com.android.tools.idea.gradle.model.IdeUnresolvedJavaLibrary",
 "com.android.tools.idea.gradle.model.IdeUnresolvedLibrary",
-"java.io.Serializable"))), supertypes = listOf()))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable",
+"java.io.Serializable"))), supertypes = listOf()))), primitive = primitiveTypeListNotNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "librariesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeLibrary"))), primitive = primitiveTypeListNullable), withDefault = false),
+OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resolver", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "globalLibraryTable", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "libraries", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeLibrary"))), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable",
 "com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable",
 "java.io.Serializable"))), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "kmpLibraryTable", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable", subclasses = listOf(FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl")), supertypes = listOf("com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable"))), withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeLibraryModelResolver"))), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "isBaseSplit", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "isDebuggable", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "isInstantAppCompatible", valueType = primitiveTypeBooleanNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "lintRuleJarsOverride", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "kotlin.collections.Iterable")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mainArtifact", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "mainArtifactWithDependencies", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "abiFilters", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "additionalRuntimeApks", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "applicationId", valueType = primitiveTypeStringNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "assembleTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildInformation", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "bytecodeTransforms", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"))), primitive = primitiveTypeListNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classesFolder", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "codeShrinker", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.CodeShrinker")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileClasspath", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.IdeDependencies", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "classpath", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "libraries", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeLibrary"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "librariesField", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeLibrary"))), primitive = primitiveTypeListNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resolver", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "unresolvedDependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false)), supertypes = listOf())), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileClasspathCore", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "compileTaskName", valueType = primitiveTypeStringNullable, withDefault = false),
@@ -829,22 +996,7 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 "com.android.tools.idea.gradle.model.IdeAndroidArtifactCore",
 "com.android.tools.idea.gradle.model.IdeBaseArtifact",
 "com.android.tools.idea.gradle.model.IdeBaseArtifactCore",
-"java.io.Serializable"))), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "minSdkVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.sdklib.AndroidVersion")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "minSdkVersionField", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.sdklib.AndroidVersion")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "moduleName", valueType = primitiveTypeStringNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "myBuildTypesByName", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "myCachedBasicVariantsByName", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "myCachedResolvedVariantsByName", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", properties = listOf(OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "buildType", valueType = primitiveTypeStringNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "consumerProguardFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "core", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deprecatedPreMergedApplicationId", valueType = primitiveTypeStringNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deprecatedPreMergedTestApplicationId", valueType = primitiveTypeStringNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "desugaredMethodsFiles", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "deviceTestArtifacts", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
+"java.io.Serializable")))), primitive = primitiveTypeListNotNullable), withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "displayName", valueType = primitiveTypeStringNotNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "experimentalProperties", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
 primitiveTypeStringNotNullable), primitive = primitiveTypeMapNotNullable), withDefault = false),
@@ -898,37 +1050,7 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionNameSuffix", valueType = primitiveTypeStringNullable, withDefault = false),
 OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionNameWithSuffix", valueType = primitiveTypeStringNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.model.IdeVariant",
 "com.android.tools.idea.gradle.model.IdeVariantCore",
-"com.android.tools.idea.gradle.model.IdeVariantHeader")))), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "myCachedVariantsByName", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "myProductFlavorsByName", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "namespacing", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.model.Namespacing")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "overridesManifestPackageField", valueType = primitiveTypeBooleanNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "productFlavorNames", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "productFlavorNamesByFlavorDimension", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeListNotNullable)), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resValues", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(primitiveTypeStringNotNullable,
-ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.projectmodel.DynamicResourceValue"))), primitive = primitiveTypeMapNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "resourcePrefix", valueType = primitiveTypeStringNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "rootDirPath", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "runtimeMinSdkVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.sdklib.AndroidVersion")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "selectedAndroidTestCompileDependencies", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeDependencies")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "selectedBasicVariant", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "selectedVariant", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "selectedVariantName", valueType = primitiveTypeStringNotNullable, withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "selectedVariantWithDependencies", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "supportedAbis", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.sdklib.devices.Abi"))), primitive = primitiveTypeSetNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "targetSdkVersion", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.sdklib.AndroidVersion")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testExecutionOption", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = true, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.model.TestExecutionOption")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testFixturesSourceProviders", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "testOptions", valueType = ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.model.TestOptions")), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "variants", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "variantsWithDependencies", valueType = ValueTypeMetadata.ParameterizedType(generics = listOf(ValueTypeMetadata.SimpleType.CustomType(isNullable = false, typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl"))), primitive = primitiveTypeListNotNullable), withDefault = false),
-OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = "versionCode", valueType = primitiveTypeIntNullable, withDefault = false)), supertypes = listOf("com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel",
-"com.android.tools.idea.gradle.project.model.GradleAndroidModel",
-"com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl",
-"com.android.tools.idea.model.AndroidModel"))), supertypes = listOf("com.android.tools.idea.model.AndroidModel"))), withDefault = false)), extProperties = listOf(ExtPropertyMetadata(isComputable = false, isOpen = false, name = "gradleAndroidModel", receiverFqn = "com.intellij.platform.workspace.jps.entities.ModuleEntity", valueType = ValueTypeMetadata.EntityReference(connectionType = ConnectionId.ConnectionType.ONE_TO_ONE, entityFqName = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", isChild = true, isNullable = true), withDefault = false)), isAbstract = false)
+"com.android.tools.idea.gradle.model.IdeVariantHeader"))), withDefault = false)), extProperties = listOf(ExtPropertyMetadata(isComputable = false, isOpen = false, name = "gradleAndroidModel", receiverFqn = "com.intellij.platform.workspace.jps.entities.ModuleEntity", valueType = ValueTypeMetadata.EntityReference(connectionType = ConnectionId.ConnectionType.ONE_TO_ONE, entityFqName = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", isChild = true, isNullable = true), withDefault = false)), isAbstract = false)
         
         addMetadata(typeMetadata)
         
@@ -950,31 +1072,29 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
     }
 
     override fun initializeMetadataHash() {
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = 1655556588)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = -1446259755)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity", metadataHash = 901865304)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModel", metadataHash = -1020030508)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel", metadataHash = 1055057458)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModelImpl", metadataHash = 381077407)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider", metadataHash = 273862055)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = -1153588686)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider", metadataHash = -1945917941)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.FileImpl", metadataHash = -931484829)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", metadataHash = -815189750)
-        addMetadataHash(typeFqn = "com.android.ide.common.repository.AgpVersion", metadataHash = -1107635632)
-        addMetadataHash(typeFqn = "com.android.ide.common.repository.AgpVersion\$PreviewKind", metadataHash = 1589791177)
+        addMetadataHash(typeFqn = "com.android.ide.common.repository.AgpVersion", metadataHash = 1123400306)
+        addMetadataHash(typeFqn = "com.android.ide.common.repository.AgpVersion\$PreviewKind", metadataHash = -480172821)
         addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest", metadataHash = 1008443228)
         addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$DeviceTest", metadataHash = 322202123)
-        addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", metadataHash = 309098788)
-        addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest", metadataHash = -1770570703)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = -1449425053)
+        addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", metadataHash = 829021672)
+        addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest", metadataHash = -1096743187)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = 304880363)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", metadataHash = -1399748338)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing", metadataHash = -1321757945)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl", metadataHash = -1034984111)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl", metadataHash = -1332620076)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -1800617436)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = 1139887315)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = -40857136)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = 576337750)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = 683167143)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = -698350778)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl", metadataHash = -1690144445)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", metadataHash = 1389930604)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", metadataHash = 296931266)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", metadataHash = 657314908)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", metadataHash = 2020553170)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.CodeShrinker", metadataHash = -851385001)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl", metadataHash = -565175310)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect", metadataHash = -950429738)
@@ -983,10 +1103,10 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.ResolverType", metadataHash = 127788945)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreRef", metadataHash = 1654896201)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.ThrowingIdeDependencies", metadataHash = 124244585)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactName", metadataHash = 1029435985)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactName", metadataHash = -1494944155)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl", metadataHash = 990934072)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", metadataHash = -528518117)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution", metadataHash = -1481312754)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", metadataHash = -740402387)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution", metadataHash = 565979040)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl", metadataHash = 1118555776)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl", metadataHash = 1861591437)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl", metadataHash = -975396586)
@@ -1007,7 +1127,7 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl", metadataHash = -460813861)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl", metadataHash = 681444105)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl", metadataHash = 490057410)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidProjectType", metadataHash = -1478960967)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidProjectType", metadataHash = -157603277)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl", metadataHash = -1020039765)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl", metadataHash = 1315666621)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl", metadataHash = 247927489)
@@ -1018,26 +1138,26 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelData", metadataHash = -826500388)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl", metadataHash = 735844252)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl\$IdeCoordinatesImpl", metadataHash = -1673119559)
-        addMetadataHash(typeFqn = "com.android.tools.lint.detector.api.Desugaring", metadataHash = 1652277288)
+        addMetadataHash(typeFqn = "com.android.tools.lint.detector.api.Desugaring", metadataHash = -355362316)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures", metadataHash = 730136386)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = 1618621759)
         addMetadataHash(typeFqn = "com.android.sdklib.AndroidVersion", metadataHash = 648464680)
         addMetadataHash(typeFqn = "com.android.tools.idea.model.Namespacing", metadataHash = 1620955126)
-        addMetadataHash(typeFqn = "com.android.projectmodel.DynamicResourceValue", metadataHash = -1884635748)
-        addMetadataHash(typeFqn = "com.android.resources.ResourceType", metadataHash = -1595673308)
-        addMetadataHash(typeFqn = "com.android.sdklib.devices.Abi", metadataHash = -893474641)
-        addMetadataHash(typeFqn = "com.android.tools.idea.model.TestExecutionOption", metadataHash = -2091270412)
+        addMetadataHash(typeFqn = "com.android.projectmodel.DynamicResourceValue", metadataHash = -1669148046)
+        addMetadataHash(typeFqn = "com.android.resources.ResourceType", metadataHash = -819739526)
+        addMetadataHash(typeFqn = "com.android.sdklib.devices.Abi", metadataHash = 681885929)
+        addMetadataHash(typeFqn = "com.android.tools.idea.model.TestExecutionOption", metadataHash = -43978618)
         addMetadataHash(typeFqn = "com.android.tools.idea.model.TestOptions", metadataHash = -1696386486)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl", metadataHash = -1816391421)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl", metadataHash = -1331061430)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeLibrary", metadataHash = -905203618)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactLibrary", metadataHash = 1529633464)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibrary", metadataHash = 825461339)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedAndroidLibrary", metadataHash = 11100680)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl", metadataHash = -1028264398)
-        addMetadataHash(typeFqn = "com.android.ide.common.gradle.Component", metadataHash = -365095792)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = 165565099)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", metadataHash = 1717215890)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeDependencies", metadataHash = 957361702)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeLibrary", metadataHash = -1697725822)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactLibrary", metadataHash = -901900944)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibrary", metadataHash = -136897773)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedAndroidLibrary", metadataHash = 1772351568)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl", metadataHash = -335587206)
+        addMetadataHash(typeFqn = "com.android.ide.common.gradle.Component", metadataHash = 1245196504)
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.Module", metadataHash = 278064161)
-        addMetadataHash(typeFqn = "com.android.ide.common.gradle.Version", metadataHash = 1887502077)
+        addMetadataHash(typeFqn = "com.android.ide.common.gradle.Version", metadataHash = -307285691)
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.Part", metadataHash = 1119935650)
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.DEV", metadataHash = -719581278)
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.NonNumeric", metadataHash = -1495351275)
@@ -1049,22 +1169,21 @@ OwnPropertyMetadata(isComputable = false, isKey = false, isOpen = false, name = 
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.RELEASE", metadataHash = -1330650287)
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.SNAPSHOT", metadataHash = 2048690102)
         addMetadataHash(typeFqn = "com.android.ide.common.gradle.SP", metadataHash = -1232106801)
-        addMetadataHash(typeFqn = "com.android.ide.common.gradle.Separator", metadataHash = 1092586)
+        addMetadataHash(typeFqn = "com.android.ide.common.gradle.Separator", metadataHash = 1930764962)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeJavaLibrary", metadataHash = -73609323)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedJavaLibrary", metadataHash = -556879643)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeJavaLibraryImpl", metadataHash = -513831227)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibrary", metadataHash = 17091400)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl", metadataHash = 1195721887)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet", metadataHash = 1243611850)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibrary", metadataHash = 1471010740)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl", metadataHash = -285282637)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet", metadataHash = -879747018)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl", metadataHash = 188174125)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet", metadataHash = 38340521)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet", metadataHash = 1808927677)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnknownLibrary", metadataHash = -384625973)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedUnknownLibrary", metadataHash = -2078218641)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl", metadataHash = 2037151378)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl", metadataHash = -1636050817)
+        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl", metadataHash = 124029262)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable", metadataHash = 1979204270)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", metadataHash = 286500416)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeDependencies", metadataHash = -1110627628)
-        addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = 522394943)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl", metadataHash = -2105405404)
         addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleModuleModel", metadataHash = -496571259)
         addMetadataHash(typeFqn = "com.intellij.platform.workspace.storage.EntitySource", metadataHash = -1716976569)

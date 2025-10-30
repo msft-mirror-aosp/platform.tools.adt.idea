@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.actions
 
+import com.android.flags.junit.FlagRule
 import com.android.ide.common.resources.Locale
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.Density
@@ -37,6 +38,7 @@ import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.configurations.DeviceGroup
 import com.android.tools.idea.configurations.StudioConfigurationModelModule
 import com.android.tools.idea.configurations.groupDevices
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.google.common.collect.ImmutableList
@@ -47,6 +49,7 @@ import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.TestActionEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -73,6 +76,12 @@ private fun AnAction.flattenActions(): List<AnAction> {
 class DeviceMenuActionTest {
 
   @JvmField @Rule val projectRule = AndroidProjectRule.withAndroidModel().onEdt()
+  @get:Rule
+  val flagRules =
+    RuleChain(
+      FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true),
+      FlagRule(StudioFlags.XR_GLASSES_DEVICE_SUPPORT_ENABLED, true),
+    )
 
   private fun getReferenceDevicesExpected(): String {
     return """
@@ -172,7 +181,8 @@ class DeviceMenuActionTest {
               ------------------------------------------------------
               XR
               XR Headset (1280 × 1279 dp, xhdpi)
-              XR Glasses (200 × 200 dp, mdpi)
+              XR Glasses (960 × 600 dp, xhdpi)
+              AI Glasses (200 × 200 dp, mdpi)
               ------------------------------------------------------
               Generic Devices
                   Small Phone (360 × 640 dp, xhdpi)

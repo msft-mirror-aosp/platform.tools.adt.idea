@@ -1,0 +1,49 @@
+/*
+ * Copyright (C) 2025 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tools.idea.compose.preview.actions.glasses
+
+import com.android.sdklib.devices.Device
+import com.android.tools.adtui.actions.DropDownAction
+import com.android.tools.idea.actions.SCENE_VIEW
+import com.android.tools.idea.compose.preview.message
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import icons.StudioIcons
+
+/**
+ * A Dropdown action that contains preset backgrounds to be applied in a Compose Preview when the
+ * device is AI glasses. The backgrounds will be blended into the preview by applying certain
+ * heuristics used to simulate how Composables look like in AI Glasses environment.
+ */
+class GlassesBlendDropdownAction :
+  DropDownAction(
+    message("action.glasses.blend.title"),
+    message("action.glasses.blend.description"),
+    StudioIcons.Avd.DEVICE_GLASS,
+  ) {
+
+  init {
+    GlassesBackground.entries.forEach { addAction(SetGlassesBackgroundAction(it)) }
+  }
+
+  override fun update(e: AnActionEvent) {
+    super.update(e)
+    e.presentation.isEnabledAndVisible =
+      Device.isAiGlasses(e.getData(SCENE_VIEW)?.configuration?.device)
+  }
+
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
+}

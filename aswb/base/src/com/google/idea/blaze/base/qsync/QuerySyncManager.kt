@@ -29,7 +29,6 @@ import com.google.idea.blaze.base.bazel.BuildSystemProvider
 import com.google.idea.blaze.base.logging.utils.querysync.QuerySyncActionStatsScope
 import com.google.idea.blaze.base.logging.utils.querysync.SyncQueryStatsScope
 import com.google.idea.blaze.base.projectview.ProjectViewManager
-import com.google.idea.blaze.base.projectview.section.sections.EnableCodeAnalysisOnSyncSection
 import com.google.idea.blaze.base.qsync.ProjectStatsLogger.logSyncStats
 import com.google.idea.blaze.base.qsync.artifacts.ProjectArtifactStore
 import com.google.idea.blaze.base.scope.BlazeContext
@@ -138,6 +137,8 @@ class QuerySyncManager @VisibleForTesting @NonInjectable constructor(
     project.service<BuildArtifactCache>(),
     FileRefresher(project)
   )
+  private val userPreferences: QuerySyncUserPreferences get() =
+    QuerySyncUserPreferencesProvider.getInstance(ideProject).userPreferences
 
   /** An enum represent the origin of a task performed by the [QuerySyncManager]  */
   enum class TaskOrigin {
@@ -216,7 +217,6 @@ class QuerySyncManager @VisibleForTesting @NonInjectable constructor(
       loadedProject
         ?.takeUnless {
           val currentProjectViewSet = BlazeImportSettingsManager.getInstance(ideProject).projectViewSet
-          it.projectViewSet != currentProjectViewSet ||
           it.projectDefinition != loader.loadProjectDefinition(currentProjectViewSet).definition
         }
       ?: runCatching { loader.loadProject() }.getOrElse { throw BuildException("Failed to load project", it) }
@@ -237,9 +237,6 @@ class QuerySyncManager @VisibleForTesting @NonInjectable constructor(
 
   fun assertProjectLoaded() = checkNotNull(loadedProject) { "Project not loaded yet" }
 
-  val renderJarArtifactTracker: RenderJarArtifactTracker
-    get() = assertProjectLoaded().renderJarArtifactTracker
-
   val sourceToTargetMap: SourceToTargetMap
     get() = assertProjectLoaded().sourceToTargetMap
 
@@ -259,10 +256,41 @@ class QuerySyncManager @VisibleForTesting @NonInjectable constructor(
       operationType = OperationType.SYNC
     ) { context ->
       val result= reloadProjectIfDefinitionHasChanged(context)
-      syncStatsScope(context) { context ->
-        syncQueryData(context, result.existingPostQuerySyncData)
+      val existingPostQuerySyncData = result.existingPostQuerySyncData
+      if (existingPostQuerySyncData == null || userPreferences.refreshQueryDataOnStartup) {
+        syncStatsScope(context) { context ->
+          syncQueryData(context, existingPostQuerySyncData)
+        }
+      } else {
+        updateCurrentSnapshot(context) {
+          applySyncResult(assertProjectLoaded().analyzePostQuerySyncData(context, existingPostQuerySyncData))
+        }
       }
       autoEnableCodeAnalysis(context, startup = true)
+    }
+
+  @CanIgnoreReturnValue
+  fun reapplyProjectStructure(
+    querySyncActionStats: QuerySyncActionStatsScope,
+  ): ListenableFuture<Boolean> {
+    return runOperation(
+      querySyncActionStats,
+      TaskOrigin.USER_ACTION,
+      reapplyProjectStructureOperation()
+    )
+  }
+
+  private fun reapplyProjectStructureOperation(): QuerySyncOperation =
+    operation(
+      title = "Updating project structure",
+      subTitle = "Re-applying project structure",
+      operationType = OperationType.SYNC
+    ) { context ->
+      lastProjectUpdateFromArtifactState = ArtifactTracker.State.EMPTY
+      lastProjectUpdateFromSnapshot = QuerySyncProjectSnapshot.EMPTY
+      updateCurrentSnapshot(context) {
+        copy(project = ProjectProto.Project.getDefaultInstance())
+      }
     }
 
   @CanIgnoreReturnValue
@@ -443,8 +471,6 @@ class QuerySyncManager @VisibleForTesting @NonInjectable constructor(
               syncListener.onSyncComplete(
                 project,
                 context,
-                querySyncProject.importSettings,
-                querySyncProject.projectViewSet,
                 ImmutableSet.of(),
                 querySyncProject.projectData,
                 SyncMode.FULL,
@@ -486,10 +512,9 @@ class QuerySyncManager @VisibleForTesting @NonInjectable constructor(
 
   private fun autoEnableCodeAnalysis(context: BlazeContext, startup: Boolean = false) {
     val project = loadedProject ?: return
-    val enableCodeAnalysisOnSyncEnabled = project.projectViewSet.getScalarValue(EnableCodeAnalysisOnSyncSection.KEY).getOrDefault(false)
     // Checking the state of the tracker directly as the snapshot has not been yet updated.
     val codeAnalysisHasBeenEnabled = this.loadedProject?.artifactTracker?.stateSnapshot?.targets()?.isNotEmpty() ?: false
-    if (enableCodeAnalysisOnSyncEnabled && !(codeAnalysisHasBeenEnabled && startup)) {
+    if (userPreferences.enableCodeAnalysisOnSync && !(codeAnalysisHasBeenEnabled && startup)) {
       project.buildDependencies(context, DependencyTracker.DependencyBuildRequest.wholeProject())
     }
   }

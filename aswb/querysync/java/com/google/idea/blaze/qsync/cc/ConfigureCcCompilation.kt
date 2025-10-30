@@ -17,13 +17,11 @@ package com.google.idea.blaze.qsync.cc
 
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.PrintOutput
-import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.deps.ArtifactDirectories
 import com.google.idea.blaze.qsync.deps.ArtifactTracker.State
 import com.google.idea.blaze.qsync.deps.CcCompilationInfo
 import com.google.idea.blaze.qsync.deps.CcToolchain
 import com.google.idea.blaze.qsync.deps.DependencyBuildContext
-import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.ProjectProto
 import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilationContext
@@ -31,46 +29,25 @@ import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilerFlag
 import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilerFlagSet
 import com.google.idea.blaze.qsync.project.ProjectProto.CcCompilerSettings
 import com.google.idea.blaze.qsync.project.ProjectProto.CcLanguage
-import com.google.idea.blaze.qsync.project.ProjectProto.CcSourceFile
-import com.google.idea.blaze.qsync.project.ProjectTarget.SourceType
 import com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import com.intellij.util.containers.orNull
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
+import org.jetbrains.annotations.VisibleForTesting
 
 /** Adds C/C++ compilation information and headers to the project proto. */
-class ConfigureCcCompilation(
-  private val externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
-  private val artifactState: State,
-  private val update: ProjectProtoUpdate,
-) {
-  /** An update operation to configure CC compilation. */
-  class UpdateOperation : ProjectProtoUpdateOperation {
-    override fun update(
-      update: ProjectProtoUpdate,
-      buildGraph: BuildGraphData,
-      artifactState: State,
-      context: Context<*>,
-      externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
-    ) {
-      ConfigureCcCompilation(externalRepositoryFinder, artifactState, update).update(buildGraph, context)
-    }
-  }
+class ConfigureCcCompilation: ProjectProtoUpdateOperation {
 
-  /* Map from toolchain ID -> language -> flags for that toolchain & language. */
-  private val toolchainLanguageFlags: MutableMap<String, Map<CcLanguage, List<CcCompilerFlag>>> = hashMapOf()
-
-  /* Map of unique sets of compiler flags to an ID to identify them.
-   * We do this as the downstream code turns each set of flags into a CidrCompilerSwitches instance
-   * which can have a large memory footprint. */
-  private val uniqueFlagSetIds: MutableMap<Set<CcCompilerFlag>, String> = hashMapOf()
-
-  @Throws(BuildException::class)
-  fun update(buildGraph: BuildGraphData, context: Context<*>) {
+  override fun update(
+    update: ProjectProtoUpdate,
+    artifactState: State,
+    context: Context<*>,
+    externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
+  ) {
     update.ccWorkspace {
-      val visitor = Visitor(context, buildGraph, this)
+      val visitor = Visitor(update, artifactState, context, this, externalRepositoryFinder)
       visitor.visitToolchainMap(artifactState.ccToolchainMap())
 
       for (target in artifactState.targets()) {
@@ -81,10 +58,20 @@ class ConfigureCcCompilation(
   }
 
   private inner class Visitor(
+    private val update: ProjectProtoUpdate,
+    private val artifactState: State,
     private val context: Context<*>,
-    private val buildGraph: BuildGraphData,
     private val workspaceUpdater: ProjectProtoUpdate.CcWorkspaceUpdater,
+    private val externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
   ) {
+    /* Map from toolchain ID -> language -> flags for that toolchain & language. */
+    private val toolchainLanguageFlags: MutableMap<String, Map<CcLanguage, List<CcCompilerFlag>>> = hashMapOf()
+
+    /* Map of unique sets of compiler flags to an ID to identify them.
+     * We do this as the downstream code turns each set of flags into a CidrCompilerSwitches instance
+     * which can have a large memory footprint. */
+    private val uniqueFlagSetIds: MutableMap<Set<CcCompilerFlag>, String> = hashMapOf()
+
 
     fun visitToolchainMap(toolchainInfoMap: Map<String, CcToolchain>) {
       toolchainInfoMap.values.forEach(this::visitToolchain)
@@ -116,19 +103,7 @@ class ConfigureCcCompilation(
           addAll(ccInfo.frameworkIncludeDirectories().map { p -> makePathFlag("-F", p) })
         }
 
-      val srcs = buildGraph.getTargetSources(ccInfo.target(), *SourceType.all())
-        .mapNotNull { srcPath ->
-          val lang = getLanguage(srcPath) ?: return@mapNotNull null
-          CcSourceFile(
-            workspacePath = ProjectPath.WorkspaceRelativeProjectPath(srcPath, EMPTY_PATH),
-            language = lang,
-          )
-        }
-
       workspaceUpdater.target(ccInfo.target()) {
-        srcs.forEach {
-          addSourceFile(it)
-        }
         val targetContext =
           CcCompilationContext(
             id = ccInfo.target().toString() + "%" + toolchain.targetGnuSystemName(),
@@ -171,27 +146,6 @@ class ConfigureCcCompilation(
         workspaceUpdater.putFlagSets(flagSetId, CcCompilerFlagSet(flags.toList()))
       }
     }
-
-    private fun getLanguage(srcPath: Path): CcLanguage? {
-      // logic in here based on https://bazel.build/reference/be/c-cpp#cc_library.srcs
-      val lastDot = srcPath.fileName.toString().lastIndexOf('.')
-      if (lastDot < 0) {
-        // default to cpp
-        context.output(PrintOutput.log("No extension for c/c++ source file %s; assuming cpp", srcPath))
-        return CcLanguage.CPP
-      }
-      val ext = srcPath.fileName.toString().substring(lastDot + 1)
-      if (IGNORE_SRC_FILE_EXTENSIONS.contains(ext)) {
-        return null
-      }
-      if (EXTENSION_TO_LANGUAGE_MAP.containsKey(ext)) {
-        return EXTENSION_TO_LANGUAGE_MAP[ext]
-      }
-      context.output(
-        PrintOutput.log(
-          "Unrecognized extension %s for c/c++ source file %s; assuming cpp", ext, srcPath))
-      return CcLanguage.CPP
-    }
   }
 
   private fun makeStringFlag(flag: String, value: String): CcCompilerFlag {
@@ -203,20 +157,16 @@ class ConfigureCcCompilation(
   }
 
   companion object {
+    /**
+     * Resets the next flag set id to 1 to allow repeatable tests. This should not be done
+     * in the production since ProjectProto.Project can be combined from pieces.
+     */
+    @VisibleForTesting
+    fun resetFlagIdsForTestingOnly() {
+      nextFlagSetId.set(0)
+    }
+
     private val nextFlagSetId = AtomicInteger(0)
-
-    private val EXTENSION_TO_LANGUAGE_MAP =
-      mapOf(
-        "c" to CcLanguage.C,
-        "cc" to CcLanguage.CPP,
-        "cpp" to CcLanguage.CPP,
-        "cxx" to CcLanguage.CPP,
-        "c++" to CcLanguage.CPP,
-        "C" to CcLanguage.C)
-
-    /* Files we ignore because they are not top level source files: */
-    private val IGNORE_SRC_FILE_EXTENSIONS =
-      setOf("h", "hh", "hpp", "hxx", "inc", "inl", "H", "S", "a", "lo", "so", "o")
   }
 }
 
@@ -246,6 +196,3 @@ private fun MutableSet<String>.collectExternalRepositoryNameFrom(path: ProjectPa
     add(externalRepositoryName)
   }
 }
-
-private val EMPTY_PATH = Path.of("")
-

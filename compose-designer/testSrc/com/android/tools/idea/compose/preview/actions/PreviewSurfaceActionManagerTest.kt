@@ -6,9 +6,9 @@ import com.android.tools.idea.common.util.EnableUnderConditionWrapper
 import com.android.tools.idea.common.util.ShowGroupUnderConditionWrapper
 import com.android.tools.idea.common.util.ShowUnderConditionWrapper
 import com.android.tools.idea.compose.preview.ComposeStudioBotActionFactory
+import com.android.tools.idea.compose.preview.actions.glasses.GlassesBlendDropdownAction
 import com.android.tools.idea.compose.preview.util.FakeStudioBotActionFactory
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.glasses.GlassesBlendDropdownAction
 import com.android.tools.idea.preview.actions.AnimationInspectorAction
 import com.android.tools.idea.preview.actions.BackNavigationAction
 import com.android.tools.idea.preview.actions.EnableInteractiveAction
@@ -285,7 +285,7 @@ class PreviewSurfaceActionManagerTest {
 
   @Test
   fun `verify actions contain glasses dropdown action if flag is enabled`() {
-    StudioFlags.COMPOSE_PREVIEW_XR_GLASSES_PREVIEW.overrideForTest(
+    StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(
       true,
       projectRule.testRootDisposable,
     )
@@ -298,7 +298,7 @@ class PreviewSurfaceActionManagerTest {
 
   @Test
   fun `verify actions doesn't contain glasses dropdown action if flag is disabled`() {
-    StudioFlags.COMPOSE_PREVIEW_XR_GLASSES_PREVIEW.overrideForTest(
+    StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(
       false,
       projectRule.testRootDisposable,
     )

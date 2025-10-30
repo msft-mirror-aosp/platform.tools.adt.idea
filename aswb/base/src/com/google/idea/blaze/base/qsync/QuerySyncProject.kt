@@ -24,7 +24,6 @@ import com.google.idea.blaze.base.bazel.BuildSystem
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.plugin.BuildSystemVersionChecker
-import com.google.idea.blaze.base.projectview.ProjectViewSet
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.settings.BlazeImportSettings
 import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings
@@ -64,7 +63,7 @@ import kotlin.jvm.optionals.getOrNull
 interface ReadonlyQuerySyncProject {
   val buildSystem: BuildSystem
   val projectDefinition: ProjectDefinition
-  val projectViewSet: ProjectViewSet
+  val languageSettings: QuerySyncLanguageSettings
   val workspaceRoot: WorkspaceRoot
   val projectPathResolver: ProjectPath.Resolver
   val projectData: QuerySyncProjectData
@@ -89,13 +88,12 @@ class QuerySyncProject(
   override val workspaceRoot: WorkspaceRoot,
   val artifactTracker: ArtifactTracker<*>,
   val buildArtifactCache: BuildArtifactCache,
-  val renderJarArtifactTracker: RenderJarArtifactTracker, // TODO: delete
   val dependencyTracker: DependencyTracker,
   private val appInspectorTracker: AppInspectorTracker,
   private val projectQuerier: ProjectQuerier,
   private val projectBuilder: ProjectBuilder,
   override val projectDefinition: ProjectDefinition,
-  override val projectViewSet: ProjectViewSet,
+  override val languageSettings: QuerySyncLanguageSettings,
   // TODO(mathewi) only one of these two should strictly be necessary:
   val workspacePathResolver: WorkspacePathResolver,
   override val projectPathResolver: ProjectPath.Resolver,
@@ -134,6 +132,13 @@ class QuerySyncProject(
         projectQuerier.fullQuery(projectDefinition, context)
       else
         projectQuerier.update(projectDefinition, lastQuery, context)
+    return analyzePostQuerySyncData(context, postQuerySyncData)
+  }
+
+  fun analyzePostQuerySyncData(
+    context: BlazeContext,
+    postQuerySyncData: PostQuerySyncData,
+  ): CoreSyncResult {
     val graph = buildGraphData(postQuerySyncData, context)
     return CoreSyncResult(postQuerySyncData, graph)
   }
@@ -208,7 +213,12 @@ class QuerySyncProject(
     postQuerySyncData: PostQuerySyncData,
     context: Context<*>,
   ): BuildGraphData {
-    return BlazeQueryParser(postQuerySyncData.querySummary(), context, ImmutableSet.copyOf(handledRuleKinds)).parse()
+    return BlazeQueryParser(
+      postQuerySyncData.projectDefinition().effectiveTargetPatterns,
+      postQuerySyncData.querySummary(),
+      context,
+      ImmutableSet.copyOf(handledRuleKinds)
+    ).parse()
   }
 
   @Throws(IOException::class, BuildException::class)

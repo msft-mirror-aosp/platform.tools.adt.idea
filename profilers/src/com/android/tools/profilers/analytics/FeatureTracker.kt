@@ -32,8 +32,6 @@ import com.android.tools.profilers.tasks.TaskStopFailedMetadata
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent
 import com.google.wireless.android.sdk.stats.CpuImportTraceMetadata
 import com.google.wireless.android.sdk.stats.RunWithProfilingMetadata
-import com.google.wireless.android.sdk.stats.TaskFailedMetadata
-import com.google.wireless.android.sdk.stats.TaskFailedMetadata.FailingPoint
 import com.google.wireless.android.sdk.stats.TraceProcessorDaemonQueryStats.QueryReturnStatus
 
 /**
@@ -322,6 +320,11 @@ interface FeatureTracker {
    * Track the user creating custom CPU profiling configurations.
    */
   fun trackCreateCustomProfilingConfig()
+
+  /**
+   * Track when the profiler tool window is created successfully.
+   */
+  fun trackProfilerToolWindowCreated()
 
   /**
    * Track when the user uses the filter component in the profilers.

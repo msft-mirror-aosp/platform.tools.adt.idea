@@ -49,14 +49,18 @@ import com.android.builder.model.v2.ide.VectorDrawablesOptions
 import com.android.builder.model.v2.ide.ViewBindingOptions
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
+import com.android.builder.model.v2.models.AssetsTestSuiteSource
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.BasicTestSuite
+import com.android.builder.model.v2.models.HostJarTestSuiteSource
 import com.android.builder.model.v2.models.SourceType
+import com.android.builder.model.v2.models.TestApkTestSuiteSource
 import com.android.builder.model.v2.models.TestSuiteSource
 import com.android.builder.model.v2.models.ndk.NativeAbi
 import com.android.builder.model.v2.models.ndk.NativeBuildSystem
 import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.builder.model.v2.models.ndk.NativeVariant
+import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.tools.idea.gradle.model.ClasspathType
@@ -195,25 +199,44 @@ fun modelCacheV2Impl(
   fun sourceProviderFrom(provider: SourceProvider, assetContext: VariantAssetSourceProviderContext): IdeSourceProvider =
     sourceProviderFrom(provider, assetContext.buildFolder)
 
-  fun sourceProviderFrom(name: String, providers: Collection<File>, source: TestSuiteSource): IdeSourceProvider {
-    fun File.makeRelativeAndDeduplicate(): String = relativeToOrSelf(providers.first()).path.deduplicate()
+  fun sourceProviderFrom(source: HostJarTestSuiteSource): IdeSourceProvider {
+    fun File.makeRelativeAndDeduplicate(): String = relativeToOrSelf(source.kotlin.first()).path.deduplicate()
     return IdeSourceProvider(
-      name = name.deduplicate(),
+      name = source.name.deduplicate(),
+      folder = source.kotlin.first(),
+      manifestFile = File(source.kotlin.first(), "AndroidManifest.xml").makeRelativeAndDeduplicate(),
+      javaDirectories = source.java.map {
+        it.resolve("java").makeRelativeAndDeduplicate()
+      },
+      kotlinDirectories = source.kotlin.map {
+        it.resolve("kotlin").makeRelativeAndDeduplicate()
+      },
+      resourcesDirectories = emptyList(),
+      aidlDirectories = emptyList(),
+      renderscriptDirectories = emptyList(),
+      resDirectories = emptyList(),
+      assetsDirectories = emptyList(),
+      jniLibsDirectories = emptyList(),
+      shadersDirectories = emptyList(),
+      mlModelsDirectories = emptyList(),
+      customSourceDirectories = emptyList(),
+      baselineProfileDirectories = emptyList()
+    )
+  }
+
+  fun sourceProviderFrom(source: AssetsTestSuiteSource): IdeSourceProvider {
+    fun File.makeRelativeAndDeduplicate(): String = relativeToOrSelf(source.directories.first()).path.deduplicate()
+    return IdeSourceProvider(
+      name = source.name.deduplicate(),
       // so far, we only support a single source in test APK, but this will need to be revisited.
       // either TestSuiteSource should carry all relevant information depending on source type or
       // it should just use SourceProvider for all source types.
-      folder = providers.first(),
+      folder = source.directories.first(),
       // TODO: (b449696506) the next three assignments should be reworked once the model decision mentioned
       // above is settled.
-      manifestFile = File(providers.first(), "AndroidManifest.xml").makeRelativeAndDeduplicate(),
-      javaDirectories = if (source.type == SourceType.HOST_JAR) providers.map {
-        it.resolve("java").makeRelativeAndDeduplicate()
-      }
-      else emptyList(),
-      kotlinDirectories = if (source.type == SourceType.HOST_JAR) providers.map {
-        it.resolve("kotlin").makeRelativeAndDeduplicate()
-      }
-      else emptyList(),
+      manifestFile = File(source.directories.first(), "AndroidManifest.xml").makeRelativeAndDeduplicate(),
+      javaDirectories = emptyList(),
+      kotlinDirectories = emptyList(),
       resourcesDirectories = emptyList(),
       aidlDirectories = emptyList(),
       renderscriptDirectories = emptyList(),
@@ -226,20 +249,44 @@ fun modelCacheV2Impl(
       // Android 'assets' nor Java 'resources'. For now let's map them to a custom source
       // directory.
       // TODO(b445644926)
-      customSourceDirectories = if (source.type == SourceType.ASSETS) providers.map {
+      customSourceDirectories = source.directories.map {
         IdeCustomSourceDirectoryImpl(TEST_SUITE_ASSETS_CUSTOM_SOURCE_DIRECTORY, it, it.makeRelativeAndDeduplicate())
-      }
-      else emptyList(),
+      },
       baselineProfileDirectories = emptyList()
     )
   }
 
-  fun sourceProviderFrom(source: TestSuiteSource, buildFolder: File): IdeSourceProvider {
-    return if (source.folders?.isNotEmpty() ?: false) {
-      sourceProviderFrom(source.name, source.folders!!, source)
-    } else {
-      sourceProviderFrom(source.sourceProvider!!, buildFolder)
-    }
+  /**
+   * We recombine all the test sources into a single collection since they can be disambiguated
+   * using the [IdeTestSuiteSource.type] field.
+   */
+  fun collectAllTestSuiteSources(basicTestSuite: BasicTestSuite, buildFolder: File): List<IdeTestSuiteSourceImpl> {
+    return basicTestSuite.assets
+      .map { source: AssetsTestSuiteSource ->
+        IdeTestSuiteSourceImpl(
+          source.name,
+          IdeTestSuiteSource.SourceType.ASSETS,
+          sourceProviderFrom(source),
+        )
+      }.plus(
+        basicTestSuite.hostJars
+          .map { source: HostJarTestSuiteSource ->
+            IdeTestSuiteSourceImpl(
+              source.name,
+              IdeTestSuiteSource.SourceType.HOST_JAR,
+              sourceProviderFrom(source),
+            )
+          }
+      ).plus(
+        basicTestSuite.testApks
+          .map { source: TestApkTestSuiteSource ->
+            IdeTestSuiteSourceImpl(
+              source.name,
+              IdeTestSuiteSource.SourceType.TEST_APK,
+              sourceProviderFrom(source.sourceProvider, buildFolder),
+            )
+          }
+      )
   }
 
   fun classFieldFrom(classField: ClassField): IdeClassFieldImpl {
@@ -1055,22 +1102,6 @@ fun modelCacheV2Impl(
     }
   }
 
-  fun testSuiteSourceTypeFrom(
-    sourceType: SourceType
-  ): IdeTestSuiteSource.SourceType {
-    return when(sourceType) {
-      SourceType.ASSETS -> IdeTestSuiteSource.SourceType.ASSETS
-      SourceType.HOST_JAR -> IdeTestSuiteSource.SourceType.HOST_JAR
-      SourceType.TEST_APK -> IdeTestSuiteSource.SourceType.TEST_APK
-    }
-  }
-
-  fun testSuiteSourceFrom(source: TestSuiteSource, buildFolder: File) = IdeTestSuiteSourceImpl(
-    source.name,
-    testSuiteSourceTypeFrom(source.type),
-    sourceProviderFrom(source, buildFolder),
-  )
-
   fun testSuiteArtifactsFrom(
     variant: Variant,
     testSuites: Collection<BasicTestSuite>
@@ -1417,13 +1448,15 @@ fun modelCacheV2Impl(
   )
 
   fun androidGradlePluginProjectFlagsFrom(
+    agpVersionAsString: String,
     flags: AndroidGradlePluginProjectFlags,
     gradlePropertiesModel: GradlePropertiesModel,
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?
-  ): IdeAndroidGradlePluginProjectFlagsImpl =
-    IdeAndroidGradlePluginProjectFlagsImpl(
+  ): IdeAndroidGradlePluginProjectFlagsImpl {
+    val agpVersion = AgpVersion.parse(agpVersionAsString)
+    return IdeAndroidGradlePluginProjectFlagsImpl(
       applicationRClassConstantIds =
-      AndroidGradlePluginProjectFlags.BooleanFlag.APPLICATION_R_CLASS_CONSTANT_IDS.getValue(flags),
+        AndroidGradlePluginProjectFlags.BooleanFlag.APPLICATION_R_CLASS_CONSTANT_IDS.getValue(flags),
       testRClassConstantIds = AndroidGradlePluginProjectFlags.BooleanFlag.TEST_R_CLASS_CONSTANT_IDS.getValue(flags),
       transitiveRClasses = AndroidGradlePluginProjectFlags.BooleanFlag.TRANSITIVE_R_CLASS.getValue(flags),
       usesCompose = AndroidGradlePluginProjectFlags.BooleanFlag.JETPACK_COMPOSE.getValue(flags),
@@ -1435,9 +1468,22 @@ fun modelCacheV2Impl(
       useAndroidX = AndroidGradlePluginProjectFlags.BooleanFlag.USE_ANDROID_X.getValue(flags, gradlePropertiesModel.useAndroidX),
       dataBindingEnabled = AndroidGradlePluginProjectFlags.BooleanFlag.DATA_BINDING_ENABLED
         .getValue(flags, legacyAndroidGradlePluginProperties?.dataBindingEnabled),
-      generateManifestClass = AndroidGradlePluginProjectFlags.BooleanFlag.GENERATE_MANIFEST_CLASS.getValue(flags, gradlePropertiesModel.generateManifestClass),
-      disableAgpUpgradePrompt = gradlePropertiesModel.disableAgpUpgradePrompt ?: false
+      generateManifestClass = AndroidGradlePluginProjectFlags.BooleanFlag.GENERATE_MANIFEST_CLASS.getValue(flags,
+                                                                                                           gradlePropertiesModel.generateManifestClass),
+      disableAgpUpgradePrompt = gradlePropertiesModel.disableAgpUpgradePrompt ?: false,
+      // GradleProperties model is only able to parse what's in the build script, it doesn't know the defaults.
+      // Ideally whether the property is on would be fed to us by AGP directly in AndroidGradlePluginProjectFlags model,
+      // but as of 9.0 this property is enforced by AGP  and it doesn't really make sense to add a field in the model
+      // for this at this stage. Logic below hardcodes the known defaults instead via looking up the AGP version.
+      useCustomManagedDevices =
+        if (agpVersion.isAtLeast(9, 0, 0)) {
+          true
+        } else {
+          gradlePropertiesModel.useCustomManagedDevices
+          ?: agpVersion.isAtLeast(8, 3, 0) // default is true from 8.3.0 onwards
+        }
     )
+  }
 
   fun copyProjectType(projectType: ProjectType): IdeAndroidProjectType = when (projectType) {
     // TODO(b/187504821): is the number of supported project type in V2 reduced ? this is a restricted list compared to V1.
@@ -1536,9 +1582,10 @@ fun modelCacheV2Impl(
     val testSuites = if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
       basicProject.testSuites.map { basicTestSuite ->
         val testSuite = project.testSuites.first { it.name == basicTestSuite.name }
+        val sources = collectAllTestSuiteSources(basicTestSuite, basicProject.buildFolder)
         IdeTestSuiteImpl(
           name = basicTestSuite.name,
-          sources = basicTestSuite.sources.map { testSuiteSourceFrom(it, basicProject.buildFolder) },
+          sources = sources,
           junitEngineInfo = IdeJUnitEngineInfoImpl(testSuite.junitEngineInfo.includedEngines),
           targetedVariants = basicTestSuite.targetsByVariant.map { it.targetedVariant }
         )
@@ -1567,7 +1614,7 @@ fun modelCacheV2Impl(
     val groupId = androidDsl.groupId
     val lintChecksJarsCopy: List<File> = project.lintChecksJars.deduplicateFiles()
     val isBaseSplit = basicProject.projectType == ProjectType.APPLICATION
-    val agpFlags: IdeAndroidGradlePluginProjectFlagsImpl = androidGradlePluginProjectFlagsFrom(project.flags, gradlePropertiesModel, legacyAndroidGradlePluginProperties)
+    val agpFlags: IdeAndroidGradlePluginProjectFlagsImpl = androidGradlePluginProjectFlagsFrom(modelVersions.agpVersionAsString, project.flags, gradlePropertiesModel, legacyAndroidGradlePluginProperties)
     val desugarLibConfig = project.takeIf { modelVersions[ModelFeature.HAS_DESUGAR_LIB_CONFIG] }?.desugarLibConfig.orEmpty()
     val lintJar = project.takeIf { modelVersions[ModelFeature.HAS_LINT_JAR_IN_ANDROID_PROJECT] }?.lintJar?.deduplicateFile()
 

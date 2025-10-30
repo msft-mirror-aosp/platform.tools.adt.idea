@@ -20,7 +20,7 @@ import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.artifacts.ArtifactMetadata
 import com.google.idea.blaze.qsync.artifacts.BuildArtifact
-import com.google.idea.blaze.qsync.cc.ConfigureCcCompilation.UpdateOperation
+import com.google.idea.blaze.qsync.cc.ConfigureCcCompilation
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.deps.TargetBuildInfo
 import com.google.idea.blaze.qsync.java.AddCompiledJavaDeps
@@ -33,7 +33,6 @@ import com.google.idea.blaze.qsync.java.PackageStatementParser
 import com.google.idea.blaze.qsync.java.SrcJarInnerPathFinder
 import com.google.idea.blaze.qsync.java.SrcJarPackageRootsExtractor
 import com.google.idea.blaze.qsync.java.SrcJarPrefixedPackageRootsExtractor
-import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectPath
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdate
@@ -61,7 +60,7 @@ class DependenciesProjectProtoUpdater(
         AddCompiledJavaDeps(emptyJarDigests),
         AddProjectGenSrcJars(projectDefinition, SrcJarPrefixedPackageRootsExtractor(srcJarInnerPathFinder)),
         AddProjectGenSrcs(projectDefinition, JavaSourcePackageExtractor(packageReader)),
-        UpdateOperation(),
+        ConfigureCcCompilation(),
       ) +
       if (attachDepsSrcjarsExperiment.get())
         listOf(
@@ -92,13 +91,12 @@ class DependenciesProjectProtoUpdater(
   @Throws(BuildException::class)
   override fun update(
     update: ProjectProtoUpdate,
-    buildGraph: BuildGraphData,
     artifactState: ArtifactTracker.State,
     context: Context<*>,
     externalRepositoryFinder: ProjectPath.ExternalRepositoryFinder,
   ) {
     for (op in updateOperations) {
-      op.update(update, buildGraph, artifactState, context, externalRepositoryFinder)
+      op.update(update, artifactState, context, externalRepositoryFinder)
     }
   }
 }

@@ -206,6 +206,7 @@ public class AndroidStudioErrorReportSubmitter extends ErrorReportSubmitter {
         reportBuilder.setErrorFrame(jvmCrash.getErrorFrame());
         reportBuilder.setErrorThread(jvmCrash.getErrorThread());
         reportBuilder.setNativeStack(jvmCrash.getNativeStack());
+        reportBuilder.setSanitizedCrashLog(jvmCrash.getSanitizedCrashLog());
       }
     }
 

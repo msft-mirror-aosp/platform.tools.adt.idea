@@ -87,7 +87,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
-import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import org.jetbrains.android.dom.manifest.getPrimaryManifestXml
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.plugins.gradle.execution.build.CachedModuleDataFinder
@@ -97,8 +96,11 @@ import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
 import java.nio.file.Path
 import com.android.ide.common.gradle.Module as ExternalModule
+import com.android.tools.idea.gradle.project.entities.getGradleAndroidModel
 import com.android.tools.idea.gradle.project.entities.gradleAndroidModel
 import com.android.tools.idea.model.AndroidModel
+import com.intellij.platform.backend.workspace.workspaceModel
+import com.intellij.util.text.nullize
 import com.intellij.workspaceModel.ide.legacyBridge.findSnapshotModuleEntity
 
 /** Creates a map for the given pairs, filtering out null values. */
@@ -124,7 +126,7 @@ class GradleModuleSystem(
     RegisteringModuleSystem<GradleRegisteredDependencyQueryId, GradleRegisteredDependencyId>,
     SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(module.getHolderModule()) {
 
-  override val androidModel: GradleAndroidModel? = module.findSnapshotModuleEntity()?.gradleAndroidModel?.gradleAndroidModel
+  override val androidModel: GradleAndroidModel? = module.project.workspaceModel.currentSnapshot.getGradleAndroidModel(module)
 
   override val type: Type
     get() = when (GradleAndroidModel.get(module)?.androidProject?.projectType) {
@@ -676,13 +678,11 @@ class GradleModuleSystem(
     )
     private val DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION = AgpVersion.parse("8.1.0-alpha05")
 
-    @RequiresBackgroundThread
     @JvmStatic
-    fun getGradleSourceSetName(module: Module): String? {
-      val moduleNode = CachedModuleDataFinder.findModuleData(module) ?: return null
-      val sourceSetData = moduleNode.data as? GradleSourceSetData ?: return null
-      return sourceSetData.moduleName
-    }
+    fun getGradleSourceSetName(module: Module): String? =
+      ExternalSystemApiUtil.getExternalProjectId(module) // :<gradle_project>:<sourceset_name>
+        ?.substringAfterLast(':', "")
+        .nullize()
   }
 }
 

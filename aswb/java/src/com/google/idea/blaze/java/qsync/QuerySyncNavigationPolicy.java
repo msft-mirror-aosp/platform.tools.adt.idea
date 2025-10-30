@@ -33,7 +33,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class QuerySyncNavigationPolicy implements ClsCustomNavigationPolicy {
 
-  private static final BoolExperiment ENABLED =
+  public static final BoolExperiment ENABLED =
       new BoolExperiment("querysync.navigationpolicy", true);
 
   @Override

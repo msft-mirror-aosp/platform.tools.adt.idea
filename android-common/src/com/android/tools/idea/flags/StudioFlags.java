@@ -31,6 +31,7 @@ import com.android.flags.overrides.PropertyOverrides;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.AgpReleaseBranchProvider;
+import com.android.tools.idea.flags.overrides.AgpTestSuitesProvider;
 import com.android.tools.idea.flags.overrides.FeatureConfigurationProvider;
 import com.android.tools.idea.flags.overrides.MendelOverrides;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
@@ -67,7 +68,8 @@ public final class StudioFlags {
       new PropertyOverrides(),
       new MendelOverrides(),
       new ServerFlagOverrides(),
-      new AgpReleaseBranchProvider());
+      new AgpReleaseBranchProvider(),
+      new AgpTestSuitesProvider());
   }
 
   // This class is a workaround for b/355292387: IntelliJ 2024.2 does not allow services to be instantiated inside static initializers.
@@ -211,10 +213,10 @@ public final class StudioFlags {
     "Enable XR template",
     "Allows the XR template to be used.");
 
-  public static final Flag<Boolean> NPW_ENABLE_XR_GLASSES_TEMPLATE = new BooleanFlag(
-    NPW, "xr.glasses.template",
-    "Enable XR Glasses template",
-    "Allows the XR Glasses template to be used.");
+  public static final Flag<Boolean> NPW_ENABLE_AI_GLASSES_TEMPLATE = new BooleanFlag(
+    NPW, "ai.glasses.template",
+    "Enable AI Glasses template",
+    "Allows the AI Glasses template to be used.");
 
   public static final Flag<Boolean> NPW_ENABLE_NAVIGATION_UI_TEMPLATE = new BooleanFlag(
     NPW, "navigationui.template",
@@ -1196,9 +1198,9 @@ public final class StudioFlags {
     EMBEDDED_EMULATOR, "allow.xr", "Allow XR headset AVD to run embedded",
     "Enables running an XR headset AVD in the Running Devices tool window"
     );
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_GLASSES_AVD = new BooleanFlag(
-    EMBEDDED_EMULATOR, "allow.xr.glasses", "Allow XR glasses AVD to run embedded",
-    "Enables running an XR glasses AVD in the Running Devices tool window"
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD = new BooleanFlag(
+    EMBEDDED_EMULATOR, "allow.ai.glasses", "Allow AI glasses AVD to run embedded",
+    "Enables running an AI glasses AVD in the Running Devices tool window"
   );
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.tracking", "Enable hand tracking input mode for XR AVDs",
@@ -1646,9 +1648,9 @@ public final class StudioFlags {
     COMPOSE, "preview.render.tool", "Enable the Compose Preview render agent tool",
     "If enabled, an agent tool to render Compose Previews will be available for agents.");
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_XR_GLASSES_PREVIEW = new BooleanFlag(
-    COMPOSE, "preview.xr.glasses.preview", "Enable Compose Preview for XR Glasses",
-    "If enabled, Compose Preview will have limited support for XR Glasses when glasses are set as the preview device.");
+  public static final Flag<Boolean> COMPOSE_PREVIEW_AI_GLASSES_PREVIEW = new BooleanFlag(
+    COMPOSE, "preview.ai.glasses.preview", "Enable Compose Preview for AI Glasses",
+    "If enabled, Compose Preview will have limited support for AI Glasses when glasses are set as the preview device.");
   //endregion
 
   // region Wear surfaces
@@ -1792,10 +1794,24 @@ public final class StudioFlags {
     "Enable the support of XR device in the device manager"
   );
 
+  public static final Flag<Boolean> AI_GLASSES_DEVICE_SUPPORT_ENABLED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "ai.glasses.device.support.enabled",
+    "AI Glasses Support Enabled",
+    "Enable the support of AI Glasses device in the device manager"
+  );
+
+  public static final Flag<Boolean> XR_GLASSES_DEVICE_SUPPORT_ENABLED = new BooleanFlag(
+    DEVICE_MANAGER,
+    "xr.glasses.device.support.enabled",
+    "XR Glasses Support Enabled",
+    "Enable the support of XR Glasses device in the device manager"
+  );
+
   public static final Flag<Boolean> AI_GLASSES_PHONE_EMULATOR_PAIRING_WIZARD_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "ai.glasses.phone.emulator.pairing.wizard.enabled",
-    "Enable microxr glasses emulator and phone emulator pairing wizard",
+    "Enable microai glasses emulator and phone emulator pairing wizard",
     "Enables the pairing assistant for glasses and phone emulators."
   );
   // endregion
@@ -2424,6 +2440,26 @@ public final class StudioFlags {
                     "Enable using device tools",
                     "Enables a set of tools allowing the agent to list and activate devices.");
 
+  public static final Flag<Boolean> STUDIOBOT_LOGCAT_TOOL =
+    new BooleanFlag(STUDIOBOT, "include.logcat.tool",
+                    "Enable the Logcat tool",
+                    "Enables a tool allowing the agent to read from Logcat.");
+
+  public static final Flag<Boolean> STUDIOBOT_SCREENSHOT_TOOL =
+    new BooleanFlag(STUDIOBOT, "include.screenshot.tool",
+                    "Enable the Screenshot tool",
+                    "Enables a tool allowing the agent to take a screenshot.");
+
+  public static final Flag<Boolean> STUDIOBOT_UI_STATE_TOOLS =
+    new BooleanFlag(STUDIOBOT, "include.ui.state.tools",
+                    "Enable the UI State and UI Input tool",
+                    "Enables a tool providing the agent a description of the UI and allowing it to provide input.");
+
+  public static final Flag<Boolean> STUDIOBOT_WAIT_TOOL =
+    new BooleanFlag(STUDIOBOT, "include.wait.tool",
+                    "Enable the Wait Tool",
+                    "Enables a tool providing the agent a way to sleep for a bit and recheck the UI state after.");
+
   public static final Flag<Boolean> GEMINI_AGENT_MODE =
     new BooleanFlag(STUDIOBOT, "agent.mode",
                     "Enable agent mode.",
@@ -2454,10 +2490,10 @@ public final class StudioFlags {
                     "Enable web search tool",
                     "Enables the 'Web Search Tool' as builtin tools.");
 
-  public static final Flag<Boolean> GEMINI_SEND_DURING_RESPONSE_ENABLED =
-    new BooleanFlag(STUDIOBOT, "send.during.response",
-                    "Enable sending queries while a response is streaming.",
-                    "Enables sending queries while a response is streaming. It may be queued or interrupt the stream.");
+  public static final Flag<Boolean> GEMINI_MESSAGE_QUEUE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "message.queue.enabled",
+                    "Enable queuing queries while a response is streaming.",
+                    "Enables sending queries while a response is streaming, which queues it in a separate list.");
 
   public static final Flag<Boolean> STUDIOBOT_EDIT_CHAT_REQUEST_BUTTON_ENABLED =
     new BooleanFlag(STUDIOBOT, "edit.chat.request.button.enabled",
@@ -2473,6 +2509,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "regenerate.chat.request.button.enabled",
                     "Enable regenerating past chat queries.",
                     "Enable regenerating past chat queries by hovering and clicking a regenerate button.");
+
+  public static final Flag<Boolean> GEMINI_DEBUGGER_TOOLS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "debugger.tools",
+                    "Enable Debugger tools.",
+                    "Enable Debugger tools.");
 
   public enum DasherSupportMode {
     /**
@@ -2526,6 +2567,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "write.critic",
                     "Enable agent critic",
                     "Enables the agent to look for and report new warnings added after file changes");
+
+  public static final Flag<Boolean> STUDIOBOT_PERMISSION_MODEL =
+    new BooleanFlag(STUDIOBOT, "permission.model",
+                    "Enable new permission model",
+                    "Enables the permission model which offers granular permission grants and denials");
 
   // endregion STUDIO_BOT
 
@@ -2623,30 +2669,6 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.execution", "Enable Journeys with Gemini execution",
     "Enable Journeys with Gemini related functionality to allow users to create, edit and execute Journeys."
   );
-  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION = new BooleanFlag(
-    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.auto.gradle.configuration",
-    "Enable automatic Gradle configuration for Journeys with Gemini",
-    "Applies the Gradle configuration needed to run Journeys automatically when a Journeys run configuration is triggered"
-  );
-  public static final Flag<String> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION_DEP = new StringFlag(
-    JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.auto.gradle.configuration",
-    "Journey plugin dependency name used by automatic Gradle configuration",
-    "The ID of the Journey AGP plugin to use in the init-script injected when JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION " +
-    "is enabled, Use the `-dev` suffix to use a locally built plugin.",
-    "com.android.tools.journeys:journeys-gradle-plugin:0.0.1-alpha03"
-  );
-  public static final Flag<String> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION_EXTRA_REPOSITORY_URL = new StringFlag(
-    JOURNEYS_WITH_GEMINI, "extra.repository.url.for.journeys.with.gemini.auto.gradle.configuration",
-    "URL of extra repository used by automatic Gradle configuration (e.g. staging repo)",
-    "URL of extra repository used by automatic Gradle configuration (e.g. staging repo)",
-    ""
-  );
-  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_AUTO_GRADLE_CONFIGURATION_INIT_SCRIPT_V2 = new BooleanFlag(
-    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.auto.gradle.configuration.init.script.v2",
-    "Use a V2 version of Journeys init script which is used in the Gradle run configuration for Journeys with Gemini",
-    "Applies Journeys Gradle plugin to your Gradle project by the new version of Journeys Gradle init script." +
-    " This version includes a fix for ClassNotFound exception when AppPlugin is not applied in your root Gradle project (b/418228060)."
-  );
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_RECORDING = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.recording", "Enable Journeys with Gemini recording",
     "Enable recording of Journeys with Gemini"
@@ -2655,15 +2677,11 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "journeys.with.gemini.editor.disable.xml.space.preserve", "Disable insertion of 'xml:space:\"preserve\" attribute",
     "Disable insertion of 'xml:space:\"preserve\" attribute when editing a Journey XML file."
   );
-  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_TEST_SUITE = new BooleanFlag(
-    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.test.suite", "Enable Journeys with Gemini test suite",
-    "Toggles IDE support for Journeys tests configured as AGP test suites"
-  );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JOURNEYS_ENGINE_DEP = new StringFlag(
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.journeys.engine.dep",
     "The name of the Journeys test engine dependency used by the Journeys test suite",
     "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
-    "com.android.tools.journeys:journeys-junit-engine:0.2.0-alpha01"
+    "com.android.tools.journeys:journeys-junit-engine:0.2.0-alpha02"
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JUNIT_PLATFORM_ENGINE_DEP = new StringFlag(
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.junit.platform.engine.dep",
@@ -2815,7 +2833,7 @@ public final class StudioFlags {
       AGP_TEST_SUITES,
       "enabled",
       "Enable IDE support for AGP test suites",
-      "Enables IDE support for AGP test suites"
+      "Enables IDE support for AGP test suites. This value is overridden to `true` when Journeys with Gemini is enabled."
     );
   // endregion AGP Test Suites
 

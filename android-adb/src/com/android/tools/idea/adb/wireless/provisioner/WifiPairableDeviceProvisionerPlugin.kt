@@ -24,6 +24,7 @@ import com.android.adblib.utils.createChildScope
 import com.android.annotations.concurrency.GuardedBy
 import com.android.sdklib.AndroidVersionUtil
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceError
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProperties
@@ -39,6 +40,7 @@ import com.android.tools.idea.adb.wireless.AdbServiceWrapper
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService
 import com.android.tools.idea.adb.wireless.TrackingMdnsService
 import com.android.tools.idea.adb.wireless.WiFiPairingNotificationService
+import com.android.tools.idea.adb.wireless.needsUpdate
 import com.android.tools.idea.adb.wireless.showDeviceHiddenBalloon
 import com.android.tools.idea.adb.wireless.v2.ui.WifiPairableDevicesPersistentStateComponent
 import com.android.tools.idea.concurrency.coroutineScope
@@ -216,6 +218,7 @@ class WifiPairableDeviceProvisionerPlugin(
                     populateDeviceInfoProto(PLUGIN_ID, null, emptyMap(), randomConnectionId())
                   },
                 status = "Available for Wi-Fi pairing",
+                error = if (trackService.service.needsUpdate()) NotUpdatedError else null,
               ),
               project,
               notificationService,
@@ -223,11 +226,17 @@ class WifiPairableDeviceProvisionerPlugin(
               buildDeviceNameForPairingDialog(trackService.service),
               trackService.service.ipv4,
               trackService.service.port,
+              trackService.service.mdnsServiceVersion,
             )
           }
       newOrReusedHandles[serviceName] = handle
     }
     return newOrReusedHandles
+  }
+
+  private object NotUpdatedError : DeviceError {
+    override val severity = DeviceError.Severity.WARNING
+    override val message = "Check for device software updates to improve Wi-Fi pairing."
   }
 
   private fun determineHandlesToCancel(
@@ -264,6 +273,7 @@ class WifiPairableDeviceProvisionerPlugin(
     val deviceName: String?,
     val ipv4: String,
     val port: Int,
+    val mdnsServiceVersion: String?,
   ) : DeviceHandle {
 
     companion object {
@@ -276,6 +286,7 @@ class WifiPairableDeviceProvisionerPlugin(
         deviceName: String?,
         ipv4: String,
         port: Int,
+        mdnsServiceVersion: String?,
       ): WifiPairableDeviceHandle =
         WifiPairableDeviceHandle(
           scope,
@@ -286,6 +297,7 @@ class WifiPairableDeviceProvisionerPlugin(
           deviceName,
           ipv4,
           port,
+          mdnsServiceVersion,
         )
     }
 
@@ -300,6 +312,7 @@ class WifiPairableDeviceProvisionerPlugin(
                   ipv4 = ipv4,
                   port = port.toString(),
                   deviceName = deviceName,
+                  mdnsServiceVersion = mdnsServiceVersion,
                 )
               )
           controller.showDialog()

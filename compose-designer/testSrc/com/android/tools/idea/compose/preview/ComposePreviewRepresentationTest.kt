@@ -29,7 +29,6 @@ import com.android.tools.idea.compose.preview.actions.UiCheckReopenTabAction
 import com.android.tools.idea.compose.preview.animation.ComposeAnimationSubscriber
 import com.android.tools.idea.compose.preview.resize.ResizePanel
 import com.android.tools.idea.compose.preview.util.previewElement
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.concurrency.awaitStatus
@@ -139,6 +138,7 @@ private fun PreviewDisplaySettings.asTestDisplayString(): String {
         "showBackground=true, backgroundColor=${(background as PreviewDisplaySettings.Background.Color).color}"
       is Background.Default -> "showBackground=true, backgroundColor=null"
       is Background.None -> "showBackground=false, backgroundColor=null"
+      is Background.Image -> "" // Images are not represented as part of the annotation
     }
   return "PreviewDisplaySettings(name=$name, baseName=$baseName, parameterName=$parameterName, group=$group, showDecoration=$showDecoration, $backgroundString, displayPositioning=$displayPositioning, organizationGroup=$organizationGroup, organizationName=$organizationName)"
 }
@@ -278,8 +278,8 @@ class ComposePreviewRepresentationTest {
     val uiCheckElement = previewElements.single { it.methodFqn == "TestKt.Preview1" }
     val problemsView = ProblemsView.getToolWindow(project)!!
 
-    val contentManager = runBlocking(uiThread) { problemsView.contentManager }
-    withContext(uiThread) {
+    val contentManager = runBlocking(Dispatchers.EDT) { problemsView.contentManager }
+    withContext(Dispatchers.EDT) {
       ProblemsViewToolWindowUtils.addTab(project, SharedIssuePanelProvider(project))
       assertEquals(1, contentManager.contents.size)
     }
@@ -454,7 +454,7 @@ class ComposePreviewRepresentationTest {
     val reopenTabAction = UiCheckReopenTabAction(preview)
     // Check that UiCheckReopenTabAction is disabled when the UI Check tab is visible and selected
     run {
-      val actionEvent = withContext(uiThread) { TestActionEvent.createTestEvent() }
+      val actionEvent = withContext(Dispatchers.EDT) { TestActionEvent.createTestEvent() }
       reopenTabAction.update(actionEvent)
       assertFalse(actionEvent.presentation.isEnabled)
     }
@@ -463,31 +463,31 @@ class ComposePreviewRepresentationTest {
     contentManager.setSelectedContent(contentManager.getContent(0)!!)
     assertNotEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
     run {
-      val actionEvent = withContext(uiThread) { TestActionEvent.createTestEvent() }
+      val actionEvent = withContext(Dispatchers.EDT) { TestActionEvent.createTestEvent() }
       reopenTabAction.update(actionEvent)
       assertTrue(actionEvent.presentation.isEnabled)
     }
 
     // Check that performing UiCheckReopenTabAction selects the UI Check tab
-    withContext(uiThread) {
+    withContext(Dispatchers.EDT) {
       val actionEvent = TestActionEvent.createTestEvent()
       reopenTabAction.actionPerformed(actionEvent)
       assertEquals(uiCheckElement.instanceId, contentManager.selectedContent?.tabName)
     }
 
     // Check that UiCheckReopenTabAction is enabled when the UI Check tab has been closed
-    withContext(uiThread) {
+    withContext(Dispatchers.EDT) {
       ProblemsViewToolWindowUtils.removeTab(project, uiCheckElement.instanceId)
     }
     assertEquals(1, contentManager.contents.size)
     run {
-      val actionEvent = withContext(uiThread) { TestActionEvent.createTestEvent() }
+      val actionEvent = withContext(Dispatchers.EDT) { TestActionEvent.createTestEvent() }
       reopenTabAction.update(actionEvent)
       assertTrue(actionEvent.presentation.isEnabled)
     }
 
     // Check that performing UiCheckReopenTabAction recreates the UI Check tab
-    withContext(uiThread) {
+    withContext(Dispatchers.EDT) {
       val actionEvent = TestActionEvent.createTestEvent()
       reopenTabAction.actionPerformed(actionEvent)
     }
@@ -628,9 +628,9 @@ class ComposePreviewRepresentationTest {
     testPsiFile.putUserData(FileEditorProvider.KEY, SourceCodeEditorProvider())
 
     val editor =
-      runBlocking(uiThread) {
+      runBlocking(Dispatchers.EDT) {
         val editor =
-          withContext(uiThread) {
+          withContext(Dispatchers.EDT) {
             val editors =
               FileEditorManager.getInstance(project).openFile(testPsiFile.virtualFile, true, true)
             (editors[0] as TextEditorWithMultiRepresentationPreview<*>)
@@ -639,7 +639,7 @@ class ComposePreviewRepresentationTest {
         editor
       }
 
-    val mainSurface = runBlocking(uiThread) { editor.getDesignSurface() as NlDesignSurface }
+    val mainSurface = runBlocking(Dispatchers.EDT) { editor.getDesignSurface() as NlDesignSurface }
 
     runComposePreviewRepresentationTest(testPsiFile, mainSurface) {
       val preview =
@@ -657,7 +657,7 @@ class ComposePreviewRepresentationTest {
       }
 
       val contentManager =
-        withContext(uiThread) {
+        withContext(Dispatchers.EDT) {
           ToolWindowManager.getInstance(project).getToolWindow(ProblemsView.ID)!!.contentManager
         }
       delayUntilCondition(250) {
@@ -665,7 +665,7 @@ class ComposePreviewRepresentationTest {
       }
       val tab = contentManager.selectedContent!!
       val dataContext =
-        withContext(uiThread) {
+        withContext(Dispatchers.EDT) {
           ((tab.component as DesignerCommonIssuePanel).toolbar as ActionToolbarImpl)
             .toolbarDataContext
         }
@@ -694,7 +694,7 @@ class ComposePreviewRepresentationTest {
       }
 
       // Rerun UI check with the problems panel action
-      withContext(uiThread) {
+      withContext(Dispatchers.EDT) {
         rerunAction.actionPerformed(TestActionEvent.createTestEvent(dataContext))
       }
       delayUntilCondition(250) {
@@ -741,7 +741,7 @@ class ComposePreviewRepresentationTest {
       }
 
       waitForAllRefreshesToFinish(30.seconds)
-      withContext(uiThread) { FileEditorManagerEx.getInstanceEx(project).closeAllFiles() }
+      withContext(Dispatchers.EDT) { FileEditorManagerEx.getInstanceEx(project).closeAllFiles() }
     }
   }
 
@@ -781,9 +781,9 @@ class ComposePreviewRepresentationTest {
     testPsiFile.putUserData(FileEditorProvider.KEY, SourceCodeEditorProvider())
 
     val editor =
-      runBlocking(uiThread) {
+      runBlocking(Dispatchers.EDT) {
         val editor =
-          withContext(uiThread) {
+          withContext(Dispatchers.EDT) {
             val editors =
               FileEditorManager.getInstance(project).openFile(testPsiFile.virtualFile, true, true)
             (editors[0] as TextEditorWithMultiRepresentationPreview<*>)
@@ -792,7 +792,7 @@ class ComposePreviewRepresentationTest {
         editor
       }
 
-    val mainSurface = runBlocking(uiThread) { editor.getDesignSurface() as NlDesignSurface }
+    val mainSurface = runBlocking(Dispatchers.EDT) { editor.getDesignSurface() as NlDesignSurface }
 
     runComposePreviewRepresentationTest(testPsiFile, mainSurface) {
       delayUntilCondition(2000) { editor.preview.previewIsActive }
@@ -800,7 +800,7 @@ class ComposePreviewRepresentationTest {
       editor.preview.component.isVisible = false
       delayUntilCondition(2000) { !editor.preview.previewIsActive }
 
-      withContext(uiThread) { FileEditorManagerEx.getInstanceEx(project).closeAllFiles() }
+      withContext(Dispatchers.EDT) { FileEditorManagerEx.getInstanceEx(project).closeAllFiles() }
     }
   }
 
@@ -1031,8 +1031,8 @@ class ComposePreviewRepresentationTest {
       val uiCheckElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }[0]
       val problemsView = ProblemsView.getToolWindow(project)!!
 
-      val contentManager = runBlocking(uiThread) { problemsView.contentManager }
-      withContext(uiThread) {
+      val contentManager = runBlocking(Dispatchers.EDT) { problemsView.contentManager }
+      withContext(Dispatchers.EDT) {
         ProblemsViewToolWindowUtils.addTab(project, SharedIssuePanelProvider(project))
         assertEquals(1, contentManager.contents.size)
       }
@@ -1289,6 +1289,20 @@ class ComposePreviewRepresentationTest {
     }
   }
 
+  // Regression test for b/448050227
+  @Test
+  fun composeViewShouldAlwaysHaveContentIfThereArePreviews() {
+    runComposePreviewRepresentationTest {
+      createPreviewAndCompile(
+        onRefreshCompletedCallback = {
+          // if there is no content, the empty panel is shown, which should not happen when there
+          // are previews in the file
+          assertTrue(composeView.hasContent)
+        }
+      )
+    }
+  }
+
   private fun runComposePreviewRepresentationTest(
     previewPsiFile: PsiFile = createPreviewPsiFile(),
     mainSurface: NlDesignSurface =
@@ -1370,9 +1384,10 @@ class ComposePreviewRepresentationTest {
     suspend fun createPreviewAndCompile(
       previewOverride: ComposePreviewRepresentation? = null,
       expectedModelCount: Int = 2,
+      onRefreshCompletedCallback: () -> Unit = {},
     ): ComposePreviewRepresentation {
       newModelAddedLatch = CountDownLatch(expectedModelCount)
-      composeView = TestComposePreviewView(mainSurface)
+      composeView = TestComposePreviewView(mainSurface, onRefreshCompletedCallback)
       preview =
         previewOverride
           ?: ComposePreviewRepresentation(previewPsiFile, PreferredVisibility.SPLIT) {

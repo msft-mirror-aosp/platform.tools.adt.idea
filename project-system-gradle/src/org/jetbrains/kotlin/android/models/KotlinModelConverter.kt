@@ -107,7 +107,7 @@ class KotlinModelConverter {
 
   private val interner = WeakInterner(lock = null) // No need for a lock since the resolution happens sequentially.
 
-  private val seenDependencies = mutableMapOf<IdeaKotlinDependencyCoordinates, LibraryReference>()
+  private val seenDependencies = mutableMapOf<String, LibraryReference>()
   private val libraries = mutableListOf<IdeLibrary>()
 
   private val useAdditionalArtifactsFromLibraries by lazy {
@@ -219,7 +219,8 @@ class KotlinModelConverter {
     }?.value ?: BooleanFlag.GENERATE_MANIFEST_CLASS.legacyDefault,
 
     // b/425320603 - For now, not implemented in KMP only projects. Should be read from gradle.properties.
-    disableAgpUpgradePrompt = false
+    disableAgpUpgradePrompt = false,
+    useCustomManagedDevices = false // Gradle managed devices are not supported for KMP
   )
 
   private fun SigningConfig.convert() = IdeSigningConfigImpl(
@@ -236,7 +237,7 @@ class KotlinModelConverter {
     return if (coordinates == null) {
       action()
     } else {
-      seenDependencies.computeIfAbsent(coordinates) {
+      seenDependencies.computeIfAbsent(coordinates.toString()) {
         action()
       }
     }
@@ -427,25 +428,44 @@ class KotlinModelConverter {
     rootModulePath: File?,
     targetInfo: AndroidTarget,
     compilationInfoMap: Map<AndroidCompilation.CompilationType, Pair<KotlinCompilation, AndroidCompilation>>,
-    sourceSetDependenciesMap: Map<String, Set<LibraryReference>>,
+    sourceSetCompileDependenciesMap: Map<String, Set<LibraryReference>>,
+    sourceSetRuntimeDependenciesMap: Map<String, Set<LibraryReference>>,
   ): GradleAndroidModelData {
     val (mainKotlinCompilation, mainAndroidCompilation) = compilationInfoMap[AndroidCompilation.CompilationType.MAIN]!!
     val (unitTestKotlinCompilation, unitTestAndroidCompilation) = compilationInfoMap[AndroidCompilation.CompilationType.UNIT_TEST] ?: Pair(null, null)
     val (androidTestKotlinCompilation, androidTestAndroidCompilation) = compilationInfoMap[AndroidCompilation.CompilationType.INSTRUMENTED_TEST] ?: Pair(null, null)
 
-    val mainSourceSetDependencies = sourceSetDependenciesMap[mainAndroidCompilation.defaultSourceSetName]!!.map {
+    val mainSourceSetCompileDependencies = sourceSetCompileDependenciesMap[mainAndroidCompilation.defaultSourceSetName]!!.map {
       IdeDependencyCoreImpl(
         target = it,
         dependencies = null
       )
     }
-    val unitTestSourceSetDependencies = unitTestAndroidCompilation?.let { sourceSetDependenciesMap[unitTestAndroidCompilation.defaultSourceSetName] }?.map {
+    val mainSourceSetRuntimeDependencies = sourceSetRuntimeDependenciesMap[mainAndroidCompilation.defaultSourceSetName]!!.map {
       IdeDependencyCoreImpl(
         target = it,
         dependencies = null
       )
     }
-    val androidTestSourceSetDependencies = androidTestAndroidCompilation?.let { sourceSetDependenciesMap[androidTestAndroidCompilation.defaultSourceSetName] }?.map {
+    val unitTestSourceSetCompileDependencies = unitTestAndroidCompilation?.let { sourceSetCompileDependenciesMap[unitTestAndroidCompilation.defaultSourceSetName] }?.map {
+      IdeDependencyCoreImpl(
+        target = it,
+        dependencies = null
+      )
+    }
+    val unitTestSourceSetRuntimeDependencies = unitTestAndroidCompilation?.let { sourceSetRuntimeDependenciesMap[unitTestAndroidCompilation.defaultSourceSetName] }?.map {
+      IdeDependencyCoreImpl(
+        target = it,
+        dependencies = null
+      )
+    }
+    val androidTestSourceSetCompileDependencies = androidTestAndroidCompilation?.let { sourceSetCompileDependenciesMap[androidTestAndroidCompilation.defaultSourceSetName] }?.map {
+      IdeDependencyCoreImpl(
+        target = it,
+        dependencies = null
+      )
+    }
+    val androidTestSourceSetRuntimeDependencies = androidTestAndroidCompilation?.let { sourceSetRuntimeDependenciesMap[androidTestAndroidCompilation.defaultSourceSetName] }?.map {
       IdeDependencyCoreImpl(
         target = it,
         dependencies = null
@@ -475,10 +495,10 @@ class KotlinModelConverter {
       generatedSourceFolders = emptyList(), // For now, there is no generated sourced
       isTestArtifact = false,
       compileClasspathCore = IdeDependenciesCoreDirect(
-        dependencies = mainSourceSetDependencies
+        dependencies = mainSourceSetCompileDependencies
       ),
       runtimeClasspathCore = IdeDependenciesCoreDirect(
-        dependencies = mainSourceSetDependencies
+        dependencies = mainSourceSetRuntimeDependencies
       ),
       unresolvedDependencies = emptyList(),
       applicationId = null,
@@ -494,7 +514,7 @@ class KotlinModelConverter {
       desugaredMethodsFiles = targetInfo.desugaredMethodsFilesList.convertAndDeduplicate(),
       generatedClassPaths = emptyMap(),
       bytecodeTransforms = null,
-      generatedAssetFolders = emptyList(),
+      generatedAssetFolders = mainAndroidCompilation.mainInfo?.generatedAssetFoldersList?.convertAndDeduplicate() ?: emptyList(),
       mappingR8TextFile = null,
       mappingR8PartitionFile = null,
     )
@@ -511,10 +531,10 @@ class KotlinModelConverter {
         generatedSourceFolders = emptyList(), // For now, there is no generated sourced
         isTestArtifact = true,
         compileClasspathCore = IdeDependenciesCoreDirect(
-          dependencies = unitTestSourceSetDependencies!!
+          dependencies = unitTestSourceSetCompileDependencies!!
         ),
         runtimeClasspathCore = IdeDependenciesCoreDirect(
-          dependencies = unitTestSourceSetDependencies
+          dependencies = unitTestSourceSetRuntimeDependencies!!
         ),
         unresolvedDependencies = emptyList(),
         mockablePlatformJar = unitTestAndroidCompilation.unitTestInfo.mockablePlatformJar.convertAndDeduplicate(),
@@ -535,10 +555,10 @@ class KotlinModelConverter {
         generatedSourceFolders = emptyList(), // For now, there is no generated sourced
         isTestArtifact = true,
         compileClasspathCore = IdeDependenciesCoreDirect(
-          dependencies = androidTestSourceSetDependencies!!
+          dependencies = androidTestSourceSetCompileDependencies!!
         ),
         runtimeClasspathCore = IdeDependenciesCoreDirect(
-          dependencies = androidTestSourceSetDependencies
+          dependencies = androidTestSourceSetRuntimeDependencies!!
         ),
         unresolvedDependencies = emptyList(),
         applicationId = androidTestAndroidCompilation.instrumentedTestInfo.namespace,
@@ -561,7 +581,7 @@ class KotlinModelConverter {
         desugaredMethodsFiles = targetInfo.desugaredMethodsFilesList.convertAndDeduplicate(),
         generatedClassPaths = emptyMap(),
         bytecodeTransforms = null,
-        generatedAssetFolders = emptyList(),
+        generatedAssetFolders = androidTestAndroidCompilation.instrumentedTestInfo.generatedAssetFoldersList.convertAndDeduplicate(),
         mappingR8TextFile = null,
         mappingR8PartitionFile = null,
       )

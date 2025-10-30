@@ -17,6 +17,7 @@ package com.google.idea.blaze.qsync.testdata
 
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.GraphToProjectConverter
+import com.google.idea.blaze.qsync.GraphToProjectConverter.Companion.initializeProjectStructureData
 import com.google.idea.blaze.qsync.QuerySyncTestUtils
 import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectPath
@@ -28,9 +29,8 @@ import java.io.IOException
 /**
  * Test utility class to build simple project proto instances based on a [TestData] project.
  *
- *
- * The returned project protos may not be fully valid and should be relied upon only to provide
- * the basic structure.
+ * The returned project protos may not be fully valid and should be relied upon only to provide the
+ * basic structure.
  */
 object ProjectProtos {
   @Throws(IOException::class, BuildException::class)
@@ -40,22 +40,29 @@ object ProjectProtos {
       GraphToProjectConverter(
         javaPackagePrefixReader = QuerySyncTestUtils.EMPTY_PREFIX_READER,
         context = QuerySyncTestUtils.NOOP_CONTEXT,
-        projectDefinition = ProjectDefinition(
-          projectIncludes = setOf(workspaceImportDirectory),
-          projectExcludes = emptySet(),
-          targetPatterns = emptyList(),
-          systemExcludes = emptySet(),
-          testSources = emptySet(),
-          isAndroidWorkspace = true,
-          languageClasses = setOf(QuerySyncLanguage.JVM),
-          deriveTargetsFromDirectories = false,
-        )
+        projectDefinition =
+          ProjectDefinition(
+            projectIncludes = setOf(workspaceImportDirectory),
+            projectExcludes = emptySet(),
+            targetPatterns = emptyList(),
+            systemExcludes = emptySet(),
+            testSources = emptySet(),
+            isAndroidWorkspace = true,
+            languageClasses = setOf(QuerySyncLanguage.JVM),
+            deriveTargetsFromDirectories = false,
+          ),
       )
     val update = ProjectProtoUpdate(ProjectProto.Project.getDefaultInstance())
-    converter.createProject(
-      BuildGraphs.forTestProject(project),
+    val graph = BuildGraphs.forTestProject(project)
+    converter.configureProject(
+      initializeProjectStructureData(graph),
       ProjectPath.ExternalRepositoryFinder.createEmptyForTests(),
-      update
+      update,
+    )
+    converter.configureProject(
+      graph,
+      ProjectPath.ExternalRepositoryFinder.createEmptyForTests(),
+      update,
     )
     return update.build()
   }

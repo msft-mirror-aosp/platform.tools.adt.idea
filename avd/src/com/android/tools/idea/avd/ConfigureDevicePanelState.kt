@@ -20,12 +20,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.android.sdklib.ISystemImage
-import com.android.tools.idea.adddevicedialog.TableSelectionState
+import com.android.tools.adtui.compose.table.TableSelectionState
 import com.android.tools.idea.avdmanager.skincombobox.DefaultSkin
 import com.android.tools.idea.avdmanager.skincombobox.NoSkin
 import com.android.tools.idea.avdmanager.skincombobox.Skin
-import java.nio.file.FileSystem
-import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.collections.contains
 import kotlin.math.max
@@ -36,7 +34,6 @@ internal class ConfigureDevicePanelState(
   val device: VirtualDevice,
   skins: ImmutableCollection<Skin>,
   val deviceNameValidator: DeviceNameValidator,
-  fileSystem: FileSystem = FileSystems.getDefault(),
   val maxCpuCoreCount: Int = max(1, Runtime.getRuntime().availableProcessors() / 2),
 ) {
   private var skins by mutableStateOf(skins)
@@ -45,7 +42,7 @@ internal class ConfigureDevicePanelState(
       override var selection: ISystemImage? by device::image
     }
 
-  val storageGroupState = StorageGroupState(device, fileSystem)
+  val storageGroupState = StorageGroupState(device)
   val emulatedPerformanceGroupState = EmulatedPerformanceGroupState(device)
 
   var isSystemImageTableSelectionValid by mutableStateOf(true)

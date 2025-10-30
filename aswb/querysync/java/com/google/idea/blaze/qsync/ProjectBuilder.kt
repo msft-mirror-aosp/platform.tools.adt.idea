@@ -18,6 +18,8 @@ package com.google.idea.blaze.qsync
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.exception.BuildException
+import com.google.idea.blaze.qsync.GraphToProjectConverter.Companion.initializeProjectStructureData
+import com.google.idea.blaze.qsync.cc.ConfigureCcSources
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
 import com.google.idea.blaze.qsync.java.PackageReader
 import com.google.idea.blaze.qsync.java.WorkspaceResolvingPackageReader
@@ -30,8 +32,8 @@ import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation
 import java.nio.file.Path
 
 /**
- * Project refresher creates an appropriate [RefreshOperation] based on the project and
- * current VCS state.
+ * Project refresher creates an appropriate [RefreshOperation] based on the project and current VCS
+ * state.
  */
 class ProjectBuilder(
   private val executor: ListeningExecutorService,
@@ -41,9 +43,9 @@ class ProjectBuilder(
 ) {
 
   /**
-   * Creates a [QuerySyncProjectSnapshot], which includes an expected IDE project structure,
-   * from the `postQuerySyncData` and a function `applyBuiltDependenciesTransform` that
-   * applies transformations required to account for any currently synced(i.e. built) dependencies.
+   * Creates a [QuerySyncProjectSnapshot], which includes an expected IDE project structure, from
+   * the `postQuerySyncData` and a function `applyBuiltDependenciesTransform` that applies
+   * transformations required to account for any currently synced(i.e. built) dependencies.
    */
   @Throws(BuildException::class)
   fun createBlazeProjectStructure(
@@ -63,14 +65,21 @@ class ProjectBuilder(
       GraphToProjectConverter(
         javaPackagePrefixReader = javaPackagePrefixReader,
         context = context,
-        projectDefinition = postQuerySyncData.projectDefinition()
+        projectDefinition = postQuerySyncData.projectDefinition(),
       )
-    val externalRepositoryFinder = ProjectPath.ExternalRepositoryFinder.createAndPrepare(workspaceRoot)
+    val externalRepositoryFinder =
+      ProjectPath.ExternalRepositoryFinder.createAndPrepare(workspaceRoot)
 
     val update = ProjectProtoUpdate(ProjectProto.Project.getDefaultInstance())
-    graphToProjectConverter.createProject(graph, externalRepositoryFinder, update)
+    graphToProjectConverter.configureProject(
+      initializeProjectStructureData(graph),
+      externalRepositoryFinder,
+      update,
+    )
+    graphToProjectConverter.configureProject(graph, externalRepositoryFinder, update)
+    ConfigureCcSources().update(update, graph, context)
     for (updateOperation in projectProtoUpdates) {
-      updateOperation.update(update, graph, artifactTrackerState, context, externalRepositoryFinder)
+      updateOperation.update(update, artifactTrackerState, context, externalRepositoryFinder)
     }
     return update.build()
   }

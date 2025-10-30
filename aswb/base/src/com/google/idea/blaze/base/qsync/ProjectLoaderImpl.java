@@ -17,11 +17,12 @@ package com.google.idea.blaze.base.qsync;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory.*;
+import static com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory.BAZEL_ARTIFACTS;
+import static com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory.BAZEL_SYSTEM;
+import static com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory.EXTERNAL_REPOSITORIES;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -66,7 +67,7 @@ import com.google.idea.blaze.qsync.java.ParallelPackageReader;
 import com.google.idea.blaze.qsync.project.ProjectDefinition;
 import com.google.idea.blaze.qsync.project.ProjectDirectoryConfigurator;
 import com.google.idea.blaze.qsync.project.ProjectPath;
-import com.google.idea.blaze.qsync.project.QuerySyncProjectDirectory;
+import com.google.idea.blaze.qsync.project.QuerySyncLanguage;
 import com.google.idea.blaze.qsync.project.update.ProjectProtoUpdateOperation;
 import com.google.idea.blaze.qsync.query.QuerySpec.QueryStrategy;
 import com.google.idea.common.experiments.BoolExperiment;
@@ -79,11 +80,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Loads a project, either from saved state or from a {@code .blazeproject} file, yielding a {@link
@@ -111,7 +110,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
   public record QuerySyncProjectDeps(BlazeImportSettings importSettings,
                                      WorkspaceRoot workspaceRoot,
                                      WorkspacePathResolver workspacePathResolver,
-                                     ProjectViewSet projectViewSet,
+                                     QuerySyncLanguageSettings languageSettings,
                                      BuildSystem buildSystem,
                                      WorkspaceLanguageSettings workspaceLanguageSettings,
                                      ProjectDefinition latestProjectDef,
@@ -162,13 +161,12 @@ public class ProjectLoaderImpl implements ProjectLoader {
           result.workspaceRoot(),
           result.artifactTracker(),
           result.artifactCache(),
-          result.renderJarArtifactTracker(),
           result.dependencyTracker(),
           result.appInspectorTracker(),
           result.projectQuerier(),
           result.projectBuilder(),
           result.latestProjectDef(),
-          result.projectViewSet(),
+          result.languageSettings(),
           result.workspacePathResolver(),
           result.projectPathResolver(),
           result.workspaceLanguageSettings(),
@@ -196,15 +194,15 @@ public class ProjectLoaderImpl implements ProjectLoader {
     // optimizations?
     ProjectDefinition projectDefinition =
       createProjectDefinition(workspaceRoot, importSettings.getBuildSystem(), projectViewSet);
-    WorkspaceLanguageSettings workspaceLanguageSettings =
-      LanguageSupport.createWorkspaceLanguageSettings(projectViewSet);
+    WorkspaceLanguageSettings workspaceLanguageSettings = LanguageSupport.createWorkspaceLanguageSettings(projectViewSet);
+    QuerySyncLanguageSettings languageSettings = QuerySyncLanguageSettings.from(projectViewSet, workspaceLanguageSettings);
     // TODO: solodkyy - read from the project view.
     BuildSystemProvider buildSystemProvider = BuildSystemProvider.getBuildSystemProvider(importSettings.getBuildSystem());
     BuildSystem buildSystem = buildSystemProvider.getBuildSystem();
     ProjectDirectoryConfigurator projectDirectoryConfigurator = buildSystemProvider.getProjectDirectoryConfigurator(project);
 
-    return new ProjectToLoadDefinition(workspaceRoot, projectDirectoryConfigurator, buildSystem, projectDefinition, projectViewSet,
-                                       workspaceLanguageSettings);
+    return new ProjectToLoadDefinition(workspaceRoot, projectDirectoryConfigurator, buildSystem, projectDefinition,
+                                       workspaceLanguageSettings, languageSettings);
   }
 
   private QuerySyncProjectDeps instantiateDeps() {
@@ -213,13 +211,13 @@ public class ProjectLoaderImpl implements ProjectLoader {
             BlazeImportSettingsManager.getInstance(project).getImportSettings());
 
     final var projectToLoad = loadProjectDefinition(BlazeImportSettingsManager.getInstance(project).getProjectViewSet());
-    final var projectViewSet = projectToLoad.projectViewSet();
     final var workspaceRoot = projectToLoad.workspaceRoot();
     final var latestProjectDef = projectToLoad.definition();
     final var buildSystem = projectToLoad.buildSystem();
     final var projectDirectoryConfigurator = projectToLoad.projectDirectoryConfigurator();
 
     WorkspaceLanguageSettings workspaceLanguageSettings = projectToLoad.workspaceLanguageSettings();
+    QuerySyncLanguageSettings languageSettings = projectToLoad.languageSettings();
 
     ImmutableSet<String> handledRules = getHandledRuleKinds();
     Optional<BlazeVcsHandler> vcsHandler =
@@ -269,7 +267,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
     AppInspectorTracker appInspectorTracker =
         new AppInspectorTrackerImpl(appInspectorBuilder, appInspectorArtifactTracker);
     DependencyTracker dependencyTracker =
-        new DependencyTrackerImpl(latestProjectDef, snapshotHolder, dependencyBuilder, artifactTracker);
+        new DependencyTrackerImpl(snapshotHolder, dependencyBuilder, artifactTracker);
     ProjectRefresher projectRefresher =
         new ProjectRefresher(
             vcsHandler.map(it -> (VcsStateDiffer)it::diffVcsState).orElse(VcsStateDiffer.NONE),
@@ -291,12 +289,11 @@ public class ProjectLoaderImpl implements ProjectLoader {
             queryRunner,
             vcsHandler,
             new BazelVersionHandler(buildSystem, buildSystem.getBuildInvoker(project)));
-    QuerySyncSourceToTargetMap sourceToTargetMap =
-        new QuerySyncSourceToTargetMap(snapshotHolder, workspaceRoot.path());
-    return new QuerySyncProjectDeps(importSettings, workspaceRoot, new WorkspacePathResolverImpl(workspaceRoot), projectViewSet, buildSystem,
-                                    workspaceLanguageSettings, latestProjectDef,  projectPathResolver, projectTransformRegistry,
-                                    snapshotHolder, artifactCache, artifactTracker, renderJarArtifactTracker, appInspectorArtifactTracker,
-                                    appInspectorTracker,  dependencyBuilder, dependencyTracker, snapshotBuilder,
+    QuerySyncSourceToTargetMap sourceToTargetMap = new QuerySyncSourceToTargetMap(snapshotHolder, workspaceRoot.path());
+    return new QuerySyncProjectDeps(importSettings, workspaceRoot, new WorkspacePathResolverImpl(workspaceRoot),
+                                    languageSettings, buildSystem, workspaceLanguageSettings, latestProjectDef, projectPathResolver,
+                                    projectTransformRegistry, snapshotHolder, artifactCache, artifactTracker, renderJarArtifactTracker,
+                                    appInspectorArtifactTracker, appInspectorTracker, dependencyBuilder, dependencyTracker, snapshotBuilder,
                                     projectQuerier, sourceToTargetMap, handledRules);
   }
 

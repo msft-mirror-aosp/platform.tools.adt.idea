@@ -19,7 +19,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.registerLayoutInspectorToolWindow
 import com.android.tools.idea.layoutinspector.unregisterLayoutInspectorToolWindow
-import com.intellij.ide.BrowserUtil
 import com.intellij.ide.IdeBundle
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ApplicationNamesInfo
@@ -30,7 +29,6 @@ import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.Messages
-import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBCheckBox
 import java.awt.Component
 import java.awt.Dimension
@@ -38,9 +36,6 @@ import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JCheckBox
 import javax.swing.JPanel
-
-const val STUDIO_RELEASE_NOTES_EMBEDDED_LI_URL =
-  "https://d.android.com/r/studio-ui/embedded-layout-inspector"
 
 /** Class used to provide a [Configurable] to show in Android Studio settings panel. */
 class LayoutInspectorConfigurableProvider(
@@ -69,13 +64,15 @@ class LayoutInspectorConfigurable(
 ) : SearchableConfigurable {
   private val component: JPanel = JPanel()
   private val enableAutoConnectCheckBox =
-    JBCheckBox(LayoutInspectorBundle.message("enable.auto.connect")
-                 .replace("Android Studio", ApplicationNamesInfo.getInstance().fullProductName)
+    JBCheckBox(
+      LayoutInspectorBundle.message("enable.auto.connect")
+        .replace("Android Studio", ApplicationNamesInfo.getInstance().fullProductName)
     )
   private val embeddedLayoutInspectorSettingPanel = JPanel()
   private val enableEmbeddedLayoutInspectorCheckBox =
-    JBCheckBox(LayoutInspectorBundle.message("enable.embedded.layout.inspector")
-                 .replace("Android Studio", ApplicationNamesInfo.getInstance().fullProductName)
+    JBCheckBox(
+      LayoutInspectorBundle.message("enable.embedded.layout.inspector")
+        .replace("Android Studio", ApplicationNamesInfo.getInstance().fullProductName)
     )
 
   private val settings = LayoutInspectorSettings.getInstance()
@@ -105,11 +102,6 @@ class LayoutInspectorConfigurable(
       BoxLayout(embeddedLayoutInspectorSettingPanel, BoxLayout.LINE_AXIS)
     embeddedLayoutInspectorSettingPanel.add(enableEmbeddedLayoutInspectorCheckBox)
     embeddedLayoutInspectorSettingPanel.add(Box.createRigidArea(Dimension(20, 0)))
-    embeddedLayoutInspectorSettingPanel.add(
-      ActionLink(LayoutInspectorBundle.message("learn.more")) {
-        BrowserUtil.browse(STUDIO_RELEASE_NOTES_EMBEDDED_LI_URL)
-      }
-    )
 
     if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_IN_RUNNING_DEVICES_ENABLED.get()) {
       component.add(embeddedLayoutInspectorSettingPanel)

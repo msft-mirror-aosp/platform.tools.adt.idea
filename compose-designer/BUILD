@@ -47,7 +47,6 @@ iml_module(
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.compose-designer.tests",
-    generate_k1_tests = True,
     iml_files = ["intellij.android.compose-designer.tests.iml"],
     kotlin_use_compose = True,
     split_test_targets = {
@@ -114,6 +113,7 @@ iml_module(
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/compose-designer/testData:classloader",
+        "//tools/adt/idea/compose-designer/testData:glassespreview",
         "//tools/adt/idea/compose-designer/testData:simple_compose_application_test_deps",
         "//tools/adt/idea/compose-designer/testData:test_projects",
         "//tools/adt/idea/compose-ide-plugin/testData",

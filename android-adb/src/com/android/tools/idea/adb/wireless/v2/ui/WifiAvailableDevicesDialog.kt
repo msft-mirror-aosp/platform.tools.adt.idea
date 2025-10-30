@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.adb.wireless.v2.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,18 +50,19 @@ import com.android.adblib.MdnsTrackServiceInfo
 import com.android.sdklib.deviceprovisioner.SetChange
 import com.android.sdklib.deviceprovisioner.trackSetChanges
 import com.android.tools.adtui.compose.StudioComposePanel
+import com.android.tools.adtui.compose.table.RowFilter
+import com.android.tools.adtui.compose.table.Table
+import com.android.tools.adtui.compose.table.TableColumn
+import com.android.tools.adtui.compose.table.TableColumnWidth
+import com.android.tools.adtui.compose.table.TableTextColumn
 import com.android.tools.idea.adb.wireless.MdnsSupportState
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService
 import com.android.tools.idea.adb.wireless.TrackingMdnsService
 import com.android.tools.idea.adb.wireless.Urls
 import com.android.tools.idea.adb.wireless.WiFiPairingService
+import com.android.tools.idea.adb.wireless.needsUpdate
 import com.android.tools.idea.adddevicedialog.EmptyStatePanel
-import com.android.tools.idea.adddevicedialog.RowFilter
 import com.android.tools.idea.adddevicedialog.SearchBar
-import com.android.tools.idea.adddevicedialog.Table
-import com.android.tools.idea.adddevicedialog.TableColumn
-import com.android.tools.idea.adddevicedialog.TableColumnWidth
-import com.android.tools.idea.adddevicedialog.TableTextColumn
 import com.android.tools.idea.ui.SimpleDialog
 import com.android.tools.idea.ui.SimpleDialogOptions
 import com.intellij.ide.BrowserUtil
@@ -79,12 +81,16 @@ import kotlin.collections.forEach
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.map
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.styling.LocalLinkStyle
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
+@OptIn(ExperimentalFoundationApi::class)
 class WifiAvailableDevicesDialog(
   private val project: Project,
   private val wifiPairingService: WiFiPairingService,
@@ -92,6 +98,7 @@ class WifiAvailableDevicesDialog(
 
   companion object {
     internal const val SEARCH_BAR_TEST_TAG = "deviceSearchBar"
+    internal const val WARNING_TOOLTIP_TEST_TAG = "warningTag"
   }
 
   private val dialog: SimpleDialog
@@ -286,45 +293,77 @@ class WifiAvailableDevicesDialog(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-      Text(
-        buildAnnotatedString {
-          append(
-            "1. Ensure that your workstation and device are connected to the same wireless network"
+      Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(
+            StudioIconsCompose.Avd.ConnectionWifi,
+            contentDescription = "Same Wi-Fi Network",
+            modifier = Modifier.padding(end = 16.dp),
           )
-          appendLine()
-          append(
-            "2. Enable Wireless debugging on your Android 11+ device by toggling Developer Options > wireless debugging. "
-          )
-          appendLine()
-          withLink(
-            LinkAnnotation.Url(
-              Urls.learnMore,
-              TextLinkStyles(style = SpanStyle(color = LocalLinkStyle.current.colors.content)),
-            )
-          ) {
-            append("Learn more")
+          Column {
+            Text("1. Connect to the Same Network", fontWeight = FontWeight.Bold)
+            Text("Ensure your workstation and device are on the same wireless network.")
           }
-          append(".")
-        },
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-      )
-      Spacer(modifier = Modifier.padding(5.dp))
+        }
+        Spacer(modifier = Modifier.padding(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(
+            AllIconsKeys.Actions.StartDebugger,
+            contentDescription = "Wireless debugging Enabled",
+            modifier = Modifier.padding(end = 16.dp),
+          )
+          Column {
+            Text("2. Enable Wireless Debugging", fontWeight = FontWeight.Bold)
+            Text(
+              buildAnnotatedString {
+                append("On your Android 11+ device, go to Developer Options > Wireless debugging. ")
+                withLink(
+                  LinkAnnotation.Url(
+                    Urls.learnMore,
+                    TextLinkStyles(style = SpanStyle(color = LocalLinkStyle.current.colors.content)),
+                  )
+                ) {
+                  append("Learn more")
+                }
+                append(".")
+              }
+            )
+          }
+        }
+      }
 
       Row(Modifier.padding(start = 4.dp, end = 4.dp, top = 6.dp)) {
-        SearchBar(
-          textState,
-          filterState.description,
-          Modifier.weight(1f)
-            .padding(2.dp)
-            .focusRequester(searchFieldFocusRequester)
-            .testTag(SEARCH_BAR_TEST_TAG),
-        )
+        if (devices.isNotEmpty()) {
+          SearchBar(
+            textState,
+            filterState.description,
+            Modifier.weight(1f)
+              .padding(2.dp)
+              .focusRequester(searchFieldFocusRequester)
+              .testTag(SEARCH_BAR_TEST_TAG),
+          )
+        }
       }
 
       val filteredDevices = devices.filter(filterState::apply)
       if (filteredDevices.isEmpty()) {
         if (devices.isEmpty()) {
-          EmptyStatePanel("No devices found.", Modifier.fillMaxSize())
+          val emptyText = buildAnnotatedString {
+            append("No devices found.\n\n")
+            append("Please double-check that:\n")
+            append("• Your device and computer are on the same Wi-Fi network.\n")
+            append("• 'Wireless debugging' is enabled in your device's Developer Options.\n\n")
+            pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+            append("If both are correct, your network may be blocking mDNS traffic.")
+            pop()
+          }
+          Box(Modifier.fillMaxSize()) {
+            Text(
+              emptyText,
+              Modifier.align(Alignment.Center),
+              color = JewelTheme.globalColors.text.info,
+            )
+          }
         } else {
           EmptyStatePanel(
             "No devices found for \"${filterState.searchText}\".",
@@ -335,7 +374,9 @@ class WifiAvailableDevicesDialog(
         Table<MdnsTlsService>(columns, filteredDevices, { it.service.serviceInstanceName.instance })
       }
     }
-    LaunchedEffect(Unit) { searchFieldFocusRequester.requestFocus() }
+    if (devices.isNotEmpty()) {
+      LaunchedEffect(Unit) { searchFieldFocusRequester.requestFocus() }
+    }
   }
 
   private class TextFilterState : RowFilter<MdnsTlsService> {
@@ -366,29 +407,44 @@ class WifiAvailableDevicesDialog(
         attribute = { it.service.buildVersionSdkFull ?: "Unknown" },
       ),
       TableColumn("", TableColumnWidth.Weighted(1f)) { device, _ ->
-        OutlinedButton(
-          onClick = {
-            val controller =
-              PairDevicesUsingWiFiService.getInstance(project)
-                .createPairingDialogController(
-                  TrackingMdnsService(
-                    serviceName = device.service.serviceInstanceName.instance,
-                    ipv4 = device.service.ipv4,
-                    port = device.service.port.toString(),
-                    deviceName = buildDeviceName(device.service),
-                  )
+        val button =
+          @Composable {
+            OutlinedButton(
+              onClick = {
+                val controller =
+                  PairDevicesUsingWiFiService.getInstance(project)
+                    .createPairingDialogController(
+                      TrackingMdnsService(
+                        serviceName = device.service.serviceInstanceName.instance,
+                        ipv4 = device.service.ipv4,
+                        port = device.service.port.toString(),
+                        deviceName = buildDeviceName(device.service),
+                        mdnsServiceVersion = device.service.mdnsServiceVersion,
+                      )
+                    )
+                controller.showDialog()
+              }
+            ) {
+              Row {
+                Icon(
+                  if (device.service.needsUpdate()) {
+                    StudioIconsCompose.Common.Warning
+                  } else {
+                    StudioIconsCompose.Avd.PairOverWifi
+                  },
+                  contentDescription = "pair device over wifi",
                 )
-            controller.showDialog()
+                Spacer(Modifier.width(4.dp))
+                Text("Pair")
+              }
+            }
           }
+        Tooltip(
+          tooltip = { Text("Check for device software updates to improve Wi-Fi pairing.") },
+          modifier = Modifier.testTag(WARNING_TOOLTIP_TEST_TAG),
+          enabled = device.service.needsUpdate(),
         ) {
-          Row {
-            Icon(
-              key = StudioIconsCompose.Avd.PairOverWifi,
-              contentDescription = "pair device over wifi",
-            )
-            Spacer(Modifier.width(4.dp))
-            Text("Pair")
-          }
+          button()
         }
       },
     )

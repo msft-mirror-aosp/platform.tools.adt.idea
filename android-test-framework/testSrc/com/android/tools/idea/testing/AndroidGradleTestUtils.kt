@@ -177,6 +177,7 @@ import com.intellij.openapi.externalSystem.model.project.ModuleData
 import com.intellij.openapi.externalSystem.model.project.ModuleDependencyData
 import com.intellij.openapi.externalSystem.model.project.ModuleSdkData
 import com.intellij.openapi.externalSystem.model.project.ProjectData
+import com.intellij.openapi.externalSystem.model.project.TestData
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager
@@ -819,6 +820,7 @@ fun AndroidProjectStubBuilder.buildAgpProjectFlagsStub(): IdeAndroidGradlePlugin
     dataBindingEnabled = false,
     generateManifestClass = true,
     disableAgpUpgradePrompt = false,
+    useCustomManagedDevices = false
   )
 
 fun AndroidProjectStubBuilder.buildDefaultConfigStub() = IdeProductFlavorContainerImpl(
@@ -1762,13 +1764,6 @@ private fun setupTestProjectFromAndroidModelCore(
     resolvedTable,
     null
   )
-  projectDataNode.createChild(
-    AndroidProjectKeys.IDE_COMPOSITE_BUILD_MAP,
-    IdeCompositeBuildMapImpl(
-      builds = listOf(IdeBuildImpl(buildPath = ":", buildId = rootProjectBasePath)),
-      gradleSupportsDirectTaskInvocation = true
-    )
-  )
 
   projectDataNode.createChild(
     AndroidProjectKeys.IDE_LIBRARY_TABLE,
@@ -1844,6 +1839,7 @@ private fun createAndroidModuleDataNode(
         moduleBasePath.resolve("build.gradle").toImpl(),
         gradleVersion,
         agpVersion,
+        false,
         false,
         false
       ),
@@ -2031,6 +2027,14 @@ private fun createJavaModuleDataNode(
         null
       )
     )
+    if (isTest) {
+      val sources = setOf("$root/java", "$root/resources")
+      val testData = TestData(GradleConstants.SYSTEM_ID, "test", "test", sources)
+      moduleDataNode.createChild(
+        ProjectKeys.TEST,
+        testData
+      )
+    }
     sourceSetDataDataNode.addDefaultJdk()
     if (isTest) {
       sourceSetDataDataNode.addChild(
@@ -2077,6 +2081,7 @@ private fun createJavaModuleDataNode(
           moduleBasePath.resolve("build.gradle").toImpl(),
           null,
           null,
+          false,
           false,
           false
         ),
