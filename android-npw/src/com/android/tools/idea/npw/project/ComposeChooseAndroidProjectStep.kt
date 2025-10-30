@@ -109,8 +109,6 @@ private fun LeftSidePanel(
 ) {
   val focusRequester = remember { FocusRequester() }
 
-  LaunchedEffect(Unit) { focusRequester.requestFocus() }
-
   Column {
     Text(
       modifier = Modifier.background(UIUtil.getListBackground().toComposeColor()).padding(20.dp),
@@ -131,6 +129,8 @@ private fun LeftSidePanel(
       itemsIndexed(entries) { _, entry -> entry.AndroidProjectListEntry(isSelected, isActive) }
     }
   }
+
+  LaunchedEffect(Unit) { focusRequester.requestFocus() }
 }
 
 @Composable
