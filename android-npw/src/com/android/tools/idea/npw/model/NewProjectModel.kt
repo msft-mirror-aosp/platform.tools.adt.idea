@@ -299,7 +299,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     @WorkerThread
     override fun render() {
       performCreateProject(false)
-      updateDistributionUrl()
+      updateDistribution()
 
       try {
         val projectRoot = VfsUtilCore.virtualToIoFile(project.baseDir)
@@ -335,12 +335,12 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       recipe.render(context, executor, AndroidStudioEvent.TemplateRenderer.ANDROID_PROJECT)
     }
 
-    private fun updateDistributionUrl() {
+    private fun updateDistribution() {
       val rootLocation = File(projectLocation.get())
       val wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation)
       try {
         GradleWrapper.get(wrapperPropertiesFilePath, project)
-          .updateDistributionUrl(projectTemplateData.gradleVersion)
+          .updateDistribution(projectTemplateData.gradleVersion)
       } catch (e: IOException) {
         // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails
         // and the error message has a "quick fix".
