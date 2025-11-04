@@ -70,6 +70,7 @@ import org.jetbrains.jewel.bridge.toComposeColor
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
 import org.jetbrains.jewel.foundation.lazy.SelectionMode
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
+import org.jetbrains.jewel.foundation.lazy.rememberSelectableLazyListState
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
@@ -94,6 +95,7 @@ fun ChooseAndroidProjectStepUI(model: ChooseAndroidProjectStepModel) {
     Row(modifier = Modifier.fillMaxSize()) {
       LeftSidePanel(
         entries = entries,
+        selectedEntry = selectedEntry,
         updateEntrySelected = { entry -> model.updateSelectedCell(entry) },
       )
       Divider(Orientation.Vertical, thickness = 1.dp, modifier = Modifier.fillMaxHeight())
@@ -105,9 +107,12 @@ fun ChooseAndroidProjectStepUI(model: ChooseAndroidProjectStepModel) {
 @Composable
 private fun LeftSidePanel(
   entries: List<ChooseAndroidProjectEntry>,
+  selectedEntry: ChooseAndroidProjectEntry?,
   updateEntrySelected: (ChooseAndroidProjectEntry?) -> Unit,
 ) {
   val focusRequester = remember { FocusRequester() }
+  val stateList = rememberSelectableLazyListState()
+  stateList.lastActiveItemIndex = selectedEntry?.let { entries.indexOf(it) }
 
   Column {
     Text(
@@ -115,7 +120,6 @@ private fun LeftSidePanel(
       text = "Templates",
       color = JBColor(0x999999, 0x787878).toComposeColor(),
     )
-
     SelectableLazyColumn(
       modifier =
         Modifier.testTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column)
@@ -125,6 +129,8 @@ private fun LeftSidePanel(
         val newSelectedCell = newSelectedList.firstOrNull()
         updateEntrySelected(if (newSelectedCell != null) entries[newSelectedCell] else null)
       },
+      state = stateList,
+      interactionSource = null,
     ) {
       itemsIndexed(entries) { _, entry -> entry.AndroidProjectListEntry(isSelected, isActive) }
     }
