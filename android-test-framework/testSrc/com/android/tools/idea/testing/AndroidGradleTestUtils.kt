@@ -1086,6 +1086,7 @@ fun AndroidProjectStubBuilder.buildDefaultConfigStub() =
         resValues = emptyMap(),
         versionNameSuffix = null,
         matchingFallbacks = emptyList(),
+        missingDimensionStrategy = emptyMap(),
         isDefault = null,
       ),
     sourceProvider = mainSourceProvider,
