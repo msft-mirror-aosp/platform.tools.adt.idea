@@ -1,8 +1,8 @@
 """Version information for Android Studio."""
 visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//tools/vendor/google/aswb"])
 
-STUDIO_CODENAME = "Otter 2 Feature Drop"
+STUDIO_CODENAME = "Otter 3 Feature Drop"
 STUDIO_CONFIG = "canary"
 STUDIO_VERSION = "Canary"
-STUDIO_MICRO_PATCH = "2.4"
-STUDIO_RELEASE_NUMBER = 4
+STUDIO_MICRO_PATCH = "3.1"
+STUDIO_RELEASE_NUMBER = 1
