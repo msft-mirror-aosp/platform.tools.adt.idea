@@ -57,6 +57,7 @@ import icons.StudioIcons
 import java.awt.Component
 import java.awt.Container
 import java.awt.Rectangle
+import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 import javax.swing.JTable
 import kotlin.time.Duration.Companion.milliseconds
@@ -125,7 +126,7 @@ class EditorBasedTableCellRendererTest {
     ui.mouse.moveTo(rect.x + x, rect.centerY.toInt())
     (table.expandableItemsHandler as AbstractExpandableItemsHandler<*, *>)
       .updateAlarm
-      .waitForAllExecuted(20.milliseconds)
+      .getAlarm().waitForAllExecuted(20, TimeUnit.MILLISECONDS)
     return table.isExpandedItem(row, 1)
   }
 
