@@ -65,6 +65,8 @@
     </action>
     <action id="Android.SelectCallstackSampleTask" class="com.android.tools.idea.profilers.actions.SelectCallstackSampleTaskAction">
     </action>
+    <action id="Android.SelectLeakCanaryTask" class="com.android.tools.idea.profilers.actions.SelectLeakCanaryTaskAction">
+    </action>
     <action id="Android.SelectNativeAllocationsTask" class="com.android.tools.idea.profilers.actions.SelectNativeAllocationsTaskAction">
     </action>
     <action id="Android.SelectLiveViewTask" class="com.android.tools.idea.profilers.actions.SelectLiveViewTaskAction">
@@ -106,6 +108,8 @@
               fieldName="INSTANCE" extensions="heapprofd"/>
     <fileType name="PerfettoCapture" implementationClass="com.android.tools.idea.profilers.capture.PerfettoCaptureFileType"
               extensions="pftrace;perfetto-trace"/>
+    <fileType name="ProfilerDatabase" implementationClass="com.android.tools.idea.profilers.capture.ProfilerDatabaseFileType"
+              extensions="asdb"/>
   </extensions>
   <extensions defaultExtensionNs="com.android.tools.idea.transport">
     <transportConfigContributor implementation="com.android.tools.idea.profilers.ProfilerTransportConfigContributor" />

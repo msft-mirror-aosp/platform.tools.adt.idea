@@ -68,6 +68,22 @@ class FakeSessionStats : SessionStatistics {
 
   override fun isXr(isXr: Boolean) {}
 
+  override fun observingNoneSelected() {}
+
+  override fun observingAllSelected() {}
+
+  override fun observingSingleNodeSelected() {}
+
+  override fun stateReadsShown() {}
+
+  override fun nextRecompositionChosen() {}
+
+  override fun prevRecompositionChosen() {}
+
+  override fun stateReadsGotoSourceFromStackTrace() {}
+
+  override fun stateReadsExplainWithAiClicked() {}
+
   override var currentModeIsLive = true
   override var currentMode3D = true
   override var hideSystemNodes = true

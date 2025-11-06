@@ -44,8 +44,8 @@ import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.WithCount
 import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.client.AiInsightClient
-import com.android.tools.idea.insights.client.AppConnection
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.FakeAiInsightClient
@@ -54,6 +54,7 @@ import com.android.tools.idea.insights.client.Interval
 import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.client.QueryFilters
+import com.android.tools.idea.insights.model.connection.AppConnection
 import com.android.tools.idea.insights.zeroCounts
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_ISSUE1
@@ -127,7 +128,7 @@ class VitalsClientTest {
 
   @Test
   fun `client returns top cached issues when offline`() = runTest {
-    val cache = AppInsightsCacheImpl()
+    val cache = AppInsightsCacheImpl(ProductType.PLAY_VITALS)
     val client = createClient(cache)
 
     cache.populateIssues(TEST_CONNECTION_1, listOf(TEST_ISSUE1))
@@ -428,7 +429,7 @@ class VitalsClientTest {
 
   @Test
   fun `client uses the same cache for connections and issues`() = runTest {
-    val cache = AppInsightsCacheImpl()
+    val cache = AppInsightsCacheImpl(ProductType.PLAY_VITALS)
     val issueRequest =
       IssueRequest(
         TEST_CONNECTION_1,
@@ -614,7 +615,7 @@ class VitalsClientTest {
   }
 
   private fun createClient(
-    cache: AppInsightsCache = AppInsightsCacheImpl(),
+    cache: AppInsightsCache = AppInsightsCacheImpl(ProductType.PLAY_VITALS),
     grpcClient: VitalsGrpcClient =
       VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
     aiInsightClient: AiInsightClient = FakeAiInsightClient,

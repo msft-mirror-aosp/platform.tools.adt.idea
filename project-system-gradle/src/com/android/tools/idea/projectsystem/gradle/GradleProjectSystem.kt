@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.projectsystem.gradle
 
+import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.execution.common.debug.utils.FacetFinder
 import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
@@ -22,6 +23,7 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeJavaArtifactCore
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.project.build.invoker.AssembleInvocationResult
+import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.run.OutputBuildAction
@@ -75,6 +77,7 @@ import com.intellij.openapi.project.modules
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.psi.PsiElementFinder
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
@@ -104,7 +107,7 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
   override fun isAndroidProject(): Boolean {
     return CachedValuesManager.getManager(project).getCachedValue(project) {
       CachedValueProvider.Result.create(
-        project.modules.any { GradleAndroidModel.get(it) != null },
+        project.workspaceModel.currentSnapshot.entities(GradleAndroidModelEntity::class.java).any(),
         // potentially triggered by sync phases
         ProjectRootModificationTracker.getInstance(project),
         // triggered after full sync finishes
@@ -159,6 +162,7 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
   internal fun getBuiltApksForSelectedVariant(
     androidFacet: AndroidFacet,
     assembleResult: AssembleInvocationResult,
+    device: IDevice,
     forTests: Boolean = false
   ): List<ApkInfo>? {
     val androidModel = GradleAndroidModel.get(androidFacet) ?: return null
@@ -185,7 +189,7 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
       false // Overridden and doesn't matter.
     )
       .getApks(
-        emptyList(),
+        device.abis,
         AndroidVersion(30),
         false,
         androidModel,
@@ -485,11 +489,11 @@ private fun createIdeaSourceProviderFromModelSourceProvider(it: IdeSourceProvide
 private fun Sequence<File>.toUrls(): Sequence<String> = map { VfsUtil.fileToUrl(it) }
 
 @TestOnly
-fun AssembleInvocationResult.getBuiltApksForSelectedVariant(androidFacet: AndroidFacet, forTests: Boolean = false): List<ApkInfo>? {
+fun AssembleInvocationResult.getBuiltApksForSelectedVariant(androidFacet: AndroidFacet, device: IDevice, forTests: Boolean = false): List<ApkInfo>? {
   val projectSystem = androidFacet.module.project.getProjectSystem() as? GradleProjectSystem
                       ?: error("The supplied facet does not represent a project managed by the Gradle project system. " +
                                "Module: ${androidFacet.module.name}")
-  return projectSystem.getBuiltApksForSelectedVariant(androidFacet, this, forTests)
+  return projectSystem.getBuiltApksForSelectedVariant(androidFacet, this, device, forTests)
 }
 
 private fun IdeArtifactName.toHostTestSourceProviderName(): TestComponentType.HostTest =

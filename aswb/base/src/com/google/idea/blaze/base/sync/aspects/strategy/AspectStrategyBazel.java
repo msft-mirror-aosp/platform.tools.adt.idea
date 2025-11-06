@@ -19,8 +19,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.base.model.BlazeVersionData;
 import com.google.idea.blaze.base.settings.BuildSystemName;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManager;
+import com.intellij.openapi.extensions.PluginId;
 import java.io.File;
 import java.util.List;
 import javax.annotation.Nullable;
@@ -28,6 +28,7 @@ import javax.annotation.Nullable;
 /** Aspect strategy for Bazel, where the aspect is situated in an external repository. */
 public class AspectStrategyBazel extends AspectStrategy {
   private final String aspectFlag;
+  private final String repositoryFlag;
 
   static final class Provider implements AspectStrategyProvider {
     @Override
@@ -42,10 +43,16 @@ public class AspectStrategyBazel extends AspectStrategy {
   @VisibleForTesting
   public AspectStrategyBazel(BlazeVersionData versionData) {
     super(/* aspectSupportsDirectDepsTrimming= */ true);
-    if (versionData.bazelIsAtLeastVersion(6, 0, 0)) {
+    if (versionData.bazelIsAtLeastVersion(6, 0, 0) && !versionData.bazelIsAtLeastVersion(8, 0, 0)) {
+      // Bazel 8+ uses --inject_repository and requires single @.
       aspectFlag = "--aspects=@@intellij_aspect//:intellij_info_bundled.bzl%intellij_info_aspect";
     } else {
       aspectFlag = "--aspects=@intellij_aspect//:intellij_info_bundled.bzl%intellij_info_aspect";
+    }
+    if (versionData.bazelIsAtLeastVersion(8, 0, 0)) {
+      repositoryFlag = "--inject_repository=intellij_aspect";
+    } else {
+      repositoryFlag = "--override_repository=intellij_aspect";
     }
   }
 
@@ -53,9 +60,6 @@ public class AspectStrategyBazel extends AspectStrategy {
   public String getAspectFlag() {
     return aspectFlag;
   }
-
-  // In tests, the location of @intellij_aspect is not known at compile time.
-  public static final String OVERRIDE_REPOSITORY_FLAG = "--override_repository=intellij_aspect";
 
   @Override
   public String getName() {
@@ -68,12 +72,12 @@ public class AspectStrategyBazel extends AspectStrategy {
   }
 
   private static File findAspectDirectory() {
-    IdeaPluginDescriptor plugin =
-        PluginManager.getPlugin(PluginManager.getPluginByClassName(AspectStrategy.class.getName()));
-    return new File(plugin.getPath(), "aspect");
+    return new File(
+        PluginManager.getPluginByClass(AspectStrategy.class).getPluginPath().toFile(),
+        "aspect");
   }
 
-  private static String getAspectRepositoryOverrideFlag() {
-    return OVERRIDE_REPOSITORY_FLAG + "=" + findAspectDirectory().getPath();
+  private String getAspectRepositoryOverrideFlag() {
+    return repositoryFlag + "=" + findAspectDirectory().getPath();
   }
 }

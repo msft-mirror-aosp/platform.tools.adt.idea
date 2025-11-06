@@ -67,6 +67,7 @@ import com.android.tools.idea.layoutinspector.pipeline.appinspection.dsl.ViewNod
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.dsl.ViewResource
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.dsl.ViewString
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.inspectors.sendEvent
+import com.android.tools.idea.layoutinspector.stateinspection.StateReadKey
 import com.android.tools.idea.layoutinspector.ui.FakeRenderSettings
 import com.android.tools.idea.layoutinspector.util.DECOR_VIEW
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
@@ -81,6 +82,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
 import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.keymap.impl.IdeKeyEventDispatcher
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
@@ -99,13 +101,15 @@ import javax.swing.JTable
 import javax.swing.event.TreeModelEvent
 import javax.swing.tree.TreeModel
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.StateReadSettings
 import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsCommand
+import layoutinspector.compose.inspection.LayoutInspectorComposeProtocol.UpdateSettingsResponse
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestName
-import org.mockito.Mockito.verify
-import org.mockito.kotlin.mock
+import org.mockito.Mockito.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 private const val USER_PKG = 123
@@ -268,7 +272,12 @@ class LayoutInspectorTreePanelTest {
       LayoutInspectorComposeProtocol.Response.newBuilder()
         .apply {
           updateSettingsResponse =
-            LayoutInspectorComposeProtocol.UpdateSettingsResponse.getDefaultInstance()
+            UpdateSettingsResponse.newBuilder()
+              .apply {
+                addSupportedStateReadKind(StateReadSettings.Kind.ALL)
+                addSupportedStateReadKind(StateReadSettings.Kind.BY_ID)
+              }
+              .build()
         }
         .build()
     }
@@ -304,6 +313,14 @@ class LayoutInspectorTreePanelTest {
     }
 
     fileOpenCaptureRule.checkEditor("demo.xml", 9, "<TextView")
+  }
+
+  @RunsInEdt
+  @Test
+  fun testGotoDeclarationOnlyHasKeyboardShortCuts() {
+    // Register the shortcuts from the ActionManager:
+    LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    GotoDeclarationAction.shortcutSet.shortcuts.none { it !is KeyboardShortcut }
   }
 
   @RunsInEdt
@@ -1134,6 +1151,40 @@ class LayoutInspectorTreePanelTest {
     assertThat(inspectorRule.inspector.inspectorModel.selectionListeners.size()).isEqualTo(0)
     assertThat(inspectorRule.inspector.inspectorModel.connectionListeners.size()).isEqualTo(0)
     assertThat(inspectorRule.inspector.inspectorModel.modificationListeners.size()).isEqualTo(3)
+  }
+
+  @RunsInEdt
+  @Test
+  fun testStateReadPanelActivation() {
+    StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS.overrideForTest(
+      true,
+      projectRule.testRootDisposable,
+    )
+    val panel = LayoutInspectorTreePanel(projectRule.fixture.testRootDisposable)
+    val inspector = inspectorRule.inspector
+    inspector.treeSettings.showRecompositions = true
+    setToolContext(panel, inspector)
+    UIUtil.dispatchAllInvocationEvents()
+    val tree = panel.tree
+    val table = panel.focusComponent as JTable
+    table.setUI(HeadlessTableUI())
+    tree.setUI(HeadlessTreeUI())
+    TreeUtil.expandAll(tree)
+    val model = inspectorRule.inspectorModel
+    val compose1 = model[COMPOSE1] as ComposeViewNode
+    inspectorRule.inspectorModel.setSelection(compose1, SelectionOrigin.INTERNAL)
+    table.setBounds(0, 0, 500, 1000)
+    val ui = FakeUi(table)
+    val row = table.selectedRow
+    val bounds = table.getCellRect(row, 1, true)
+    ui.mouse.click(bounds.centerX.toInt(), bounds.centerY.toInt())
+    // Expect no state reads selected since the node is not being observed:
+    assertThat(model.stateReadsModel.stateReadRequested.value).isNull()
+
+    model.stateReadsModel.observeNode(compose1)
+    ui.mouse.click(bounds.centerX.toInt(), bounds.centerY.toInt())
+    // Expect state reads selected for compose1:
+    assertThat(model.stateReadsModel.stateReadRequested.value).isEqualTo(StateReadKey(compose1, 7))
   }
 
   private fun setToolContext(tree: LayoutInspectorTreePanel, inspector: LayoutInspector) {

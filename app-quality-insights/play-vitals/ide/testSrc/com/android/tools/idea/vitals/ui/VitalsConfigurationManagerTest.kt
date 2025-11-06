@@ -17,9 +17,10 @@ package com.android.tools.idea.vitals.ui
 
 import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.client.AppConnection
+import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.AppInsightsClient
+import com.android.tools.idea.insights.model.connection.AppConnection
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.vitals.VitalsLoginFeature
@@ -56,7 +57,7 @@ class VitalsConfigurationManagerTest {
       val configManager =
         VitalsConfigurationManager(
           projectRule.project,
-          AppInsightsCacheImpl(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
           MutableStateFlow(true),
           projectRule.testRootDisposable,
           client,
@@ -80,7 +81,7 @@ class VitalsConfigurationManagerTest {
       val configManager =
         VitalsConfigurationManager(
           projectRule.project,
-          AppInsightsCacheImpl(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
           parentDisposable = projectRule.testRootDisposable,
           testClient = client,
         )
@@ -107,7 +108,7 @@ class VitalsConfigurationManagerTest {
       val configManager =
         VitalsConfigurationManager(
           projectRule.project,
-          AppInsightsCacheImpl(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
           parentDisposable = projectRule.testRootDisposable,
           testClient = client,
         )
@@ -135,7 +136,7 @@ class VitalsConfigurationManagerTest {
       val configManager =
         VitalsConfigurationManager(
           projectRule.project,
-          AppInsightsCacheImpl(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
           parentDisposable = projectRule.testRootDisposable,
           testClient = client,
         )

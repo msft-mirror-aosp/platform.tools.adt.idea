@@ -15,11 +15,13 @@
  */
 package com.android.tools.idea.insights.ai
 
+import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.experiments.InsightFeedback
 
 data class AiInsight(
   val rawInsight: String,
+  val event: Event,
   val isCached: Boolean = false,
   val insightSource: InsightSource = InsightSource.UNKNOWN,
   val feedback: InsightFeedback = InsightFeedback.NONE,

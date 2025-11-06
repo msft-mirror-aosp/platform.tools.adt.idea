@@ -438,7 +438,7 @@ android-studio/jbr/release
 android-studio/lib/annotations.jar
 android-studio/lib/app.jar
 android-studio/lib/bouncy-castle.jar
-android-studio/lib/build-marker-AI-252.25557.131.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-252.27397.103.__BUILD_NUMBER__
 android-studio/lib/eclipse.lsp4j.debug.jar
 android-studio/lib/eclipse.lsp4j.jar
 android-studio/lib/eclipse.lsp4j.jsonrpc.debug.jar
@@ -466,6 +466,7 @@ android-studio/lib/modules/intellij.grid.impl.jar
 android-studio/lib/modules/intellij.grid.jar
 android-studio/lib/modules/intellij.grid.types.jar
 android-studio/lib/modules/intellij.libraries.ai.grazie.spell.gec.engine.local.jar
+android-studio/lib/modules/intellij.libraries.coil.jar
 android-studio/lib/modules/intellij.libraries.compose.foundation.desktop.jar
 android-studio/lib/modules/intellij.libraries.grpc.jar
 android-studio/lib/modules/intellij.libraries.grpc.netty.shaded.jar
@@ -538,7 +539,6 @@ android-studio/lib/modules/intellij.platform.recentFiles.frontend.jar
 android-studio/lib/modules/intellij.platform.recentFiles.jar
 android-studio/lib/modules/intellij.platform.rpc.backend.jar
 android-studio/lib/modules/intellij.platform.scopes.backend.jar
-android-studio/lib/modules/intellij.platform.scopes.jar
 android-studio/lib/modules/intellij.platform.searchEverywhere.backend.jar
 android-studio/lib/modules/intellij.platform.searchEverywhere.frontend.jar
 android-studio/lib/modules/intellij.platform.searchEverywhere.jar
@@ -2276,6 +2276,7 @@ android-studio/plugins/android/lib/auto-common-0.10.jar
 android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 android-studio/plugins/android/lib/build-analysis-results-proto.jar
 android-studio/plugins/android/lib/build-common.jar
+android-studio/plugins/android/lib/chime_kt_proto.jar
 android-studio/plugins/android/lib/commons-lang-2.6.jar
 android-studio/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
 android-studio/plugins/android/lib/compilerCommon.antlr_runtime.shaded_jar.jar
@@ -2389,6 +2390,7 @@ android-studio/plugins/android/resources/app-inspection/database-inspector.jar
 android-studio/plugins/android/resources/app-inspection/layoutinspector-view-inspection.jar
 android-studio/plugins/android/resources/app-inspection/network-inspector.jar
 android-studio/plugins/android/resources/app-inspection/sqlite-inspection.jar
+android-studio/plugins/android/resources/device-art-resources/ai_glasses_device/default-background-1.png
 android-studio/plugins/android/resources/device-art-resources/automotive_1024/back.png
 android-studio/plugins/android/resources/device-art-resources/automotive_1024/fore.png
 android-studio/plugins/android/resources/device-art-resources/automotive_1024/layout
@@ -2759,6 +2761,7 @@ android-studio/plugins/cidr-clangd/lib/xtext-xbase.jar
 android-studio/plugins/cidr-debugger/lib/LICENSE.txt
 android-studio/plugins/cidr-debugger/lib/antlr4-runtime.jar
 android-studio/plugins/cidr-debugger/lib/cidr-debugger.jar
+android-studio/plugins/completionMlRanking/lib/completionMlRanking.jar
 android-studio/plugins/compose-ide-plugin/lib/compose-ide-plugin.jar
 android-studio/plugins/compose-ide-plugin/lib/modules/intellij.compose.ide.plugin.gradleTooling.rt.jar
 android-studio/plugins/configurationScript/lib/configurationScript.jar
@@ -3171,6 +3174,7 @@ android-studio/plugins/json/lib/modules/intellij.json.backend.jar
 android-studio/plugins/junit/lib/junit-rt.jar
 android-studio/plugins/junit/lib/junit.jar
 android-studio/plugins/junit/lib/junit5-rt.jar
+android-studio/plugins/junit/lib/junit6-rt.jar
 android-studio/plugins/keymap-eclipse/lib/keymap-eclipse.jar
 android-studio/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 android-studio/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
@@ -3613,6 +3617,8 @@ android-studio/plugins/textmate/lib/textmate.jar
 android-studio/plugins/toml/lib/modules/intellij.toml.backend.jar
 android-studio/plugins/toml/lib/modules/intellij.toml.frontend.jar
 android-studio/plugins/toml/lib/toml.jar
+android-studio/plugins/turboComplete/lib/modules/intellij.turboComplete.languages.kotlin.k1.jar
+android-studio/plugins/turboComplete/lib/turboComplete.jar
 android-studio/plugins/url-assistant/lib/url-assistant.jar
 android-studio/plugins/url-assistant/lib/url-assistant.so.jar
 android-studio/plugins/url-assistant/lib/urlassistant_proto.jar

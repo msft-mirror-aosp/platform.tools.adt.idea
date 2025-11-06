@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -39,6 +40,7 @@ kotlin { jvmToolchain(17) }
 dependencies {
   intellijPlatform {
     intellijIdeaCommunity(libs.versions.idea)
+    testFramework(TestFrameworkType.Bundled)
     bundledPlugin("org.jetbrains.kotlin")
     // Add dependency on Compose and Jewel modules
     bundledModule("intellij.platform.jewel.foundation")
@@ -54,8 +56,8 @@ dependencies {
 dependencies {
   api("androidx.lifecycle:lifecycle-runtime:2.8.7")
   testApi(compose.desktop.uiTestJUnit4)
-  testApi("org.jetbrains.jewel:jewel-int-ui-standalone:0.29.0-252.24604")
-  testApi("org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling:0.29.0-252.24604")
+  testApi("org.jetbrains.jewel:jewel-int-ui-standalone:0.31.0-252.27409")
+  testApi("org.jetbrains.jewel:jewel-markdown-int-ui-standalone-styling:0.31.0-252.27409")
   testImplementation("com.google.truth:truth:0.42")
 }
 

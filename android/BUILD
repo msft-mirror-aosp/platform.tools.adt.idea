@@ -248,6 +248,7 @@ iml_module(
         "//tools/base/environment-services:studio.intellij.android.environment-services",
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [
@@ -436,6 +437,7 @@ filegroup(
         "//tools/vendor/google/firebase:libfirebase_java_proto",
         "//tools/vendor/google/game-tools/main:game-tools-protos",
         "//tools/vendor/google/game-tools/packaging:game-tools-protos",
+        "//tools/vendor/google/marketing:chime_kt_proto",
         "//tools/vendor/google/ml/aiplugin/android-plugin/integration:aida_grpc",
         "//tools/vendor/google/ml/aiplugin/android-plugin/integration:aida_proto",
         "//tools/vendor/google/ml/aiplugin/android-plugin/integration:aida_protobuf",

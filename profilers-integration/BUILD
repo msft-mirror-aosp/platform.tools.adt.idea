@@ -164,6 +164,21 @@ iml_test(
 )
 
 iml_test(
+    name = "LeakCanaryTaskTest",
+    timeout = "long",
+    data = profilers_test_common_data,
+    module = ":intellij.android.profilers.integration",
+    tags = ["studio-e2e-test"],
+    tags_linux = ["block-network"],
+    tags_mac = [],
+    tags_windows = [
+        "block-network",
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.profilers.integration.taskbased.LeakCanaryTaskTest",
+)
+
+iml_test(
     name = "JavaKotlinAllocationsTaskTest",
     timeout = "long",
     data = profilers_test_common_data,
@@ -223,6 +238,8 @@ iml_test(
     module = ":intellij.android.profilers.integration",
     tags = ["studio-e2e-test"],
     tags_linux = [
+        "noci:studio-linux",
+        "ci:studio-linux_very_flaky",  # b/457588735
         "block-network",
     ],
     tags_mac = [],

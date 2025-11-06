@@ -27,6 +27,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnActionWrapper
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.psi.PsiFile
@@ -94,6 +95,22 @@ class PreviewSurfaceActionManagerTest {
   }
 
   @Test
+  fun testCoordinateConversion() {
+    val interactionPane = JPanel().apply { bounds = java.awt.Rectangle(0, 0, 500, 800) }
+    val mouseSource = JPanel().apply { bounds = java.awt.Rectangle(10, 20, 100, 200) }
+    interactionPane.add(mouseSource)
+    whenever(surface.interactionPane).thenReturn(interactionPane)
+    val mouseEvent = MouseEvent(mouseSource, 0, 0L, 0, 123, 456, 1, true)
+
+    val actions = actionManager.getPopupMenuActions(null, mouseEvent)
+    val zoomAction = actions.getChildren(null).filterIsInstance<ZoomToSelectionAction>().single()
+
+    // Check that the point has been converted to the interactionPane coordinates
+    assertThat(zoomAction.x).isEqualTo(123 + 10)
+    assertThat(zoomAction.y).isEqualTo(456 + 20)
+  }
+
+  @Test
   fun testAvailableActionsOnPreviewContextMenuWithDropdownEnabled() {
     testAvailableActionsOnPreviewContextMenu(true)
   }
@@ -150,10 +167,11 @@ class PreviewSurfaceActionManagerTest {
     assertThat(backNavigationAction).isInstanceOf(BackNavigationAction::class.java)
 
     // AI actions
-    val aiActionsDropdown =
+    val aiActionsDefaultGroup =
       (actions[8] as ShowGroupUnderConditionWrapper).getChildren(null).single()
-    assertThat(aiActionsDropdown.templatePresentation.text)
+    assertThat(aiActionsDefaultGroup.templatePresentation.text)
       .isEqualTo(if (aiActionsDropdownEnabled) "previewAgents" else "transformPreview")
+    assertThat(aiActionsDefaultGroup is DefaultActionGroup)
   }
 
   @Test

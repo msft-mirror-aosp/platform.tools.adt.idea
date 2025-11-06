@@ -78,10 +78,6 @@ class InspectorModel(
     fun onHover(oldNode: ViewNode?, newNode: ViewNode?)
   }
 
-  fun interface StateReadsNodeListener {
-    fun onSelection(node: ViewNode?)
-  }
-
   fun interface AttachStageListener {
     fun update(state: DynamicLayoutInspectorErrorInfo.AttachErrorState)
   }
@@ -98,9 +94,6 @@ class InspectorModel(
   val connectionListeners = ListenerCollection.createWithDirectExecutor<ConnectionListener>()
   @VisibleForTesting
   val hoverListeners = ListenerCollection.createWithDirectExecutor<HoverListener>()
-  @VisibleForTesting
-  val stateReadsNodeListeners =
-    ListenerCollection.createWithDirectExecutor<StateReadsNodeListener>()
   @VisibleForTesting
   val attachStageListeners = ListenerCollection.createWithDirectExecutor<AttachStageListener>()
 
@@ -136,14 +129,6 @@ class InspectorModel(
       }
     }
 
-  /** The node currently selected for viewing recomposition state reads. */
-  var stateReadsNode: ViewNode? by
-    Delegates.observable(null as ViewNode?) { _, old, new ->
-      if (new != null || old != null) {
-        stateReadsNodeListeners.forEach { it.onSelection(new) }
-      }
-    }
-
   val windows = ConcurrentHashMap<Any, AndroidWindow>()
   // synthetic node to hold the roots of the current windows.
   val root = ViewNode("android.root - hide")
@@ -151,6 +136,11 @@ class InspectorModel(
   val isXr: Boolean
     get() {
       return windows.values.filterIsInstance<ViewAndroidWindow>().find { it.isXr } != null
+    }
+
+  val hasMultipleDisplays: Boolean
+    get() {
+      return resourceLookup.displays.size > 1
     }
 
   enum class Posture {
@@ -313,7 +303,7 @@ class InspectorModel(
   }
 
   private fun resetRecompositionCounters() {
-    stateReadsNode = null
+    stateReadsModel.stopShowingStateReads()
     maxRecomposition.reset()
     maxHighlight = 0f
     updateAll { node -> (node as? ComposeViewNode)?.resetRecomposeCounts() }
@@ -374,8 +364,9 @@ class InspectorModel(
           }
         }
 
-        if (isXr) {
-          reLayoutWindowsForXr(this, windows.values.toList())
+        if (isXr || hasMultipleDisplays) {
+          // Re-layout as grid, otherwise all the windows will overlap with each other.
+          reLayoutWindowsAsGrid(this, windows.values.toList())
         }
 
         updateRoot(allIds)
@@ -384,9 +375,6 @@ class InspectorModel(
         }
         if (hoveredNode?.parentSequence?.lastOrNull() !== root) {
           hoveredNode = null
-        }
-        if (stateReadsNode?.parentSequence?.lastOrNull() !== root) {
-          stateReadsNode = null
         }
         lastGeneration = generation
         idLookup.clear()
@@ -445,14 +433,6 @@ class InspectorModel(
 
   fun removeHoverListener(listener: HoverListener) {
     hoverListeners.remove(listener)
-  }
-
-  fun addStateReadsNodeListener(listener: StateReadsNodeListener) {
-    stateReadsNodeListeners.add(listener)
-  }
-
-  fun removeStateReadsNodeListener(listener: StateReadsNodeListener) {
-    stateReadsNodeListeners.remove(listener)
   }
 
   fun addAttachStageListener(listener: AttachStageListener) {

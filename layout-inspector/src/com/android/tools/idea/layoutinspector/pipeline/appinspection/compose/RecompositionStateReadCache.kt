@@ -15,12 +15,16 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.appinspection.compose
 
+import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.layoutinspector.model.AndroidWindow
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.InspectorModel
-import com.android.tools.idea.layoutinspector.stateinspection.StateReadProvider
-import com.android.tools.idea.layoutinspector.tree.TreeSettings
+import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes
+import com.android.tools.idea.layoutinspector.stateinspection.StateReadKey
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 /** The max number of [composable,recompositions] to keep state reads for. */
@@ -35,9 +39,9 @@ private const val MAX_CACHE_SIZE = 2000
 class RecompositionStateReadCache(
   private val client: ComposeLayoutInspectorClient,
   private val model: InspectorModel,
-  private val scope: CoroutineScope,
-  private val treeSettings: TreeSettings,
-) : StateReadProvider {
+  parentScope: CoroutineScope,
+) {
+  private val scope = parentScope.createChildScope()
   private val cache = LruCache()
   private var pendingRequest: Key? = null
   private val modificationListener =
@@ -48,9 +52,9 @@ class RecompositionStateReadCache(
         isStructuralChange: Boolean,
       ) {
         val pending = pendingRequest ?: return
-        val composable = model.stateReadsNode as? ComposeViewNode
+        val composable = model.stateReadsModel.stateReadRequested.value?.composable
         if (composable == null || composable.anchorHash != pending.anchorHash) {
-          // The composable from the pending request is no longer being observed:
+          // The composable from the pending request is no longer the requested node.
           pendingRequest = null
           return
         }
@@ -64,24 +68,34 @@ class RecompositionStateReadCache(
         }
       }
     }
-  private val stateReadNodeListener =
-    InspectorModel.StateReadsNodeListener {
-      if (!treeSettings.observeStateReadsForAll) {
-        scope.launch { client.updateSettings(keepRecompositionCounts = true) }
-      }
-    }
 
   init {
     model.addModificationListener(modificationListener)
-    model.addStateReadsNodeListener(stateReadNodeListener)
+    scope.launch {
+      // The ComposeInspectorClient will send an updateSettings command to the agent during creation
+      // with the initial observedForStateReads value of None. There is no need to send it again.
+      model.stateReadsModel.observedForStateReads.drop(1).collect { observing ->
+        client.updateSettings(keepRecompositionCounts = true)
+        when (observing) {
+          is ObservedNodes.None -> clear()
+          is ObservedNodes.Some -> cache.removeAllExcept(observing.nodes.map { it.anchorHash })
+          is ObservedNodes.All -> {}
+        }
+      }
+    }
+    scope.launch {
+      model.stateReadsModel.stateReadRequested.filterNotNull().collect { key ->
+        requestRecompositionStateReads(key.composable, key.recomposition)
+      }
+    }
   }
 
   fun disconnect() {
     model.removeModificationListener(modificationListener)
-    model.removeStateReadsNodeListener(stateReadNodeListener)
+    scope.cancel()
   }
 
-  override suspend fun requestRecompositionStateReads(
+  private suspend fun requestRecompositionStateReads(
     composable: ComposeViewNode,
     recomposition: Int,
   ) {
@@ -89,7 +103,11 @@ class RecompositionStateReadCache(
     val node = lookup(key) ?: fetchDataFor(key) ?: cache.closest(key)
     val result =
       node?.let {
-        RecomposeStateReadResult(composable, node.recomposition, node.reads, node.prev != null)
+        RecomposeStateReadResult(
+          StateReadKey(composable, node.recomposition),
+          node.reads,
+          node.prev != null,
+        )
       }
     model.stateReadsModel.stateReads.emit(result)
     if (result == null) {
@@ -259,6 +277,17 @@ class RecompositionStateReadCache(
     // Move this node in front of the LRU cache i.e. less likely to be discarded
     private fun StateReadNode.access(anchorHash: Int) {
       super.get(Key(anchorHash, this.recomposition))
+    }
+
+    fun removeAllExcept(anchorsToKeep: List<Int>) {
+      val anchors = top.keys.toMutableSet()
+      anchors.removeAll(anchorsToKeep.toSet())
+      anchors.forEach { anchorHash ->
+        val topNode = top[anchorHash] ?: return@forEach
+        dropAllPriorTo(anchorHash, topNode)
+        super.remove(Key(anchorHash, topNode.recomposition))
+        top.remove(anchorHash)
+      }
     }
 
     fun dropAllPriorTo(anchorHash: Int, node: StateReadNode) {

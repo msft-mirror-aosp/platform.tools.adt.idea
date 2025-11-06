@@ -22,12 +22,14 @@ import com.android.ddmlib.internal.FakeAdbTestRule
 import com.android.flags.junit.FlagRule
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.MockitoCleanerRule
+import com.android.testutils.waitForCondition
 import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerException
 import com.android.tools.idea.backup.BackupManager
 import com.android.tools.idea.backup.BackupManager.Source.RUN_CONFIG
 import com.android.tools.idea.backup.testing.FakeBackupManager
+import com.android.tools.idea.backup.testing.FakeBackupManager.RestoreInvocation
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.editors.liveedit.LiveEditServiceImpl
 import com.android.tools.idea.execution.common.AndroidExecutionTarget
@@ -77,11 +79,16 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.common.ThreadLeakTracker
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.IndexingTestUtil
-import com.intellij.testFramework.replaceService
+import com.intellij.testFramework.common.ThreadLeakTracker
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import com.intellij.testFramework.runInEdtAndWait
-import kotlinx.coroutines.runBlocking
+import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.test.fail
+import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Assert.assertThrows
 import org.junit.Before
@@ -99,10 +106,6 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.nio.file.Path
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.test.fail
 
 /**
  * Unit test for [AndroidRunConfigurationExecutor].
@@ -114,6 +117,8 @@ class AndroidRunConfigurationExecutorTest {
   }
 
   val closeables = CloseablesRule()
+
+  val disposableRule = DisposableRule()
 
   val fakeAdb = FakeAdbTestRule()
 
@@ -133,22 +138,21 @@ class AndroidRunConfigurationExecutorTest {
     .around(closeables)
     .around(usageTrackerRule)
     .around(projectRule)
+    .around(disposableRule)
     .around(fakeAdb)
     .around(FlagRule(StudioFlags.BACKUP_ENABLED, true))
 
-  private val mockBackupManager = mock<BackupManager>()
+  private val fakeBackupManager = FakeBackupManager()
 
   @Before
   fun setUp() {
     // InnocuousThread- is needed because adblib's AsynchronousChannelGroup is reusing IJ's background threads.
     ThreadLeakTracker.longRunningThreadCreated(ApplicationManager.getApplication(), "InnocuousThread-")
-
-    projectRule.replaceProjectService(BackupManager::class.java, mockBackupManager)
-    runBlocking {
-      whenever(mockBackupManager.isInstalled(any(), any())).thenReturn(true)
-      whenever(mockBackupManager.getRestoreRunConfigSection(any()))
-        .thenReturn(FakeBackupManager().getRestoreRunConfigSection(projectRule.project))
-    }
+    projectRule.project.registerOrReplaceServiceInstance(
+      BackupManager::class.java,
+      fakeBackupManager,
+      disposableRule.disposable
+    )
 
     IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project);
   }
@@ -209,9 +213,11 @@ class AndroidRunConfigurationExecutorTest {
     assertThat(processHandler.autoTerminate).isEqualTo(true)
     assertThat(processHandler.isAssociated(device)).isEqualTo(true)
     assertThat(AndroidSessionInfo.from(processHandler)).isNotNull()
-    runBlocking {
-      verify(mockBackupManager).restore("test_device_001", Path.of("foo.backup"), RUN_CONFIG, null, false)
-    }
+
+    waitForCondition(3.seconds) { fakeBackupManager.restoreInvocations.isNotEmpty() }
+    assertThat(fakeBackupManager.restoreInvocations).containsExactly(
+      RestoreInvocation("test_device_001", Path.of("foo.backup"), RUN_CONFIG, false)
+    )
 
     if (!latch.await(10, TimeUnit.SECONDS)) {
       fail("Activity is not started")
@@ -267,9 +273,11 @@ class AndroidRunConfigurationExecutorTest {
     assertTaskPresentedInStats(usageTrackerRule.usages, "waitForProcessTermination")
     assertTaskPresentedInStats(usageTrackerRule.usages, "SPECIFIC_ACTIVITY")
     assertTaskPresentedInStats(usageTrackerRule.usages, "startDebuggerSession")
-    runBlocking {
-      verify(mockBackupManager).restore("test_device_001", Path.of("foo.backup"), RUN_CONFIG, null, false)
-    }
+
+    waitForCondition(3.seconds) { fakeBackupManager.restoreInvocations.isNotEmpty() }
+    assertThat(fakeBackupManager.restoreInvocations).containsExactly(
+      RestoreInvocation("test_device_001", Path.of("foo.backup"), RUN_CONFIG, false)
+    )
 
     assertThat(!processHandler.isProcessTerminating || !processHandler.isProcessTerminated).isTrue()
     deviceState.stopClient(1234)
@@ -779,7 +787,7 @@ class AndroidRunConfigurationExecutorTest {
   private fun setSwapInfo(env: ExecutionEnvironment, device: IDevice): RunContentDescriptor {
     val processHandlerForSwap = AndroidProcessHandler(APPLICATION_ID).apply { addTargetDevice(device) }
     processHandlerForSwap.startNotify()
-    Disposer.register(projectRule.project) {
+    Disposer.register(projectRule.testRootDisposable) {
       processHandlerForSwap.detachProcess()
     }
     var runContentDescriptor: RunContentDescriptor? = null
@@ -787,14 +795,15 @@ class AndroidRunConfigurationExecutorTest {
       runContentDescriptor = showRunContent(DefaultExecutionResult(EmptyTestConsoleView(), processHandlerForSwap), env)!!.apply {
         setAttachedContent(mock())
       }
+      Disposer.register(projectRule.testRootDisposable, runContentDescriptor)
 
       val mockRunContentManager = mock<RunContentManager>()
       whenever(mockRunContentManager.findContentDescriptor(eq(env.executor), eq(processHandlerForSwap))).thenReturn(runContentDescriptor)
-      projectRule.project.replaceService(RunContentManager::class.java, mockRunContentManager, projectRule.testRootDisposable)
+      projectRule.project.registerOrReplaceServiceInstance(RunContentManager::class.java, mockRunContentManager, disposableRule.disposable)
 
       val mockExecutionManager = mock<ExecutionManagerImpl>()
       whenever(mockExecutionManager.getRunningDescriptors(any())).thenReturn(listOf(runContentDescriptor!!))
-      projectRule.project.replaceService(ExecutionManager::class.java, mockExecutionManager, projectRule.testRootDisposable)
+      projectRule.project.registerOrReplaceServiceInstance(ExecutionManager::class.java, mockExecutionManager, disposableRule.disposable)
     }
     AndroidSessionInfo.create(processHandlerForSwap, listOf(device), APPLICATION_ID)
     return runContentDescriptor!!

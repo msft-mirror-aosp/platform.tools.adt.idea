@@ -35,11 +35,13 @@ import com.android.sdklib.internal.avd.AvdCamera
 import com.android.sdklib.internal.avd.AvdNetworkLatency
 import com.android.sdklib.internal.avd.AvdNetworkSpeed
 import com.android.tools.adtui.compose.grid.Grid
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avd.StorageCapacityFieldState.Empty
 import com.android.tools.idea.avd.StorageCapacityFieldState.LessThanMin
 import com.android.tools.idea.avd.StorageCapacityFieldState.Overflow
 import com.android.tools.idea.avd.StorageCapacityFieldState.Result
 import com.android.tools.idea.avd.StorageCapacityFieldState.Valid
+import com.android.tools.idea.avdmanager.skincombobox.Skin
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.plus
 import kotlinx.collections.immutable.toImmutableList
@@ -55,16 +57,10 @@ internal fun AdditionalSettingsPanel(
 ) {
   val device = state.device
   Column(modifier, verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE)) {
-    Row {
-      Text("Device skin", Modifier.padding(end = Padding.SMALL).alignByBaseline())
-
-      Dropdown(
-        device.skin,
-        state.skins().toImmutableList(),
-        onSelectedItemChange = { device.skin = it },
-        Modifier.alignByBaseline().testTag("DeviceSkinDropdown"),
-        !device.isFoldable,
-      )
+    when (device.formFactor) {
+      FormFactors.AI_GLASSES,
+      FormFactors.XR_GLASSES -> GlassesEnvironmentSelector(device, state)
+      else -> SkinSelector(device, state.skins())
     }
 
     CameraGroup(device)
@@ -88,6 +84,21 @@ internal fun AdditionalSettingsPanel(
 }
 
 @Composable
+private fun SkinSelector(device: VirtualDevice, skins: Iterable<Skin>) {
+  Row {
+    Text("Device skin", Modifier.padding(end = Padding.SMALL).alignByBaseline())
+
+    Dropdown(
+      device.skin,
+      skins.toImmutableList(),
+      onSelectedItemChange = { device.skin = it },
+      Modifier.alignByBaseline().testTag("DeviceSkinDropdown"),
+      !device.isFoldable,
+    )
+  }
+}
+
+@Composable
 private fun CameraGroup(device: VirtualDevice) {
   if (device.cameraLocations.isEmpty()) {
     return
@@ -102,17 +113,17 @@ private fun CameraGroup(device: VirtualDevice) {
 
           Dropdown(
             device.frontCamera,
-            FRONT_CAMERAS,
+            device.frontCameraOptions().toImmutableList(),
             onSelectedItemChange = { device.frontCamera = it },
             Modifier.alignByBaseline().width(DROPDOWN_WIDTH).padding(end = Padding.MEDIUM),
           )
 
           InfoOutlineIcon(
             """
-        None: no camera installed for AVD
-        Emulated: use a simulated camera
-        Webcam0: use host computer webcam or built-in camera
-        """
+            None: no camera installed for AVD
+            Emulated: use a simulated camera
+            Webcam0: use host computer webcam or built-in camera
+            """
               .trimIndent(),
             Modifier.align(Alignment.CenterVertically),
           )
@@ -125,18 +136,18 @@ private fun CameraGroup(device: VirtualDevice) {
 
           Dropdown(
             device.rearCamera,
-            REAR_CAMERAS,
+            device.rearCameraOptions().toImmutableList(),
             onSelectedItemChange = { device.rearCamera = it },
             Modifier.alignByBaseline().width(DROPDOWN_WIDTH).padding(end = Padding.MEDIUM),
           )
 
           InfoOutlineIcon(
             """
-        None: no camera installed for AVD
-        VirtualScene: use a virtual camera in a simulated environment
-        Emulated: use a simulated camera
-        Webcam0: use host computer webcam or built-in camera
-        """
+            None: no camera installed for AVD
+            VirtualScene: use a virtual camera in a simulated environment
+            Emulated: use a simulated camera
+            Webcam0: use host computer webcam or built-in camera
+            """
               .trimIndent(),
             Modifier.align(Alignment.CenterVertically),
           )
@@ -146,10 +157,20 @@ private fun CameraGroup(device: VirtualDevice) {
   }
 }
 
-private val FRONT_CAMERAS =
-  listOf(AvdCamera.NONE, AvdCamera.EMULATED, AvdCamera.WEBCAM).toImmutableList()
+private fun VirtualDevice.frontCameraOptions(): List<AvdCamera> =
+  listOfNotNull(
+    AvdCamera.NONE,
+    AvdCamera.EMULATED.takeUnless { formFactor == FormFactors.AI_GLASSES },
+    AvdCamera.WEBCAM,
+  )
 
-private val REAR_CAMERAS = AvdCamera.values().asIterable().toImmutableList()
+private fun VirtualDevice.rearCameraOptions(): List<AvdCamera> =
+  listOfNotNull(
+    AvdCamera.NONE,
+    AvdCamera.VIRTUAL_SCENE,
+    AvdCamera.EMULATED.takeUnless { formFactor == FormFactors.AI_GLASSES },
+    AvdCamera.WEBCAM,
+  )
 
 @Composable
 private fun NetworkGroup(device: VirtualDevice) {
@@ -237,11 +258,11 @@ private fun StartupGroup(device: VirtualDevice) {
 
         InfoOutlineIcon(
           """
-        Choose how the AVD should start
+          Choose how the AVD should start
 
-        Cold: start as from a power-up
-        Quick: start from the state that was saved when the AVD last exited
-        """
+          Cold: start as from a power-up
+          Quick: start from the state that was saved when the AVD last exited
+          """
             .trimIndent(),
           Modifier.align(Alignment.CenterVertically).padding(start = Padding.MEDIUM),
         )

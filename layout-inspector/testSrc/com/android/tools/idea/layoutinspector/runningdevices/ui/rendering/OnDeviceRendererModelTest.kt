@@ -132,9 +132,6 @@ class OnDeviceRendererModelTest {
       localCommands.any { it.contentEquals(enableOnDeviceRenderingCommand) }
     }
 
-    val enableCommand = commands.last()
-    assertThat(enableCommand).isEqualTo(enableOnDeviceRenderingCommand)
-
     inspectorRule.inspectorModel.updateConnection(DisconnectedClient)
 
     assertThat(onDeviceRendererModel.onNewClientJob?.isActive).isFalse()

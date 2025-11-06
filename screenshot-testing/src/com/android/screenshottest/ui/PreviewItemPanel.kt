@@ -15,6 +15,8 @@
  */
 package com.android.screenshottest.ui
 
+import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
+import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -40,18 +42,19 @@ import javax.swing.JPanel
 private const val MAX_IMAGE_SIZE = 200
 
 /**
- * A UI panel that displays a single screenshot test preview, including its image and details.
+ * A UI panel that displays a single screenshot test preview image.
  */
 class PreviewItemPanel(
   val previewData: PreviewDetails,
   private val onImageLoaded: () -> Unit,
+  private val showDetails: Boolean = true,
   private val logger: Logger = Logger.getInstance(PreviewItemPanel::class.java)
 ) : JPanel() {
   private val imagePanel: ImagePanel
-  private val detailsPanel: JPanel
   var isLoadedSuccessfully: Boolean = false
     private set
   val loadedImagePaths = mutableMapOf<String, String>() // imagePath to simpleClassName
+  val sourceImageToCopy = mutableMapOf<String, String>()
 
   init {
     // Use GridBagLayout to stack components vertically without forcing them to the same width.
@@ -68,37 +71,82 @@ class PreviewItemPanel(
     c.gridy = 0
     add(imagePanel, c)
 
-    detailsPanel =
-      JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        border = BorderFactory.createEmptyBorder(8, 0, 0, 0)
-      }
-    val matchLabel =
-      JBLabel("New").apply {
-        foreground = JBColor.GREEN.darker()
-        font = font.deriveFont(Font.BOLD)
-        alignmentX = JComponent.LEFT_ALIGNMENT
-      }
+    if (showDetails) {
+      val detailsPanel =
+        JPanel().apply {
+          layout = BoxLayout(this, BoxLayout.Y_AXIS)
+          border = BorderFactory.createEmptyBorder(8, 0, 0, 0)
+        }
+
+    val diffDouble = previewData.diffPercent?.toDoubleOrNull()
+    val matchPercentage = ScreenshotTestUtils.calculateMatchPercentage(diffDouble)
+
+    val matchLabel = JBLabel(matchPercentage ?: "0.00%").apply {
+      foreground = if (previewData.testResult == AndroidTestCaseResult.PASSED) JBColor.GREEN.darker() else JBColor.RED
+      font = font.deriveFont(Font.BOLD)
+      alignmentX = JComponent.LEFT_ALIGNMENT
+    }
     val previewNameLabel =
-      JBLabel(previewData.toString()).apply { alignmentX = JComponent.LEFT_ALIGNMENT }
+      JBLabel(previewData.previewName).apply { alignmentX = JComponent.LEFT_ALIGNMENT }
     detailsPanel.add(matchLabel)
     detailsPanel.add(previewNameLabel)
     // TODO: Add Composable link
 
-    c.gridy = 1
-    add(detailsPanel, c)
+      c.gridy = 1
+      add(detailsPanel, c)
+    }
   }
 
   fun showError(message: String) {
     ApplicationManager.getApplication().invokeLater {
       isLoadedSuccessfully = false
-      imagePanel.showError(message)
+      imagePanel.showText(message)
+    }
+  }
+
+  private fun showPlaceholder(message: String, color: JBColor) {
+    ApplicationManager.getApplication().invokeLater {
+      imagePanel.showText(message, color)
+    }
+  }
+
+  fun showImageForView(viewType: UpdateReferenceImagesDialog.ScreenshotViewType) {
+    when (viewType) {
+      UpdateReferenceImagesDialog.ScreenshotViewType.ALL -> {
+      }
+      UpdateReferenceImagesDialog.ScreenshotViewType.NEW -> {
+        previewData.srcImagePath?.let { loadImage(it, previewData.testId) } ?: showError("No New Image")
+      }
+      UpdateReferenceImagesDialog.ScreenshotViewType.DIFF -> {
+        val diffPath = previewData.diffImagePath
+        if (diffPath != null && File(diffPath).exists()) {
+          loadImage(diffPath, previewData.testId)
+        } else {
+          if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+            showPlaceholder("No Difference", JBColor.GREEN)
+          } else {
+            showPlaceholder("No Diff Image", JBColor.RED)
+          }
+        }
+      }
+      UpdateReferenceImagesDialog.ScreenshotViewType.REFERENCE -> {
+        val refPath = previewData.destImagePath
+        if (refPath != null && File(refPath).exists()) {
+          loadImage(refPath, previewData.testId)
+        } else {
+          showPlaceholder("No Reference Image", JBColor.RED)
+        }
+      }
     }
   }
 
   fun loadImage(newPath: String, testId: String) {
     val simpleClassName = testId.split('.', limit = 2).first()
     loadedImagePaths[newPath] = simpleClassName
+
+    if (sourceImageToCopy.isEmpty()) {
+      previewData.srcImagePath?.let { sourceImageToCopy[it] = simpleClassName }
+    }
 
     ApplicationManager.getApplication().executeOnPooledThread {
       val image = createImageIcon(newPath)
@@ -166,10 +214,10 @@ class PreviewItemPanel(
   private class ImagePanel : JPanel(GridBagLayout()) {
     private var image: JBImageIcon? = null
     private val loadingIcon = AsyncProcessIcon("Waiting for image...")
+    private val initialSize = Dimension(200, 200)
 
     init {
       // Set an initial fixed size for the loading state.
-      val initialSize = Dimension(200, 200)
       preferredSize = initialSize
       maximumSize = initialSize
       border = BorderFactory.createLineBorder(JBColor.border())
@@ -189,9 +237,15 @@ class PreviewItemPanel(
       repaint()
     }
 
-    fun showError(message: String) {
+    fun showText(message: String, color: JBColor = JBColor.RED) {
+      this.image = null
       removeAll()
-      add(JBLabel(message).apply { foreground = JBColor.RED })
+      add(JBLabel(message).apply { foreground = color })
+
+      // Reset to the initial size to ensure the placeholder text is not clipped.
+      preferredSize = initialSize
+      maximumSize = initialSize
+
       revalidate()
       repaint()
     }

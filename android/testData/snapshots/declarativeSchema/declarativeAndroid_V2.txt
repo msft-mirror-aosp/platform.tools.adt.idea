@@ -316,20 +316,12 @@ Projects:
             com.android.build.api.dsl.CommonExtension
                 Name                          : com.android.build.api.dsl.CommonExtension
                 MemberFunctions
-                    - MemberFunctionName            : compileOptions
-                      Receiver ReferenceType        : com.android.build.api.dsl.CommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.CompileOptions
                     - MemberFunctionName            : getDefaultProguardFile
                       Receiver ReferenceType        : com.android.build.api.dsl.CommonExtension
                       Parameters
                           - Name                          : name
                             Value SimpleType              : STRING
                       Function ReferenceType        : java.io.File
-                    - MemberFunctionName            : lint
-                      Receiver ReferenceType        : com.android.build.api.dsl.CommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.Lint
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -1272,10 +1264,6 @@ Projects:
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalApplicationExtension
                       Parameters
                       Block ReferenceType           : com.android.build.api.dsl.Lint
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalApplicationExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -1314,24 +1302,12 @@ Projects:
             com.android.build.gradle.internal.dsl.InternalCommonExtension
                 Name                          : com.android.build.gradle.internal.dsl.InternalCommonExtension
                 MemberFunctions
-                    - MemberFunctionName            : compileOptions
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.CompileOptions
                     - MemberFunctionName            : getDefaultProguardFile
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
                       Parameters
                           - Name                          : name
                             Value SimpleType              : STRING
                       Function ReferenceType        : java.io.File
-                    - MemberFunctionName            : lint
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.Lint
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -1361,10 +1337,6 @@ Projects:
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalLibraryExtension
                       Parameters
                       Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_Prefab
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalLibraryExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -1385,24 +1357,12 @@ Projects:
             com.android.build.gradle.internal.dsl.InternalTestedExtension
                 Name                          : com.android.build.gradle.internal.dsl.InternalTestedExtension
                 MemberFunctions
-                    - MemberFunctionName            : compileOptions
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.CompileOptions
                     - MemberFunctionName            : getDefaultProguardFile
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
                       Parameters
                           - Name                          : name
                             Value SimpleType              : STRING
                       Function ReferenceType        : java.io.File
-                    - MemberFunctionName            : lint
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.Lint
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -2871,20 +2831,12 @@ Settings:
             com.android.build.api.dsl.CommonExtension
                 Name                          : com.android.build.api.dsl.CommonExtension
                 MemberFunctions
-                    - MemberFunctionName            : compileOptions
-                      Receiver ReferenceType        : com.android.build.api.dsl.CommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.CompileOptions
                     - MemberFunctionName            : getDefaultProguardFile
                       Receiver ReferenceType        : com.android.build.api.dsl.CommonExtension
                       Parameters
                           - Name                          : name
                             Value SimpleType              : STRING
                       Function ReferenceType        : java.io.File
-                    - MemberFunctionName            : lint
-                      Receiver ReferenceType        : com.android.build.api.dsl.CommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.Lint
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -3827,10 +3779,6 @@ Settings:
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalApplicationExtension
                       Parameters
                       Block ReferenceType           : com.android.build.api.dsl.Lint
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalApplicationExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -3869,24 +3817,12 @@ Settings:
             com.android.build.gradle.internal.dsl.InternalCommonExtension
                 Name                          : com.android.build.gradle.internal.dsl.InternalCommonExtension
                 MemberFunctions
-                    - MemberFunctionName            : compileOptions
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.CompileOptions
                     - MemberFunctionName            : getDefaultProguardFile
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
                       Parameters
                           - Name                          : name
                             Value SimpleType              : STRING
                       Function ReferenceType        : java.io.File
-                    - MemberFunctionName            : lint
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.Lint
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalCommonExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -3916,10 +3852,6 @@ Settings:
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalLibraryExtension
                       Parameters
                       Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_api_dsl_Prefab
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalLibraryExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT
@@ -3940,24 +3872,12 @@ Settings:
             com.android.build.gradle.internal.dsl.InternalTestedExtension
                 Name                          : com.android.build.gradle.internal.dsl.InternalTestedExtension
                 MemberFunctions
-                    - MemberFunctionName            : compileOptions
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.CompileOptions
                     - MemberFunctionName            : getDefaultProguardFile
                       Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
                       Parameters
                           - Name                          : name
                             Value SimpleType              : STRING
                       Function ReferenceType        : java.io.File
-                    - MemberFunctionName            : lint
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
-                      Parameters
-                      Block ReferenceType           : com.android.build.api.dsl.Lint
-                    - MemberFunctionName            : signingConfigs
-                      Receiver ReferenceType        : com.android.build.gradle.internal.dsl.InternalTestedExtension
-                      Parameters
-                      Block ReferenceType           : org.gradle.api.NamedDomainObjectContainer$of$com_android_build_gradle_internal_dsl_SigningConfig
                 Properties
                     - PropertyName                  : compileSdk
                       Property SimpleType           : INT

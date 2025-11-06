@@ -72,6 +72,7 @@ import com.android.tools.idea.projectsystem.gradle.isHolderModule
 import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.util.toIoFile
+import com.intellij.gradle.toolingExtension.impl.model.sourceSetModel.DefaultGradleSourceSetModel
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -229,6 +230,30 @@ private val jbModelDumpers = listOf(
     }
   },
   SpecializedDumper(property = K2JVMCompilerArguments::configurator),
+  // Custom dumper to avoid configurations with empty artifacts being printed
+  SpecializedDumper<DefaultGradleSourceSetModel> { gradleSourceSet ->
+    prop(propertyName, gradleSourceSet::class.simpleName)
+    nest {
+      prop("sourceCompatibility", gradleSourceSet.sourceCompatibility)
+      prop("targetCompatibility", gradleSourceSet.targetCompatibility)
+      prop("taskArtifacts", gradleSourceSet.taskArtifacts)
+      if (gradleSourceSet.configurationArtifacts.values.any { it.isNotEmpty() }) {
+        head("configurationArtifacts")
+        nest {
+          gradleSourceSet.configurationArtifacts
+            .filter { it.value.isNotEmpty() }
+            .toSortedMap()
+            .forEach {
+              prop(it.key, it.value)
+            }
+        }
+      } else if (gradleSourceSet.configurationArtifacts.isNotEmpty()) {
+        prop("configurationArtifacts", "<CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>")
+      }
+      prop("additionalArtifacts", gradleSourceSet.additionalArtifacts)
+      prop("sourceSets", gradleSourceSet.sourceSets)
+    }
+  },
   SpecializedDumper<DefaultExternalSourceSet> { externalSourceSet ->
     head(propertyName)
     nest {
@@ -272,7 +297,7 @@ private val jbModelDumpers = listOf(
  * Note: Other tests in the IDE (e.g., templates, editor, UI tools, deployment) should not use
  * this constant as they don't need to test against the latest preview version of Kotlin.
  */
-const val KOTLIN_VERSION_FOR_TESTS = "2.2.21-RC2"
+const val KOTLIN_VERSION_FOR_TESTS = "2.3.0-Beta2"
 
 fun String.replaceKotlinVersionForTests(): String = replace(KOTLIN_VERSION_FOR_TESTS, "<KOTLIN_VERSION_FOR_TESTS>")
 
@@ -541,7 +566,7 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
       ideAndroidArtifact.desugaredMethodsFiles.forEach { prop("DesugaredMethodFiles") { it.path.toPrintablePath() } }
       ideAndroidArtifact.additionalRuntimeApks.forEach { prop("AdditionalRuntimeApks") { it.path.toPrintablePath() } }
       ideAndroidArtifact.testOptions?.let { dump(it) }
-      ideAndroidArtifact.abiFilters.forEach { prop("AbiFilters") { it } }
+      ideAndroidArtifact.abiFilters.sorted().forEach { prop("AbiFilters") { it } }
     }
 
     private fun dump(ideTestSuiteVariantTarget: IdeTestSuiteVariantTarget) {

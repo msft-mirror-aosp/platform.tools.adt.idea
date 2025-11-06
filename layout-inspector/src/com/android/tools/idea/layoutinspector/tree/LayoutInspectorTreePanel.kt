@@ -39,7 +39,6 @@ import com.android.tools.idea.layoutinspector.model.ViewNode.Companion.readAcces
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient.Capability
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
-import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.snapshots.FileEditorInspectorClient
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.CommonActionsManager
@@ -48,7 +47,9 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.IdeActions
+import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
@@ -148,9 +149,13 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
 
     val gotoDeclarationAction =
       ActionManager.getInstance().getAction(IdeActions.ACTION_GOTO_DECLARATION)
+    val shortcuts =
+      gotoDeclarationAction.shortcutSet.shortcuts
+        .filterIsInstance<KeyboardShortcut>()
+        .toTypedArray()
     if (gotoDeclarationAction != null) {
       GotoDeclarationAction.registerCustomShortcutSet(
-        gotoDeclarationAction.shortcutSet,
+        CustomShortcutSet(*shortcuts),
         componentTreePanel,
         parentDisposable,
       )
@@ -191,8 +196,8 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
         maxInt = { inspectorModel?.maxRecomposition?.count ?: 0 },
         minInt = { 0 },
         headerRenderer = createCountsHeader(),
-        actionEnabled = { item -> isShowRecompositionDetailsEnabled(item.view) },
-        action = { item, _, _ -> showRecompositionDetails(item.view) },
+        actionEnabled = { item -> isStateReadsEnabledForNode(item.view) },
+        action = { item, _, _ -> showStateReadsForNode(item.view) },
       )
 
     val recompositionChildCountColumn =
@@ -352,7 +357,7 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
       interactions.setColumnVisibility(3, show)
       if (!show) {
         // When recompositions are hidden we want to stop showing recomposition details as well.
-        inspectorModel?.stateReadsNode = null
+        inspectorModel?.stateReadsModel?.stopShowingStateReads()
       }
     }
   }
@@ -694,16 +699,17 @@ class LayoutInspectorTreePanel(parentDisposable: Disposable) : ToolContent<Layou
     updateRecompositionColumnVisibility()
   }
 
-  private fun isShowRecompositionDetailsEnabled(view: ViewNode): Boolean {
+  private fun isStateReadsEnabledForNode(view: ViewNode): Boolean {
     return StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS.get() &&
       layoutInspector.hasCapability(Capability.CAN_OBSERVE_RECOMPOSE_STATE_READS) &&
       view.recompositions.count > 0 &&
-      LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
+      view is ComposeViewNode &&
+      inspectorModel?.stateReadsModel?.isNodeObserved(view) == true
   }
 
-  private fun showRecompositionDetails(view: ViewNode) {
-    if (isShowRecompositionDetailsEnabled(view)) {
-      inspectorModel?.stateReadsNode = view
+  private fun showStateReadsForNode(view: ViewNode) {
+    if (isStateReadsEnabledForNode(view)) {
+      inspectorModel?.stateReadsModel?.requestStateReadFor(view as ComposeViewNode)
     }
   }
 

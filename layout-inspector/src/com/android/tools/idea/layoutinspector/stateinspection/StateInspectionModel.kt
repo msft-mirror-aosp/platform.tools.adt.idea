@@ -19,12 +19,14 @@ import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.InspectorModel
-import com.android.tools.idea.layoutinspector.model.InspectorModel.StateReadsNodeListener
+import com.android.tools.idea.layoutinspector.model.InspectorModel.SelectionListener
+import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ParameterGroupItem
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ParameterItem
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.RecomposeStateReadData
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.RecomposeStateReadResult
 import com.android.tools.idea.layoutinspector.properties.PropertyType
+import com.android.tools.idea.layoutinspector.ui.LayoutInspectorRootPanel
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -82,8 +84,8 @@ internal interface StateInspectionModel {
 internal class StateInspectionModelImpl(
   private val model: InspectorModel,
   parentScope: CoroutineScope,
-  private val stateReadProvider: () -> StateReadProvider?,
   parentDisposable: Disposable,
+  private val resultShown: () -> Unit,
 ) : StateInspectionModel {
   private val scope = parentScope.createChildScope(parentDisposable = parentDisposable)
   private var currentNode: ComposeViewNode? = null
@@ -108,10 +110,7 @@ internal class StateInspectionModelImpl(
     createAction(
       AllIcons.General.HideToolWindow,
       HIDE_DESCRIPTION_KEY,
-      {
-        _show.value = false
-        stopStateObservations()
-      },
+      { model.stateReadsModel.stopShowingStateReads() },
     )
 
   private val _stateReadsText = MutableStateFlow("")
@@ -126,53 +125,99 @@ internal class StateInspectionModelImpl(
   private val _updates = MutableStateFlow(0)
   override val updates = _updates.asStateFlow()
 
-  private val listener = StateReadsNodeListener { view ->
-    val composable = view as? ComposeViewNode
-    _show.value = (composable != null)
-    if (composable != null) {
-      loadRecompositionStateReads(composable, composable.recompositions.count)
-    } else {
-      stopStateObservations()
-    }
+  private enum class InactiveState(private val messageId: String) {
+    WAITING("layout.inspector.recomposition.waiting"),
+    VIEW("layout.inspector.recomposition.view"),
+    NOT_OBSERVED("layout.inspector.recomposition.not.observed");
+
+    fun message() = LayoutInspectorBundle.message(messageId)
   }
+
+  private val listener = SelectionListener { _, view, _ -> updateStateOfSelection(view) }
 
   private val updateListener =
     InspectorModel.ModificationListener { _, _, _ -> _updates.value += 1 }
 
   init {
-    model.addStateReadsNodeListener(listener)
+    model.addSelectionListener(listener)
     model.addModificationListener(updateListener)
+    scope.launch {
+      model.stateReadsModel.stateReadRequested.collect { key ->
+        if (key != null) {
+          _show.value = true
+          showInactiveState(InactiveState.WAITING)
+        } else {
+          _show.value = false
+          stopStateObservations()
+        }
+      }
+    }
     scope.launch {
       model.stateReadsModel.stateReads.filterNotNull().collect { result -> showResult(result) }
     }
+    scope.launch {
+      model.stateReadsModel.observedForStateReads.collect {
+        updateStateOfSelection(model.selection)
+      }
+    }
     Disposer.register(parentDisposable) {
-      model.removeStateReadsNodeListener(listener)
+      model.removeSelectionListener(listener)
       model.removeModificationListener(updateListener)
     }
   }
 
+  private fun updateStateOfSelection(view: ViewNode?) {
+    val requested = model.stateReadsModel.stateReadRequested.value
+    if (requested != null) {
+      when {
+        view !is ComposeViewNode -> showInactiveState(InactiveState.VIEW)
+        !model.stateReadsModel.isNodeObserved(view) -> showInactiveState(InactiveState.NOT_OBSERVED)
+        view.anchorHash == currentNode?.anchorHash -> {} // Keep current recomposition
+        else -> loadRecompositionStateReads(view)
+      }
+    }
+  }
+
   private fun showResult(result: RecomposeStateReadResult) {
-    currentNode = result.node
-    currentRecomposition = result.recomposition
+    val node = result.key.composable
+    currentNode = node
+    currentRecomposition = result.key.recomposition
     hasStateReadsForPreviousRecomposition = result.hasStateReadsForPreviousRecomposition
     _recompositionText.value = generateRecompositionText()
     _stateReadsText.value = generateStateReadsText(result.reads.size)
     _stackTraceText.value = generateStackTraces(result.reads)
-    _composableInspected.value =
-      ComposableDefinition(result.node.qualifiedName, result.node.composeFilename)
+    _composableInspected.value = ComposableDefinition(node.qualifiedName, node.composeFilename)
     _updates.value += 1
+    resultShown()
   }
 
-  private fun loadRecompositionStateReads(composable: ComposeViewNode, recomposition: Int) {
-    if (composable.anchorHash != currentNode?.anchorHash) {
-      currentNode = null
-      _recompositionText.value =
-        LayoutInspectorBundle.message("layout.inspector.recomposition.waiting")
-      _stateReadsText.value = ""
-      _stackTraceText.value = ""
-      _updates.value += 1
+  private fun loadRecompositionStateReads(
+    composable: ComposeViewNode,
+    recomposition: Int = composable.recompositions.count,
+  ) {
+    val key = StateReadKey(composable, recomposition)
+    if (model.stateReadsModel.stateReadRequested.value != key) {
+      model.stateReadsModel.requestStateReadFor(composable, recomposition)
+    } else {
+      // The user navigated back to an observable composable from either a View or a non
+      // observable composable. The result may still hold the state reads for the wanted composable
+      // and recomposition.
+      val result = model.stateReadsModel.stateReads.value
+      if (result?.key == key) {
+        showResult(result)
+      } else {
+        showInactiveState(InactiveState.WAITING)
+      }
     }
-    scope.launch { stateReadProvider()?.requestRecompositionStateReads(composable, recomposition) }
+  }
+
+  private fun showInactiveState(state: InactiveState) {
+    currentNode = null
+    _recompositionText.value = state.message()
+    _stateReadsText.value = ""
+    _stackTraceText.value = ""
+    _composableInspected.value = null
+    _updates.value += 1
   }
 
   private fun stopStateObservations() {
@@ -188,14 +233,16 @@ internal class StateInspectionModelImpl(
     _updates.value += 1
   }
 
-  private fun gotoPrevRecomposition() {
+  private fun gotoPrevRecomposition(event: AnActionEvent) {
     val node = currentNode ?: return
     loadRecompositionStateReads(node, currentRecomposition - 1)
+    LayoutInspectorRootPanel.get(event)?.currentClient?.stats?.prevRecompositionChosen()
   }
 
-  private fun gotoNextRecomposition() {
+  private fun gotoNextRecomposition(event: AnActionEvent) {
     val node = currentNode ?: return
     loadRecompositionStateReads(node, currentRecomposition + 1)
+    LayoutInspectorRootPanel.get(event)?.currentClient?.stats?.nextRecompositionChosen()
   }
 
   private fun hasPrevComposition(): Boolean {
@@ -320,13 +367,13 @@ internal class StateInspectionModelImpl(
   private fun createAction(
     icon: Icon,
     descriptionKey: String,
-    action: () -> Unit,
+    action: (AnActionEvent) -> Unit,
     enabled: () -> Boolean = { true },
   ): AnAction {
     val description = LayoutInspectorBundle.message(descriptionKey)
     return object : DumbAwareAction(description, null, icon) {
       override fun actionPerformed(event: AnActionEvent) {
-        action()
+        action(event)
       }
 
       override fun update(event: AnActionEvent) {

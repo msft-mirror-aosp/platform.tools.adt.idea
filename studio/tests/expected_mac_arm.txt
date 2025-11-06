@@ -466,6 +466,7 @@ Android Studio Preview.app/Contents/lib/modules/intellij.grid.impl.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.grid.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.grid.types.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.libraries.ai.grazie.spell.gec.engine.local.jar
+Android Studio Preview.app/Contents/lib/modules/intellij.libraries.coil.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.libraries.compose.foundation.desktop.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.libraries.grpc.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.libraries.grpc.netty.shaded.jar
@@ -538,7 +539,6 @@ Android Studio Preview.app/Contents/lib/modules/intellij.platform.recentFiles.fr
 Android Studio Preview.app/Contents/lib/modules/intellij.platform.recentFiles.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.platform.rpc.backend.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.platform.scopes.backend.jar
-Android Studio Preview.app/Contents/lib/modules/intellij.platform.scopes.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.platform.searchEverywhere.backend.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.platform.searchEverywhere.frontend.jar
 Android Studio Preview.app/Contents/lib/modules/intellij.platform.searchEverywhere.jar
@@ -2287,6 +2287,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/auto-common-0.10.jar
 Android Studio Preview.app/Contents/plugins/android/lib/backgroundtask_inspector_java_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/build-analysis-results-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/build-common.jar
+Android Studio Preview.app/Contents/plugins/android/lib/chime_kt_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/commons-lang-2.6.jar
 Android Studio Preview.app/Contents/plugins/android/lib/compilerCommon.antlr.shaded_jar.jar
 Android Studio Preview.app/Contents/plugins/android/lib/compilerCommon.antlr_runtime.shaded_jar.jar
@@ -2400,6 +2401,7 @@ Android Studio Preview.app/Contents/plugins/android/resources/app-inspection/dat
 Android Studio Preview.app/Contents/plugins/android/resources/app-inspection/layoutinspector-view-inspection.jar
 Android Studio Preview.app/Contents/plugins/android/resources/app-inspection/network-inspector.jar
 Android Studio Preview.app/Contents/plugins/android/resources/app-inspection/sqlite-inspection.jar
+Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/ai_glasses_device/default-background-1.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_1024/back.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_1024/fore.png
 Android Studio Preview.app/Contents/plugins/android/resources/device-art-resources/automotive_1024/layout
@@ -2769,6 +2771,7 @@ Android Studio Preview.app/Contents/plugins/cidr-clangd/lib/xtext-xbase.jar
 Android Studio Preview.app/Contents/plugins/cidr-debugger/lib/LICENSE.txt
 Android Studio Preview.app/Contents/plugins/cidr-debugger/lib/antlr4-runtime.jar
 Android Studio Preview.app/Contents/plugins/cidr-debugger/lib/cidr-debugger.jar
+Android Studio Preview.app/Contents/plugins/completionMlRanking/lib/completionMlRanking.jar
 Android Studio Preview.app/Contents/plugins/compose-ide-plugin/lib/compose-ide-plugin.jar
 Android Studio Preview.app/Contents/plugins/compose-ide-plugin/lib/modules/intellij.compose.ide.plugin.gradleTooling.rt.jar
 Android Studio Preview.app/Contents/plugins/configurationScript/lib/configurationScript.jar
@@ -3181,6 +3184,7 @@ Android Studio Preview.app/Contents/plugins/json/lib/modules/intellij.json.backe
 Android Studio Preview.app/Contents/plugins/junit/lib/junit-rt.jar
 Android Studio Preview.app/Contents/plugins/junit/lib/junit.jar
 Android Studio Preview.app/Contents/plugins/junit/lib/junit5-rt.jar
+Android Studio Preview.app/Contents/plugins/junit/lib/junit6-rt.jar
 Android Studio Preview.app/Contents/plugins/keymap-eclipse/lib/keymap-eclipse.jar
 Android Studio Preview.app/Contents/plugins/keymap-netbeans/lib/keymap-netbeans.jar
 Android Studio Preview.app/Contents/plugins/keymap-visualStudio/lib/keymap-visualStudio.jar
@@ -3623,6 +3627,8 @@ Android Studio Preview.app/Contents/plugins/textmate/lib/textmate.jar
 Android Studio Preview.app/Contents/plugins/toml/lib/modules/intellij.toml.backend.jar
 Android Studio Preview.app/Contents/plugins/toml/lib/modules/intellij.toml.frontend.jar
 Android Studio Preview.app/Contents/plugins/toml/lib/toml.jar
+Android Studio Preview.app/Contents/plugins/turboComplete/lib/modules/intellij.turboComplete.languages.kotlin.k1.jar
+Android Studio Preview.app/Contents/plugins/turboComplete/lib/turboComplete.jar
 Android Studio Preview.app/Contents/plugins/url-assistant/lib/url-assistant.jar
 Android Studio Preview.app/Contents/plugins/url-assistant/lib/url-assistant.so.jar
 Android Studio Preview.app/Contents/plugins/url-assistant/lib/urlassistant_proto.jar
