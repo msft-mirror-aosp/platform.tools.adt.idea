@@ -1838,6 +1838,7 @@ private fun createAndroidModuleDataNode(
       GradleModuleModel(
         qualifiedModuleName,
         listOf(),
+        listOf(),
         gradlePath,
         moduleBasePath.toImpl(),
         moduleBasePath.resolve("build.gradle").toImpl(),
@@ -2080,6 +2081,7 @@ private fun createJavaModuleDataNode(
         GradleModuleModel(
           qualifiedModuleName,
           listOf(),
+          listOf("test"),
           gradlePath,
           moduleBasePath.toImpl(),
           moduleBasePath.resolve("build.gradle").toImpl(),
