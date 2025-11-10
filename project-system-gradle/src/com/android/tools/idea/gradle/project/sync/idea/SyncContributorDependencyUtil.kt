@@ -231,12 +231,12 @@ internal fun setupAndroidDependenciesForAllProjects(
   allAndroidContexts: List<SyncContributorAndroidProjectContext>,
   storage: ImmutableEntityStorage,
   phase: GradleSyncPhase
-) {
+): ImmutableEntityStorage {
   val project = context.project
 
   val libraryTable = context.getRootModel(IdeUnresolvedLibraryTableImpl::class.java) ?: run {
     LOG.info("No library table found, returning early with no updates")
-    return
+    return storage
   }
   val updatedEntities = MutableEntityStorage.from(storage)
   val ideLibraryModelResolver = buildIdeLibraryModelResolver(context, libraryTable)
@@ -260,6 +260,7 @@ internal fun setupAndroidDependenciesForAllProjects(
       libraryRootPathCache
     ).populateDependenciesForAndroidProject()
   }
+  return updatedEntities.toSnapshot()
 }
 
 
