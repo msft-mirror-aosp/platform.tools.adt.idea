@@ -176,6 +176,8 @@ class StudioLabsSettingsConfigurable :
             imageDescription = "Suggested Fix in AQI",
           ),
           */
+          /*
+          Disabled pending agp 9.0.0
           StudioLabsFeaturePanelUi(
             flag = StudioFlags.JOURNEYS_WITH_GEMINI_EXECUTION,
             heading = "Journeys",
@@ -187,6 +189,7 @@ class StudioLabsSettingsConfigurable :
             imageKey = StudioLabsIcons.Features.Journeys,
             imageDescription = "Journeys",
           ),
+          */
         )
 
       if (StudioFlags.STUDIO_LABS_SETTINGS_FAKE_FEATURE_ENABLED.get()) {
