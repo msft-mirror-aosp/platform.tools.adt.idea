@@ -49,6 +49,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
 import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.listDirectoryEntries
@@ -196,7 +197,7 @@ class AddDeviceWizardTest {
 
       val userSettings = AvdManager.parseEnvironmentFile(avdFolder, null)
       assertThat(userSettings[EnvironmentKey.IMAGE])
-        .isEqualTo(defaultEnvironments().first().fileName)
+        .isEqualTo("environment" + File.separator + defaultEnvironments().first().fileName)
     }
   }
 
