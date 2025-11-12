@@ -82,7 +82,6 @@ class LogcatServiceImplTest {
   private val logcatHandler = CheckFormatLogcatHandler()
   private val logcatHandler_v2 = CheckFormatLogcatHandler(ShellProtocolType.SHELL_V2)
   private val fakeAdbServerProviderRule = FakeAdbServerProviderRule {
-    installDefaultCommandHandlers()
     installDeviceHandler(logcatHandler)
     installDeviceHandler(logcatHandler_v2)
   }

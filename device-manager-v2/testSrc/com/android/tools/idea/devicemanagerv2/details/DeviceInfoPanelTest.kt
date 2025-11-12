@@ -48,7 +48,6 @@ class DeviceInfoPanelTest {
 
   @get:Rule
   val deviceProvisionerRule = DeviceProvisionerRule {
-    installDefaultCommandHandlers()
     installDeviceHandler(batteryHandler)
     installDeviceHandler(DfHandler())
   }
