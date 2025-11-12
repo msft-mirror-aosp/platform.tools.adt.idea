@@ -21,12 +21,12 @@ import static com.android.tools.profilers.ImportedSessionUtils.makeEndedEvent;
 import static com.android.tools.profilers.cpu.CpuCaptureParserUtil.getFileTraceType;
 
 import com.android.tools.adtui.model.Range;
+import com.android.tools.idea.transport.EventStreamServer;
 import com.android.tools.profiler.proto.Commands;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profiler.proto.Trace.TraceInfo;
 import com.android.tools.profiler.proto.Transport;
-import com.android.tools.profilers.NullMonitorStage;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilerMonitor;
 import com.android.tools.profilers.StudioProfiler;
@@ -39,9 +39,7 @@ import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.transporteventutils.TransportUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.openapi.util.registry.Registry;
 import com.intellij.openapi.util.text.StringUtil;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -57,7 +55,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import kotlin.Unit;
-import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function2;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -74,6 +71,7 @@ public class CpuProfiler implements StudioProfiler {
   }
 
   private void onImportSessionSelected() {
+    assert !profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
     long traceId = profilers.getSession().getStartTimestamp();
     profilers.getIdeServices().runAsync(
       () -> CpuCaptureStage.create(profilers, new ImportedConfiguration(), CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN,
@@ -120,9 +118,7 @@ public class CpuProfiler implements StudioProfiler {
       if (traceType == null || traceType == TraceType.UNSPECIFIED) {
         throw new IllegalStateException("Cannot import trace with type:\n" + traceType);
       }
-    }
 
-    if (isTaskBasedUxEnabled) {
       Function2<Long, Long, Common.Event> makeEvent = (start, end) -> {
         Trace.TraceInfo.Builder importedTraceInfo = Trace.TraceInfo.newBuilder()
           .setTraceId(start)
@@ -140,8 +136,7 @@ public class CpuProfiler implements StudioProfiler {
         });
       };
 
-      importFileWithArtifactEvent(profilers.getSessionsManager(), file, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE,
-                          makeEvent);
+      importFileWithArtifactEvent(profilers.getSessionsManager(), file, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE, makeEvent);
     }
     else {
       importFile(profilers.getSessionsManager(), file, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE);
