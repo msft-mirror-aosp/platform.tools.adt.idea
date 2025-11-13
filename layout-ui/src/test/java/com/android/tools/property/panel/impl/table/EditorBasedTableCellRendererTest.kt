@@ -45,35 +45,30 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.testFramework.ApplicationRule
-import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.RuleChain
 import com.intellij.ui.AbstractExpandableItemsHandler
 import com.intellij.ui.ClientProperty
 import com.intellij.ui.ExpandableItemsHandler
 import com.intellij.ui.TableCell
 import com.intellij.ui.TableExpandableItemsHandler
 import com.intellij.ui.table.JBTable
-import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.UIUtil.FontSize
 import icons.StudioIcons
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.RuleChain
 import java.awt.Component
 import java.awt.Container
 import java.awt.Rectangle
 import javax.swing.JComponent
 import javax.swing.JTable
 import kotlin.time.Duration.Companion.milliseconds
+import org.junit.Rule
+import org.junit.Test
 
 private const val LONG_STRING_VALUE = "A very long long long string value"
 private const val ROW_HEIGHT = 22
 
 class EditorBasedTableCellRendererTest {
-  @get:Rule
-  val rules = RuleChain.outerRule(ApplicationRule()).around(IconLoaderRule()).around(EdtRule())!!
+  @get:Rule val rules = RuleChain(ApplicationRule(), IconLoaderRule())
 
-  @RunsInEdt
   @Test
   fun testExpansionHotZoneOfRenderers() {
     // Test that expansion on hove will happen in the right places in several of the control types.
@@ -128,8 +123,9 @@ class EditorBasedTableCellRendererTest {
     ui.mouse.moveTo(rect.x + x, rect.y + rect.height + 10)
     // Then move to the actual cell
     ui.mouse.moveTo(rect.x + x, rect.centerY.toInt())
-    UIUtil.dispatchAllInvocationEvents()
-    (table.expandableItemsHandler as AbstractExpandableItemsHandler<*, *>).updateAlarm.waitForAllExecuted(20.milliseconds)
+    (table.expandableItemsHandler as AbstractExpandableItemsHandler<*, *>)
+      .updateAlarm
+      .waitForAllExecuted(20.milliseconds)
     return table.isExpandedItem(row, 1)
   }
 
