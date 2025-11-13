@@ -15,6 +15,19 @@
  */
 package com.android.tools.idea.glassespairing
 
-class GlassesPairingUsageTracker {
-  fun log() {}
+import com.android.tools.analytics.UsageTracker
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent
+import com.google.wireless.android.sdk.stats.GlassesPairingEvent
+
+object GlassesPairingUsageTracker {
+  fun log(eventKind: GlassesPairingEvent.EventKind) {
+    val event = GlassesPairingEvent.newBuilder().setKind(eventKind).build()
+
+    val builder =
+      AndroidStudioEvent.newBuilder()
+        .setKind(AndroidStudioEvent.EventKind.GLASSES_PAIRING_EVENT)
+        .setGlassesPairingEvent(event)
+
+    UsageTracker.log(builder)
+  }
 }

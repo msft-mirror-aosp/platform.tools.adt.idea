@@ -242,6 +242,7 @@ private val jbModelDumpers = listOf(
         nest {
           gradleSourceSet.configurationArtifacts
             .filter { it.value.isNotEmpty() }
+            .toSortedMap()
             .forEach {
               prop(it.key, it.value)
             }
@@ -296,7 +297,7 @@ private val jbModelDumpers = listOf(
  * Note: Other tests in the IDE (e.g., templates, editor, UI tools, deployment) should not use
  * this constant as they don't need to test against the latest preview version of Kotlin.
  */
-const val KOTLIN_VERSION_FOR_TESTS = "2.2.21-RC2"
+const val KOTLIN_VERSION_FOR_TESTS = "2.3.0-Beta2"
 
 fun String.replaceKotlinVersionForTests(): String = replace(KOTLIN_VERSION_FOR_TESTS, "<KOTLIN_VERSION_FOR_TESTS>")
 
@@ -768,6 +769,9 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
           prop("UseSupportLibrary") { it.useSupportLibrary?.toString() }
         }
       }
+      ideProductFlavor.matchingFallbacks.takeIf { !it.isNullOrEmpty() }?.let {
+        prop("MatchingFallbacks") { it.toString() }
+      }
     }
 
     private fun dump(ideSourceProviderContainer: IdeSourceProviderContainer) {
@@ -831,6 +835,9 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
         prop("RenderscriptOptimLevel") { ideBuildTypeContainer.buildType.renderscriptOptimLevel.toString() }
         prop("IsMinifyEnabled") { ideBuildTypeContainer.buildType.isMinifyEnabled.toString() }
         prop("IsZipAlignEnabled") { ideBuildTypeContainer.buildType.isZipAlignEnabled.toString() }
+        ideBuildTypeContainer.buildType.matchingFallbacks.takeIf { !it.isNullOrEmpty() }?.let {
+          prop("MatchingFallbacks") { it.toString() }
+        }
       }
       head("SourceProvider")
       nest {
@@ -1007,7 +1014,8 @@ private fun ideModelDumper(projectDumper: ProjectDumper) = with(projectDumper) {
         prop("rootFolderPath") { model.rootFolderPath.path.toPrintablePath() }
         prop("hasSafeArgsJava") { model.safeArgsJava.toString() }
         prop("hasSafeArgsKotlin") { model.safeArgsKotlin.toString() }
-        model.taskNames.forEach { prop("- taskNames") { it } }
+        model.testTasks.sorted().forEach { prop("- taskNames") { it } }
+        model.allTasks.sorted().filter { it !in model.testTasks }.forEach { prop("- allTaskNames ") { it } }
       }
     }
 

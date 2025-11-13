@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.vitals.datamodel
 
-import com.android.tools.idea.insights.FailureType
+import com.android.tools.idea.insights.model.issue.FailureType
 import com.google.play.developer.reporting.ErrorType
 
 internal fun ErrorType.toFailureType(): FailureType {

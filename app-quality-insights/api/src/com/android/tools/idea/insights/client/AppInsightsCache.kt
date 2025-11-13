@@ -17,16 +17,17 @@ package com.android.tools.idea.insights.client
 
 import com.android.tools.idea.insights.AppInsightsIssue
 import com.android.tools.idea.insights.Connection
-import com.android.tools.idea.insights.Event
-import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.IssueDetails
-import com.android.tools.idea.insights.IssueId
-import com.android.tools.idea.insights.IssueState
 import com.android.tools.idea.insights.Note
 import com.android.tools.idea.insights.NoteId
 import com.android.tools.idea.insights.SignalType
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.codecontext.ContextSharingState
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueId
+import com.android.tools.idea.insights.model.issue.IssueState
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import java.util.SortedSet
@@ -116,7 +117,8 @@ private data class IssueDetailsValue(
   val sampleEvents: SortedSet<Event>,
   val state: IssueState,
 ) {
-  fun toIssue() = AppInsightsIssue(issueDetails, sampleEvents.first(), state)
+  fun toIssue(source: AppInsightsTracker.ProductType) =
+    AppInsightsIssue(issueDetails, sampleEvents.first(), source, state)
 }
 
 private data class AiInsightKey(
@@ -132,7 +134,10 @@ private data class CacheValue(
 
 // TODO(b/249510375): persist cache
 /** Cache for storing issues used in offline and online mode. */
-class AppInsightsCacheImpl(private val maxIssuesCount: Int = 50) : AppInsightsCache {
+class AppInsightsCacheImpl(
+  val source: AppInsightsTracker.ProductType,
+  private val maxIssuesCount: Int = 50,
+) : AppInsightsCache {
 
   private val compositeIssuesCache: Cache<Connection, Cache<IssueId, CacheValue>> =
     createNew(MAXIMUM_FIREBASE_CONNECTIONS_CACHE_SIZE)
@@ -160,7 +165,7 @@ class AppInsightsCacheImpl(private val maxIssuesCount: Int = 50) : AppInsightsCa
           cachedIssue.issueDetails.matchErrorType(request.filters.eventTypes) &&
             cachedIssue.issueDetails.matchSignalType(request.filters.signal)
         ) {
-          AppInsightsIssue(cachedIssue.issueDetails, matchingEvent, cachedIssue.state)
+          AppInsightsIssue(cachedIssue.issueDetails, matchingEvent, source, cachedIssue.state)
         } else {
           null
         }
@@ -185,7 +190,7 @@ class AppInsightsCacheImpl(private val maxIssuesCount: Int = 50) : AppInsightsCa
   override fun getIssues(connection: Connection, issueIds: List<IssueId>): List<AppInsightsIssue> {
     val cache = compositeIssuesCache.getIfPresent(connection)?.asMap() ?: return emptyList()
     return issueIds.mapNotNull {
-      cache[it]?.let { cacheValue -> cacheValue.issueDetails?.toIssue() }
+      cache[it]?.let { cacheValue -> cacheValue.issueDetails?.toIssue(source) }
     }
   }
 

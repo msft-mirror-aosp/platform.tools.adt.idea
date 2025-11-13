@@ -16,36 +16,23 @@
 package com.android.tools.idea.vitals.client
 
 import com.android.testutils.time.FakeClock
-import com.android.tools.idea.insights.Caption
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.DataPoint
-import com.android.tools.idea.insights.Device
-import com.android.tools.idea.insights.DeviceType
-import com.android.tools.idea.insights.Event
-import com.android.tools.idea.insights.ExceptionStack
 import com.android.tools.idea.insights.FAKE_50_DAYS_AGO
-import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.FakeTimeProvider
-import com.android.tools.idea.insights.Frame
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.IssueDetails
-import com.android.tools.idea.insights.IssueId
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.OperatingSystemInfo
 import com.android.tools.idea.insights.Permission
 import com.android.tools.idea.insights.PlayTrack
 import com.android.tools.idea.insights.SignalType
-import com.android.tools.idea.insights.StackTraceGroupParser
-import com.android.tools.idea.insights.Stacktrace
-import com.android.tools.idea.insights.StacktraceGroup
 import com.android.tools.idea.insights.StatsGroup
 import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.Version
-import com.android.tools.idea.insights.WithCount
 import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.client.AiInsightClient
-import com.android.tools.idea.insights.client.AppConnection
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.FakeAiInsightClient
@@ -54,6 +41,20 @@ import com.android.tools.idea.insights.client.Interval
 import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.client.QueryFilters
+import com.android.tools.idea.insights.model.common.WithCount
+import com.android.tools.idea.insights.model.connection.AppConnection
+import com.android.tools.idea.insights.model.event.Device
+import com.android.tools.idea.insights.model.event.DeviceType
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.event.OperatingSystemInfo
+import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueId
+import com.android.tools.idea.insights.model.stacktrace.Caption
+import com.android.tools.idea.insights.model.stacktrace.ExceptionStack
+import com.android.tools.idea.insights.model.stacktrace.Frame
+import com.android.tools.idea.insights.model.stacktrace.StackTraceGroupParser
+import com.android.tools.idea.insights.model.stacktrace.Stacktrace
+import com.android.tools.idea.insights.model.stacktrace.StacktraceGroup
 import com.android.tools.idea.insights.zeroCounts
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_ISSUE1
@@ -127,7 +128,7 @@ class VitalsClientTest {
 
   @Test
   fun `client returns top cached issues when offline`() = runTest {
-    val cache = AppInsightsCacheImpl()
+    val cache = AppInsightsCacheImpl(ProductType.PLAY_VITALS)
     val client = createClient(cache)
 
     cache.populateIssues(TEST_CONNECTION_1, listOf(TEST_ISSUE1))
@@ -428,7 +429,7 @@ class VitalsClientTest {
 
   @Test
   fun `client uses the same cache for connections and issues`() = runTest {
-    val cache = AppInsightsCacheImpl()
+    val cache = AppInsightsCacheImpl(ProductType.PLAY_VITALS)
     val issueRequest =
       IssueRequest(
         TEST_CONNECTION_1,
@@ -614,7 +615,7 @@ class VitalsClientTest {
   }
 
   private fun createClient(
-    cache: AppInsightsCache = AppInsightsCacheImpl(),
+    cache: AppInsightsCache = AppInsightsCacheImpl(ProductType.PLAY_VITALS),
     grpcClient: VitalsGrpcClient =
       VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
     aiInsightClient: AiInsightClient = FakeAiInsightClient,

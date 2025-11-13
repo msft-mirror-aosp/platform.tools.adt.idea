@@ -18,7 +18,6 @@ package com.android.tools.idea.insights.events
 import com.android.tools.idea.insights.AppInsightsState
 import com.android.tools.idea.insights.CONNECTION1
 import com.android.tools.idea.insights.DynamicEventGallery
-import com.android.tools.idea.insights.Event
 import com.android.tools.idea.insights.EventMovement
 import com.android.tools.idea.insights.FakeInsightsProvider
 import com.android.tools.idea.insights.ISSUE1
@@ -26,9 +25,11 @@ import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
 import com.android.tools.idea.insights.TEST_FILTERS
 import com.android.tools.idea.insights.Timed
+import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.analytics.TestAppInsightsTracker
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.events.actions.Action
+import com.android.tools.idea.insights.model.event.Event
 import com.google.common.truth.Truth.assertThat
 import java.time.Instant
 import org.junit.Test
@@ -62,7 +63,12 @@ class SelectedEventChangedTest {
       )
     val transition =
       SelectedEventChanged(EventMovement.NEXT)
-        .transition(state, TestAppInsightsTracker, FakeInsightsProvider(), AppInsightsCacheImpl())
+        .transition(
+          state,
+          TestAppInsightsTracker,
+          FakeInsightsProvider(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
+        )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(listOf(Event("1"), Event("2")), 1, "")))
     assertThat(transition.action).isEqualTo(Action.NONE)
@@ -80,7 +86,12 @@ class SelectedEventChangedTest {
       )
     val transition =
       SelectedEventChanged(EventMovement.PREVIOUS)
-        .transition(state, TestAppInsightsTracker, FakeInsightsProvider(), AppInsightsCacheImpl())
+        .transition(
+          state,
+          TestAppInsightsTracker,
+          FakeInsightsProvider(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
+        )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(listOf(Event("1"), Event("2")), 0, "")))
     assertThat(transition.action).isEqualTo(Action.NONE)
@@ -97,14 +108,24 @@ class SelectedEventChangedTest {
       )
     var transition =
       SelectedEventChanged(EventMovement.PREVIOUS)
-        .transition(state, TestAppInsightsTracker, FakeInsightsProvider(), AppInsightsCacheImpl())
+        .transition(
+          state,
+          TestAppInsightsTracker,
+          FakeInsightsProvider(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
+        )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(listOf(Event("1")), 0, "")))
     assertThat(transition.action).isEqualTo(Action.NONE)
 
     transition =
       SelectedEventChanged(EventMovement.NEXT)
-        .transition(state, TestAppInsightsTracker, FakeInsightsProvider(), AppInsightsCacheImpl())
+        .transition(
+          state,
+          TestAppInsightsTracker,
+          FakeInsightsProvider(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
+        )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(listOf(Event("1")), 0, "")))
     assertThat(transition.action).isEqualTo(Action.NONE)
@@ -123,7 +144,12 @@ class SelectedEventChangedTest {
 
     val transition =
       SelectedEventChanged(EventMovement.NEXT)
-        .transition(state, TestAppInsightsTracker, FakeInsightsProvider(), AppInsightsCacheImpl())
+        .transition(
+          state,
+          TestAppInsightsTracker,
+          FakeInsightsProvider(),
+          AppInsightsCacheImpl(ProductType.PLAY_VITALS),
+        )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(listOf(Event("1"), Event("2")), 1, "abc")))
     assertThat(transition.action).isEqualTo(Action.ListEvents(ISSUE1.id, null, "abc"))

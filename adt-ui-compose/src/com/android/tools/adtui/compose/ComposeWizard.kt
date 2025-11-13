@@ -37,8 +37,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.util.Disposer
 import com.intellij.util.ui.JBUI
 import java.awt.Component
 import java.awt.Dimension
@@ -46,6 +48,8 @@ import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import javax.swing.Action
 import javax.swing.JComponent
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.enableNewSwingCompositing
 import org.jetbrains.jewel.ui.Orientation
@@ -136,6 +140,15 @@ class ComposeWizard(
 
     return component
   }
+
+  suspend fun showNonModal(): Boolean {
+    isModal = false
+    return suspendCancellableCoroutine { continuation ->
+      Disposer.register(myDisposable, Disposable { continuation.resume(isOK()) })
+      show()
+      continuation.invokeOnCancellation { close(CANCEL_EXIT_CODE) }
+    }
+  }
 }
 
 @Composable
@@ -174,8 +187,10 @@ internal fun WizardPageScope.WizardButtonBar(
         OutlinedButton(onClick = { with(button.action) { invoke() } }) { Text(button.name) }
       }
       Spacer(Modifier.weight(1f))
-      OutlinedButton(onClick = { cancel() }) { Text("Cancel") }
-      OutlinedButton(onClick = { popPage() }, enabled = pageStackSize() > 1) { Text("Previous") }
+      OutlinedButton(onClick = { cancel() }, enabled = cancelButtonEnabled) { Text("Cancel") }
+      OutlinedButton(onClick = { popPage() }, enabled = prevButtonEnabled && pageStackSize() > 1) {
+        Text("Previous")
+      }
       OutlinedButton(onClick = { with(nextAction) { invoke() } }, enabled = nextAction.enabled) {
         Text("Next")
       }
@@ -233,8 +248,18 @@ class WizardAction(val action: (WizardDialogScope.() -> Unit)?) {
  * their behavior.
  */
 abstract class WizardPageScope {
+  var prevButtonEnabled by mutableStateOf(true)
+  var cancelButtonEnabled by mutableStateOf(true)
+
   abstract var nextAction: WizardAction
   abstract var finishAction: WizardAction
+
+  fun enterFinishedState() {
+    prevButtonEnabled = false
+    cancelButtonEnabled = false
+    nextAction = WizardAction.Disabled
+    finishAction = WizardAction { close() }
+  }
 
   var leftSideButtons by mutableStateOf(emptyList<WizardButton>())
 

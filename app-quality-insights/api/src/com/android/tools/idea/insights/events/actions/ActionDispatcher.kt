@@ -20,10 +20,8 @@ import com.android.tools.idea.insights.AppInsightsState
 import com.android.tools.idea.insights.CancellableTimeoutException
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
-import com.android.tools.idea.insights.EventPage
 import com.android.tools.idea.insights.FetchSource
 import com.android.tools.idea.insights.Filters
-import com.android.tools.idea.insights.IssueState
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.RevertibleException
 import com.android.tools.idea.insights.Selection
@@ -44,6 +42,8 @@ import com.android.tools.idea.insights.events.NoteDeleted
 import com.android.tools.idea.insights.events.NotesFetched
 import com.android.tools.idea.insights.events.RollbackAddNoteRequest
 import com.android.tools.idea.insights.events.RollbackDeleteNoteRequest
+import com.android.tools.idea.insights.model.event.EventPage
+import com.android.tools.idea.insights.model.issue.IssueState
 import com.android.tools.idea.insights.toIssueRequest
 import com.intellij.openapi.diagnostic.Logger
 import java.awt.Toolkit

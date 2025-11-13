@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.streaming.core
 
-import com.android.ddmlib.testing.FakeAdbRule
+import com.android.adblib.ddmlibcompatibility.testutils.FakeAdbServerAdbLibRule
+import com.android.fakeadbserver.DeviceState
 import com.android.sdklib.AndroidApiLevel
 import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
-import com.android.tools.idea.adb.InitAdbLibApplicationServiceRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -39,6 +39,11 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
+import java.awt.datatransfer.DataFlavor
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit.SECONDS
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -46,11 +51,6 @@ import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import java.awt.datatransfer.DataFlavor
-import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.TimeUnit.SECONDS
 
 private const val TEST_DATA_PATH = "tools/adt/idea/streaming/testData/DeviceFileDropHandlerTest"
 
@@ -62,10 +62,11 @@ class DeviceFileDropHandlerTest {
 
   private val projectRule = ProjectRule()
   private val emulatorRule = FakeEmulatorRule()
-  private val adbRule = FakeAdbRule()
+
+  private val fakeAdbServerAdbLibRule = FakeAdbServerAdbLibRule()
+
   @get:Rule
-  val ruleChain = RuleChain(projectRule, InitAdbLibApplicationServiceRule(), adbRule,
-                            emulatorRule, EdtRule())
+  val ruleChain = RuleChain(projectRule, fakeAdbServerAdbLibRule, emulatorRule, EdtRule())
   @get:Rule
   val tempDirRule = TemporaryDirectoryRule()
 
@@ -127,8 +128,18 @@ class DeviceFileDropHandlerTest {
     assertThat(device.getFile("/sdcard/Download/${file2.fileName}")?.permission).isEqualTo(420)
   }
 
-  private fun attachDevice() =
-      adbRule.attachDevice("emulator-${emulator.serialPort}", "Google", "Pixel 3 XL", "Sweet dessert", AndroidApiLevel(29))
+  private fun attachDevice(): DeviceState {
+    return fakeAdbServerAdbLibRule.connectDevice(
+      deviceId = "emulator-${emulator.serialPort}",
+      manufacturer = "Google",
+      deviceModel = "Pixel 3 XL",
+      release = "Sweet dessert",
+      sdk = AndroidApiLevel(29),
+      hostConnectionType = DeviceState.HostConnectionType.USB)
+      .also {
+        it.deviceStatus = DeviceState.DeviceStatus.ONLINE
+      }
+  }
 
   private fun createDropTarget(): DnDTarget {
     var nullableTarget: DnDTarget? = null

@@ -16,6 +16,7 @@
 package com.android.tools.idea.layoutinspector.stateinspection
 
 import com.android.testutils.TestUtils
+import com.android.tools.idea.layoutinspector.FakeSessionStats
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.editor.ex.EditorEx
@@ -59,10 +60,11 @@ class StateInspectionHyperLinkDetectorTest {
   fun testHyperLinks() = runTest {
     val file = "${TEST_DATA_PATH}/state_reads_1_2.txt"
     val text = TestUtils.resolveWorkspacePathUnchecked(file).readText()
+    val stats = FakeSessionStats()
     val editor = projectRule.createEditorWithContent(text) as EditorEx
     val project = projectRule.project
     val detector =
-      StateInspectionHyperLinkDetector(project, editor, this, projectRule.testRootDisposable)
+      StateInspectionHyperLinkDetector(project, editor, stats, this, projectRule.testRootDisposable)
     detector.filterJob.join()
     runWriteAction {
       // The write action allows the AsyncFilterRunner used by EditorHyperlinkSupport to run all
@@ -70,7 +72,7 @@ class StateInspectionHyperLinkDetectorTest {
       detector.detectHyperlinks()
     }
     validateMarkupModel(editor.markupModel) {
-      region(1, "(Ask Gemini)")
+      region(1, "(Explain with AI)")
       region(13, "Composition.kt:1015")
       region(14, "Recomposer.kt:1519")
       region(17, "Snapshot.kt:2081")
@@ -105,7 +107,7 @@ class StateInspectionHyperLinkDetectorTest {
       region(58, "Recomposer.kt:1400")
       region(59, "Recomposer.kt:156")
       region(60, "Recomposer.kt:635")
-      region(81, "(Ask Gemini)")
+      region(81, "(Explain with AI)")
       region(82, "Composition.kt:1015")
       region(83, "Recomposer.kt:1519")
       region(86, "Snapshot.kt:2081")

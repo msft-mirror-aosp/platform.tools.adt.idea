@@ -630,15 +630,15 @@ MODULE                        : kotlinMultiPlatform
                     - taskArtifacts               : <ROOT>/app/build/libs/app-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/app/build/libs/app-jvm.jar [-]
                     configurationArtifacts
-                        - jvmApiElements-published    : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - archives                    : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - archives                    : <ROOT>/app/build/libs/app-metadata.jar [-]
+                        - jvmApiElements              : <ROOT>/app/build/libs/app-jvm.jar [-]
+                        - jvmApiElements-published    : <ROOT>/app/build/libs/app-jvm.jar [-]
+                        - jvmRuntimeElements          : <ROOT>/app/build/libs/app-jvm.jar [-]
+                        - jvmRuntimeElements-published          : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - jvmSourcesElements          : <ROOT>/app/build/libs/app-jvm-sources.jar [-]
                         - jvmSourcesElements-published          : <ROOT>/app/build/libs/app-jvm-sources.jar [-]
-                        - jvmRuntimeElements          : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - metadataApiElements         : <ROOT>/app/build/libs/app-metadata.jar [-]
-                        - jvmRuntimeElements-published          : <ROOT>/app/build/libs/app-jvm.jar [-]
-                        - jvmApiElements              : <ROOT>/app/build/libs/app-jvm.jar [-]
                         - metadataSourcesElements     : <ROOT>/app/build/libs/app-kotlin-sources.jar [-]
                     sourceSets
                         jvmMain
@@ -719,26 +719,26 @@ MODULE                        : kotlinMultiPlatform
                     - taskArtifacts               : <ROOT>/module2/build/libs/module2-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/module2/build/libs/module2-jvm.jar [-]
                     configurationArtifacts
-                        - jvmApiElements-published    : <ROOT>/module2/build/libs/module2-jvm.jar [-]
+                        - androidDebugArchives        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
                         - androidReleaseArchives      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
                         - archives                    : <ROOT>/module2/build/libs/module2-jvm.jar [-]
                         - archives                    : <ROOT>/module2/build/libs/module2-metadata.jar [-]
-                        - releaseRuntimeElements-published      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
+                        - debugApiElements-published  : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
+                        - debugRuntimeElements-published        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
+                        - debugSourcesElements        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
+                        - debugSourcesElements-published        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
+                        - jvmApiElements              : <ROOT>/module2/build/libs/module2-jvm.jar [-]
+                        - jvmApiElements-published    : <ROOT>/module2/build/libs/module2-jvm.jar [-]
+                        - jvmRuntimeElements          : <ROOT>/module2/build/libs/module2-jvm.jar [-]
+                        - jvmRuntimeElements-published          : <ROOT>/module2/build/libs/module2-jvm.jar [-]
                         - jvmSourcesElements          : <ROOT>/module2/build/libs/module2-jvm-sources.jar [-]
                         - jvmSourcesElements-published          : <ROOT>/module2/build/libs/module2-jvm-sources.jar [-]
-                        - jvmRuntimeElements          : <ROOT>/module2/build/libs/module2-jvm.jar [-]
-                        - releaseApiElements-published          : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
-                        - debugSourcesElements-published        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
                         - metadataApiElements         : <ROOT>/module2/build/libs/module2-metadata.jar [-]
-                        - debugApiElements-published  : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
-                        - androidDebugArchives        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
-                        - releaseSourcesElements-published      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
-                        - jvmRuntimeElements-published          : <ROOT>/module2/build/libs/module2-jvm.jar [-]
-                        - debugSourcesElements        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
-                        - releaseSourcesElements      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
-                        - jvmApiElements              : <ROOT>/module2/build/libs/module2-jvm.jar [-]
                         - metadataSourcesElements     : <ROOT>/module2/build/libs/module2-kotlin-sources.jar [-]
-                        - debugRuntimeElements-published        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
+                        - releaseApiElements-published          : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
+                        - releaseRuntimeElements-published      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
+                        - releaseSourcesElements      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
+                        - releaseSourcesElements-published      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
                     sourceSets
                         jvmMain
                             sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
@@ -812,6 +812,8 @@ MODULE                        : kotlinMultiPlatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : jvmTest
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -1913,6 +1915,7 @@ MODULE                        : kotlinMultiPlatform.app
                         - androidVariantNames         : release
                         kotlinSourceSetName           : androidMain
                     - declaredDependsOnSourceSets : commonMain
+                    isManagedByComAndroidLibraryPlugin      : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -1961,6 +1964,7 @@ MODULE                        : kotlinMultiPlatform.app
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -1981,6 +1985,7 @@ MODULE                        : kotlinMultiPlatform.app
                         androidSourceSetName          : androidTest
                         - androidVariantNames         : debugAndroidTest
                         kotlinSourceSetName           : androidInstrumentedTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2031,6 +2036,7 @@ MODULE                        : kotlinMultiPlatform.app
                     useFirLT                      : true
                 - declaredSourceSets          : androidInstrumentedTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -2072,6 +2078,7 @@ MODULE                        : kotlinMultiPlatform.app
                         - androidVariantNames         : debugUnitTest
                         kotlinSourceSetName           : androidUnitTest
                     - declaredDependsOnSourceSets : commonTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2124,6 +2131,7 @@ MODULE                        : kotlinMultiPlatform.app
                     useFirLT                      : true
                 - declaredSourceSets          : androidUnitTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -2135,6 +2143,7 @@ MODULE                        : kotlinMultiPlatform.app
                     resourcesDir                  : <ROOT>/app/build/processedResources/android/debugUnitTest [-]
                 platform                      : ANDROID
             disambiguationClassifier      : android
+            isManagedByComAndroidLibraryPlugin      : true
             platform                      : ANDROID
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
@@ -2298,6 +2307,8 @@ MODULE                        : kotlinMultiPlatform.module2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : jvmTest
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -2768,6 +2779,7 @@ MODULE                        : kotlinMultiPlatform.module2
                         kotlinSourceSetName           : androidMain
                     - declaredDependsOnSourceSets : jvmAndAndroid
                     - declaredDependsOnSourceSets : commonMain
+                    isManagedByComAndroidLibraryPlugin      : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -2819,6 +2831,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -2840,6 +2853,7 @@ MODULE                        : kotlinMultiPlatform.module2
                         androidSourceSetName          : androidTest
                         - androidVariantNames         : debugAndroidTest
                         kotlinSourceSetName           : androidInstrumentedTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2890,6 +2904,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     useFirLT                      : true
                 - declaredSourceSets          : androidInstrumentedTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -2933,6 +2948,7 @@ MODULE                        : kotlinMultiPlatform.module2
                         - androidVariantNames         : debugUnitTest
                         kotlinSourceSetName           : androidUnitTest
                     - declaredDependsOnSourceSets : commonTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -2985,6 +3001,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     useFirLT                      : true
                 - declaredSourceSets          : androidUnitTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -2996,6 +3013,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     resourcesDir                  : <ROOT>/module2/build/processedResources/android/debugUnitTest [-]
                 platform                      : ANDROID
             disambiguationClassifier      : android
+            isManagedByComAndroidLibraryPlugin      : true
             platform                      : ANDROID
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test

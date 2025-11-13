@@ -636,43 +636,43 @@ MODULE                        : kotlinMultiPlatform
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     - taskArtifacts               : <ROOT>/module2/build/libs/module2-metadata.jar [-]
                     configurationArtifacts
-                        - iosArm64ApiElements         : <ROOT>/module2/build/libs/module2-iosArm64Main.klib [-]
+                        - androidDebugArchives        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
                         - androidReleaseArchives      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
-                        - iosSimulatorArm64ApiElements-published          : <ROOT>/module2/build/libs/module2-iosSimulatorArm64Main.klib [-]
-                        - iosArm64MetadataElements    : <ROOT>/module2/build/libs/module2-iosarm64-metadata.jar [-]
-                        - releaseRuntimeElements-published      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
-                        - iosX64ApiElements           : <ROOT>/module2/build/libs/module2-iosX64Main.klib [-]
-                        - metadataApiElements         : <ROOT>/module2/build/libs/module2-metadata.jar [-]
-                        - iosArm64MetadataElements-published    : <ROOT>/module2/build/libs/module2-iosarm64-metadata.jar [-]
-                        - iosX64CInteropApiElements   : <ROOT>/module2/non-existing-file-workaround-for-gradle-29630.txt [-]
-                        - iosSimulatorArm64MetadataElements-published     : <ROOT>/module2/build/libs/module2-iossimulatorarm64-metadata.jar [-]
-                        - iosArm64SourcesElements-published     : <ROOT>/module2/build/libs/module2-iosarm64-sources.jar [-]
-                        - iosX64SourcesElements-published       : <ROOT>/module2/build/libs/module2-iosx64-sources.jar [-]
-                        - iosArm64CInteropApiElements : <ROOT>/module2/non-existing-file-workaround-for-gradle-29630.txt [-]
-                        - iosSimulatorArm64MetadataElements     : <ROOT>/module2/build/libs/module2-iossimulatorarm64-metadata.jar [-]
-                        - releaseSourcesElements-published      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
-                        - iosSimulatorArm64SourcesElements      : <ROOT>/module2/build/libs/module2-iossimulatorarm64-sources.jar [-]
-                        - iosSimulatorArm64ApiElements          : <ROOT>/module2/build/libs/module2-iosSimulatorArm64Main.klib [-]
                         - archives                    : <ROOT>/module2/build/libs/module2-iosx64-metadata.jar [-]
                         - archives                    : <ROOT>/module2/build/libs/module2-iossimulatorarm64-metadata.jar [-]
                         - archives                    : <ROOT>/module2/build/libs/module2-iosarm64-metadata.jar [-]
                         - archives                    : <ROOT>/module2/build/libs/module2-metadata.jar [-]
-                        - iosSimulatorArm64SourcesElements-published      : <ROOT>/module2/build/libs/module2-iossimulatorarm64-sources.jar [-]
-                        - iosX64MetadataElements      : <ROOT>/module2/build/libs/module2-iosx64-metadata.jar [-]
-                        - releaseApiElements-published          : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
-                        - iosX64ApiElements-published : <ROOT>/module2/build/libs/module2-iosX64Main.klib [-]
-                        - debugSourcesElements-published        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
                         - debugApiElements-published  : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
-                        - androidDebugArchives        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
-                        - iosArm64ApiElements-published         : <ROOT>/module2/build/libs/module2-iosArm64Main.klib [-]
-                        - iosArm64SourcesElements     : <ROOT>/module2/build/libs/module2-iosarm64-sources.jar [-]
-                        - iosX64SourcesElements       : <ROOT>/module2/build/libs/module2-iosx64-sources.jar [-]
-                        - iosX64MetadataElements-published      : <ROOT>/module2/build/libs/module2-iosx64-metadata.jar [-]
-                        - debugSourcesElements        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
-                        - releaseSourcesElements      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
-                        - iosSimulatorArm64CInteropApiElements  : <ROOT>/module2/non-existing-file-workaround-for-gradle-29630.txt [-]
-                        - metadataSourcesElements     : <ROOT>/module2/build/libs/module2-kotlin-sources.jar [-]
                         - debugRuntimeElements-published        : <ROOT>/module2/build/outputs/aar/module2-debug.aar [-]
+                        - debugSourcesElements        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
+                        - debugSourcesElements-published        : <ROOT>/module2/build/libs/module2-android-debug-sources.jar [-]
+                        - iosArm64ApiElements         : <ROOT>/module2/build/libs/module2-iosArm64Main.klib [-]
+                        - iosArm64ApiElements-published         : <ROOT>/module2/build/libs/module2-iosArm64Main.klib [-]
+                        - iosArm64CInteropApiElements : <ROOT>/module2/non-existing-file-workaround-for-gradle-29630.txt [-]
+                        - iosArm64MetadataElements    : <ROOT>/module2/build/libs/module2-iosarm64-metadata.jar [-]
+                        - iosArm64MetadataElements-published    : <ROOT>/module2/build/libs/module2-iosarm64-metadata.jar [-]
+                        - iosArm64SourcesElements     : <ROOT>/module2/build/libs/module2-iosarm64-sources.jar [-]
+                        - iosArm64SourcesElements-published     : <ROOT>/module2/build/libs/module2-iosarm64-sources.jar [-]
+                        - iosSimulatorArm64ApiElements          : <ROOT>/module2/build/libs/module2-iosSimulatorArm64Main.klib [-]
+                        - iosSimulatorArm64ApiElements-published          : <ROOT>/module2/build/libs/module2-iosSimulatorArm64Main.klib [-]
+                        - iosSimulatorArm64CInteropApiElements  : <ROOT>/module2/non-existing-file-workaround-for-gradle-29630.txt [-]
+                        - iosSimulatorArm64MetadataElements     : <ROOT>/module2/build/libs/module2-iossimulatorarm64-metadata.jar [-]
+                        - iosSimulatorArm64MetadataElements-published     : <ROOT>/module2/build/libs/module2-iossimulatorarm64-metadata.jar [-]
+                        - iosSimulatorArm64SourcesElements      : <ROOT>/module2/build/libs/module2-iossimulatorarm64-sources.jar [-]
+                        - iosSimulatorArm64SourcesElements-published      : <ROOT>/module2/build/libs/module2-iossimulatorarm64-sources.jar [-]
+                        - iosX64ApiElements           : <ROOT>/module2/build/libs/module2-iosX64Main.klib [-]
+                        - iosX64ApiElements-published : <ROOT>/module2/build/libs/module2-iosX64Main.klib [-]
+                        - iosX64CInteropApiElements   : <ROOT>/module2/non-existing-file-workaround-for-gradle-29630.txt [-]
+                        - iosX64MetadataElements      : <ROOT>/module2/build/libs/module2-iosx64-metadata.jar [-]
+                        - iosX64MetadataElements-published      : <ROOT>/module2/build/libs/module2-iosx64-metadata.jar [-]
+                        - iosX64SourcesElements       : <ROOT>/module2/build/libs/module2-iosx64-sources.jar [-]
+                        - iosX64SourcesElements-published       : <ROOT>/module2/build/libs/module2-iosx64-sources.jar [-]
+                        - metadataApiElements         : <ROOT>/module2/build/libs/module2-metadata.jar [-]
+                        - metadataSourcesElements     : <ROOT>/module2/build/libs/module2-kotlin-sources.jar [-]
+                        - releaseApiElements-published          : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
+                        - releaseRuntimeElements-published      : <ROOT>/module2/build/outputs/aar/module2-release.aar [-]
+                        - releaseSourcesElements      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
+                        - releaseSourcesElements-published      : <ROOT>/module2/build/libs/module2-android-sources.jar [-]
                     - additionalArtifacts         : <ROOT>/module2/build/libs/module2-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
@@ -701,6 +701,7 @@ MODULE                        : kotlinMultiPlatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -1784,6 +1785,9 @@ MODULE                        : kotlinMultiPlatform.module2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : iosSimulatorArm64Test
+        - taskNames                   : iosX64Test
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -4407,6 +4411,7 @@ MODULE                        : kotlinMultiPlatform.module2
                         - androidVariantNames         : release
                         kotlinSourceSetName           : androidMain
                     - declaredDependsOnSourceSets : commonMain
+                    isManagedByComAndroidLibraryPlugin      : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
@@ -4455,6 +4460,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -4475,6 +4481,7 @@ MODULE                        : kotlinMultiPlatform.module2
                         androidSourceSetName          : androidTest
                         - androidVariantNames         : debugAndroidTest
                         kotlinSourceSetName           : androidInstrumentedTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -4525,6 +4532,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     useFirLT                      : true
                 - declaredSourceSets          : androidInstrumentedTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -4566,6 +4574,7 @@ MODULE                        : kotlinMultiPlatform.module2
                         - androidVariantNames         : debugUnitTest
                         kotlinSourceSetName           : androidUnitTest
                     - declaredDependsOnSourceSets : commonTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -4618,6 +4627,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     useFirLT                      : true
                 - declaredSourceSets          : androidUnitTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -4629,6 +4639,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     resourcesDir                  : <ROOT>/module2/build/processedResources/android/debugUnitTest [-]
                 platform                      : ANDROID
             disambiguationClassifier      : android
+            isManagedByComAndroidLibraryPlugin      : true
             platform                      : ANDROID
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test

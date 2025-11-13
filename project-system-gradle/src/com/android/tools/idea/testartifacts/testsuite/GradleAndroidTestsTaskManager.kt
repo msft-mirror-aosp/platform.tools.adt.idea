@@ -17,11 +17,13 @@ package com.android.tools.idea.testartifacts.testsuite
 
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.execution.common.DeployableToDevice
+import com.android.tools.idea.flags.StudioFlags.AGP_TEST_SUITES_ENABLED
 import com.android.tools.idea.flags.StudioFlags.ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS
-import com.android.tools.idea.run.TargetSelectionMode
-import com.android.tools.idea.run.editor.DeployTargetContext
 import com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension.BooleanOptions.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.ui.Messages
+import com.intellij.util.ui.UIUtil
 import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManagerExtension
 import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings
@@ -35,7 +37,7 @@ class GradleAndroidTestsTaskManager : GradleTaskManagerExtension  {
                               settings: GradleExecutionSettings,
                               gradleVersion: GradleVersion?) {
     if (ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS.get() &&
-        (settings.getUserData<Boolean>(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey) == true)) {
+        (settings.getUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey) == true)) {
       settings.addInitScript(
         "addTestListenerForAndroidTestSuiteView",
         //language=groovy
@@ -50,17 +52,21 @@ class GradleAndroidTestsTaskManager : GradleTaskManagerExtension  {
         """.trimIndent())
     }
 
-    if (ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS.get() &&
-        settings.getUserData<Boolean>(DeployableToDevice.KEY) == true) {
+    if ((ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS.get() || AGP_TEST_SUITES_ENABLED.get()) &&
+        settings.getUserData(DeployableToDevice.KEY) == true) {
       id.findProject()?.takeIf { IdeInfo.getInstance().isAndroidStudio }?.let { project ->
-        val context = DeployTargetContext()
-        context.targetSelectionMode = TargetSelectionMode.DEVICE_AND_SNAPSHOT_COMBO_BOX
-        val currentTargetProvider = context.currentDeployTargetProvider
-        val deployTarget = currentTargetProvider.getDeployTarget(project)
-        val deviceSerials = deployTarget.launchDevices(project).get().joinToString(",") { device ->
-          device.get().serialNumber
+        val deviceSerials = launchDevices(project)
+        if (deviceSerials.isEmpty()) {
+          UIUtil.invokeLaterIfNeeded {
+            Messages.showErrorDialog(
+              "To run this configuration, select a device from the dropdown. If no devices are available, please configure a new one.",
+              "No Device Found",
+            )
+          }
+          throw ProcessCanceledException() // Stops the execution.
         }
-        settings.withEnvironmentVariables(mapOf("ANDROID_SERIAL" to deviceSerials))
+
+        settings.withEnvironmentVariables(mapOf("ANDROID_SERIAL" to deviceSerials.joinToString(",")))
       }
     }
   }

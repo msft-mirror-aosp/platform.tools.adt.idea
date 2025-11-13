@@ -785,72 +785,14 @@ MODULE                        : NonStandardSourceSetDependencies
                     - taskArtifacts               : <ROOT>/common/build/libs/common-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/common/build/libs/common-jvm.jar [-]
                     configurationArtifacts
-                        - jvmApiElements-published    : <ROOT>/common/build/libs/common-jvm.jar [-]
-                        - jvmRuntimeElements          : <ROOT>/common/build/libs/common-jvm.jar [-]
-                        - jvmApiElements              : <ROOT>/common/build/libs/common-jvm.jar [-]
-                        - archives                    : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - archives                    : <ROOT>/common/build/libs/common-metadata.jar [-]
-                        - metadataSourcesElements     : <ROOT>/common/build/libs/common-kotlin-sources.jar [-]
-                        - metadataApiElements         : <ROOT>/common/build/libs/common-metadata.jar [-]
+                        - archives                    : <ROOT>/common/build/libs/common-jvm.jar [-]
+                        - jvmApiElements              : <ROOT>/common/build/libs/common-jvm.jar [-]
+                        - jvmRuntimeElements          : <ROOT>/common/build/libs/common-jvm.jar [-]
                         - jvmSourcesElements          : <ROOT>/common/build/libs/common-jvm-sources.jar [-]
-                        - jvmSourcesElements-published          : <ROOT>/common/build/libs/common-jvm-sources.jar [-]
-                        - jvmRuntimeElements-published          : <ROOT>/common/build/libs/common-jvm.jar [-]
-                    sourceSets
-                        jvmMain
-                            sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                            targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                            - artifacts                   : <ROOT>/common/build/libs/common-jvm.jar [-]
-                            - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                            - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                                source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
-                            - dependencies                : DefaultFileCollectionDependency
-                                - files                       : <ROOT>/common/build/classes/java/jvmMain [-]
-                                - files                       : <ROOT>/common/build/classes/kotlin/jvm/main [-]
-                                - files                       : <ROOT>/common/build/processedResources/jvm/main [-]
-                            sources
-                                SOURCE                        : alljava (DefaultExternalSourceDirectorySet)
-                                    - srcDirs                     : <ROOT>/common/src/jvmMain/java [-]
-                                    outputDir                     : <ROOT>/common/out/jvmMain/classes [-]
-                                    - gradleOutputDirs            : <ROOT>/common/build/classes/java/jvmMain [-]
-                                    - gradleOutputDirs            : <ROOT>/common/build/classes/kotlin/jvm/main [-]
-                                    patterns                      : FilePatternSetImpl
-                                RESOURCE                      : resources (DefaultExternalSourceDirectorySet)
-                                    - srcDirs                     : <ROOT>/common/src/jvmMain/resources [-]
-                                    outputDir                     : <ROOT>/common/out/jvmMain/resources [-]
-                                    - gradleOutputDirs            : <ROOT>/common/build/processedResources/jvm/main [-]
-                                    patterns                      : FilePatternSetImpl
-                        jvmTest
-                            sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                            targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                            - dependencies                : DefaultFileCollectionDependency
-                                - files                       : <ROOT>/common/build/classes/kotlin/jvm/main [-]
-                            - dependencies                : DefaultFileCollectionDependency
-                                - files                       : <ROOT>/common/build/classes/java/jvmMain [-]
-                            - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                            - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                                source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
-                            - dependencies                : DefaultFileCollectionDependency
-                                - files                       : <ROOT>/common/build/classes/java/jvmTest [-]
-                                - files                       : <ROOT>/common/build/classes/kotlin/jvm/test [-]
-                                - files                       : <ROOT>/common/build/processedResources/jvm/test [-]
-                            - dependencies                : DefaultFileCollectionDependency
-                                - files                       : <ROOT>/common/build/processedResources/jvm/main [-]
-                            sources
-                                SOURCE                        : alljava (DefaultExternalSourceDirectorySet)
-                                    - srcDirs                     : <ROOT>/common/src/jvmTest/java [-]
-                                    outputDir                     : <ROOT>/common/out/jvmTest/classes [-]
-                                    - gradleOutputDirs            : <ROOT>/common/build/classes/java/jvmTest [-]
-                                    - gradleOutputDirs            : <ROOT>/common/build/classes/kotlin/jvm/test [-]
-                                    patterns                      : FilePatternSetImpl
-                                RESOURCE                      : resources (DefaultExternalSourceDirectorySet)
-                                    - srcDirs                     : <ROOT>/common/src/jvmTest/resources [-]
-                                    outputDir                     : <ROOT>/common/out/jvmTest/resources [-]
-                                    - gradleOutputDirs            : <ROOT>/common/build/processedResources/jvm/test [-]
-                                    patterns                      : FilePatternSetImpl
+                        - metadataApiElements         : <ROOT>/common/build/libs/common-metadata.jar [-]
+                    - additionalArtifacts         : <ROOT>/common/build/libs/common-metadata.jar [-]
+                    - additionalArtifacts         : <ROOT>/common/build/libs/common-jvm.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         jvmTest                       : jvmTest (DefaultExternalTask)
@@ -871,22 +813,26 @@ MODULE                        : NonStandardSourceSetDependencies
                     targetCompatibility           : 1.7
                     - taskArtifacts               : <ROOT>/desktop/build/libs/desktop.jar [-]
                     configurationArtifacts
+                        - apiElements                 : <ROOT>/desktop/build/libs/desktop.jar [-]
                         - apiElements-published       : <ROOT>/desktop/build/libs/desktop.jar [-]
                         - archives                    : <ROOT>/desktop/build/libs/desktop.jar [-]
-                        - apiElements                 : <ROOT>/desktop/build/libs/desktop.jar [-]
                         - mainSourceElements          : <ROOT>/desktop/src/main/resources [-]
                         - mainSourceElements          : <ROOT>/desktop/src/main/java
                         - mainSourceElements          : <ROOT>/desktop/src/main/kotlin [-]
                         - runtimeElements             : <ROOT>/desktop/build/libs/desktop.jar [-]
-                        - testResultsElementsForTest  : <ROOT>/desktop/build/test-results/test/binary [-]
                         - runtimeElements-published   : <ROOT>/desktop/build/libs/desktop.jar [-]
+                        - testResultsElementsForTest  : <ROOT>/desktop/build/test-results/test/binary [-]
                     sourceSets
                         main
                             sourceCompatibility           : 1.7
                             targetCompatibility           : 1.7
                             - artifacts                   : <ROOT>/desktop/build/libs/desktop.jar [-]
-                            - dependencies                : DefaultExternalLibraryDependency (*seen*)
-                            - dependencies                : DefaultExternalLibraryDependency (*seen*)
+                            - dependencies                : DefaultExternalLibraryDependency
+                                file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                                source                        : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                            - dependencies                : DefaultExternalLibraryDependency
+                                file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                                source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
                             - dependencies                : DefaultFileCollectionDependency
                                 - files                       : <ROOT>/desktop/build/classes/java/main [-]
                                 - files                       : <ROOT>/desktop/build/classes/kotlin/main [-]
@@ -913,6 +859,7 @@ MODULE                        : NonStandardSourceSetDependencies
                                 - files                       : <ROOT>/desktop/build/resources/main [-]
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                                source                        : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                                 source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
@@ -954,16 +901,16 @@ MODULE                        : NonStandardSourceSetDependencies
                     configurationArtifacts
                         - archives                    : <ROOT>/feature-a/build/outputs/aar/feature-a-debug.aar [-]
                         - archives                    : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
-                        - releaseRuntimeElements-published      : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
-                        - releaseApiElements-published          : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
-                        - debugSourcesElements-published        : <ROOT>/feature-a/build/libs/feature-a-debug-sources.jar [-]
                         - debugApiElements-published  : <ROOT>/feature-a/build/outputs/aar/feature-a-debug.aar [-]
                         - debugArchives               : <ROOT>/feature-a/build/outputs/aar/feature-a-debug.aar [-]
-                        - releaseSourcesElements-published      : <ROOT>/feature-a/build/libs/feature-a-sources.jar [-]
-                        - debugSourcesElements        : <ROOT>/feature-a/build/libs/feature-a-debug-sources.jar [-]
-                        - releaseSourcesElements      : <ROOT>/feature-a/build/libs/feature-a-sources.jar [-]
-                        - releaseArchives             : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
                         - debugRuntimeElements-published        : <ROOT>/feature-a/build/outputs/aar/feature-a-debug.aar [-]
+                        - debugSourcesElements        : <ROOT>/feature-a/build/libs/feature-a-debug-sources.jar [-]
+                        - debugSourcesElements-published        : <ROOT>/feature-a/build/libs/feature-a-debug-sources.jar [-]
+                        - releaseApiElements-published          : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
+                        - releaseArchives             : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
+                        - releaseRuntimeElements-published      : <ROOT>/feature-a/build/outputs/aar/feature-a-release.aar [-]
+                        - releaseSourcesElements      : <ROOT>/feature-a/build/libs/feature-a-sources.jar [-]
+                        - releaseSourcesElements-published      : <ROOT>/feature-a/build/libs/feature-a-sources.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -986,21 +933,14 @@ MODULE                        : NonStandardSourceSetDependencies
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     - taskArtifacts               : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                     configurationArtifacts
+                        - androidDebugArchives        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - androidReleaseArchives      : <ROOT>/feature-b/build/outputs/aar/feature-b-release.aar [-]
+                        - archives                    : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                         - archives                    : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                         - archives                    : <ROOT>/feature-b/build/outputs/aar/feature-b-release.aar [-]
-                        - archives                    : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
-                        - releaseRuntimeElements-published      : <ROOT>/feature-b/build/outputs/aar/feature-b-release.aar [-]
-                        - releaseApiElements-published          : <ROOT>/feature-b/build/outputs/aar/feature-b-release.aar [-]
-                        - debugSourcesElements-published        : <ROOT>/feature-b/build/libs/feature-b-android-debug-sources.jar [-]
-                        - metadataApiElements         : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
-                        - debugApiElements-published  : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
-                        - androidDebugArchives        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
-                        - releaseSourcesElements-published      : <ROOT>/feature-b/build/libs/feature-b-android-sources.jar [-]
                         - debugSourcesElements        : <ROOT>/feature-b/build/libs/feature-b-android-debug-sources.jar [-]
+                        - metadataApiElements         : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                         - releaseSourcesElements      : <ROOT>/feature-b/build/libs/feature-b-android-sources.jar [-]
-                        - metadataSourcesElements     : <ROOT>/feature-b/build/libs/feature-b-kotlin-sources.jar [-]
-                        - debugRuntimeElements-published        : <ROOT>/feature-b/build/outputs/aar/feature-b-debug.aar [-]
                     - additionalArtifacts         : <ROOT>/feature-b/build/libs/feature-b-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
@@ -1039,15 +979,15 @@ MODULE                        : NonStandardSourceSetDependencies
                     targetCompatibility           : 1.7
                     - taskArtifacts               : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
                     configurationArtifacts
-                        - apiElements-published       : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
                         - apiElements                 : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
-                        - runtimeElements             : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
-                        - testResultsElementsForTest  : <ROOT>/javaLibrary/build/test-results/test/binary [-]
-                        - runtimeElements-published   : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
+                        - apiElements-published       : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
                         - archives                    : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
                         - mainSourceElements          : <ROOT>/javaLibrary/src/main/resources [-]
                         - mainSourceElements          : <ROOT>/javaLibrary/src/main/java
                         - mainSourceElements          : <ROOT>/javaLibrary/src/main/kotlin [-]
+                        - runtimeElements             : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
+                        - runtimeElements-published   : <ROOT>/javaLibrary/build/libs/javaLibrary.jar [-]
+                        - testResultsElementsForTest  : <ROOT>/javaLibrary/build/test-results/test/binary [-]
                     sourceSets
                         main
                             sourceCompatibility           : 1.7
@@ -1060,7 +1000,9 @@ MODULE                        : NonStandardSourceSetDependencies
                             - dependencies                : default (DefaultExternalProjectDependency)
                                 projectPath                   : :jarWrapperLib
                                 - projectDependencyArtifacts  : <ROOT>/jarWrapperLib/JarWrappedLib.jar
-                            - dependencies                : DefaultExternalLibraryDependency (*seen*)
+                            - dependencies                : DefaultExternalLibraryDependency
+                                file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                                source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
                             - dependencies                : DefaultFileCollectionDependency
                                 - files                       : <ROOT>/javaLibrary/build/classes/java/main [-]
                                 - files                       : <ROOT>/javaLibrary/build/classes/kotlin/main [-]
@@ -1088,7 +1030,9 @@ MODULE                        : NonStandardSourceSetDependencies
                             - dependencies                : jvmApiElements (DefaultExternalProjectDependency)
                                 projectPath                   : :common
                                 - projectDependencyArtifacts  : <ROOT>/common/build/libs/common-jvm.jar [-]
-                            - dependencies                : DefaultExternalLibraryDependency (*seen*)
+                            - dependencies                : DefaultExternalLibraryDependency
+                                file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                                source                        : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                             - dependencies                : default (DefaultExternalProjectDependency)
                                 projectPath                   : :jarWrapperLib
                                 - projectDependencyArtifacts  : <ROOT>/jarWrapperLib/JarWrappedLib.jar
@@ -1168,69 +1112,13 @@ MODULE                        : NonStandardSourceSetDependencies
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                             - taskArtifacts               : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                             configurationArtifacts
-                                - jvmApiElements-published    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
-                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
-                                - jvmSourcesElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm-sources.jar [-]
-                                - jvmSourcesElements-published          : <ROOT>/kmp-java/sample/build/libs/sample-jvm-sources.jar [-]
-                                - jvmRuntimeElements-published          : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
-                                - jvmRuntimeElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
+                                - archives                    : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                                 - jvmApiElements              : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
-                                - metadataSourcesElements     : <ROOT>/kmp-java/sample/build/libs/sample-kotlin-sources.jar [-]
+                                - jvmRuntimeElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
+                                - jvmSourcesElements          : <ROOT>/kmp-java/sample/build/libs/sample-jvm-sources.jar [-]
                                 - metadataApiElements         : <ROOT>/kmp-java/sample/build/libs/sample-metadata.jar [-]
                             sourceSets
-                                jvmMain
-                                    sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                    targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                    - artifacts                   : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
-                                    - dependencies                : DefaultExternalLibraryDependency (*seen*)
-                                    - dependencies                : DefaultExternalLibraryDependency (*seen*)
-                                    - dependencies                : DefaultFileCollectionDependency
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/jvmMain [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/main [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
-                                    sources
-                                        SOURCE                        : alljava (DefaultExternalSourceDirectorySet)
-                                            outputDir                     : <ROOT>/kmp-java/sample/out/jvmMain/classes [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/jvmMain [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/main [-]
-                                            patterns                      : FilePatternSetImpl
-                                        RESOURCE                      : resources (DefaultExternalSourceDirectorySet)
-                                            outputDir                     : <ROOT>/kmp-java/sample/out/jvmMain/resources [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
-                                            patterns                      : FilePatternSetImpl
-                                jvmTest
-                                    sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                    targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                    - dependencies                : DefaultFileCollectionDependency
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
-                                    - dependencies                : DefaultFileCollectionDependency
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/jvmMain [-]
-                                    - dependencies                : DefaultFileCollectionDependency
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/main [-]
-                                    - dependencies                : DefaultExternalLibraryDependency
-                                        file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                                    - dependencies                : DefaultExternalLibraryDependency (*seen*)
-                                    - dependencies                : DefaultFileCollectionDependency
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/jvmTest [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/test [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/test [-]
-                                    - dependencies                : DefaultFileCollectionDependency
-                                        - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
-                                    sources
-                                        SOURCE                        : alljava (DefaultExternalSourceDirectorySet)
-                                            outputDir                     : <ROOT>/kmp-java/sample/out/jvmTest/classes [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/jvmTest [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/test [-]
-                                            patterns                      : FilePatternSetImpl
-                                        RESOURCE                      : resources (DefaultExternalSourceDirectorySet)
-                                            outputDir                     : <ROOT>/kmp-java/sample/out/jvmTest/resources [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/processedResources/jvm/test [-]
-                                            patterns                      : FilePatternSetImpl
                                 main
                                     sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
@@ -1240,7 +1128,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                     - dependencies                : DefaultFileCollectionDependency
                                         - files                       : <ROOT>/kmp-java/sample/build/classes/java/main [-]
                                         - files                       : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/jvmMain [-]
                                         - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
                                     sources
                                         SOURCE                        : alljava (DefaultExternalSourceDirectorySet)
@@ -1248,7 +1135,6 @@ MODULE                        : NonStandardSourceSetDependencies
                                             outputDir                     : <ROOT>/kmp-java/sample/out/production/classes [-]
                                             - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/main [-]
                                             - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/jvmMain [-]
                                             patterns                      : FilePatternSetImpl
                                         RESOURCE                      : resources (DefaultExternalSourceDirectorySet)
                                             - srcDirs                     : <ROOT>/kmp-java/sample/src/jvmMain/resources [-]
@@ -1258,24 +1144,24 @@ MODULE                        : NonStandardSourceSetDependencies
                                 test
                                     sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
-                                    - dependencies                : DefaultFileCollectionDependency (*seen*)
-                                    - dependencies                : DefaultFileCollectionDependency (*seen*)
-                                    - dependencies                : DefaultFileCollectionDependency (*seen*)
+                                    - dependencies                : DefaultFileCollectionDependency
+                                        - files                       : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
+                                    - dependencies                : DefaultFileCollectionDependency
+                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/main [-]
                                     - dependencies                : DefaultExternalLibraryDependency (*seen*)
                                     - dependencies                : DefaultExternalLibraryDependency (*seen*)
                                     - dependencies                : DefaultFileCollectionDependency
                                         - files                       : <ROOT>/kmp-java/sample/build/classes/java/test [-]
                                         - files                       : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test [-]
-                                        - files                       : <ROOT>/kmp-java/sample/build/classes/java/jvmTest [-]
                                         - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/test [-]
-                                    - dependencies                : DefaultFileCollectionDependency (*seen*)
+                                    - dependencies                : DefaultFileCollectionDependency
+                                        - files                       : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
                                     sources
                                         TEST                          : alljava (DefaultExternalSourceDirectorySet)
                                             - srcDirs                     : <ROOT>/kmp-java/sample/src/jvmTest/java [-]
                                             outputDir                     : <ROOT>/kmp-java/sample/out/test/classes [-]
                                             - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/test [-]
                                             - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test [-]
-                                            - gradleOutputDirs            : <ROOT>/kmp-java/sample/build/classes/java/jvmTest [-]
                                             patterns                      : FilePatternSetImpl
                                         TEST_RESOURCE                 : resources (DefaultExternalSourceDirectorySet)
                                             - srcDirs                     : <ROOT>/kmp-java/sample/src/jvmTest/resources [-]
@@ -1335,17 +1221,17 @@ MODULE                        : NonStandardSourceSetDependencies
                         - archives                    : <ROOT>/lib/build/libs/manual-test-fixtures.jar [-]
                         - archives                    : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-debug.aar [-]
                         - archives                    : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
-                        - releaseRuntimeElements-published      : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
-                        - releaseApiElements-published          : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
-                        - debugSourcesElements-published        : <ROOT>/lib/build/libs/manual-test-fixtures-debug-sources.jar [-]
                         - debugApiElements-published  : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-debug.aar [-]
                         - debugArchives               : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-debug.aar [-]
-                        - releaseSourcesElements-published      : <ROOT>/lib/build/libs/manual-test-fixtures-sources.jar [-]
-                        - manualTestFixtures          : <ROOT>/lib/build/libs/manual-test-fixtures.jar [-]
-                        - debugSourcesElements        : <ROOT>/lib/build/libs/manual-test-fixtures-debug-sources.jar [-]
-                        - releaseSourcesElements      : <ROOT>/lib/build/libs/manual-test-fixtures-sources.jar [-]
-                        - releaseArchives             : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
                         - debugRuntimeElements-published        : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-debug.aar [-]
+                        - debugSourcesElements        : <ROOT>/lib/build/libs/manual-test-fixtures-debug-sources.jar [-]
+                        - debugSourcesElements-published        : <ROOT>/lib/build/libs/manual-test-fixtures-debug-sources.jar [-]
+                        - manualTestFixtures          : <ROOT>/lib/build/libs/manual-test-fixtures.jar [-]
+                        - releaseApiElements-published          : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
+                        - releaseArchives             : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
+                        - releaseRuntimeElements-published      : <ROOT>/lib/build/outputs/aar/manual-test-fixtures-release.aar [-]
+                        - releaseSourcesElements      : <ROOT>/lib/build/libs/manual-test-fixtures-sources.jar [-]
+                        - releaseSourcesElements-published      : <ROOT>/lib/build/libs/manual-test-fixtures-sources.jar [-]
                     - additionalArtifacts         : <ROOT>/lib/build/libs/manual-test-fixtures.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
@@ -1384,6 +1270,8 @@ MODULE                        : NonStandardSourceSetDependencies.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 21
@@ -2174,7 +2062,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -2203,6 +2091,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : jvmTest
     kotlinMppGradleModel          : {commonMain=commonMain, commonTest=commonTest, jvmMain=jvmMain, jvmTest=jvmTest} (KotlinMPPGradleModelImpl)
         dependencies
             commonMain
@@ -2226,7 +2115,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2239,8 +2128,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/common/src/commonMain/resources [-]
                     - sourceDirs                  : <ROOT>/common/src/commonMain/kotlin
                     platform                      : JVM
@@ -2256,13 +2145,11 @@ MODULE                        : NonStandardSourceSetDependencies.common
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/common/src/jvmMain/resources [-]
                     - sourceDirs                  : <ROOT>/common/src/jvmMain/kotlin
-                    - sourceDirs                  : <ROOT>/common/src/jvmMain/java [-]
                     platform                      : JVM
-                archiveFile                   : <ROOT>/common/build/libs/common-jvm.jar [-]
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
@@ -2277,17 +2164,14 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragmentRefines             : jvmMain:commonMain
-                    - fragments                   : jvmMain
-                    - fragments                   : commonMain
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : jvmMain (KotlinSourceSetImpl) (*seen*)
@@ -2296,10 +2180,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     incremental                   : true
                     pluginVersion                 : <CUT>
                     - pureKotlinSourceFolders     : <ROOT>/common/src/jvmMain/kotlin
-                    - pureKotlinSourceFolders     : <ROOT>/common/src/jvmMain/java [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/common/build/classes/kotlin/jvm/main [-]
-                    - classesDirs                 : <ROOT>/common/build/classes/java/jvmMain [-]
                     effectiveClassesDir           : <ROOT>/common/build/classes/kotlin/jvm/main [-]
                     resourcesDir                  : <ROOT>/common/build/processedResources/jvm/main [-]
                 platform                      : JVM
@@ -2317,8 +2199,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/common/src/commonTest/resources [-]
                     - sourceDirs                  : <ROOT>/common/src/commonTest/kotlin [-]
                     platform                      : JVM
@@ -2337,11 +2219,10 @@ MODULE                        : NonStandardSourceSetDependencies.common
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/common/src/jvmTest/resources [-]
                     - sourceDirs                  : <ROOT>/common/src/jvmTest/kotlin [-]
-                    - sourceDirs                  : <ROOT>/common/src/jvmTest/java [-]
                     platform                      : JVM
                 - associateCompilations       : KotlinCompilationCoordinatesImpl
                     compilationName               : main
@@ -2360,17 +2241,14 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragmentRefines             : jvmTest:commonTest
-                    - fragments                   : jvmTest
-                    - fragments                   : commonTest
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : jvmTest (KotlinSourceSetImpl) (*seen*)
@@ -2380,10 +2258,8 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     incremental                   : true
                     pluginVersion                 : <CUT>
                     - pureKotlinSourceFolders     : <ROOT>/common/src/jvmTest/kotlin [-]
-                    - pureKotlinSourceFolders     : <ROOT>/common/src/jvmTest/java [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/common/build/classes/kotlin/jvm/test [-]
-                    - classesDirs                 : <ROOT>/common/build/classes/java/jvmTest [-]
                     effectiveClassesDir           : <ROOT>/common/build/classes/kotlin/jvm/test [-]
                     resourcesDir                  : <ROOT>/common/build/processedResources/jvm/test [-]
                 platform                      : JVM
@@ -2392,6 +2268,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                 archiveFile                   : <ROOT>/common/build/libs/common-jvm.jar [-]
                 - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
+            presetName                    : jvm
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
                 taskName                      : jvmTest
@@ -2414,6 +2291,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : test
     kotlinGradleModel             : kotlin-platform-jvm (KotlinGradleModelImpl)
         additionalVisibleSourceSets
             main                          : <empty>
@@ -2439,8 +2317,8 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
             test
@@ -2463,14 +2341,14 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -2494,6 +2372,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -3537,7 +3417,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -3567,6 +3447,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -3980,7 +3862,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
@@ -3992,14 +3874,15 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         - androidVariantNames         : debug
                         - androidVariantNames         : release
                         kotlinSourceSetName           : androidMain
+                    isManagedByComAndroidLibraryPlugin      : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/feature-b/src/androidMain/resources [-]
                     - resourceDirs                : <ROOT>/feature-b/src/main/resources [-]
                     - resourceDirs                : <ROOT>/feature-b/src/commonMain/resources [-]
@@ -4027,21 +3910,19 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragmentRefines             : androidDebug:commonMain
-                    - fragments                   : androidDebug
-                    - fragments                   : commonMain
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
@@ -4064,6 +3945,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         androidSourceSetName          : androidTest
                         - androidVariantNames         : debugAndroidTest
                         kotlinSourceSetName           : androidInstrumentedTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -4071,8 +3953,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/feature-b/src/androidInstrumentedTest/resources [-]
                     - resourceDirs                : <ROOT>/feature-b/src/androidTest/resources [-]
                     - resourceDirs                : <ROOT>/feature-b/src/androidInstrumentedTestDebug/resources [-]
@@ -4101,19 +3983,19 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragments                   : androidInstrumentedTestDebug
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : androidInstrumentedTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -4135,6 +4017,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         - androidVariantNames         : debugUnitTest
                         - androidVariantNames         : releaseUnitTest
                         kotlinSourceSetName           : androidUnitTest
+                    isManagedByComAndroidLibraryPlugin      : true
                     isTestComponent               : true
                     languageSettings              : KotlinLanguageSettingsImpl
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
@@ -4142,8 +4025,8 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/feature-b/src/androidUnitTest/resources [-]
                     - resourceDirs                : <ROOT>/feature-b/src/test/resources [-]
                     - resourceDirs                : <ROOT>/feature-b/src/commonTest/resources [-]
@@ -4174,21 +4057,19 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragmentRefines             : androidUnitTestDebug:commonTest
-                    - fragments                   : androidUnitTestDebug
-                    - fragments                   : commonTest
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : androidUnitTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
+                isManagedByComAndroidLibraryPlugin      : true
                 isTestComponent               : true
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
@@ -4200,7 +4081,9 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     resourcesDir                  : <ROOT>/feature-b/build/processedResources/android/debugUnitTest [-]
                 platform                      : ANDROID
             disambiguationClassifier      : android
+            isManagedByComAndroidLibraryPlugin      : true
             platform                      : ANDROID
+            presetName                    : android
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
                 taskName                      : testDebugUnitTest
@@ -4234,6 +4117,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : test
     kotlinGradleModel             : kotlin-platform-jvm (KotlinGradleModelImpl)
         additionalVisibleSourceSets
             main                          : <empty>
@@ -4260,8 +4144,8 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
             test
@@ -4284,8 +4168,8 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
             testEnv
@@ -4308,14 +4192,14 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -4342,6 +4226,9 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : jvmTest
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     externalProject               : :kmp-java (DefaultExternalProject) (*seen*)
 MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
     GradleModuleModel
@@ -4352,6 +4239,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : jvmTest
     kotlinMppGradleModel          : {commonMain=commonMain, commonTest=commonTest, jvmMain=jvmMain, jvmTest=jvmTest} (KotlinMPPGradleModelImpl)
         dependencies
             commonMain
@@ -4375,7 +4263,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -4388,8 +4276,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/kmp-java/sample/src/commonMain/resources [-]
                     - sourceDirs                  : <ROOT>/kmp-java/sample/src/commonMain/kotlin
                     platform                      : JVM
@@ -4405,13 +4293,12 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/kmp-java/sample/src/jvmMain/resources [-]
                     - sourceDirs                  : <ROOT>/kmp-java/sample/src/jvmMain/kotlin
                     - sourceDirs                  : <ROOT>/kmp-java/sample/src/jvmMain/java [-]
                     platform                      : JVM
-                archiveFile                   : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                 compilerArguments             : K2JVMCompilerArguments
                     allowNoSourceFiles            : true
                     assertionsMode                : legacy
@@ -4426,17 +4313,14 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragmentRefines             : jvmMain:commonMain
-                    - fragments                   : jvmMain
-                    - fragments                   : commonMain
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : jvmMain (KotlinSourceSetImpl) (*seen*)
@@ -4447,7 +4331,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - pureKotlinSourceFolders     : <ROOT>/kmp-java/sample/src/jvmMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
-                    - classesDirs                 : <ROOT>/kmp-java/sample/build/classes/java/jvmMain [-]
                     - classesDirs                 : <ROOT>/kmp-java/sample/build/classes/java/main [-]
                     effectiveClassesDir           : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/main [-]
                     resourcesDir                  : <ROOT>/kmp-java/sample/build/processedResources/jvm/main [-]
@@ -4466,8 +4349,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/kmp-java/sample/src/commonTest/resources [-]
                     - sourceDirs                  : <ROOT>/kmp-java/sample/src/commonTest/kotlin [-]
                     platform                      : JVM
@@ -4486,8 +4369,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                         - compilerPluginClasspath     : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                        - compilerPluginClasspath     : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - resourceDirs                : <ROOT>/kmp-java/sample/src/jvmTest/resources [-]
                     - sourceDirs                  : <ROOT>/kmp-java/sample/src/jvmTest/kotlin [-]
                     - sourceDirs                  : <ROOT>/kmp-java/sample/src/jvmTest/java [-]
@@ -4509,17 +4392,14 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
-                    - fragmentRefines             : jvmTest:commonTest
-                    - fragments                   : jvmTest
-                    - fragments                   : commonTest
                     multiPlatform                 : true
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
-                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     returnValueChecker            : disable
                     useFirLT                      : true
                 - declaredSourceSets          : jvmTest (KotlinSourceSetImpl) (*seen*)
@@ -4531,7 +4411,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - pureKotlinSourceFolders     : <ROOT>/kmp-java/sample/src/jvmTest/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test [-]
-                    - classesDirs                 : <ROOT>/kmp-java/sample/build/classes/java/jvmTest [-]
                     - classesDirs                 : <ROOT>/kmp-java/sample/build/classes/java/test [-]
                     effectiveClassesDir           : <ROOT>/kmp-java/sample/build/classes/kotlin/jvm/test [-]
                     resourcesDir                  : <ROOT>/kmp-java/sample/build/processedResources/jvm/test [-]
@@ -4541,6 +4420,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                 archiveFile                   : <ROOT>/kmp-java/sample/build/libs/sample-jvm.jar [-]
                 - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
+            presetName                    : jvm
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
                 taskName                      : jvmTest
@@ -4560,6 +4440,8 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -4865,6 +4747,8 @@ MODULE                        : NonStandardSourceSetDependencies.lib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -5363,7 +5247,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+            versionString                 : 1.9.23
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

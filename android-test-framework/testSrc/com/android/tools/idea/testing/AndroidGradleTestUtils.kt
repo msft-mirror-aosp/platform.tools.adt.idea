@@ -116,6 +116,10 @@ import com.android.tools.idea.gradle.project.sync.idea.setupAndroidContentEntrie
 import com.android.tools.idea.gradle.project.sync.idea.setupAndroidDependenciesForMpss
 import com.android.tools.idea.gradle.project.sync.idea.setupCompilerOutputPaths
 import com.android.tools.idea.gradle.project.sync.issues.SyncIssues.Companion.syncIssues
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeRefactoringProcessor
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeRefactoringProcessorCannotUpgradeDialog
+import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeRefactoringProcessorDialog
+import com.android.tools.idea.gradle.project.upgrade.RefactoringProcessorInstantiator
 import com.android.tools.idea.gradle.util.GradleConfigProperties
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.GRADLE_SYSTEM_ID
 import com.android.tools.idea.gradle.util.emulateStartupActivityForTest
@@ -847,6 +851,7 @@ fun AndroidProjectStubBuilder.buildDefaultConfigStub() = IdeProductFlavorContain
     proguardFiles = emptyList(),
     resValues = emptyMap(),
     versionNameSuffix = null,
+    matchingFallbacks = emptyList(),
     isDefault = null
   ),
   sourceProvider = mainSourceProvider,
@@ -872,7 +877,8 @@ fun AndroidProjectStubBuilder.buildDebugBuildTypeStub(): IdeBuildTypeContainerIm
         renderscriptOptimLevel = 1,
         isMinifyEnabled = false,
         isZipAlignEnabled = true,
-        isDefault = null
+        isDefault = null,
+        matchingFallbacks = emptyList()
       ),
       debugSourceProvider,
       listOfNotNull(
@@ -901,7 +907,8 @@ fun AndroidProjectStubBuilder.buildReleaseBuildTypeStub(): IdeBuildTypeContainer
         renderscriptOptimLevel = 1,
         isMinifyEnabled = true,
         isZipAlignEnabled = true,
-        isDefault = null
+        isDefault = null,
+        matchingFallbacks = emptyList()
       ),
       sourceProvider = releaseSourceProvider,
       extraSourceProviders = listOf())
@@ -1834,6 +1841,7 @@ private fun createAndroidModuleDataNode(
       GradleModuleModel(
         qualifiedModuleName,
         listOf(),
+        listOf(),
         gradlePath,
         moduleBasePath.toImpl(),
         moduleBasePath.resolve("build.gradle").toImpl(),
@@ -2076,6 +2084,7 @@ private fun createJavaModuleDataNode(
         GradleModuleModel(
           qualifiedModuleName,
           listOf(),
+          listOf("test"),
           gradlePath,
           moduleBasePath.toImpl(),
           moduleBasePath.resolve("build.gradle").toImpl(),
@@ -2407,6 +2416,7 @@ data class OpenPreparedProjectOptions @JvmOverloads constructor(
   val syncViewEventHandler: (BuildEvent) -> Unit = {},
   val subscribe: (MessageBusConnection) -> Unit = {},
   val disableKtsRelatedIndexing: Boolean = false,
+  val disableForcedAgpUpgradeDialog: Boolean = false,
   val reportProjectSizeUsage: Boolean = false,
   val overrideProjectGradleJdkPath: File? = null,
   val onProjectCreated: Project.() -> Unit = {},
@@ -2480,6 +2490,9 @@ private fun <T> openPreparedProject(
             // experience in the code editor. It takes approximately 4 minutes to complete. We unregister the contributor to make our tests
             // run faster.
             disableKtsIndexing(project, disposable)
+          }
+          if (options.disableForcedAgpUpgradeDialog) {
+            disableForcedAgpUpgradeDialog(project, disposable)
           }
           // After create is invoked via three different execution paths:
           //   (1) when we import a new Android Gradle project that does not yet have a `.idea` directory. In this case this method is
@@ -2924,4 +2937,17 @@ fun disableKtsIndexing(project: Project, disposable: Disposable) {
     SCRIPT_DEFINITIONS_SOURCES.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
   }
   */
+}
+
+fun disableForcedAgpUpgradeDialog(project: Project, disposable: Disposable) {
+  val instantiator = object : RefactoringProcessorInstantiator() {
+    override fun showAndGetAgpUpgradeDialog(
+      processor: AgpUpgradeRefactoringProcessor,
+      cannotUpgradeDialogFactory: (AgpUpgradeRefactoringProcessor) -> AgpUpgradeRefactoringProcessorCannotUpgradeDialog,
+      upgradeDialogFactory: (AgpUpgradeRefactoringProcessor, Boolean) -> AgpUpgradeRefactoringProcessorDialog
+    ): Boolean {
+      return false
+    }
+  }
+  project.replaceService(RefactoringProcessorInstantiator::class.java, instantiator, disposable)
 }

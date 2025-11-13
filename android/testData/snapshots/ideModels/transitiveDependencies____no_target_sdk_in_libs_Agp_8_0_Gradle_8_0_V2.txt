@@ -712,12 +712,12 @@ MODULE                        : project
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     - taskArtifacts               : <ROOT>/javalib1/build/libs/javalib1.jar [-]
                     configurationArtifacts
-                        - archives                    : <ROOT>/javalib1/build/libs/javalib1.jar [-]
                         - apiElements                 : <ROOT>/javalib1/build/libs/javalib1.jar [-]
-                        - runtimeElements             : <ROOT>/javalib1/build/libs/javalib1.jar [-]
-                        - testResultsElementsForTest  : <ROOT>/javalib1/build/test-results/test/binary [-]
+                        - archives                    : <ROOT>/javalib1/build/libs/javalib1.jar [-]
                         - mainSourceElements          : <ROOT>/javalib1/src/main/resources [-]
                         - mainSourceElements          : <ROOT>/javalib1/src/main/java
+                        - runtimeElements             : <ROOT>/javalib1/build/libs/javalib1.jar [-]
+                        - testResultsElementsForTest  : <ROOT>/javalib1/build/test-results/test/binary [-]
                     sourceSets
                         main
                             sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
@@ -805,12 +805,12 @@ MODULE                        : project
                     targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                     - taskArtifacts               : <ROOT>/javalib2/build/libs/javalib2.jar [-]
                     configurationArtifacts
-                        - archives                    : <ROOT>/javalib2/build/libs/javalib2.jar [-]
                         - apiElements                 : <ROOT>/javalib2/build/libs/javalib2.jar [-]
-                        - runtimeElements             : <ROOT>/javalib2/build/libs/javalib2.jar [-]
-                        - testResultsElementsForTest  : <ROOT>/javalib2/build/test-results/test/binary [-]
+                        - archives                    : <ROOT>/javalib2/build/libs/javalib2.jar [-]
                         - mainSourceElements          : <ROOT>/javalib2/src/main/resources [-]
                         - mainSourceElements          : <ROOT>/javalib2/src/main/java
+                        - runtimeElements             : <ROOT>/javalib2/build/libs/javalib2.jar [-]
+                        - testResultsElementsForTest  : <ROOT>/javalib2/build/test-results/test/binary [-]
                     sourceSets
                         main
                             sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
@@ -915,6 +915,8 @@ MODULE                        : project.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 23
@@ -1987,6 +1989,7 @@ MODULE                        : project.javalib1
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : test
     externalProject               : :javalib1 (DefaultExternalProject) (*seen*)
 MODULE                        : project.javalib1.main
 MODULE                        : project.javalib1.test
@@ -1999,6 +2002,7 @@ MODULE                        : project.javalib2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : test
     externalProject               : :javalib2 (DefaultExternalProject) (*seen*)
 MODULE                        : project.javalib2.main
 MODULE                        : project.javalib2.test
@@ -2012,6 +2016,8 @@ MODULE                        : project.library1
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -3086,6 +3092,8 @@ MODULE                        : project.library2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testReleaseUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16

@@ -79,6 +79,10 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
 
   override fun canGoForward(): ObservableBool = canGoForward
 
+  override fun onShowing() {
+    uiModel.selectedAndroidProjectEntry?.onShowing(model)
+  }
+
   override fun getComponent(): JComponent = rootView
 
   override fun getPreferredFocusComponent(): JComponent = rootView

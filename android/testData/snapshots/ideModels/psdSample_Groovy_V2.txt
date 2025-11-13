@@ -796,12 +796,12 @@ MODULE                        : project
                     targetCompatibility           : 1.6
                     - taskArtifacts               : <ROOT>/jav/build/libs/jav.jar [-]
                     configurationArtifacts
-                        - archives                    : <ROOT>/jav/build/libs/jav.jar [-]
                         - apiElements                 : <ROOT>/jav/build/libs/jav.jar [-]
-                        - runtimeElements             : <ROOT>/jav/build/libs/jav.jar [-]
-                        - testResultsElementsForTest  : <ROOT>/jav/build/test-results/test/binary [-]
+                        - archives                    : <ROOT>/jav/build/libs/jav.jar [-]
                         - mainSourceElements          : <ROOT>/jav/src/main/resources [-]
                         - mainSourceElements          : <ROOT>/jav/src/main/java [-]
+                        - runtimeElements             : <ROOT>/jav/build/libs/jav.jar [-]
+                        - testResultsElementsForTest  : <ROOT>/jav/build/test-results/test/binary [-]
                     sourceSets
                         main
                             sourceCompatibility           : 1.6
@@ -1011,6 +1011,10 @@ MODULE                        : project.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testBasicBarDebugUnitTest
+        - taskNames                   : testBasicOtherBarDebugUnitTest
+        - taskNames                   : testPaidBarDebugUnitTest
+        - taskNames                   : testPaidOtherBarDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -1264,6 +1268,7 @@ MODULE                        : project.app
             RenderscriptOptimLevel        : 3
             IsMinifyEnabled               : false
             IsZipAlignEnabled             : true
+            MatchingFallbacks             : [release, debug]
         SourceProvider
             Name                          : specialRelease
             Manifest                      : <ROOT>/app/src/specialRelease/AndroidManifest.xml [-]
@@ -1429,6 +1434,7 @@ MODULE                        : project.app
             resourceConfigurations        : hdpi
             resourceConfigurations        : xhdpi
             VectorDrawables
+            MatchingFallbacks             : [bar]
         SourceProvider
             Name                          : otherBar
             Manifest                      : <ROOT>/app/src/otherBar/AndroidManifest.xml [-]
@@ -2472,6 +2478,7 @@ MODULE                        : project.dyn_feature
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -2748,6 +2755,7 @@ MODULE                        : project.jav
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : test
     externalProject               : :jav (DefaultExternalProject) (*seen*)
 MODULE                        : project.jav.main
 MODULE                        : project.jav.test
@@ -2761,6 +2769,7 @@ MODULE                        : project.lib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 16
@@ -3762,6 +3771,7 @@ MODULE                        : project.nested1
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -4043,6 +4053,7 @@ MODULE                        : project.nested1.deep
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -4334,6 +4345,9 @@ MODULE                        : project.nested2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testBasicDebugUnitTest
+        - taskNames                   : testDebugUnitTest
+        - taskNames                   : testPaidDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -4748,6 +4762,7 @@ MODULE                        : project.nested2.deep
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1
@@ -5030,6 +5045,7 @@ MODULE                        : project.nested2.trans
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     externalProject               : :nested2:trans (DefaultExternalProject) (*seen*)
 MODULE                        : project.nested2.trans.deep2
     GradleModuleModel
@@ -5041,6 +5057,7 @@ MODULE                        : project.nested2.trans.deep2
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
+        - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 1

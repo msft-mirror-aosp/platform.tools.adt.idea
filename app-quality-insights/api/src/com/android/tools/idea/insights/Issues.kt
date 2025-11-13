@@ -15,23 +15,21 @@
  */
 package com.android.tools.idea.insights
 
+import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueAnnotation
+import com.android.tools.idea.insights.model.issue.IssueId
+import com.android.tools.idea.insights.model.issue.IssueState
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import icons.StudioIcons
 import javax.swing.Icon
-
-@JvmInline value class IssueId(val value: String)
-
-enum class IssueState {
-  OPEN,
-  OPENING,
-  CLOSED,
-  CLOSING,
-}
 
 /** Represents discovered issue, including one representative event for it. */
 data class AppInsightsIssue(
   val issueDetails: IssueDetails,
   val sampleEvent: Event,
+  val source: AppInsightsTracker.ProductType,
   val state: IssueState = IssueState.OPEN,
 ) {
   val id: IssueId = issueDetails.id
@@ -118,16 +116,6 @@ data class IssueDetails(
   // information that may help in diagnosing and fixing the issue.
   val annotations: List<IssueAnnotation>,
 )
-
-data class IssueAnnotation(
-  // e.g. "Potential fix", "Insight"
-  val category: String,
-  // e.g. "Slow Binder call"
-  val title: String,
-  val body: String,
-) {
-  companion object
-}
 
 data class IssueVariant(
   // Distinct identifier for the variant.

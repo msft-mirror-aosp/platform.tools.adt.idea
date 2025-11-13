@@ -52,6 +52,7 @@ import com.android.tools.idea.testing.BuildEnvironment
 import com.android.tools.idea.testing.CustomAgpVersionSoftwareEnvironment
 import com.android.tools.idea.testing.IdeComponents
 import com.android.tools.idea.testing.JdkUtils
+import com.android.tools.idea.testing.disableForcedAgpUpgradeDialog
 import com.android.tools.idea.testing.prepareGradleProject
 import com.android.tools.idea.testing.resolve
 import com.android.tools.idea.testing.withGradle
@@ -95,12 +96,7 @@ abstract class ProjectsUpgradeTestBase {
     val ideComponents = IdeComponents(projectRule.fixture)
     // Allows to skip sync request after upgrade.
     ideComponents.replaceApplicationService(GradleSyncInvoker::class.java, fakeSyncInvoker)
-    // Disables the forced upgrade dialog
-    val instantiator = mock<RefactoringProcessorInstantiator>()
-    doCallRealMethod().whenever(instantiator).createProcessor(any(), any(), any())
-    doReturn(false).whenever(instantiator).showAndGetAgpUpgradeDialog(any())
-    doReturn(false).whenever(instantiator).showAndGetAgpUpgradeDialog(any(), any(), any())
-    projectRule.project.replaceService(RefactoringProcessorInstantiator::class.java, instantiator, projectRule.fixture.testRootDisposable)
+    disableForcedAgpUpgradeDialog(projectRule.project, projectRule.fixture.testRootDisposable)
   }
 
   fun doTestFullUpgrade(baseProject: AUATestProjectState, to: AUATestProjectState) {
@@ -175,7 +171,8 @@ abstract class ProjectsUpgradeTestBase {
           target,
           environment,
           testProject.ndkVersion(),
-          emptyList()
+          emptyList(),
+          false
         )
         when (relative.path) {
           FN_GRADLE_PROPERTIES -> {
@@ -215,7 +212,7 @@ abstract class ProjectsUpgradeTestBase {
       val wrapper = GradleWrapper.create(projectRoot, null)
       GradleProjectSystemUtil.findEmbeddedGradleDistributionPath()
         ?.resolve("gradle-${expectedProjectState.gradleVersionString()}-bin.zip")
-        ?.let { file -> wrapper.updateDistributionUrl(file) } ?: error("failed to set expected Gradle path")
+        ?.let { file -> wrapper.updateDistribution(file) } ?: error("failed to set expected Gradle path")
     }
     return temporaryFolder.root
   }

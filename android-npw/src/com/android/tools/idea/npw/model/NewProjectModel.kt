@@ -17,6 +17,7 @@ package com.android.tools.idea.npw.model
 
 import com.android.annotations.concurrency.UiThread
 import com.android.annotations.concurrency.WorkerThread
+import com.android.ide.common.repository.AgpVersion
 import com.android.io.CancellableFileIo
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.flags.StudioFlags
@@ -253,10 +254,16 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
     @WorkerThread
     override fun init() {
-      val resolvedAgpVersion =
+      var resolvedAgpVersion =
         this@NewProjectModel.agpVersionSelector
           .get()
           .resolveVersion(AgpVersions::getAvailableVersions)
+
+      // TODO(b/444641424): Remove when Hilt supports AGP 9.
+      if (prompt.get().isNotEmpty()) {
+        resolvedAgpVersion = resolvedAgpVersion.coerceAtMost(AgpVersion(8, 13))
+      }
+
       projectTemplateData =
         projectTemplateDataBuilder
           .apply {
@@ -292,7 +299,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     @WorkerThread
     override fun render() {
       performCreateProject(false)
-      updateDistributionUrl()
+      updateDistribution()
 
       try {
         val projectRoot = VfsUtilCore.virtualToIoFile(project.baseDir)
@@ -328,12 +335,12 @@ class NewProjectModel : WizardModel(), ProjectModelData {
       recipe.render(context, executor, AndroidStudioEvent.TemplateRenderer.ANDROID_PROJECT)
     }
 
-    private fun updateDistributionUrl() {
+    private fun updateDistribution() {
       val rootLocation = File(projectLocation.get())
       val wrapperPropertiesFilePath = GradleWrapper.getDefaultPropertiesFilePath(rootLocation)
       try {
         GradleWrapper.get(wrapperPropertiesFilePath, project)
-          .updateDistributionUrl(projectTemplateData.gradleVersion)
+          .updateDistribution(projectTemplateData.gradleVersion)
       } catch (e: IOException) {
         // Unlikely to happen. Continue with import, the worst-case scenario is that sync fails
         // and the error message has a "quick fix".

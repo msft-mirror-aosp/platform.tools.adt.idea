@@ -395,6 +395,7 @@ class KotlinModelConverter {
       testFunctionalTest = null,
       resourceConfigurations = emptyList(),
       vectorDrawables = null,
+      matchingFallbacks = emptyList(),
       isDefault = null
     )
   }
@@ -417,7 +418,8 @@ class KotlinModelConverter {
         renderscriptOptimLevel = -1,
         isMinifyEnabled = mainAndroidCompilation.mainInfo.minificationEnabled,
         isZipAlignEnabled = false,
-        isDefault = null
+        isDefault = null,
+        matchingFallbacks = emptyList()
       ),
       sourceProvider = null,
       extraSourceProviders = listOf())
@@ -488,7 +490,7 @@ class KotlinModelConverter {
       name = IdeArtifactName.MAIN,
       compileTaskName = mainAndroidCompilation.kotlinCompileTaskName,
       assembleTaskName = mainAndroidCompilation.assembleTaskName,
-      classesFolder = mainKotlinCompilation.output.classesDirs.toList(),
+      classesFolder = mainKotlinCompilation.output.classesDirs.toList() + mainAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
       variantSourceProvider = null,
       multiFlavorSourceProvider = null,
       ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
@@ -524,7 +526,7 @@ class KotlinModelConverter {
         name = IdeArtifactName.UNIT_TEST,
         compileTaskName = unitTestAndroidCompilation.kotlinCompileTaskName,
         assembleTaskName = unitTestAndroidCompilation.assembleTaskName,
-        classesFolder = unitTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList(),
+        classesFolder = (unitTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList()) + unitTestAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
         variantSourceProvider = null,
         multiFlavorSourceProvider = null,
         ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
@@ -548,7 +550,7 @@ class KotlinModelConverter {
         name = IdeArtifactName.ANDROID_TEST,
         compileTaskName = androidTestAndroidCompilation.kotlinCompileTaskName,
         assembleTaskName = androidTestAndroidCompilation.assembleTaskName,
-        classesFolder = androidTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList(),
+        classesFolder = (androidTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList()) + androidTestAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
         variantSourceProvider = null,
         multiFlavorSourceProvider = null,
         ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks

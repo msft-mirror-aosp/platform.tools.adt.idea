@@ -19,6 +19,9 @@ import com.android.tools.idea.insights.ai.AiInsightToolkit
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.events.actions.Action
 import com.android.tools.idea.insights.experiments.InsightFeedback
+import com.android.tools.idea.insights.model.event.Device
+import com.android.tools.idea.insights.model.event.OperatingSystemInfo
+import com.android.tools.idea.insights.model.issue.FailureType
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import kotlin.reflect.KClass

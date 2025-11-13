@@ -18,12 +18,13 @@ package com.android.tools.idea.insights.ui
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.insights.AppInsightsIssue
 import com.android.tools.idea.insights.ConnectionMode
-import com.android.tools.idea.insights.Event
-import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.IssueDetails
-import com.android.tools.idea.insights.IssueId
-import com.android.tools.idea.insights.IssueState
 import com.android.tools.idea.insights.Permission
+import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueId
+import com.android.tools.idea.insights.model.issue.IssueState
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.runInEdtAndWait
 import java.awt.Component
@@ -32,6 +33,7 @@ import java.io.Closeable
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JButton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -67,6 +69,7 @@ class StateHolder<T>(value: T) : Closeable {
   }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(JUnit4::class)
 class ToggleButtonTest {
 
@@ -90,6 +93,7 @@ class ToggleButtonTest {
         emptyList(),
       ),
       Event(),
+      ProductType.PLAY_VITALS,
     )
 
   private fun createDefaultStateHolder() =
@@ -113,7 +117,7 @@ class ToggleButtonTest {
           }
         },
       )
-      .also { it.size = Dimension(100, 100) } as JButton
+      .also { it.size = Dimension(100, 100) }
 
   @Test
   fun `closing issue disables button and then changes label to 'Open issue'`() = runTest {

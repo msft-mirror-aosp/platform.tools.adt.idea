@@ -15,10 +15,13 @@
  */
 package com.android.tools.idea.insights
 
+import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.analytics.TestAppInsightsTracker
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.events.EventsChanged
 import com.android.tools.idea.insights.events.actions.Action
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.event.EventPage
 import com.google.common.truth.Truth.assertThat
 import java.time.Instant
 import org.junit.Test
@@ -42,7 +45,7 @@ class EventsChangedTest {
         currentState,
         TestAppInsightsTracker,
         FakeInsightsProvider(),
-        AppInsightsCacheImpl(),
+        AppInsightsCacheImpl(ProductType.PLAY_VITALS),
       )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(LoadingState.Ready(DynamicEventGallery(eventList, 0, "")))
@@ -68,7 +71,7 @@ class EventsChangedTest {
         currentState,
         TestAppInsightsTracker,
         FakeInsightsProvider(),
-        AppInsightsCacheImpl(),
+        AppInsightsCacheImpl(ProductType.PLAY_VITALS),
       )
     assertThat(transition.newState.currentEvents)
       .isEqualTo(
@@ -93,7 +96,7 @@ class EventsChangedTest {
         currentState,
         TestAppInsightsTracker,
         FakeInsightsProvider(),
-        AppInsightsCacheImpl(),
+        AppInsightsCacheImpl(ProductType.PLAY_VITALS),
       )
     assertThat(transition.newState.currentEvents).isEqualTo(failure)
     assertThat(transition.action)

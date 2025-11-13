@@ -16,8 +16,8 @@
 package com.android.tools.idea.insights.analytics
 
 import com.android.tools.idea.insights.ConnectionMode
-import com.android.tools.idea.insights.FailureType
 import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.model.issue.FailureType
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.CrashType
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.InsightSentiment.Sentiment
@@ -96,9 +96,9 @@ interface AppInsightsTracker {
     deprecationInfo: DevServiceDeprecationInfo,
   )
 
-  enum class ProductType {
-    CRASHLYTICS,
-    PLAY_VITALS;
+  enum class ProductType(val uiName: String) {
+    CRASHLYTICS("Crashlytics"),
+    PLAY_VITALS("Play Vitals");
 
     fun toProtoProductType(): AppQualityInsightsUsageEvent.AppQualityInsightsProductType =
       when (this) {

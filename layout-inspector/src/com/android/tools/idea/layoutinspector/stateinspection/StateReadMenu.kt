@@ -53,7 +53,6 @@ fun createStateReadMenuGroup(selected: ComposeViewNode, inspectorModel: Inspecto
       val model = inspectorModel.stateReadsModel
       val result = mutableListOf<AnAction>()
       result.add(ObserveNodeAction(model, selected))
-      result.add(ObserveSubtreeAction(model, selected))
       result.add(ObserveAllAction(model))
       result.add(ObserveNoneAction(model))
       return result.toTypedArray()
@@ -71,6 +70,12 @@ private class ObserveNodeAction(
     } else {
       model.observeNode(topNode)
     }
+    LayoutInspectorRootPanel.get(event)?.currentClient?.stats?.observingSingleNodeSelected()
+
+    // Close the StateInspectionPanel if nothing is observed:
+    if (!model.isObservingAny()) {
+      model.stopShowingStateReads()
+    }
   }
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT
@@ -82,31 +87,11 @@ private class ObserveNodeAction(
   }
 }
 
-private class ObserveSubtreeAction(
-  private val model: InspectorStateReadModel,
-  val topNode: ComposeViewNode,
-) : AnAction("Observe Subtree") {
-  override fun actionPerformed(event: AnActionEvent) {
-    if (model.isSubTreeObserved(topNode)) {
-      model.stopObservingSubtree(topNode)
-    } else {
-      model.observeSubtree(topNode)
-    }
-  }
-
-  override fun getActionUpdateThread() = ActionUpdateThread.BGT
-
-  override fun update(event: AnActionEvent) {
-    event.presentation.isEnabled = !model.isObservingAll()
-    event.presentation.text =
-      if (model.isSubTreeObserved(topNode)) "Stop Observing Subtree" else "Observe Subtree"
-  }
-}
-
 private class ObserveAllAction(private val model: InspectorStateReadModel) :
   AnAction("Observe All") {
   override fun actionPerformed(event: AnActionEvent) {
     model.observeAll()
+    LayoutInspectorRootPanel.get(event)?.currentClient?.stats?.observingAllSelected()
   }
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT
@@ -120,6 +105,10 @@ private class ObserveNoneAction(private val model: InspectorStateReadModel) :
   AnAction("Observe None") {
   override fun actionPerformed(event: AnActionEvent) {
     model.observeNone()
+    LayoutInspectorRootPanel.get(event)?.currentClient?.stats?.observingNoneSelected()
+
+    // Close the StateInspectionPanel since nothing is observed:
+    model.stopShowingStateReads()
   }
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT

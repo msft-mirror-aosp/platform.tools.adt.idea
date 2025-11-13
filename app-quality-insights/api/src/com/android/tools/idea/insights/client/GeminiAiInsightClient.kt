@@ -19,8 +19,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.buildLlmPrompt
 import com.android.tools.idea.insights.Connection
-import com.android.tools.idea.insights.Event
-import com.android.tools.idea.insights.IssueId
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.InsightSource
 import com.android.tools.idea.insights.ai.codecontext.CodeContext
@@ -28,6 +26,8 @@ import com.android.tools.idea.insights.ai.codecontext.CodeContextData
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolver
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolverImpl
 import com.android.tools.idea.insights.ai.codecontext.ContextSharingState
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.issue.IssueId
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.delay
@@ -41,6 +41,14 @@ private val GEMINI_PREAMBLE =
     Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
     For headings, use H3 only. Initial explanation should not be under a heading.
     Begin with the explanation directly. Do not add fillers at the start of response.
+  """
+    .trimIndent()
+
+private val SHORT_GEMINI_PREAMBLE =
+  """
+    Respond in MarkDown format only. Do not format with HTML. Do not include duplicate heading tags.
+    Do no include headings. Begin with the explanation directly. Do not add fillers at the start of
+    response. Respond in no more than four sentences.
   """
     .trimIndent()
 
@@ -140,7 +148,13 @@ class GeminiAiInsightClient(
       val userPrompt = createPrompt(request, contextData.codeContext)
       val finalPrompt =
         buildLlmPrompt(project) {
-          systemMessage { text(GEMINI_PREAMBLE, emptyList()) }
+          // Enterprise GCA drops systemMessages, so this has to be a userMessage.
+          userMessage {
+            text(
+              if (StudioFlags.AQI_FIX_WITH_AGENT.get()) SHORT_GEMINI_PREAMBLE else GEMINI_PREAMBLE,
+              emptyList(),
+            )
+          }
           userMessage { text(userPrompt, emptyList()) }
         }
       logger.debug("This is the final prompt:\n$userPrompt")
@@ -148,12 +162,21 @@ class GeminiAiInsightClient(
       val response =
         GeminiPluginApi.getInstance().generate(project, finalPrompt).toList().joinToString("\n")
 
-      AiInsight(response, insightSource = InsightSource.STUDIO_BOT, codeContextData = contextData)
+      AiInsight(
+          response,
+          request.event,
+          insightSource = InsightSource.STUDIO_BOT,
+          codeContextData = contextData,
+        )
         .also { cache.putAiInsight(request.connection, request.issueId, request.variantId, it) }
     } else {
       // Simulate a delay that would come generating an actual insight
       delay(2000)
-      AiInsight(createPrompt(request, emptyList()), insightSource = InsightSource.STUDIO_BOT)
+      AiInsight(
+        createPrompt(request, emptyList()),
+        request.event,
+        insightSource = InsightSource.STUDIO_BOT,
+      )
     }
 
   // Always prefer the insight generated with context regardless of current context sharing setting.
@@ -254,7 +277,7 @@ fun createGeminiInsightRequest(
     event = event,
   )
 
-private fun Event.prettyStackTrace() =
+fun Event.prettyStackTrace() =
   buildString {
       stacktraceGroup.exceptions.forEachIndexed { idx, exception ->
         if (idx == 0 || exception.rawExceptionMessage.shouldTakeException()) {

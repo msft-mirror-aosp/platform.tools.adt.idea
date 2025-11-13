@@ -37,6 +37,8 @@ object TaskBasedUxStrings {
   const val STOPPING_TIME_WARNING = "It might take up to a few minutes for the recording to stop."
   const val ACTION_BAR_RECORDING = "Recording:"
   const val ACTION_BAR_STOP_RECORDING = "Stop Recording"
+  const val FAILED_TO_RECORD_TITLE = "%s failed to record"
+  const val FAILED_TO_RECORD_MESSAGE = "An unexpected error occurred. Please close this tab and try again."
 
   // Icon description strings
   const val TASK_CONFIG_DIALOG_DESC = "Task Configurations"
@@ -126,6 +128,9 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_EXPAND_ALL_SHORTCUT = "Ctrl+NumPad+"
   const val LEAKCANARY_COLLAPSE_ALL_SHORTCUT = "Ctrl+NumPad-"
   const val LEAKCANARY_COPY_TO_CLIPBOARD = "Copy trace to clipboard"
+  const val LEAKCANARY_ANALYSIS = "Analyzing results:"
+  const val LEAKCANARY_WAITING_HEAP_DUMP = "Waiting to dump heap until"
+  const val LEAKCANARY_RETAINED_OBJECT = "retained object"
 
   fun getTaskTooltip(taskType: ProfilerTaskType) = when (taskType) {
     ProfilerTaskType.SYSTEM_TRACE -> "Captures a trace that can help you understand how your app interacts with system resources"

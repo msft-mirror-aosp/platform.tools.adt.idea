@@ -18,7 +18,6 @@
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="google-login" />
-    <orderEntry type="library" name="gradle-shared-proto" level="project" />
     <orderEntry type="library" name="google-api-client" level="project" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common" />
     <orderEntry type="module-library">
@@ -35,6 +34,7 @@
     <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.dvcs.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
+    <orderEntry type="module" module-name="intellij.android.app-quality-insights.client" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
@@ -45,5 +45,6 @@
     <orderEntry type="module" module-name="studio-grpc-testutils" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.platform.vcs.impl" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="library" scope="TEST" name="gradle-shared-proto" level="project" />
   </component>
 </module>

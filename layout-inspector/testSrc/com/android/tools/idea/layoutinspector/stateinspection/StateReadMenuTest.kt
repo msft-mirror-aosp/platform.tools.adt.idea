@@ -21,6 +21,7 @@ import com.android.ide.common.rendering.api.ResourceReference
 import com.android.resources.ResourceType
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspector
+import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatisticsImpl
 import com.android.tools.idea.layoutinspector.model
 import com.android.tools.idea.layoutinspector.model.COMPOSE1
 import com.android.tools.idea.layoutinspector.model.COMPOSE2
@@ -38,6 +39,8 @@ import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.None
 import com.android.tools.idea.layoutinspector.stateinspection.ObservedNodes.Some
 import com.android.tools.idea.layoutinspector.ui.LAYOUT_INSPECTOR_DATA_KEY
 import com.google.common.truth.Truth.assertThat
+import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorAttachToProcess.ClientType
+import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.AnAction
@@ -48,18 +51,21 @@ import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 class StateReadMenuTest {
   private val disposableRule = DisposableRule()
   private val flagRule = FlagRule(StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_ENABLE_STATE_READS, true)
 
-  @get:Rule val rule = RuleChain(ApplicationRule(), disposableRule, flagRule)
+  @get:Rule val rule = RuleChain(ApplicationRule(), disposableRule, flagRule, EdtRule())
   private lateinit var model: InspectorModel
   private lateinit var mockLayoutInspector: LayoutInspector
   private lateinit var client: InspectorClient
@@ -82,11 +88,13 @@ class StateReadMenuTest {
         }
       }
 
+    val stats = SessionStatisticsImpl(ClientType.APP_INSPECTION_CLIENT)
     client = mock()
     whenever(client.capabilities)
       .thenReturn(
         setOf(Capability.CAN_OBSERVE_RECOMPOSE_STATE_READS, Capability.HAS_LINE_NUMBER_INFORMATION)
       )
+    whenever(client.stats).thenReturn(stats)
     mockLayoutInspector = mock()
     whenever(mockLayoutInspector.currentClient).thenReturn(client)
     val context =
@@ -120,7 +128,7 @@ class StateReadMenuTest {
     stateReadMenu.checkIsEnabled(event)
     val actions = stateReadMenu.children(event)
     assertThat(actions.map { it.templateText })
-      .containsExactly("Observe Node", "Observe Subtree", "Observe All", "Observe None")
+      .containsExactly("Observe Node", "Observe All", "Observe None")
     val observeNode = actions[0]
     observeNode.checkText(event, "Observe Node")
     ActionUtil.performAction(observeNode, event)
@@ -129,24 +137,20 @@ class StateReadMenuTest {
     ActionUtil.performAction(observeNode, event)
     assertThat(model.stateReadsModel.observedForStateReads.value).isEqualTo(None)
 
-    val observeSubtree = actions[1]
-    observeSubtree.checkText(event, "Observe Subtree")
-    ActionUtil.performAction(observeSubtree, event)
-    assertThat(model.stateReadsModel.observedForStateReads.value)
-      .isEqualTo(Some(setOf(compose2, compose3)))
-    observeSubtree.checkText(event, "Stop Observing Subtree")
-    ActionUtil.performAction(observeSubtree, event)
-    assertThat(model.stateReadsModel.observedForStateReads.value).isEqualTo(None)
-
-    val observeAll = actions[2]
+    val observeAll = actions[1]
     observeAll.checkText(event, "Observe All")
     ActionUtil.performAction(observeAll, event)
     assertThat(model.stateReadsModel.observedForStateReads.value).isEqualTo(All)
 
-    val observeNone = actions[3]
+    val observeNone = actions[2]
     observeNone.checkText(event, "Observe None")
     ActionUtil.performAction(observeNone, event)
     assertThat(model.stateReadsModel.observedForStateReads.value).isEqualTo(None)
+
+    val data = DynamicLayoutInspectorSession.newBuilder()
+    client.stats.save(data)
+    assertThat(data.stateReads.observingAllSelected).isEqualTo(1)
+    assertThat(data.stateReads.observingNodeByIdSelected).isEqualTo(2)
   }
 }
 

@@ -27,6 +27,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnActionWrapper
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.psi.PsiFile
@@ -48,7 +49,6 @@ import org.mockito.kotlin.whenever
 // ZoomToSelectionAction(),
 // JumpToDefinitionAction(),
 // ViewInFocusModeAction(),
-// ToggleResizePanelVisibilityAction(),
 // Separator(),
 // SavePreviewInNewSizeAction(),
 // EnableUiCheckAction(),
@@ -58,7 +58,7 @@ import org.mockito.kotlin.whenever
 // BackNavigationAction()
 // ComposePreviewAgentsDropdownAction() or TransformPreviewAction(), depending on flag value.
 // in wrappers
-private const val EXPECTED_NUMBER_OF_ACTIONS = 9
+private const val EXPECTED_NUMBER_OF_ACTIONS = 8
 
 // SavePreviewInNewSize()
 // EnableUiCheckAction(),
@@ -94,6 +94,22 @@ class PreviewSurfaceActionManagerTest {
   }
 
   @Test
+  fun testCoordinateConversion() {
+    val interactionPane = JPanel().apply { bounds = java.awt.Rectangle(0, 0, 500, 800) }
+    val mouseSource = JPanel().apply { bounds = java.awt.Rectangle(10, 20, 100, 200) }
+    interactionPane.add(mouseSource)
+    whenever(surface.interactionPane).thenReturn(interactionPane)
+    val mouseEvent = MouseEvent(mouseSource, 0, 0L, 0, 123, 456, 1, true)
+
+    val actions = actionManager.getPopupMenuActions(null, mouseEvent)
+    val zoomAction = actions.getChildren(null).filterIsInstance<ZoomToSelectionAction>().single()
+
+    // Check that the point has been converted to the interactionPane coordinates
+    assertThat(zoomAction.x).isEqualTo(123 + 10)
+    assertThat(zoomAction.y).isEqualTo(456 + 20)
+  }
+
+  @Test
   fun testAvailableActionsOnPreviewContextMenuWithDropdownEnabled() {
     testAvailableActionsOnPreviewContextMenu(true)
   }
@@ -121,14 +137,12 @@ class PreviewSurfaceActionManagerTest {
     assertThat(actions[1]).isInstanceOf(ZoomToSelectionAction::class.java)
     assertThat(actions[2]).isInstanceOf(JumpToDefinitionAction::class.java)
     assertThat(actions[3]).isInstanceOf(ViewInFocusModeAction::class.java)
-    assertThat((actions[4] as AnActionWrapper).delegate)
-      .isInstanceOf(ToggleResizePanelVisibilityAction::class.java)
 
-    assertThat(actions[5]).isInstanceOf(Separator::class.java)
+    assertThat(actions[4]).isInstanceOf(Separator::class.java)
 
     // SceneViewContextToolbar actions.
     val sceneViewContextActions =
-      (actions[6] as ShowGroupUnderConditionWrapper)
+      (actions[5] as ShowGroupUnderConditionWrapper)
         .getChildren(null)
         .filterIsInstance<ShowUnderConditionWrapper>()
         .map { it.delegate as EnableUnderConditionWrapper }
@@ -146,14 +160,15 @@ class PreviewSurfaceActionManagerTest {
     // The back navigation action is wrapped into the EnableUnderConditionWrapper and then into
     // the visibleOnlyInInteractive wrapper.
     val backNavigationAction =
-      ((actions[7] as AnActionWrapper).delegate as AnActionWrapper).delegate
+      ((actions[6] as AnActionWrapper).delegate as AnActionWrapper).delegate
     assertThat(backNavigationAction).isInstanceOf(BackNavigationAction::class.java)
 
     // AI actions
-    val aiActionsDropdown =
-      (actions[8] as ShowGroupUnderConditionWrapper).getChildren(null).single()
-    assertThat(aiActionsDropdown.templatePresentation.text)
+    val aiActionsDefaultGroup =
+      (actions[7] as ShowGroupUnderConditionWrapper).getChildren(null).single()
+    assertThat(aiActionsDefaultGroup.templatePresentation.text)
       .isEqualTo(if (aiActionsDropdownEnabled) "previewAgents" else "transformPreview")
+    assertThat(aiActionsDefaultGroup is DefaultActionGroup)
   }
 
   @Test

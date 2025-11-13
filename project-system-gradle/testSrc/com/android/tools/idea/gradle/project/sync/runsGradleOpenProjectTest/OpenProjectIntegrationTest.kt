@@ -41,9 +41,7 @@ import com.google.common.truth.Expect
 import com.google.common.truth.Truth
 import com.intellij.execution.RunManagerEx
 import com.intellij.execution.configurations.ModuleBasedConfiguration
-import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadAction
-import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.project.ExternalStorageConfigurationManager
 import com.intellij.openapi.project.Project
@@ -55,7 +53,6 @@ import com.intellij.openapi.roots.ModuleRootManagerEx
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.testFramework.utils.io.deleteRecursively
 import org.gradle.util.GradleVersion
@@ -354,7 +351,7 @@ class OpenProjectIntegrationTest {
         B.requestSyncAndWait()
         runInEdtAndWait {
           val wrapper = GradleWrapper.find(B)!!
-          wrapper.updateDistributionUrl(GradleVersion.version("7.999"))
+          wrapper.updateDistribution(GradleVersion.version("7.999"))
         }
 
         AndroidGradleTests.syncProject(B, GradleSyncInvoker.Request.testRequest()) {
@@ -371,7 +368,8 @@ class OpenProjectIntegrationTest {
   fun testReOpenWithCachesButNoModules() {
     val preparedProject = projectRule.prepareTestProject(TestProject.PSD_SAMPLE_GROOVY)
     val (before: String, externalConfigurationDir: Path) = preparedProject.open { project ->
-      Pair(project.saveAndDump(), project.getExternalConfigurationDir())
+      // TODO: b/457664571 - consider removing `ignoreModuleFileAndType = true` when fixed.
+      Pair(project.saveAndDump(ignoreModuleFileAndType = true), project.getExternalConfigurationDir())
     }
 
     // Simulate corrupt external configuration caches
@@ -379,7 +377,7 @@ class OpenProjectIntegrationTest {
 
     val after = preparedProject.open { project ->
       verifySyncSuccessful(project, projectRule.testRootDisposable)
-      project.saveAndDump()
+      project.saveAndDump(ignoreModuleFileAndType = true)
     }
     Truth.assertThat(after).isEqualTo(before)
   }

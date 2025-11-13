@@ -36,6 +36,8 @@ interface ChooseAndroidProjectEntry {
   val canGoForward: State<Boolean>
 
   fun onProceeding(newProjectModuleModel: NewProjectModuleModel, model: NewProjectModel)
+
+  fun onShowing(model: NewProjectModel) {}
 }
 
 // FormFactor entries are automatically included and don't implement AndroidProjectEntryProvider

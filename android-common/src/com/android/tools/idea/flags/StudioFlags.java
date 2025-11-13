@@ -1226,6 +1226,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_CONTEXT_MENU = new BooleanFlag(
     EMBEDDED_EMULATOR, "context.menu", "Enable Context Menu",
     "Enables context menu in the Running Devices tool window");
+  public static final Flag<Boolean> RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS = new BooleanFlag(
+    EMBEDDED_EMULATOR, "collapsible.floating.toolbars", "Make zoom and XR toolbars collapsible",
+    "Make zoom and XR toolbars in the Running Devices window collapsible");
   //endregion
 
   //region Device Mirroring
@@ -1652,6 +1655,11 @@ public final class StudioFlags {
   public static final Flag<Boolean> COMPOSE_PREVIEW_AI_GLASSES_PREVIEW = new BooleanFlag(
     COMPOSE, "preview.ai.glasses.preview", "Enable Compose Preview for AI Glasses",
     "If enabled, Compose Preview will have limited support for AI Glasses when glasses are set as the preview device.");
+
+  public static final Flag<Boolean> COMPOSE_PREVIEW_REFERENCE_PROVIDER_ENABLED = new BooleanFlag(
+    COMPOSE, "preview.reference.provider.enabled", "Enable Compose Preview Reference Provider",
+    "If enabled, the Compose Preview Reference Provider will be available for context attachment."
+  );
   //endregion
 
   // region Wear surfaces
@@ -1982,6 +1990,10 @@ public final class StudioFlags {
       "Set Play Vitals gRpc server address, mainly used for testing purposes.",
       "playdeveloperreporting.googleapis.com");
 
+  public static final Flag<Boolean> AQI_FIX_WITH_AGENT =
+    new BooleanFlag(APP_INSIGHTS, "fix.with.agent", "Use Agent for suggested fixes.",
+                    "Use the AI Agent to propose and implement suggested fixes.");
+
   // endregion App Insights
 
   // region App Links Assistant
@@ -2209,6 +2221,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "rag.use.lucindex",
                     "Enable the new Lucene-backed IntelliJ index for RAG",
                     "When enabled, the RAG index will use the new Lucene-backed IntelliJ index pipeline. Otherwise, the original crawler-based pipeline will be used.");
+
+  public static final Flag<Boolean> STUDIOBOT_USE_BM25_FOR_FIND_FILES =
+    new BooleanFlag(STUDIOBOT, "use.bm25.find.files",
+                    "Use BM25 for find_files tool",
+                    "When enabled, the agent will use find_files tool with BM25 backend together with the original find_files.");
 
   public static final Flag<Boolean> STUDIOBOT_ASK_GEMINI_INCLUDE_BUILD_FILES_IN_CONTEXT =
     new BooleanFlag(STUDIOBOT, "askgemini.include.build.files.in.context",
@@ -2678,7 +2695,7 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.journeys.engine.dep",
     "The name of the Journeys test engine dependency used by the Journeys test suite",
     "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
-    "com.android.tools.journeys:journeys-junit-engine:0.2.0-alpha02"
+    "com.android.tools.journeys:journeys-junit-engine:0.2.0"
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JUNIT_PLATFORM_ENGINE_DEP = new StringFlag(
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.junit.platform.engine.dep",

@@ -15,9 +15,11 @@
  */
 package com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -39,6 +41,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -53,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.leakcanarylib.data.Leak
 import com.android.tools.leakcanarylib.data.LeakTrace
 import com.android.tools.leakcanarylib.data.Node
+import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_CLOSE
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_GC_ROOT
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_GO_TO_DECLARATION
@@ -62,6 +67,7 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_NO_LEAK_FOUND_MESSAGE
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_OPEN
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.START_TASK_SELECTION_ERROR_ICON_DESC
+import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizontalDivider
 import com.android.tools.profilers.taskbased.common.text.EllipsisText
 import com.android.tools.profilers.taskbased.tabs.taskgridandbars.taskbars.notifications.NotificationWithTooltip
 import icons.StudioIconsCompose
@@ -86,6 +92,10 @@ fun LeakDetailsPanel(selectedLeak: Leak?,
                      openStates: List<Boolean>,
                      onOpenStatesChange: (List<Boolean>) -> Unit) {
   val emptyLeakMessage = if (isRecording) LEAKCANARY_LEAK_DETAIL_EMPTY_INITIAL_MESSAGE else LEAKCANARY_NO_LEAK_FOUND_MESSAGE
+  val traceNodes = selectedLeak?.displayedLeakTrace?.firstOrNull()?.nodes ?: emptyList()
+  val onExpandAll = { onOpenStatesChange(List(traceNodes.size) { true })}
+  val onCollapseAll = { onOpenStatesChange(List(traceNodes.size) { false })}
+
   if (selectedLeak == null) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       EllipsisText(text = emptyLeakMessage, maxLines = 3)
@@ -93,7 +103,13 @@ fun LeakDetailsPanel(selectedLeak: Leak?,
   }
   else {
     val scrollState = rememberScrollState()
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+      LeakActionToolbar(
+        selectedLeak = selectedLeak,
+        onExpandAll = onExpandAll,
+        onCollapseAll = onCollapseAll
+      )
+      ToolWindowHorizontalDivider()
       Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(10.dp)) {
         // If displayedLeakTrace is empty, use empty list for the leak nodes.
         val traceNodes = if (selectedLeak.displayedLeakTrace.isNotEmpty()) selectedLeak.displayedLeakTrace[0].nodes else listOf()
@@ -117,7 +133,7 @@ fun LeakDetailsPanel(selectedLeak: Leak?,
       }
       VerticalScrollbar(
         adapter = rememberScrollbarAdapter(scrollState),
-        modifier = Modifier.fillMaxHeight().align(Alignment.CenterEnd),
+        modifier = Modifier.fillMaxHeight().align(Alignment.CenterHorizontally),
       )
     }
   }
@@ -173,17 +189,24 @@ fun LeakTraceNodeView(node: Node,
                       isOpen: Boolean = false,
                       onClickNode: () -> Unit,
                       isDeclarationAvailableAsync: (Node) -> CompletableFuture<Boolean>) {
+  val interactionSource = remember { MutableInteractionSource() }
+  val isFocused by interactionSource.collectIsFocusedAsState()
+  val focusRequester = remember { FocusRequester() }
+
   val rowClickableModifier = Modifier
-    .clickable(onClick = { onClickNode() }, indication = null, interactionSource = remember { MutableInteractionSource() })
+    .focusRequester(focusRequester)
+    .clickable(onClick = { onClickNode() }, interactionSource = interactionSource)
     .pointerHoverIcon(PointerIcon.Hand)
-  var isDeclarationFound by remember(node) { mutableStateOf<Boolean>(true) }
+  var isDeclarationFound by remember(node) { mutableStateOf(true) }
 
   LaunchedEffect(node) {
     isDeclarationAvailableAsync(node).thenAccept { isAvailable ->
       isDeclarationFound = isAvailable
     }
   }
-  Column(modifier = Modifier.height(IntrinsicSize.Min)) {
+  Column(modifier = Modifier.height(IntrinsicSize.Min)
+    .background(if (isFocused) TaskBasedUxColors.TABLE_ROW_SELECTION_BACKGROUND_COLOR else Color.Transparent, shape = RoundedCornerShape(4.dp))
+  ) {
     Row {
       Row(modifier = rowClickableModifier.testTag(node.className)) {
         if (isOpen) {

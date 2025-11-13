@@ -65,7 +65,6 @@ class MigrateToDefaultTargetSdkToCompileSdkIfUnsetTest {
     Truth.assertThat(VfsUtil.loadText(appBuildGradle)).contains("targetSdkVersion '21'")
     Truth.assertThat(VfsUtil.loadText(libBuildGradle)).doesNotContain("targetSdkVersion")
 
-    // This property should be removed for AGP 9.0.0+ and set to 'true' for AGP versions below 9.0.0.
-    Truth.assertThat(VfsUtil.loadText(gradleProperties)).contains("android.sdk.defaultTargetSdkToCompileSdkIfUnset=true")
+    Truth.assertThat(VfsUtil.loadText(gradleProperties)).doesNotContain("android.sdk.defaultTargetSdkToCompileSdkIfUnset")
   }
 }

@@ -22,28 +22,37 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasParent
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
+import com.android.flags.junit.FlagRule
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.PathFileWrapper
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.ConfigKey
+import com.android.sdklib.internal.avd.EnvironmentKey
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
+import com.android.tools.idea.flags.StudioFlags
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
 import java.nio.file.Files
+import kotlin.io.path.createTempDirectory
+import kotlin.io.path.listDirectoryEntries
 import org.junit.Rule
 import org.junit.Test
 
@@ -52,6 +61,7 @@ class AddDeviceWizardTest {
   @get:Rule val edtRule = EdtRule()
   @get:Rule val applicationRule = ApplicationRule()
   @get:Rule val composeTestRule = createStudioComposeTestRule()
+  @get:Rule val flagRule = FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true)
 
   /**
    * Pick a device, advance, and then finish (using default system image and settings). Verify that
@@ -136,6 +146,58 @@ class AddDeviceWizardTest {
           )
         )
       assertThat(properties[ConfigKey.CAMERA_FRONT]).isEqualTo("none")
+    }
+  }
+
+  @Test
+  fun addAiGlassesDevice() {
+    // The AVD needs to be on a real filesystem for the copy of the default environment to work.
+    val fixture = SdkFixture(avdRoot = createTempDirectory("AddAiGlassesDeviceTest"))
+    with(fixture) {
+      val api36Glasses =
+        createLocalSystemImage(
+          "ai-glasses",
+          listOf(SystemImageTags.AI_GLASSES_TAG),
+          AndroidVersion(36, null, 9, false),
+        )
+      repoPackages.setLocalPkgInfos(listOf(api36Glasses))
+
+      val source = createLocalVirtualDeviceSource()
+      val wizard = createTestAddDeviceWizard(source)
+
+      composeTestRule.setContentWithSdkLocals { wizard.Content() }
+
+      composeTestRule.onNodeWithText("XR").performClick()
+      composeTestRule.onAllNodesWithText("AI Glasses", substring = true).onFirst().performClick()
+      composeTestRule.waitForIdle()
+
+      wizard.performAction(wizard.nextAction)
+
+      composeTestRule.onNodeWithText(api36Glasses.displayName).assertIsSelected()
+      composeTestRule.onNodeWithText("Additional settings").performClick()
+      // Glasses have background, not skin.
+      composeTestRule.onNodeWithText("Skin").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Background").assertIsDisplayed()
+      // We need to disable the external storage, since we can't run mksdcard.
+      composeTestRule
+        .onNode(hasText("None") and hasParent(hasTestTag("StorageGroup")))
+        .performClick()
+
+      composeTestRule.waitForIdle()
+
+      wizard.performAction(wizard.finishAction)
+      wizard.awaitClose()
+
+      val avdFolder = avdRoot.listDirectoryEntries("*.avd").single()
+      val properties =
+        checkNotNull(
+          AvdManager.parseIniFile(PathFileWrapper(avdFolder.resolve("config.ini")), null)
+        )
+      assertThat(properties[ConfigKey.LCD_TRANSPARENT]).isEqualTo("yes")
+
+      val userSettings = AvdManager.parseEnvironmentFile(avdFolder, null)
+      assertThat(userSettings[EnvironmentKey.IMAGE])
+        .isEqualTo("environment" + File.separator + defaultEnvironments().first().fileName)
     }
   }
 

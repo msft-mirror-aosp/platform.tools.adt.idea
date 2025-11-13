@@ -57,9 +57,8 @@ internal fun AdditionalSettingsPanel(
 ) {
   val device = state.device
   Column(modifier, verticalArrangement = Arrangement.spacedBy(Padding.EXTRA_LARGE)) {
-    when (device.formFactor) {
-      FormFactors.AI_GLASSES,
-      FormFactors.XR_GLASSES -> GlassesEnvironmentSelector(device, state)
+    when {
+      device.isEnvironmentAllowed() -> GlassesEnvironmentSelector(device, state)
       else -> SkinSelector(device, state.skins())
     }
 
@@ -113,7 +112,7 @@ private fun CameraGroup(device: VirtualDevice) {
 
           Dropdown(
             device.frontCamera,
-            FRONT_CAMERAS,
+            device.frontCameraOptions().toImmutableList(),
             onSelectedItemChange = { device.frontCamera = it },
             Modifier.alignByBaseline().width(DROPDOWN_WIDTH).padding(end = Padding.MEDIUM),
           )
@@ -136,7 +135,7 @@ private fun CameraGroup(device: VirtualDevice) {
 
           Dropdown(
             device.rearCamera,
-            REAR_CAMERAS,
+            device.rearCameraOptions().toImmutableList(),
             onSelectedItemChange = { device.rearCamera = it },
             Modifier.alignByBaseline().width(DROPDOWN_WIDTH).padding(end = Padding.MEDIUM),
           )
@@ -157,10 +156,20 @@ private fun CameraGroup(device: VirtualDevice) {
   }
 }
 
-private val FRONT_CAMERAS =
-  listOf(AvdCamera.NONE, AvdCamera.EMULATED, AvdCamera.WEBCAM).toImmutableList()
+private fun VirtualDevice.frontCameraOptions(): List<AvdCamera> =
+  listOfNotNull(
+    AvdCamera.NONE,
+    AvdCamera.EMULATED.takeUnless { formFactor == FormFactors.AI_GLASSES },
+    AvdCamera.WEBCAM,
+  )
 
-private val REAR_CAMERAS = AvdCamera.values().asIterable().toImmutableList()
+private fun VirtualDevice.rearCameraOptions(): List<AvdCamera> =
+  listOfNotNull(
+    AvdCamera.NONE,
+    AvdCamera.VIRTUAL_SCENE,
+    AvdCamera.EMULATED.takeUnless { formFactor == FormFactors.AI_GLASSES },
+    AvdCamera.WEBCAM,
+  )
 
 @Composable
 private fun NetworkGroup(device: VirtualDevice) {

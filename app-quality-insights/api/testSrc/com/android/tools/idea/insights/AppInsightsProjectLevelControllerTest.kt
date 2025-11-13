@@ -20,6 +20,13 @@ import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.events.actions.Action
+import com.android.tools.idea.insights.model.common.WithCount
+import com.android.tools.idea.insights.model.event.Device
+import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.event.EventPage
+import com.android.tools.idea.insights.model.event.OperatingSystemInfo
+import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueState
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ProjectRule
@@ -1564,7 +1571,7 @@ class AppInsightsProjectLevelControllerTest {
     state = controllerRule.consumeNext()
     assertThat(state.currentInsight).isEqualTo(LoadingState.Loading("Regenerating insight..."))
 
-    val newInsight = AiInsight("Insight")
+    val newInsight = AiInsight("Insight", ISSUE1.sampleEvent)
     client.completeFetchInsightCallWith(LoadingState.Ready(newInsight))
     state = controllerRule.consumeNext()
     assertThat(state.currentInsight).isEqualTo(LoadingState.Ready(newInsight))
@@ -1585,7 +1592,7 @@ class AppInsightsProjectLevelControllerTest {
             )
           ),
         eventsState = LoadingState.Ready(EventPage(listOf(ISSUE1.sampleEvent), "")),
-        insightState = LoadingState.Ready(AiInsight("insight")),
+        insightState = LoadingState.Ready(AiInsight("insight", ISSUE1.sampleEvent)),
       )
 
     assertThat(state.disabledActions).isEmpty()
@@ -1602,7 +1609,7 @@ class AppInsightsProjectLevelControllerTest {
       withTimeout(1000) {
         client.completeFetchInsightCallWith(LoadingState.Ready(DEFAULT_AI_INSIGHT))
       }
-    } catch (e: TimeoutCancellationException) {}
+    } catch (_: TimeoutCancellationException) {}
 
     // Assert that the insight did not change
     assertThat(state.currentInsight).isEqualTo(LoadingState.Loading)
@@ -1616,7 +1623,7 @@ class AppInsightsProjectLevelControllerTest {
       withTimeout(1000) {
         client.completeFetchInsightCallWith(LoadingState.Ready(DEFAULT_AI_INSIGHT))
       }
-    } catch (e: TimeoutCancellationException) {}
+    } catch (_: TimeoutCancellationException) {}
 
     state = controllerRule.consumeNext()
     assertThat(state.currentInsight).isEqualTo(LoadingState.Ready(DEFAULT_AI_INSIGHT))

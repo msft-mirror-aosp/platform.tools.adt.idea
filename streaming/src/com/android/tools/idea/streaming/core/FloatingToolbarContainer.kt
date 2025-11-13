@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,17 +21,26 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
-import com.intellij.openapi.actionSystem.Toggleable
+import com.intellij.openapi.actionSystem.ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.actionSystem.Toggleable.SELECTED_KEY
+import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.IdeGlassPaneUtil
 import com.intellij.openapi.wm.impl.IdeGlassPaneEx
+import com.intellij.ui.ComponentUtil.getParentOfType
 import com.intellij.util.ui.AbstractLayoutManager
 import com.intellij.util.ui.Animator
 import com.intellij.util.ui.GraphicsUtil.disableAAPainting
 import com.intellij.util.ui.GraphicsUtil.setupAAPainting
+import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.JBUI.CurrentTheme.Toolbar.SEPARATOR_COLOR
 import com.intellij.util.ui.components.BorderLayoutPanel
@@ -64,11 +73,22 @@ import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
- * A container a floating toolbars that may change their appearance depending on current mouse
- * cursor position. When the mouse cursor is over a toolbar, all toolbars become active, otherwise
- * they become inactive. The toolbars may become semi-transparent and/or shrink when inactive.
+ * A container of floating toolbars that may change their appearance by becoming semi-transparent
+ * and/or shrinking when inactive. If [activateOnHover] is true, the activity state is controlled
+ * by the mouse hover events. Otherwise, the toolbar should include actions explicitly controlling
+ * its activity state.
+ *
+ * If [collapsedStateSelector] is not null, the toolbar container is collapsible. In the collapsed
+ * state the contained toolbars shrink to a single button or completely disappear from the view.
+ * The button that remains visible when the toolbar is shrunk is the first one, for which
+ * [collapsedStateSelector] returns true.
  */
-internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiveAlpha: Double = 1.0) : JPanel() {
+internal class FloatingToolbarContainer(
+  horizontal: Boolean,
+  private val inactiveAlpha: Double = 1.0,
+  private val collapsedStateSelector: ((ActionButton) -> Boolean)? = null,
+  private val activateOnHover: Boolean = false,
+) : JPanel() {
 
   @Orientation
   private val orientation = if (horizontal) HORIZONTAL else VERTICAL
@@ -80,19 +100,22 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
   private var deactivationAnimator: Animator? = null
   private var pendingDeactivation = false
 
+  val isActive: Boolean
+    get() = (activationFactor > 0 || activationAnimator != null) && !pendingDeactivation && deactivationAnimator == null
+
   /** Zero means inactive, one means active. */
   @VisibleForTesting
   internal var activationFactor: Double = 0.0
     private set(value) {
       if (field != value) {
         field = value
-        if (hasCollapsibleToolbar) {
+        if (collapsible) {
           expansionFactor = activationFactor
         }
         alpha = ((inactiveAlpha + (ACTIVE_ALPHA - inactiveAlpha) * value)).coerceIn(inactiveAlpha, ACTIVE_ALPHA)
       }
     }
-  private var expansionFactor: Double = 1.0
+  private var expansionFactor: Double = if (collapsible) activationFactor else 1.0
     set(value) {
       if (field != value) {
         field = value
@@ -111,16 +134,8 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
         repaint()
       }
     }
-  private var hasCollapsibleToolbar = false
-    set(value) {
-      if (field != value) {
-        field = value
-        if (value) {
-          expansionFactor = activationFactor
-          visibilityDisposable?.let { setUpMouseListener(it) }
-        }
-      }
-    }
+  private val collapsible: Boolean
+    get() = collapsedStateSelector != null
 
   init {
     require(inactiveAlpha in 0.0..1.0)
@@ -134,31 +149,45 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
     }
   }
 
-  /**
-   * Adds a floating toolbar. If the toolbar is collapsible, it shrinks to the size of one button
-   * when inactive. The button that remains visible when the toolbar is shrunk is either the first
-   * selected toggle button or the first button of the toolbar.
-   *
-   * If the toolbar being added is not collapsible but there is at least one collapsible toolbar,
-   * the non-collapsible toolbar will become hidden when the collapsible toolbars are shrunk.
-   */
-  fun addToolbar(@NonNls place: String, actionGroup: ActionGroup, collapsible: Boolean) {
+  /** Adds a floating toolbar. */
+  fun addToolbar(@NonNls place: String, actionGroup: ActionGroup) {
     val actionToolbar = ActionManager.getInstance().createActionToolbar(place, actionGroup, orientation == HORIZONTAL).apply {
       configureToolbar()
     }
     actionToolbars.add(actionToolbar)
-    val toolbarPanel = ToolbarPanel(actionToolbar, collapsible)
+    val toolbarPanel = ToolbarPanel(actionToolbar, collapsedStateSelector)
     toolbarPanel.alpha = alpha.toFloat()
     add(toolbarPanel)
-    if (collapsible) {
-      hasCollapsibleToolbar = true
-    }
   }
 
   fun setTargetComponent(component: JComponent) {
     for (toolbar in actionToolbars) {
       toolbar.targetComponent = component
     }
+  }
+
+  fun triggerActivation() {
+    pendingDeactivation = false
+    deactivationAnimator?.dispose()
+    if (activationAnimator == null && activationFactor < 1.0) {
+      activationAnimator = ActivationAnimator(ACTIVATION_ANIMATION_DURATION_MILLIS.scaled(1 - activationFactor)).apply { resume() }
+    }
+  }
+
+  fun triggerDeactivation(delayMillis: Int = 0, slow: Boolean = false) {
+    if (activationAnimator == null) {
+      if (activationFactor > 0.0 && deactivationAnimator == null) {
+        val duration = if (slow) COLLAPSE_ANIMATION_DURATION_SLOW_MILLIS else COLLAPSE_ANIMATION_DURATION_MILLIS
+        deactivationAnimator = DeactivationAnimator(delayMillis, duration).apply { resume() }
+      }
+    }
+    else {
+      pendingDeactivation = true
+    }
+  }
+
+  fun toggleActiveState() {
+    if (isActive) triggerDeactivation() else triggerActivation()
   }
 
   private fun setUpMouseListener(disposable: Disposable) {
@@ -169,17 +198,18 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
     val mouseListener = object : MouseAdapter() {
 
       override fun mouseEntered(event: MouseEvent) {
-        mouseMoved(event)
+        controlActivation(event)
       }
 
       override fun mouseExited(event: MouseEvent) {
-        mouseMoved(event)
+        controlActivation(event)
       }
 
       override fun mouseMoved(event: MouseEvent) {
         controlActivation(event)
       }
     }
+
     val glass = IdeGlassPaneUtil.find(this) as IdeGlassPaneEx
     glass.addMousePreprocessor(mouseListener, disposable)
     glass.addMouseMotionPreprocessor(mouseListener, disposable)
@@ -193,33 +223,14 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
       triggerActivation()
     }
     else {
-      triggerDeactivation()
-    }
-  }
-
-  private fun triggerActivation() {
-    pendingDeactivation = false
-    deactivationAnimator?.dispose()
-    if (activationAnimator == null && activationFactor < 1.0) {
-      activationAnimator = ActivationAnimator(ACTIVATION_ANIMATION_DURATION_MILLIS.scaled(1 - activationFactor)).apply { resume() }
-    }
-  }
-
-  private fun triggerDeactivation() {
-    if (activationAnimator == null) {
-      if (activationFactor > 0.0 && deactivationAnimator == null) {
-        deactivationAnimator = DeactivationAnimator(COLLAPSE_ANIMATION_DURATION_MILLIS).apply { resume() }
-      }
-    }
-    else {
-      pendingDeactivation = true
+      triggerDeactivation(COLLAPSE_DELAY_MILLIS, slow = true)
     }
   }
 
   private fun onVisibilityChanged() {
     if (isShowing) {
       val disposable = visibilityDisposable ?: Disposer.newDisposable("FloatingToolbarContainer").also { visibilityDisposable = it }
-      if (hasCollapsibleToolbar || inactiveAlpha < 1.0) {
+      if (activateOnHover && (collapsible || inactiveAlpha < 1.0)) {
         setUpMouseListener(disposable)
       }
     }
@@ -231,6 +242,9 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
       listeningToMouseEvents = false
     }
   }
+
+  @MagicConstant(intValues = [HORIZONTAL.toLong(), VERTICAL.toLong()])
+  private annotation class Orientation
 
   private inner class ActivationAnimator(durationMillis: Int)
       : Animator("ActivationAnimator", numFrames(durationMillis), durationMillis, false) {
@@ -251,16 +265,16 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
       activationAnimator = null
       if (pendingDeactivation) {
         pendingDeactivation = false
-        triggerDeactivation()
+        triggerDeactivation(COLLAPSE_DELAY_MILLIS, slow = true)
       }
     }
   }
 
-  private inner class DeactivationAnimator(durationMillis: Int)
-      : Animator("CollapseAnimator", numFrames(durationMillis + COLLAPSE_DELAY_MILLIS), durationMillis + COLLAPSE_DELAY_MILLIS, false) {
+  private inner class DeactivationAnimator(delayMillis: Int, durationMillis: Int)
+      : Animator("CollapseAnimator", numFrames(delayMillis + durationMillis), delayMillis + durationMillis, false) {
 
     private val initialActivationFactor = activationFactor
-    private val delayFrames = numFrames(COLLAPSE_DELAY_MILLIS)
+    private val delayFrames = numFrames(delayMillis)
 
     override fun paintNow(frame: Int, totalFrames: Int, cycle: Int) {
       if (frame <= delayFrames) {
@@ -278,6 +292,170 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
       super.dispose()
       deactivationAnimator = null
     }
+  }
+
+  private class ToolbarPanel(
+    private val toolbar: ActionToolbar,
+    private val collapsedStateSelector: ((ActionButton) -> Boolean)?,
+  ) : BorderLayoutPanel() {
+
+    private var bufferingPainter = VolatileImageBufferingPainter(Transparency.TRANSLUCENT)
+
+    private val crossDimension
+      get() = if (toolbar.orientation == HORIZONTAL) height else width
+    private val cornerRadius
+      get() = crossDimension / 2
+    var alpha: Float by bufferingPainter::alpha
+    private val actionButtons = mutableListOf<ActionButton>()
+    private val hierarchyListener = HierarchyListener {
+      for (button in actionButtons) {
+        button.presentation.removePropertyChangeListener(buttonSelectionListener)
+      }
+      actionButtons.clear()
+      for (child in toolbar.component.components) {
+        if (child is ActionButton) {
+          actionButtons.add(child)
+          child.presentation.addPropertyChangeListener(buttonSelectionListener)
+        }
+      }
+    }
+    private val buttonSelectionListener = PropertyChangeListener { event ->
+      @Suppress("UnstableApiUsage")
+      if (event.propertyName == SELECTED_KEY.toString()) {
+        revalidate()
+      }
+    }
+
+    val collapsedSize: Dimension
+      get() {
+        if (isVisibleWhenCollapsed()) {
+          val maxSize = getMaximumSize()
+          val s = min(maxSize.width, maxSize.height)
+          return Dimension(s, s)
+        }
+        return ZERO_DIMENSION
+      }
+
+    init {
+      isOpaque = false
+      background = JBUI.CurrentTheme.Popup.toolbarPanelColor()
+      layout = Layout()
+      toolbar.component.addHierarchyListener(hierarchyListener)
+      add(toolbar.component)
+    }
+
+    /** This property causes repaint of a child to trigger repaint of this panel. */
+    override fun isPaintingOrigin(): Boolean = true
+
+    override fun paintComponent(g: Graphics) {
+      // Everything is painted by the paintChildren method.
+    }
+
+    override fun paintBorder(g: Graphics) {
+      // Everything is painted by the paintChildren method.
+    }
+
+    override fun paintChildren(g: Graphics) {
+      val outsideShape = createOutsideShape()
+      bufferingPainter.paintBuffered(g, size) {
+        paintWithTransparentCorners(it, outsideShape)
+      }
+    }
+
+    private fun paintWithTransparentCorners(g2: Graphics2D, outsideShape: Shape) {
+      setupAAPainting(g2)
+      // Paint background.
+      if (background != null) {
+        g2.color = background
+        g2.fillRect(0, 0, width, height)
+      }
+      // Paint children.
+      super.paintChildren(g2)
+      // Make corners transparent
+      clearArea(g2, outsideShape)
+      // Paint border.
+      g2.color = SEPARATOR_COLOR
+      g2.draw(createRoundRectangle(0, 0, width - 1, height - 1, cornerRadius))
+    }
+
+    private fun clearArea(g2: Graphics2D, area: Shape) {
+      val config = disableAAPainting(g2) // Disable antialiasing for speed.
+      val composite = g2.composite
+      g2.composite = AlphaComposite.Clear
+      g2.fill(area)
+      g2.composite = composite
+      config.restore()
+    }
+
+    private fun createOutsideShape(): Shape {
+      return Path2D.Double(Path2D.WIND_EVEN_ODD).apply {
+        append(createRoundRectangle(0, 0, width - 1, height - 1, cornerRadius), false)
+        append(Rectangle(0, 0, width, height), false)
+      }
+    }
+
+    override fun getMaximumSize(): Dimension =
+        toolbar.component.getPreferredSize() + insets
+
+    private fun isVisibleWhenCollapsed(): Boolean {
+      val selector = collapsedStateSelector ?: return false
+      return toolbar.component.components.find { it is ActionButton && it.isVisible && selector(it) } != null
+    }
+
+    private inner class Layout : AbstractLayoutManager() {
+
+      private val orientation
+        get() = toolbar.orientation
+
+      override fun preferredLayoutSize(parent: Container): Dimension =
+          toolbar.component.preferredSize + insets
+
+      override fun layoutContainer(parent: Container) {
+        val insets = insets
+        val toolbarSize = toolbar.component.preferredSize
+        val offset = calculateToolbarOffset(size - insets, toolbarSize)
+        toolbar.component.setBounds(insets.left + offset.width, insets.top + offset.height, toolbarSize.width, toolbarSize.height)
+      }
+
+      private fun calculateToolbarOffset(availableSize: Dimension, preferredToolbarSize: Dimension): Dimension {
+        val insets = toolbar.component.insets
+        val available = (availableSize - insets)[orientation]
+        val preferred = (preferredToolbarSize - insets)[orientation]
+        if (preferred <= available) {
+          return ZERO_DIMENSION
+        }
+        val anchorExtent = locateAnchorButton() ?: return ZERO_DIMENSION
+        if (preferred <= anchorExtent.size) {
+          return ZERO_DIMENSION
+        }
+        val d = anchorExtent.offset.scaled(preferred - available, preferred - anchorExtent.size)
+        return if (orientation == HORIZONTAL) Dimension(-d, 0) else Dimension(0, -d)
+      }
+
+      private fun locateAnchorButton(): Extent? {
+        var offset = 0
+        var firstEnabled: Extent? = null
+        var firstVisible: Extent? = null
+        for (child in toolbar.component.components) {
+          val childSize = child.preferredSize[orientation]
+          if (child is ActionButton && child.isVisible) {
+            if (collapsedStateSelector?.invoke(child) == true) {
+              return Extent(offset, childSize)
+            }
+            if (firstEnabled == null && child.isEnabled) {
+              firstEnabled = Extent(offset, childSize)
+            }
+            if (firstVisible == null) {
+              firstVisible = Extent(offset, childSize)
+            }
+          }
+          offset += childSize
+        }
+        return firstEnabled ?: firstVisible
+      }
+    }
+
+    class Extent(val offset: Int, val size: Int)
   }
 
   private inner class Layout : AbstractLayoutManager() {
@@ -332,248 +510,136 @@ internal class FloatingToolbarContainer(horizontal: Boolean, private val inactiv
       return size
     }
   }
-}
 
-@Suppress("UnstableApiUsage")
-private fun ActionToolbar.configureToolbar() {
-  layoutStrategy = ToolbarLayoutStrategy.NOWRAP_STRATEGY
-  minimumButtonSize = ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
-  ((this as? ActionToolbarImpl)?.setActionButtonBorder(1, 1))
-  component.apply {
-    border = JBUI.Borders.empty(2)
-    isOpaque = false
-    putClientProperty(ActionToolbarImpl.IMPORTANT_TOOLBAR_KEY, true)
-  }
-  makeNavigable()
-}
+  /** Action that toggles activation state of the floating toolbar. */
+  class CollapserAction : DumbAwareAction(">"), CustomComponentAction {
 
-private class ToolbarPanel(private val toolbar: ActionToolbar, val collapsible: Boolean) : BorderLayoutPanel() {
-
-  private var bufferingPainter = VolatileImageBufferingPainter(Transparency.TRANSLUCENT)
-
-  private val crossDimension
-    get() = if (toolbar.orientation == HORIZONTAL) height else width
-  private val cornerRadius
-    get() = crossDimension / 2
-  var alpha: Float by bufferingPainter::alpha
-  private val actionButtons = mutableListOf<ActionButton>()
-  private val hierarchyListener = HierarchyListener { event ->
-    for (button in actionButtons) {
-      button.presentation.removePropertyChangeListener(buttonSelectionListener)
+    override fun actionPerformed(event: AnActionEvent) {
+      triggerDeactivation(event)
     }
-    actionButtons.clear()
-    for (child in toolbar.component.components) {
-      if (child is ActionButton) {
-        actionButtons.add(child)
-        child.presentation.addPropertyChangeListener(buttonSelectionListener)
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+    override fun createCustomComponent(presentation: Presentation, place: String): JComponent =
+        ActionButtonWithText(this, presentation, place, JBDimension(0, DEFAULT_MINIMUM_BUTTON_SIZE.height, true))
+  }
+
+  companion object {
+
+    /**
+     * Returns the [FloatingToolbarContainer] associated with the given [event], if any. The [event]
+     * has to triggered by a mouse event on a button of that toolbar.
+     */
+    fun fromActionEvent(event: AnActionEvent): FloatingToolbarContainer? {
+      val component = event.inputEvent?.component ?: return null
+      return getParentOfType(FloatingToolbarContainer::class.java, component)
+    }
+
+    /**
+     * Activates the floating toolbar. The [event] has to triggered by a mouse event on a button
+     * of that toolbar.
+     */
+    fun triggerActivation(event: AnActionEvent) {
+      fromActionEvent(event)?.triggerActivation()
+    }
+
+    /**
+     * Deactivates the floating toolbar. The [event] has to triggered by a mouse event on a button
+     * of that toolbar.
+     */
+    fun triggerDeactivation(event: AnActionEvent) {
+      fromActionEvent(event)?.triggerDeactivation()
+    }
+
+    /**
+     * Toggles activation state of the floating toolbar. The [event] has to triggered by a mouse
+     * event on a button of that toolbar.
+     */
+    fun toggleActiveState(event: AnActionEvent) {
+      fromActionEvent(event)?.toggleActiveState()
+    }
+
+    @Suppress("SameParameterValue")
+    private fun createRoundRectangle(x: Int, y: Int, w: Int, h: Int, cornerRadius: Int): RoundRectangle2D =
+        RoundRectangle2D.Double(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), cornerRadius.toDouble(), cornerRadius.toDouble())
+
+    private fun Component.preferredSize(collapsed: Boolean): Dimension =
+        if (collapsed) collapsedSize() else preferredSize
+
+    private fun Component.collapsedSize(): Dimension =
+        (this as? ToolbarPanel)?.collapsedSize ?: ZERO_DIMENSION
+
+    @Suppress("UnstableApiUsage")
+    private fun ActionToolbar.configureToolbar() {
+      layoutStrategy = ToolbarLayoutStrategy.NOWRAP_STRATEGY
+      minimumButtonSize = DEFAULT_MINIMUM_BUTTON_SIZE
+      ((this as? ActionToolbarImpl)?.setActionButtonBorder(1, 1))
+      component.apply {
+        border = JBUI.Borders.empty(2)
+        isOpaque = false
+        putClientProperty(ActionToolbarImpl.IMPORTANT_TOOLBAR_KEY, true)
+      }
+      makeNavigable()
+    }
+
+    private fun Dimension.combine(@Orientation orientation: Int, other: Dimension) {
+      if (orientation == HORIZONTAL) {
+        width += other.width
+        height = max(height, other.height)
+      }
+      else {
+        width = max(width, other.width)
+        height += other.height
       }
     }
-  }
-  private val buttonSelectionListener = PropertyChangeListener  { event ->
-    if (event.propertyName == SELECTED_PROPERTY_NAME) {
-      revalidate()
-    }
-  }
 
-  init {
-    isOpaque = false
-    background = JBUI.CurrentTheme.Popup.toolbarPanelColor()
-    layout = Layout()
-    toolbar.component.addHierarchyListener(hierarchyListener)
-    add(toolbar.component)
-  }
-
-  /** This property causes repaint of a child to trigger repaint of this panel. */
-  override fun isPaintingOrigin(): Boolean = true
-
-  override fun paintComponent(g: Graphics) {
-    // Everything is painted by the paintChildren method.
-  }
-
-  override fun paintBorder(g: Graphics) {
-    // Everything is painted by the paintChildren method.
-  }
-
-  override fun paintChildren(g: Graphics) {
-    val outsideShape = createOutsideShape()
-    bufferingPainter.paintBuffered(g, size) {
-      paintWithTransparentCorners(it, outsideShape)
-    }
-  }
-
-  private fun paintWithTransparentCorners(g2: Graphics2D, outsideShape: Shape) {
-    setupAAPainting(g2)
-    // Paint background.
-    if (background != null) {
-      g2.color = background
-      g2.fillRect(0, 0, width, height)
-    }
-    // Paint children.
-    super.paintChildren(g2)
-    // Make corners transparent
-    clearArea(g2, outsideShape)
-    // Paint border.
-    g2.color = SEPARATOR_COLOR
-    g2.draw(createRoundRectangle(0, 0, width - 1, height - 1, cornerRadius))
-  }
-
-  private fun clearArea(g2: Graphics2D, area: Shape) {
-    val config = disableAAPainting(g2) // Disable antialiasing for speed.
-    val composite = g2.composite
-    g2.composite = AlphaComposite.Clear
-    g2.fill(area)
-    g2.composite = composite
-    config.restore()
-  }
-
-  private fun createOutsideShape(): Shape {
-    return Path2D.Double(Path2D.WIND_EVEN_ODD).apply {
-      append(createRoundRectangle(0, 0, width - 1, height - 1, cornerRadius), false)
-      append(Rectangle(0, 0, width, height), false)
-    }
-  }
-
-  override fun getMaximumSize(): Dimension =
-      toolbar.component.getPreferredSize() + insets
-
-  val collapsedSize: Dimension
-    get() {
-      val maxSize = getMaximumSize()
-      if (collapsible) {
-        val s = min(maxSize.width, maxSize.height)
-        return Dimension(s, s)
+    private fun Dimension.increment(@Orientation orientation: Int, value: Int) {
+      if (orientation == HORIZONTAL) {
+        width += value
       }
-      return maxSize
-    }
-
-  private inner class Layout : AbstractLayoutManager() {
-
-    private val orientation
-      get() = toolbar.orientation
-
-    override fun preferredLayoutSize(parent: Container): Dimension =
-        toolbar.component.preferredSize + insets
-
-    override fun layoutContainer(parent: Container) {
-      val insets = insets
-      val toolbarSize = toolbar.component.preferredSize
-      val offset = calculateToolbarOffset(size - insets, toolbarSize)
-      toolbar.component.setBounds(insets.left + offset.width, insets.top + offset.height, toolbarSize.width, toolbarSize.height)
-    }
-
-    private fun calculateToolbarOffset(availableSize: Dimension, preferredToolbarSize: Dimension): Dimension {
-      val insets = toolbar.component.insets
-      val available = (availableSize - insets)[orientation]
-      val preferred = (preferredToolbarSize - insets)[orientation]
-      if (preferred <= available) {
-        return ZERO_DIMENSION
+      else {
+        height += value
       }
-      val anchorExtent = locateAnchorButton() ?: return ZERO_DIMENSION
-      if (preferred <= anchorExtent.size) {
-        return ZERO_DIMENSION
-      }
-      val d = anchorExtent.offset.scaled(preferred - available, preferred - anchorExtent.size)
-      return if (orientation == HORIZONTAL) Dimension(-d, 0) else Dimension(0, -d)
     }
 
-    private fun locateAnchorButton(): Extent? {
-      var offset = 0
-      var firstEnabled: Extent? = null
-      var firstVisible: Extent? = null
-      for (child in toolbar.component.components) {
-        if (child is ActionButton && child.isVisible) {
-          val childSize = child.preferredSize[orientation]
-          if (child.isSelected) {
-            return Extent(offset, childSize)
-          }
-          if (firstEnabled == null && child.isEnabled) {
-            firstEnabled = Extent(offset, childSize)
-          }
-          if (firstVisible == null) {
-            firstVisible = Extent(offset, childSize)
-          }
-          offset += childSize
-        }
+    private operator fun Dimension.set(@Orientation orientation: Int, value: Int) {
+      if (orientation == HORIZONTAL) {
+        width = value
       }
-      return firstEnabled ?: firstVisible
+      else {
+        height = value
+      }
     }
-  }
 
-  class Extent(val offset: Int, val size: Int)
-}
+    private operator fun Dimension.get(@Orientation orientation: Int): Int =
+        if (orientation == HORIZONTAL) width else height
 
-@MagicConstant(intValues = [HORIZONTAL.toLong(), VERTICAL.toLong()])
-private annotation class Orientation
+    private operator fun Dimension.minus(insets: Insets): Dimension =
+        Dimension(width - insets.left - insets.right, height - insets.top - insets.bottom)
 
-@Suppress("SameParameterValue")
-private fun createRoundRectangle(x: Int, y: Int, w: Int, h: Int, cornerRadius: Int): RoundRectangle2D =
-    RoundRectangle2D.Double(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), cornerRadius.toDouble(), cornerRadius.toDouble())
+    private operator fun Dimension.plus(insets: Insets): Dimension =
+        Dimension(width + insets.left + insets.right, height + insets.top + insets.bottom)
 
-private fun Component.preferredSize(collapsed: Boolean): Dimension =
-    if (collapsed) collapsedSize() else preferredSize
+    private operator fun Point.get(@Orientation orientation: Int): Int =
+        if (orientation == HORIZONTAL) x else y
 
-private fun Component.collapsedSize(): Dimension =
-    if (this is ToolbarPanel && collapsible) collapsedSize else ZERO_DIMENSION
+    private operator fun Point.minus(point: Point): Point =
+        Point(x - point.x, y - point.y)
 
-private fun Dimension.combine(@Orientation orientation: Int, other: Dimension) {
-  if (orientation == HORIZONTAL) {
-    width += other.width
-    height = max(height, other.height)
-  }
-  else {
-    width = max(width, other.width)
-    height += other.height
+    private fun Int.scaled(numerator: Int, denominator: Int): Int =
+        ((this.toLong() * numerator + denominator / 2) / denominator).toInt()
+
+    private fun numFrames(durationMillis: Int): Int = max(durationMillis.scaled(1000, ANIMATION_FRAMES_PER_SECOND), 1)
+
+    private const val ANIMATION_FRAMES_PER_SECOND = 60
+    private const val ACTIVATION_ANIMATION_DURATION_MILLIS = 100
+    private const val COLLAPSE_ANIMATION_DURATION_MILLIS = 100
+    private const val COLLAPSE_ANIMATION_DURATION_SLOW_MILLIS = 400
+    private const val COLLAPSE_DELAY_MILLIS = 2000
+    private const val ACTIVE_ALPHA = 1.0
+
+    private val ZERO_DIMENSION = Dimension()
+
+    private val SPACER_SIZE = DEFAULT_MINIMUM_BUTTON_SIZE.width / 3
   }
 }
-
-private fun Dimension.increment(@Orientation orientation: Int, value: Int) {
-  if (orientation == HORIZONTAL) {
-    width += value
-  }
-  else {
-    height += value
-  }
-}
-
-private operator fun Dimension.set(@Orientation orientation: Int, value: Int) {
-  if (orientation == HORIZONTAL) {
-    width = value
-  }
-  else {
-    height = value
-  }
-}
-
-private operator fun Dimension.get(@Orientation orientation: Int): Int =
-    if (orientation == HORIZONTAL) width else height
-
-private operator fun Dimension.minus(insets: Insets): Dimension =
-    Dimension(width - insets.left - insets.right, height - insets.top - insets.bottom)
-
-private operator fun Dimension.plus(insets: Insets): Dimension =
-    Dimension(width + insets.left + insets.right, height + insets.top + insets.bottom)
-
-private operator fun Point.get(@Orientation orientation: Int): Int =
-    if (orientation == HORIZONTAL) x else y
-
-private operator fun Point.minus(point: Point): Point =
-    Point(x - point.x, y - point.y)
-
-private fun Int.scaled(numerator: Int, denominator: Int): Int =
-    ((this.toLong() * numerator + denominator / 2) / denominator).toInt()
-
-private fun numFrames(durationMillis: Int): Int = max(durationMillis.scaled(1000, ANIMATION_FRAMES_PER_SECOND), 1)
-
-private const val ANIMATION_FRAMES_PER_SECOND = 60
-private const val ACTIVATION_ANIMATION_DURATION_MILLIS = 200
-private const val COLLAPSE_ANIMATION_DURATION_MILLIS = 400
-private const val COLLAPSE_DELAY_MILLIS = 2000
-private const val ACTIVE_ALPHA = 1.0
-
-private val ZERO_DIMENSION = Dimension()
-
-private val SPACER_SIZE = ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE.width / 3
-
-@Suppress("UnstableApiUsage")
-private val SELECTED_PROPERTY_NAME = Toggleable.SELECTED_KEY.toString()
-
