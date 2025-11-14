@@ -19,7 +19,6 @@ import com.android.tools.analytics.AnalyticsPublisher;
 import com.android.tools.analytics.AnalyticsSettings;
 import com.android.tools.analytics.AnalyticsSettingsData;
 import com.android.tools.analytics.HighlightingStats;
-import com.android.tools.analytics.StudioUpdateAnalyticsUtil;
 import com.android.tools.analytics.UsageTracker;
 import com.android.utils.ILogger;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
@@ -70,42 +69,42 @@ public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
 
   @Override
   public void logUpdateDialogOpenManually(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logUpdateDialogOpenManually(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logNotificationShown(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logNotificationShown(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logClickNotification(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logClickNotification(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logUpdateDialogOpenFromNotification(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logUpdateDialogOpenFromNotification(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logClickIgnore(String newBuild) {
-    StudioUpdateAnalyticsUtil.logClickIgnore(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logClickLater(String newBuild) {
-    StudioUpdateAnalyticsUtil.logClickLater(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logDownloadSuccess(String newBuild) {
-    StudioUpdateAnalyticsUtil.logDownloadSuccess(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
   public void logDownloadFailure(String newBuild) {
-    StudioUpdateAnalyticsUtil.logDownloadFailure(newBuild);
+    // This callback is unused and will be deleted soon.
   }
 
   @Override
