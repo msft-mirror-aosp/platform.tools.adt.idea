@@ -28,6 +28,7 @@ import com.google.wireless.android.sdk.stats.OptOutOfMetrics;
 import com.intellij.analytics.AndroidStudioAnalytics;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.ide.ConsentOptionsProvider;
+import com.intellij.ide.gdpr.DataSharingSettingsChangeListener;
 import com.intellij.internal.statistic.persistence.UsageStatisticsPersistenceComponent;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
@@ -109,11 +110,27 @@ public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
 
   @Override
   public void updateAndroidStudioMetrics() {
-    updateAndroidStudioMetrics(getConsentOptionsProvider().isSendingUsageStatsAllowed());
+    // This callback is obsolete in favor of MyDataSharingSettingsChangeListener. It will be deleted soon.
   }
 
   private @Nullable ConsentOptionsProvider getConsentOptionsProvider() {
     return UsageStatisticsPersistenceComponent.getConsentOptionsProvider();
+  }
+
+  // Tested by AnalyticsSettingsUiTest.
+  @SuppressWarnings("UnstableApiUsage")
+  public static class MyDataSharingSettingsChangeListener implements DataSharingSettingsChangeListener {
+
+    @Override
+    public void consentWritten() {
+      // Redundant with consentsUpdated() below.
+    }
+
+    @Override
+    public void consentsUpdated() {
+      AndroidStudioAnalyticsImpl service = (AndroidStudioAnalyticsImpl)AndroidStudioAnalytics.getInstance();
+      service.updateAndroidStudioMetrics(service.getConsentOptionsProvider().isSendingUsageStatsAllowed());
+    }
   }
 
   private void updateAndroidStudioMetrics(boolean allowed) {
