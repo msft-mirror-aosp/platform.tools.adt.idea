@@ -28,13 +28,13 @@ import com.intellij.analytics.AndroidStudioAnalytics;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.ide.ConsentOptionsProvider;
 import com.intellij.ide.gdpr.DataSharingSettingsChangeListener;
-import com.intellij.internal.statistic.persistence.UsageStatisticsPersistenceComponent;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
@@ -112,8 +112,9 @@ public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
     // This callback is obsolete in favor of MyDataSharingSettingsChangeListener. It will be deleted soon.
   }
 
-  private @Nullable ConsentOptionsProvider getConsentOptionsProvider() {
-    return UsageStatisticsPersistenceComponent.getConsentOptionsProvider();
+  private @NotNull ConsentOptionsProvider getConsentOptionsProvider() {
+    // Adapted from UsageStatisticsPersistenceComponent#getConsentOptionsProvider.
+    return Objects.requireNonNull(ApplicationManager.getApplication().getService(ConsentOptionsProvider.class));
   }
 
   // Tested by AnalyticsSettingsUiTest.
