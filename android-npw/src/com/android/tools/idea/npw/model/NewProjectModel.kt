@@ -261,7 +261,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
       // TODO(b/444641424): Remove when Hilt supports AGP 9.
       if (prompt.get().isNotEmpty()) {
-        resolvedAgpVersion = resolvedAgpVersion.coerceAtMost(AgpVersion(8, 13))
+        resolvedAgpVersion = resolvedAgpVersion.coerceAtMost(AgpVersion(8, 13, 1))
       }
 
       projectTemplateData =
