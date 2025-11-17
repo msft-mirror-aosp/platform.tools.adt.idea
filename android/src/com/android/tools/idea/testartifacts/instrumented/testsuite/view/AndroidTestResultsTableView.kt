@@ -16,6 +16,7 @@
 @file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE") // TODO: remove usage of sun.swing.DefaultLookup.
 package com.android.tools.idea.testartifacts.instrumented.testsuite.view
 
+import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfigurationType
@@ -83,6 +84,7 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.tree.TreeUtil
+import com.jetbrains.rd.util.concurrentMapOf
 import java.awt.Color
 import java.awt.Component
 import java.awt.KeyboardFocusManager
@@ -604,10 +606,11 @@ private class AndroidTestResultsTableViewComponent(
     }
   }
 
-  private val myPsiElementCache: MutableMap<AndroidTestResults, Lazy<PsiElement?>> = mutableMapOf()
+  private val myPsiElementCache: MutableMap<AndroidTestResults, Lazy<PsiElement?>> = concurrentMapOf()
 
+  @AnyThread
   fun getPsiElement(androidTestResults: AndroidTestResults): PsiElement? {
-    return myPsiElementCache.getOrPut(androidTestResults) {
+    return myPsiElementCache.computeIfAbsent(androidTestResults) {
       lazy {
         testResultsPsiElementProvider?.getPsiElement(project, androidTestResults, module)
       }
