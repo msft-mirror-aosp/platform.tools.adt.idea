@@ -194,6 +194,7 @@ class AddDeviceWizardTest {
           AvdManager.parseIniFile(PathFileWrapper(avdFolder.resolve("config.ini")), null)
         )
       assertThat(properties[ConfigKey.LCD_TRANSPARENT]).isEqualTo("yes")
+      assertThat(properties[ConfigKey.FORCE_COLD_BOOT_MODE]).isEqualTo("yes")
 
       val userSettings = AvdManager.parseEnvironmentFile(avdFolder, null)
       assertThat(userSettings[EnvironmentKey.IMAGE])
