@@ -18,8 +18,8 @@ package com.android.tools.idea.analytics
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.analytics.AnalyticsSettings
 import com.android.tools.analytics.AnalyticsSettingsData
+import com.android.tools.idea.startup.AndroidStudioAnalyticsImpl
 import com.google.common.truth.Truth.assertThat
-import com.intellij.analytics.AndroidStudioAnalytics
 import com.intellij.ide.ConsentOptionsProvider
 import com.intellij.ide.gdpr.ConsentConfigurable
 import com.intellij.openapi.components.service
@@ -82,7 +82,7 @@ class AnalyticsSettingsUiTest {
     // http://ag/4768793 (Change I34cbf26df). One could imagine syncing the opt-in status
     // in the other direction, but the current behavior works well enough as long as Android Studio
     // is the only surface in which the opt-in status can be changed.
-    AndroidStudioAnalytics.getInstance().initializeAndroidStudioUsageTrackerAndPublisher()
+    AndroidStudioAnalyticsImpl.getInstance().initializeAndroidStudioUsageTrackerAndPublisher()
     assertThat(AnalyticsSettings.optedIn).isTrue()
 
     // The Android plugin opt-in status should adapt to changes in the platform opt-in status.

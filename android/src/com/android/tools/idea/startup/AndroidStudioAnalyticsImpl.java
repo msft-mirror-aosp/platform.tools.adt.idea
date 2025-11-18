@@ -17,20 +17,18 @@ package com.android.tools.idea.startup;
 
 import com.android.tools.analytics.AnalyticsPublisher;
 import com.android.tools.analytics.AnalyticsSettings;
-import com.android.tools.analytics.HighlightingStats;
 import com.android.tools.analytics.UsageTracker;
 import com.android.utils.ILogger;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.OptInToMetrics;
 import com.google.wireless.android.sdk.stats.OptOutOfMetrics;
-import com.intellij.analytics.AndroidStudioAnalytics;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.ide.ConsentOptionsProvider;
 import com.intellij.ide.gdpr.DataSharingSettingsChangeListener;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Document;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,65 +36,12 @@ import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
+@Service
+public final class AndroidStudioAnalyticsImpl {
   private ILogger androidLogger;
 
-  @Override
-  public boolean isAllowed() {
-    // This callback now matches the original behavior of
-    // UsageStatisticsPersistenceComponent.isAllowed() and thus will be deleted soon.
-    return getConsentOptionsProvider().isSendingUsageStatsAllowed();
-  }
-
-
-  @Override
-  public void recordHighlightingLatency(Document document, long latencyMs) {
-    HighlightingStats.getInstance().recordHighlightingLatency(document, latencyMs);
-  }
-
-  @Override
-  public void logUpdateDialogOpenManually(@NotNull String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logNotificationShown(@NotNull String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logClickNotification(@NotNull String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logUpdateDialogOpenFromNotification(@NotNull String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logClickIgnore(String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logClickLater(String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logDownloadSuccess(String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void logDownloadFailure(String newBuild) {
-    // This callback is unused and will be deleted soon.
-  }
-
-  @Override
-  public void updateAndroidStudioMetrics() {
-    // This callback is obsolete in favor of MyDataSharingSettingsChangeListener. It will be deleted soon.
+  public static @NotNull AndroidStudioAnalyticsImpl getInstance() {
+    return ApplicationManager.getApplication().getService(AndroidStudioAnalyticsImpl.class);
   }
 
   private @NotNull ConsentOptionsProvider getConsentOptionsProvider() {
@@ -115,7 +60,7 @@ public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
 
     @Override
     public void consentsUpdated() {
-      AndroidStudioAnalyticsImpl service = (AndroidStudioAnalyticsImpl)AndroidStudioAnalytics.getInstance();
+      AndroidStudioAnalyticsImpl service = AndroidStudioAnalyticsImpl.getInstance();
       service.updateAndroidStudioMetrics(service.getConsentOptionsProvider().isSendingUsageStatsAllowed());
     }
   }
@@ -158,7 +103,6 @@ public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
     }
   }
 
-  @Override
   public void initializeAndroidStudioUsageTrackerAndPublisher() {
     ILogger logger = getAndroidLogger();
 
