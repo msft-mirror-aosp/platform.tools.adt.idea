@@ -89,6 +89,7 @@ import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.events.OperationType
+import org.gradle.tooling.model.build.BuildEnvironment
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
@@ -248,9 +249,12 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             }
           }
         }
-        val context = GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
-        context.buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context)
+        var buildEnvironment: BuildEnvironment? = null
         val invocationResult = try {
+          val context = GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
+          buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context).also {
+            context.buildEnvironment = it
+          }
           val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
           val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
           if (!commandLineArguments.contains(GradleBuilds.PARALLEL_BUILD_OPTION) &&
@@ -331,7 +335,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
               handleTaskExecutionError(e)
             }
           }.exceptionOrNull() ?: e
-          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), context.buildEnvironment)
+          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), buildEnvironment)
         }
 
 
