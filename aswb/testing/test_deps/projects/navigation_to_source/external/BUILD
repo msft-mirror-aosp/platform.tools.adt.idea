@@ -1,6 +1,6 @@
 load("@rules_java//java:defs.bzl", "java_import", "java_library")
 load("@rules_jvm_external//private/rules:jvm_import.bzl", "jvm_import")
-load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_import", "kt_jvm_library")
 load("@rules_pkg//pkg:mappings.bzl", "strip_prefix")
 load("@rules_pkg//pkg:pkg.bzl", "pkg_zip")
 
@@ -43,4 +43,28 @@ pkg_zip(
 java_library(
     name = "external_gensrcjar",
     srcs = [":external_generated.srcjar"],
+)
+
+# create a similar srcjar but for kotlin
+kt_jvm_library(
+    name = "kt_build_from_srcjar",
+    srcs = ["kt/com/example/external/external.srcjar"],
+)
+
+kt_jvm_import(
+    name = "kt_external_srcjar",
+    jars = [":kt_build_from_srcjar.jar"],
+    srcjar = "kt/com/example/external/external.srcjar",
+)
+
+pkg_zip(
+    name = "kt_external_generated.srcjar",
+    srcs = ["kt/com/example/external/gensrcjar/ExternalKtSourceInGenSrcjar.kt"],
+    out = "kt_external_gen.srcjar",
+    strip_prefix = strip_prefix.from_root(),
+)
+
+kt_jvm_library(
+    name = "kt_external_gensrcjar",
+    srcs = [":kt_external_generated.srcjar"],
 )
