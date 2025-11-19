@@ -94,7 +94,7 @@ object DirectiveBasedActionUtils {
     ) { ktFile ->
       diagnosticsProvider(ktFile)
         .filter { it.severity == Severity.ERROR }
-        .map { DefaultErrorMessages.render(it).replace("\n", "<br>") }
+        .map { "${it.factoryName}: ${it.psiElement.text.lines().first()}" }
         .sorted()
     }
   }
@@ -108,7 +108,7 @@ object DirectiveBasedActionUtils {
         analyze(ktFile) {
           ktFile.collectDiagnostics(KaDiagnosticCheckerFilter.ONLY_COMMON_CHECKERS)
             .filter { it.severity == KaSeverity.ERROR }
-            .map { it.defaultMessage.replace("\n", "<br>") }
+            .map { "${it.factoryName}: ${it.psi.text.lines().first()}" }
             .sorted()
         }
       }
