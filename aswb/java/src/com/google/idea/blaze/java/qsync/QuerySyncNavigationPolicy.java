@@ -15,10 +15,11 @@
  */
 package com.google.idea.blaze.java.qsync;
 
+import static com.google.idea.blaze.qsync.java.AddDependencyGenSrcsJars.ENABLED_NAVIGATION_POLICY;
+
 import com.google.idea.blaze.base.qsync.QuerySyncManager;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
-import com.google.idea.common.experiments.BoolExperiment;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.compiled.ClsCustomNavigationPolicy;
@@ -33,14 +34,11 @@ import org.jetbrains.annotations.Nullable;
  */
 public class QuerySyncNavigationPolicy implements ClsCustomNavigationPolicy {
 
-  public static final BoolExperiment ENABLED =
-      new BoolExperiment("querysync.navigationpolicy", true);
-
   @Override
   @Nullable
   public PsiElement getNavigationElement(ClsFileImpl clsFile) {
     Project project = clsFile.getProject();
-    if (!Blaze.getProjectType(project).equals(ProjectType.QUERY_SYNC) || !ENABLED.getValue()) {
+    if (!Blaze.getProjectType(project).equals(ProjectType.QUERY_SYNC) || !ENABLED_NAVIGATION_POLICY.getValue()) {
       return null;
     }
     return CachedValuesManager.getCachedValue(

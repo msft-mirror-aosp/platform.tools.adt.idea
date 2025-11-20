@@ -16,6 +16,7 @@
 package com.android.tools.idea.startup
 
 import com.android.tools.adtui.webp.WebpMetadata
+import com.android.tools.analytics.HighlightingStats
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.analytics.SystemInfoStatsMonitor
 import com.android.tools.idea.analytics.currentIdeBrand
@@ -24,7 +25,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.res.StudioCodeVersionAdapter
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.stats.AndroidStudioUsageTracker
-import com.intellij.analytics.AndroidStudioAnalytics
 import com.intellij.concurrency.JobScheduler
 import com.intellij.ide.ApplicationInitializedListener
 import com.intellij.openapi.application.ApplicationInfo
@@ -68,6 +68,8 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
     // SystemInfoStatsMonitor collects
     SystemInfoStatsMonitor().start()
 
+    HighlightingStats.getInstance().startRecording()
+
     StudioCodeVersionAdapter.initialize()
 
     setupAndroidSdkForTests()
@@ -77,7 +79,7 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
 
   /** Sets up collection of Android Studio specific analytics.  */
   private fun setupAnalytics() {
-    AndroidStudioAnalytics.getInstance().initializeAndroidStudioUsageTrackerAndPublisher()
+    AndroidStudioAnalyticsImpl.getInstance().initializeAndroidStudioUsageTrackerAndPublisher()
 
     UsageTracker.version = ApplicationInfo.getInstance().strictVersion
     UsageTracker.ideBrand = currentIdeBrand()

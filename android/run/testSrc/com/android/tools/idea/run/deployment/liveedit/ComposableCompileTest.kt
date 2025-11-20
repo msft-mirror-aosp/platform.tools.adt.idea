@@ -15,17 +15,15 @@
  */
 package com.android.tools.idea.run.deployment.liveedit
 
-import com.android.ddmlib.internal.FakeAdbTestRule
+import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.deploy.proto.Deploy.LiveEditRequest.InvalidateMode
 import com.android.tools.idea.editors.liveedit.LiveEditAdvancedConfiguration
 import com.android.tools.idea.run.deployment.liveedit.analysis.createKtFile
 import com.android.tools.idea.run.deployment.liveedit.analysis.diff
-import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileByteArray
 import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileIr
 import com.android.tools.idea.run.deployment.liveedit.analysis.disableLiveEdit
 import com.android.tools.idea.run.deployment.liveedit.analysis.enableLiveEdit
 import com.android.tools.idea.run.deployment.liveedit.analysis.initialCache
-import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrClass
 import com.android.tools.idea.run.deployment.liveedit.analysis.modifyKtFile
 import com.android.tools.idea.run.deployment.liveedit.analysis.onlyComposeDebugConstantChanges
 import com.android.tools.idea.run.deployment.liveedit.analysis.postDeploymentStateCompile
@@ -36,9 +34,7 @@ import junit.framework.Assert
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.psi.KtFile
 import org.junit.After
-import org.junit.Assume
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -50,9 +46,10 @@ import kotlin.test.assertTrue
 class ComposableCompileTest {
 
   private var projectRule = AndroidProjectRule.inMemory().withKotlin()
-  private val fakeAdb: FakeAdbTestRule = FakeAdbTestRule("30")
+  private val fakeAdbRule = FakeAdbServerAdbLibRule()
+
   @get:Rule
-  val chain = RuleChain.outerRule(projectRule).around(fakeAdb)
+  val chain = RuleChain.outerRule(projectRule).around(fakeAdbRule)!!
 
   @Before
   fun setUp() {
@@ -217,7 +214,7 @@ class ComposableCompileTest {
         val x = 0
         return { }
       }""")
-      val output = compile(listOf(
+    val output = compile(listOf(
       LiveEditCompilerInput(simpleFile, simpleState),
       LiveEditCompilerInput(nestedFile, nestedState)), cache)
 
@@ -310,7 +307,7 @@ class ComposableCompileTest {
       }""")
 
     val outputs = projectRule.postDeploymentStateCompiles(file,
-                                                        """
+                                                          """
       import androidx.compose.runtime.Composable
       @Composable fun composableFun() {
         val a = { "hello "}
@@ -324,7 +321,7 @@ class ComposableCompileTest {
       @Composable fun composableFun4() {
         val a = { }
       }""",
-                                                        """
+                                                          """
       import androidx.compose.runtime.Composable
       @Composable fun composableFun() {
         val a = { "hello "}
@@ -338,7 +335,7 @@ class ComposableCompileTest {
       @Composable fun composableFun4() {
         val a = { }
       }"""
-                                                        )
+    )
 
     // First LE should send all classes, regardless of what has changed.
     assertEquals(9, outputs[0].classes.size)

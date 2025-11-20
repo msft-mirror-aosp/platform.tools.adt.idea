@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.vitals.client
 
-import com.android.tools.idea.insights.AppInsightsIssue
 import com.android.tools.idea.insights.Connection
 import com.android.tools.idea.insights.ConnectionMode
 import com.android.tools.idea.insights.DetailedIssueStats
@@ -28,9 +27,7 @@ import com.android.tools.idea.insights.Note
 import com.android.tools.idea.insights.NoteId
 import com.android.tools.idea.insights.Permission
 import com.android.tools.idea.insights.TimeIntervalFilter
-import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.ai.AiInsight
-import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsClient
@@ -45,12 +42,15 @@ import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.event.EventPage
 import com.android.tools.idea.insights.model.event.OperatingSystemInfo
+import com.android.tools.idea.insights.model.event.Version
+import com.android.tools.idea.insights.model.issue.AppInsightsIssue
 import com.android.tools.idea.insights.model.issue.FailureType
 import com.android.tools.idea.insights.model.issue.IssueId
 import com.android.tools.idea.insights.model.issue.IssueState
 import com.android.tools.idea.insights.model.stacktrace.StackTraceGroupParser
 import com.android.tools.idea.insights.summarizeDevicesFromRawDataPoints
 import com.android.tools.idea.insights.summarizeOsesFromRawDataPoints
+import com.android.tools.idea.vitals.VitalsInsightsProvider
 import com.android.tools.idea.vitals.client.grpc.VitalsGrpcClient
 import com.android.tools.idea.vitals.client.grpc.VitalsGrpcClientImpl
 import com.android.tools.idea.vitals.datamodel.DimensionType
@@ -283,7 +283,7 @@ class VitalsClient(
               issueDetails.id,
               stackTraceGroupParser,
             )
-        AppInsightsIssue(issueDetails, event, source = AppInsightsTracker.ProductType.PLAY_VITALS)
+        AppInsightsIssue(issueDetails, event, source = VitalsInsightsProvider)
       }
       .also { cache.populateIssues(request.connection, it) }
   }

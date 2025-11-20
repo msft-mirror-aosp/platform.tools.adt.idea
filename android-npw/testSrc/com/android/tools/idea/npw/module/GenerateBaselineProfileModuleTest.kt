@@ -16,6 +16,7 @@
 package com.android.tools.idea.npw.module
 
 import com.android.ide.common.repository.AgpVersion
+import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidMajorVersion
 import com.android.sdklib.AndroidVersion
 import com.android.tools.idea.flags.StudioFlags
@@ -98,9 +99,7 @@ class GenerateBaselineProfileModuleTest {
         useGradleKts = true,
         useGmd = true,
         projectRuleAgpVersion =
-          AgpVersionSoftwareEnvironmentDescriptor.AGP_81.withCompileSdk(
-            SDK_VERSION_FOR_NPW_TESTS.toString()
-          ),
+          AgpVersionSoftwareEnvironmentDescriptor.AGP_81.withCompileSdk(SDK_VERSION_FOR_NPW_TESTS),
       )
 
     val buildGradleContent = rootDir.resolve("build.gradle.kts").readText()
@@ -151,9 +150,7 @@ class GenerateBaselineProfileModuleTest {
         useGradleKts = false,
         useGmd = false,
         projectRuleAgpVersion =
-          AgpVersionSoftwareEnvironmentDescriptor.AGP_81.withCompileSdk(
-            SDK_VERSION_FOR_NPW_TESTS.toString()
-          ),
+          AgpVersionSoftwareEnvironmentDescriptor.AGP_81.withCompileSdk(SDK_VERSION_FOR_NPW_TESTS),
       )
 
     val buildGradleContent = rootDir.resolve("build.gradle").readText()
@@ -175,10 +172,10 @@ class GenerateBaselineProfileModuleTest {
     useGradleKts: Boolean,
     useGmd: Boolean,
     projectRuleAgpVersion: AgpVersionSoftwareEnvironment,
-    androidApi: Int = StudioFlags.NPW_COMPILE_SDK_VERSION.get(),
+    androidApi: AndroidApiLevel = StudioFlags.NPW_COMPILE_SDK_VERSION.get(),
   ): Pair<File, File> {
     val name = "baselineprofile"
-    val buildApi = AndroidVersion(androidApi, 0)
+    val buildApi = AndroidVersion(androidApi)
     val targetApi = AndroidMajorVersion(androidApi)
     val minApi = AndroidMajorVersion(34)
     val kotlinVersion = "1.9.0"
@@ -712,7 +709,7 @@ android {
 
   defaultConfig {
         minSdk 34
-        targetSdk $SDK_VERSION_FOR_NPW_TESTS
+        targetSdk ${SDK_VERSION_FOR_NPW_TESTS.majorVersion}
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -753,7 +750,7 @@ android {
 
   defaultConfig {
         minSdk = 34
-        targetSdk = $SDK_VERSION_FOR_NPW_TESTS
+        targetSdk = ${SDK_VERSION_FOR_NPW_TESTS.majorVersion}
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

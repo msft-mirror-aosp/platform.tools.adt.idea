@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.adblib.serialNumber
 import com.android.adblib.tools.aiglasses.AiGlassesPairing
+import com.android.adblib.tools.aiglasses.ShellCommandException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceState
@@ -63,11 +64,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -75,10 +80,12 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
@@ -185,7 +192,8 @@ internal constructor(
         PairingStateHorizontalProgress(
           header = "No compatible AVDs found.",
           detail =
-            "Glasses pairing requires a Canary system image that includes AI Glasses support.",
+            "Glasses pairing requires a Canary system image that includes AI Glasses support.\n\n" +
+              "Please create one in Device Manager.",
           showProgressBar = false,
         )
       } else {
@@ -298,9 +306,9 @@ internal sealed class PairingState {
 
     override val detailText
       get() =
-        when (phoneLaunchState) {
-          LaunchState.Ready -> glassesState()
-          else -> phoneState()
+        when (glassesLaunchState) {
+          LaunchState.Ready -> phoneState()
+          else -> glassesState()
         }
 
     fun phoneState(): String = stateText(phoneName, phoneLaunchState)
@@ -321,7 +329,7 @@ internal sealed class PairingState {
   }
 
   data object AwaitingAuthorization : PairingState() {
-    override val heading: String = "Accept CDM Permissions on Companion device"
+    override val heading: String = "Accept Permissions on Companion device"
   }
 
   data class Error(
@@ -370,20 +378,42 @@ internal fun Project.userInvolvementRequired(deviceHandle: DeviceHandle) {
 private fun isAiGlassesCompatible(handle: DeviceHandle) =
   handle is LocalEmulatorDeviceHandle && handle.avdInfo.isAiGlassesCompatibleDevice
 
+internal suspend fun FlowCollector<PairingState>.launchGlassesAndPhone(
+  glasses: DeviceHandle,
+  phone: DeviceHandle,
+) = coroutineScope {
+  val phoneName = phone.state.properties.title
+  val glassesName = glasses.state.properties.title
+
+  val glassesLaunchState =
+    launchAvd(glasses).shareIn(this@coroutineScope, SharingStarted.Eagerly, replay = 1)
+
+  // Give the glasses a 10 second head start before starting the phone. Start the phone
+  // immediately if glasses are already booted.
+  withTimeoutOrNull(10.seconds) {
+    glassesLaunchState
+      .onEach { emit(PairingState.Launching(phoneName, LaunchState.Waiting, glassesName, it)) }
+      .takeWhile { it != LaunchState.Ready }
+      .collect()
+  }
+
+  glassesLaunchState
+    .combine(launchAvd(phone)) { glassesState, phoneState ->
+      PairingState.Launching(phoneName, phoneState, glassesName, glassesState)
+    }
+    .onEach { emit(it) }
+    .first {
+      it.phoneLaunchState == LaunchState.Ready && it.glassesLaunchState == LaunchState.Ready
+    }
+}
+
 internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flow<PairingState> {
   val logger = logger<GlassesPairingWizard>()
   val phoneName = phone.state.properties.title
   val glassesName = glasses.state.properties.title
   return flow {
       try {
-        launchAvd(glasses)
-          .combine(launchAvd(phone)) { glassesState, phoneState ->
-            PairingState.Launching(phoneName, phoneState, glassesName, glassesState)
-          }
-          .onEach { emit(it) }
-          .first {
-            it.phoneLaunchState == LaunchState.Ready && it.glassesLaunchState == LaunchState.Ready
-          }
+        launchGlassesAndPhone(glasses, phone)
       } catch (_: TimeoutCancellationException) {
         emit(PairingState.Error("Timed out waiting for devices to start."))
         return@flow
@@ -404,8 +434,7 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
       }
 
       with(AiGlassesPairing(phoneDevice.session)) {
-        val pairedDeviceCount = glassesDevice.getPairedBluetoothDeviceCount()
-        if (pairedDeviceCount != null && pairedDeviceCount > 0) {
+        if ((glassesDevice.getPairedBluetoothDeviceCount() ?: 0) > 0) {
           emit(
             PairingState.Error(
               "Glasses already paired",
@@ -415,16 +444,51 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
           return@flow
         }
 
-        emit(PairingState.Pairing("Initiating pairing..."))
-
         if (!phoneDevice.hasGlassesCompanionApp()) {
           emit(PairingState.Error("$phoneName does not have support for Glasses."))
           return@flow
         }
 
+        if ((phoneDevice.getPairedBluetoothDeviceCount() ?: 0) > 0) {
+          phoneDevice.launchCompanionApp()
+          try {
+            phoneDevice.sendUnpairCommand()
+          } catch (e: ShellCommandException) {}
+        }
+
+        // Reset any prior pairing attempts
+        phoneDevice.clearGlassesPackages()
+        delay(3.seconds)
+
+        emit(PairingState.Pairing("Initiating pairing..."))
+
+        if ((phoneDevice.getPairedBluetoothDeviceCount() ?: 0) > 0) {
+          emit(
+            PairingState.Pairing(
+              "Warning: $phoneName already has a Bluetooth pairing; glasses pairing will likely fail."
+            )
+          )
+          delay(3.seconds)
+        }
+
         val glassesBluetoothAddress = glassesDevice.getBluetoothAddress()
         if (glassesBluetoothAddress == null) {
           emit(PairingState.Error("Failed to retrieve Bluetooth address of $glassesName."))
+          return@flow
+        }
+
+        val phoneBluetoothAddress = phoneDevice.getBluetoothAddress()
+        // If phoneBluetoothAddress is null, we may not have access to it; we just have to proceed
+        // and hope for the best.
+        if (phoneBluetoothAddress == glassesBluetoothAddress) {
+          emit(
+            PairingState.Error(
+              heading = "Network simulation error",
+              detailText =
+                "The same Bluetooth address has been assigned to both $phoneName and $glassesName. " +
+                  "Please perform a Cold Boot on one device and try again.",
+            )
+          )
           return@flow
         }
 

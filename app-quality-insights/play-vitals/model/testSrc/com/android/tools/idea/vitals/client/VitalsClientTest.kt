@@ -22,33 +22,32 @@ import com.android.tools.idea.insights.DataPoint
 import com.android.tools.idea.insights.FAKE_50_DAYS_AGO
 import com.android.tools.idea.insights.FakeTimeProvider
 import com.android.tools.idea.insights.ISSUE1
-import com.android.tools.idea.insights.IssueDetails
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Permission
-import com.android.tools.idea.insights.PlayTrack
-import com.android.tools.idea.insights.SignalType
 import com.android.tools.idea.insights.StatsGroup
 import com.android.tools.idea.insights.TimeIntervalFilter
-import com.android.tools.idea.insights.Version
 import com.android.tools.idea.insights.ai.AiInsight
-import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.FakeAiInsightClient
 import com.android.tools.idea.insights.client.GeminiCrashInsightRequest
-import com.android.tools.idea.insights.client.Interval
 import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.IssueResponse
 import com.android.tools.idea.insights.client.QueryFilters
+import com.android.tools.idea.insights.model.common.Interval
 import com.android.tools.idea.insights.model.common.WithCount
 import com.android.tools.idea.insights.model.connection.AppConnection
 import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.DeviceType
 import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.event.OperatingSystemInfo
+import com.android.tools.idea.insights.model.event.PlayTrack
+import com.android.tools.idea.insights.model.event.Version
 import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueDetails
 import com.android.tools.idea.insights.model.issue.IssueId
+import com.android.tools.idea.insights.model.issue.SignalType
 import com.android.tools.idea.insights.model.stacktrace.Caption
 import com.android.tools.idea.insights.model.stacktrace.ExceptionStack
 import com.android.tools.idea.insights.model.stacktrace.Frame
@@ -59,6 +58,7 @@ import com.android.tools.idea.insights.zeroCounts
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_ISSUE1
 import com.android.tools.idea.vitals.TEST_ISSUE2
+import com.android.tools.idea.vitals.VitalsInsightsProvider
 import com.android.tools.idea.vitals.client.grpc.FakeErrorsService
 import com.android.tools.idea.vitals.client.grpc.FakeReportingService
 import com.android.tools.idea.vitals.client.grpc.FakeVitalsDatabase
@@ -128,7 +128,7 @@ class VitalsClientTest {
 
   @Test
   fun `client returns top cached issues when offline`() = runTest {
-    val cache = AppInsightsCacheImpl(ProductType.PLAY_VITALS)
+    val cache = AppInsightsCacheImpl(VitalsInsightsProvider)
     val client = createClient(cache)
 
     cache.populateIssues(TEST_CONNECTION_1, listOf(TEST_ISSUE1))
@@ -209,7 +209,7 @@ class VitalsClientTest {
         .issues
         .single()
 
-    assertThat(responseIssue).isEqualTo(ISSUE1)
+    assertThat(responseIssue).isEqualTo(ISSUE1.copy(source = VitalsInsightsProvider))
 
     val offlineResponse =
       (client.listTopOpenIssues(
@@ -230,7 +230,8 @@ class VitalsClientTest {
     assertThat(offlineResponse)
       .isEqualTo(
         ISSUE1.copy(
-          issueDetails = ISSUE1.issueDetails.copy(impactedDevicesCount = 0L, eventsCount = 0L)
+          issueDetails = ISSUE1.issueDetails.copy(impactedDevicesCount = 0L, eventsCount = 0L),
+          source = VitalsInsightsProvider,
         )
       )
   }
@@ -267,7 +268,8 @@ class VitalsClientTest {
         .issues
         .single()
 
-    assertThat(responseIssue).isEqualTo(ISSUE1.copy(sampleEvent = Event.EMPTY))
+    assertThat(responseIssue)
+      .isEqualTo(ISSUE1.copy(sampleEvent = Event.EMPTY, source = VitalsInsightsProvider))
   }
 
   @Test
@@ -429,7 +431,7 @@ class VitalsClientTest {
 
   @Test
   fun `client uses the same cache for connections and issues`() = runTest {
-    val cache = AppInsightsCacheImpl(ProductType.PLAY_VITALS)
+    val cache = AppInsightsCacheImpl(VitalsInsightsProvider)
     val issueRequest =
       IssueRequest(
         TEST_CONNECTION_1,
@@ -482,13 +484,20 @@ class VitalsClientTest {
     assertThat(client.listTopOpenIssues(issueRequest, null, ConnectionMode.ONLINE))
       .isEqualTo(
         LoadingState.Ready(
-          IssueResponse(listOf(ISSUE1), emptyList(), emptyList(), emptyList(), Permission.READ_ONLY)
+          IssueResponse(
+            listOf(ISSUE1.copy(source = VitalsInsightsProvider)),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            Permission.READ_ONLY,
+          )
         )
       )
 
     // Verify the cache contains both connections and issues computed in the previous steps
     assertThat(cache.getRecentConnections()).containsExactly(TEST_CONNECTION_1)
-    assertThat(cache.getTopIssues(issueRequest)).containsExactly(ISSUE1.zeroCounts())
+    assertThat(cache.getTopIssues(issueRequest))
+      .containsExactly(ISSUE1.zeroCounts().copy(source = VitalsInsightsProvider))
   }
 
   @Test
@@ -615,7 +624,7 @@ class VitalsClientTest {
   }
 
   private fun createClient(
-    cache: AppInsightsCache = AppInsightsCacheImpl(ProductType.PLAY_VITALS),
+    cache: AppInsightsCache = AppInsightsCacheImpl(VitalsInsightsProvider),
     grpcClient: VitalsGrpcClient =
       VitalsGrpcClientImpl(grpcConnectionRule.channel, ForwardingInterceptor),
     aiInsightClient: AiInsightClient = FakeAiInsightClient,

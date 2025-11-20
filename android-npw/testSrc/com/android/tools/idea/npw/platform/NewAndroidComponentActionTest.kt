@@ -20,6 +20,7 @@ import com.android.AndroidProjectTypes.PROJECT_TYPE_APP
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.SdkVersionInfo
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_MAIN
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
@@ -34,6 +35,7 @@ import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaModuleModelBuilder
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.template.Category
@@ -141,11 +143,13 @@ class NewAndroidComponentActionTest {
 
   @Before
   fun setUp() {
-    val file = projectRule.fixture.addFileToProject("app/src/Test.kt", "fun a() {}").virtualFile
-    val module = ModuleUtilCore.findModuleForFile(file, projectRule.project)!!
+    val file =
+      projectRule.fixture.addFileToProject("app/src/kotlin/Test.kt", "fun a() {}").virtualFile
+    val srcDirectory = file.parent.parent
+    val module = ModuleUtilCore.findModuleForFile(srcDirectory, projectRule.project)!!
 
     mySelectedAndroidFacet = setupFacetForModule(module)
-    myActionEvent = createTestActionEventForFile(file, module)
+    myActionEvent = createTestActionEventForFile(srcDirectory, module)
 
     val presentation = Presentation()
     presentation.setEnabled(false)
@@ -284,7 +288,7 @@ class NewAndroidComponentActionTest {
       } catch (_: InterruptedException) {}
 
       // There should only be 3 compatible templates (_main_, debug, release) since the file is in
-      // the "app/src" directory and the templates without source roots  are filtered out.
+      // the "app/src" directory and the templates without source roots are filtered out.
       val comboBox =
         fakeUi.findComponent(ComboBox::class.java) { combo: ComboBox<*> ->
           "ModuleTemplateCombo" == combo.getName()
@@ -298,6 +302,11 @@ class NewAndroidComponentActionTest {
 
   @Test
   fun verifyTemplateDialog_journeys() {
+    StudioFlags.JOURNEYS_WITH_GEMINI_NEW_WIZARD.overrideForTest(
+      false,
+      projectRule.testRootDisposable,
+    )
+
     val testSuiteFile =
       projectRule.fixture.addFileToProject("app/src/journeysTest/test.journey.xml", "").virtualFile
     val testSuiteModule = ModuleUtilCore.findModuleForFile(testSuiteFile, projectRule.project)!!

@@ -17,103 +17,52 @@ package com.android.tools.idea.startup;
 
 import com.android.tools.analytics.AnalyticsPublisher;
 import com.android.tools.analytics.AnalyticsSettings;
-import com.android.tools.analytics.AnalyticsSettingsData;
-import com.android.tools.analytics.HighlightingStats;
-import com.android.tools.analytics.StudioUpdateAnalyticsUtil;
 import com.android.tools.analytics.UsageTracker;
 import com.android.utils.ILogger;
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent;
 import com.google.wireless.android.sdk.stats.OptInToMetrics;
 import com.google.wireless.android.sdk.stats.OptOutOfMetrics;
-import com.intellij.analytics.AndroidStudioAnalytics;
 import com.intellij.concurrency.JobScheduler;
 import com.intellij.ide.ConsentOptionsProvider;
-import com.intellij.internal.statistic.persistence.UsageStatisticsPersistenceComponent;
-import com.intellij.openapi.application.Application;
+import com.intellij.ide.gdpr.DataSharingSettingsChangeListener;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Document;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
+@Service
+public final class AndroidStudioAnalyticsImpl {
   private ILogger androidLogger;
 
-  @Override
-  public boolean isAllowed() {
-    // As we cannot control when IJ calls into this code, we need to load the AnalyticsSettings if
-    // we're not initialized yet, to ensure we properly return opt-in status.
-    if (!AnalyticsSettings.getInitialized()) {
-      Application application = ApplicationManager.getApplication();
-      if (application != null && application.isUnitTestMode()) {
-        AnalyticsSettingsData analyticsSettings = new AnalyticsSettingsData();
-        analyticsSettings.setOptedIn(false);
-        AnalyticsSettings.setInstanceForTest(analyticsSettings);
-      } else {
-        AnalyticsSettings.initialize(getAndroidLogger());
-      }
+  public static @NotNull AndroidStudioAnalyticsImpl getInstance() {
+    return ApplicationManager.getApplication().getService(AndroidStudioAnalyticsImpl.class);
+  }
+
+  private @NotNull ConsentOptionsProvider getConsentOptionsProvider() {
+    // Adapted from UsageStatisticsPersistenceComponent#getConsentOptionsProvider.
+    return Objects.requireNonNull(ApplicationManager.getApplication().getService(ConsentOptionsProvider.class));
+  }
+
+  // Tested by AnalyticsSettingsUiTest.
+  @SuppressWarnings("UnstableApiUsage")
+  public static class MyDataSharingSettingsChangeListener implements DataSharingSettingsChangeListener {
+
+    @Override
+    public void consentWritten() {
+      // Redundant with consentsUpdated() below.
     }
-    return AnalyticsSettings.getOptedIn();
 
-  }
-
-
-  @Override
-  public void recordHighlightingLatency(Document document, long latencyMs) {
-    HighlightingStats.getInstance().recordHighlightingLatency(document, latencyMs);
-  }
-
-  @Override
-  public void logUpdateDialogOpenManually(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logUpdateDialogOpenManually(newBuild);
-  }
-
-  @Override
-  public void logNotificationShown(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logNotificationShown(newBuild);
-  }
-
-  @Override
-  public void logClickNotification(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logClickNotification(newBuild);
-  }
-
-  @Override
-  public void logUpdateDialogOpenFromNotification(@NotNull String newBuild) {
-    StudioUpdateAnalyticsUtil.logUpdateDialogOpenFromNotification(newBuild);
-  }
-
-  @Override
-  public void logClickIgnore(String newBuild) {
-    StudioUpdateAnalyticsUtil.logClickIgnore(newBuild);
-  }
-
-  @Override
-  public void logClickLater(String newBuild) {
-    StudioUpdateAnalyticsUtil.logClickLater(newBuild);
-  }
-
-  @Override
-  public void logDownloadSuccess(String newBuild) {
-    StudioUpdateAnalyticsUtil.logDownloadSuccess(newBuild);
-  }
-
-  @Override
-  public void logDownloadFailure(String newBuild) {
-    StudioUpdateAnalyticsUtil.logDownloadFailure(newBuild);
-  }
-
-  @Override
-  public void updateAndroidStudioMetrics() {
-    updateAndroidStudioMetrics(getConsentOptionsProvider().isSendingUsageStatsAllowed());
-  }
-
-  private @Nullable ConsentOptionsProvider getConsentOptionsProvider() {
-    return UsageStatisticsPersistenceComponent.getConsentOptionsProvider();
+    @Override
+    public void consentsUpdated() {
+      AndroidStudioAnalyticsImpl service = AndroidStudioAnalyticsImpl.getInstance();
+      service.updateAndroidStudioMetrics(service.getConsentOptionsProvider().isSendingUsageStatsAllowed());
+    }
   }
 
   private void updateAndroidStudioMetrics(boolean allowed) {
@@ -154,7 +103,6 @@ public class AndroidStudioAnalyticsImpl extends AndroidStudioAnalytics {
     }
   }
 
-  @Override
   public void initializeAndroidStudioUsageTrackerAndPublisher() {
     ILogger logger = getAndroidLogger();
 

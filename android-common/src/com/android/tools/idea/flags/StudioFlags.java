@@ -16,6 +16,7 @@
 package com.android.tools.idea.flags;
 
 import com.android.flags.BooleanFlag;
+import com.android.flags.CustomTypeFlag;
 import com.android.flags.DebugFlag;
 import com.android.flags.EnumFlag;
 import com.android.flags.Flag;
@@ -25,9 +26,11 @@ import com.android.flags.FlagValueContainer;
 import com.android.flags.Flags;
 import com.android.flags.IntFlag;
 import com.android.flags.LongFlag;
+import com.android.flags.StaticFlagDefault;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.InMemoryFlagValueContainer;
 import com.android.flags.overrides.PropertyOverrides;
+import com.android.sdklib.AndroidApiLevel;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.flags.overrides.AgpReleaseBranchProvider;
@@ -35,8 +38,13 @@ import com.android.tools.idea.flags.overrides.AgpTestSuitesProvider;
 import com.android.tools.idea.flags.overrides.FeatureConfigurationProvider;
 import com.android.tools.idea.flags.overrides.MendelOverrides;
 import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
+import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -250,10 +258,39 @@ public final class StudioFlags {
     NPW, "new.kotlin.multiplatform.module", "New Kotlin Multiplatform Module",
     "Show template to create a new Kotlin Multiplatform module in the new module wizard.");
 
-  public static final Flag<Integer> NPW_COMPILE_SDK_VERSION = new IntFlag(
+  static class AndroidApiFlag extends CustomTypeFlag<AndroidApiLevel> {
+    public AndroidApiFlag(FlagGroup group, String name, String displayName, String description, AndroidApiLevel defaultValue) {
+      super(AndroidApiLevel.class, group, name, displayName, description, defaultValue, AndroidApiFlagConverter, examples);
+    }
+
+    private static final List<AndroidApiLevel> examples = ImmutableList.of(
+      new AndroidApiLevel(35),
+      new AndroidApiLevel(36),
+      new AndroidApiLevel(36, 1)
+    );
+
+    static final ValueConverter<AndroidApiLevel> AndroidApiFlagConverter = new ValueConverter<>() {
+      @Override
+      public @NotNull String serialize(AndroidApiLevel value) {
+        return value.toString();
+      }
+
+      @Override
+      public AndroidApiLevel deserialize(@NotNull String strValue) {
+        AndroidApiLevel result = AndroidApiLevel.fromString(strValue);
+        if (result == null) {
+          throw new IllegalArgumentException(
+            "Invalid Android API level '" + strValue + "'. Expected to be of the form <int> or <int>.<int>");
+        }
+        return result;
+      }
+    };
+  }
+
+  public static final Flag<AndroidApiLevel> NPW_COMPILE_SDK_VERSION = new AndroidApiFlag(
     NPW, "new.project.compile.sdk", "New project Compile SDK version",
-    "SDK version to be used for compileSdk for newly created project.",
-    36);
+    "SDK version to be used for compileSdk for newly created project. Must be of the form <major> or <major>.<minor>",
+    new AndroidApiLevel(36,0));
 
   public static final Flag<String> NPW_DAEMON_JVM_CRITERIA_REQUIRED_GRADLE_VERSION = new StringFlag(
     NPW, "new.project.daemon.jvm.criteria.gradle.version", "New project Daemon JVM criteria required Gradle version",
@@ -1201,10 +1238,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_TRACE_DISCOVERY = new BooleanFlag(
     EMBEDDED_EMULATOR, "trace.discovery", "Enable Tracing of Emulator Discovery",
     "Enables tracing of Emulator discovery");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_XR_HEADSET_AVD = new BooleanFlag(
-    EMBEDDED_EMULATOR, "allow.xr", "Allow XR headset AVD to run embedded",
-    "Enables running an XR headset AVD in the Running Devices tool window"
-    );
   public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD = new BooleanFlag(
     EMBEDDED_EMULATOR, "allow.ai.glasses", "Allow AI glasses AVD to run embedded",
     "Enables running an AI glasses AVD in the Running Devices tool window"
@@ -1215,6 +1248,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_EYE_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.eye.tracking", "Enable eye tracking input mode for XR AVDs",
     "Enables eye tracking input mode for XR AVDs");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_B458422581_LOGGING = new DebugFlag(
+    EMBEDDED_EMULATOR, "b458422581.logging", "Enable logging for investigation of b/458422581",
+    "Enable logging for investigation of b/458422581");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs"
@@ -1820,7 +1856,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> AI_GLASSES_PHONE_EMULATOR_PAIRING_WIZARD_ENABLED = new BooleanFlag(
     DEVICE_MANAGER,
     "ai.glasses.phone.emulator.pairing.wizard.enabled",
-    "Enable microai glasses emulator and phone emulator pairing wizard",
+    "Enable AI glasses emulator and phone emulator pairing wizard",
     "Enables the pairing assistant for glasses and phone emulators."
   );
   // endregion
@@ -2708,6 +2744,10 @@ public final class StudioFlags {
     "The name of the JUnit Platform Launcher dependency used by the Journeys test suite",
     "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
     "org.junit.platform:junit-platform-launcher:1.13.4"
+  );
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_NEW_WIZARD = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "enable.new.wizard", "Enable Journeys New Wizard",
+    "Enable the new wizard for creating Journeys with Gemini."
   );
   // endregion JOURNEYS_WITH_GEMINI
 

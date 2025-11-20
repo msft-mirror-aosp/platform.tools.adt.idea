@@ -15,58 +15,164 @@
  */
 package com.android.tools.idea.testartifacts.testsuite
 
-import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
-import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
-import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
+import com.android.tools.idea.IdeInfo
+import com.android.tools.idea.execution.common.DeployableToDevice
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension.BooleanOptions.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
-import com.intellij.openapi.project.Project
-import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
-import org.jetbrains.plugins.gradle.util.GradleConstants
-import java.io.File
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.testFramework.UsefulTestCase.assertThrows
+import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.mockito.Mockito.*
+import org.mockito.kotlin.whenever
 
-data class GradleAndroidTestsTaskManagerTest(
-  override val name: String,
-  override val testProject: TestProject,
-  override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
-  val test: (Project) -> Unit
-) : SyncedProjectTestDef {
+class GradleAndroidTestsTaskManagerTest {
 
-  companion object {
-    val tests: List<GradleAndroidTestsTaskManagerTest> = listOf(
-      GradleAndroidTestsTaskManagerTest(
-        name = "simpleApplication gradle task manager",
-        testProject = TestProject.SIMPLE_APPLICATION,
-      ) { project ->
-        val id = ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.RESOLVE_PROJECT, project)
-        val settings = GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project).apply {
-          tasks = listOf("tasks")
-          jvmParameters = null
-          putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
-        }
-        val sb = StringBuilder()
-        GradleTaskManager().executeTasks(requireNotNull(project.basePath), id, settings, object : ExternalSystemTaskNotificationListener {
-          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
-            sb.append(text)
-          }
-        })
-        val output = sb.toString()
-        assertThat(output).contains("BUILD SUCCESSFUL")
-        assertThat(output).contains("wrapper - Generates Gradle wrapper files.") // canary output
-        assertThat(output).doesNotContain("FAILURE")
-      }
-    )
+  @get:Rule
+  val rule = AndroidProjectRule.inMemory()
+
+  private val mockId: ExternalSystemTaskId = mock()
+
+  @Before
+  fun setUp() {
+    whenever(mockId.findProject()).thenReturn(rule.project)
   }
 
-  override fun withAgpVersion(agpVersion: AgpVersionSoftwareEnvironmentDescriptor): SyncedProjectTestDef {
-    return copy(agpVersion = agpVersion)
+  @Test
+  fun configureTasks_addsInitScript_whenShowTestResultInAndroidTestSuiteViewIsTrue() {
+    val settings = GradleExecutionSettings()
+    settings.putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+
+    val taskManager = GradleAndroidTestsTaskManager()
+    taskManager.configureTasks("/path/to/project", mockId, settings, null)
+
+    assertThat(settings.arguments.toString()).containsMatch("--init-script.*addTestListenerForAndroidTestSuiteView")
   }
 
-  override fun runTest(root: File, project: Project) {
-    test(project)
+  @Test
+  fun configureTasks_doesNotAddInitScript_whenShowTestResultInAndroidTestSuiteViewIsFalse() {
+    val settings = GradleExecutionSettings()
+    settings.putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, false)
+
+    val taskManager = GradleAndroidTestsTaskManager()
+    taskManager.configureTasks("/path/to/project", mockId, settings, null)
+
+    assertThat(settings.arguments.toString()).doesNotContain("--init-script.*addTestListenerForAndroidTestSuiteView")
+  }
+
+  @Test
+  fun configureTasks_doesNotAddInitScript_whenAdditionalOptionsAreDisabled() {
+    StudioFlags.ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS.overrideForTest(false, rule.testRootDisposable)
+    val settings = GradleExecutionSettings()
+    settings.putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+
+    val taskManager = GradleAndroidTestsTaskManager()
+    taskManager.configureTasks("/path/to/project", mockId, settings, null)
+
+    assertThat(settings.arguments.toString()).doesNotContain("--init-script.*addTestListenerForAndroidTestSuiteView")
+  }
+
+  @Test
+  fun configureTasks_launchesDevicesAndConfiguresEnvVar() {
+    // Feature only support for Android Studio
+    if (!IdeInfo.getInstance().isAndroidStudio) {
+      return
+    }
+
+    val taskManager = GradleAndroidTestsTaskManager(deviceLauncher = {
+      listOf("device1", "device2")
+    })
+    val settings = GradleExecutionSettings()
+    settings.putUserData(DeployableToDevice.KEY, true)
+
+    taskManager.configureTasks("", mockId, settings, null)
+
+    assertThat(settings.env["ANDROID_SERIAL"]).isEqualTo("device1,device2")
+  }
+
+  @Test
+  fun configureTasks_throwsProcessCanceledException_whenNoDevicesAreLaunched() {
+    // Feature only support for Android Studio
+    if (!IdeInfo.getInstance().isAndroidStudio) {
+      return
+    }
+
+    val taskManager = GradleAndroidTestsTaskManager(deviceLauncher = {
+      emptyList()
+    })
+    val settings = GradleExecutionSettings()
+    settings.putUserData(DeployableToDevice.KEY, true)
+
+    assertThrows(ProcessCanceledException::class.java) {
+      taskManager.configureTasks("", mockId, settings, null)
+    }
+
+    assertThat(settings.env["ANDROID_SERIAL"]).isNull()
+  }
+
+  @Test
+  fun configureTasks_doesNotSetAndroidSerial_whenDeployableToDeviceIsFalse() {
+    // Feature only support for Android Studio
+    if (!IdeInfo.getInstance().isAndroidStudio) {
+      return
+    }
+
+    val taskManager = GradleAndroidTestsTaskManager(deviceLauncher = {
+      listOf("device1", "device2")
+    })
+    val settings = GradleExecutionSettings()
+    settings.putUserData(DeployableToDevice.KEY, false)
+
+    taskManager.configureTasks("", mockId, settings, null)
+
+    assertThat(settings.env["ANDROID_SERIAL"]).isNull()
+  }
+
+  @Test
+  fun configureTasks_doesNotSetAndroidSerial_whenFlagsDisabled() {
+    // Feature only support for Android Studio
+    if (!IdeInfo.getInstance().isAndroidStudio) {
+      return
+    }
+
+    StudioFlags.ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS.overrideForTest(false, rule.testRootDisposable)
+    StudioFlags.AGP_TEST_SUITES_ENABLED.overrideForTest(false, rule.testRootDisposable)
+
+    val taskManager = GradleAndroidTestsTaskManager(deviceLauncher = {
+      listOf("device1", "device2")
+    })
+    val settings = GradleExecutionSettings()
+    settings.putUserData(DeployableToDevice.KEY, true)
+
+    taskManager.configureTasks("", mockId, settings, null)
+
+    assertThat(settings.env["ANDROID_SERIAL"]).isNull()
+  }
+
+  @Test
+  fun configureTasks_setsAndroidSerial_whenAgpTestSuitesEnabledIsTrue() {
+    // Feature only support for Android Studio
+    if (!IdeInfo.getInstance().isAndroidStudio) {
+      return
+    }
+
+    StudioFlags.ENABLE_ADDITIONAL_TESTING_GRADLE_OPTIONS.overrideForTest(false, rule.testRootDisposable)
+    StudioFlags.AGP_TEST_SUITES_ENABLED.overrideForTest(true, rule.testRootDisposable)
+
+    val taskManager = GradleAndroidTestsTaskManager(deviceLauncher = {
+      listOf("device1", "device2")
+    })
+    val settings = GradleExecutionSettings()
+    settings.putUserData(DeployableToDevice.KEY, true)
+
+    taskManager.configureTasks("", mockId, settings, null)
+
+    assertThat(settings.env["ANDROID_SERIAL"]).isEqualTo("device1,device2")
   }
 }

@@ -47,11 +47,9 @@ import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders;
 import com.android.tools.profilers.sessions.SessionAspect;
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel;
 import com.android.tools.profilers.tasks.TaskEventTrackerUtils;
-import com.android.tools.profilers.tasks.TaskMetadataStatus;
 import com.android.tools.profilers.tasks.TaskStartFailedMetadata;
 import com.android.tools.profilers.tasks.TaskStopFailedMetadata;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.wireless.android.sdk.stats.TaskFailedMetadata;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -71,7 +69,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   private static final String RECORD_JAVA_TEXT = "Record Java / Kotlin allocations";
   private static final String RECORD_JAVA_TOOLTIP = "View how each Java / Kotlin object was allocated over a period of time";
   @VisibleForTesting static final String RECORD_NATIVE_TEXT = "Record native allocations";
-  @VisibleForTesting static final String X86_RECORD_NATIVE_TOOLTIP = "Native memory recording is unavailable on x86 or x86_64 devices";
   private static final String RECORD_NATIVE_DESC = "View how each C / C++ object was allocated over a period of time";
 
 
@@ -424,6 +421,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                                                      getStudioProfilers().getSessionsManager().isSessionAlive(),
                                                      new TaskStartFailedMetadata(status, null, null)
           );
+
+          cleanupFailedCapture();
         }
         getLogger().error("Failure with error code " + status.getErrorCode());
         break;
@@ -663,6 +662,19 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
   private static RecordingOption makeToggleOption(String title, String desc, Runnable toggle) {
     return new RecordingOption(title, desc, toggle, toggle);
+  }
+
+  private void cleanupFailedCapture() {
+    if (getStudioProfilers().getSessionsManager().isSessionAlive()) {
+      getStudioProfilers().getSessionsManager().endCurrentSession();
+    }
+
+    if (myRecordingScreenModel != null) {
+      myRecordingScreenModel.setRecordingFailed();
+    }
+
+    myRecordingOptionsModel.setFinished();
+    myNativeAllocationTracking = false;
   }
 
   public static boolean canSafelyLoadHprof(long fileSize) {

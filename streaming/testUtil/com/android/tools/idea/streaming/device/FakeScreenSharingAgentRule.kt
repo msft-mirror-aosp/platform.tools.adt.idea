@@ -18,7 +18,6 @@ package com.android.tools.idea.streaming.device
 import com.android.adblib.ConnectedDevice
 import com.android.adblib.DeviceInfo
 import com.android.adblib.DeviceState.ONLINE
-import com.android.adblib.ddmlibcompatibility.testutils.FakeAdbServerAdbLibRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.FakeAdbServer
 import com.android.fakeadbserver.FakeDeviceCreator
@@ -31,6 +30,7 @@ import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.DeviceState as ProvisionerDeviceState
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.Resolution
+import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.util.StudioPathManager
@@ -65,7 +65,7 @@ class FakeScreenSharingAgentRule : TestRule {
   private var deviceCounter = 0
   private val devices = mutableListOf<FakeDevice>()
   private val projectRule = ProjectRule()
-  private val fakeAdbServerAdbLibRule = FakeAdbServerAdbLibRule(configureFakeAdbServer())
+  private val fakeAdbServerAdbLibRule = FakeAdbServerAdbLibRule(::configureFakeAdbServer)
   private val testEnvironment = object : ExternalResource() {
 
     override fun before() {
@@ -106,50 +106,48 @@ class FakeScreenSharingAgentRule : TestRule {
       description)
   }
 
-  private fun configureFakeAdbServer():
-    (FakeAdbServer.Builder.() -> FakeAdbServer.Builder) = {
-      installDefaultCommandHandlers()
-      addDeviceHandler(object : DeviceCommandHandler("shell,v2") {
-        override fun invoke(server: FakeAdbServer, socketScope: CoroutineScope, socket: Socket, device: DeviceState, args: String) {
-          if (args.contains("$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME")) {
-            val fakeDevice = devices.find { it.serialNumber == device.deviceId }!!
-            val shellProtocol = ShellV2Protocol(socket)
-            writeOkay(socket.outputStream)
-            runBlocking { fakeDevice.agent.run(shellProtocol, args, fakeDevice.hostPort!!) }
-          }
-          else if (args.startsWith("mkdir ")) {
-            writeOkay(socket.outputStream)
-            ShellV2Protocol(socket).writeExitCode(0)
-          }
-          else if (args.startsWith("logcat ")) {
-            writeOkay(socket.outputStream)
-            val shellProtocol = ShellV2Protocol(socket)
-            shellProtocol.writeStdout("--------- beginning of crash\n")
-            shellProtocol.writeStdout("06-20 17:54:11.642 14782 14782 F libc: Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR)\n")
-            shellProtocol.writeExitCode(0)
-          }
-          else {
-            throw NextHandlerException()
-          }
-        }
-      })
-      addDeviceHandler(object : DeviceCommandHandler("reverse") {
-        override fun invoke(server: FakeAdbServer, socketScope: CoroutineScope, socket: Socket, device: DeviceState, args: String) {
+  private fun configureFakeAdbServer(fakeAdbServer: FakeAdbServer.Builder) {
+    fakeAdbServer.addDeviceHandler(object : DeviceCommandHandler("shell,v2") {
+      override fun invoke(server: FakeAdbServer, socketScope: CoroutineScope, socket: Socket, device: DeviceState, args: String) {
+        if (args.contains("$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME")) {
           val fakeDevice = devices.find { it.serialNumber == device.deviceId }!!
-          if (args.startsWith("forward:")) {
-            val parts = args.split(';')
-            val hostParts = parts[1].split(':')
-            fakeDevice.hostPort = hostParts[1].toInt()
-          }
-          else if (args.startsWith("killforward:")) {
-            fakeDevice.hostPort = null
-          }
-          val stream = socket.outputStream
-          writeOkay(stream)
-          writeOkay(stream)
+          val shellProtocol = ShellV2Protocol(socket)
+          writeOkay(socket.outputStream)
+          runBlocking { fakeDevice.agent.run(shellProtocol, args, fakeDevice.hostPort!!) }
         }
-      })
-    }
+        else if (args.startsWith("mkdir ")) {
+          writeOkay(socket.outputStream)
+          ShellV2Protocol(socket).writeExitCode(0)
+        }
+        else if (args.startsWith("logcat ")) {
+          writeOkay(socket.outputStream)
+          val shellProtocol = ShellV2Protocol(socket)
+          shellProtocol.writeStdout("--------- beginning of crash\n")
+          shellProtocol.writeStdout("06-20 17:54:11.642 14782 14782 F libc: Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR)\n")
+          shellProtocol.writeExitCode(0)
+        }
+        else {
+          throw NextHandlerException()
+        }
+      }
+    })
+    fakeAdbServer.addDeviceHandler(object : DeviceCommandHandler("reverse") {
+      override fun invoke(server: FakeAdbServer, socketScope: CoroutineScope, socket: Socket, device: DeviceState, args: String) {
+        val fakeDevice = devices.find { it.serialNumber == device.deviceId }!!
+        if (args.startsWith("forward:")) {
+          val parts = args.split(';')
+          val hostParts = parts[1].split(':')
+          fakeDevice.hostPort = hostParts[1].toInt()
+        }
+        else if (args.startsWith("killforward:")) {
+          fakeDevice.hostPort = null
+        }
+        val stream = socket.outputStream
+        writeOkay(stream)
+        writeOkay(stream)
+      }
+    })
+  }
 
   fun connectDevice(model: String,
                     apiLevel: Int,

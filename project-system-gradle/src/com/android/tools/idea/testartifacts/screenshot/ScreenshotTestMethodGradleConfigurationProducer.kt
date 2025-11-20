@@ -39,10 +39,14 @@ import org.jetbrains.plugins.gradle.util.TasksToRun
 class ScreenshotTestMethodGradleConfigurationProducer: TestMethodGradleConfigurationProducer() {
   private val visitedAnnotations = mutableMapOf<String, Boolean>()
   override fun suggestConfigurationName(context: ConfigurationContext, element: PsiMethod, chosenElements: List<PsiClass>): String {
-    return element.name
+    return "Screenshot Tests in ${element.name}"
   }
 
   override fun doIsConfigurationFromContext(configuration: GradleRunConfiguration, context: ConfigurationContext): Boolean {
+    if (configuration.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) != true) {
+      return false
+    }
+
     val location = context.location ?: return false
     val psiMethod = getPsiParentsOfType(location.psiElement, PsiMethod::class.java, false).firstOrNull()?: return false
 
@@ -74,6 +78,7 @@ class ScreenshotTestMethodGradleConfigurationProducer: TestMethodGradleConfigura
       return false
     }
     configuration.putUserData<Boolean>(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+    configuration.putUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION, true)
     return configure(configuration, sourceElement, context)
   }
 

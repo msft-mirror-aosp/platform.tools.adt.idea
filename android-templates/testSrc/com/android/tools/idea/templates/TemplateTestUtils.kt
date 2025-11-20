@@ -19,6 +19,7 @@
 package com.android.tools.idea.templates
 
 import com.android.ide.common.repository.AgpVersion
+import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidMajorVersion
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.SdkVersionInfo
@@ -42,7 +43,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import junit.framework.TestCase.assertTrue
 
-internal const val SDK_VERSION_FOR_TEMPLATE_TESTS = 35
+internal val SDK_VERSION_FOR_TEMPLATE_TESTS = AndroidApiLevel(35)
 
 internal fun verifyLanguageFiles(projectDir: Path, language: Language) {
   // Note: Files.walk() stream needs to be closed (or consumed completely), otherwise it will leave

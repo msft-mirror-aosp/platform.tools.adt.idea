@@ -158,7 +158,6 @@ class EmulatorToolWindowPanelTest {
 
   @Before
   fun setUp() {
-    StudioFlags.EMBEDDED_EMULATOR_ALLOW_XR_HEADSET_AVD.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_XR_HAND_TRACKING.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_XR_EYE_TRACKING.overrideForTest(true, testRootDisposable)
@@ -1175,7 +1174,7 @@ class EmulatorToolWindowPanelTest {
   }
 
   private fun createWindowPanelForXr(): EmulatorToolWindowPanel {
-    val avdFolder = FakeEmulator.createXrAvd(emulatorRule.avdRoot)
+    val avdFolder = FakeEmulator.createXrHeadsetAvd(emulatorRule.avdRoot)
     return createWindowPanel(avdFolder)
   }
 

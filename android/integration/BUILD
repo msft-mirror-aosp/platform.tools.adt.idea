@@ -413,6 +413,35 @@ iml_test(
     test_class = "com.android.tools.idea.LiveEditTest",
 )
 
+iml_test(
+    name = "LiveEditJfrTest",
+    timeout = "long",
+    data = live_edit_test_data + [
+        "//prebuilts/studio/sdk:emulator",
+        "//prebuilts/studio/sdk:system_image_android-33_default",
+        INTEGRATION_TEST_GRADLE_VERSION,
+    ],
+    jvm_flags = [
+        "-Dstudio.profiling.capture_jfr=true",
+        "-Dstudio.profiling.gradle.capture_jfr=true",
+    ],
+    module = ":intellij.android.core.integration",
+    tags = [
+        "noci:studio-linux",
+        "noci:studio-win",
+        "studio-e2e-test",
+    ],
+    tags_linux = [
+        "block-network",
+    ],
+    tags_mac = [],
+    tags_windows = [
+        "block-network",
+        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
+    ],
+    test_class = "com.android.tools.idea.LiveEditTest",
+)
+
 apply_changes_data = [
     ":buildproject_deps",
     ":applychangesproject",
@@ -486,10 +515,10 @@ iml_test(
 
 create_project_test_data = [
     ":createproject_deps",
-    "//prebuilts/studio/sdk:build-tools/33.0.1",
+    "//prebuilts/studio/sdk:build-tools/35.0.0",
     "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
     "//prebuilts/studio/sdk:platforms/android-34",
-    "//tools/base/build-system:gradle-distrib-8.0",  # The test itself sets a flag for which AGP version to use, so we can't rely on the framework choosing INTEGRATION_TEST_GRADLE_VERSION for us
+    "//tools/base/build-system:gradle-distrib-8.13",  # The test itself sets a flag for which AGP version to use, so we can't rely on the framework choosing INTEGRATION_TEST_GRADLE_VERSION for us
 ]
 
 iml_test(
@@ -542,10 +571,9 @@ maven_repository(
         "@maven//:androidx.navigation.navigation-ui-ktx_2.4.1",
         "@maven//:androidx.test.espresso.espresso-core_3.5.1",
         "@maven//:androidx.test.ext.junit_1.1.3",
-        "@maven//:com.android.application.com.android.application.gradle.plugin_8.1.0",
-        "@maven//:com.android.library.com.android.library.gradle.plugin_8.1.0",
-        "@maven//:com.android.tools.build.aapt2_8.1.0-10154469",
-        "@maven//:com.android.tools.build.gradle_8.1.0",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_8.13.0",
+        "@maven//:com.android.library.com.android.library.gradle.plugin_8.13.0",
+        "@maven//:com.android.tools.build.aapt2_8.13.0-13719691",
         "@maven//:com.google.android.material.material_1.5.0",
         "@maven//:com.google.protobuf.protobuf-bom_3.17.2",
         "@maven//:com.google.protobuf.protobuf-java_3.17.2",
@@ -564,6 +592,8 @@ maven_repository(
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.6.21",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.8.10",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.9.10",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_2.0.21",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.0.21",  # Empty Activity template Kotlin/Compose 2.0.21
@@ -572,6 +602,9 @@ maven_repository(
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.4",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-test_1.6.4",
         "@maven//:org.jetbrains.markdown_0.2.1",
+        "@maven//:org.junit.junit-bom_5.10.2",
+        "@maven//:org.junit.junit-bom_5.9.2",
+        "@maven//:org.junit.junit-bom_5.9.3",
     ] + KOTLIN_ARTIFACTS_FOR_TESTS,
 )
 

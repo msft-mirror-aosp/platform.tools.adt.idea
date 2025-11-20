@@ -30,10 +30,6 @@
                         overrides="true"/>
 
     <!--suppress PluginXmlValidity (this service is intentionally registered outside the module of the interface class) -->
-    <applicationService serviceInterface="com.intellij.analytics.AndroidStudioAnalytics"
-                        serviceImplementation="com.android.tools.idea.startup.AndroidStudioAnalyticsImpl"/>
-
-    <!--suppress PluginXmlValidity (this service is intentionally registered outside the module of the interface class) -->
     <applicationService serviceInterface="com.intellij.ide.AndroidStudioSystemHealthMonitorAdapter$EventsListener"
                         serviceImplementation="com.android.tools.idea.diagnostics.AndroidStudioSystemHealthMonitor$MyEventsListener"/>
 
@@ -76,6 +72,9 @@
     <listener
         class="com.android.tools.idea.diagnostics.LastActionTracker$MyActionListener"
         topic="com.intellij.openapi.actionSystem.ex.AnActionListener" />
+    <listener
+        class="com.android.tools.idea.startup.AndroidStudioAnalyticsImpl$MyDataSharingSettingsChangeListener"
+        topic="com.intellij.ide.gdpr.DataSharingSettingsChangeListener"/>
   </applicationListeners>
 
   <actions>

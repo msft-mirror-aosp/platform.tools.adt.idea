@@ -35,8 +35,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
-import icons.StudioIcons.LayoutEditor.Motion.NEXT_TICK
-import icons.StudioIcons.LayoutEditor.Motion.PREVIOUS_TICK
 import javax.swing.Icon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +49,8 @@ private const val STACK_TRACE_START_LINE = "    at "
 private const val PREV_DESCRIPTION_KEY = "layout.inspector.recomposition.prev"
 private const val NEXT_DESCRIPTION_KEY = "layout.inspector.recomposition.next"
 private const val HIDE_DESCRIPTION_KEY = "layout.inspector.recomposition.hide"
+
+internal const val INVALIDATED = "<invalidated>"
 
 /** Model for the [StateInspectionPanel]. */
 internal interface StateInspectionModel {
@@ -90,8 +90,7 @@ internal class StateInspectionModelImpl(
 ) : StateInspectionModel {
   private val scope = parentScope.createChildScope(parentDisposable = parentDisposable)
   private val lock = Any()
-  @GuardedBy("lock")
-  private var currentKey: StateReadKey? = null
+  @GuardedBy("lock") private var currentKey: StateReadKey? = null
   private var hasStateReadsForPreviousRecomposition = false
 
   private val _show = MutableStateFlow(false)
@@ -99,14 +98,24 @@ internal class StateInspectionModelImpl(
 
   // TODO(b/441353152): Request an icon for this feature:
   override val prevAction =
-    createAction(PREVIOUS_TICK, PREV_DESCRIPTION_KEY, ::gotoPrevRecomposition, ::hasPrevComposition)
+    createAction(
+      AllIcons.Actions.Play_back,
+      PREV_DESCRIPTION_KEY,
+      ::gotoPrevRecomposition,
+      ::hasPrevComposition,
+    )
 
   private val _recompositionText = MutableStateFlow("")
   override val recompositionText = _recompositionText.asStateFlow()
 
   // TODO(b/441353152): Request an icon for this feature:
   override val nextAction =
-    createAction(NEXT_TICK, NEXT_DESCRIPTION_KEY, ::gotoNextRecomposition, ::hasNextComposition)
+    createAction(
+      AllIcons.Actions.Play_forward,
+      NEXT_DESCRIPTION_KEY,
+      ::gotoNextRecomposition,
+      ::hasNextComposition,
+    )
 
   override val minimizeAction =
     createAction(
@@ -174,7 +183,10 @@ internal class StateInspectionModelImpl(
       when {
         view !is ComposeViewNode -> showInactiveState(InactiveState.VIEW)
         !model.stateReadsModel.isNodeObserved(view) -> showInactiveState(InactiveState.NOT_OBSERVED)
-        view.anchorHash == synchronized(lock) { currentKey?.composable?.anchorHash } -> {} // Keep current recomposition
+        view.anchorHash ==
+          synchronized(lock) {
+            currentKey?.composable?.anchorHash
+          } -> {} // Keep current recomposition
         else -> loadRecompositionStateReads(view)
       }
     }
@@ -309,7 +321,7 @@ internal class StateInspectionModelImpl(
       maxLengthReached = true
     }
     if (invalidated) {
-      message.append(" \uD83D\uDFE2")
+      message.append(" $INVALIDATED")
     }
     var read = message.toString()
     LayoutInspectorStateReadRewriter.EP_NAME.extensionList.forEach {

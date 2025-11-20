@@ -30,14 +30,14 @@ import com.android.tools.idea.testing.ProjectServiceRule
 import com.android.tools.idea.testing.disposable
 import com.intellij.testFramework.ProjectRule
 import com.jetbrains.rd.util.forEachReversed
+import java.nio.file.Path
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.rules.ExternalResource
 import org.junit.rules.TestName
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
-import java.nio.file.Path
-import kotlin.time.Duration.Companion.seconds
 
 const val DEFAULT_FONT_SCALE = 100
 const val CUSTOM_FONT_SCALE = 130
@@ -154,7 +154,7 @@ class UiSettingsRule : ExternalResource() {
     return when (deviceType) {
       DeviceType.WEAR -> FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(api, 0))
       DeviceType.AUTOMOTIVE -> FakeEmulator.createAutomotiveAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(api, 0))
-      DeviceType.XR_HEADSET -> FakeEmulator.createXrAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(api, 0))
+      DeviceType.XR_HEADSET -> FakeEmulator.createXrHeadsetAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(api, 0))
       else -> FakeEmulator.createPhoneAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(api, 0))
     }
   }

@@ -27,6 +27,7 @@ import com.android.tools.idea.gradle.project.AndroidNewProjectInitializationStar
 import com.android.tools.idea.gradle.project.importing.GradleNewProjectConfiguration
 import com.android.tools.idea.gradle.project.importing.GradleProjectImporter
 import com.android.tools.idea.gradle.run.MakeBeforeRunTaskProviderUtil
+import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.findAndroidStudioLocalMavenRepoPaths
 import com.android.tools.idea.gradle.util.GradleWrapper
 import com.android.tools.idea.npw.module.recipes.androidProject.androidProjectRecipe
 import com.android.tools.idea.npw.project.DomainToPackageExpression
@@ -126,7 +127,8 @@ class NewProjectModel : WizardModel(), ProjectModelData {
   override val language = OptionalValueProperty<Language>()
   override val agpVersionSelector =
     ObjectValueProperty<AgpVersionSelector>(newProjectAgpVersionSelector())
-  override val additionalMavenRepos: ObjectValueProperty<List<URL>> = ObjectValueProperty(listOf())
+  override val additionalMavenRepos: ObjectValueProperty<List<URL>> =
+    ObjectValueProperty(findAndroidStudioLocalMavenRepoPaths().map { it.toURI().toURL() })
   override val multiTemplateRenderer = MultiTemplateRenderer(::runRenderer)
   override val prompt = StringValueProperty("")
   override val imageAttachments: ObjectValueProperty<List<VirtualFile>> =
@@ -261,7 +263,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
 
       // TODO(b/444641424): Remove when Hilt supports AGP 9.
       if (prompt.get().isNotEmpty()) {
-        resolvedAgpVersion = resolvedAgpVersion.coerceAtMost(AgpVersion(8, 13))
+        resolvedAgpVersion = resolvedAgpVersion.coerceAtMost(AgpVersion(8, 13, 1))
       }
 
       projectTemplateData =

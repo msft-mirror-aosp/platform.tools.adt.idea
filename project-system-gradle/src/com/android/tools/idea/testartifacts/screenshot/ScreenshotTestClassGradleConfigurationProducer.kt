@@ -41,10 +41,14 @@ import org.jetbrains.plugins.gradle.util.TasksToRun
 class ScreenshotTestClassGradleConfigurationProducer: TestClassGradleConfigurationProducer() {
   private val visitedAnnotation = mutableMapOf<String, Boolean>()
   override fun suggestConfigurationName(context: ConfigurationContext, element: PsiClass, chosenElements: List<PsiClass>): String {
-    return "${element.qualifiedName}"
+    return "Screenshot Tests in ${element.qualifiedName}"
   }
 
   override fun doIsConfigurationFromContext(configuration: GradleRunConfiguration, context: ConfigurationContext): Boolean {
+    if (configuration.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) != true) {
+      return false
+    }
+
     val location = context.location ?: return false
     val myModule = AndroidUtils.getAndroidModule(context) ?: return false
     val facet = AndroidFacet.getInstance(myModule) ?: return false
@@ -102,8 +106,12 @@ class ScreenshotTestClassGradleConfigurationProducer: TestClassGradleConfigurati
     if (!StudioFlags.ENABLE_SCREENSHOT_TESTING.get()) {
       return false
     }
-    configuration.putUserData<Boolean>(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
-    return configure(configuration, sourceElement, context)
+    val configured = configure(configuration, sourceElement, context)
+    if (configured) {
+      configuration.putUserData<Boolean>(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+      configuration.putUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION, true)
+    }
+    return configured
   }
 
   private fun configure(configuration: GradleRunConfiguration, sourceElementRef: Ref<PsiElement>, context: ConfigurationContext): Boolean {
@@ -149,7 +157,7 @@ class ScreenshotTestClassGradleConfigurationProducer: TestClassGradleConfigurati
       sourceElementRef.set(representativeElement)
 
       configuration.settings.externalProjectPath = project.basePath
-      configuration.name = ktFile.name
+      configuration.name = "Screenshot Tests in ${ktFile.name}"
       configuration.settings.taskNames = taskNamesWithFilter(context, qualifiedNames.toList())
       return true
     }

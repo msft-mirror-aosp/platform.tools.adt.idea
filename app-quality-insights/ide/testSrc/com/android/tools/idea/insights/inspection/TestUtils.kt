@@ -16,10 +16,10 @@
 package com.android.tools.idea.insights.inspection
 
 import com.android.tools.idea.insights.AppInsight
-import com.android.tools.idea.insights.AppInsightsIssue
+import com.android.tools.idea.insights.FakeInsightsProvider
 import com.android.tools.idea.insights.analysis.Cause
-import com.android.tools.idea.insights.analytics.AppInsightsTracker.ProductType
 import com.android.tools.idea.insights.model.event.Event
+import com.android.tools.idea.insights.model.issue.AppInsightsIssue
 import com.android.tools.idea.insights.model.stacktrace.Frame
 import com.android.tools.idea.insights.model.vcs.AppVcsInfo
 import com.android.tools.idea.insights.ui.AppInsightsGutterRenderer
@@ -40,7 +40,7 @@ internal fun buildIssue(appVcsInfo: AppVcsInfo): AppInsightsIssue {
   return AppInsightsIssue(
     issueDetails = mock(),
     sampleEvent = Event(appVcsInfo = appVcsInfo),
-    source = ProductType.PLAY_VITALS,
+    source = FakeInsightsProvider(),
   )
 }
 
