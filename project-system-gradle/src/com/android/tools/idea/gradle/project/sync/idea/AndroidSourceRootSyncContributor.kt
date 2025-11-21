@@ -51,6 +51,7 @@ import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGrou
 import com.android.tools.idea.sdk.AndroidSdks
 import com.google.common.collect.HashBasedTable
 import com.intellij.java.workspace.entities.JavaModuleSettingsEntity
+import com.intellij.java.workspace.entities.JavaModuleSettingsEntityBuilder
 import com.intellij.java.workspace.entities.JavaResourceRootPropertiesEntity
 import com.intellij.java.workspace.entities.JavaSourceRootPropertiesEntity
 import com.intellij.java.workspace.entities.javaResourceRoots
@@ -71,15 +72,18 @@ import com.intellij.openapi.util.io.CanonicalPathPrefixTree
 import com.intellij.openapi.util.io.toCanonicalPath
 import com.intellij.openapi.vfs.VfsUtilCore.pathToUrl
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
+import com.intellij.platform.workspace.jps.entities.ContentRootEntityBuilder
 import com.intellij.platform.workspace.jps.entities.ExcludeUrlEntity
 import com.intellij.platform.workspace.jps.entities.ExternalSystemModuleOptionsEntity
 import com.intellij.platform.workspace.jps.entities.InheritedSdkDependency
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
+import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.ModuleSourceDependency
 import com.intellij.platform.workspace.jps.entities.SdkDependency
 import com.intellij.platform.workspace.jps.entities.SdkId
 import com.intellij.platform.workspace.jps.entities.SourceRootEntity
+import com.intellij.platform.workspace.jps.entities.SourceRootEntityBuilder
 import com.intellij.platform.workspace.jps.entities.SourceRootTypeId
 import com.intellij.platform.workspace.jps.entities.TestModulePropertiesEntity
 import com.intellij.platform.workspace.jps.entities.exModuleOptions
@@ -519,7 +523,7 @@ internal class AndroidSourceRootSyncSourceSetPhaseContributor : GradleSyncContri
   }
 }
 
-private fun SyncContributorAndroidProjectContext.setSdkForHolderModule(holderModuleEntity: ModuleEntity.Builder) {
+private fun SyncContributorAndroidProjectContext.setSdkForHolderModule(holderModuleEntity: ModuleEntityBuilder) {
   // Remove the existing SDK and replace it with the Android SDK (if it exists, otherwise just inherit the SDK)
   holderModuleEntity.dependencies.removeAll { it is InheritedSdkDependency || it is SdkDependency }
   holderModuleEntity.dependencies += sdk ?: InheritedSdkDependency
@@ -543,8 +547,8 @@ private fun SyncContributorAndroidProjectContext.setExcludeDirectoriesForHolderM
 }
 
 private class AllSourceSetModuleEntities(
-  val knownArtifacts: Map<IdeArtifactName, ModuleEntity.Builder>,
-  val testSuites: Map<String, ModuleEntity.Builder>
+  val knownArtifacts: Map<IdeArtifactName, ModuleEntityBuilder>,
+  val testSuites: Map<String, ModuleEntityBuilder>
 )
 
 // helpers
@@ -555,7 +559,7 @@ private fun SyncContributorAndroidProjectContext.getAllSourceSetModuleEntities(
 
   // This is the module name corresponding to the "holder" module
   val projectModuleName = resolveHolderModuleName()
-  val moduleEntitiesMap = mutableMapOf<String, ModuleEntity.Builder>()
+  val moduleEntitiesMap = mutableMapOf<String, ModuleEntityBuilder>()
   val mainSourceSetName = IdeArtifactName.MAIN.toWellKnownSourceSet().sourceSetName
   LOG.debug("Configuring module $projectModuleName")
 
@@ -604,10 +608,10 @@ private fun getTestSuitesTargetingVariant(
 
 private fun SyncContributorAndroidProjectContext.configureTestSuiteSourceSetModuleEntity(
   testSuite: IdeTestSuiteImpl,
-  moduleEntitiesMap: MutableMap<String, ModuleEntity.Builder>,
+  moduleEntitiesMap: MutableMap<String, ModuleEntityBuilder>,
   projectModuleName: String,
   mainSourceSetName: String
-): ModuleEntity.Builder {
+): ModuleEntityBuilder {
   val allSourcesForTestSuite: Map<out ExternalSystemSourceType?, Set<File>> = getTestSuiteSourceSetDataForBasicAndroidProject(
     testSuite.sources)
 
@@ -630,9 +634,9 @@ private fun SyncContributorAndroidProjectContext.configureTestSuiteSourceSetModu
 }
 
 private fun SyncContributorAndroidProjectContext.linkModuleGroup(
-  holderModuleEntity: ModuleEntity.Builder,
-  sourceSetModules: Map<IdeArtifactName, ModuleEntity.Builder>,
-  testSuiteModules: Collection<ModuleEntity.Builder>
+  holderModuleEntity: ModuleEntityBuilder,
+  sourceSetModules: Map<IdeArtifactName, ModuleEntityBuilder>,
+  testSuiteModules: Collection<ModuleEntityBuilder>
 ) {
   val androidModuleGroup = getModuleGroup(sourceSetModules, testSuiteModules)
   val linkedModules = sourceSetModules.values + testSuiteModules + holderModuleEntity
@@ -656,8 +660,8 @@ private fun SyncContributorAndroidProjectContext.linkModuleGroup(
 
 
 private fun SyncContributorAndroidProjectContext.getModuleGroup(
-  sourceSetModules: Map<IdeArtifactName, ModuleEntity.Builder>,
-  testSuiteModules: Collection<ModuleEntity.Builder>
+  sourceSetModules: Map<IdeArtifactName, ModuleEntityBuilder>,
+  testSuiteModules: Collection<ModuleEntityBuilder>
 ): LinkedAndroidGradleModuleGroup {
   val modulePointerManager = ModulePointerManager.getInstance(project)
   return LinkedAndroidGradleModuleGroup(
@@ -698,7 +702,7 @@ private fun removeOrphanedModules(
 
 /** Set up the javaSettings for the holder module. This does not set any compiler output paths as the holder modules don't have any. */
 private fun SyncContributorAndroidProjectContext.setJavaSettingsForHolderModule(
-  holderModuleEntity: ModuleEntity.Builder
+  holderModuleEntity: ModuleEntityBuilder
 ) {
   holderModuleEntity.javaSettings = JavaModuleSettingsEntity(
     inheritedCompilerOutput = false,
@@ -745,9 +749,9 @@ private fun SyncContributorProjectContext.createModuleOptionsEntity(source: Enti
 private fun SyncContributorAndroidProjectContext.findOrCreateModuleEntity(
   name: String,
   entitySource: AndroidGradleSourceSetEntitySource,
-  moduleEntitiesMap: MutableMap<String, ModuleEntity.Builder>,
+  moduleEntitiesMap: MutableMap<String, ModuleEntityBuilder>,
   productionModuleName: String?
-): ModuleEntity.Builder = moduleEntitiesMap.computeIfAbsent(name) {
+): ModuleEntityBuilder = moduleEntitiesMap.computeIfAbsent(name) {
   createModuleEntity(name, entitySource).also { moduleEntity ->
     // Use empty storage to look up facet because the facet doesn't exist when creating a module
     createOrUpdateAndroidFacet(MutableEntityStorage.create(), moduleEntity)
@@ -769,7 +773,7 @@ private fun SyncContributorAndroidProjectContext.createContentRootEntities(
   moduleName: String,
   entitySource: EntitySource,
   typeToDirsMap: Map<out ExternalSystemSourceType?, Set<File>>
-): List<ContentRootEntity.Builder> {
+): List<ContentRootEntityBuilder> {
   val contentRootEntities = CanonicalPathPrefixTree.createMap<Path>()
 
   return resolveContentRoots(typeToDirsMap).onEach {
@@ -788,7 +792,7 @@ private fun SyncContributorAndroidProjectContext.createContentRootEntity(
   entitySource: EntitySource,
   contentRootUrl: File,
   typeToDirsMap: Map<out ExternalSystemSourceType?, Set<File>>
-): ContentRootEntity.Builder {
+): ContentRootEntityBuilder {
   return ContentRootEntity(
       entitySource = entitySource,
       url = contentRootUrl.toVirtualFileUrl(),
@@ -834,7 +838,7 @@ private fun SyncContributorAndroidProjectContext.createContentRootEntity(
 private fun SyncContributorAndroidProjectContext.createJavaModuleSettingsEntity(
   entitySource: AndroidGradleSourceSetEntitySource,
   sourceSetArtifactName: IdeArtifactName
-): JavaModuleSettingsEntity.Builder {
+): JavaModuleSettingsEntityBuilder {
   return JavaModuleSettingsEntity(
      inheritedCompilerOutput = false, excludeOutput = context.isDelegatedBuild, entitySource = entitySource) {
     val artifact = getSelectedVariantArtifact(sourceSetArtifactName)
@@ -850,7 +854,7 @@ private fun SyncContributorAndroidProjectContext.createSourceRootEntity(
   file: File,
   type: IExternalSystemSourceType,
   entitySource: EntitySource
-): SourceRootEntity.Builder = SourceRootEntity(
+): SourceRootEntityBuilder = SourceRootEntity(
   url = file.toVirtualFileUrl(),
   rootTypeId = type.toSourceRootTypeId(),
   entitySource = entitySource
