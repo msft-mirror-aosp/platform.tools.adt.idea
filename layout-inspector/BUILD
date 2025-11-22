@@ -74,6 +74,7 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
+        "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
     ],
 )
 
@@ -139,6 +140,7 @@ iml_module(
         "//tools/adt/idea/device-manager-v2:intellij.android.device-manager-v2",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
+        "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
     ],
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
     test_jvm_flags = select({
