@@ -163,7 +163,9 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
     File tmpDir = Files.createTempDirectory("testProject").toFile();
     File outputDir = new File(tmpDir, CompilerModuleExtension.PRODUCTION + "/" + module.getName() + "/test");
     assertTrue(FileUtil.createDirectory(outputDir));
-    Objects.requireNonNull(CompilerProjectExtension.getInstance(getProject())).setCompilerOutputUrl(pathToIdeaUrl(tmpDir));
+    ApplicationManager.getApplication().runWriteAction(() ->
+      Objects.requireNonNull(CompilerProjectExtension.getInstance(getProject())).setCompilerOutputUrl(pathToIdeaUrl(tmpDir))
+    );
 
     generateRClass(getProject(), "test", new File(outputDir, "R.class"));
 
