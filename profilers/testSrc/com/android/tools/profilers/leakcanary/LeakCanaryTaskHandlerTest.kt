@@ -113,10 +113,10 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     // After stage exit we get all events
     assertEquals(4, stage.leaks.value.size) // 4 events are sent
 
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session, Range(Long.MIN_VALUE.toDouble(),
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session, Range(Long.MIN_VALUE.toDouble(),
                                                                                                     Long.MAX_VALUE.toDouble()))
     assertEquals(1, infoEvents.size)
-    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS, infoEvents[0].kind)
+    assertEquals(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS, infoEvents[0].kind)
   }
 
   @Test
@@ -142,12 +142,12 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     assertEquals(4, stage.leaks.value.size) // 4 events are sent
 
     // Verify one info event is there
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                              Range(profilers.session.startTimestamp.toDouble(),
                                                              profilers.session.endTimestamp.toDouble()))
 
     assertEquals(1, infoEvents.size)
-    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS, infoEvents[0].kind)
+    assertEquals(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS, infoEvents[0].kind)
 
     stage.clearLeaks()
     assertEquals(0, stage.leaks.value.size) // 0 events are clear
@@ -183,7 +183,7 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
       1L to SessionArtifactUtils.createSessionItem(profilers, selectedSession, 1,
                                                    listOf(SessionArtifactUtils.createLeakCanarySessionArtifact(profilers, selectedSession,
                                                                                                                LeakCanary
-                                                                                                                 .LeakCanaryLogcatStatus
+                                                                                                                 .LeakCanaryAnalysisStatus
                                                                                                                  .getDefaultInstance()))))
     val leakCanaryTaskHandlerTaskArgs = leakCanaryTaskHandler.createArgs(false, sessionIdToSessionItems, selectedSession)
     Truth.assertThat(leakCanaryTaskHandlerTaskArgs).isNotNull()
@@ -199,7 +199,7 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
       1L to SessionArtifactUtils.createSessionItem(profilers, selectedSession, 1,
                                                    listOf(SessionArtifactUtils.createLeakCanarySessionArtifact(profilers, selectedSession,
                                                                                                                LeakCanary
-                                                                                                                 .LeakCanaryLogcatStatus
+                                                                                                                 .LeakCanaryAnalysisStatus
                                                                                                                  .getDefaultInstance()))))
     val leakCanaryTaskHandlerTaskArgs = leakCanaryTaskHandler.createArgs(false, sessionIdToSessionItems, selectedSession)
     Truth.assertThat(leakCanaryTaskHandlerTaskArgs).isNotNull()
@@ -233,7 +233,7 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
   fun `loadTaskTest - LeakCanaryArgs type`() {
     val result = leakCanaryTaskHandler
       .loadTask(LeakCanaryTaskArgs(false,  SessionArtifactUtils.createLeakCanarySessionArtifact(profilers, profilers.session,
-                                                                                                LeakCanary.LeakCanaryLogcatStatus
+                                                                                                LeakCanary.LeakCanaryAnalysisStatus
                                                                                                   .getDefaultInstance())))
     assertTrue(result)
   }
@@ -257,10 +257,10 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     assertThat(LeakCanaryModel.getLeakClassName(stage.leaks.value[0])).isEqualTo("GlobalLeakingObject.leakedActivity5") // Check if leak report contains the activity class name.
     stage.stopListening()
 
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                              Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble()))
     assertThat(infoEvents.size).isEqualTo(1)
-    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
+    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
   }
 
   @Test
@@ -286,10 +286,10 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     assertThat(LeakCanaryModel.getLeakClassName(stage.leaks.value[4])).isEqualTo("GlobalLeakingObject.leakedFragment5")
     stage.stopListening()
 
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                              Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble()))
     assertThat(infoEvents.size).isEqualTo(1)
-    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
+    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
   }
 
   @Test
@@ -315,10 +315,10 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     assertThat(LeakCanaryModel.getLeakClassName(stage.leaks.value[4])).isEqualTo("GlobalLeakingObject.leakedFragmentView5")
     stage.stopListening()
 
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                              Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble()))
     assertThat(infoEvents.size).isEqualTo(1)
-    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
+    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
   }
 
   @Test
@@ -344,10 +344,10 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     assertThat(LeakCanaryModel.getLeakClassName(stage.leaks.value[4])).isEqualTo("GlobalLeakingObject.leakedViewModel5")
     stage.stopListening()
 
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                              Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble()))
     assertThat(infoEvents.size).isEqualTo(1)
-    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
+    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
   }
 
   @Test
@@ -373,9 +373,9 @@ class LeakCanaryTaskHandlerTest: WithFakeTimer {
     assertThat(LeakCanaryModel.getLeakClassName(stage.leaks.value[4])).isEqualTo("GlobalLeakingObject.leakedService5")
     stage.stopListening()
 
-    val infoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val infoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                              Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble()))
     assertThat(infoEvents.size).isEqualTo(1)
-    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
+    assertThat(infoEvents[0].kind).isEqualTo(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
   }
 }

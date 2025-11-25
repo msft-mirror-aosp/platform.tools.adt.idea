@@ -32,7 +32,7 @@ import com.android.tools.leakcanarylib.data.ReferencingField
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.LeakCanary
-import com.android.tools.profiler.proto.LeakCanary.LeakCanaryLogcatStatus
+import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisStatus
 import com.android.tools.profiler.proto.Common.LeakCanaryPresenceCheck
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
@@ -195,12 +195,12 @@ class LeakCanaryModelTest : WithFakeTimer {
     // After stage exit we get all events
     assertEmpty(stage.leaks.value) // 0 event are sent
 
-    val leakInfoEvents = LeakCanaryModel.getLeakCanaryLogcatInfo(profilers.client, profilers.session,
+    val leakInfoEvents = LeakCanaryModel.getLeakCanaryAnalysisInfo(profilers.client, profilers.session,
                                                                  Range(startTime.toDouble(), endTime.toDouble()))
     assertEquals(1, leakInfoEvents.size) // Fetching only ended events
-    assertEquals(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS, leakInfoEvents[0].kind)
+    assertEquals(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS, leakInfoEvents[0].kind)
     assertTrue(leakInfoEvents[0].isEnded)
-    assertEquals(LeakCanary.LeakCanaryLogcatEnded.Status.SUCCESS, leakInfoEvents[0].leakCanaryLogcatStatus.logcatEnded.status)
+    assertEquals(LeakCanary.LeakCanaryAnalysisEnded.Status.SUCCESS, leakInfoEvents[0].leakCanaryAnalysisStatus.analysisEnded.status)
     assertFalse(stage.isRecording.value)
   }
 
@@ -362,10 +362,10 @@ class FakeLeakCanaryCommandHandler(timer: FakeTimer,
                      .setGroupId(profilers.session.pid.toLong())
                      .setPid(profilers.session.pid)
                      .setIsEnded(false)
-                     .setKind(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
-                     .setLeakCanaryLogcatStatus(LeakCanaryLogcatStatus.newBuilder()
-                                                  .setLogcatStarted(
-                                                    LeakCanary.LeakCanaryLogcatStarted
+                     .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
+                     .setLeakCanaryAnalysisStatus(LeakCanaryAnalysisStatus.newBuilder()
+                                                  .setAnalysisStarted(
+                                                    LeakCanary.LeakCanaryAnalysisStarted
                                                       .newBuilder()
                                                       .setTimestamp(startTimestamp)
                                                       .build())
@@ -383,11 +383,11 @@ class FakeLeakCanaryCommandHandler(timer: FakeTimer,
                      .setGroupId(profilers.session.pid.toLong())
                      .setPid(profilers.session.pid)
                      .setIsEnded(true)
-                     .setKind(Common.Event.Kind.LEAKCANARY_LOGCAT_STATUS)
-                     .setLeakCanaryLogcatStatus(LeakCanaryLogcatStatus.newBuilder()
-                                                  .setLogcatEnded(LeakCanary.LeakCanaryLogcatEnded
+                     .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
+                     .setLeakCanaryAnalysisStatus(LeakCanaryAnalysisStatus.newBuilder()
+                                                  .setAnalysisEnded(LeakCanary.LeakCanaryAnalysisEnded
                                                                     .newBuilder()
-                                                                    .setStatus(LeakCanary.LeakCanaryLogcatEnded.Status.SUCCESS)
+                                                                    .setStatus(LeakCanary.LeakCanaryAnalysisEnded.Status.SUCCESS)
                                                                     .setStartTimestamp(startTimestamp)
                                                                     .setEndTimestamp(System.currentTimeMillis())
                                                                     .build())
@@ -418,10 +418,10 @@ class FakeLeakCanaryCommandHandler(timer: FakeTimer,
       return Common.Event.newBuilder()
         .setGroupId(profilers.session.pid.toLong())
         .setPid(profilers.session.pid)
-        .setKind(Common.Event.Kind.LEAKCANARY_LOGCAT)
-        .setLeakcanaryLogcat(LeakCanary.LeakCanaryLogcatData
+        .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS)
+        .setLeakcanaryAnalysis(LeakCanary.LeakCanaryAnalysisData
                                .newBuilder()
-                               .setLogcatMessage(fileContent).build())
+                               .setData(fileContent).build())
         .setTimestamp(currentTime)
         .build()
     }
