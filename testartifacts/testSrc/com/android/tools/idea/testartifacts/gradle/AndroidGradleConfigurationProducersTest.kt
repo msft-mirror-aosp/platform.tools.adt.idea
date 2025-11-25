@@ -44,6 +44,7 @@ import com.intellij.coverage.DefaultCoverageFileProvider
 import com.intellij.coverage.IDEACoverageRunner
 import com.intellij.coverage.JavaCoverageEngine
 import com.intellij.execution.actions.ConfigurationFromContextImpl
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
@@ -122,7 +123,7 @@ class AndroidGradleConfigurationProducersTest {
       var messagesLog = StringBuilder()
       var finalMessage = ""
 
-      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
+      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
         messagesLog.append(text)
       }
 

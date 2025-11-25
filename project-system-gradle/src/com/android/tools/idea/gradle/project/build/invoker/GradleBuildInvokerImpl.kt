@@ -56,6 +56,7 @@ import com.intellij.build.events.impl.FinishBuildEventImpl
 import com.intellij.build.events.impl.SkippedResultImpl
 import com.intellij.build.events.impl.StartBuildEventImpl
 import com.intellij.build.events.impl.SuccessResultImpl
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.icons.AllIcons
 import com.intellij.ide.SaveAndSyncHandler
 import com.intellij.openapi.actionSystem.ActionManager
@@ -553,12 +554,12 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       super.onStatusChange(event)
     }
 
-    override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
+    override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
       if (startBuildEventPosted) {
-        buildEventDispatcher.setStdOut(stdOut)
+        buildEventDispatcher.setStdOut(ProcessOutputType.isStdout(processOutputType))
         buildEventDispatcher.append(text)
       }
-      super.onTaskOutput(id, text, stdOut)
+      super.onTaskOutput(id, text, processOutputType)
     }
 
     override fun onEnd(projectPath: String, id: ExternalSystemTaskId) {
