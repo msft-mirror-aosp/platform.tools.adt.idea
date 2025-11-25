@@ -109,7 +109,6 @@ class LintModelFactory : LintModelModuleLoader {
     deep: Boolean = true,
   ): LintModelModule {
     val agpVersion = getAgpVersion(project)
-
     return if (deep) {
       val variantList = mutableListOf<LintModelVariant>()
       val module =
@@ -129,6 +128,7 @@ class LintModelFactory : LintModelModuleLoader {
           javaSourceLevel = project.javaCompileOptions?.sourceCompatibility,
           compileTarget = project.compileTarget,
           neverShrinking = isNeverShrinking(project),
+          highlightGradualR8Api = project.agpFlags.highlightGradualR8Api,
           variants = variantList,
         )
 
@@ -668,6 +668,9 @@ class LintModelFactory : LintModelModuleLoader {
       get() = project.compileTarget
 
     override val lintRuleJars: List<File> = project.getLintRuleJarsForAnyAgpVersion()
+
+    override val highlightGradualR8Api: Boolean
+      get() = project.agpFlags.highlightGradualR8Api
 
     override fun neverShrinking(): Boolean {
       return isNeverShrinking(project)

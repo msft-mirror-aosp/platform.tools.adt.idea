@@ -1273,7 +1273,8 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         else -> gradlePropertiesModel.generateManifestClass ?: false
       },
       disableAgpUpgradePrompt = gradlePropertiesModel.disableAgpUpgradePrompt ?: false,
-      useCustomManagedDevices = gradlePropertiesModel.useCustomManagedDevices ?: false
+      useCustomManagedDevices = gradlePropertiesModel.useCustomManagedDevices ?: false,
+      highlightGradualR8Api = false
     )
   }
 
@@ -1414,7 +1415,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         desugarLibraryConfigFiles = listOf(),
         defaultVariantName = null,
         lintJar = null,
-        testSuites = emptyList(),
+        testSuites = emptyList()
       )
     }
   }
