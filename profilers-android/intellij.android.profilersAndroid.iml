@@ -59,6 +59,7 @@
     <orderEntry type="module" module-name="app-inspection.ide" />
     <orderEntry type="module" module-name="intellij.android.execution.common" />
     <orderEntry type="module" module-name="analytics" />
+    <orderEntry type="module" module-name="android.sdktools.leakcanarylib" />
     <orderEntry type="library" scope="TEST" name="junit4" level="project" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
     <orderEntry type="library" scope="TEST" name="mockito" level="project" />
