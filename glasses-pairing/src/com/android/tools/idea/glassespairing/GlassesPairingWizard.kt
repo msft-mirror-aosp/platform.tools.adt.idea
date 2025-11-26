@@ -80,12 +80,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
@@ -198,7 +196,14 @@ internal constructor(
         )
       } else {
         LargeText("Select a device to pair", Modifier.padding(bottom = 8.dp))
-        DeviceList(devices, onSelectedDeviceChange = { phone = it }, state)
+        DeviceList(
+          devices,
+          onSelectedDeviceChange = {
+            phone = it
+            GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
+          },
+          state,
+        )
       }
     }
     nextAction =
@@ -206,6 +211,7 @@ internal constructor(
         null -> WizardAction.Disabled
         else ->
           WizardAction {
+            GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
             coroutineScope.launch {
               pairingTrigger.emit(PairingArgs(glassesHandle, phone = phone.handle))
             }
@@ -385,19 +391,7 @@ internal suspend fun FlowCollector<PairingState>.launchGlassesAndPhone(
   val phoneName = phone.state.properties.title
   val glassesName = glasses.state.properties.title
 
-  val glassesLaunchState =
-    launchAvd(glasses).shareIn(this@coroutineScope, SharingStarted.Eagerly, replay = 1)
-
-  // Give the glasses a 10 second head start before starting the phone. Start the phone
-  // immediately if glasses are already booted.
-  withTimeoutOrNull(10.seconds) {
-    glassesLaunchState
-      .onEach { emit(PairingState.Launching(phoneName, LaunchState.Waiting, glassesName, it)) }
-      .takeWhile { it != LaunchState.Ready }
-      .collect()
-  }
-
-  glassesLaunchState
+  launchAvd(glasses)
     .combine(launchAvd(phone)) { glassesState, phoneState ->
       PairingState.Launching(phoneName, phoneState, glassesName, glassesState)
     }
@@ -413,11 +407,14 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
   val glassesName = glasses.state.properties.title
   return flow {
       try {
+        GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_LAUNCH_STARTED)
         launchGlassesAndPhone(glasses, phone)
       } catch (_: TimeoutCancellationException) {
+        GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_TIMEOUT)
         emit(PairingState.Error("Timed out waiting for devices to start."))
         return@flow
       } catch (e: DeviceActionException) {
+        GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_LAUNCH_FAILED)
         emit(PairingState.Error(e.message ?: "Failed to launch devices."))
         return@flow
       }
@@ -425,16 +422,19 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
       val phoneDevice = phone.state.connectedDevice
       val glassesDevice = glasses.state.connectedDevice
       if (phoneDevice == null) {
+        GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_LAUNCH_FAILED)
         emit(PairingState.Error("$phoneName failed to launch."))
         return@flow
       }
       if (glassesDevice == null) {
+        GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_LAUNCH_FAILED)
         emit(PairingState.Error("$glassesName failed to launch."))
         return@flow
       }
 
       with(AiGlassesPairing(phoneDevice.session)) {
         if ((glassesDevice.getPairedBluetoothDeviceCount() ?: 0) > 0) {
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_ALREADY_PAIRED)
           emit(
             PairingState.Error(
               "Glasses already paired",
@@ -445,6 +445,9 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
         }
 
         if (!phoneDevice.hasGlassesCompanionApp()) {
+          GlassesPairingUsageTracker.log(
+            GlassesPairingEvent.EventKind.PAIRING_ERROR_NO_COMPANION_APP
+          )
           emit(PairingState.Error("$phoneName does not have support for Glasses."))
           return@flow
         }
@@ -463,6 +466,9 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
         emit(PairingState.Pairing("Initiating pairing..."))
 
         if ((phoneDevice.getPairedBluetoothDeviceCount() ?: 0) > 0) {
+          GlassesPairingUsageTracker.log(
+            GlassesPairingEvent.EventKind.PAIRING_WARNING_PHONE_ALREADY_PAIRED
+          )
           emit(
             PairingState.Pairing(
               "Warning: $phoneName already has a Bluetooth pairing; glasses pairing will likely fail."
@@ -473,6 +479,9 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
 
         val glassesBluetoothAddress = glassesDevice.getBluetoothAddress()
         if (glassesBluetoothAddress == null) {
+          GlassesPairingUsageTracker.log(
+            GlassesPairingEvent.EventKind.PAIRING_ERROR_BLUETOOTH_ADDRESS
+          )
           emit(PairingState.Error("Failed to retrieve Bluetooth address of $glassesName."))
           return@flow
         }
@@ -505,8 +514,18 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
                     heading = "Error pairing $glassesName",
                     detailText =
                       when (pairingState) {
-                        "WORKER_BOND_FAILED" -> "Failed to bond to device."
-                        "WORKER_CONNECTION_FAILED" -> "Failed to connect to device."
+                        "WORKER_BOND_FAILED" -> {
+                          GlassesPairingUsageTracker.log(
+                            GlassesPairingEvent.EventKind.PAIRING_ERROR_BOND_FAILED
+                          )
+                          "Failed to bond to device."
+                        }
+                        "WORKER_CONNECTION_FAILED" -> {
+                          GlassesPairingUsageTracker.log(
+                            GlassesPairingEvent.EventKind.PAIRING_ERROR_CONNECTION_FAILED
+                          )
+                          "Failed to connect to device."
+                        }
                         "WORKER_CANCELLED" -> "Pairing was cancelled."
                         else -> "Error pairing device."
                       },
@@ -527,7 +546,12 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
           if (logger.isDebugEnabled) {
             logger.debug("Launching devices: ${it.phoneState()};  ${it.glassesState()}")
           }
-        PairingState.AwaitingAuthorization -> logger.debug("Awaiting authorization")
+        PairingState.AwaitingAuthorization -> {
+          GlassesPairingUsageTracker.log(
+            GlassesPairingEvent.EventKind.PAIRING_AWAITING_AUTHORIZATION
+          )
+          logger.debug("Awaiting authorization")
+        }
         PairingState.Complete -> logger.info("Successfully paired $phoneName with $glassesName")
         is PairingState.Error -> logger.warn(it.toLogMessage())
       }

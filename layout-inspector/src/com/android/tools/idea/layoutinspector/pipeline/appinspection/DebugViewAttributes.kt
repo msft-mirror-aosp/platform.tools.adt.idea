@@ -29,7 +29,7 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.EditorNotificationPanel
-import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.CancellationException
 
 private const val PER_DEVICE_SETTING = "debug_view_attributes"
 

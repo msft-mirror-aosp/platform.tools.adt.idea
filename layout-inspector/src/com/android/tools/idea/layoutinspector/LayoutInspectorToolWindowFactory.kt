@@ -15,7 +15,10 @@
  */
 package com.android.tools.idea.layoutinspector
 
+import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.workbench.WorkBench
+import com.android.tools.idea.concurrency.createCoroutineScope
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorMetrics
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
@@ -23,7 +26,14 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientLauncher
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManager
 import com.android.tools.idea.layoutinspector.runningdevices.SPLITTER_KEY
+import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
 import com.android.tools.idea.layoutinspector.runningdevices.ui.STATE_READ_SPLITTER_NAME
+import com.android.tools.idea.layoutinspector.runningdevices.ui.ToolbarState
+import com.android.tools.idea.layoutinspector.runningdevices.ui.createLayoutInspectorPanel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.createToolbarPanel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.EmbeddedRendererModel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.StandaloneRendererPanel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.navigateToSelectedViewFromRendererDoubleClick
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorConfigurable
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.stateinspection.createStateInspectionPanel
@@ -31,6 +41,8 @@ import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefin
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.ui.LayoutInspectorRootPanel
+import com.android.tools.idea.layoutinspector.ui.ZoomableContainer
+import com.android.tools.idea.layoutinspector.ui.toolbar.actions.TargetSelectionActionFactory
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType
 import com.intellij.ide.util.PropertiesComponent
@@ -45,8 +57,10 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
 import com.intellij.ui.EditorNotificationPanel
+import com.intellij.ui.JBColor
 import com.intellij.ui.OnePixelSplitter
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.components.BorderLayoutPanel
 import icons.StudioIcons
 import java.awt.BorderLayout
 import javax.swing.JPanel
@@ -98,6 +112,41 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
     val disposable = toolWindow.disposable
     val layoutInspector = LayoutInspectorProjectService.getInstance(project).getLayoutInspector()
+
+    val layoutInspectorUi =
+      if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_STANDALONE_V2.get()) {
+        createNewStandaloneLayoutInspectorUi(disposable, project, layoutInspector)
+      } else {
+        createOldStandaloneLayoutInspectorUi(disposable, project, layoutInspector)
+      }
+
+    val content = toolWindow.contentManager.factory.createContent(layoutInspectorUi, "", true)
+    toolWindow.contentManager.addContent(content)
+
+    project.messageBus
+      .connect(toolWindow.disposable)
+      .subscribe(
+        ToolWindowManagerListener.TOPIC,
+        LayoutInspectorToolWindowManagerListener(
+          project,
+          toolWindow,
+          layoutInspector,
+          layoutInspector.launcher!!,
+        ),
+      )
+
+    showEmbeddedLayoutInspectorBanner(
+      layoutInspector.inspectorModel.project,
+      layoutInspector.notificationModel,
+      layoutInspector.coroutineScope,
+    )
+  }
+
+  private fun createOldStandaloneLayoutInspectorUi(
+    disposable: Disposable,
+    project: Project,
+    layoutInspector: LayoutInspector,
+  ): JPanel {
     val devicePanel = createDevicePanel(disposable, layoutInspector)
 
     val workbench =
@@ -120,32 +169,104 @@ class LayoutInspectorToolWindowFactory : ToolWindowFactory {
 
     val rootPanel = LayoutInspectorRootPanel(splitPanel, layoutInspector)
 
-    val contentPanel =
-      JPanel(BorderLayout()).apply {
-        add(InspectorBanner(disposable, layoutInspector.notificationModel), BorderLayout.NORTH)
-        add(rootPanel, BorderLayout.CENTER)
-      }
+    return JPanel(BorderLayout()).apply {
+      add(InspectorBanner(disposable, layoutInspector.notificationModel), BorderLayout.NORTH)
+      add(rootPanel, BorderLayout.CENTER)
+    }
+  }
 
-    val content = toolWindow.contentManager.factory.createContent(contentPanel, "", true)
-    toolWindow.contentManager.addContent(content)
+  private fun createNewStandaloneLayoutInspectorUi(
+    disposable: Disposable,
+    project: Project,
+    layoutInspector: LayoutInspector,
+  ): LayoutInspectorRootPanel {
+    val scope = disposable.createCoroutineScope()
+    val processPicker = TargetSelectionActionFactory.getAction(layoutInspector)
 
-    project.messageBus
-      .connect(toolWindow.disposable)
-      .subscribe(
-        ToolWindowManagerListener.TOPIC,
-        LayoutInspectorToolWindowManagerListener(
-          project,
-          toolWindow,
-          layoutInspector,
-          layoutInspector.launcher!!,
-        ),
+    val renderModel =
+      EmbeddedRendererModel(
+        parentDisposable = disposable,
+        // In on-device rendering we don't want to filter nodes by display id. There is no
+        // concept of display there, since everything is rendered on-top of the views.
+        displayId = null,
+        inspectorModel = layoutInspector.inspectorModel,
+        treeSettings = layoutInspector.treeSettings,
+        renderSettings = layoutInspector.renderSettings,
+        navigateToSelectedViewOnDoubleClick = {
+          layoutInspector.navigateToSelectedViewFromRendererDoubleClick()
+        },
       )
 
-    showEmbeddedLayoutInspectorBanner(
-      layoutInspector.inspectorModel.project,
-      layoutInspector.notificationModel,
-      layoutInspector.coroutineScope,
-    )
+    val renderPanel =
+      StandaloneRendererPanel(disposable = disposable, scope = scope, renderModel = renderModel)
+
+    val container =
+      ZoomableContainer(
+        disposable = disposable,
+        contentPanel = renderPanel,
+        getZoomPercent = { layoutInspector.renderSettings.scalePercent },
+        setZoomPercent = { layoutInspector.renderSettings.scalePercent = it },
+      )
+
+    // The main panel is passed as target component to createToolbarPanel. This is needed to make
+    // sure that all actions in the toolbar can resolve Layout Inspector from the data context
+    // provided by LayoutInspectorRootPanel.
+    val mainPanel = BorderLayoutPanel()
+
+    val toolbarState = ToolbarState(showTitle = false, leftAlightToolbar = true)
+    val toolbar =
+      createToolbarPanel(
+        disposable = disposable,
+        targetComponent = mainPanel,
+        layoutInspector = layoutInspector,
+        processPicker = processPicker?.dropDownAction,
+        extraActions = emptyList(),
+        toolbarState = toolbarState,
+      )
+    toolbar.border = JBUI.Borders.customLineBottom(JBColor.border())
+
+    mainPanel.apply {
+      addToTop(toolbar)
+      addToCenter(container)
+    }
+
+    val rootPanel =
+      createLayoutInspectorPanel(
+        project = project,
+        disposable = disposable,
+        layoutInspector = layoutInspector,
+        uiConfig = UiConfig.VERTICAL,
+        centerPanel = mainPanel,
+        toolbarPanel = null,
+      )
+
+    scope.launch {
+      toolbarState.isDeepInspectEnabled.collect { renderModel.setInterceptClicks(it) }
+    }
+
+    scope.launch { toolbarState.overlayImage.collect { renderModel.setOverlay(it) } }
+
+    scope.launch {
+      toolbarState.overlayTransparency.collect { renderModel.setOverlayTransparency(it) }
+    }
+
+    layoutInspector.inspectorModel.addModificationListener { oldWindow, newWindow, _ ->
+      if (oldWindow == null && newWindow != null) {
+        // Zoom to fit each time we go from rendering nothing to something
+        container.zoom(ZoomType.FIT)
+      }
+    }
+
+    val renderSettings = layoutInspector.renderSettings
+    renderSettings.modificationListeners.add {
+      val client = layoutInspector.currentClient
+      if (client.inLiveMode) {
+        // The current agent protocol requires bitmaps to be resized based on to the current scale
+        client.updateScreenshotType(null, renderSettings.scaleFraction.toFloat())
+      }
+    }
+
+    return rootPanel
   }
 
   private fun createDevicePanel(

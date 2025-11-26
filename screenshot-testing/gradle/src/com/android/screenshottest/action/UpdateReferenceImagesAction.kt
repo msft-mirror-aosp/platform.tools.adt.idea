@@ -15,6 +15,7 @@
  */
 package com.android.screenshottest.action
 
+import com.android.screenshottest.util.UpdateReferenceImagesActionUtils
 import com.intellij.icons.AllIcons
 
 /**
@@ -22,7 +23,7 @@ import com.intellij.icons.AllIcons
  * This action must be stateless, as the IDE creates a single instance.
  */
 class UpdateReferenceImagesAction : UpdateReferenceImagesBaseAction(
-  "Add/Update Reference Images",
+  UpdateReferenceImagesActionUtils.UPDATE_ACTION_TEXT,
   "Updates the reference images for screenshot tests.",
   AllIcons.FileTypes.Image
 )

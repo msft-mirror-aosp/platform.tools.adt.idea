@@ -20,6 +20,7 @@ import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.snapshots.SnapshotAction
+import com.android.tools.idea.layoutinspector.ui.LayoutInspectorRootPanel
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.LayerSpacingSliderAction
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.RefreshAction
 import com.android.tools.idea.layoutinspector.ui.toolbar.actions.RenderSettingsAction
@@ -55,7 +56,10 @@ const val EMBEDDED_LAYOUT_INSPECTOR_TOOLBAR = "EmbeddedLayoutInspector.Toolbar"
  * by the Standalone Layout Inspector, but the toolbar also contains a label with the name of the
  * tool.
  *
- * @param targetComponent Used for data-context retrieval.
+ * @param targetComponent used as data context provider. It is necessary because some of the actions
+ *   in the toolbar get LayoutInspector from [LayoutInspectorRootPanel] data context.
+ * @param showTitleLabel Whether to show the "Layout Inspector" title label.
+ * @param leftAlignToolbar Aligns toolbar actions on the left, otherwise on the right.
  * @param firstGroupExtraActions Actions to be added to before the first separator.
  * @param lastGroupExtraActions Actions to be added as a new group at the end.
  */
@@ -64,6 +68,8 @@ fun createEmbeddedLayoutInspectorToolbar(
   targetComponent: JComponent,
   layoutInspector: LayoutInspector,
   selectProcessAction: AnAction?,
+  showTitleLabel: Boolean = true,
+  leftAlignToolbar: Boolean = false,
   firstGroupExtraActions: List<AnAction> = emptyList(),
   lastGroupExtraActions: List<AnAction> = emptyList(),
 ): JPanel {
@@ -84,23 +90,32 @@ fun createEmbeddedLayoutInspectorToolbar(
       actionGroup = actionGroup,
     )
 
-  val toolTitleLabel = JLabel(LayoutInspectorBundle.message("layout.inspector"))
-  toolTitleLabel.name = "LayoutInspectorToolbarTitleLabel"
-  toolTitleLabel.border = BorderFactory.createEmptyBorder(0, 12, 0, 0)
-  toolTitleLabel.font = BaseLabel.getLabelFont().deriveFont(Font.BOLD)
-
   val borderLayoutPanel = BorderLayoutPanel()
-  // Add the toolbar to the Border Layout to force it to always show on the far right.
-  borderLayoutPanel.addToRight(actionToolbar.component)
+  if (leftAlignToolbar) {
+    // Add the toolbar to the Border Layout to force it to always show on the far left.
+    borderLayoutPanel.addToLeft(actionToolbar.component)
+  } else {
+    // Add the toolbar to the Border Layout to force it to always show on the far right.
+    borderLayoutPanel.addToRight(actionToolbar.component)
+  }
 
   // Use a BoxLayout instead of a BorderLayout, because with BorderLayout if the tool window is
   // resize the label can end up overlapping the actions.
   val boxLayoutPanel = JPanel()
   boxLayoutPanel.name = EMBEDDED_LAYOUT_INSPECTOR_TOOLBAR
   boxLayoutPanel.layout = BoxLayout(boxLayoutPanel, BoxLayout.X_AXIS)
-  boxLayoutPanel.add(toolTitleLabel)
-  // Add some spacing between the label and toolbar.
-  boxLayoutPanel.add(Box.createRigidArea(JBUI.size(10, 0)))
+
+  if (showTitleLabel) {
+    val toolTitleLabel = JLabel(LayoutInspectorBundle.message("layout.inspector"))
+    toolTitleLabel.name = "LayoutInspectorToolbarTitleLabel"
+    toolTitleLabel.border = BorderFactory.createEmptyBorder(0, 12, 0, 0)
+    toolTitleLabel.font = BaseLabel.getLabelFont().deriveFont(Font.BOLD)
+
+    boxLayoutPanel.add(toolTitleLabel)
+    // Add some spacing between the label and toolbar.
+    boxLayoutPanel.add(Box.createRigidArea(JBUI.size(10, 0)))
+  }
+
   boxLayoutPanel.add(borderLayoutPanel)
 
   return boxLayoutPanel
@@ -109,7 +124,8 @@ fun createEmbeddedLayoutInspectorToolbar(
 /**
  * Creates the toolbar used by Standalone Layout Inspector.
  *
- * @param targetComponent Used for data-context retrieval.
+ * @param targetComponent used as data context provider. It is necessary because some of the actions
+ *   in the toolbar get LayoutInspector from [LayoutInspectorRootPanel] data context.
  * @param firstGroupExtraActions Actions to be added to before the first separator.
  * @param lastGroupExtraActions Actions to be added as a new group at the end.
  */
@@ -145,7 +161,12 @@ fun createStandaloneLayoutInspectorToolbar(
   )
 }
 
-/** Private helper to create the common [ActionToolbar] and set up its listeners. */
+/**
+ * Private helper to create the common [ActionToolbar] and set up its listeners.
+ *
+ * @param targetComponent used as data context provider. It is necessary because some of the actions
+ *   in the toolbar get LayoutInspector from [LayoutInspectorRootPanel] data context.
+ */
 private fun createLayoutInspectorToolbarInternal(
   parentDisposable: Disposable,
   targetComponent: JComponent,

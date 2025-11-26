@@ -46,6 +46,9 @@
     <welcomeScreen implementation="com.android.tools.idea.welcome.wizard.AndroidStudioWelcomeScreenProvider"/>
 
     <codeStyleSettingsProvider implementation="org.jetbrains.android.formatter.AndroidStudioCodeStyleSettingsProvider" order="last"/>
+    <applicationService serviceInterface="com.intellij.psi.codeStyle.CodeStyleSettingsService"
+                        serviceImplementation="org.jetbrains.android.formatter.AndroidStudioCodeStyleSettingsService"
+                        overrides="true"/>
 
     <errorHandler implementation="com.android.tools.idea.diagnostics.error.AndroidStudioErrorReportSubmitter"/>
     <applicationInitializedListener id="Startup.StartLowMemoryReporter"
@@ -98,7 +101,7 @@
     </action>
 
     <action class="com.android.tools.idea.diagnostics.hprof.action.InternalUserInvokedFullAnalysisAction" id="UserInvokedFullAnalysis"
-            text="Create And Immediately Analyze Heap Dump" internal="true">
+            text="Create And Immediately Analyze Heap Dump" internal="true" overrides="true">
       <add-to-group group-id="Internal.HeapAnalysis"/>
     </action>
 
@@ -118,7 +121,7 @@
     </group>
 
     <action class="com.android.tools.idea.diagnostics.hprof.action.InternalNonuserInvokedHeapDumpSnapshotAction" id="SilentHeapDumpSnapshot"
-              text="Create And Schedule Heap Dump Analysis (Non-user invoked)" internal="true">
+              text="Create And Schedule Heap Dump Analysis (Non-user invoked)" internal="true" overrides="true">
       <add-to-group group-id="Internal.HeapAnalysis"/>
     </action>
 

@@ -1,5 +1,5 @@
 # Default flag values for BooleanFlag only
-# accepted values are INTERNAL, NIGHTLY, PREVIEW, COMPLETE
+# accepted values are INTERNAL, PREVIEW, COMPLETE
 #
 # COMPLETE must be followed by a year (when the flag was changed
 # to COMPLETE.)
@@ -20,7 +20,6 @@ appinspection.use.experimental.database.inspector=COMPLETE:2025
 backgroundtask.inspector.enable.backgroundtask.inspector.tab=COMPLETE:2021
 backup.enable.running.devices=COMPLETE:2024
 backup.enable=COMPLETE:2025
-benchmark.survey.enable=COMPLETE:2025
 compose.ai.agents.dropdown=PREVIEW
 compose.allocation.limiter=COMPLETE:2023
 compose.deploy.live.edit.deploy.desugar.r8=COMPLETE:2023
@@ -81,7 +80,6 @@ gradle.ide.gradle.uses.local.java.home.for.new.created.projects=COMPLETE:2023
 gradle.ide.migrate.project.to.gradle.local.java.home=COMPLETE:2023
 gradle.ide.recommend.patch.releases=COMPLETE:2025
 gradle.ide.restore.invalid.gradle.jdk.configuration=COMPLETE:2025
-gradle.ide.use.stable.agp.version.for.new.projects=NIGHTLY
 journeys.with.gemini.enable.journeys.with.gemini.execution=PREVIEW
 journeys.with.gemini.enable.journeys.with.gemini.recording=INTERNAL
 journeys.with.gemini.enable.new.wizard=INTERNAL
@@ -171,6 +169,7 @@ rundebug.installwithadblib=COMPLETE:2024
 rundebug.riscv.support=COMPLETE:2024
 rundebug.use.bitmap.popup.evaluator.v2=COMPLETE:2023
 settingssync.enable=COMPLETE:2025
+studio.diagnostic.adb.host.logs.diagnostic.report.enable=PREVIEW
 studiobot.agent.changes.drawer=PREVIEW
 studiobot.agent.experimental.build.prompt=PREVIEW
 studiobot.agent.mode=COMPLETE:2025
@@ -228,13 +227,14 @@ studiobot.project.facts.context.enabled=INTERNAL
 studiobot.prompt.library.chat.lookup=COMPLETE:2025
 studiobot.prompt.library.rules=COMPLETE:2025
 studiobot.prompt.library=COMPLETE:2025
-studiobot.rag.use.lucindex=INTERNAL
+studiobot.rag.use.lucindex=PREVIEW
 studiobot.regenerate.chat.request.button.enabled=INTERNAL
 studiobot.remote.models.enabled=PREVIEW
 studiobot.replace.text.tool.enabled=INTERNAL
 studiobot.show.shimmer.placeholder=PREVIEW
 studiobot.studiobot.apply.changes.action=INTERNAL
 studiobot.support.gias.enterprise=COMPLETE:2025
+studiobot.use.bm25.find.files=PREVIEW
 studiobot.verify.user.tier.in.aida.rpcs=COMPLETE:2025
 studiobot.version.upgrade.agent=PREVIEW
 studiobot.write.critic=PREVIEW

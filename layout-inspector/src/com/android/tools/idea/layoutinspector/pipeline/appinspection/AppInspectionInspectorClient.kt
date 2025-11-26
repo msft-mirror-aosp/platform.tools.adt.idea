@@ -529,7 +529,8 @@ fun checkSystemImageForAppInspectionCompatibility(
   val avd = AvdManagerConnection.getAvdManagerConnection(sdkHandler).findAvdWithFolder(avdFolder)
 
   return if (SystemImageTags.PLAY_STORE_TAG == avd?.tag) {
-    // We don't support Play Store images on API 29: b/180622424
+    // TODO(b/461825292) remove this check once standalone Layout Inspector V2 is enabled.
+    // We don't support Play Store images on API 29, when using SKIA: b/180622424
     Compatibility.NotCompatible(API_29_PLAY_STORE)
   } else {
     Compatibility.Compatible

@@ -22,7 +22,6 @@ import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.runningdevices.SPLITTER_KEY
-import com.android.tools.idea.layoutinspector.runningdevices.actions.ToggleDeepInspectAction
 import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
 import com.android.tools.idea.layoutinspector.stateinspection.createStateInspectionPanel
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefinition
@@ -33,8 +32,6 @@ import com.android.tools.idea.layoutinspector.ui.toolbar.actions.OverlayActionGr
 import com.android.tools.idea.layoutinspector.ui.toolbar.createEmbeddedLayoutInspectorToolbar
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.CustomShortcutSet
-import com.intellij.openapi.actionSystem.KeyboardShortcut
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
@@ -42,11 +39,8 @@ import com.intellij.ui.OnePixelSplitter
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
-import java.awt.event.InputEvent
-import java.awt.event.KeyEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.KeyStroke
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -54,7 +48,7 @@ private const val WORKBENCH_NAME = "Layout Inspector"
 const val STATE_READ_SPLITTER_NAME = "StateReadSplitter"
 
 /** Contains the state of Layout Inspector toolbar actions. */
-class ToolbarState {
+class ToolbarState(val showTitle: Boolean = true, val leftAlightToolbar: Boolean = false) {
   private val _isDeepInspectEnabled = MutableStateFlow(false)
   val isDeepInspectEnabled = _isDeepInspectEnabled.asStateFlow()
 
@@ -83,9 +77,8 @@ class ToolbarState {
  * @param uiConfig defines the configuration of the panel - where to place the main and side panels.
  * @param centerPanel optional center panel rendered in the workbench. When null the workbench only
  *   has the side panels.
- * @param processPicker optional process/device picker.
- * @param extraToolbarActions list of extra actions to add to the toolbar.
- * @param toolbarState contains the state of some toolbar actions.
+ * @param toolbarPanel optional panel contain the toolbar. Can be null if callers prefer to place
+ *   the toolbar outside the [LayoutInspectorRootPanel].
  */
 fun createLayoutInspectorPanel(
   project: Project,
@@ -93,21 +86,9 @@ fun createLayoutInspectorPanel(
   layoutInspector: LayoutInspector,
   uiConfig: UiConfig,
   centerPanel: JComponent?,
-  processPicker: AnAction?,
-  extraToolbarActions: List<AnAction> = emptyList(),
-  toolbarState: ToolbarState = ToolbarState(),
+  toolbarPanel: JPanel?,
 ): LayoutInspectorRootPanel {
   val inspectorPanel = BorderLayoutPanel()
-
-  val toolbarPanel =
-    createToolbarPanel(
-      disposable = disposable,
-      layoutInspector = layoutInspector,
-      rootComponent = inspectorPanel,
-      processPicker = processPicker,
-      extraActions = extraToolbarActions,
-      toolbarState = toolbarState,
-    )
 
   val mainPanel =
     when (uiConfig) {
@@ -171,12 +152,11 @@ private fun createToolsPanel(
   layoutInspector: LayoutInspector,
   uiConfig: UiConfig,
   centerPanel: JComponent?,
-  toolbarPanel: JPanel,
+  toolbarPanel: JPanel?,
 ): JPanel {
   val workBench =
     createLayoutInspectorWorkbench(project, disposable, layoutInspector, uiConfig, centerPanel)
   workBench.isFocusCycleRoot = false
-  workBench.component.border = JBUI.Borders.customLineTop(JBColor.border())
 
   // Split panel used for inspection of State Reads in Compose.
   val splitPanel =
@@ -188,7 +168,10 @@ private fun createToolsPanel(
     }
 
   return BorderLayoutPanel().apply {
-    add(toolbarPanel, BorderLayout.NORTH)
+    if (toolbarPanel != null) {
+      add(toolbarPanel, BorderLayout.NORTH)
+      toolbarPanel.border = JBUI.Borders.customLineBottom(JBColor.border())
+    }
     add(splitPanel, BorderLayout.CENTER)
   }
 }
@@ -196,35 +179,20 @@ private fun createToolsPanel(
 /**
  * Creates a Layout Inspector toolbar.
  *
- * @param rootComponent used to register keyboard shortcuts and as data-context retrieval.
+ * @param targetComponent used as data context provider. It is necessary because some of the actions
+ *   in the toolbar get LayoutInspector from [LayoutInspectorRootPanel] data context.
  * @param processPicker optional process/device picker.
  * @param extraActions list of extra actions to add to the toolbar.
  * @param toolbarState contains the state of some toolbar actions.
  */
-private fun createToolbarPanel(
+fun createToolbarPanel(
   disposable: Disposable,
   layoutInspector: LayoutInspector,
-  rootComponent: JComponent,
+  targetComponent: JComponent,
   processPicker: AnAction?,
   extraActions: List<AnAction> = emptyList(),
   toolbarState: ToolbarState = ToolbarState(),
 ): JPanel {
-  val toggleDeepInspectAction =
-    ToggleDeepInspectAction(
-      isSelected = { toolbarState.isDeepInspectEnabled.value },
-      setSelected = { toolbarState.setDeepInspectEnabled(it) },
-      isRendering = { layoutInspector.renderModel.isActive },
-      connectedClientProvider = { layoutInspector.currentClient },
-    )
-  // TODO(b/449698912): shortcut does not work
-  val toggleDeepInspectShortcut =
-    KeyboardShortcut(
-      KeyStroke.getKeyStroke(KeyEvent.VK_I, InputEvent.SHIFT_DOWN_MASK + InputEvent.META_DOWN_MASK),
-      null,
-    )
-  val shortcutSet = CustomShortcutSet(toggleDeepInspectShortcut)
-  toggleDeepInspectAction.registerCustomShortcutSet(shortcutSet, rootComponent)
-
   val overlayActionGroup =
     OverlayActionGroup(
       inspectorModel = layoutInspector.inspectorModel,
@@ -235,11 +203,13 @@ private fun createToolbarPanel(
 
   return createEmbeddedLayoutInspectorToolbar(
     parentDisposable = disposable,
-    targetComponent = rootComponent,
+    targetComponent = targetComponent,
     layoutInspector = layoutInspector,
     selectProcessAction = processPicker,
+    showTitleLabel = toolbarState.showTitle,
+    leftAlignToolbar = toolbarState.leftAlightToolbar,
     firstGroupExtraActions = listOf(overlayActionGroup),
-    lastGroupExtraActions = listOf(toggleDeepInspectAction) + extraActions,
+    lastGroupExtraActions = extraActions,
   )
 }
 

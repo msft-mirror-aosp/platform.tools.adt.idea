@@ -150,6 +150,7 @@ class EditVirtualDeviceDialogTest {
         composeTestRule
           .onNode(hasParent(hasTestTag("RamRow")) and hasSetTextAction())
           .performTextReplacement("5")
+        composeTestRule.waitForIdle()
 
         wizard.performAction(wizard.finishAction)
         wizard.awaitClose()

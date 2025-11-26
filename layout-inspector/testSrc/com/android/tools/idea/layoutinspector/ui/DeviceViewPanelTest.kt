@@ -258,9 +258,12 @@ class DeviceViewPanelWithFullInspectorTest {
     assertThat(scheduler.isShutdown).isTrue()
     assertThat(renderModel.isRotated).isTrue()
     UIUtil.dispatchAllInvocationEvents()
-    assertThat(notificationModel.notifications).hasSize(2)
+    assertThat(notificationModel.notifications).hasSize(3)
     val notification1 = notificationModel.notifications[1]
     assertThat(notification1.message)
+      .isEqualTo(LayoutInspectorBundle.message("3d.mode.deprecation.warning"))
+    val notification2 = notificationModel.notifications[2]
+    assertThat(notification2.message)
       .isEqualTo(LayoutInspectorBundle.message(PERFORMANCE_WARNING_3D))
 
     // Turn 3D mode off:

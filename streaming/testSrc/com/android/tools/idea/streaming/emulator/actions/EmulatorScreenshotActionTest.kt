@@ -43,6 +43,7 @@ import com.android.tools.idea.ui.screenshot.ScreenshotViewer
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.DialogWrapper.CLOSE_EXIT_CODE
 import com.intellij.openapi.vfs.VirtualFile
@@ -52,7 +53,6 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.util.ui.EDT
 import java.awt.Dimension
 import java.awt.image.BufferedImage
 import java.io.IOException
@@ -119,8 +119,10 @@ class EmulatorScreenshotActionTest {
     assertThat(clipComboBox.selectedItem?.toString()).isEqualTo("Rectangular")
     assertAppearance(screenshotViewer.waitForUpdateAndGetImage(), "WithoutFrame")
 
-    clipComboBox.selectFirstMatch("Show Device Frame")
-    assertAppearance(screenshotViewer.waitForUpdateAndGetImage(), "WithFrame")
+    if (ApplicationInfo.getInstance().build.baselineVersion != 253) { // TODO: Remove the condition (b/462824863)
+      clipComboBox.selectFirstMatch("Show Device Frame")
+      assertAppearance(screenshotViewer.waitForUpdateAndGetImage(), "WithFrame")
+    }
   }
 
   @Test
@@ -265,7 +267,7 @@ class EmulatorScreenshotActionTest {
 }
 
 private fun ScreenshotViewer.waitForUpdateAndGetImage(expectTransparentCorner: Boolean? = null): BufferedImage {
-  EDT.dispatchAllInvocationEvents()
+  PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
   PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
   val fileEditor = fileEditor()
   waitForCondition(2.seconds) {

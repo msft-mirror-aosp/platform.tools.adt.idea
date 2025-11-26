@@ -185,7 +185,12 @@ class DeviceViewPanel(val layoutInspector: LayoutInspector, disposableParent: Di
   private val scrollPane = JBScrollPane(contentPanel)
   private val layeredPane = JLayeredPane()
   private val loadingPane: JBLoadingPanel = JBLoadingPanel(BorderLayout(), disposableParent)
-  private val floatingToolbarProvider = FloatingToolbarProvider(this, disposableParent)
+  private val floatingToolbarProvider =
+    FloatingToolbarProvider(
+      disposable = disposableParent,
+      component = this,
+      layoutInspector = layoutInspector,
+    )
   private val viewportLayoutManager =
     MyViewportLayoutManager(
       scrollPane.viewport,

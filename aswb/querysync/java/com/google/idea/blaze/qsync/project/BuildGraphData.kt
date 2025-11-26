@@ -62,7 +62,7 @@ interface BuildGraphData {
    * Calculates the set of direct reverse dependencies for a set of targets (including the targets
    * themselves).
    */
-  fun getSameLanguageTargetsDependingOn(targets: Set<Label>): ImmutableSet<Label>
+  fun getSameLanguageTargetsDependingOn(targets: Set<Label>): Set<Label>
 
   /**
    * Calculates the first targets of a given set of rule types along any given dependency path for a
@@ -99,11 +99,6 @@ interface BuildGraphData {
 
   // TODO: b/397649793 - Remove this method when fixed.
   fun dependsOnAnyOf_DO_NOT_USE_BROKEN(projectTarget: Label, deps: Set<Label>): Boolean
-
-  fun getTargetSources(
-    target: Label,
-    vararg types: ProjectTarget.SourceType
-  ): Set<Path>
 
   fun getSourceFileOwners(path: Path): Set<Label>
 
@@ -187,6 +182,11 @@ interface BuildGraphData {
 
   companion object {
     @JvmField
-    val EMPTY: BuildGraphData = BuildGraphDataImpl.builder().build(TargetPatternCollection.create(emptyList()), emptySet())
+    val EMPTY: BuildGraphData =
+      BuildGraphDataImpl.builder()
+        .build(
+          projectDefinitionTargetPatterns = TargetPatternCollection.create(emptyList()),
+          alwaysBuildRules = emptySet(),
+          supportedBuildRules = emptySet())
   }
 }
