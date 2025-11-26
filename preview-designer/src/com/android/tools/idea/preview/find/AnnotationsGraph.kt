@@ -193,6 +193,7 @@ suspend fun UElement.getUAnnotations(): List<UAnnotation> {
   val annotations = readAction {
     (this@getUAnnotations as? UMethod)?.uAnnotations
       ?: (this@getUAnnotations.tryResolve() as? PsiModifierListOwner)?.annotations?.mapNotNull { it.toUElementOfType() as? UAnnotation }
+      ?: resolveKaAnnotationAnnotations()
       ?: emptyList()
   }
   return annotations.flatMap { annotation -> annotation.extractFromContainer().ifEmpty { listOf(annotation) } }

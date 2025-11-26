@@ -185,7 +185,7 @@ private suspend fun NodeInfo<UAnnotationSubtreeInfo>.asTilePreviewNode(uMethod: 
   val defaultValues = readAction { annotation.findPreviewDefaultValues() }
 
   val rootAnnotation = subtreeInfo?.topLevelAnnotation ?: annotation
-  val attributesProvider = UastAnnotationAttributesProvider(annotation, defaultValues)
+  val attributesProvider = UastAnnotationAttributesProvider(annotation, defaultValues, uMethod)
   val previewElementDefinitionPsi = readAction { rootAnnotation.toSmartPsiPointer() }
   val annotatedMethod =
     UastAnnotatedMethod(
