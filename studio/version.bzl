@@ -3,6 +3,6 @@ visibility(["//tools/adt/idea/studio", "//tools/vendor/google/asfp/studio", "//t
 
 STUDIO_CODENAME = "Otter 2 Feature Drop"
 STUDIO_CONFIG = "stable"
-STUDIO_VERSION = "RC"
-STUDIO_MICRO_PATCH = "2.6"
-STUDIO_RELEASE_NUMBER = 2
+STUDIO_VERSION = "Stable"
+STUDIO_MICRO_PATCH = "2.7"
+STUDIO_RELEASE_NUMBER = 1
