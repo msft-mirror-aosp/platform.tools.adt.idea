@@ -172,10 +172,8 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
 
     val metadata = parseMetadata(newClass)
     val classType = if (metadata is KotlinClassMetadata.SyntheticClass) {
-      println("support: " + newClass.name)
       LiveEditClassType.SUPPORT_CLASS
     } else {
-      println("normal: " + newClass.name)
       LiveEditClassType.NORMAL_CLASS
     }
 
