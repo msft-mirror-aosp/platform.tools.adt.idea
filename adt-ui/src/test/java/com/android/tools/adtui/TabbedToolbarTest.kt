@@ -16,20 +16,18 @@
 package com.android.tools.adtui
 
 import com.android.tools.adtui.stdui.CommonButton
-import com.android.tools.adtui.swing.FakeUi
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.containers.isEmpty
 import icons.StudioIcons
+import javax.swing.JLabel
 import org.junit.Rule
 import org.junit.Test
-import javax.swing.JLabel
 
 @RunsInEdt(writeIntent = false)
 class TabbedToolbarTest {
-  @get:Rule
-  val edtRule = EdtRule()
+  @get:Rule val edtRule = EdtRule()
 
   @Test
   fun componentIsAddedElement() {
@@ -47,7 +45,11 @@ class TabbedToolbarTest {
     toolbar.addTab("First", selected)
     val tree = TreeWalker(toolbar)
     assertThat(
-      tree.descendantStream().anyMatch { it.javaClass.isAssignableFrom(JLabel::class.java) && (it as JLabel).text == "First" }).isTrue()
+        tree.descendantStream().anyMatch {
+          it.javaClass.isAssignableFrom(JLabel::class.java) && (it as JLabel).text == "First"
+        }
+      )
+      .isTrue()
   }
 
   @Test
@@ -55,11 +57,13 @@ class TabbedToolbarTest {
     val component = JLabel("Test")
     val toolbar = TabbedToolbar(component)
     var closed = false
-    toolbar.addTab("First", { }, { closed = true })
+    toolbar.addTab("First", {}, { closed = true })
     val tree = TreeWalker(toolbar)
-    val buttonComponents = tree.descendantStream().filter {
-      it.javaClass.isAssignableFrom(CommonButton::class.java) && (it as CommonButton).actionListeners.isNotEmpty()
-    }
+    val buttonComponents =
+      tree.descendantStream().filter {
+        it.javaClass.isAssignableFrom(CommonButton::class.java) &&
+          (it as CommonButton).actionListeners.isNotEmpty()
+      }
     buttonComponents.forEach { (it as CommonButton).doClick() }
     assertThat(closed).isTrue()
   }
@@ -68,11 +72,13 @@ class TabbedToolbarTest {
   fun noCloseButtonWhenNoListener() {
     val component = JLabel("Test")
     val toolbar = TabbedToolbar(component)
-    toolbar.addTab("First") { }
+    toolbar.addTab("First") {}
     val tree = TreeWalker(toolbar)
-    val buttonComponents = tree.descendantStream().filter {
-      it.javaClass.isAssignableFrom(CommonButton::class.java) && (it as CommonButton).actionListeners.isNotEmpty()
-    }
+    val buttonComponents =
+      tree.descendantStream().filter {
+        it.javaClass.isAssignableFrom(CommonButton::class.java) &&
+          (it as CommonButton).actionListeners.isNotEmpty()
+      }
     assertThat(buttonComponents.isEmpty())
   }
 
@@ -83,9 +89,11 @@ class TabbedToolbarTest {
     var clicked = false
     toolbar.addAction(StudioIcons.Common.ADD) { clicked = true }
     val tree = TreeWalker(toolbar)
-    val buttonComponents = tree.descendantStream().filter {
-      it.javaClass.isAssignableFrom(CommonButton::class.java) && (it as CommonButton).actionListeners.isNotEmpty()
-    }
+    val buttonComponents =
+      tree.descendantStream().filter {
+        it.javaClass.isAssignableFrom(CommonButton::class.java) &&
+          (it as CommonButton).actionListeners.isNotEmpty()
+      }
     buttonComponents.forEach { (it as CommonButton).doClick() }
     assertThat(clicked).isTrue()
   }

@@ -128,7 +128,7 @@ class IconTableComponentTest {
 
     label.updateTablePresentation(
       TablePresentationManager(),
-      TablePresentation(foreground = JBColor.BLUE, background = JBColor.RED, rowSelected = true)
+      TablePresentation(foreground = JBColor.BLUE, background = JBColor.RED, rowSelected = true),
     )
 
     assertThat(label.border).isEqualTo(tableCellBorder(selected = true, focused = true))

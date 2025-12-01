@@ -39,12 +39,12 @@ import javax.swing.ListCellRenderer
 
 /** A fake [JBPopup] for tests. */
 open class FakeJBPopup<T>(
-    val items: List<T>,
-    val isMovable: Boolean? = false,
-    val isRequestFocus: Boolean? = false,
-    val title: String? = null,
-    val renderer: ListCellRenderer<in T>? = null,
-    private val callback: Consumer<in T>? = null,
+  val items: List<T>,
+  val isMovable: Boolean? = false,
+  val isRequestFocus: Boolean? = false,
+  val title: String? = null,
+  val renderer: ListCellRenderer<in T>? = null,
+  private val callback: Consumer<in T>? = null,
 ) : AbstractPopup() {
 
   enum class ShowStyle {
@@ -60,19 +60,19 @@ open class FakeJBPopup<T>(
   var showStyle: ShowStyle? = null
   var showArgs: List<Any>? = null
   val actions: List<AnAction> by lazy {
-      if (items.isEmpty()) {
-        return@lazy emptyList()
-      }
-      val result = mutableListOf<AnAction>()
-      for (item in items) {
-        item as? ActionItem ?: throw AssertionError("The popup is not an action popup")
-        if (item.isPrependWithSeparator) {
-          result.add(Separator.create(item.separatorText))
-        }
-        result.add(item.action)
-      }
-      return@lazy result
+    if (items.isEmpty()) {
+      return@lazy emptyList()
     }
+    val result = mutableListOf<AnAction>()
+    for (item in items) {
+      item as? ActionItem ?: throw AssertionError("The popup is not an action popup")
+      if (item.isPrependWithSeparator) {
+        result.add(Separator.create(item.separatorText))
+      }
+      result.add(item.action)
+    }
+    return@lazy result
+  }
 
   private var minSize: Dimension? = null
   private val registeredListeners = mutableListOf<JBPopupListener>()
@@ -82,7 +82,8 @@ open class FakeJBPopup<T>(
   fun selectItem(item: T) {
     if (!items.contains(item)) {
       throw IllegalArgumentException(
-          "No such item: $item. Available items: ${items.joinToString(",")}}")
+        "No such item: $item. Available items: ${items.joinToString(",")}}"
+      )
     }
     callback?.consume(item)
   }
@@ -156,15 +157,14 @@ open class FakeJBPopup<T>(
     return true
   }
 
-  override fun setSize(size: Dimension) {
-  }
+  override fun setSize(size: Dimension) {}
 
   override fun addListener(listener: JBPopupListener) {
     registeredListeners.add(listener)
   }
 
   override fun cancel(e: InputEvent?) {
-    registeredListeners.forEach{ it.onClosed(LightweightWindowEvent(this))}
+    registeredListeners.forEach { it.onClosed(LightweightWindowEvent(this)) }
     isVisible = false
   }
 
@@ -176,8 +176,7 @@ open class FakeJBPopup<T>(
     return Point()
   }
 
-  override fun setLocation(screenPoint: Point) {
-  }
+  override fun setLocation(screenPoint: Point) {}
 
   override fun setRequestFocus(b: Boolean) {
     TODO("Not yet implemented")
