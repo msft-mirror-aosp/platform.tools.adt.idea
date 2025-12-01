@@ -49,7 +49,7 @@ class ComposeChooseAndroidProjectStepUITest {
       .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column)
       .assertExists()
       .onChildren()
-      .assertCountEquals(FormFactor.entries.size)
+      .assertCountEquals(FormFactor.entries.size - 1 /* AiGlasses is not included */)
 
     composeTestRule.onNodeWithText(FormFactor.Mobile.displayName).assertExists().assertIsFocused()
 
