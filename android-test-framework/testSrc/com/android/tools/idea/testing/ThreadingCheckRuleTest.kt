@@ -17,23 +17,26 @@ package com.android.tools.idea.testing
 
 import com.android.tools.instrumentation.threading.agent.callback.ThreadingCheckerTrampoline
 import org.junit.Rule
-import org.junit.runners.model.Statement
 import org.junit.Test
 import org.junit.rules.ExpectedException
 import org.junit.runner.Description
+import org.junit.runners.model.Statement
 
 class ThreadingCheckRuleTest {
-  @get:Rule
-  val exceptionRule: ExpectedException = ExpectedException.none()
+  @get:Rule val exceptionRule: ExpectedException = ExpectedException.none()
 
   @Test
   fun ruleThrows_whenTestedMethodThreadVerificationFails() {
     val rule = ThreadingCheckRule()
-    val statement = rule.apply(object : Statement() {
-      override fun evaluate() {
-        ThreadingCheckerTrampoline.verifyOnUiThread()
-      }
-    }, Description.createSuiteDescription("description"))
+    val statement =
+      rule.apply(
+        object : Statement() {
+          override fun evaluate() {
+            ThreadingCheckerTrampoline.verifyOnUiThread()
+          }
+        },
+        Description.createSuiteDescription("description"),
+      )
 
     exceptionRule.expect(RuntimeException::class.java)
     exceptionRule.expectMessage("is expected to be called on EventDispatchThread")
@@ -43,11 +46,15 @@ class ThreadingCheckRuleTest {
   @Test
   fun ruleDoesNotThrow_whenTestedMethodThreadVerificationSucceeds() {
     val rule = ThreadingCheckRule()
-    val statement = rule.apply(object : Statement() {
-      override fun evaluate() {
-        ThreadingCheckerTrampoline.verifyOnWorkerThread()
-      }
-    }, Description.createSuiteDescription("description"))
+    val statement =
+      rule.apply(
+        object : Statement() {
+          override fun evaluate() {
+            ThreadingCheckerTrampoline.verifyOnWorkerThread()
+          }
+        },
+        Description.createSuiteDescription("description"),
+      )
 
     statement.evaluate()
   }
