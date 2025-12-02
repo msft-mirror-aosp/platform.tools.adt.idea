@@ -606,6 +606,7 @@ Android Studio Preview.app/Contents/license/layoutlib.jar.txt
 Android Studio Preview.app/Contents/license/layoutlib_jni.dll.txt
 Android Studio Preview.app/Contents/license/layoutlib_jni.dylib.txt
 Android Studio Preview.app/Contents/license/layoutlib_jni.so.txt
+Android Studio Preview.app/Contents/license/leakcanary-NOTICE
 Android Studio Preview.app/Contents/license/libandroid_runtime.dll.txt
 Android Studio Preview.app/Contents/license/libandroid_runtime.dylib.txt
 Android Studio Preview.app/Contents/license/libandroid_runtime.so.txt
