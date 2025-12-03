@@ -206,11 +206,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
-import com.intellij.platform.workspace.jps.entities.ExternalSystemModuleOptionsEntity
-import com.intellij.platform.workspace.jps.entities.InheritedSdkDependency
-import com.intellij.platform.workspace.jps.entities.ModuleEntity
-import com.intellij.platform.workspace.jps.entities.ModuleSourceDependency
-import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiManager
@@ -256,10 +251,6 @@ import org.jetbrains.plugins.gradle.model.GradleTaskModel
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
 import org.jetbrains.plugins.gradle.service.project.data.GradleExtensionsDataService
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleBuildEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleLinkedProjectEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleProjectEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleSourceSetEntitySource
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.jetbrains.plugins.gradle.util.gradleIdentityPath
 import org.jetbrains.plugins.gradle.util.gradlePath
@@ -2098,6 +2089,7 @@ private fun setupTestProjectFromAndroidModelCore(
     PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
     // Top level module should already be created
     if (!skipPhasedSync && moduleBasePath != rootProjectBasePath) {
+      /* b/461542533 disable phased sync for initial IJ 2025.3 merge
       // Here we are setting up the entity sources for the holder modules
       val linkedProjectRootPath = rootProjectBasePath.absolutePath
       val linkedProjectRootUrl = virtualFileUrlManager.getOrCreateFromUrl(linkedProjectRootPath)
@@ -2170,6 +2162,7 @@ private fun setupTestProjectFromAndroidModelCore(
                 )
             }
       }
+      */
     }
   }
   if (!skipPhasedSync) {
