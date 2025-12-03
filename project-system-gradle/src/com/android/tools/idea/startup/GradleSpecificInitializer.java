@@ -46,8 +46,8 @@ import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
-import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeData;
-import org.jetbrains.plugins.gradle.service.syncContributor.bridge.GradleBridgeProjectDataService;
+import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeData;
+import org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeProjectDataService;
 
 /**
  * Performs Gradle-specific IDE initialization
