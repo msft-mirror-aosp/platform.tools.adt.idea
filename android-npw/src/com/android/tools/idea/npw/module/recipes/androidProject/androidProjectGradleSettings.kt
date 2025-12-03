@@ -34,7 +34,7 @@ fun androidProjectGradleSettings(
     GradleSettingsBuilder(appTitle, useGradleKts) {
         withPluginManager(injectedRepositories)
         if (GradleDaemonJvmHelper.isDaemonJvmCriteriaRequiredForNewProjects(gradleVersion)) {
-          withFoojayPlugin()
+          withFoojayPlugin(gradleVersion)
         }
         withDependencyResolutionManagement(injectedRepositories)
       }

@@ -16,6 +16,7 @@
 package com.android.tools.idea.npw.builder
 
 import com.android.tools.idea.npw.builders.GradleSettingsBuilder
+import org.gradle.util.GradleVersion
 import java.net.URI
 import java.net.URL
 import kotlin.test.assertEquals
@@ -37,10 +38,12 @@ class GradleSettingsBuilderTest {
 
   @Test
   fun testBuildGroovyGradleSettings() {
+    // FIXME: GradleVersion.current() is not a correct way of taking the version but agreed to proceed with this so far
+    val gradleVersion = GradleVersion.current()
     val gradleSettings =
       GradleSettingsBuilder("groovyProject", false) {
           withDependencyResolutionManagement(listOfUrls("https://www.example.com/1"))
-          withFoojayPlugin()
+          withFoojayPlugin(gradleVersion)
           withPluginManager(listOfUrls("https://www.example.com/2"))
         }
         .build()
@@ -56,7 +59,7 @@ dependencyResolutionManagement {
   }
 }
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '${getFoojayPluginVersion()}'
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '${getFoojayPluginVersion(gradleVersion)}'
 }
 pluginManagement {
   repositories {
@@ -80,10 +83,12 @@ rootProject.name = "groovyProject""""
 
   @Test
   fun testBuildKotlinGradleSettings() {
+    // FIXME: GradleVersion.current() is not a correct way of taking the version but agreed to proceed with this so far
+    val gradleVersion = GradleVersion.current()
     val gradleSettings =
       GradleSettingsBuilder("kotlinProject", true) {
           withDependencyResolutionManagement(listOfUrls("https://www.example.com/1", "https://www.example.com/2"))
-          withFoojayPlugin()
+          withFoojayPlugin(gradleVersion)
           withPluginManager(listOfUrls("https://www.example.com/3", "https://www.example.com/4"))
         }
         .build()
@@ -100,7 +105,7 @@ dependencyResolutionManagement {
   }
 }
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "${getFoojayPluginVersion()}"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "${getFoojayPluginVersion(gradleVersion)}"
 }
 pluginManagement {
   repositories {

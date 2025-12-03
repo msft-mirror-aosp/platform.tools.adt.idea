@@ -29,6 +29,7 @@ import com.intellij.usageView.UsageInfo
 import com.intellij.usageView.UsageViewBundle
 import com.intellij.usageView.UsageViewDescriptor
 import com.intellij.util.containers.addIfNotNull
+import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.FOOJAY_RESOLVER_CONVENTION_NAME
 import org.jetbrains.plugins.gradle.frameworkSupport.settingsScript.getFoojayPluginVersion
 
@@ -132,7 +133,8 @@ class AddJavaToolchainDefinition(project: Project, private val versionToSet: Int
   private class AddPluginUsageInfo(psiElement: PsiElement, val projectBuildModel: ProjectBuildModel) :
     UsageInfo(psiElement, TextRange.EMPTY_RANGE, false) {
     fun perform() {
-      PluginsHelper.withModel(projectBuildModel).applySettingsPlugin(FOOJAY_RESOLVER_CONVENTION_NAME, getFoojayPluginVersion())
+      PluginsHelper.withModel(projectBuildModel)// FIXME: GradleVersion.current() is not a correct way of taking the version but agreed to proceed with this so far
+        .applySettingsPlugin(FOOJAY_RESOLVER_CONVENTION_NAME, getFoojayPluginVersion(GradleVersion.current()))
     }
   }
 }
