@@ -65,7 +65,7 @@ internal constructor(
   val uiMode: Int,
   val deviceSpec: String,
   val wallpaper: Int,
-  val imageTransformation: Consumer<BufferedImage>?,
+  val colorBlindImageTransformation: Consumer<BufferedImage>?,
 ) {
   companion object {
     /**
@@ -100,7 +100,7 @@ internal constructor(
         uiMode = uiMode ?: 0,
         deviceSpec = device ?: NO_DEVICE_SPEC,
         wallpaper = wallpaper ?: NO_WALLPAPER_SELECTED,
-        imageTransformation = imageTransformation,
+        colorBlindImageTransformation = imageTransformation,
       )
   }
 }
@@ -126,14 +126,10 @@ fun ConfigurablePreviewElement<*>.applyTo(
     // it to Layoutlib to paint it behind the content.
     (displaySettings.background as? PreviewDisplaySettings.Background.Image)?.image?.let {
       background ->
-      if (renderConfiguration.imageTransformation != null) {
-        // There was already an existing transformation (Color Blind Mode?)
-        // Composite the two:
-        renderConfiguration.imageTransformation =
-          renderConfiguration.imageTransformation!!.andThen(background)
-      } else {
-        renderConfiguration.imageTransformation = background
-      }
+      renderConfiguration.setImageTransformation(
+        Configuration.ImageTransformationType.GLASSES_BACKGROUND_IMAGE,
+        background,
+      )
     }
   }
 }
@@ -174,9 +170,10 @@ private fun PreviewConfiguration.applyTo(
   }
 
   renderConfiguration.startBulkEditing()
-  if (imageTransformation != null) {
-    renderConfiguration.imageTransformation = imageTransformation
-  }
+  renderConfiguration.setImageTransformation(
+    Configuration.ImageTransformationType.COLOR_BLIND_MODE,
+    colorBlindImageTransformation,
+  )
 
   if (apiLevel != UNDEFINED_API_LEVEL) {
     val newTarget =

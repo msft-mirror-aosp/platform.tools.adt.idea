@@ -117,12 +117,12 @@ public final class DefaultNlToolbarActionGroups extends ToolbarActionGroups {
             new DeviceChangeListener() {
               @Override
               public void onDeviceChanged(@NotNull Device oldDevice, @NotNull Device newDevice) {
-                mySurface.notifyZoomToFit();
+                mySurface.getZoomController().zoomToFit();
               }
 
               @Override
               public void onRevertToOriginal() {
-                mySurface.notifyZoomToFit();
+                mySurface.getZoomController().zoomToFit();
               }
             });
     appendShortcutText(menuAction, NextDeviceAction.getInstance());

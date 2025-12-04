@@ -40,6 +40,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.wm.ToolWindowId
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.AnimatedIcon
 import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckboxTreeListener
@@ -48,6 +50,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.tree.TreeUtil
 import java.awt.BorderLayout
 import java.awt.CardLayout
@@ -57,7 +60,6 @@ import javax.swing.BorderFactory
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTree
-import javax.swing.SwingConstants
 import javax.swing.tree.DefaultTreeModel
 import javax.swing.tree.TreePath
 import org.jetbrains.jewel.bridge.theme.SwingBridgeTheme
@@ -150,6 +152,7 @@ class UpdateReferenceImagesDialog(
           panel.loadImage(srcImagePath, testId)
         }
         else {
+          logger.warn("Source image path missing. Test did not produce an image for testId: $testId")
           panel.showError("Test did not produce an image")
         }
         updateRightPane(tree)
@@ -164,11 +167,32 @@ class UpdateReferenceImagesDialog(
     // failure or that no tests were found to run. Close the dialog and show an error.
     ApplicationManager.getApplication().invokeLater {
       if (!isFirstTestDiscovered) {
+        logger.error("No tests were discovered in the test suite")
         close(CANCEL_EXIT_CODE)
         Messages.showErrorDialog(project, "Error while generating screenshots", "Failed to generate screenshots")
       } else {
         isTestSuiteFinished = true
+        logger.debug("TestSuite finished. Enabling the 'Add' button.")
         updateOkButtonState()
+      }
+    }
+  }
+
+  /**
+   * Handles cases where the build or execution fails before tests start.
+   * Closes the dialog and opens the Run tool window to show errors.
+   */
+  fun onBuildFailed() {
+    ApplicationManager.getApplication().invokeLater {
+      // Only act if we haven't discovered any tests yet (meaning the failure happened during build or startup)
+      if (!isFirstTestDiscovered) {
+        logger.warn("Build or execution failed. Closing dialog.")
+        close(CANCEL_EXIT_CODE)
+
+        // Open the Run window so the user can see the build error
+        project?.let {
+          ToolWindowManager.getInstance(it).getToolWindow(ToolWindowId.RUN)?.activate(null)
+        }
       }
     }
   }
@@ -358,6 +382,7 @@ class UpdateReferenceImagesDialog(
     val failedPreviews = panelsToCopy.filter { !it.isLoadedSuccessfully }
     if (failedPreviews.isNotEmpty()) {
       val failedNames = failedPreviews.joinToString(separator = "\n") { "- ${it.previewData.previewName}" }
+      logger.error("The following selected previews have not rendered successfully: $failedNames")
       Messages.showErrorDialog(
         project,
         "The following selected previews have not rendered successfully. Please uncheck them to proceed:\n\n$failedNames",
@@ -376,7 +401,7 @@ class UpdateReferenceImagesDialog(
     okButton?.isEnabled = false
     cancelButton?.isEnabled = false
 
-    ApplicationManager.getApplication().executeOnPooledThread {
+    AppExecutorUtil.getAppExecutorService().submit {
       val imagesToCopy = panelsToCopy.map {
         ImageData(it.previewData, it.sourceImageToCopy)
       }
@@ -394,9 +419,11 @@ class UpdateReferenceImagesDialog(
             }.withProjectId(project)
           )
           close(OK_EXIT_CODE)
+          logger.info("Reference images were updated successfully")
           Messages.showInfoMessage(project, "Reference images were updated successfully.", "Update Successful")
         } else {
           val failedNames = failures.joinToString(separator = "\n") { "- ${it.previewData.previewName}" }
+          logger.error("Failed to copy the following previews: $failedNames")
           Messages.showErrorDialog(project, "Failed to copy the following previews:\n\n$failedNames", "Copy Failed")
           okButton?.text = originalText
           okButton?.icon = null

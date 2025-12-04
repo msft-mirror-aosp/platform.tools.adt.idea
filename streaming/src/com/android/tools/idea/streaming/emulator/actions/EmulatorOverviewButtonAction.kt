@@ -17,10 +17,10 @@ package com.android.tools.idea.streaming.emulator.actions
 
 import com.android.sdklib.deviceprovisioner.DeviceType
 
-/**
- * Simulates pressing the Overview button on an Android virtual device.
- */
+/** Simulates pressing the Overview button on an Android virtual device. */
 class EmulatorOverviewButtonAction :
     EmulatorPushButtonAction("AppSwitch",
-                             configFilter = { it.deviceType != DeviceType.AUTOMOTIVE && (it.deviceType != DeviceType.WEAR || it.api < 28) },
-                             skinOverridesConfigFilter = true)
+                            configFilter = { it.deviceType != DeviceType.AUTOMOTIVE &&
+                                             it.deviceType != DeviceType.AI_GLASSES &&
+                                             (it.deviceType != DeviceType.WEAR || it.api < 28) },
+                            skinOverridesConfigFilter = true)

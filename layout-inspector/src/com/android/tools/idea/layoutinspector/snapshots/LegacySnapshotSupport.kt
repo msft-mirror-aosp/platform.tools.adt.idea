@@ -106,7 +106,7 @@ class LegacySnapshotLoader : SnapshotLoader {
               id = windowName,
               imageType = ImageType.BITMAP_AS_REQUESTED,
             ) {
-            override suspend fun refreshImages(scale: Double) {
+            override fun refreshImages(scale: Double) {
               ViewNode.writeAccess {
                 root.flatten().forEach { it.drawChildren.clear() }
                 if (image != null) {

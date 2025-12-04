@@ -26,7 +26,6 @@ import com.android.flags.FlagValueContainer;
 import com.android.flags.Flags;
 import com.android.flags.IntFlag;
 import com.android.flags.LongFlag;
-import com.android.flags.StaticFlagDefault;
 import com.android.flags.StringFlag;
 import com.android.flags.overrides.InMemoryFlagValueContainer;
 import com.android.flags.overrides.PropertyOverrides;
@@ -41,10 +40,7 @@ import com.android.tools.idea.flags.overrides.ServerFlagOverrides;
 import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ApplicationManager;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -1249,25 +1245,22 @@ public final class StudioFlags {
     "Enables tracing of Emulator discovery");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_ALLOW_AI_GLASSES_AVD = new BooleanFlag(
     EMBEDDED_EMULATOR, "allow.ai.glasses", "Allow AI glasses AVD to run embedded",
-    "Enables running an AI glasses AVD in the Running Devices tool window"
-  );
+    "Enables running an AI glasses AVD in the Running Devices tool window");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.tracking", "Enable hand tracking input mode for XR AVDs",
     "Enables hand tracking input mode for XR AVDs");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_EYE_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.eye.tracking", "Enable eye tracking input mode for XR AVDs",
     "Enables eye tracking input mode for XR AVDs");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_B458422581_LOGGING = new DebugFlag(
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_B458422581_LOGGING = new BooleanFlag(
     EMBEDDED_EMULATOR, "b458422581.logging", "Enable logging for investigation of b/458422581",
     "Enable logging for investigation of b/458422581");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
-    "Hides the name of the Running Devices window when it contains any device tabs"
-    );
+    "Hides the name of the Running Devices window when it contains any device tabs");
   public static final Flag<Boolean> RUNNING_DEVICES_WRAP_TOOLBAR = new BooleanFlag(
     EMBEDDED_EMULATOR, "wrap.toolbar", "Enable Toolbar Wrapping",
-    "Wraps the toolbar when all buttons don't fit into the available width"
-    );
+    "Wraps the toolbar when all buttons don't fit into the available width");
   public static final Flag<Boolean> RUNNING_DEVICES_CONTEXT_MENU = new BooleanFlag(
     EMBEDDED_EMULATOR, "context.menu", "Enable Context Menu",
     "Enables context menu in the Running Devices tool window");
@@ -1317,7 +1310,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_B386236480_TESTING = new DebugFlag(
     DEVICE_MIRRORING, "b386236480.testing", "Turn device screen off on Android versions affected by b/386236480",
     "If enabled, Studio will turn off the screen of a mirrored device even if that device is affected by b/386236480.");
-
+  public static final Flag<Boolean> DEVICE_MIRRORING_USE_REMOTE_SUBMIX = new BooleanFlag(
+    DEVICE_MIRRORING, "use.remote.submix", "Use REMOTE_SUBMIX audio device instead of AudioRecord",
+    "If enabled, use REMOTE_SUBMIX audio device instead of AudioRecord.");
   //endregion
 
   //region Screenshot and Screen Recording
@@ -1705,6 +1700,9 @@ public final class StudioFlags {
     COMPOSE, "preview.reference.provider.enabled", "Enable Compose Preview Reference Provider",
     "If enabled, the Compose Preview Reference Provider will be available for context attachment."
   );
+  public static final Flag<Boolean> COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK = new BooleanFlag(
+    COMPOSE, "interactive.preview.predictive.back", "Enable predictive back navigation in Interactive Preview",
+    "When using navigation3, enables a bottom panel to interact with the predictive back feature.");
   //endregion
 
   // region Wear surfaces

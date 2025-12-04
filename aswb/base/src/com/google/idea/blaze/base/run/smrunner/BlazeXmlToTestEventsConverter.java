@@ -32,7 +32,7 @@ import com.google.idea.blaze.base.run.smrunner.TestComparisonFailureParser.Blaze
 import com.google.idea.blaze.base.run.targetfinder.FuturesUtil;
 import com.google.idea.blaze.base.run.testlogs.BlazeTestResult;
 import com.google.idea.blaze.base.run.testlogs.BlazeTestResult.TestStatus;
-import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFinderStrategy;
+import com.google.idea.blaze.base.run.testlogs.BlazeTestResultsProvider;
 import com.google.idea.blaze.base.run.testlogs.BlazeTestResults;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BuildSystemName;
@@ -72,12 +72,12 @@ public class BlazeXmlToTestEventsConverter extends OutputToGeneralTestEventsConv
     NO_ERROR.message = "No message"; // cannot be null
   }
 
-  private final BlazeTestResultFinderStrategy testResultFinderStrategy;
+  private final BlazeTestResultsProvider testResultFinderStrategy;
 
   public BlazeXmlToTestEventsConverter(
       String testFrameworkName,
       TestConsoleProperties testConsoleProperties,
-      BlazeTestResultFinderStrategy testResultFinderStrategy) {
+      BlazeTestResultsProvider testResultFinderStrategy) {
     super(testFrameworkName, testConsoleProperties);
     this.testResultFinderStrategy = testResultFinderStrategy;
   }
@@ -95,8 +95,6 @@ public class BlazeXmlToTestEventsConverter extends OutputToGeneralTestEventsConv
       }
     } catch (GetArtifactsException e) {
       Logger.getInstance(this.getClass()).error(e.getMessage());
-    } finally {
-      testResultFinderStrategy.deleteTemporaryOutputFiles();
     }
   }
 

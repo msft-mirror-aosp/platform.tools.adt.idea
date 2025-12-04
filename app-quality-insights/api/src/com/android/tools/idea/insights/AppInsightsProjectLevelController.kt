@@ -19,13 +19,16 @@ import com.android.tools.idea.insights.ai.AiInsightToolkit
 import com.android.tools.idea.insights.analytics.IssueSelectionSource
 import com.android.tools.idea.insights.events.actions.Action
 import com.android.tools.idea.insights.experiments.InsightFeedback
+import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.OperatingSystemInfo
 import com.android.tools.idea.insights.model.event.Version
 import com.android.tools.idea.insights.model.issue.AppInsightsIssue
 import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueVariant
 import com.android.tools.idea.insights.model.issue.SignalType
 import com.android.tools.idea.insights.model.issue.VisibilityType
+import com.android.tools.idea.insights.model.note.Note
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import kotlin.reflect.KClass

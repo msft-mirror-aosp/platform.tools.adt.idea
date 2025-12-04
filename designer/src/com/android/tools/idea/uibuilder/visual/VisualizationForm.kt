@@ -180,7 +180,6 @@ class VisualizationForm(
               }
             }
         }
-        .waitForRenderBeforeRestoringZoom(true)
         .setActionManagerProvider { surface: DesignSurface<*> ->
           VisualizationActionManager((surface as NlDesignSurface?)!!) { myCurrentModelsProvider }
         }
@@ -395,7 +394,7 @@ class VisualizationForm(
       // This may be processed delayed but we have
       // known the preview number and rendering provides the right sizes
       // and the models are added, so it would layout correctly.
-      withContext(Dispatchers.EDT) { relayoutAndNotifyZoomToFit() }
+      withContext(Dispatchers.EDT) { relayoutAndZoomToFit() }
 
       ApplicationManager.getApplication().invokeLater {
         surface.unregisterIndicator(myProgressIndicator)
@@ -408,12 +407,12 @@ class VisualizationForm(
     }
   }
 
-  private fun relayoutAndNotifyZoomToFit() {
+  private fun relayoutAndZoomToFit() {
     surface.invalidate()
     if (surface.zoomController.canZoomToFit()) {
       // On every mode change we want to set zoom-to-fit, apply zoom-to-fit if it is not set
       // already.
-      surface.notifyZoomToFit()
+      surface.zoomController.zoomToFit()
     }
   }
 
@@ -637,7 +636,7 @@ class VisualizationForm(
         newConfigurationSet
       myCurrentModelsProvider = newConfigurationSet.createModelsProvider(this)
       surface.layoutManagerSwitcher?.currentLayoutOption?.value = myLayoutOption
-      surface.resetZoomToFitNotifier(false)
+      surface.zoomController.resetZoomToFitSettings(false, surface.size)
       refresh()
     }
   }
@@ -711,7 +710,7 @@ class VisualizationForm(
 
   @TestOnly
   fun refreshForTestOnly() {
-    relayoutAndNotifyZoomToFit()
+    relayoutAndZoomToFit()
   }
 
   companion object {

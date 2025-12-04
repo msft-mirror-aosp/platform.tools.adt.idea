@@ -19,6 +19,7 @@
 #include "agent.h"
 #include "audio_record_reader.h"
 #include "codec_output_buffer.h"
+#include "flags.h"
 #include "jvm.h"
 #include "log.h"
 #include "remote_submix_reader.h"
@@ -120,9 +121,12 @@ void AudioStreamer::Run() {
 
   bool continue_streaming = true;
   consequent_deque_error_count_ = 0;
-  while (continue_streaming && !streamer_stopped_) {
+  while (continue_streaming && !streamer_stopped_ && !codec_handle_->IsStopped()) {
     CodecOutputBuffer codec_buffer(codec_handle_->codec(), "Audio: ");
     if (!codec_buffer.Deque(-1)) {
+      if (codec_handle_->IsStopped()) {
+        break;
+      }
       if (++consequent_deque_error_count_ >= MAX_SUBSEQUENT_ERRORS) {
         Log::E("Audio: streaming stopped due to repeated encoder errors");
         fprintf(stderr, "NOTIFICATION Audio streaming stopped due to repeated encoder errors\n");
@@ -153,9 +157,12 @@ void AudioStreamer::StopCodec() {
 }
 
 bool AudioStreamer::StartAudioCapture() {
-  if (Agent::feature_level() >= 34 || (Agent::feature_level() == 33 && Agent::device_manufacturer() == "Google")) {
+  if ((Agent::feature_level() >= 34 || (Agent::feature_level() == 33 && Agent::device_manufacturer() == GOOGLE)) &&
+      (Agent::flags() & USE_REMOTE_SUBMIX) == 0) {
+    Log::D("Audio: using AudioRecordReader");
     audio_reader_ = new AudioRecordReader(CHANNEL_COUNT, AUDIO_SAMPLE_RATE);
   } else {
+    Log::D("Audio: using RemoteSubmixReader");
     audio_reader_ = new RemoteSubmixReader(CHANNEL_COUNT, AUDIO_SAMPLE_RATE);
   }
 

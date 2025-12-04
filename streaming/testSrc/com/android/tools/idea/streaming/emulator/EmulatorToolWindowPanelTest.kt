@@ -42,8 +42,8 @@ import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
-import com.android.tools.idea.streaming.core.FloatingToolbarContainer
 import com.android.tools.idea.streaming.core.SplitPanel
+import com.android.tools.idea.streaming.core.expandFloatingToolbar
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDescriptor
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel.MultiDisplayStateStorage
 import com.android.tools.idea.streaming.emulator.FakeEmulator.Companion.IGNORE_SCREENSHOT_CALL_FILTER
@@ -62,6 +62,7 @@ import com.android.tools.idea.ui.screenrecording.ScreenRecordingSupportedCache
 import com.google.common.truth.Truth.assertThat
 import com.intellij.configurationStore.deserialize
 import com.intellij.configurationStore.serialize
+import com.intellij.ide.ActivityTracker
 import com.intellij.ide.DataManager
 import com.intellij.ide.ui.LafManager
 import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
@@ -311,6 +312,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(panel.primaryDisplayView).isNull()
     streamScreenshotCall.waitForCancellation(2.seconds)
   }
+
   @Test
   fun testWearToolbarActionsApi28() {
     val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(28, 0))
@@ -478,6 +480,46 @@ class EmulatorToolWindowPanelTest {
   }
 
   @Test
+  fun testAiGlassesToolbarActions() {
+    val avdFolder = FakeEmulator.createAiGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
+    panel = createWindowPanel(avdFolder)
+
+    assertThat(panel.primaryDisplayView).isNull()
+
+    panel.createContent(true)
+    val emulatorView = panel.primaryDisplayView ?: fail()
+    assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_GLASS)
+
+    // Check appearance.
+    var frameNumber = emulatorView.frameNumber
+    assertThat(frameNumber).isEqualTo(0u)
+    panel.size = Dimension(430, 450)
+    fakeUi.layoutAndDispatchEvents()
+    val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+    assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 430 height: 362")
+    assertAppearance("AiGlassesToolbarActions1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+    emulator.clearGrpcCallLog()
+
+    // Check the Button 1 action.
+    val button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Button 1" }
+    fakeUi.mouseClickOn(button)
+    val streamInputCall = emulator.getNextGrpcCall(2.seconds)
+    assertThat(streamInputCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { key: \"Stem1\" }")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"Stem1\" }")
+
+    // Check that the buttons not applicable to AI Glasses are hidden.
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Rotate Left" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Rotate Right" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Home" }).isNull()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Overview" }).isNull()
+
+    panel.destroyContent()
+    assertThat(panel.primaryDisplayView).isNull()
+    streamScreenshotCall.waitForCancellation(2.seconds)
+  }
+
+  @Test
   fun testXrMouseInput() {
     panel = createWindowPanelForXr()
 
@@ -536,6 +578,8 @@ class EmulatorToolWindowPanelTest {
 
     val xrInputController = EmulatorXrInputController.getInstance(project, emulatorView.emulator)
     xrInputController.inputMode = XrInputMode.VIEW_DIRECTION
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
     fakeUi.keyboard.setFocus(emulatorView)
     fakeUi.keyboard.press(VK_ENTER)
     val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
@@ -591,7 +635,7 @@ class EmulatorToolWindowPanelTest {
     fakeUi.keyboard.release(VK_E)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_velocity_event { x: -1.0 y: -1.0 }")
 
-    expandFloatingToolbar()
+    fakeUi.expandFloatingToolbar()
     fakeUi.mouseClickOn(fakeUi.getComponent<ActionButton> { it.action.templateText == "Interact with Apps" })
     // Switching to Interact with Apps resets state of the navigation keys.
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("xr_head_velocity_event { }")
@@ -1010,6 +1054,7 @@ class EmulatorToolWindowPanelTest {
     assertAppearance("MultipleDisplays1", maxPercentDifferentMac = 0.09, maxPercentDifferentWindows = 0.25)
 
     // Check that the largest display view can be zoomed 1:1.
+    fakeUi.expandFloatingToolbar()
     emulator.clearGrpcCallLog()
     val largestDisplayPanel = fakeUi.getComponent<EmulatorDisplayPanel> { it.displayId == 2 }
     var frameNumber = largestDisplayPanel.displayView.frameNumber
@@ -1228,16 +1273,6 @@ class EmulatorToolWindowPanelTest {
 
   private fun getNextGrpcCallIgnoringStreamScreenshot(): GrpcCallRecord =
       emulator.getNextGrpcCall(2.seconds, IGNORE_SCREENSHOT_CALL_FILTER)
-
-  private fun expandFloatingToolbar() {
-    fakeUi.layoutAndDispatchEvents()
-    val toolbar = fakeUi.getComponent<FloatingToolbarContainer>()
-    // Trigger expansion of the floating toolbar.
-    fakeUi.mouse.moveTo(toolbar.locationOnScreen.x + toolbar.width / 2, toolbar.locationOnScreen.y + toolbar.height - toolbar.width / 2)
-    fakeUi.layoutAndDispatchEvents()
-    waitForCondition(1.seconds) { toolbar.activationFactor == 1.0 }
-    fakeUi.layoutAndDispatchEvents()
-  }
 
   private fun assertAppearance(goldenImageName: String,
                                maxPercentDifferentLinux: Double = 0.0003,

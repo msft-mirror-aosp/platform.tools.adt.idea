@@ -2,19 +2,25 @@ package com.android.tools.idea.insights
 
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.client.IssueRequest
+import com.android.tools.idea.insights.client.Permission
 import com.android.tools.idea.insights.client.QueryFilters
 import com.android.tools.idea.insights.events.StateTransition
 import com.android.tools.idea.insights.events.actions.Action
 import com.android.tools.idea.insights.model.common.Interval
 import com.android.tools.idea.insights.model.common.WithCount
+import com.android.tools.idea.insights.model.connection.Connection
+import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.Event
 import com.android.tools.idea.insights.model.event.OperatingSystemInfo
 import com.android.tools.idea.insights.model.event.Version
 import com.android.tools.idea.insights.model.issue.AppInsightsIssue
+import com.android.tools.idea.insights.model.issue.DetailedIssueStats
 import com.android.tools.idea.insights.model.issue.FailureType
+import com.android.tools.idea.insights.model.issue.IssueVariant
 import com.android.tools.idea.insights.model.issue.SignalType
 import com.android.tools.idea.insights.model.issue.VisibilityType
+import com.android.tools.idea.insights.model.note.Note
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant

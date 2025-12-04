@@ -173,7 +173,7 @@ void Agent::Initialize(const vector<string>& args) {
       } else if (value == "debug") {
         Log::SetLevel(Log::Level::DEBUG);
       } else if (value == "info") {
-        Log::SetLevel(Agent::device_manufacturer() == HONOR ? Log::Level::DEBUG : Log::Level::INFO); // b/
+        Log::SetLevel(Log::Level::INFO);
       } else if (value == "warn") {
         Log::SetLevel(Log::Level::WARN);
       } else if (value == "error") {
@@ -376,6 +376,7 @@ void Agent::Shutdown() {
 const string& Agent::device_manufacturer() {
   if (device_manufacturer_ == "<uninitialized>") {
     device_manufacturer_ = GetSystemProperty("ro.product.manufacturer");
+    Log::D("Device manufacturer: \"%s\"", device_manufacturer_.c_str());
   }
   return device_manufacturer_;
 }

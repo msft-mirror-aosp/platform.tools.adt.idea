@@ -21,7 +21,6 @@ import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.RuleKinds
 import com.google.idea.blaze.common.TargetPattern
 import com.google.idea.blaze.common.TargetPatternCollection
-import com.google.idea.blaze.common.TargetPatternCollection.Companion.create
 import com.google.idea.blaze.qsync.BlazeQueryParser
 import com.google.idea.blaze.qsync.QuerySyncTestUtils
 import com.google.idea.blaze.qsync.project.BuildGraphDataImpl.Companion.builder
@@ -43,6 +42,7 @@ class BuildGraphDataImplTest {
   var expect: Expect = Expect.create()
 
   private val emptyTargetCollection = TargetPatternCollection.create(emptyList())
+  private val defaultProtoRules = BuildGraphData.ProtoRules.forTests()
 
   @Test
   fun pathToLabel() {
@@ -60,7 +60,7 @@ class BuildGraphDataImplTest {
       .addSupportedTargetLabel(Label.of("//nested:nested"))
       .addSupportedTargetLabel(Label.of("//nested/inner:inner"))
 
-    val graph: BuildGraphData = builder.build(emptyTargetCollection, emptySet(), emptySet())
+    val graph: BuildGraphData = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
     expect.that(graph.pathToLabel(Path.of("abc.txt"))).isEqualTo(Label.of("//:abc.txt"))
     expect.that(graph.pathToLabel(Path.of("BUILD"))).isEqualTo(Label.of("//:BUILD"))
     expect.that(graph.pathToLabel(Path.of("nested/abc.txt"))).isEqualTo(Label.of("//nested:abc.txt"))
@@ -82,40 +82,40 @@ class BuildGraphDataImplTest {
 
   @Test
   fun valueEquality() {
-    assertThat(builder().build(emptyTargetCollection, emptySet(), emptySet()))
-      .isEqualTo(builder().build(emptyTargetCollection, emptySet(), emptySet()))
+    assertThat(builder().build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules))
+      .isEqualTo(builder().build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules))
   }
 
   @Test
   fun valueInequality_differentProjectDefinition() {
     val projectDefinition1 = TargetPatternCollection.create(listOf(TargetPattern.parse("//:target1")))
     val projectDefinition2 = TargetPatternCollection.create(listOf(TargetPattern.parse("//:target2")))
-    assertThat(builder().build(projectDefinition1, emptySet(), emptySet()))
-      .isNotEqualTo(builder().build(projectDefinition2, emptySet(), emptySet()))
+    assertThat(builder().build(projectDefinition1, emptySet(), emptySet(), defaultProtoRules))
+      .isNotEqualTo(builder().build(projectDefinition2, emptySet(), emptySet(), defaultProtoRules))
   }
 
   @Test
   fun valueInequality_differentAlwaysBuildRules() {
     val alwaysBuildRules1 = setOf("rule1")
     val alwaysBuildRules2 = setOf("rule2")
-    assertThat(builder().build(emptyTargetCollection, alwaysBuildRules1, emptySet()))
-      .isNotEqualTo(builder().build(emptyTargetCollection, alwaysBuildRules2, emptySet()))
+    assertThat(builder().build(emptyTargetCollection, alwaysBuildRules1, emptySet(), defaultProtoRules))
+      .isNotEqualTo(builder().build(emptyTargetCollection, alwaysBuildRules2, emptySet(), defaultProtoRules))
   }
 
   @Test
   fun valueInequality_differentSupportedBuildRules() {
     val supportedBuildRules1 = setOf("rule1")
     val supportedBuildRules2 = setOf("rule2")
-    assertThat(builder().build(emptyTargetCollection, emptySet(), supportedBuildRules1))
-      .isNotEqualTo(builder().build(emptyTargetCollection, emptySet(), supportedBuildRules2))
+    assertThat(builder().build(emptyTargetCollection, emptySet(), supportedBuildRules1, defaultProtoRules))
+      .isNotEqualTo(builder().build(emptyTargetCollection, emptySet(), supportedBuildRules2, defaultProtoRules))
   }
 
   @Test
   fun valueInequality_differentSupportedTargets() {
     val builder1 = builder().addSupportedTargetLabel(Label.of("//:target1"))
     val builder2 = builder().addSupportedTargetLabel(Label.of("//:target2"))
-    assertThat(builder1.build(emptyTargetCollection, emptySet(), emptySet()))
-      .isNotEqualTo(builder2.build(emptyTargetCollection, emptySet(), emptySet()))
+    assertThat(builder1.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules))
+      .isNotEqualTo(builder2.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules))
   }
 
   @Test
@@ -133,7 +133,7 @@ class BuildGraphDataImplTest {
       .addSupportedTargetLabel(Label.of("//nested:nested"))
       .addSupportedTargetLabel(Label.of("//nested/inner:inner"))
 
-    val graph: BuildGraphData = builder.build(emptyTargetCollection, emptySet(), emptySet())
+    val graph: BuildGraphData = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
     expect.that(graph.sourceFileToLabel(Path.of("abc.txt"))).isNull()
     expect.that(graph.sourceFileToLabel(Path.of("BUILD"))).isEqualTo(Label.of("//:BUILD"))
     expect.that(graph.sourceFileToLabel(Path.of("nested/abc.txt"))).isNull()
@@ -159,7 +159,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_NO_DEPS_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(
@@ -198,7 +199,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_EXTERNAL_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(
@@ -218,7 +220,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_INTERNAL_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     // Sanity check:
@@ -241,7 +244,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_TRANSITIVE_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     // Sanity check:
@@ -265,7 +269,7 @@ class BuildGraphDataImplTest {
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_PROTO_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
         emptySet(),
-        setOf("java_proto_library"),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(
@@ -286,104 +290,6 @@ class BuildGraphDataImplTest {
       .containsExactly(
         Label.of("//$TESTDATA_ROOT/protodep:indirect_proto_java_proto")
       )
-
-    val protoSourceFilePath: Path = TESTDATA_ROOT.resolve("protodep/testproto.proto")
-
-    val firstConsumingTargets =
-      graph.getFirstReverseDepsOfType(
-        protoSourceFilePath,
-        setOf("java_proto_library")
-      )
-    assertThat(firstConsumingTargets.map { it.label() })
-      .containsExactly(
-        Label.of("//$TESTDATA_ROOT/protodep:proto_java_proto"),
-        Label.of("//$TESTDATA_ROOT/protodep:indirect_proto_java_proto")
-      )
-  }
-
-  @Test
-  @Throws(Exception::class)
-  fun testDoesDependencyPathContainRules() {
-    val graph =
-      BlazeQueryParser(
-        emptyTargetCollection,
-        QuerySyncTestUtils.getQuerySummary(TestData.DOES_DEPENDENCY_PATH_CONTAIN_RULES),
-        QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
-      )
-        .parseForTesting()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/TestClassProtoDep.java"),
-        setOf("java_proto_library")
-      )
-    )
-      .isTrue()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/TestClassProtoDep.java"),
-        setOf("java_lite_proto_library")
-      )
-    )
-      .isFalse()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/TestClassProtoDep.java"),
-        setOf("android_library")
-      )
-    )
-      .isTrue()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/TestClassProtoDep.java"),
-        setOf("java_library")
-      )
-    )
-      .isTrue()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/AndroidOnlyFile.java"),
-        setOf("android_library")
-      )
-    )
-      .isTrue()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/AndroidOnlyFile.java"),
-        setOf("java_library")
-      )
-    )
-      .isFalse()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/AndroidUsingJava.java"),
-        setOf("java_library")
-      )
-    )
-      .isTrue()
-
-    assertThat(
-      graph.doesDependencyPathContainRules(
-        TESTDATA_ROOT.resolve("deppathkinds/testproto.proto"),
-        TESTDATA_ROOT.resolve("deppathkinds/TestClassProtoDep.java"),
-        setOf("proto_library")
-      )
-    )
-      .isTrue()
   }
 
   @Test
@@ -394,7 +300,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_MULTI_TARGETS),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(graph.allSupportedTargets.getTargets().toList())
@@ -436,7 +343,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_EXPORTED_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val sourceFile: Path = TESTDATA_ROOT.resolve("exports/TestClassUsingExport.java")
@@ -458,7 +366,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.ANDROID_LIB_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(graph.storage.sourceFileLabels)
@@ -491,7 +400,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.ANDROID_AIDL_SOURCE_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(graph.storage.sourceFileLabels)
@@ -521,7 +431,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.ANDROID_AIDL_SOURCE_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(graph.storage.sourceFileLabels)
@@ -549,7 +460,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.FILEGROUP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val sourceFile: Path = TESTDATA_ROOT.resolve("filegroup/TestFileGroupSource.java")
@@ -576,7 +488,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.CC_LIBRARY_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(graph.storage.sourceFileLabels)
@@ -657,7 +570,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_EXTERNAL_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val targets =
@@ -668,7 +582,8 @@ class BuildGraphDataImplTest {
               .onlySourcePath
               .resolve(Path.of("TestClassExternalDep.java"))
           )
-          .getUnambiguousTargets()
+          .getUnambiguousTargets(),
+        replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false
       )
     assertThat(targets.targetsToBuild)
       .containsExactly(TestData.JAVA_LIBRARY_EXTERNAL_DEP_QUERY.assumedOnlyLabel)
@@ -686,7 +601,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_MULTI_TARGETS),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val targets =
@@ -697,7 +613,8 @@ class BuildGraphDataImplTest {
               .onlySourcePath
               .resolve(Path.of("BUILD"))
           )
-          .getUnambiguousTargets()
+          .getUnambiguousTargets(),
+        replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false
       )
     assertThat(targets.targetsToBuild)
       .containsExactly(
@@ -720,7 +637,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_NESTED_PACKAGE),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val targets =
@@ -731,7 +649,8 @@ class BuildGraphDataImplTest {
               .onlySourcePath
               .resolve(Path.of("BUILD"))
           )
-          .getUnambiguousTargets()
+          .getUnambiguousTargets(),
+        replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false
       )
     assertThat(targets.targetsToBuild)
       .containsExactly(TestData.JAVA_LIBRARY_NESTED_PACKAGE.assumedOnlyLabel)
@@ -747,7 +666,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_NESTED_PACKAGE),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val targets =
@@ -756,7 +676,8 @@ class BuildGraphDataImplTest {
           .getProjectTargets(
             TestData.JAVA_LIBRARY_NESTED_PACKAGE.onlySourcePath
           )
-          .getUnambiguousTargets()
+          .getUnambiguousTargets(),
+        replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false
       )
     assertThat(targets.targetsToBuild)
       .containsExactly(
@@ -780,7 +701,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.CC_EXTERNAL_DEP_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     val targets =
@@ -789,7 +711,8 @@ class BuildGraphDataImplTest {
           .getProjectTargets(
             TestData.CC_EXTERNAL_DEP_QUERY.onlySourcePath.resolve("TestClass.cc")
           )
-          .getUnambiguousTargets()
+          .getUnambiguousTargets(),
+        replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false
       )
     assertThat(targets.targetsToBuild)
       .containsExactly(TestData.CC_EXTERNAL_DEP_QUERY.assumedOnlyLabel)
@@ -798,6 +721,63 @@ class BuildGraphDataImplTest {
 
   private fun filterRedundantTargets(graph: Map<String, Set<String>>, targets: Set<String>  ): Set<String> {
     return filterRedundantTargets({ graph.getOrDefault(it, emptySet()) }, targets)
+  }
+
+  @Test
+  fun testProtoModePropagation() {
+    val builder = builder()
+    val fullProto = Label.of("//:full_proto")
+    val liteProto = Label.of("//:lite_proto")
+    val depOfFull = Label.of("//:dep_of_full")
+    val depOfLite = Label.of("//:dep_of_lite")
+    val sharedDep = Label.of("//:shared_dep")
+    val explicitOverridden = Label.of("//:explicit_overridden")
+    val transitiveSharedDep = Label.of("//:transitive_shared_dep")
+    val intermediateLite = Label.of("//:intermediate_lite")
+
+    fun addTarget(label: Label, kind: String, deps: List<Label>) {
+      val targetBuilder = ProjectTarget.builder()
+        .label(label)
+        .kind(kind)
+        .tags(emptyList())
+      deps.forEach { targetBuilder.depsBuilder().add(it) }
+      builder.addTarget(label, targetBuilder.build())
+    }
+
+    val consumerOfFull = Label.of("//:consumer_of_full")
+    val consumerOfLite = Label.of("//:consumer_of_lite")
+    val consumerOfShared = Label.of("//:consumer_of_shared")
+
+    addTarget(fullProto, "java_proto_library", listOf(depOfFull, sharedDep, explicitOverridden))
+    addTarget(liteProto, "java_lite_proto_library", listOf(depOfLite, intermediateLite))
+    addTarget(intermediateLite, "java_library", listOf(sharedDep))
+    addTarget(depOfFull, "java_library", emptyList())
+    addTarget(depOfLite, "java_library", emptyList())
+    addTarget(sharedDep, "java_library", listOf(transitiveSharedDep))
+    addTarget(explicitOverridden, "java_proto_library", emptyList())
+    addTarget(transitiveSharedDep, "java_library", emptyList())
+    addTarget(consumerOfFull, "java_library", listOf(fullProto))
+    addTarget(consumerOfLite, "java_library", listOf(liteProto))
+    addTarget(consumerOfShared, "java_library", listOf(sharedDep))
+
+    val graph = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
+
+    // Downward propagation checks
+    assertThat(graph.getProtoModes(fullProto)).containsExactly(BuildGraphData.ProtoMode.FULL)
+    assertThat(graph.getProtoModes(liteProto)).containsExactly(BuildGraphData.ProtoMode.LITE)
+    assertThat(graph.getProtoModes(depOfFull)).containsExactly(BuildGraphData.ProtoMode.FULL)
+    assertThat(graph.getProtoModes(depOfLite)).containsExactly(BuildGraphData.ProtoMode.LITE)
+    assertThat(graph.getProtoModes(intermediateLite)).containsExactly(BuildGraphData.ProtoMode.LITE)
+    assertThat(graph.getProtoModes(sharedDep)).containsExactly(BuildGraphData.ProtoMode.FULL, BuildGraphData.ProtoMode.LITE)
+    assertThat(graph.getProtoModes(explicitOverridden)).containsExactly(BuildGraphData.ProtoMode.FULL)
+    assertThat(graph.getProtoModes(transitiveSharedDep)).containsExactly(BuildGraphData.ProtoMode.FULL, BuildGraphData.ProtoMode.LITE)
+
+    // Upward propagation checks
+    assertThat(graph.getProtoModes(consumerOfFull)).containsExactly(BuildGraphData.ProtoMode.FULL)
+    assertThat(graph.getProtoModes(consumerOfLite)).containsExactly(BuildGraphData.ProtoMode.LITE)
+    // consumerOfShared depends on sharedDep, which has FULL/LITE via downward propagation.
+    // But sharedDep is not a proto library itself, so it does not propagate modes upward.
+    assertThat(graph.getProtoModes(consumerOfShared)).isEmpty()
   }
 
   @Test
@@ -869,7 +849,8 @@ class BuildGraphDataImplTest {
         emptyTargetCollection,
         QuerySyncTestUtils.getQuerySummary(TestData.JAVA_LIBRARY_NO_DEPS_QUERY),
         QuerySyncTestUtils.NOOP_CONTEXT,
-        emptySet()
+        emptySet(),
+        defaultProtoRules
       )
         .parseForTesting()
     assertThat(
@@ -883,7 +864,6 @@ class BuildGraphDataImplTest {
     )
       .containsExactlyElementsIn(TestData.JAVA_LIBRARY_NO_DEPS_QUERY.assumedLabels)
   }
-
 
   @Test
   fun traverseDag() {
@@ -903,12 +883,16 @@ class BuildGraphDataImplTest {
     expect.that(setOf("c").traverseDag()).containsExactly("c", "x", "z").inOrder()
   }
 
-
   private fun getRequiredTargets(
     graph: BuildGraphData,
     forTargets: Collection<Label>,
   ): Set<Label> {
-    return graph.computeRequestedTargets(forTargets).requiredTargets
+    return graph
+      .computeRequestedTargets(
+        forTargets,
+        replaceNativeTargetsWithAndroidTransitionTriggeringTargets = false
+      )
+      .requiredTargets
   }
 
   companion object {

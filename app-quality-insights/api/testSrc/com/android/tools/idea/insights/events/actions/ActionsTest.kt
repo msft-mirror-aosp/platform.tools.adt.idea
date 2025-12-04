@@ -15,9 +15,8 @@
  */
 package com.android.tools.idea.insights.events.actions
 
-import com.android.tools.idea.insights.FetchSource
 import com.android.tools.idea.insights.NOTE1
-import com.android.tools.idea.insights.NoteId
+import com.android.tools.idea.insights.client.FetchSource
 import com.android.tools.idea.insights.events.actions.Action.AddNote
 import com.android.tools.idea.insights.events.actions.Action.CancelFetches
 import com.android.tools.idea.insights.events.actions.Action.CloseIssue
@@ -30,6 +29,7 @@ import com.android.tools.idea.insights.events.actions.Action.OpenIssue
 import com.android.tools.idea.insights.events.actions.Action.Refresh
 import com.android.tools.idea.insights.events.actions.Action.Single
 import com.android.tools.idea.insights.model.issue.IssueId
+import com.android.tools.idea.insights.model.note.NoteId
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 

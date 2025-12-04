@@ -17,20 +17,27 @@ package main.utils.tooltips
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.Composable
+import kotlin.time.Duration
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
 import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
-import kotlin.time.Duration
 
 object TooltipStyleFactory {
   @OptIn(ExperimentalFoundationApi::class)
   @Composable
-  fun createTooltipStyle(duration: Duration) = JewelTheme.tooltipStyle.metrics.let { TooltipStyle(JewelTheme.tooltipStyle.colors,
-                                                                                                  TooltipMetrics(it.contentPadding,
-                                                                                                                 duration, it.cornerSize,
-                                                                                                                 it.borderWidth,
-                                                                                                                 it.shadowSize,
-                                                                                                                 it.placement))
-  }
+  fun createTooltipStyle(duration: Duration) =
+    JewelTheme.tooltipStyle.metrics.let {
+      TooltipStyle(
+        JewelTheme.tooltipStyle.colors,
+        TooltipMetrics(
+          it.contentPadding,
+          duration,
+          it.cornerSize,
+          it.borderWidth,
+          it.shadowSize,
+          it.placement,
+        ),
+      )
+    }
 }

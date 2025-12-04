@@ -20,7 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getProjectTemplates
-import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getTemplateTitle
+import com.android.tools.idea.npw.ui.getTemplateTitle
 import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.Template
 import java.util.function.Supplier
@@ -48,7 +48,11 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
     isLoading = true
     val entries = mutableListOf<ChooseAndroidProjectEntry>()
     withContext(Dispatchers.IO) {
-      formFactorSupplier.get().forEach { entries.add(createFormFactorEntry(it)) }
+      formFactorSupplier.get().forEach {
+        if (it != FormFactor.AiGlasses) {
+          entries.add(createFormFactorEntry(it))
+        }
+      }
       entries.addAll(AndroidProjectEntryProvider.getAllProjectEntries())
     }
     chooseAndroidProjectEntries = entries
@@ -63,13 +67,13 @@ class ChooseAndroidProjectStepModel(private val formFactorSupplier: Supplier<Lis
     templates: List<Template>,
     emptyItemLabel: String = "Empty Activity",
   ): Template? =
-    templates.firstOrNull { it.getTemplateTitle() == emptyItemLabel }
+    templates.firstOrNull { getTemplateTitle(it) == emptyItemLabel }
       ?: templates.firstOrNull { it != Template.NoActivity }
 
-  private fun createFormFactorEntry(formFactorInfo: FormFactor): FormFactorProjectEntry {
-    val templates = formFactorInfo.getProjectTemplates()
+  private fun createFormFactorEntry(formFactor: FormFactor): FormFactorProjectEntry {
+    val templates = formFactor.getProjectTemplates()
     return FormFactorProjectEntry(
-      formFactorInfo.toString(),
+      formFactor.toString(),
       templates,
       getDefaultSelectedTemplateIndex(templates),
     )

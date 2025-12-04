@@ -26,6 +26,7 @@ import com.android.tools.idea.layoutinspector.pipeline.DisconnectedClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.TreeLoader
 import com.android.tools.idea.layoutinspector.properties.PropertiesProvider
+import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorAttachToProcess
 import com.intellij.openapi.Disposable
@@ -158,7 +159,10 @@ private open class FakeInspectorClient(
 
   override fun refresh() = throw NotImplementedError()
 
-  override suspend fun saveSnapshot(path: Path) = throw NotImplementedError()
+  override suspend fun saveSnapshot(
+    path: Path,
+    screenshotType: LayoutInspectorViewProtocol.Screenshot.Type,
+  ) = throw NotImplementedError()
 
   override suspend fun doConnect() {}
 

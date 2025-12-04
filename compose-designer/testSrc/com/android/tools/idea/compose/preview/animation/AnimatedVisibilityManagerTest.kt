@@ -23,105 +23,45 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.compose.preview.animation.TestUtils.findComboBox
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.preview.animation.TestUtils.findAllCards
 import com.android.tools.idea.preview.animation.TestUtils.findToolbar
+import com.intellij.openapi.application.EDT
 import java.awt.Dimension
 import java.util.stream.Collectors
 import javax.swing.JComponent
 import javax.swing.JSlider
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Test
 
 class AnimatedVisibilityManagerTest : InspectorTests() {
 
-  @Test
-  fun swapStatesFromStringEnter() = runTest {
-    var lastState: Any = TestClock.AnimatedVisibilityState.Enter
-    val clock =
-      object : TestClock() {
-        override fun `getAnimatedVisibilityState-xga21d`(animation: Any) = lastState
-
-        override fun updateAnimatedVisibilityState(animation: Any, state: Any) {
-          lastState = state
-          super.updateAnimatedVisibilityState(animation, state)
-        }
-      }
-    setupAndCheckToolbar(animationPreview, clock) { toolbar, ui ->
-      // Freeze, swap, state.
-      assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      assertEquals(3, toolbar.componentCount)
-      assertEquals("Enter", toolbar.components[2].findComboBox().text)
-      ui.clickOn(toolbar.components[1])
-      assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      delayUntilCondition(200) { toolbar.components[2].findComboBox().text == "Exit" }
-      assertEquals("Exit", toolbar.components[2].findComboBox().text)
-    }
-  }
+  @Test fun swapStatesFromStringEnter() = runTest { swapStates("Enter", "Enter", "Exit") }
 
   @Test
   fun swapStatesFromEnter() = runTest {
-    var lastState: Any = TestClock.AnimatedVisibilityState.Enter
-    val clock =
-      object : TestClock() {
-        override fun `getAnimatedVisibilityState-xga21d`(animation: Any) =
-          AnimatedVisibilityState.Enter
-
-        override fun updateAnimatedVisibilityState(animation: Any, state: Any) {
-          lastState = state
-          super.updateAnimatedVisibilityState(animation, state)
-        }
-      }
-    setupAndCheckToolbar(animationPreview, clock) { toolbar, ui ->
-      // Freeze, swap, state.
-      assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      assertEquals(3, toolbar.componentCount)
-      assertEquals("Enter", toolbar.components[2].findComboBox().text)
-      ui.clickOn(toolbar.components[1])
-      assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      delayUntilCondition(200) { toolbar.components[2].findComboBox().text == "Exit" }
-      assertEquals("Exit", toolbar.components[2].findComboBox().text)
-    }
+    swapStates(TestClock.AnimatedVisibilityState.Enter, "Enter", "Exit")
   }
 
-  @Test
-  fun swapStateFromStringExit() = runTest {
-    var lastState: Any = TestClock.AnimatedVisibilityState.Enter
-    val clock =
-      object : TestClock() {
-        override fun `getAnimatedVisibilityState-xga21d`(animation: Any) = "Exit"
-
-        override fun updateAnimatedVisibilityState(animation: Any, state: Any) {
-          lastState = state
-          super.updateAnimatedVisibilityState(animation, state)
-        }
-      }
-    setupAndCheckToolbar(animationPreview, clock) { toolbar, ui ->
-      // Freeze, swap, state.
-      assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      assertEquals(3, toolbar.componentCount)
-      assertEquals("Exit", toolbar.components[2].findComboBox().text)
-      ui.clickOn(toolbar.components[1])
-      assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      delayUntilCondition(200) { toolbar.components[2].findComboBox().text == "Enter" }
-      assertEquals("Enter", toolbar.components[2].findComboBox().text)
-    }
-  }
+  @Test fun swapStateFromStringExit() = runTest { swapStates("Exit", "Exit", "Enter") }
 
   @Test
   fun swapStateFromExit() = runTest {
-    var lastState: Any = TestClock.AnimatedVisibilityState.Exit
+    swapStates(TestClock.AnimatedVisibilityState.Exit, "Exit", "Enter")
+  }
+
+  private fun swapStates(initialState: Any, initialText: String, newText: String) = runTest {
+    var lastState = initialState
     val clock =
       object : TestClock() {
-        override fun `getAnimatedVisibilityState-xga21d`(animation: Any) =
-          AnimatedVisibilityState.Exit
+        override fun `getAnimatedVisibilityState-xga21d`(animation: Any) = initialState
 
         override fun updateAnimatedVisibilityState(animation: Any, state: Any) {
           lastState = state
@@ -129,18 +69,20 @@ class AnimatedVisibilityManagerTest : InspectorTests() {
         }
       }
     setupAndCheckToolbar(animationPreview, clock) { toolbar, ui ->
-      // Freeze, swap, state.
       assertTrue(lastState is TestClock.AnimatedVisibilityState)
       assertEquals(3, toolbar.componentCount)
-      assertEquals("Exit", toolbar.components[2].findComboBox().text)
+      assertEquals(initialText, toolbar.components[2].findComboBox().text)
+
+      // Swap states
       ui.clickOn(toolbar.components[1])
+      ui.layoutAndDispatchEvents()
+      ui.updateToolbarsIfNecessary()
       assertTrue(lastState is TestClock.AnimatedVisibilityState)
-      delayUntilCondition(200) { toolbar.components[2].findComboBox().text == "Enter" }
-      assertEquals("Enter", toolbar.components[2].findComboBox().text)
+      delayUntilCondition(200) { toolbar.components[2].findComboBox().text == newText }
+      assertEquals(newText, toolbar.components[2].findComboBox().text)
     }
   }
 
-  @Ignore("b/463308626")
   @OptIn(ExperimentalCoroutinesApi::class)
   @Test
   fun changeTime() = runTest {
@@ -155,19 +97,24 @@ class AnimatedVisibilityManagerTest : InspectorTests() {
 
     setupAndCheckToolbar(animationPreview, clock) { _, ui ->
       runCurrent()
-      waitForCondition(25.seconds) { numberOfCalls == 1 }
+      advanceUntilIdle()
+      waitForCondition(60.seconds) { numberOfCalls == 1 }
       val sliders =
         TreeWalker(ui.root).descendantStream().filter { it is JSlider }.collect(Collectors.toList())
       assertEquals(1, sliders.size)
       val timelineSlider = sliders[0] as JSlider
       // Change time again.
       timelineSlider.value = 100
+      ui.updateToolbarsIfNecessary()
+      ui.layoutAndDispatchEvents()
       runCurrent()
+      advanceUntilIdle()
       waitForCondition(10.seconds) { numberOfCalls == 2 }
       assertEquals(2, numberOfCalls)
     }
   }
 
+  @OptIn(ExperimentalCoroutinesApi::class)
   private suspend fun setupAndCheckToolbar(
     animationPreview: ComposeAnimationPreview,
     clock: TestClock,
@@ -185,10 +132,10 @@ class AnimatedVisibilityManagerTest : InspectorTests() {
     surface.sceneManagers.forEach { it.requestRenderAndWait() }
     animationPreview.addAnimation(animation).join()
 
-    withContext(uiThread) {
+    withContext(Dispatchers.EDT) {
       val ui = FakeUi(animationPreview.component.apply { size = Dimension(500, 400) })
-      ui.updateToolbars()
       ui.layoutAndDispatchEvents()
+      ui.updateToolbarsIfNecessary()
       val cards = findAllCards(animationPreview.component)
       assertEquals(1, cards.size)
       val toolbar = cards.first().component.findToolbar("AnimationCard") as JComponent

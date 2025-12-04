@@ -16,16 +16,10 @@
 package com.android.tools.idea.vitals.client
 
 import com.android.testutils.time.FakeClock
-import com.android.tools.idea.insights.Connection
-import com.android.tools.idea.insights.ConnectionMode
-import com.android.tools.idea.insights.DataPoint
 import com.android.tools.idea.insights.FAKE_50_DAYS_AGO
 import com.android.tools.idea.insights.FakeTimeProvider
 import com.android.tools.idea.insights.ISSUE1
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.Permission
-import com.android.tools.idea.insights.StatsGroup
-import com.android.tools.idea.insights.TimeIntervalFilter
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.client.AiInsightClient
 import com.android.tools.idea.insights.client.AppInsightsCache
@@ -34,10 +28,15 @@ import com.android.tools.idea.insights.client.FakeAiInsightClient
 import com.android.tools.idea.insights.client.GeminiCrashInsightRequest
 import com.android.tools.idea.insights.client.IssueRequest
 import com.android.tools.idea.insights.client.IssueResponse
+import com.android.tools.idea.insights.client.Permission
 import com.android.tools.idea.insights.client.QueryFilters
+import com.android.tools.idea.insights.model.common.DataPoint
 import com.android.tools.idea.insights.model.common.Interval
+import com.android.tools.idea.insights.model.common.StatsGroup
 import com.android.tools.idea.insights.model.common.WithCount
 import com.android.tools.idea.insights.model.connection.AppConnection
+import com.android.tools.idea.insights.model.connection.Connection
+import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.model.event.Device
 import com.android.tools.idea.insights.model.event.DeviceType
 import com.android.tools.idea.insights.model.event.Event
@@ -511,7 +510,6 @@ class VitalsClientTest {
         null,
         ISSUE1.issueDetails.fatality,
         ISSUE1.sampleEvent,
-        TimeIntervalFilter.ONE_DAY,
       )
 
     val rawInsight = (insight as LoadingState.Ready).value.rawInsight
@@ -532,14 +530,7 @@ class VitalsClientTest {
     val client = createClient()
 
     val insight =
-      client.fetchInsight(
-        TEST_CONNECTION_1,
-        ISSUE1.id,
-        null,
-        FailureType.ANR,
-        ISSUE1.sampleEvent,
-        TimeIntervalFilter.ONE_DAY,
-      )
+      client.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, FailureType.ANR, ISSUE1.sampleEvent)
 
     assertThat(insight)
       .isEqualTo(LoadingState.UnsupportedOperation("Insights are currently not available for ANRs"))
@@ -588,7 +579,6 @@ class VitalsClientTest {
         null,
         FailureType.FATAL,
         Event(stacktraceGroup = stackTraceGroup),
-        TimeIntervalFilter.ONE_DAY,
       )
 
     assertThat(insight)
@@ -611,14 +601,7 @@ class VitalsClientTest {
     val client = createClient(aiInsightClient = fakeAiInsightClient)
 
     val insight =
-      client.fetchInsight(
-        TEST_CONNECTION_1,
-        ISSUE1.id,
-        null,
-        FailureType.FATAL,
-        ISSUE1.sampleEvent,
-        TimeIntervalFilter.ONE_DAY,
-      )
+      client.fetchInsight(TEST_CONNECTION_1, ISSUE1.id, null, FailureType.FATAL, ISSUE1.sampleEvent)
 
     assertThat(insight).isInstanceOf(LoadingState.PermissionDenied::class.java)
   }

@@ -26,20 +26,25 @@ import com.google.idea.blaze.base.scope.scopes.IdeaLogScope;
 import com.google.idea.blaze.base.scope.scopes.ProblemsViewScope;
 import com.google.idea.blaze.base.settings.BlazeUserSettings;
 import com.intellij.execution.ExecutionException;
+import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.process.ProcessListener;
 import com.intellij.openapi.project.Project;
+import java.util.List;
+import java.util.Map;
+import org.jetbrains.annotations.NotNull;
 
 public class LocalInvokerHelper {
   private LocalInvokerHelper() {}
 
   public static ProcessHandler getScopedProcessHandler(
-    Project project, ImmutableList<String> command, WorkspaceRoot workspaceRoot)
+    Project project, List<String> command, WorkspaceRoot workspaceRoot, Map<String, String> environment, final Runnable onExitOrFailureToStart)
     throws ExecutionException {
     return new ScopedBlazeProcessHandler(
       project,
       command,
       workspaceRoot,
+      environment,
       new ScopedBlazeProcessHandler.ScopedProcessHandlerDelegate() {
         @Override
         public void onBlazeContextStart(BlazeContext context) {
@@ -55,7 +60,20 @@ public class LocalInvokerHelper {
           LineProcessingOutputStream outputStream =
             LineProcessingOutputStream.of(
               BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context));
-          return ImmutableList.of(new LineProcessingProcessAdapter(outputStream));
+          return ImmutableList.of(
+            new LineProcessingProcessAdapter(outputStream),
+            new ProcessListener() {
+              @Override
+              public void processTerminated(@NotNull ProcessEvent event) {
+                onExitOrFailureToStart.run();
+              }
+
+              @Override
+              public void processNotStarted() {
+                onExitOrFailureToStart.run();
+              }
+            }
+          );
         }
       });
   }

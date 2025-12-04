@@ -26,7 +26,6 @@ import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.io.toNioPathOrNull
 import com.intellij.openapi.vfs.refreshAndFindVirtualDirectory
 import com.intellij.testFramework.DisposableRule
-import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.fixtures.impl.LightTempDirTestFixtureImpl
@@ -93,7 +92,7 @@ private sealed class FixtureRuleBase : ExternalResource() {
 }
 
 /** Fixture that uses a fake file system in memory. */
-private open class FixtureRuleWithLightTempDir: FixtureRuleBase() {
+private open class FixtureRuleWithLightTempDir : FixtureRuleBase() {
   override val fixture by lazy {
     val factory = IdeaTestFixtureFactory.getFixtureFactory()
     val projectBuilder = factory.createLightFixtureBuilder(this::class.java.name)
@@ -102,7 +101,7 @@ private open class FixtureRuleWithLightTempDir: FixtureRuleBase() {
 }
 
 /** Fixture that uses a temp directory in the real file system. */
-private class FixtureRuleWithTempDir: FixtureRuleBase() {
+private class FixtureRuleWithTempDir : FixtureRuleBase() {
   override val fixture by lazy {
     val factory = IdeaTestFixtureFactory.getFixtureFactory()
     val projectBuilder = factory.createLightFixtureBuilder(this::class.java.name)
@@ -118,8 +117,14 @@ private class FixtureRuleWithTempDir: FixtureRuleBase() {
 
   private fun addContentRootToTempDir(module: Module) {
     val model = ModuleRootManager.getInstance(module).modifiableModel
-    val nioPath = checkNotNull(fixture.tempDirFixture.tempDirPath.toNioPathOrNull()) { "TempDir path is invalid!" }
-    val dir = checkNotNull(nioPath.refreshAndFindVirtualDirectory()) { "Directory $nioPath does not exist!" }
+    val nioPath =
+      checkNotNull(fixture.tempDirFixture.tempDirPath.toNioPathOrNull()) {
+        "TempDir path is invalid!"
+      }
+    val dir =
+      checkNotNull(nioPath.refreshAndFindVirtualDirectory()) {
+        "Directory $nioPath does not exist!"
+      }
     model.addContentEntry(dir)
     ApplicationManager.getApplication().runWriteAction(model::commit)
     SaveAndSyncHandler.getInstance().scheduleProjectSave(fixture.project)

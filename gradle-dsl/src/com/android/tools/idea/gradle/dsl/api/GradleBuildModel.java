@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.dsl.api;
 import com.android.tools.idea.gradle.dsl.api.configurations.ConfigurationsModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel;
+import com.android.tools.idea.gradle.dsl.api.java.JavaDeclarativeModel;
 import com.android.tools.idea.gradle.dsl.api.java.JavaModel;
 import com.android.tools.idea.gradle.dsl.api.kotlin.KotlinModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel;
@@ -124,6 +125,9 @@ public interface GradleBuildModel extends GradleDslContextModel, GradleFileModel
 
   @NotNull
   JavaModel java();
+
+  @NotNull
+  JavaDeclarativeModel javaApplication();
 
   @NotNull
   KotlinModel kotlin();

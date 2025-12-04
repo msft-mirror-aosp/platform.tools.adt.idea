@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.vitals.datamodel
 
-import com.android.tools.idea.insights.Connection
+import com.android.tools.idea.insights.model.connection.Connection
 
 data class VitalsConnection(
   override val appId: String,

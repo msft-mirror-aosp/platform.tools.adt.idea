@@ -17,6 +17,7 @@ package com.android.screenshottest.action
 
 import com.android.screenshottest.listener.UpdateScreenshotTestResultsListener
 import com.android.screenshottest.ui.UpdateReferenceImagesDialog
+import com.android.screenshottest.util.UpdateReferenceImagesDialogManager
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestSuiteView
 import com.intellij.execution.DefaultExecutionTarget
 import com.intellij.execution.ExecutionManager
@@ -28,6 +29,9 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.diagnostic.Logger
 import javax.swing.Icon
+import com.intellij.execution.ExecutionListener
+import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.runners.ExecutionEnvironment
 
 /**
  * Base action for adding or updating reference images for screenshot tests.
@@ -45,6 +49,9 @@ abstract class UpdateReferenceImagesBaseAction(
     val context = ConfigurationContext.getFromEvent(e)
     val project = context.project ?: return
 
+    // Use Manager to prevent multiple dialogs/runs
+    val dialog = UpdateReferenceImagesDialogManager.getInstance(project).showOrGetDialog() ?: return
+
     val validateRunconfigSettings = context.createConfigurationsFromContext()
                                       ?.firstOrNull { it.configurationSettings.name.startsWith("Screenshot Tests") }
                                       ?.configurationSettings
@@ -54,10 +61,23 @@ abstract class UpdateReferenceImagesBaseAction(
     updateRunconfigSettings.isActivateToolWindowBeforeRun = false
 
     val executor = ExecutorRegistry.getInstance().getExecutorById(DefaultRunExecutor.EXECUTOR_ID) ?: return
-    val dialog = UpdateReferenceImagesDialog(project, LOG)
 
-    project.messageBus.connect(dialog.disposable)
-      .subscribe(AndroidTestSuiteView.ANDROID_TEST_SUITE_TOPIC, UpdateScreenshotTestResultsListener(dialog))
+    val connection = project.messageBus.connect(dialog.disposable)
+    connection.subscribe(AndroidTestSuiteView.ANDROID_TEST_SUITE_TOPIC, UpdateScreenshotTestResultsListener(dialog))
+
+    connection.subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+      override fun processTerminated(
+        executorId: String,
+        env: ExecutionEnvironment,
+        handler: ProcessHandler,
+        exitCode: Int
+      ) {
+        // Check if this termination corresponds to our run configuration
+        if (env.runnerAndConfigurationSettings == updateRunconfigSettings && exitCode != 0) {
+          dialog.onBuildFailed()
+        }
+      }
+    })
     ExecutionManager.getInstance(project).restartRunProfile(
       project,
       executor,

@@ -21,11 +21,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.idea.blaze.base.bazel.BuildSystem;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker.Capability;
-import com.google.idea.blaze.base.bazel.LocalBazelInvoker;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeCommandRunnerExperiments;
@@ -44,8 +44,7 @@ import com.google.idea.blaze.base.run.smrunner.BlazeTestEventsHandler;
 import com.google.idea.blaze.base.run.smrunner.BlazeTestUiSession;
 import com.google.idea.blaze.base.run.smrunner.SmRunnerUtils;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
-import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFinderStrategy;
-import com.google.idea.blaze.base.run.testlogs.BlazeTestResultHolder;
+import com.google.idea.blaze.base.run.testlogs.BlazeTestResultFetcher;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.OutputSink;
 import com.google.idea.blaze.base.settings.Blaze;
@@ -70,6 +69,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import kotlin.Unit;
 
 /**
  * A Blaze run configuration set up with an executor, program runner, and other settings, ready to
@@ -149,7 +149,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
         && BlazeCommandRunnerExperiments.USE_SINGLEJAR_FOR_DEBUGGING.getValue()) {
       commandBuilder.add("--singlejar");
     }
-    return getScopedProcessHandler(project, commandBuilder.build(), workspaceRoot);
+    return getScopedProcessHandler(project, commandBuilder.build(), workspaceRoot, ImmutableMap.of(), () -> {});
   }
 
   private ProcessHandler startProcessBazelCliCase(
@@ -161,7 +161,11 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
         BlazeInvocationContext.ContextType.RunConfiguration));
 
     try {
-      return invoker.invokeAsProcessHandler(prepareBazelCommand(project, invoker).blazeCommand(), context);
+      PrepareBazelCommandResult prepareBazelCommandResult = prepareBazelCommand(project, invoker);
+      return invoker.invokeAsProcessHandler(prepareBazelCommandResult.blazeCommand(), context, bepStreamProvider -> {
+        prepareBazelCommandResult.testResultFinderStrategy().setTestResults(bepStreamProvider);
+        return Unit.INSTANCE;
+      });
     }
     catch (BuildException e) {
       throw new ExecutionException(e);
@@ -171,7 +175,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
   private PrepareBazelCommandResult prepareBazelCommand(Project project, BuildInvoker invoker) {
     BlazeCommand.Builder blazeCommand;
     BlazeTestUiSession testUiSession = null;
-    BlazeTestResultFinderStrategy testResultFinderStrategy = new BlazeTestResultHolder();
+    final var testResultFinderStrategy = new BlazeTestResultFetcher();
     if (useTestUi()
         && BlazeTestEventsHandler.targetsSupported(project, getConfiguration().getTargets())) {
       testUiSession =
@@ -191,7 +195,8 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
           testUiSession.getBlazeFlags(),
           getExecutorType(),
           kotlinxCoroutinesJavaAgent);
-      ConsoleView consoleView = SmRunnerUtils.getConsoleView(project, getConfiguration(), getEnvironment().getExecutor(), testUiSession);
+      ConsoleView consoleView = SmRunnerUtils.getConsoleView(project, getConfiguration(), getEnvironment().getExecutor(),
+                                                             testUiSession.getTestResultFinderStrategy());
       setConsoleBuilder(
         new TextConsoleBuilderImpl(project) {
           @Override
@@ -214,7 +219,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
     return result;
   }
 
-  private record PrepareBazelCommandResult(BlazeCommand.Builder blazeCommand, BlazeTestResultFinderStrategy testResultFinderStrategy) {
+  private record PrepareBazelCommandResult(BlazeCommand.Builder blazeCommand, BlazeTestResultFetcher testResultFinderStrategy) {
   }
 
   @Override
@@ -285,7 +290,16 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
         command.addBlazeFlags(debugPortFlag(true, debugPort));
       }
       if (kotlinxCoroutinesJavaAgent != null) {
-        command.addBlazeFlags("--jvmopt=-javaagent:" + kotlinxCoroutinesJavaAgent);
+        if (BlazeCommandRunnerExperiments.BAZEL_DEBUG_USE_WRAPPER_SCRIPT_FLAG_FOR_JAVA_AGENT.getValue()) {
+          String flag = "--wrapper_script_flag=--jvm_flag=-javaagent:" + kotlinxCoroutinesJavaAgent;
+          if (isBinary) {
+            command.addExeFlags(flag);
+          } else {
+            command.addBlazeFlags(testArg(flag));
+          }
+        } else {
+          command.addBlazeFlags("--jvmopt=-javaagent:" + kotlinxCoroutinesJavaAgent);
+        }
       }
     }
 

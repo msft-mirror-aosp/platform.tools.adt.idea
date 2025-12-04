@@ -18,7 +18,9 @@ package com.android.tools.idea.layoutinspector.snapshots
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.concurrency.createCoroutineScope
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.layoutinspector.LayoutInspector
+import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetrics
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatisticsImpl
@@ -30,11 +32,19 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.properties.LayoutInspectorPropertiesPanelDefinition
 import com.android.tools.idea.layoutinspector.properties.PropertiesProvider
+import com.android.tools.idea.layoutinspector.runningdevices.actions.UiConfig
+import com.android.tools.idea.layoutinspector.runningdevices.ui.ToolbarState
+import com.android.tools.idea.layoutinspector.runningdevices.ui.createLayoutInspectorPanel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.createToolbarPanel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.EmbeddedRendererModel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.StandaloneRendererPanel
+import com.android.tools.idea.layoutinspector.runningdevices.ui.rendering.navigateToSelectedViewFromRendererDoubleClick
 import com.android.tools.idea.layoutinspector.tree.EditorTreeSettings
 import com.android.tools.idea.layoutinspector.tree.LayoutInspectorTreePanelDefinition
 import com.android.tools.idea.layoutinspector.ui.DeviceViewPanel
 import com.android.tools.idea.layoutinspector.ui.InspectorBanner
 import com.android.tools.idea.layoutinspector.ui.LayoutInspectorRootPanel
+import com.android.tools.idea.layoutinspector.ui.ZoomableContainer
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorAttachToProcess.ClientType.SNAPSHOT_CLIENT
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorEvent.DynamicLayoutInspectorEventType.SNAPSHOT_LOADED
@@ -55,15 +65,20 @@ import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.JBColor
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.StatusText
+import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Graphics
 import java.beans.PropertyChangeListener
 import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.JPanel
+import kotlinx.coroutines.launch
 
 private const val LAYOUT_INSPECTOR_SNAPSHOT_ID = "Layout Inspector Snapshot"
+private const val SNAPSHOT_OUTDATED_ID = "snapshot.outdated"
 
 class FileEditorInspectorClient(
   private val model: InspectorModel,
@@ -141,7 +156,28 @@ class LayoutInspectorFileEditor(val project: Project, private val path: Path) :
           treeSettings = treeSettings,
         )
 
-      rootPanel = createLayoutInspectorUi(this, project, layoutInspector)
+      rootPanel =
+        if (StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_STANDALONE_V2.get()) {
+          createNewLayoutInspectorUi(this, project, layoutInspector)
+        } else {
+          createOldLayoutInspectorUi(this, project, layoutInspector)
+        }
+
+      val hasBitmapImage =
+        when (model.pictureType) {
+          AndroidWindow.ImageType.BITMAP_AS_REQUESTED -> true
+          AndroidWindow.ImageType.UNKNOWN,
+          AndroidWindow.ImageType.SKP_PENDING,
+          AndroidWindow.ImageType.SKP -> false
+        }
+
+      if (!hasBitmapImage && StudioFlags.DYNAMIC_LAYOUT_INSPECTOR_STANDALONE_V2.get()) {
+        notificationModel.addNotification(
+          id = SNAPSHOT_OUTDATED_ID,
+          text = LayoutInspectorBundle.message(SNAPSHOT_OUTDATED_ID),
+          sticky = true,
+        )
+      }
 
       metadata.loadDuration = System.currentTimeMillis() - startTime
       model.updateConnection(client)
@@ -181,7 +217,88 @@ class LayoutInspectorFileEditor(val project: Project, private val path: Path) :
     return rootPanel
   }
 
-  private fun createLayoutInspectorUi(
+  private fun createNewLayoutInspectorUi(
+    disposable: Disposable,
+    project: Project,
+    layoutInspector: LayoutInspector,
+  ): LayoutInspectorRootPanel {
+    val scope = disposable.createCoroutineScope()
+
+    val renderModel =
+      EmbeddedRendererModel(
+        parentDisposable = disposable,
+        // In on-device rendering we don't want to filter nodes by display id. There is no
+        // concept of display there, since everything is rendered on-top of the views.
+        displayId = null,
+        inspectorModel = layoutInspector.inspectorModel,
+        treeSettings = layoutInspector.treeSettings,
+        renderSettings = layoutInspector.renderSettings,
+        navigateToSelectedViewOnDoubleClick = {
+          layoutInspector.navigateToSelectedViewFromRendererDoubleClick()
+        },
+      )
+
+    val renderPanel =
+      StandaloneRendererPanel(disposable = disposable, scope = scope, renderModel = renderModel)
+
+    val container =
+      ZoomableContainer(
+        disposable = disposable,
+        contentPanel = renderPanel,
+        getZoomPercent = { layoutInspector.renderSettings.scalePercent },
+        setZoomPercent = { layoutInspector.renderSettings.scalePercent = it },
+      )
+
+    // The main panel is passed as target component to createToolbarPanel. This is needed to make
+    // sure that all actions in the toolbar can resolve Layout Inspector from the data context
+    // provided by LayoutInspectorRootPanel.
+    val mainPanel = BorderLayoutPanel()
+
+    val toolbarState = ToolbarState(showTitle = false, leftAlightToolbar = true)
+    val toolbar =
+      createToolbarPanel(
+        disposable = disposable,
+        targetComponent = mainPanel,
+        layoutInspector = layoutInspector,
+        processPicker = null,
+        extraActions = emptyList(),
+        toolbarState = toolbarState,
+      )
+    toolbar.border = JBUI.Borders.customLineBottom(JBColor.border())
+
+    mainPanel.apply {
+      addToTop(toolbar)
+      addToCenter(container)
+    }
+
+    val rootPanel =
+      createLayoutInspectorPanel(
+        project = project,
+        disposable = disposable,
+        layoutInspector = layoutInspector,
+        uiConfig = UiConfig.VERTICAL,
+        centerPanel = mainPanel,
+        toolbarPanel = null,
+      )
+
+    scope.launch { toolbarState.overlayImage.collect { renderModel.setOverlay(it) } }
+
+    scope.launch {
+      toolbarState.overlayTransparency.collect { renderModel.setOverlayTransparency(it) }
+    }
+
+    // Since the model was updated before the panel was created, we need to zoom to fit explicitly.
+    // If startup is in progress we have to wait until after so tools windows are opened and the
+    // window is its final size.
+    // TODO: save zoom in editor state
+    StartupManager.getInstance(project).runAfterOpened {
+      invokeLater(ModalityState.any()) { container.zoom(ZoomType.FIT) }
+    }
+
+    return rootPanel
+  }
+
+  private fun createOldLayoutInspectorUi(
     disposable: Disposable,
     project: Project,
     layoutInspector: LayoutInspector,

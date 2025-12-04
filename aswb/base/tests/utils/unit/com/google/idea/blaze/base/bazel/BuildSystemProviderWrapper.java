@@ -20,7 +20,6 @@ import com.google.errorprone.annotations.MustBeClosed;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
 import com.google.idea.blaze.base.bazel.BuildSystem.SyncStrategy;
 import com.google.idea.blaze.base.command.BlazeCommand;
-import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider;
 import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.lang.buildfile.language.semantics.RuleDefinition;
 import com.google.idea.blaze.base.model.BlazeVersionData;
@@ -33,6 +32,7 @@ import com.google.idea.blaze.base.settings.BuildBinaryType;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.blaze.base.sync.SyncScope.SyncFailedException;
 import com.google.idea.blaze.exception.BuildException;
+import com.google.idea.blaze.qsync.project.BuildGraphData;
 import com.google.idea.blaze.qsync.project.ProjectDirectoryConfigurator;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.openapi.project.Project;
@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -211,15 +212,19 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
     }
 
     @Override
-    public BuildEventStreamProvider invoke(BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext)
+    public <T> T invoke(
+        BlazeCommand.Builder blazeCommandBuilder,
+        BlazeContext blazeContext,
+        BuildSystem.BuildEventStreamConsumer<T> consumer)
         throws BuildException {
-      return inner.invoke(blazeCommandBuilder, blazeContext);
+      return inner.invoke(blazeCommandBuilder, blazeContext, consumer);
     }
 
     @Override
     public ProcessHandler invokeAsProcessHandler(BlazeCommand.Builder blazeCommandBuilder,
-                                                 BlazeContext blazeContext) throws BuildException {
-      return inner.invokeAsProcessHandler(blazeCommandBuilder, blazeContext);
+                                                 BlazeContext blazeContext, BuildSystem.BuildEventStreamConsumer<Unit> consumer)
+      throws BuildException {
+      return inner.invokeAsProcessHandler(blazeCommandBuilder, blazeContext, consumer);
     }
 
     @Override
@@ -322,6 +327,11 @@ public class BuildSystemProviderWrapper implements BuildSystemProvider {
     @Override
     public @NotNull Set<@NotNull String> getEmptyJarDigests() {
       return Collections.emptySet();
+    }
+
+    @Override
+    public @NotNull BuildGraphData.ProtoRules getProtoRules() {
+      return inner.getProtoRules();
     }
   }
 }

@@ -103,6 +103,10 @@ class AppInspectionSnapshotLoader : SnapshotLoader {
               treeLoader.loadComponentTree(data, model.resourceLookup, processDescriptor)
                 ?: throw Exception()
             capabilities.addAll(treeData.dynamicCapabilities)
+
+            // Trigger a refresh to make sure that the bitmap bytes are converted to an actual image
+            treeData.window?.refreshImages(1.0)
+
             model.update(treeData.window, rootIds, treeData.generation)
             viewPropertiesCache.setAllFrom(windowInfo.properties)
             composeInfo?.composeParameters?.let { composeParametersCache.setAllFrom(it) }

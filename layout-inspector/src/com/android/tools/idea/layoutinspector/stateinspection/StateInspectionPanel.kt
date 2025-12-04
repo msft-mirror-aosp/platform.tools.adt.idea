@@ -17,10 +17,19 @@ package com.android.tools.idea.layoutinspector.stateinspection
 
 import com.android.adblib.utils.createChildScope
 import com.android.tools.adtui.common.AdtSecondaryPanel
+import com.android.tools.adtui.stdui.Chunk
+import com.android.tools.adtui.stdui.EmptyStatePanel
+import com.android.tools.adtui.stdui.IconChunk
+import com.android.tools.adtui.stdui.LabelData
+import com.android.tools.adtui.stdui.NewLineChunk
+import com.android.tools.adtui.stdui.TextChunk
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.metrics.statistics.SessionStatistics
+import com.intellij.execution.filters.HyperlinkInfo
+import com.intellij.execution.impl.EditorHyperlinkListener
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionPlaces.UNKNOWN
 import com.intellij.openapi.actionSystem.ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
@@ -43,6 +52,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.CardLayout
 import java.awt.Component
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -59,6 +69,8 @@ const val RECOMPOSITION_TEXT_LABEL_NAME = "RecompositionTextLabel"
 const val STATE_READ_TEXT_LABEL_NAME = "StateReadTextLabel"
 private val INVALIDATED_COLOR = JBColor(0x388E3C, 0x66BB6A)
 private const val INVALIDATED_LAYER = 10
+private const val KEY_EMPTY = "EMPTY_STATE"
+private const val KEY_EDITOR = "EDITOR"
 
 /** Convenience function for creating a StateInspectionPanel */
 internal fun createStateInspectionPanel(
@@ -83,6 +95,7 @@ internal class StateInspectionPanel(
   stats: SessionStatistics,
   scope: CoroutineScope,
   parentDisposable: Disposable,
+  hyperLinkDetectorFactory: HyperLinkDetectorFactory = StateInspectionHyperLinkDetectorFactory(),
 ) : AdtSecondaryPanel(BorderLayout()) {
   private var innerPanel: InnerStateInspectionPanel? = null
     set(value) {
@@ -109,6 +122,7 @@ internal class StateInspectionPanel(
               stats,
               project,
               scope,
+              hyperLinkDetectorFactory,
               parentDisposable,
             )
       }
@@ -123,9 +137,10 @@ internal class StateInspectionPanel(
 private class InnerStateInspectionPanel(
   private val parent: StateInspectionPanel,
   model: StateInspectionModel,
-  stats: SessionStatistics,
+  private val stats: SessionStatistics,
   project: Project,
   parentScope: CoroutineScope,
+  hyperLinkDetectorFactory: HyperLinkDetectorFactory,
   parentDisposable: Disposable,
 ) : AdtSecondaryPanel(BorderLayout()), Disposable {
   private val scope = parentScope.createChildScope()
@@ -138,10 +153,17 @@ private class InnerStateInspectionPanel(
     }
   private val recompositionText = JBLabel().apply { name = RECOMPOSITION_TEXT_LABEL_NAME }
   private val stateReadCountText = JBLabel().apply { name = STATE_READ_TEXT_LABEL_NAME }
+  private val contentLayout = CardLayout()
+  private val contentPanel = JPanel(contentLayout)
+  private val emptyPanel = JPanel(BorderLayout())
   private val editor = createStateReadEditor(project, this)
-  private val hyperlinkDetector =
-    StateInspectionHyperLinkDetector(project, editor, stats, scope, this)
+  private val listener = EditorHyperlinkListener { logUsageEvent(it) }
+  private val hyperlinkDetector = hyperLinkDetectorFactory.create(editor, scope, listener)
   private val foldingDetector = StateInspectionFoldingDetector(editor, scope)
+  private val prev = ActionButton(model.prevAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
+  private val next = ActionButton(model.nextAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
+  private val minimize =
+    ActionButton(model.minimizeAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
 
   init {
     isFocusable = false
@@ -149,13 +171,10 @@ private class InnerStateInspectionPanel(
     parent.putUserData(STATE_READ_EDITOR_KEY, editor) // For testing
     title.text = LayoutInspectorBundle.message("layout.inspector.recomposition.state.reads")
     title.border = JBUI.Borders.empty(2, 5)
-    val prev = ActionButton(model.prevAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
     prev.maximumSize = DEFAULT_MINIMUM_BUTTON_SIZE
     prev.isFocusable = true
-    val next = ActionButton(model.nextAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
     next.maximumSize = DEFAULT_MINIMUM_BUTTON_SIZE
     next.isFocusable = true
-    val minimize = ActionButton(model.minimizeAction, null, UNKNOWN, DEFAULT_MINIMUM_BUTTON_SIZE)
     minimize.maximumSize = DEFAULT_MINIMUM_BUTTON_SIZE
     minimize.border = JBUI.Borders.emptyRight(10)
     minimize.isFocusable = true
@@ -175,15 +194,15 @@ private class InnerStateInspectionPanel(
     header.add(minimize)
     header.border = JBUI.Borders.customLineBottom(JBColor.border())
 
+    // Use a card layout to switch between empty state and actual content
+    contentPanel.add(emptyPanel, KEY_EMPTY)
+    contentPanel.add(editor.component, KEY_EDITOR)
+
     add(header, BorderLayout.NORTH)
-    add(editor.component, BorderLayout.CENTER)
+    add(contentPanel, BorderLayout.CENTER)
     border = JBUI.Borders.empty()
 
-    scope.launch { model.recompositionText.collect { recompositionText.text = it } }
-    scope.launch { model.stateReadsText.collect { stateReadCountText.text = it } }
-    scope.launch { model.stackTraceText.collect { setTextInEditor(it) } }
-    scope.launch { model.composableInspected.collect { setComposableInspectedInEditor(it) } }
-    scope.launch { model.updates.collect { updateButtons(prev, next, minimize) } }
+    parentScope.launch { model.content.collect { update(it) } }
   }
 
   override fun dispose() {
@@ -191,8 +210,31 @@ private class InnerStateInspectionPanel(
     parent.putUserData(STATE_READ_EDITOR_KEY, null)
   }
 
-  private fun setComposableInspectedInEditor(data: ComposableDefinition?) {
-    editor.putUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY, data)
+  private suspend fun update(content: StateInspectionContent) {
+    recompositionText.text = content.recompositionText
+    stateReadCountText.text = content.stateReadsText
+    editor.putUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY, content.composableInspected)
+    showEmptyStateText(content.emptyStateText)
+    updateButtons(prev, next, minimize)
+    setTextInEditor(content.stackTraceText)
+  }
+
+  private fun showEmptyStateText(message: String) {
+    if (message.isEmpty()) {
+      contentLayout.show(contentPanel, KEY_EDITOR)
+      emptyPanel.removeAll()
+    } else {
+      val chunks = mutableListOf<Chunk>()
+      chunks.add(IconChunk(AllIcons.General.WarningDialog))
+      message.split("\n").forEach {
+        chunks.add(TextChunk(it))
+        chunks.add(NewLineChunk)
+      }
+      val emptyStatePanel = EmptyStatePanel(LabelData(*chunks.dropLast(1).toTypedArray()))
+      emptyPanel.removeAll()
+      emptyPanel.add(emptyStatePanel, BorderLayout.CENTER)
+      contentLayout.show(contentPanel, KEY_EMPTY)
+    }
   }
 
   private fun updateButtons(vararg buttons: ActionButton) {
@@ -210,6 +252,7 @@ private class InnerStateInspectionPanel(
     try {
       document.setReadOnly(false)
       edtWriteAction { document.setText(text) }
+      editor.markupModel.removeAllHighlighters()
       highlightInvalidations(text)
       hyperlinkDetector.detectHyperlinks()
       foldingDetector.detectFolding()
@@ -233,6 +276,13 @@ private class InnerStateInspectionPanel(
       startOffset = text.indexOf(INVALIDATED, endOffset)
     }
   }
+
+  private fun logUsageEvent(linkInfo: HyperlinkInfo?) =
+    when (linkInfo) {
+      is LayoutInspectorExplainWithAIHyperLinkInfo -> stats.stateReadsExplainWithAiClicked()
+      is HyperlinkInfo -> stats.stateReadsGotoSourceFromStackTrace()
+      else -> {}
+    }
 
   private fun createStateReadEditor(project: Project, disposable: Disposable): EditorEx {
     val editorFactory = EditorFactory.getInstance()

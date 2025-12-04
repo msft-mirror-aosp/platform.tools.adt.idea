@@ -46,7 +46,6 @@ import com.google.common.util.concurrent.SettableFuture
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_STALE_CHANGES
 import com.intellij.compiler.CompilerConfiguration
 import com.intellij.compiler.CompilerManagerImpl
-import com.intellij.gradle.toolingExtension.util.GradleVersionUtil
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
@@ -81,13 +80,6 @@ import com.intellij.util.ArrayUtil
 import com.intellij.util.ExceptionUtil
 import com.intellij.util.Function
 import com.intellij.util.ui.UIUtil
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
-import java.util.Locale
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import org.gradle.tooling.BuildAction
 import org.gradle.tooling.BuildActionExecuter
 import org.gradle.tooling.BuildCancelledException
@@ -98,11 +90,17 @@ import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.events.OperationType
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
-import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContext
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
+import org.jetbrains.plugins.gradle.service.project.GradleProjectResolver
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
-import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 internal class GradleTasksExecutorImpl : GradleTasksExecutor {
   override fun execute(
@@ -300,7 +298,6 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
           executionSettings
             .withVmOptions(traceJvmArgs)
             .withArguments(commandLineArguments)
-          setupBuiltInTestEvents(executionSettings, context)
           val operation: LongRunningOperation = if (isRunBuildAction) connection.action(buildAction) else connection.newBuild()
           val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
           GradleTaskManager.configureTasks(myRequest.rootProjectPath.path, myRequest.taskId, executionSettings, gradleVersion)
@@ -568,11 +565,3 @@ private inline fun <T> executeWithoutProcessCanceledException(crossinline action
   return result as T
 }
 
-private fun setupBuiltInTestEvents(
-  settings: GradleExecutionSettings,
-  context: GradleExecutionContext
-) {
-  if (GradleVersionUtil.isGradleAtLeast(context.gradleVersion, "7.6")) {
-    settings.isBuiltInTestEventsUsed = true
-  }
-}

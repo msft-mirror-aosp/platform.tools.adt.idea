@@ -15,6 +15,10 @@
  */
 package com.android.tools.idea.insights
 
+import com.android.tools.idea.insights.model.common.DataPoint
+import com.android.tools.idea.insights.model.common.StatsGroup
+import com.android.tools.idea.insights.model.issue.IssueStats
+
 fun <T : Number, R : Number> IssueStats<T>.map(mapper: (T) -> R) =
   IssueStats(
     topValue,

@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.configurations.ConfigurationsModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel
+import com.android.tools.idea.gradle.dsl.api.java.JavaDeclarativeModel
 import com.android.tools.idea.gradle.dsl.api.java.JavaModel
 import com.android.tools.idea.gradle.dsl.api.kotlin.KotlinModel
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel
@@ -33,6 +34,7 @@ import com.android.tools.idea.gradle.dsl.model.dependencies.ScriptDependenciesMo
 import com.android.tools.idea.gradle.dsl.model.ext.EmptyExtModelImpl
 import com.android.tools.idea.gradle.dsl.model.ext.ExtModelImpl
 import com.android.tools.idea.gradle.dsl.model.java.EmptyJavaModelImpl
+import com.android.tools.idea.gradle.dsl.model.java.JavaDeclarativeModelImpl
 import com.android.tools.idea.gradle.dsl.model.java.JavaModelImpl
 import com.android.tools.idea.gradle.dsl.model.kotlin.EmptyKotlinModelImpl
 import com.android.tools.idea.gradle.dsl.model.kotlin.KotlinModelImpl
@@ -50,6 +52,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElem
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement
 import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile
 import com.android.tools.idea.gradle.dsl.parser.java.JavaDslElement
+import com.android.tools.idea.gradle.dsl.parser.java.JavaDclElement
 import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslElement
 import com.android.tools.idea.gradle.dsl.parser.plugins.PluginsDslElement
 import com.android.tools.idea.gradle.dsl.parser.repositories.RepositoriesDslElement
@@ -70,7 +73,10 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
 
   override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> {
     return when (kind) {
-      DECLARATIVE -> mapOf()
+      DECLARATIVE -> mapOf(
+        "javaApplication" to JavaDclElement.JAVA_APPLICATION,
+        "javaLibrary" to JavaDclElement.JAVA_LIBRARY
+      )
       else -> DEFAULT_ROOT_ELEMENTS_MAP
     }
   }
@@ -86,6 +92,17 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
       "repositories" to RepositoriesDslElement.REPOSITORIES,
       "subprojects" to SubProjectsDslElement.SUBPROJECTS,
       "plugins" to PluginsDslElement.PLUGINS)
+
+    private fun declarativeJavaBuilder(file: GradleBuildFile): JavaDeclarativeModel {
+      file.getPropertyElement(JavaDclElement.JAVA_APPLICATION)?.let { element ->
+        return JavaDeclarativeModelImpl(element)
+      }
+      file.getPropertyElement(JavaDclElement.JAVA_LIBRARY)?.let { element ->
+        return JavaDeclarativeModelImpl(element)
+      }
+      // TODO throw exception for now but need to create add element mechanism
+      throw IllegalStateException("Cannot create java[Application|Library] dsl element")
+    }
 
     private val DEFAULT_ROOT_AVAILABLE_MODELS = listOf<BlockModelBuilder<*, GradleBuildFile>>(
       BuildScriptModel::class.java from {
@@ -125,7 +142,7 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
 
       RepositoriesModel::class.java from {
         RepositoriesModelImpl(it.ensurePropertyElement(RepositoriesDslElement.REPOSITORIES))
-      }
+      },
     )
 
     private val DECLARATIVE_ROOT_AVAILABLE_MODELS = listOf<BlockModelBuilder<*, GradleBuildFile>>(
@@ -135,7 +152,8 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
       ExtModel::class.java from { EmptyExtModelImpl() },
       JavaModel::class.java from { EmptyJavaModelImpl() },
       KotlinModel::class.java from { EmptyKotlinModelImpl() },
-      RepositoriesModel::class.java from { EmptyRepositoriesModelImpl() }
+      RepositoriesModel::class.java from { EmptyRepositoriesModelImpl() },
+      JavaDeclarativeModel::class.java from { declarativeJavaBuilder(it) },
     )
   }
 }

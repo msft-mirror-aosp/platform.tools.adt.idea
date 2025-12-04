@@ -20,10 +20,10 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.util.Screensh
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ImageLoader
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.ImageUtil
 import com.intellij.util.ui.JBImageIcon
@@ -38,7 +38,8 @@ import javax.swing.BorderFactory
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 
-// Define constraints for the image panel size.
+// Limits the maximum dimension (width or height) of the preview thumbnail
+// to ensure it fits within the list item layout without distorting the UI.
 private const val MAX_IMAGE_SIZE = 200
 
 /**
@@ -52,8 +53,9 @@ class PreviewItemPanel(
   private val imagePanel: ImagePanel
   var isLoadedSuccessfully: Boolean = false
     private set
-  val loadedImagePaths = mutableMapOf<String, String>() // imagePath to simpleClassName
-  val sourceImageToCopy = mutableMapOf<String, String>()
+
+  private val _sourceImageToCopy = mutableMapOf<String, String>()
+  val sourceImageToCopy: Map<String, String> get() = _sourceImageToCopy
 
   init {
     // Use GridBagLayout to stack components vertically without forcing them to the same width.
@@ -77,22 +79,33 @@ class PreviewItemPanel(
           border = BorderFactory.createEmptyBorder(8, 0, 0, 0)
         }
 
-    val diffDouble = previewData.diffPercent?.toDoubleOrNull()
-    val matchPercentage = ScreenshotTestUtils.calculateMatchPercentage(diffDouble)
-
-    val matchLabel = JBLabel(matchPercentage ?: "0.00%").apply {
-      foreground = if (previewData.testResult == AndroidTestCaseResult.PASSED) JBColor.GREEN.darker() else JBColor.RED
-      font = font.deriveFont(Font.BOLD)
-      alignmentX = LEFT_ALIGNMENT
-    }
-    val previewNameLabel =
-      JBLabel(previewData.previewName).apply { alignmentX = LEFT_ALIGNMENT }
-    detailsPanel.add(matchLabel)
-    detailsPanel.add(previewNameLabel)
-    // TODO: Add Composable link
+      val matchLabel = createMatchPercentageLabel(previewData)
+      val previewNameLabel =
+        JBLabel(previewData.previewName).apply { alignmentX = LEFT_ALIGNMENT }
+      detailsPanel.add(matchLabel)
+      detailsPanel.add(previewNameLabel)
+      // TODO: Add Composable link
 
       c.gridy = 1
       add(detailsPanel, c)
+    }
+  }
+
+  private fun createMatchPercentageLabel(previewData: PreviewDetails): JBLabel {
+    val diffDouble = previewData.diffPercent?.toDoubleOrNull()
+    val matchPercentage = ScreenshotTestUtils.calculateMatchPercentage(diffDouble)
+    val text = matchPercentage ?: DEFAULT_MATCH_PERCENTAGE
+
+    val color = if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+      JBColor.GREEN.darker()
+    } else {
+      JBColor.RED
+    }
+
+    return JBLabel(text).apply {
+      foreground = color
+      font = font.deriveFont(Font.BOLD)
+      alignmentX = LEFT_ALIGNMENT
     }
   }
 
@@ -114,7 +127,7 @@ class PreviewItemPanel(
       ScreenshotViewType.ALL -> {
       }
       ScreenshotViewType.NEW -> {
-        previewData.srcImagePath?.let { loadImage(it, previewData.testId) } ?: showError("No New Image")
+        previewData.srcImagePath?.let { loadImage(it, previewData.testId) } ?: showError(NO_NEW_IMAGE_TEXT)
       }
       ScreenshotViewType.DIFF -> {
         val diffPath = previewData.diffImagePath
@@ -122,9 +135,9 @@ class PreviewItemPanel(
           loadImage(diffPath, previewData.testId)
         } else {
           if (previewData.testResult == AndroidTestCaseResult.PASSED) {
-            showPlaceholder("No Difference", JBColor.GREEN)
+            showPlaceholder(NO_DIFFERENCE_TEXT, JBColor.GREEN)
           } else {
-            showPlaceholder("No Diff Image", JBColor.RED)
+            showPlaceholder(NO_DIFF_IMAGE_TEXT, JBColor.RED)
           }
         }
       }
@@ -133,7 +146,7 @@ class PreviewItemPanel(
         if (refPath != null && File(refPath).exists()) {
           loadImage(refPath, previewData.testId)
         } else {
-          showPlaceholder("No Reference Image", JBColor.RED)
+          showPlaceholder(NO_REF_IMAGE_TEXT, JBColor.RED)
         }
       }
     }
@@ -141,14 +154,14 @@ class PreviewItemPanel(
 
   fun loadImage(newPath: String, testId: String) {
     val simpleClassName = testId.split('.', limit = 2).first()
-    loadedImagePaths[newPath] = simpleClassName
 
-    if (sourceImageToCopy.isEmpty()) {
-      previewData.srcImagePath?.let { sourceImageToCopy[it] = simpleClassName }
+    if (_sourceImageToCopy.isEmpty()) {
+      previewData.srcImagePath?.let { _sourceImageToCopy[it] = simpleClassName }
     }
 
-    ApplicationManager.getApplication().executeOnPooledThread {
+    AppExecutorUtil.getAppExecutorService().submit {
       val image = createImageIcon(newPath)
+
       ApplicationManager.getApplication().invokeLater {
         if (image != null) {
           imagePanel.setImage(image)
@@ -159,7 +172,8 @@ class PreviewItemPanel(
 
           isLoadedSuccessfully = true
         } else {
-          showError("Couldn't load image")
+          logger.error("Couldn't load image from path: $newPath")
+          showError(COULD_NOT_LOAD_IMAGE_TEXT)
         }
       }
     }
@@ -167,13 +181,20 @@ class PreviewItemPanel(
 
   private fun createImageIcon(path: String): JBImageIcon? {
     val ioFile = File(path)
-    val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(ioFile)
-    if (virtualFile == null || virtualFile.length == 0L) {
-      logger.warn("Image file not found or is empty after build: $path")
+    if (!ioFile.exists()) {
+      logger.warn("Image file not found. Path: $path")
+      return null
+    }
+    if (ioFile.length() == 0L) {
+      logger.warn("Image file is empty. Path: $path")
       return null
     }
     return try {
-      val image = ImageLoader.loadFromBytes(virtualFile.contentsToByteArray()) ?: return null
+      val image = ImageLoader.loadFromBytes(ioFile.readBytes())
+      if (image == null) {
+        logger.warn("ImageLoader failed to parse image data from path: $path")
+        return null
+      }
 
       val w = image.getWidth(null)
       val h = image.getHeight(null)
@@ -201,7 +222,7 @@ class PreviewItemPanel(
       val scaledImage = ImageUtil.scaleImage(image, finalW, finalH)
       JBImageIcon(scaledImage)
     } catch (e: IOException) {
-      logger.error("IOException while loading image: $path", e)
+      logger.error("IOException occurred while loading image from path: $path", e)
       null
     }
   }
@@ -211,7 +232,7 @@ class PreviewItemPanel(
    */
   private class ImagePanel : JPanel(GridBagLayout()) {
     private var image: JBImageIcon? = null
-    private val loadingIcon = AsyncProcessIcon("Waiting for image...")
+    private val loadingIcon = AsyncProcessIcon(WAITING_FOR_IMAGE_TEXT)
     private val initialSize = Dimension(200, 200)
 
     init {

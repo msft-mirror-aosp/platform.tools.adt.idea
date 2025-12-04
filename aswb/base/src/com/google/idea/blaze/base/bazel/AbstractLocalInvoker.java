@@ -53,9 +53,12 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
+import kotlin.Unit;
 
 /** A local Blaze/Bazel invoker that issues commands via CLI. */
 public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
@@ -69,8 +72,19 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
   }
 
   @Override
-  public final BuildEventStreamProvider invoke(BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext)
+  public <T> T invoke(
+      BlazeCommand.Builder blazeCommandBuilder,
+      BlazeContext blazeContext,
+      BuildSystem.BuildEventStreamConsumer<T> consumer)
       throws BuildException {
+    try (BuildEventStreamProvider streamProvider =
+        createBuildEventStreamProvider(blazeCommandBuilder, blazeContext)) {
+      return consumer.consume(streamProvider);
+    }
+  }
+
+  private BuildEventStreamProvider createBuildEventStreamProvider(
+      BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext) throws BuildException {
     try {
       performGuardCheck(project, blazeContext);
     } catch (ExecutionDeniedException e) {
@@ -92,17 +106,36 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
     return getBepStream(outputFile);
   }
 
-
   @Override
-  public final ProcessHandler invokeAsProcessHandler(BlazeCommand.Builder blazeCommandBuilder,
-                                               BlazeContext blazeContext) throws BuildException {
+  public final ProcessHandler invokeAsProcessHandler(
+    BlazeCommand.Builder blazeCommandBuilder, BlazeContext blazeContext, BuildSystem.BuildEventStreamConsumer<Unit> consumer)
+    throws BuildException {
     try {
       performGuardCheck(project, blazeContext);
     } catch (ExecutionDeniedException e) {
       throw new BuildException(e.getMessage(), e);
     }
+    File outputFile = BuildEventProtocolUtils.createTempOutputFile();
+    blazeCommandBuilder.addBlazeFlags(BuildEventProtocolUtils.getBuildFlags(outputFile));
     try {
-      return LocalInvokerHelper.getScopedProcessHandler(project, blazeCommandBuilder.build().toList(), WorkspaceRoot.fromProject(project));
+      final var environment = new HashMap<String, String>();
+      maybeAddAndroidHome(environment::put);
+      return LocalInvokerHelper.getScopedProcessHandler(project, blazeCommandBuilder.build().toList(), WorkspaceRoot.fromProject(project),
+                                                        environment, () -> {
+          try {
+            final BuildEventStreamProvider buildEventStreamProvider;
+            buildEventStreamProvider = getBepStream(outputFile);
+            try {
+              consumer.consume(buildEventStreamProvider);
+            }
+            finally {
+              buildEventStreamProvider.close();
+            }
+          }
+          catch (BuildException e) {
+            throw new RuntimeException(e);
+          }
+        });
     }
     catch (ExecutionException e) {
       throw new BuildException(e);
@@ -143,7 +176,7 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
               return true;
             }))
         .ignoreExitCode(true);
-      maybeAddAndroidHome(builder);
+      maybeAddAndroidHome(builder::environmentVar);
       int retVal =
           builder
               .build()
@@ -185,7 +218,7 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
         .stdout(out)
         .stderr(stderr)
         .ignoreExitCode(true);
-      maybeAddAndroidHome(builder);
+      maybeAddAndroidHome(builder::environmentVar);
       int exitCode =
           builder
               .build()
@@ -211,7 +244,7 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
         LineProcessingOutputStream.of(
           BlazeConsoleLineProcessorProvider.getAllStderrLineProcessors(context)))
       .ignoreExitCode(true);
-    maybeAddAndroidHome(builder);
+    maybeAddAndroidHome(builder::environmentVar);
     int retVal =
         builder
             .build()
@@ -219,7 +252,7 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
     return BuildResult.fromExitCode(retVal);
   }
 
-  private void maybeAddAndroidHome(ExternalTask.Builder builder) {
+  private void maybeAddAndroidHome(BiConsumer<String, String> addVariable) {
     if (getType().needsAndroidHome) {
       // Bazel native toolchains by default relies on the local OS and environment. Configure the Android environment with the current
       // Android Studio settings unless already configured in the outer environment.
@@ -235,10 +268,10 @@ public abstract class AbstractLocalInvoker extends AbstractBuildInvoker {
         androidNdkHome = androidNdkPath != null ? androidNdkPath.toString() : null;
       }
       if (!Strings.isNullOrEmpty(androidHome)) {
-        builder.environmentVar("ANDROID_HOME", androidHome);
+        addVariable.accept("ANDROID_HOME", androidHome);
       }
       if (!Strings.isNullOrEmpty(androidNdkHome)) {
-        builder.environmentVar("ANDROID_NDK_HOME", androidNdkHome);
+        addVariable.accept("ANDROID_NDK_HOME", androidNdkHome);
       }
     }
   }

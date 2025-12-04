@@ -16,6 +16,7 @@
 package com.google.idea.blaze.base.bazel
 
 import com.google.errorprone.annotations.MustBeClosed
+import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker.Capability
 import com.google.idea.blaze.base.command.BlazeCommand
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider
 import com.google.idea.blaze.base.command.info.BlazeInfo
@@ -29,10 +30,13 @@ import com.google.idea.blaze.base.settings.BuildBinaryType
 import com.google.idea.blaze.base.settings.BuildSystemName
 import com.google.idea.blaze.base.sync.SyncScope
 import com.google.idea.blaze.exception.BuildException
+import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.openapi.project.Project
 import java.io.InputStream
 import java.util.Optional
+import org.jetbrains.annotations.TestOnly
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * Encapsulates interactions with a Bazel based build system.
@@ -60,6 +64,11 @@ interface BuildSystem {
      * Always parallelize sync builds.
      */
     PARALLEL,
+  }
+
+  fun interface BuildEventStreamConsumer<T> {
+    @Throws(BuildException::class)
+    fun consume(streamProvider: BuildEventStreamProvider): T
   }
 
   /**
@@ -104,10 +113,11 @@ interface BuildSystem {
      * Runs a blaze command, parses the build results into a [BlazeBuildOutputs] object.
      */
     @Throws(BuildException::class)
-    fun invoke(
+    fun <T> invoke(
       blazeCommandBuilder: BlazeCommand.Builder,
       blazeContext: BlazeContext,
-    ): BuildEventStreamProvider
+      consumer: BuildEventStreamConsumer<T>,
+    ): T
 
     /**
      * Runs a blaze command and returns a process handler, which can be used by the IDE to control its execution.
@@ -116,6 +126,7 @@ interface BuildSystem {
     fun invokeAsProcessHandler(
       blazeCommandBuilder: BlazeCommand.Builder,
       blazeContext: BlazeContext,
+      consumer: BuildEventStreamConsumer<Unit>,
     ): ProcessHandler
 
     /**
@@ -188,11 +199,16 @@ interface BuildSystem {
   val emptyJarDigests: Set<String>
 
   /**
+   * Returns the names of proto related rules used in the current build system.
+   */
+  fun getProtoRules(): BuildGraphData.ProtoRules
+
+  /**
    * Get a Blaze invoker with desired capabilities.
    */
   fun getBuildInvoker(
     project: Project,
-    requirements: Set<BuildInvoker.Capability>,
+    requirements: Set<Capability>,
   ): Optional<BuildInvoker>
 
   /**
@@ -205,7 +221,7 @@ interface BuildSystem {
     ) {
       return getBuildInvoker(
         project,
-        requirements = setOf(BuildInvoker.Capability.BUILD_PARALLEL_SHARDS)
+        requirements = setOf(Capability.BUILD_PARALLEL_SHARDS)
       ).orElseThrow()
     }
     return getBuildInvoker(
@@ -239,4 +255,59 @@ interface BuildSystem {
   fun getInvocationLink(invocationId: String): Optional<String>
 
   fun createQueryRunner(project: Project): BazelQueryRunner
+}
+
+@VisibleForTesting
+class TestBuildInvoker @TestOnly constructor(
+  override val capabilities: Set<Capability> =
+    setOf(Capability.SUPPORT_CLI, Capability.SUPPORT_QUERY_FILE, Capability.SUPPORT_TARGET_PATTERN_FILE),
+  override val type: BuildBinaryType = BuildBinaryType.BAZEL,
+  override val invokeCommand: List<String> = listOf("bazel"),
+  override val canOverrideBinaryPath: Boolean = false,
+  override val buildSystem: BuildSystem = BazelBuildSystem(BuildGraphData.ProtoRules.forTests()),
+  var bepStreamProvider: (blazeCommandBuilder: BlazeCommand.Builder, blazeContext: BlazeContext) -> BuildEventStreamProvider =
+    { _, _ -> error("not implemented") },
+): BuildSystem.BuildInvoker {
+  data class RecordedInvocation(val method: String, val blazeCommand: List<String>)
+  val invocations: MutableList<RecordedInvocation> = mutableListOf()
+
+  override fun <T> invoke(
+    blazeCommandBuilder: BlazeCommand.Builder,
+    blazeContext: BlazeContext,
+    consumer: BuildSystem.BuildEventStreamConsumer<T>,
+  ): T {
+    invocations.add(RecordedInvocation("invoke", blazeCommandBuilder.build().toList()))
+    return consumer.consume(bepStreamProvider(blazeCommandBuilder, blazeContext))
+  }
+
+  override fun invokeAsProcessHandler(
+    blazeCommandBuilder: BlazeCommand.Builder,
+    blazeContext: BlazeContext,
+    consumer: BuildSystem.BuildEventStreamConsumer<Unit>,
+  ): ProcessHandler {
+    invocations.add(RecordedInvocation("invokeAsProcessHandler", blazeCommandBuilder.build().toList()))
+    // Output to the process handler and its closure should go first here.
+    consumer.consume(bepStreamProvider(blazeCommandBuilder, blazeContext))
+    error("not implemented")
+  }
+
+  override fun invokeQuery(
+    blazeCommandBuilder: BlazeCommand.Builder,
+    blazeContext: BlazeContext,
+  ): InputStream {
+    invocations.add(RecordedInvocation("invokeQuery", blazeCommandBuilder.build().toList()))
+    error("not implemented")
+  }
+
+  override fun invokeInfo(
+    blazeCommandBuilder: BlazeCommand.Builder,
+    blazeContext: BlazeContext,
+  ): InputStream {
+    invocations.add(RecordedInvocation("invokeInfo", blazeCommandBuilder.build().toList()))
+    error("not implemented")
+  }
+
+  override fun getBlazeInfo(blazeContext: BlazeContext): BlazeInfo {
+    error("not implemented")
+  }
 }

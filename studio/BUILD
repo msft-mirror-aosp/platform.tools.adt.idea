@@ -356,7 +356,7 @@ studio_plugin(
             "//tools/adt/idea/lint:intellij.lint",
         ],
         "manifest-merger.jar": [
-            "//tools/base/build-system:studio.android.sdktools.manifest-merger",
+            "//tools/base/build-system/manifest-merger:studio.android.sdktools.manifest-merger",
         ],
         "pixelprobe.jar": [
             "//tools/base/chunkio:studio.android.sdktools.chunkio",
@@ -838,6 +838,7 @@ studio_plugin(
         "@intellij//:intellij.platform.jewel.markdown.core",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
+        "@intellij//:intellij.platform.lvcs.impl",
         "@intellij//:intellij.platform.vcs.impl",
         "@intellij//:intellij.platform.vcs.log.impl",
         "@intellij//:org.intellij.groovy",

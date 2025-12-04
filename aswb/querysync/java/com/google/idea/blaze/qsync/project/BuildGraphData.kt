@@ -16,7 +16,6 @@
 package com.google.idea.blaze.qsync.project
 
 import com.google.common.annotations.VisibleForTesting
-import com.google.common.collect.ImmutableSet
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.TargetPatternCollection
@@ -30,6 +29,33 @@ interface BuildGraphData {
   enum class LanguageClass {
     JVM, CC
   }
+
+  data class ProtoRules(
+    val fullModeRuleNames: Set<String>,
+    val liteModeRuleNames: Set<String>
+  ) {
+    companion object {
+      @VisibleForTesting
+      @JvmStatic
+      fun forTests(): ProtoRules = ProtoRules(
+        setOf("java_proto_library"),
+        setOf("java_lite_proto_library")
+      )
+    }
+  }
+
+  /**
+   * A protobuf runtime variant.
+   */
+  enum class ProtoMode { FULL, LITE }
+
+  /**
+   * The protobuf runtime modes the target is used in.
+   *
+   * For java targets it is the variant of the runtime it depends on and for proto_library-like
+   * targets it is the set of modes of tergets that depend on it.
+   */
+  fun getProtoModes(label: Label): Set<ProtoMode>
 
   /** A set of all the BUILD files  */
   fun packages(): PackageSet
@@ -65,15 +91,6 @@ interface BuildGraphData {
   fun getSameLanguageTargetsDependingOn(targets: Set<Label>): Set<Label>
 
   /**
-   * Calculates the first targets of a given set of rule types along any given dependency path for a
-   * given source.
-   */
-  fun getFirstReverseDepsOfType(
-    sourcePath: Path,
-    ruleKinds: Set<String>
-  ): Collection<ProjectTarget>
-
-  /**
    * Returns all in project targets that depend on the source file at `sourcePath` via an
    * in-project dependency chain. Used to determine possible test targets for a given file.
    *
@@ -82,20 +99,6 @@ interface BuildGraphData {
    * target C, target A is *not* included in `getReverseDeps` for a source file in target C.
    */
   fun getReverseDepsForSource(sourcePath: Path): Collection<ProjectTarget>
-
-  /**
-   * Checks whether a given dependency path contains any of a specified set of rule kinds.
-   *
-   *
-   * All dependency paths are considered starting at any target containing {@param sourcePath}
-   * and going to any target containing {@param consumingSourcePath}. If any rule on one of these
-   * paths is of a kind contained in {@param ruleKinds}, the method will return true.
-   */
-  fun doesDependencyPathContainRules(
-    sourcePath: Path,
-    consumingSourcePath: Path,
-    ruleKinds: Set<String>
-  ): Boolean
 
   // TODO: b/397649793 - Remove this method when fixed.
   fun dependsOnAnyOf_DO_NOT_USE_BROKEN(projectTarget: Label, deps: Set<Label>): Boolean
@@ -152,7 +155,7 @@ interface BuildGraphData {
   /**
    * Calculates the [RequestedTargets] for a project target.
    */
-  fun computeRequestedTargets(projectTargets: Collection<Label>): RequestedTargets
+  fun computeRequestedTargets(projectTargets: Collection<Label>, replaceNativeTargetsWithAndroidTransitionTriggeringTargets: Boolean): RequestedTargets
 
   /**
    * Calculates the [RequestedTargets] for the whole project.
@@ -187,6 +190,8 @@ interface BuildGraphData {
         .build(
           projectDefinitionTargetPatterns = TargetPatternCollection.create(emptyList()),
           alwaysBuildRules = emptySet(),
-          supportedBuildRules = emptySet())
+          supportedBuildRules = emptySet(),
+          protoRules = ProtoRules(emptySet(), emptySet())
+        )
   }
 }

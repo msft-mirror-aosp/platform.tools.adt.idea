@@ -15,10 +15,9 @@
  */
 package com.android.tools.adtui.model
 
-import org.junit.Test
-
 import com.google.common.truth.Truth.assertThat
 import org.jetbrains.annotations.NotNull
+import org.junit.Test
 
 class DragAndDropListModelTest {
   private val FIRST = SimpleListModelElement("First")
@@ -42,7 +41,7 @@ class DragAndDropListModelTest {
     val finalArray = arrayOf(THIRD, FIRST, SECOND)
     val model = DragAndDropListModel<SimpleListModelElement>()
     addElements(model, initialArray)
-    model.moveElementTo(THIRD, 0);
+    model.moveElementTo(THIRD, 0)
     validateOrder(model, finalArray)
   }
 
@@ -107,20 +106,27 @@ class DragAndDropListModelTest {
     model.removeElement("Unsupported")
   }
 
-  private fun addElements(model: DragAndDropListModel<SimpleListModelElement>, values: Array<SimpleListModelElement>) {
+  private fun addElements(
+    model: DragAndDropListModel<SimpleListModelElement>,
+    values: Array<SimpleListModelElement>,
+  ) {
     for (i in 0 until values.size) {
       model.insertOrderedElement(values[i])
     }
   }
 
-  private fun validateOrder(model: DragAndDropListModel<SimpleListModelElement>, values: Array<SimpleListModelElement>) {
+  private fun validateOrder(
+    model: DragAndDropListModel<SimpleListModelElement>,
+    values: Array<SimpleListModelElement>,
+  ) {
     assertThat(model.size).isEqualTo(values.size)
     for (i in 0 until model.size) {
       assertThat(model[i]).isEqualTo(values[i])
     }
   }
 
-  private inner class SimpleListModelElement(@NotNull private val value: String) : DragAndDropModelListElement {
+  private inner class SimpleListModelElement(@NotNull private val value: String) :
+    DragAndDropModelListElement {
     override fun getId(): Int {
       return value.hashCode()
     }

@@ -56,7 +56,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.tools.idea.npw.project.ChooseAndroidProjectStep.Companion.getTemplateTitle
+import com.android.tools.idea.npw.ui.getTemplateTitle
 import com.android.tools.idea.wizard.template.Template
 import com.intellij.openapi.diagnostic.fileLogger
 import com.intellij.ui.JBColor
@@ -317,7 +317,7 @@ private fun TemplateText(template: Template, isSelected: Boolean, isFocused: Boo
   ) {
     Text(
       modifier = Modifier.padding(vertical = 4.dp),
-      text = template.getTemplateTitle(),
+      text = getTemplateTitle(template),
       color = UIUtil.getListForeground(isSelected, isFocused).toComposeColor(),
       textAlign = TextAlign.Center,
     )

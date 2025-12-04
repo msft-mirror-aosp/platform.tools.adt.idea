@@ -23,7 +23,6 @@ import com.android.tools.idea.npw.model.NewProjectModel
 import com.android.tools.idea.npw.model.NewProjectModuleModel
 import com.android.tools.idea.npw.template.ConfigureTemplateParametersStep
 import com.android.tools.idea.npw.template.TemplateResolver
-import com.android.tools.idea.npw.toWizardFormFactor
 import com.android.tools.idea.observable.core.BoolValueProperty
 import com.android.tools.idea.observable.core.ObservableBool
 import com.android.tools.idea.wizard.model.ModelWizard.Facade
@@ -95,13 +94,19 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
         this.getNewProjectTemplates()
       }
 
-    fun Template.getTemplateTitle(): String =
-      name.replace("${formFactor.toWizardFormFactor().displayName} ", "")
+    /**
+     * Indicates which form factor in the Project Chooser this form factor should be grouped under.
+     */
+    private fun FormFactor.projectChooserCategory() =
+      when (this) {
+        FormFactor.AiGlasses -> FormFactor.XR
+        else -> this
+      }
 
     private fun FormFactor.getNewProjectTemplates() =
       TemplateResolver.getAllTemplates().filter {
         WizardUiContext.NewProject in it.uiContexts &&
-          it.formFactor == this &&
+          it.formFactor.projectChooserCategory() == this &&
           (it.name !in setOf("Architecture Sample", "AI Starter") ||
             StudioFlags.NPW_ENABLE_ARCHITECTURE_SAMPLE_TEMPLATE.get())
       }
