@@ -55,15 +55,7 @@
     <orderEntry type="module" module-name="intellij.android.ml-api" />
     <orderEntry type="module" module-name="analytics" />
     <orderEntry type="module" module-name="intellij.android.server-flags" />
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../bazel-bin/tools/adt/idea/android/libandroid-core-proto.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
+    <orderEntry type="library" name="android-core-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common.gradle" />
     <orderEntry type="library" name="agp-version" level="project" />
     <orderEntry type="module" module-name="intellij.android.lang" />
