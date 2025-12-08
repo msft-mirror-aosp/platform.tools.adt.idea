@@ -62,6 +62,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.plugins.gradle.GradleManager
 import org.jetbrains.plugins.gradle.execution.test.runner.AllInPackageGradleConfigurationProducer
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestsExecutionConsoleManager
@@ -115,7 +116,7 @@ class AndroidGradleConfigurationProducersTest {
   }
 
   @Test
-  fun testTasksIsReExecuted() {
+  fun testTasksIsReExecuted() = runBlocking {
     projectRule.loadProject(TEST_RESOURCES)
 
     // Create the Run configuration.
@@ -243,7 +244,7 @@ class AndroidGradleConfigurationProducersTest {
   }
 
   @Test
-  fun testCoverageEngineDoesntRequireRecompilation() {
+  fun testCoverageEngineDoesntRequireRecompilation() = runBlocking {
     projectRule.loadProject(SIMPLE_APPLICATION)
     // Run a Gradle task.
     val projectPath = project.basePath!!
