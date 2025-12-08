@@ -24,5 +24,7 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.upgrade" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.gradle-tooling.api" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.gradle-tooling.impl" scope="TEST" />
   </component>
 </module>
