@@ -22,9 +22,53 @@
     <orderEntry type="module" module-name="as-driver.utils" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-sdk" level="project" />
     <orderEntry type="module" module-name="android.sdktools.testlib" scope="TEST" />
-    <orderEntry type="module" module-name="directaccess-client" scope="TEST" />
+    <orderEntry type="module-library" scope="TEST">
+      <library name="directaccess-client-base">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/vendor/google/directaccess-client/libdirectaccess-client-base.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
     <orderEntry type="module" module-name="android.sdktools.adblib" scope="TEST" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.grpc" level="project" />
-    <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.libraries.grpc.netty.shaded" level="project" />
+    <orderEntry type="module-library" scope="TEST">
+      <library name="grpc">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-api/1.69.1/grpc-api-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-auth/1.69.1/grpc-auth-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-core/1.69.1/grpc-core-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-kotlin-stub/1.4.1/grpc-kotlin-stub-1.4.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-netty/1.69.1/grpc-netty-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-netty-shaded/1.69.1/grpc-netty-shaded-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-protobuf/1.69.1/grpc-protobuf-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-protobuf-lite/1.69.1/grpc-protobuf-lite-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-stub/1.69.1/grpc-stub-1.69.1.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../prebuilts/tools/common/m2/repository/io/grpc/grpc-context/1.69.1/grpc-context-1.69.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="directaccess_client_proto">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/vendor/google/directaccess-client/proto/device_streaming_kt_proto.jar!/" />
+          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/vendor/google/directaccess-client/proto/legacy/ftl_client_kt_proto.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="TEST">
+      <library name="adb-proxy">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../../bazel-bin/tools/base/adb-proxy/libadb-proxy.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" scope="TEST" name="protobuf-kotlin" level="project" />
   </component>
 </module>

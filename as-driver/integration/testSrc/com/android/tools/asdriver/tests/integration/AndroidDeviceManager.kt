@@ -44,20 +44,24 @@ import kotlinx.coroutines.runBlocking
 class AndroidDeviceManager {
 
   private val deviceStreamingAPIEndpoint = "dns:///devicestreaming.googleapis.com"
-  private val metadataServerEndpoint = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
+  private val metadataServerEndpoint =
+    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
   private val cloudProjectId = "adt-device-testing"
   private val directAccessReservationManager: DirectAccessReservationManager
-  private val scope: CoroutineScope = CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher())
-  private val channel: ManagedChannel = NettyChannelBuilder.forTarget(deviceStreamingAPIEndpoint)
-    .withOption(ChannelOption.TCP_NODELAY, true)
-    .build()
+  private val scope: CoroutineScope =
+    CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher())
+  private val channel: ManagedChannel =
+    NettyChannelBuilder.forTarget(deviceStreamingAPIEndpoint)
+      .withOption(ChannelOption.TCP_NODELAY, true)
+      .build()
   private val oAuthTokenFetcher: () -> String = {
     val client = HttpClient.newHttpClient()
-    val request = HttpRequest.newBuilder()
-      .uri(URI.create(metadataServerEndpoint))
-      .GET()
-      .header("Metadata-Flavor", "Google")
-      .build()
+    val request =
+      HttpRequest.newBuilder()
+        .uri(URI.create(metadataServerEndpoint))
+        .GET()
+        .header("Metadata-Flavor", "Google")
+        .build()
     val response = client.send(request, HttpResponse.BodyHandlers.ofString())
     val authResponse = JsonParser.parseString(response.body()).getAsJsonObject()
     authResponse.get("access_token").asString
@@ -69,25 +73,21 @@ class AndroidDeviceManager {
   private var nextPort: Int = 8554
 
   init {
-    directAccessReservationManager = DirectAccessReservationManager(
-      cloudProjectId,
-      scope,
-      true,
-      channel,
-      oAuthTokenFetcher
-    )
+    directAccessReservationManager =
+      DirectAccessReservationManager(cloudProjectId, scope, true, channel, oAuthTokenFetcher)
     adbSession = AdbSession.create(AdbSessionHost())
-    directAccessConnectionManager = DirectAccessConnectionManager(
-      scope,
-      adbSession,
-      true,
-      oAuthTokenFetcher,
-      channel,
-      directAccessReservationManager
-    )
+    directAccessConnectionManager =
+      DirectAccessConnectionManager(
+        scope,
+        adbSession,
+        true,
+        oAuthTokenFetcher,
+        channel,
+        directAccessReservationManager,
+      )
   }
 
-  fun getDevice(model: String, apiLevel: String): String {
+  fun reserveDevice(model: String, apiLevel: String): String {
     deviceName = directAccessReservationManager.createReservation(model, apiLevel).name
     return deviceName
   }
@@ -98,27 +98,36 @@ class AndroidDeviceManager {
   }
 
   fun tearDown() {
-    directAccessReservationManager.cancelReservation(deviceName, true)
+    if (deviceName != "No Device Reserved Yet.") {
+      directAccessReservationManager.cancelReservation(deviceName, true)
+      TestLogger.log("Remote Device Released.")
+    }
     runBlocking { scope.coroutineContext.job.cancelAndJoin() }
     adbSession.close()
     channel.shutdown()
-    TestLogger.log("Remote Device Released.")
   }
 
-  fun runEmulator(fileSystem: TestFileSystem, sdk: AndroidSdk, display: Display, systemImage: Emulator.SystemImage = Emulator.DEFAULT_EMULATOR_SYSTEM_IMAGE, extraEmulatorFlags: List<String> = emptyList()): Emulator {
-    if (SystemInfo.isWindows) {
-      val deviceName: String = getDevice("akita", "34")
+  fun runAndroidDevice(
+    fileSystem: TestFileSystem,
+    sdk: AndroidSdk,
+    display: Display,
+    systemImage: Emulator.SystemImage = Emulator.DEFAULT_EMULATOR_SYSTEM_IMAGE,
+    extraEmulatorFlags: List<String> = emptyList(),
+  ): Emulator {
+    val platform = System.getProperty("intellij.plugin.test.platform")
+    if (SystemInfo.isWindows || ("sherlock-sdk" == platform)) {
+      val deviceName: String = reserveDevice("akita", "34")
       TestLogger.log("Device Reserved: $deviceName")
       connectToDevice(deviceName)
       TestLogger.log("Connected To Device: $deviceName")
-      return Emulator.start(fileSystem, sdk, display, null, nextPort++, extraEmulatorFlags)
-    }
-    else {
+      return Emulator(fileSystem, null, null, null, null, null)
+    } else {
       TestLogger.log("Emulator#runEmulator")
       val systemImageDir = getRoot(systemImage.path)
       Emulator.createEmulator(fileSystem, curEmulatorName, systemImageDir)
-      // Increase grpc port by one after spawning an emulator to avoid conflict
-      val emulator = Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort++, extraEmulatorFlags)
+
+      val emulator =
+        Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort, extraEmulatorFlags)
       return emulator
     }
   }
