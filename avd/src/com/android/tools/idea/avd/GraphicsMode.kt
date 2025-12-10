@@ -35,13 +35,12 @@ internal fun GraphicsMode.toGpuMode(systemImage: ISystemImage) =
   when (this) {
     GraphicsMode.AUTO -> GpuMode.AUTO
     GraphicsMode.HARDWARE -> GpuMode.HOST
-    GraphicsMode.SOFTWARE -> GpuMode.getSoftwareGpuMode(systemImage)
+    GraphicsMode.SOFTWARE -> GpuMode.SOFTWARE
   }
 
 internal fun GpuMode.toGraphicsMode() =
   when (this) {
     GpuMode.AUTO -> GraphicsMode.AUTO
     GpuMode.HOST -> GraphicsMode.HARDWARE
-    GpuMode.SWIFT,
-    GpuMode.OFF -> GraphicsMode.SOFTWARE
+    GpuMode.SOFTWARE -> GraphicsMode.SOFTWARE
   }
