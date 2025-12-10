@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.avd
 
-import com.android.sdklib.ISystemImage
 import com.android.sdklib.internal.avd.GpuMode
 
 internal enum class GraphicsMode {
@@ -31,7 +30,7 @@ internal enum class GraphicsMode {
     }
 }
 
-internal fun GraphicsMode.toGpuMode(systemImage: ISystemImage) =
+internal fun GraphicsMode.toGpuMode() =
   when (this) {
     GraphicsMode.AUTO -> GpuMode.AUTO
     GraphicsMode.HARDWARE -> GpuMode.HOST
