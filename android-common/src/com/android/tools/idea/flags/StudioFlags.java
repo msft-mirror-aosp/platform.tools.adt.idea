@@ -353,6 +353,10 @@ public final class StudioFlags {
     PROFILER, "leakcanary", "LeakCanary",
     "Enables the integration of leakCanary and display of leaks");
 
+  public static final Flag<Boolean> PROFILER_LEAKCANARY_MILESTONE2 = new BooleanFlag(
+    PROFILER, "leakcanary.milestone2", "LeakCanary Milestone 2",
+    "Enables new features for the LeakCanary profiler as part of Milestone 2.");
+
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android");
   //endregion
@@ -1220,6 +1224,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> DYNAMIC_LAYOUT_INSPECTOR_STANDALONE_V2 = new BooleanFlag(
     LAYOUT_INSPECTOR, "dynamic.layout.inspector.standalone.v2", "Enable standalone Layout Inspector V2",
     "Enable standalone Layout Inspector V2.");
+
+  public static final Flag<Boolean> DYNAMIC_LAYOUT_CHROME_DEVTOOLS_MENU = new BooleanFlag(
+    LAYOUT_INSPECTOR, "dynamic.layout.inspector.chrome.devtools.menu", "Supply a Chrome DevTools menu item for WebViews",
+    "Add a menu item to the context menu in the Layout Inspector that will launch Chrome DevTools for WebViews.");
   //endregion
 
   //region Embedded Emulator
@@ -1310,9 +1318,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> DEVICE_MIRRORING_B386236480_TESTING = new DebugFlag(
     DEVICE_MIRRORING, "b386236480.testing", "Turn device screen off on Android versions affected by b/386236480",
     "If enabled, Studio will turn off the screen of a mirrored device even if that device is affected by b/386236480.");
-  public static final Flag<Boolean> DEVICE_MIRRORING_USE_REMOTE_SUBMIX = new BooleanFlag(
-    DEVICE_MIRRORING, "use.remote.submix", "Use REMOTE_SUBMIX audio device instead of AudioRecord",
-    "If enabled, use REMOTE_SUBMIX audio device instead of AudioRecord.");
   //endregion
 
   //region Screenshot and Screen Recording
@@ -2497,6 +2502,11 @@ public final class StudioFlags {
                     "Enable using device tools",
                     "Enables a set of tools allowing the agent to list and activate devices.");
 
+  public static final Flag<Boolean> STUDIOBOT_JPS_TOOLS =
+    new BooleanFlag(STUDIOBOT, "include.jps.tools",
+                    "Enable using JPS tools",
+                    "Enables a set of tools allowing the agent to use JPS build and test tools.");
+
   public static final Flag<Boolean> STUDIOBOT_LOGCAT_TOOL =
     new BooleanFlag(STUDIOBOT, "include.logcat.tool",
                     "Enable the Logcat tool",
@@ -2536,6 +2546,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "simple.new.project.agent",
                     "Enable Simple New Project Agent",
                     "Enables the 'New Project Agent' for simple projects.");
+
+  public static final Flag<Boolean> GEMINI_NEW_PROJECT_AGENT_WITH_PLANNER_UI =
+    new BooleanFlag(STUDIOBOT, "new.project.agent.with.planner.ui",
+                    "Enable New Project Agent's Planner UI",
+                    "Enables the 'New Project Agent' Planner UI.");
 
   public static final Flag<Boolean> GEMINI_AGENT_CHANGES_DRAWER_ENABLED =
     new BooleanFlag(STUDIOBOT, "agent.changes.drawer",
@@ -2620,6 +2635,11 @@ public final class StudioFlags {
                     "Enable Gemini State Inspection Agent for the Layout Inspector.",
                     "Enables the agent that helps with explaining state read exception traces.");
 
+  public static final Flag<Boolean> STUDIOBOT_SHELL_TOOL =
+    new BooleanFlag(STUDIOBOT, "shell.tool",
+                    "Enable the shell tool in agent mode",
+                    "Enables the shell tool which can run arbitrary commands on the computer");
+
   public static final Flag<Boolean> STUDIOBOT_WRITE_CRITIC =
     new BooleanFlag(STUDIOBOT, "write.critic",
                     "Enable agent critic",
@@ -2629,6 +2649,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "permission.model",
                     "Enable new permission model",
                     "Enables the permission model which offers granular permission grants and denials");
+
+  public static final Flag<Boolean> STUDIOBOT_CONTEXT_COMPRESSION =
+    new BooleanFlag(STUDIOBOT, "context.compression",
+                    "Enable context compression",
+                    "Enables agent context compression where when full, the oldest half is summarized to shorten the total context length");
 
   // endregion STUDIO_BOT
 
@@ -2738,7 +2763,7 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.journeys.engine.dep",
     "The name of the Journeys test engine dependency used by the Journeys test suite",
     "This dependency is automatically added by the Journeys template engine when configuring a test suite.",
-    "com.android.tools.journeys:journeys-junit-engine:0.2.0"
+    "com.android.tools.journeys:journeys-junit-engine:0.2.1"
   );
   public static final Flag<String> JOURNEYS_WITH_GEMINI_TEST_SUITE_JUNIT_PLATFORM_ENGINE_DEP = new StringFlag(
     JOURNEYS_WITH_GEMINI, "dependency.journeys.with.gemini.test.suite.junit.platform.engine.dep",

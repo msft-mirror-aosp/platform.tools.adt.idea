@@ -63,6 +63,9 @@ class InspectorPropertiesModel(parentDisposable: Disposable) :
   var structuralUpdates = 0
     private set
 
+  val selectedView: ViewNode?
+    get() = layoutInspector?.inspectorModel?.selection
+
   override var properties: PropertiesTable<InspectorPropertyItem> = PropertiesTable.emptyTable()
     @VisibleForTesting set
 

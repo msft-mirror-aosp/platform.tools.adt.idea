@@ -1,7 +1,6 @@
 load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "generate_old_agp_tests_from_list")
 load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_7_4")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
-load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 load("//tools/base/build-system/integration-test:common-dependencies.bzl", "KGP_VERSION_FOR_TESTS")
 
@@ -15,8 +14,6 @@ iml_module(
     ],
     iml_files = ["intellij.android.projectSystem.gradle.iml"],
     lint_baseline = "lint_baseline.xml",
-    # TODO(b/463634019): Disabling lint due to timeouts.
-    lint_enabled = False,
     # NOTE: For edits to module_visibility, please see note at end of list
     module_visibility = [
         # Gradle Project System tools
@@ -111,7 +108,7 @@ iml_module(
         "//tools/adt/idea/ml-api:intellij.android.ml-api",
         "//tools/adt/idea/analytics",
         "//tools/adt/idea/server-flags:intellij.android.server-flags",
-        "//tools/adt/idea/project-system-gradle:libandroid-core-proto",
+        "//tools/adt/idea/.idea/libraries:android-core-proto",
         "//tools/base/sdk-common/gradle:studio.android.sdktools.sdk-common.gradle",
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/android-lang:intellij.android.lang",
@@ -823,11 +820,4 @@ maven_repository(
         "@maven//:org.mockito.mockito-core_5.12.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
-)
-
-# managed by go/iml_to_build
-jvm_import(
-    name = "libandroid-core-proto",
-    jars = ["//tools/adt/idea/android:libandroid-core-proto.jar"],
-    visibility = ["//visibility:public"],
 )

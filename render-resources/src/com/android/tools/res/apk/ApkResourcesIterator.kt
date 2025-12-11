@@ -18,16 +18,15 @@ package com.android.tools.res.apk
 
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.ResourceType
-import com.google.devrel.gmscore.tools.apk.arsc.BinaryResourceFile
-import com.google.devrel.gmscore.tools.apk.arsc.BinaryResourceIdentifier
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceFile
+import com.google.devrel.gmscore.tools.apk.arsc.ResourceIdentifier
 import com.google.devrel.gmscore.tools.apk.arsc.ResourceTableChunk
-import java.lang.RuntimeException
 import java.util.zip.ZipFile
 
 internal fun forEveryResource(apkPath: String, processor: ResourceEntryProcessor) {
   ZipFile(apkPath).use { zipFile ->
     val zipEntry = zipFile.getEntry("resources.arsc") ?: return@use
-    val resourceFile = BinaryResourceFile.fromInputStream(zipFile.getInputStream(zipEntry))
+    val resourceFile = ResourceFile.fromInputStream(zipFile.getInputStream(zipEntry))
     (resourceFile.chunks.firstOrNull() as? ResourceTableChunk)?.let { resourceTable ->
       val stringPool = resourceTable.stringPool
       for (pkg in resourceTable.packages) {
@@ -43,7 +42,7 @@ internal fun forEveryResource(apkPath: String, processor: ResourceEntryProcessor
 
             typeChunk.entries.forEach { (rowId, typeChunkEntry) ->
               val binaryId =
-                BinaryResourceIdentifier.create(pkg.id, typeSpec.id, rowId)
+                ResourceIdentifier.create(pkg.id, typeSpec.id, rowId)
               processor.onResourceEntry(
                 stringPool,
                 resType,

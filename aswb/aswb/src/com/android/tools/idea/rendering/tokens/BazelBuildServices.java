@@ -35,9 +35,12 @@ import com.google.idea.blaze.base.qsync.QuerySyncManager.TaskOrigin;
 import com.google.idea.blaze.base.qsync.action.BuildDependenciesHelper;
 import com.google.idea.blaze.base.qsync.action.BuildDependenciesHelperSelectTargetPopup;
 import com.google.idea.blaze.base.qsync.action.TargetDisambiguationAnchors;
+import com.google.idea.blaze.base.run.RuntimeArtifactCache;
+import com.google.idea.blaze.base.run.RuntimeArtifactKind;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.exception.BuildException;
+import com.google.idea.blaze.qsync.deps.OutputInfo;
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage;
 import com.google.idea.common.experiments.FeatureRolloutExperiment;
 import com.intellij.openapi.project.Project;
@@ -100,22 +103,22 @@ final class BazelBuildServices implements BuildServices<BazelBuildTargetReferenc
       BuildDependenciesHelperSelectTargetPopup.createDisambiguateTargetPrompt(popup -> popup.showCenteredInCurrentWindow(project)),
       TargetDisambiguationAnchors.NONE,
       scope,
-      labels -> buildAndRefresh(project, labels, scope));
+      labels -> buildAndRefresh(target, Iterables.getOnlyElement(labels), scope));
   }
 
   /**
    * Executed by the EDT
    */
   @UiThread
-  private Deferred<Boolean> buildAndRefresh(Project project, Set<Label> labels, QuerySyncActionStatsScope scope) {
-    var manager = QuerySyncManager.getInstance(project);
+  private Deferred<Boolean> buildAndRefresh(BazelBuildTargetReference target, Label label, QuerySyncActionStatsScope scope) {
+    var project = target.getProject();
 
     var buildAndRefresh = QuerySyncManager.createOperation("Build & Refresh",
                                                            "Building and refreshing",
                                                            OperationType.BUILD_DEPS,
-                                                           context -> buildAndRefresh(manager, context, labels));
+                                                           context -> buildAndRefresh(target, context, label));
 
-    var buildAndRefreshFuture = manager.runOperation(scope, TaskOrigin.USER_ACTION, buildAndRefresh);
+    var buildAndRefreshFuture = QuerySyncManager.getInstance(project).runOperation(scope, TaskOrigin.USER_ACTION, buildAndRefresh);
 
     var newBuildResultFuture = Futures.transform(buildAndRefreshFuture,
                                                  succeeded -> newBuildResult(succeeded, project),
@@ -129,19 +132,30 @@ final class BazelBuildServices implements BuildServices<BazelBuildTargetReferenc
   /**
    * Executed by the Blaze executor
    */
-  private static void buildAndRefresh(QuerySyncManager manager, BlazeContext context, Set<Label> labels) throws BuildException {
-    var tracker = manager.getDependencyTracker();
+  private static void buildAndRefresh(BazelBuildTargetReference target, BlazeContext context, Label label) throws BuildException {
+    var tracker = QuerySyncManager.getInstance(target.getProject()).getDependencyTracker();
     assert tracker != null;
 
     var builder = tracker.getBuilder();
     var groups = DependencyBuildRequest.getOutputGroups(List.of(QuerySyncLanguage.JVM), RequestType.FILE_PREVIEWS);
 
     try {
-      builder.build(context, labels, groups);
+      cacheOutput(target, builder.build(context, Set.of(label), groups), context);
     }
     catch (IOException exception) {
       throw new BuildException(exception);
     }
+  }
+
+  private static void cacheOutput(BazelBuildTargetReference target, OutputInfo output, BlazeContext context) {
+    var project = target.getProject();
+    var file = Iterables.getOnlyElement(WorkspaceRoot.virtualFilesToWorkspaceRelativePaths(project, List.of(target.getFile())));
+
+    var cache = RuntimeArtifactCache.getInstance(project);
+    var label = QuerySyncManager.getInstance(project).getCurrentSnapshot().orElseThrow().getGraph().sourceFileToLabel(file);
+
+    cache.fetchArtifacts(label, output.getTransitiveRuntimeJars(), context, RuntimeArtifactKind.TRANSITIVE_RUNTIME_JAR);
+    cache.fetchArtifacts(label, output.getExternalTransitiveRuntimeJars(), context, RuntimeArtifactKind.EXTERNAL_TRANSITIVE_RUNTIME_JAR);
   }
 
   /**

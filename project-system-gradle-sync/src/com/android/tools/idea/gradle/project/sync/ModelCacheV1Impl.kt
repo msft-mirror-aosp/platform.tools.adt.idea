@@ -234,6 +234,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       testFunctionalTest = flavor.testFunctionalTest,
       testHandleProfiling = flavor.testHandleProfiling,
       matchingFallbacks = legacyAndroidGradlePluginProperties?.productFlavorsMatchingFallbacks[flavor.name] ?: emptyList(),
+      missingDimensionStrategy = emptyMap(),  // TODO: add legacy support
       isDefault = null
     )
   }
@@ -1272,7 +1273,8 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         else -> gradlePropertiesModel.generateManifestClass ?: false
       },
       disableAgpUpgradePrompt = gradlePropertiesModel.disableAgpUpgradePrompt ?: false,
-      useCustomManagedDevices = gradlePropertiesModel.useCustomManagedDevices ?: false
+      useCustomManagedDevices = gradlePropertiesModel.useCustomManagedDevices ?: false,
+      highlightGradualR8Api = false
     )
   }
 
@@ -1413,7 +1415,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         desugarLibraryConfigFiles = listOf(),
         defaultVariantName = null,
         lintJar = null,
-        testSuites = emptyList(),
+        testSuites = emptyList()
       )
     }
   }

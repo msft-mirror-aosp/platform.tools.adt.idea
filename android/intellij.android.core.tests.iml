@@ -32,15 +32,7 @@
     <orderEntry type="module" module-name="android.sdktools.builder-model" />
     <orderEntry type="library" name="utp-core-proto-jarjar" level="project" />
     <orderEntry type="library" name="android-test-plugin-host-device-info-proto" level="project" />
-    <orderEntry type="module-library">
-      <library name="libandroid-core-proto">
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../bazel-bin/tools/adt/idea/android/libandroid-core-proto.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
+    <orderEntry type="library" name="android-core-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.server-flags" />
     <orderEntry type="library" name="studio-plugin-org.jetbrains.kotlin" level="project" />
     <orderEntry type="library" name="studio-plugin-org.intellij.groovy" level="project" />

@@ -16,24 +16,17 @@
 package com.google.idea.blaze.android.run;
 
 import com.android.tools.idea.run.ValidationError;
-import com.android.tools.idea.run.ValidationErrorCompat;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.idea.blaze.android.run.state.DebuggerSettingsState;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
-import com.google.idea.blaze.base.lang.LegacyAdditionalLanguagesHelper;
-import com.google.idea.blaze.base.model.BlazeProjectData;
-import com.google.idea.blaze.base.model.primitives.LanguageClass;
 import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.run.state.RunConfigurationFlagsState;
 import com.google.idea.blaze.base.run.state.RunConfigurationState;
 import com.google.idea.blaze.base.run.state.RunConfigurationStateEditor;
 import com.google.idea.blaze.base.scope.BlazeContext;
-import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.ui.UiUtil;
 import com.google.idea.common.experiments.BoolExperiment;
 import com.intellij.openapi.project.Project;
@@ -123,28 +116,7 @@ public class BlazeAndroidRunConfigurationCommonState implements RunConfiguration
    * warning.
    */
   public List<ValidationError> validate(Project project) {
-    if (Blaze.getProjectType(project) == ProjectType.QUERY_SYNC) {
-      return ImmutableList.of();
-    }
-    List<ValidationError> errors = Lists.newArrayList();
-    BlazeProjectData blazeProjectData =
-        BlazeProjectDataManager.getInstance(project).getBlazeProjectData();
-    if (blazeProjectData == null) {
-      errors.add(ValidationError.fatal("Project data missing. Please sync your project."));
-      return errors;
-    }
-
-    if (isNativeDebuggingEnabled()
-        && !blazeProjectData.getWorkspaceLanguageSettings().isLanguageActive(LanguageClass.C)) {
-      errors.add(
-          ValidationErrorCompat.fatal(
-              "Native debugging requires C language support.",
-              () ->
-                  LegacyAdditionalLanguagesHelper.enableLanguageSupport(
-                      project, ImmutableList.of(LanguageClass.C))));
-    }
-
-    return errors;
+    return ImmutableList.of();
   }
 
   @Override

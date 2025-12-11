@@ -20,6 +20,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ImageWithToolbarPanel
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotAttributesView
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -68,7 +69,8 @@ private val LOG = Logger.getInstance(PreviewDetailsPanel::class.java)
  */
 class PreviewDetailsPanel : JPanel(CardLayout()) {
 
-  private val screenshotAttributesView = ScreenshotAttributesView()
+  @VisibleForTesting
+  val screenshotAttributesView = ScreenshotAttributesView()
   private val multiplePreviewsPanel = JPanel().apply {
     layout = BoxLayout(this, BoxLayout.Y_AXIS)
   }
@@ -197,18 +199,6 @@ class PreviewDetailsPanel : JPanel(CardLayout()) {
     val separator1 = JSeparator()
     separator1.alignmentX = JComponent.LEFT_ALIGNMENT
     topContent.add(separator1)
-    topContent.add(Box.createRigidArea(Dimension(0, 8)))
-
-    val viewTitleLabel = JBLabel(viewType.displayText).apply {
-      alignmentX = JComponent.LEFT_ALIGNMENT
-    }
-    topContent.add(viewTitleLabel)
-    topContent.add(Box.createRigidArea(Dimension(0, 8)))
-
-    val separator2 = JSeparator()
-    separator2.alignmentX = JComponent.LEFT_ALIGNMENT
-    topContent.add(separator2)
-    topContent.add(Box.createRigidArea(Dimension(0, 4)))
 
     // Add the appropriate image view (either the 3-way split or the tabbed single view).
     val imageDisplayPanel = if (viewType == ScreenshotViewType.ALL) {
@@ -349,8 +339,13 @@ class PreviewDetailsPanel : JPanel(CardLayout()) {
     } else {
       previewData.methodName
     }
+
+    val refImagePath = previewData.destImagePath?.let {
+      if (File(it).exists()) it else null
+    }
+
     screenshotAttributesView.updateData(
-      refImagePath = previewData.destImagePath,
+      refImagePath = refImagePath,
       newImagePath = previewData.srcImagePath,
       testMethodName = testMethodName,
       testClassName = previewData.className,
@@ -374,18 +369,17 @@ class PreviewDetailsPanel : JPanel(CardLayout()) {
       layout = BoxLayout(this, BoxLayout.Y_AXIS)
     }
 
-    val previewsByMethod = previewsToShow.groupBy { "${it.className}.${it.methodName}" }
+    val previewsByClassAndMethod = previewsToShow.groupBy { "${it.className}.${it.methodName}" }
+    val previewsGroupedByMethodName = previewsToShow.groupBy { it.methodName }
 
-    val methodNameCounts = previewsByMethod.values
-        .map { it.first().methodName }
-        .groupingBy { it }
-        .eachCount()
-
-    previewsByMethod.forEach { (_, previews) ->
+    previewsByClassAndMethod.forEach { (_, previews) ->
       val methodName = previews.first().methodName ?: UNNAMED_FUNCTION_TEXT
       val className = previews.first().className
 
-      val labelText = if ((methodNameCounts[methodName] ?: 0) > 1) {
+      // If the total number of previews with this method name is greater than the
+      // number of previews in this specific class-method group, it means there are
+      // other previews with the same method name but different class.
+      val labelText = if ((previewsGroupedByMethodName[methodName]?.size ?: 0) > previews.size) {
         "${className.substringAfterLast('.')}.$methodName" // SimpleClassName.MethodName
       } else {
         methodName

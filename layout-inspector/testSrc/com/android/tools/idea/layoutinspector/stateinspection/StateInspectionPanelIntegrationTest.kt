@@ -20,6 +20,7 @@ import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.EditorUtils.cleanUpListenersFromEditorMouseHoverPopupManager
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.findAllDescendants
 import com.android.tools.adtui.swing.getDescendant
 import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
@@ -36,7 +37,6 @@ import com.android.tools.idea.layoutinspector.window
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorSession
-import com.intellij.execution.impl.EditorHyperlinkSupport
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.ui.getUserData
@@ -107,6 +107,10 @@ class StateInspectionPanelIntegrationTest {
     state.createFakeStateReads()
 
     val panel = createPanel()
+    waitForCondition(10.seconds) {
+      panel.findAllDescendants<ActionButton>({ true }).toList().size == 3
+    }
+
     val ui = FakeUi(panel, createFakeWindow = true)
     val prev = panel.buttonWithIcon(AllIcons.Actions.Play_back)
     val next = panel.buttonWithIcon(AllIcons.Actions.Play_forward)
@@ -159,7 +163,6 @@ class StateInspectionPanelIntegrationTest {
     assertThat(prev.isEnabled).isFalse() // The cache will remove elements before the found gap
     assertThat(next.isEnabled).isTrue()
 
-    waitForPendingFilters(panel)
     clickOnStackTrace(ui, panel)
     clickOnAILink(ui, panel)
 
@@ -185,12 +188,6 @@ class StateInspectionPanelIntegrationTest {
 
   private fun imitateObserveByIdMode() {
     inspectorRule.inspectorClient.stats.observingSingleNodeSelected()
-  }
-
-  private fun waitForPendingFilters(panel: StateInspectionPanel) {
-    val editor = panel.getUserData(STATE_READ_EDITOR_KEY)!!
-    val editorHyperlinkSupport = EditorHyperlinkSupport.get(editor)
-    editorHyperlinkSupport.waitForPendingFilters(10.seconds.inWholeMilliseconds)
   }
 
   private fun clickOnStackTrace(ui: FakeUi, panel: StateInspectionPanel) {
@@ -224,7 +221,7 @@ class StateInspectionPanelIntegrationTest {
     val editor = getUserData(STATE_READ_EDITOR_KEY)
     waitForCondition(10.seconds) {
       val data = editor!!.getUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY)
-      data?.composable == "Column" && data?.fileName == "MainActivity.kt"
+      data?.composable == "Column" && data.fileName == "MainActivity.kt"
     }
   }
 
@@ -247,7 +244,13 @@ class StateInspectionPanelIntegrationTest {
         }
       }
     model.update(window, listOf(ROOT), 0)
-    val panel = createStateInspectionPanel(inspectorRule.inspector, projectRule.testRootDisposable)
+    val detectorFactory = SynchronousHyperLinkDetectorFactory()
+    val panel =
+      createStateInspectionPanel(
+        inspectorRule.inspector,
+        projectRule.testRootDisposable,
+        detectorFactory,
+      )
     panel.size = Dimension(800, 600)
     model.stateReadsModel.requestStateReadFor(model[COMPOSE1] as ComposeViewNode)
     return panel
