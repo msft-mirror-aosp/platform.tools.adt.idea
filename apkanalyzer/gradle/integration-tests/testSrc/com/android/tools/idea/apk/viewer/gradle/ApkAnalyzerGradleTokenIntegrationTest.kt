@@ -36,13 +36,13 @@ import org.junit.runners.Parameterized
 class ApkAnalyzerGradleTokenIntegrationTest(private val agpVersion: AgpVersionSoftwareEnvironmentDescriptor) {
 
   @get:Rule
-  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.Companion.withIntegrationTestEnvironment()
+  val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @Test
   fun testGetDefaultApkFile() {
     projectRule.prepareTestProject(ApkAnalyzerTestProject.SIMPLE_APPLICATION, agpVersion = agpVersion).open {
       project.buildAndAssertSuccess { invoker -> invoker.assemble(arrayOf(project.gradleModule(":app")!!)) }
-      val defaultApkFile = ApkAnalyzerToken.Companion.getDefaultApkToAnalyze(project)
+      val defaultApkFile = ApkAnalyzerToken.getDefaultApkToAnalyze(project)
       assertThat(defaultApkFile).isNotNull()
       assertThat(defaultApkFile!!.name).isEqualTo("overridden_debug.apk")
       assertAbout(paths()).that(defaultApkFile.toNioPath()).exists()
@@ -53,7 +53,8 @@ class ApkAnalyzerGradleTokenIntegrationTest(private val agpVersion: AgpVersionSo
     @JvmStatic
     @Parameterized.Parameters(name = "{0}")
     fun tests(): Collection<AgpVersionSoftwareEnvironmentDescriptor> {
-      return applicableAgpVersions().filter { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_41 } // not supported before AGP 4.1 b/191146142
+      // not supported before AGP 4.1 b/191146142
+      return applicableAgpVersions().filter { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_42 }
     }
   }
 }
