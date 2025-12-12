@@ -39,7 +39,6 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
 import com.android.tools.idea.gradle.project.entities.attachDependenciesToModuleEntity
 import com.android.tools.idea.gradle.project.sync.BuildId
-//import com.android.tools.idea.gradle.project.sync.idea.entities.AndroidGradleSourceSetEntitySource
 import com.android.tools.idea.gradle.project.sync.patchForKapt
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.intellij.openapi.diagnostic.currentClassLogger
@@ -61,7 +60,6 @@ import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.exModuleOptions
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
-import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.EntityStorage
 import com.intellij.platform.workspace.storage.ImmutableEntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
@@ -72,8 +70,7 @@ import org.jetbrains.plugins.gradle.model.GradleSourceSetModel
 import org.jetbrains.plugins.gradle.service.project.GradleProjectResolverUtil
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
-import org.jetbrains.plugins.gradle.service.syncAction.impl.GradleSyncProjectConfigurator
-import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrl
+import org.jetbrains.plugins.gradle.service.syncAction.virtualFileUrlManager
 
 private val LOG = currentClassLogger()
 
@@ -164,7 +161,7 @@ private class SyncContributorAndroidProjectDependenciesContext(
 
   /** Converts a file to the exact format required by the platform .*/
   fun File.toLibraryRootPath() = libraryRootPathCache.computeIfAbsent(this) {
-    androidProjectContext.context.virtualFileUrl(this)
+    androidProjectContext.context.virtualFileUrlManager.getOrCreateFromUrl(VfsUtil.getUrlForLibraryRoot(this))
   }
 
   /* Creates a library entity or find an existing one from storage, also counting any newly created ones. */
