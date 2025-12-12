@@ -48,17 +48,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     typeMetadata = FinalClassMetadata.ClassMetadata(
       fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource", properties = listOf(
         OwnPropertyMetadata(
-          isComputable = false,
-          isKey = false,
-          isOpen = false,
-          name = "buildRootUrl",
-          valueType = ValueTypeMetadata.SimpleType.CustomType(
-            isNullable = false,
-            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.url.VirtualFileUrl")
-          ),
-          withDefault = false
-        ),
-        OwnPropertyMetadata(
           isComputable = false, isKey = false, isOpen = false, name = "phase", valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
               fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase", subclasses = listOf(
@@ -153,6 +142,25 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   )
                 ),
                 FinalClassMetadata.ClassMetadata(
+                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleDataServicesSyncPhase",
+                  properties = listOf(
+                    OwnPropertyMetadata(
+                      isComputable = false,
+                      isKey = false,
+                      isOpen = false,
+                      name = "name",
+                      valueType = primitiveTypeStringNotNullable,
+                      withDefault = false
+                    )
+                  ),
+                  supertypes = listOf(
+                    "kotlin.Comparable",
+                    "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
+                    "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$DataServices",
+                    "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.DataServices"
+                  )
+                ),
+                FinalClassMetadata.ClassMetadata(
                   fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase", properties = listOf(
                     OwnPropertyMetadata(
                       isComputable = false,
@@ -190,17 +198,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           isOpen = false,
           name = "projectPath",
           valueType = primitiveTypeStringNotNullable,
-          withDefault = false
-        ),
-        OwnPropertyMetadata(
-          isComputable = false,
-          isKey = false,
-          isOpen = false,
-          name = "projectRootUrl",
-          valueType = ValueTypeMetadata.SimpleType.CustomType(
-            isNullable = false,
-            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.url.VirtualFileUrl")
-          ),
           withDefault = false
         ),
         OwnPropertyMetadata(
@@ -320,6 +317,25 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   )
                 ),
                 FinalClassMetadata.ClassMetadata(
+                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleDataServicesSyncPhase",
+                  properties = listOf(
+                    OwnPropertyMetadata(
+                      isComputable = false,
+                      isKey = false,
+                      isOpen = false,
+                      name = "name",
+                      valueType = primitiveTypeStringNotNullable,
+                      withDefault = false
+                    )
+                  ),
+                  supertypes = listOf(
+                    "kotlin.Comparable",
+                    "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
+                    "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$DataServices",
+                    "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.DataServices"
+                  )
+                ),
+                FinalClassMetadata.ClassMetadata(
                   fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase", properties = listOf(
                     OwnPropertyMetadata(
                       isComputable = false,
@@ -363,17 +379,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   isComputable = false,
                   isKey = false,
                   isOpen = false,
-                  name = "buildRootUrl",
-                  valueType = ValueTypeMetadata.SimpleType.CustomType(
-                    isNullable = false,
-                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.url.VirtualFileUrl")
-                  ),
-                  withDefault = false
-                ),
-                OwnPropertyMetadata(
-                  isComputable = false,
-                  isKey = false,
-                  isOpen = false,
                   name = "phase",
                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = false,
@@ -387,17 +392,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   isOpen = false,
                   name = "projectPath",
                   valueType = primitiveTypeStringNotNullable,
-                  withDefault = false
-                ),
-                OwnPropertyMetadata(
-                  isComputable = false,
-                  isKey = false,
-                  isOpen = false,
-                  name = "projectRootUrl",
-                  valueType = ValueTypeMetadata.SimpleType.CustomType(
-                    isNullable = false,
-                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.url.VirtualFileUrl")
-                  ),
                   withDefault = false
                 ),
                 OwnPropertyMetadata(
@@ -1382,6 +1376,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   isComputable = false,
                                   isKey = false,
                                   isOpen = false,
+                                  name = "highlightGradualR8Api",
+                                  valueType = primitiveTypeBooleanNotNullable,
+                                  withDefault = false
+                                ),
+                                OwnPropertyMetadata(
+                                  isComputable = false,
+                                  isKey = false,
+                                  isOpen = false,
                                   name = "mlModelBindingEnabled",
                                   valueType = primitiveTypeBooleanNotNullable,
                                   withDefault = false
@@ -2155,7 +2157,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "mappingR8PartitionFile",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2166,7 +2168,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "mappingR8TextFile",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -4273,6 +4275,22 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isComputable = false,
                                           isKey = false,
                                           isOpen = false,
+                                          name = "missingDimensionStrategy",
+                                          valueType = ValueTypeMetadata.ParameterizedType(
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable,
+                                              ValueTypeMetadata.ParameterizedType(
+                                                generics = listOf(primitiveTypeStringNotNullable),
+                                                primitive = primitiveTypeListNotNullable
+                                              )
+                                            ), primitive = primitiveTypeMapNotNullable
+                                          ),
+                                          withDefault = false
+                                        ),
+                                        OwnPropertyMetadata(
+                                          isComputable = false,
+                                          isKey = false,
+                                          isOpen = false,
                                           name = "multiDexEnabled",
                                           valueType = primitiveTypeBooleanNullable,
                                           withDefault = false
@@ -6359,7 +6377,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "mappingR8PartitionFile",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
                                       ),
                                       withDefault = false
                                     ),
@@ -6370,7 +6388,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "mappingR8TextFile",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
                                       ),
                                       withDefault = false
                                     ),
@@ -9110,7 +9128,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "mappingR8PartitionFile",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
                               ),
                               withDefault = false
                             ),
@@ -9121,7 +9139,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "mappingR8TextFile",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
                               ),
                               withDefault = false
                             ),
@@ -9933,9 +9951,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
   }
 
   override fun initializeMetadataHash() {
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = -1971173124)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = 291042158)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity", metadataHash = -2091474654)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = -1611479996)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = 251223978)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider", metadataHash = -1945917941)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.FileImpl", metadataHash = -931484829)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", metadataHash = -815189750)
@@ -9945,14 +9963,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$DeviceTest", metadataHash = 322202123)
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", metadataHash = 829021672)
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest", metadataHash = -1096743187)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = -1496468033)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = 111358691)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", metadataHash = -1399748338)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing", metadataHash = -1321757945)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl", metadataHash = -830137441)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl", metadataHash = -1307277753)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl", metadataHash = -1332620076)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -2077386790)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = 1231368363)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = -992576702)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -1552735920)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = -1332513311)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = 1184279692)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl", metadataHash = -1690144445)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", metadataHash = 657314908)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", metadataHash = 2020553170)
@@ -9981,10 +9999,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl", metadataHash = -2133111791)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl", metadataHash = 234558871)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl", metadataHash = -1957440230)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl", metadataHash = 1957801614)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl", metadataHash = -292674770)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl", metadataHash = -1770948907)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl", metadataHash = -44724237)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl", metadataHash = -903365665)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl", metadataHash = -880231745)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl", metadataHash = -460813861)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl", metadataHash = 681444105)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl", metadataHash = 490057410)
@@ -10011,8 +10029,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.sdklib.devices.Abi", metadataHash = 681885929)
     addMetadataHash(typeFqn = "com.android.tools.idea.model.TestExecutionOption", metadataHash = -43978618)
     addMetadataHash(typeFqn = "com.android.tools.idea.model.TestOptions", metadataHash = -1696386486)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = -855566486)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", metadataHash = -1210633585)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = -1168803030)
+    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", metadataHash = 68036569)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeDependencies", metadataHash = 957361702)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeLibrary", metadataHash = -1697725822)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactLibrary", metadataHash = -901900944)
@@ -10050,9 +10068,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable", metadataHash = 1979204270)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl", metadataHash = 1209154017)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleModuleModel", metadataHash = 1690690747)
-    addMetadataHash(typeFqn = "com.intellij.platform.workspace.storage.EntitySource", metadataHash = 1107019817)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource", metadataHash = 388962062)
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase", metadataHash = 6939851)
+    addMetadataHash(typeFqn = "com.intellij.platform.workspace.storage.EntitySource", metadataHash = 352141809)
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource",
+      metadataHash = -2140153311
+    )
+    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase", metadataHash = 688612452)
+    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$DataServices", metadataHash = -325852323)
+    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleDataServicesSyncPhase", metadataHash = 1034273257)
     addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Dynamic", metadataHash = 896961146)
     addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase", metadataHash = 739426399)
     addMetadataHash(typeFqn = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase", metadataHash = 1617061511)
@@ -10076,7 +10099,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase", metadataHash = 79572120)
     addMetadataHash(
       typeFqn = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleSourceSetEntitySource",
-      metadataHash = 1046149151
+      metadataHash = -1411794747
     )
   }
 
