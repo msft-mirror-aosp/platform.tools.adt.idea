@@ -69,30 +69,10 @@ public class GradleSpecificInitializer implements AppLifecycleListener {
     initializePhasedSync();
   }
 
-  public static final class AndroidGradleBridgeProjectDataService extends AbstractProjectDataService<GradleBridgeData, Void> {
-    GradleBridgeProjectDataService delegate = new GradleBridgeProjectDataService();
-
-    @Override
-    public @NotNull Key<GradleBridgeData> getTargetDataKey() {
-      return GradleBridgeData.INSTANCE.getKEY();
-    }
-
-    @Override
-    public void importData(@NotNull Collection<? extends DataNode<GradleBridgeData>> toImport,
-                           @Nullable ProjectData projectData,
-                           @NotNull Project project,
-                           @NotNull IdeModifiableModelsProvider modelsProvider) {
-      if (StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get()) return;
-      delegate.importData(toImport, projectData, project, modelsProvider);
-    }
-  }
-
   @VisibleForTesting
   public static void initializePhasedSync() {
     Registry.get("gradle.phased.sync.enabled").setValue(StudioFlags.PHASED_SYNC_ENABLED.get());
     Registry.get("gradle.phased.sync.bridge.disabled").setValue(StudioFlags.PHASED_SYNC_BRIDGE_DATA_SERVICE_DISABLED.get());
-
-    ProjectDataService.EP_NAME.getPoint().registerExtension(new AndroidGradleBridgeProjectDataService());
   }
 
   /**
