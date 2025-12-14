@@ -17,17 +17,11 @@ package com.android.tools.asdriver.tests.integration
 
 import com.android.adblib.AdbSession
 import com.android.adblib.AdbSessionHost
-import com.android.tools.asdriver.tests.Workspace.Companion.getRoot
-import com.android.tools.testlib.AndroidSdk
-import com.android.tools.testlib.Display
-import com.android.tools.testlib.Emulator
-import com.android.tools.testlib.TestFileSystem
 import com.android.tools.testlib.TestLogger
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.gson.JsonParser
 import com.google.services.firebase.directaccess.client.DirectAccessConnectionManager
 import com.google.services.firebase.directaccess.client.DirectAccessReservationManager
-import com.intellij.openapi.util.SystemInfo
 import io.grpc.ManagedChannel
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.grpc.netty.shaded.io.netty.channel.ChannelOption
@@ -41,7 +35,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 
-class AndroidDeviceManager {
+class RemoteDeviceManager constructor(deviceModel: String, apiLevel: String): AutoCloseable {
 
   private val deviceStreamingAPIEndpoint = "dns:///devicestreaming.googleapis.com"
   private val metadataServerEndpoint =
@@ -68,9 +62,9 @@ class AndroidDeviceManager {
   }
   private val directAccessConnectionManager: DirectAccessConnectionManager
   private val adbSession: AdbSession
-  private var deviceName: String = "No Device Reserved Yet."
-  private var curEmulatorName: String = "emu0"
-  private var nextPort: Int = 8554
+  private var remoteDeviceName: String = ""
+  private val deviceModel: String
+  private val apiLevel: String
 
   init {
     directAccessReservationManager =
@@ -85,11 +79,13 @@ class AndroidDeviceManager {
         channel,
         directAccessReservationManager,
       )
+    this.deviceModel = deviceModel
+    this.apiLevel = apiLevel
   }
 
   fun reserveDevice(model: String, apiLevel: String): String {
-    deviceName = directAccessReservationManager.createReservation(model, apiLevel).name
-    return deviceName
+    remoteDeviceName = directAccessReservationManager.createReservation(model, apiLevel).name
+    return remoteDeviceName
   }
 
   fun connectToDevice(deviceName: String) = runBlocking {
@@ -97,38 +93,18 @@ class AndroidDeviceManager {
     connection.connect()
   }
 
-  fun tearDown() {
-    if (deviceName != "No Device Reserved Yet.") {
-      directAccessReservationManager.cancelReservation(deviceName, true)
-      TestLogger.log("Remote Device Released.")
-    }
-    runBlocking { scope.coroutineContext.job.cancelAndJoin() }
-    adbSession.close()
-    channel.shutdown()
+  fun setupRemoteDevice() {
+    val deviceName: String = reserveDevice(deviceModel, apiLevel)
+    TestLogger.log("Device Reserved: $deviceName")
+    connectToDevice(deviceName)
+    TestLogger.log("Connected To Device: $deviceName")
   }
 
-  fun runAndroidDevice(
-    fileSystem: TestFileSystem,
-    sdk: AndroidSdk,
-    display: Display,
-    systemImage: Emulator.SystemImage = Emulator.DEFAULT_EMULATOR_SYSTEM_IMAGE,
-    extraEmulatorFlags: List<String> = emptyList(),
-  ): Emulator {
-    val platform = System.getProperty("intellij.plugin.test.platform")
-    if (SystemInfo.isWindows || ("sherlock-sdk" == platform)) {
-      val deviceName: String = reserveDevice("akita", "34")
-      TestLogger.log("Device Reserved: $deviceName")
-      connectToDevice(deviceName)
-      TestLogger.log("Connected To Device: $deviceName")
-      return Emulator(fileSystem, null, null, null, null, null)
-    } else {
-      TestLogger.log("Emulator#runEmulator")
-      val systemImageDir = getRoot(systemImage.path)
-      Emulator.createEmulator(fileSystem, curEmulatorName, systemImageDir)
-
-      val emulator =
-        Emulator.start(fileSystem, sdk, display, curEmulatorName, nextPort, extraEmulatorFlags)
-      return emulator
-    }
+  override fun close() {
+    directAccessReservationManager.cancelReservation(remoteDeviceName, true)
+    adbSession.close()
+    channel.shutdown()
+    runBlocking { scope.coroutineContext.job.cancelAndJoin() }
+    TestLogger.log("Remote Device Released.")
   }
 }
