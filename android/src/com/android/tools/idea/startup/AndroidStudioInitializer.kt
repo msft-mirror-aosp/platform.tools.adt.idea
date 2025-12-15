@@ -78,9 +78,6 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
     setupAndroidSdkForTests()
     // these clutter the UX by suggesting paid JetBrains' products to users. As an example see b/409203679
     removePluginSuggestionProviderExtension()
-
-    // Replace the platform extension with studio AndroidAnnotationSupport while prioritizing it over others
-    removeAndroidAnnotationSupportExtension()
   }
 
   /** Sets up collection of Android Studio specific analytics.  */
@@ -111,13 +108,5 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
   private fun removePluginSuggestionProviderExtension() {
     val ep = application.extensionArea.getExtensionPoint<PluginSuggestionProvider>("com.intellij.pluginSuggestionProvider")
     ep.unregisterExtensions({ _, _ -> false }, false)
-  }
-
-  private fun removeAndroidAnnotationSupportExtension() {
-    AnnotationPackageSupport.EP_NAME.extensions
-      .find { it.javaClass.name == "com.intellij.codeInsight.annoPackages.AndroidAnnotationSupport"  }
-      ?.let {
-        AnnotationPackageSupport.EP_NAME.point.unregisterExtension(it::class.java)
-      }
   }
 }
