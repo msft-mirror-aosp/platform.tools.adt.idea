@@ -17,8 +17,6 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.AndroidProject
 import com.android.builder.model.ModelBuilderParameter
-import com.android.builder.model.NativeAndroidProject
-import com.android.builder.model.NativeVariantAbi
 import com.android.builder.model.Variant
 import com.android.builder.model.v2.ide.ArtifactDependencies
 import com.android.builder.model.v2.ide.ArtifactDependenciesAdjacencyList
@@ -55,7 +53,7 @@ internal fun <T> BuildController.findNonParameterizedV2Model(
 }
 
 /**
- * Gets the [AndroidProject] or [NativeAndroidProject] (based on [modelType]) for the given [BasicGradleProject].
+ * Gets the [AndroidProject] for the given [BasicGradleProject].
  */
 internal fun <T> BuildController.findParameterizedAndroidModel(
   project: BasicGradleProject,
@@ -158,12 +156,7 @@ internal fun BuildController.findNativeVariantAbiModel(
     if (model != null) NativeVariantAbiResult.V2(abiToRequest) else NativeVariantAbiResult.None
   }
   else {
-    // Fallback to V1 models otherwise.
-    val model = findModel(module.findModelRoot, NativeVariantAbi::class.java, ModelBuilderParameter::class.java) { parameter ->
-      parameter.setVariantName(variantName)
-      parameter.setAbiName(abiToRequest)
-    }
-    if (model != null) NativeVariantAbiResult.V1(modelCache.nativeVariantAbiFrom(model)) else NativeVariantAbiResult.None
+    NativeVariantAbiResult.None
   }
 }
 

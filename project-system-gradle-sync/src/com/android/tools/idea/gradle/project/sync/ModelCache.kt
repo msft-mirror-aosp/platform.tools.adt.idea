@@ -20,15 +20,12 @@ package com.android.tools.idea.gradle.project.sync
 import com.android.build.OutputFile
 import com.android.builder.model.AndroidProject
 import com.android.builder.model.Library
-import com.android.builder.model.NativeAndroidProject
-import com.android.builder.model.NativeVariantAbi
 import com.android.builder.model.Variant
 import com.android.builder.model.v2.ide.BasicVariant
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.BasicTestSuite
 import com.android.builder.model.v2.models.VariantDependencies
-import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePropertiesModel
@@ -45,8 +42,6 @@ import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeAndroidProjectImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeVariantAbiImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeModuleImpl
 import com.android.tools.idea.gradle.project.sync.ModelCache.Companion.LOCAL_AARS
 import com.android.tools.idea.gradle.project.sync.ModelCache.Companion.LOCAL_JARS
@@ -79,9 +74,6 @@ interface ModelCache {
     ): ModelResult<IdeAndroidProjectImpl>
 
     fun androidArtifactOutputFrom(output: OutputFile): IdeAndroidArtifactOutputImpl
-
-    fun nativeVariantAbiFrom(variantAbi: NativeVariantAbi): IdeNativeVariantAbiImpl
-    fun nativeAndroidProjectFrom(project: NativeAndroidProject, ndkVersion: String?): IdeNativeAndroidProjectImpl
   }
 
   interface V2 : ModelCache {
