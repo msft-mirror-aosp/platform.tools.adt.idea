@@ -37,5 +37,6 @@
     <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.skiko" level="project" />
     <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.compose.foundation.desktop" level="project" />
     <orderEntry type="library" exported="" name="studio-plugin-intellij.libraries.compose.runtime.desktop" level="project" />
+    <orderEntry type="library" exported="" name="studio-plugin-intellij.platform.jewel.markdown.extensions.gfmTables" level="project" />
   </component>
 </module>
