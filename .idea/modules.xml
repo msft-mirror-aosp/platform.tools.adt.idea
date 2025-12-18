@@ -178,6 +178,7 @@
       <module fileurl="file://$PROJECT_DIR$/codenavigation/codenavigation.iml" filepath="$PROJECT_DIR$/codenavigation/codenavigation.iml" />
       <module fileurl="file://$PROJECT_DIR$/connection-assistant/connection-assistant.iml" filepath="$PROJECT_DIR$/connection-assistant/connection-assistant.iml" />
       <module fileurl="file://$PROJECT_DIR$/connection-assistant/connection-assistant-test.iml" filepath="$PROJECT_DIR$/connection-assistant/connection-assistant-test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/firebase/crashlytics-client/crashlytics-client.iml" filepath="$PROJECT_DIR$/../../vendor/google/firebase/crashlytics-client/crashlytics-client.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../data-binding/baseLibrary/db-baseLibrary.iml" filepath="$PROJECT_DIR$/../../data-binding/baseLibrary/db-baseLibrary.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../data-binding/baseLibrarySupport/db-baseLibrarySupport.iml" filepath="$PROJECT_DIR$/../../data-binding/baseLibrarySupport/db-baseLibrarySupport.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../data-binding/compilationTests/db-compilationTests.iml" filepath="$PROJECT_DIR$/../../data-binding/compilationTests/db-compilationTests.iml" />
