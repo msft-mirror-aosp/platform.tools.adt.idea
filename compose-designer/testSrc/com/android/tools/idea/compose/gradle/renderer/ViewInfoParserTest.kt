@@ -28,6 +28,7 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiManager
@@ -58,7 +59,7 @@ class ViewInfoParserTest {
       val file =
         VfsUtil.findRelativeFile(
           SimpleComposeAppPaths.APP_MAIN_ACTIVITY.path,
-          ProjectRootManager.getInstance(project).contentRoots[0],
+          project.guessProjectDir(),
         )!!
       val ktFile = PsiManager.getInstance(project).findFile(file) as KtFile
       ktFile.declarations

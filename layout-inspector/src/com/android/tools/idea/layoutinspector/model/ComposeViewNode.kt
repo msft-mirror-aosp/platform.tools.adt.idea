@@ -90,6 +90,7 @@ class ComposeViewNode(
     viewId,
     textValue,
     layoutFlags,
+    isDerivedFromWebView = false,
   ) {
   @TestOnly
   constructor(

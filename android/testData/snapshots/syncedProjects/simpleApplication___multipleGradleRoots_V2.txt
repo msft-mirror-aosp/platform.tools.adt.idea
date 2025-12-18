@@ -1,6 +1,17 @@
 PROJECT                       : project
     PROJECT_JDK                   : <JDK_NAME>
         Version                       : <JDK_VERSION>
+    MODULE                        : project
+        COMPILER_MODULE_EXTENSION
+            isCompilerPathInherited       : true
+            isExcludeOutput               : true
+        ModuleFile                    : <PROJECT>/.idea/project.iml
+        ModuleTypeName                : JAVA_MODULE
+        CONENT_ENTRY                  : file://<PROJECT>
+        JDK                           : <NAME_CUT> JavaSDK
+        *isInherited                  : true
+        ORDER_ENTRY                   : <Module source>
+        BUILD_TASKS
     MODULE                        : gradle_project_1
         ExternalModuleGroup           :
         ExternalModuleVersion         : unspecified
@@ -128,6 +139,7 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
+            AdditionalVisibleModuleNames  : [:app:main]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_1/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_1/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/gradle_project_1/app/src/androidTest/java
@@ -437,6 +449,7 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
+            AdditionalVisibleModuleNames  : [:app:main]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_1/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_1/app/src/test
             JavaSource (test)             : file://<PROJECT>/gradle_project_1/app/src/test/java
@@ -674,6 +687,7 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
+            AdditionalVisibleModuleNames  : [:app:main]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_2/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_2/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/gradle_project_2/app/src/androidTest/java
@@ -983,6 +997,7 @@ PROJECT                       : project
             Platform                      : JVM (11)
             UseProjectSettings            : false
             Version                       : 5
+            AdditionalVisibleModuleNames  : [:app:main]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_2/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
         CONENT_ENTRY                  : file://<PROJECT>/gradle_project_2/app/src/test
             JavaSource (test)             : file://<PROJECT>/gradle_project_2/app/src/test/java
@@ -1093,17 +1108,6 @@ PROJECT                       : project
                 SOURCE_GEN                    : :app:createMockableJar
                 BASELINE_PROFILE_GEN          : :app:generateDebugBaselineProfile
                 BASELINE_PROFILE_GEN_ALL_VARIANTS       : :app:generateBaselineProfile
-    MODULE                        : project
-        COMPILER_MODULE_EXTENSION
-            isCompilerPathInherited       : true
-            isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/project.iml
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
-        ORDER_ENTRY                   : <Module source>
-        BUILD_TASKS
     RUN_CONFIGURATION             : gradle_project_1.app
         *class*                       : AndroidRunConfiguration
         ModuleName                    : gradle_project_1.app

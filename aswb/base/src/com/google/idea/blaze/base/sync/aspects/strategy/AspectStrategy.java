@@ -16,36 +16,25 @@
 package com.google.idea.blaze.base.sync.aspects.strategy;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.devtools.intellij.ideinfo.IntellijIdeInfo;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.model.BlazeVersionData;
 import com.google.idea.blaze.base.model.primitives.LanguageClass;
-import com.google.idea.blaze.common.artifact.BlazeArtifact;
 import com.google.idea.common.experiments.BoolExperiment;
-import com.google.protobuf.TextFormat;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Predicate;
 import javax.annotation.Nullable;
 
 /** Aspect strategy for Skylark. */
 public abstract class AspectStrategy {
-
-  public static final Predicate<String> ASPECT_OUTPUT_FILE_PREDICATE =
-      str -> str.endsWith(".intellij-info.txt");
 
   /** A Blaze output group created by the aspect. */
   public enum OutputGroup {
@@ -158,15 +147,6 @@ public abstract class AspectStrategy {
                     .stream())
         .filter(Objects::nonNull)
         .collect(ImmutableList.toImmutableList());
-  }
-
-  public final IntellijIdeInfo.TargetIdeInfo readAspectFile(BlazeArtifact file) throws IOException {
-    try (InputStream inputStream = file.getInputStream()) {
-      IntellijIdeInfo.TargetIdeInfo.Builder builder = IntellijIdeInfo.TargetIdeInfo.newBuilder();
-      TextFormat.Parser parser = TextFormat.Parser.newBuilder().setAllowUnknownFields(true).build();
-      parser.merge(new InputStreamReader(inputStream, UTF_8), builder);
-      return builder.build();
-    }
   }
 
   @Nullable

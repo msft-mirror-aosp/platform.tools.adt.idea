@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.google.common.truth.Truth
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
@@ -27,6 +28,7 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
+import kotlinx.coroutines.runBlocking
 
 data class GradleTaskManagerTest(
   override val name: String,
@@ -42,10 +44,12 @@ data class GradleTaskManagerTest(
         testProject = TestProject.SIMPLE_APPLICATION,
       ) { project ->
         val id = ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.RESOLVE_PROJECT, project)
-        val settings = GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project)
+        val settings = runBlocking {
+          GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project)
+        }
         val sb = StringBuilder()
         val listener = object : ExternalSystemTaskNotificationListener {
-          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
+          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
             sb.append(text)
           }
         }

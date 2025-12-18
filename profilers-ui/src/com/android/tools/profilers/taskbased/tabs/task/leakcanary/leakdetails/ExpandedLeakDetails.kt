@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +62,7 @@ fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
     .clickable(onClick = { showMoreInfo = !showMoreInfo }, indication = null, interactionSource = remember { MutableInteractionSource() })
     .pointerHoverIcon(PointerIcon.Hand)
   Row(modifier = modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
-    Column(modifier = Modifier.weight(0.10f)) {
+    Column(modifier = Modifier.widthIn(min = 80.dp)) {
       DetailedHeaderText(LEAKCANARY_LEAKING)
       Spacer(modifier = Modifier.height(5.dp))
       DetailRow(
@@ -72,16 +73,17 @@ fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
-        .weight(1f)
         .padding(start = 24.dp)
     ) {
       DetailedHeaderText(LEAKCANARY_WHY)
       Spacer(modifier = Modifier.height(5.dp))
-      Text(
-        text = if (node.leakingStatusReason.isNullOrBlank()) LEAKCANARY_NOT_LEAKING else node.leakingStatusReason,
-        fontWeight = FontWeight.Thin,
-        modifier = Modifier.padding(bottom = 8.dp)
-      )
+      if(node.leakingStatusReason.isNotBlank()) {
+        Text(
+          text = node.leakingStatusReason,
+          fontWeight = FontWeight.Thin,
+          modifier = Modifier.padding(bottom = 8.dp)
+        )
+      }
       node.referencingField?.let {
         DetailText("$LEAKCANARY_REFERENCING_FIELD$it")
       }

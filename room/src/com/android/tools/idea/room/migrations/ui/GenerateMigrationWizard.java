@@ -107,9 +107,8 @@ public class GenerateMigrationWizard extends AbstractWizard<GenerateMigrationWiz
     return previousStep;
   }
 
-  @Nullable
   @Override
-  protected String getHelpID() {
+  protected String getHelpId() {
     return null;
   }
 

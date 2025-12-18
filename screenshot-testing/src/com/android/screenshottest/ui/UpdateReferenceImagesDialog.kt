@@ -237,7 +237,7 @@ class UpdateReferenceImagesDialog(
 
     val renderer = object : CheckboxTree.CheckboxTreeCellRenderer() {
       override fun customizeRenderer(
-        tree: JTree, value: Any?, selected: Boolean, expanded: Boolean,
+        tree: JTree, value: Any, selected: Boolean, expanded: Boolean,
         leaf: Boolean, row: Int, hasFocus: Boolean
       ) {
         val userObject = (value as? CheckedTreeNode)?.userObject

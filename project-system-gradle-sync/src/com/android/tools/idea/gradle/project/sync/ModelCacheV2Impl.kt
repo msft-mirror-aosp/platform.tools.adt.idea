@@ -354,7 +354,7 @@ fun modelCacheV2Impl(
         else legacyAndroidGradlePluginProperties?.productFlavorsMatchingFallbacks[flavor.name] ?: emptyList(),
       missingDimensionStrategy =
         if (modelVersions[ModelFeature.HAS_MISSING_DIMENSION_STRATEGY]) flavor.missingDimensionStrategy
-        else emptyMap(),
+        else legacyAndroidGradlePluginProperties?.missingDimensionStrategies[flavor.name] ?: emptyMap(),
       isDefault = flavor.isDefault
     )
   }
@@ -1498,7 +1498,13 @@ fun modelCacheV2Impl(
         } else {
           gradlePropertiesModel.useCustomManagedDevices
           ?: agpVersion.isAtLeast(8, 3, 0) // default is true from 8.3.0 onwards
-        }
+        },
+      highlightGradualR8Api =
+        if (agpVersion.isAtLeast(9, 0, 0, "rc", 1, false)) {
+          !AndroidGradlePluginProjectFlags.BooleanFlag.R8_GRADUAL_API.getValue(flags) // highlight if flag is false
+        } else {
+          false // do not do any checks/highlighting if there is no gradual R8
+        },
     )
   }
 
@@ -1676,7 +1682,7 @@ fun modelCacheV2Impl(
         desugarLibraryConfigFiles = desugarLibConfig,
         defaultVariantName = defaultVariantName,
         lintJar = lintJar,
-        testSuites = testSuites
+        testSuites = testSuites,
       )
     }
   }

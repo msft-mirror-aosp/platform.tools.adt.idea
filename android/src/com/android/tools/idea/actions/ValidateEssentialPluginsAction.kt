@@ -23,6 +23,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ex.ApplicationInfoEx
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.extensions.PluginId
+import com.intellij.openapi.util.IntellijInternalApi
 
 /** Validates essential plugins and their dependencies (for use in E2E tests). */
 @Suppress("UnstableApiUsage")
@@ -57,6 +58,7 @@ class ValidateEssentialPluginsAction : AnAction() {
    * Returns the required plugin dependencies of [plugin], including those implied by v2 module dependencies
    * (unlike [PluginManagerCore.getNonOptionalDependenciesIds], which ignores v2 module edges).
    */
+  @OptIn(IntellijInternalApi::class)
   private fun getRequiredPluginDependencies(plugin: PluginId): Collection<PluginId> {
     val pluginSet = PluginManagerCore.getPluginSet()
     val plugins = mutableSetOf<PluginId>()
@@ -74,10 +76,10 @@ class ValidateEssentialPluginsAction : AnAction() {
       }
       // v2 dependencies.
       for (dep in descriptor.moduleDependencies.plugins) {
-        plugins.add(getCanonicalPluginId(dep.id))
+        plugins.add(getCanonicalPluginId(dep))
       }
       for (dep in descriptor.moduleDependencies.modules) {
-        val moduleDescriptor = checkNotNull(pluginSet.findEnabledModule(dep.name))
+        val moduleDescriptor = checkNotNull(pluginSet.findEnabledModule(dep))
         if (modules.add(dep.name)) {
           // Traverse v2 module edges recursively (until we reach actual plugins).
           collectDependencies(moduleDescriptor)

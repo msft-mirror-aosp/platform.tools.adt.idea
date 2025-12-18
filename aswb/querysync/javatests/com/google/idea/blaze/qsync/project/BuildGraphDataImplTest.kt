@@ -60,7 +60,7 @@ class BuildGraphDataImplTest {
       .addSupportedTargetLabel(Label.of("//nested:nested"))
       .addSupportedTargetLabel(Label.of("//nested/inner:inner"))
 
-    val graph: BuildGraphData = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
+    val graph = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
     expect.that(graph.pathToLabel(Path.of("abc.txt"))).isEqualTo(Label.of("//:abc.txt"))
     expect.that(graph.pathToLabel(Path.of("BUILD"))).isEqualTo(Label.of("//:BUILD"))
     expect.that(graph.pathToLabel(Path.of("nested/abc.txt"))).isEqualTo(Label.of("//nested:abc.txt"))
@@ -133,7 +133,7 @@ class BuildGraphDataImplTest {
       .addSupportedTargetLabel(Label.of("//nested:nested"))
       .addSupportedTargetLabel(Label.of("//nested/inner:inner"))
 
-    val graph: BuildGraphData = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
+    val graph = builder.build(emptyTargetCollection, emptySet(), emptySet(), defaultProtoRules)
     expect.that(graph.sourceFileToLabel(Path.of("abc.txt"))).isNull()
     expect.that(graph.sourceFileToLabel(Path.of("BUILD"))).isEqualTo(Label.of("//:BUILD"))
     expect.that(graph.sourceFileToLabel(Path.of("nested/abc.txt"))).isNull()
@@ -174,7 +174,6 @@ class BuildGraphDataImplTest {
       )
     assertThat(graph.getJavaSourceFiles())
       .containsExactly(TESTDATA_ROOT.resolve("nodeps/TestClassNoDeps.java"))
-    assertThat(graph.getAndroidSourceFiles()).isEmpty()
     assertThat(graph.getSourceFileOwners(TESTDATA_ROOT.resolve("nodeps/TestClassNoDeps.java")))
       .containsExactly(Label.of("//$TESTDATA_ROOT/nodeps:nodeps"))
     assertThat(
@@ -379,8 +378,6 @@ class BuildGraphDataImplTest {
       )
     assertThat(graph.getJavaSourceFiles())
       .containsExactly(TESTDATA_ROOT.resolve("android/TestAndroidClass.java"))
-    assertThat(graph.getAndroidSourceFiles())
-      .containsExactly(TESTDATA_ROOT.resolve("android/TestAndroidClass.java"))
     assertThat(graph.getSourceFileOwners(TESTDATA_ROOT.resolve("android/TestAndroidClass.java")))
       .containsExactly(Label.of("//$TESTDATA_ROOT/android:android"))
     assertThat(
@@ -412,8 +409,6 @@ class BuildGraphDataImplTest {
       )
     assertThat(graph.getJavaSourceFiles())
       .containsExactly(TESTDATA_ROOT.resolve("aidl/TestAndroidAidlClass.java"))
-    assertThat(graph.getAndroidSourceFiles())
-      .containsExactly(TESTDATA_ROOT.resolve("aidl/TestAndroidAidlClass.java"))
     assertThat(
       getRequiredTargets(
         graph,
@@ -442,8 +437,6 @@ class BuildGraphDataImplTest {
         Label.of("//$TESTDATA_ROOT/aidl:BUILD")
       )
     assertThat(graph.getJavaSourceFiles())
-      .containsExactly(TESTDATA_ROOT.resolve("aidl/TestAndroidAidlClass.java"))
-    assertThat(graph.getAndroidSourceFiles())
       .containsExactly(TESTDATA_ROOT.resolve("aidl/TestAndroidAidlClass.java"))
     assertThat(graph.getSourceFilesByRuleKindAndType({ RuleKinds.isAndroid(it)}, ProjectTarget.SourceType.AIDL))
       .containsExactly(
@@ -499,7 +492,6 @@ class BuildGraphDataImplTest {
         Label.of("//$TESTDATA_ROOT/cc:BUILD")
       )
     assertThat(graph.getJavaSourceFiles()).isEmpty()
-    assertThat(graph.getAndroidSourceFiles()).isEmpty()
     assertThat(graph.getSourceFileOwners(TESTDATA_ROOT.resolve("cc/TestClass.cc")))
       .containsExactly(Label.of("//$TESTDATA_ROOT/cc:cc"))
     assertThat(
@@ -557,7 +549,7 @@ class BuildGraphDataImplTest {
   @Test
   @Throws(Exception::class)
   fun testTags() {
-    val graph: BuildGraphData = BuildGraphs.forTestProject(TestData.TAGS_QUERY)
+    val graph = BuildGraphs.forTestProject(TestData.TAGS_QUERY)
     val testTarget = graph.getProjectTarget(TestData.TAGS_QUERY.assumedOnlyLabel)
     assertThat(testTarget!!.tags()).containsExactly("mytag")
   }

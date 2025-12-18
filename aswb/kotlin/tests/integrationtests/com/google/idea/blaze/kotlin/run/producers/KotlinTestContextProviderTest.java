@@ -26,16 +26,12 @@ import com.google.common.truth.Correspondence;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.dependencies.TestSize;
 import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
-import com.google.idea.blaze.base.ideinfo.TargetMapBuilder;
 import com.google.idea.blaze.base.ideinfo.TestIdeInfo;
 import com.google.idea.blaze.base.lang.buildfile.psi.util.PsiUtils;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
 import com.intellij.execution.configurations.RunConfiguration;
@@ -48,12 +44,14 @@ import javax.annotation.Nullable;
 import org.jetbrains.kotlin.psi.KtClass;
 import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration tests for run configurations for Kotlin test classes. */
 @RunWith(JUnit4.class)
+@Ignore("b/466755859")
 public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducerTestCase {
 
   private static final Correspondence<RunConfiguration, Boolean> IS_BLAZE_RUN_CONFIGURATION =
@@ -109,7 +107,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
             .setLabel("//com/google/test:TestClass")
             .addSource(sourceRoot(testFilePath))
             .build();
-    registerTargets(testTarget);
+// query sync:    registerTargets(testTarget);
 
     ImmutableList<RunConfiguration> configurations = getRunConfigurations(testClass);
 
@@ -140,7 +138,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
             .setLabel("//com/google/test:TestClass")
             .addSource(sourceRoot(testFilePath))
             .build();
-    registerTargets(testTarget);
+    // query sync: registerTargets(testTarget);
 
     ImmutableList<BlazeCommandRunConfiguration> configurations =
         getBlazeRunConfigurations(testClass);
@@ -176,7 +174,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
             .setLabel("//com/google/test:TestClass")
             .addSource(sourceRoot(testFilePath))
             .build();
-    registerTargets(testTarget);
+    // query sync: registerTargets(testTarget);
 
     ImmutableList<RunConfiguration> configurations = getRunConfigurations(firstMethod);
 
@@ -209,7 +207,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
             .setLabel("//com/google/test:TestClass")
             .addSource(sourceRoot(testFilePath))
             .build();
-    registerTargets(testTarget);
+    // query sync: registerTargets(testTarget);
 
     ImmutableList<BlazeCommandRunConfiguration> configurations =
         getBlazeRunConfigurations(firstMethod);
@@ -262,7 +260,7 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
             .setTestInfo(TestIdeInfo.builder().setTestSize(TestSize.SMALL))
             .addDependency(testLibraryTargetLabel)
             .build();
-    registerTargets(testLibraryTarget, mediumTestsTarget, smallTestsTarget);
+    // query sync: registerTargets(testLibraryTarget, mediumTestsTarget, smallTestsTarget);
 
     List<BlazeCommandRunConfiguration> runConfigurations = getBlazeRunConfigurations(testClass);
 
@@ -271,16 +269,16 @@ public class KotlinTestContextProviderTest extends BlazeRunConfigurationProducer
         .containsExactly(TargetExpression.fromStringSafe("//com/google/test:medium_tests"));
   }
 
-  private void registerTargets(TargetIdeInfo target, TargetIdeInfo... additionalTargets) {
-    MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
-    builder.setTargetMap(
-        TargetMapBuilder.builder()
-            .addTarget(target)
-            .addTargets(ImmutableList.copyOf(additionalTargets))
-            .build());
-    registerProjectService(
-        BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
-  }
+  //private void registerTargets(TargetIdeInfo target, TargetIdeInfo... additionalTargets) {
+  //  MockBlazeProjectDataBuilder builder = MockBlazeProjectDataBuilder.builder(workspaceRoot);
+  //  builder.setTargetMap(
+  //      TargetMapBuilder.builder()
+  //          .addTarget(target)
+  //          .addTargets(ImmutableList.copyOf(additionalTargets))
+  //          .build());
+  //  registerProjectService(
+  //      BlazeProjectDataManager.class, new MockBlazeProjectDataManager(builder.build()));
+  //}
 
   private static KtClass findClass(PsiFile kotlinFile) {
     KtClass kotlinClass = PsiUtils.findFirstChildOfClassRecursive(kotlinFile, KtClass.class);

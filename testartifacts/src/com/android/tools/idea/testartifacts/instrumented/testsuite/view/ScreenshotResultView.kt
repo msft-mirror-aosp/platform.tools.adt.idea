@@ -74,11 +74,11 @@ class ScreenshotResultView {
 
   // Panels for the single-view tabs (with individual toolbars and titles)
   @VisibleForTesting
-  val newImagePanelSingle = ImageWithToolbarPanel(ScreenshotViewType.NEW, showToolbar = true, showTitle = true)
+  val newImagePanelSingle = ImageWithToolbarPanel(ScreenshotViewType.NEW, showToolbar = true, showTitle = false)
   @VisibleForTesting
-  val diffImagePanelSingle = ImageWithToolbarPanel(ScreenshotViewType.DIFF, showToolbar = true, showTitle = true)
+  val diffImagePanelSingle = ImageWithToolbarPanel(ScreenshotViewType.DIFF, showToolbar = true, showTitle = false)
   @VisibleForTesting
-  val refImagePanelSingle = ImageWithToolbarPanel(ScreenshotViewType.REFERENCE, showToolbar = true, showTitle = true)
+  val refImagePanelSingle = ImageWithToolbarPanel(ScreenshotViewType.REFERENCE, showToolbar = true, showTitle = false)
 
   private val contentPanel = JPanel(CardLayout())
 
@@ -140,14 +140,14 @@ class ScreenshotResultView {
   val commonOneToOneAction = object : AnAction("1:1", "Actual Size", AllIcons.General.ActualZoom) {
     override fun actionPerformed(e: AnActionEvent) = multiViewPanels.forEach { it.setActualSize() }
     override fun update(e: AnActionEvent) {
-      e.presentation.isEnabled = multiViewPanels.any { it.hasImage() }
+      e.presentation.isEnabled = multiViewPanels.any { it.hasImage() && it.currentScale != 1.0 }
     }
   }
   @VisibleForTesting
   val commonFitToScreenAction = object : AnAction("Fit to Screen", "Fit image to screen", AllIcons.General.FitContent) {
     override fun actionPerformed(e: AnActionEvent) = multiViewPanels.forEach { it.fitToScreen() }
     override fun update(e: AnActionEvent) {
-      e.presentation.isEnabled = multiViewPanels.any { it.hasImage() }
+      e.presentation.isEnabled = multiViewPanels.any { it.hasImage() && !it.isAutoFitting }
     }
   }
   @VisibleForTesting

@@ -141,14 +141,7 @@ Controller::~Controller() {
 }
 
 void Controller::Stop() {
-  if (device_supports_multiple_states_) {
-    DeviceStateManager::RemoveDeviceStateListener(this);
-  }
-  if (Agent::device_type() == DeviceType::XR) {
-    XrSimulatedInputManager::RemoveEnvironmentListener(this);
-  }
-  ui_settings_.Reset(nullptr);
-  stopped = true;
+  stopping_ = true;
 }
 
 void Controller::Initialize() {
@@ -204,6 +197,14 @@ void Controller::InitializeVirtualKeyboard() {
     }
   }
 }
+void Controller::RemoveListeners() {
+  if (device_supports_multiple_states_) {
+    DeviceStateManager::RemoveDeviceStateListener(this);
+  }
+  if (Agent::device_type() == DeviceType::XR) {
+    XrSimulatedInputManager::RemoveEnvironmentListener(this);
+  }
+}
 
 VirtualTablet& Controller::GetVirtualTablet(int32_t display_id, int32_t width, int32_t height) {
   auto iter = virtual_tablets_.find(display_id);
@@ -222,9 +223,9 @@ void Controller::Run() {
   Initialize();
 
   try {
-    for (;;) {
+    while (!stopping_) {
       auto socket_timeout = SOCKET_RECEIVE_POLL_TIMEOUT;
-      if (!stopped) {
+      if (!stopping_) {
         if (max_synced_clipboard_length_ != 0) {
           SendClipboardChangedNotification();
         }
@@ -254,16 +255,21 @@ void Controller::Run() {
         continue;
       }
       unique_ptr<ControlMessage> message = ControlMessage::Deserialize(message_type, input_stream_);
-      if (!stopped) {
+      if (!stopping_) {
         ProcessMessage(*message);
       }
     }
   } catch (EndOfFile& e) {
     Log::D("Controller::Run: End of command stream");
-    Agent::Shutdown();
   } catch (IoException& e) {
-    Log::Fatal(SOCKET_IO_ERROR, "Error reading from command socket channel - %s", e.GetMessage().c_str());
+    if (!stopping_) {
+      RemoveListeners();
+      Log::Fatal(SOCKET_IO_ERROR, "Error reading from command socket channel - %s", e.GetMessage().c_str());
+    }
   }
+
+  Log::D("Stopping controller");
+  RemoveListeners();
 }
 
 void Controller::ProcessMessage(const ControlMessage& message) {

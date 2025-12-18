@@ -361,15 +361,15 @@ internal enum class LaunchState {
 }
 
 internal fun launchAvd(handle: DeviceHandle): Flow<LaunchState> = flow {
-  withTimeout(30.seconds) {
+  withTimeout(60.seconds) {
     handle.stateFlow.takeWhile { it.isTransitioning }.collect { emit(LaunchState.Waiting) }
   }
   if (handle.state.isReady) emit(LaunchState.Ready)
   else {
     emit(LaunchState.Launching)
-    withTimeout(180.seconds) { handle.activationAction!!.activate() }
+    withTimeout(360.seconds) { handle.activationAction!!.activate() }
     emit(LaunchState.Booting)
-    withTimeout(60.seconds) { handle.awaitReady() }
+    withTimeout(120.seconds) { handle.awaitReady() }
     emit(LaunchState.Ready)
   }
 }
@@ -535,9 +535,24 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
               else -> emit(PairingState.Pairing("Pairing in progress..."))
             }
           }
+          .catch { cause ->
+            if (cause is java.io.IOException) {
+              emit(
+                PairingState.Error(
+                  heading = "Connection lost",
+                  detailText =
+                    "The connection to one or both of the devices was lost. Pairing may have still succeeded; please check the phone.",
+                  logDetail = cause.message,
+                )
+              )
+            } else {
+              throw cause
+            }
+          }
           .first { it in AiGlassesPairing.TERMINAL_STATES }
       }
     }
+    .distinctUntilChanged()
     .onEach {
       when (it) {
         PairingState.NotStarted,

@@ -96,6 +96,11 @@ public class AndroidXmlSpellcheckingStrategy extends XmlSpellcheckingStrategy im
     return AndroidFacet.getInstance(file) != null || isLintConfig((XmlFile)file);
   }
 
+  @Override
+  public boolean useTextLevelSpellchecking() {
+    return false;
+  }
+
   private static boolean isLintConfig(@NotNull XmlFile file) {
     // Skip baseline files and lint.xml files
     if (file.getName().equals(LintXmlConfiguration.CONFIG_FILE_NAME)) {

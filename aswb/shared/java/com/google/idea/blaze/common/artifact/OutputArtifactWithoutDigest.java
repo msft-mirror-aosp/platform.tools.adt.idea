@@ -15,26 +15,9 @@
  */
 package com.google.idea.blaze.common.artifact;
 
-import javax.annotation.Nullable;
-
 /** A blaze output artifact, generated during some build action. */
-public interface OutputArtifactWithoutDigest extends BlazeArtifact, OutputArtifactInfo {
+public interface OutputArtifactWithoutDigest extends OutputArtifactInfo {
 
-  /** The path component related to the build configuration. */
-  default String getConfigurationMnemonicForLegacySync(){
-    return getArtifactPathPrefixLength() >= 2 && getArtifactPath().getNameCount() >= 2
-      ? getArtifactPath().getName(1).toString()
-      : "";
-
-  };
-
-  /**
-   * Returns the {@link ArtifactState} for this output, used for serialization/diffing purposes. Can
-   * require file system operations.
-   *
-   * <p>Note, this method is kept here to support legacy sync codepaths only. Ideally it would not
-   * be here but achieving that now is too much work.
-   */
-  @Nullable
-  ArtifactState toArtifactState();
+  /** Returns the length of the underlying file in bytes, or 0 if this can't be determined. */
+  long getLength();
 }

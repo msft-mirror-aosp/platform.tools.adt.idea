@@ -1933,6 +1933,7 @@ MODULE                        : kotlinMultiPlatform.app
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2007,6 +2008,7 @@ MODULE                        : kotlinMultiPlatform.app
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2264,7 +2266,6 @@ MODULE                        : kotlinMultiPlatform.app
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/app/build/libs/app-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
@@ -2837,6 +2838,7 @@ MODULE                        : kotlinMultiPlatform.module2
                     noReflect                     : true
                     noStdlib                      : true
                     serializeIr                   : none
+                    useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3094,7 +3096,6 @@ MODULE                        : kotlinMultiPlatform.module2
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/module2/build/libs/module2-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test

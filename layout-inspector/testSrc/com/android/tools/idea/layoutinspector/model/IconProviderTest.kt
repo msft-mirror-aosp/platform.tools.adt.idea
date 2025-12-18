@@ -18,8 +18,10 @@ package com.android.tools.idea.layoutinspector.model
 import com.android.AndroidXConstants
 import com.android.SdkConstants
 import com.android.support.AndroidxName
+import com.android.tools.idea.layoutinspector.view
 import com.google.common.truth.Truth.assertThat
 import icons.StudioIcons
+import javax.swing.Icon
 import org.junit.Test
 
 private val FQCN_CONTENT_FRAME_LAYOUT =
@@ -94,5 +96,17 @@ class IconProviderTest {
       .isEqualTo(StudioIcons.LayoutEditor.Palette.FRAME_LAYOUT)
   }
 
-  private fun iconOfView(view: String) = IconProvider.getIconForView(view, false)
+  @Test
+  fun testWebView() {
+    assertThat(iconOfView(SdkConstants.WEB_VIEW))
+      .isEqualTo(StudioIcons.LayoutEditor.Palette.WEB_VIEW)
+    assertThat(iconOfView("AnyThing", isDerivedFromWebView = true))
+      .isEqualTo(StudioIcons.LayoutEditor.Palette.WEB_VIEW)
+  }
+
+  private fun iconOfView(className: String, isDerivedFromWebView: Boolean = false): Icon {
+    val view =
+      view(drawId = 12, qualifiedName = className, isDerivedFromWebView = isDerivedFromWebView)
+    return IconProvider.getIconForView(view)
+  }
 }

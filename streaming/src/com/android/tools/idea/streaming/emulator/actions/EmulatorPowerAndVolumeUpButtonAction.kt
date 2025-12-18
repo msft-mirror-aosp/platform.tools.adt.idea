@@ -22,4 +22,5 @@ import com.android.sdklib.deviceprovisioner.DeviceType
  * This button combination invokes Android Power Menu on devices with API >= 31.
  */
 internal class EmulatorPowerAndVolumeUpButtonAction :
-  EmulatorPushButtonAction("Power", modifierKeyName = "VolumeUp", configFilter = { it.deviceType != DeviceType.WEAR && it.api >= 31 })
+  EmulatorPushButtonAction("Power", modifierKeyName = "VolumeUp",
+                           configFilter = { it.deviceType != DeviceType.AI_GLASSES && it.deviceType != DeviceType.WEAR && it.api >= 31 })

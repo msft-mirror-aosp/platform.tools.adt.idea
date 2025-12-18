@@ -26,7 +26,6 @@ import com.google.idea.blaze.base.async.executor.BlazeExecutor;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
 import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.command.info.BlazeInfoRunner;
-import com.google.idea.blaze.base.lang.buildfile.sync.LanguageSpecResult;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
@@ -71,11 +70,13 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
     if (blazeProjectData == null) {
       return null;
     }
-    LanguageSpecResult spec = blazeProjectData.getSyncState().get(LanguageSpecResult.class);
-    if (spec == null) {
-      return null;
-    }
-    return spec.getSpec();
+    return null;
+    // query sync:
+    //LanguageSpecResult spec = blazeProjectData.getSyncState().get(LanguageSpecResult.class);
+    //if (spec == null) {
+    //  return null;
+    //}
+    //return spec.getSpec();
   }
 
   private synchronized void setLanguageSpec(BuildLanguageSpec languageSpec, String blazeRelease) {

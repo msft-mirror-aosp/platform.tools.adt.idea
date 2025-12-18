@@ -23,6 +23,7 @@ import static com.intellij.openapi.util.io.FileUtilRt.createIfNotExists;
 import com.android.tools.idea.gradle.model.impl.FileImpl;
 import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity;
 import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityKt;
+import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityModifications;
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.stubs.gradle.GradleProjectStub;
@@ -34,6 +35,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.platform.backend.workspace.WorkspaceModelKt;
 import com.intellij.platform.workspace.jps.entities.ModuleEntity;
 import com.intellij.platform.workspace.jps.entities.ModuleEntityAndExtensions;
+import com.intellij.platform.workspace.jps.entities.ModuleEntityModifications;
 import com.intellij.platform.workspace.jps.entities.ModuleId;
 import com.intellij.testFramework.HeavyPlatformTestCase;
 import java.io.File;
@@ -90,9 +92,13 @@ public class GradleUtilIdeaTest extends HeavyPlatformTestCase {
       .runWriteAction(() -> WorkspaceModelKt.getWorkspaceModel(myProject).updateProjectModel("Set GradleModuleModel", it -> {
         ModuleEntity entity = it.resolve(new ModuleId(myModule.getName()));
         Objects.requireNonNull(entity);
-        ModuleEntityAndExtensions.modifyModuleEntity(it, entity, builder -> {
-          GradleModuleModelEntityKt.setGradleModuleModel(builder,
-                                                         GradleModuleModelEntity.create(gradleModuleModel, entity.getEntitySource()));
+        ModuleEntityModifications.modifyModuleEntity(it, entity, builder -> {
+          GradleModuleModelEntityModifications.setGradleModuleModel(
+            builder,
+            GradleModuleModelEntityModifications.createGradleModuleModelEntity(
+              gradleModuleModel, entity.getEntitySource()
+            )
+          );
           return Unit.INSTANCE;
         });
         return Unit.INSTANCE;

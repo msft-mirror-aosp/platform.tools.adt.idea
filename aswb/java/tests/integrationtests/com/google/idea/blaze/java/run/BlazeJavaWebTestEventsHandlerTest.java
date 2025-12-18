@@ -20,14 +20,8 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.common.collect.Iterables;
 import com.google.idea.blaze.base.BlazeIntegrationTestCase;
 import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
-import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
-import com.google.idea.blaze.base.ideinfo.TargetMap;
-import com.google.idea.blaze.base.ideinfo.TargetMapBuilder;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
-import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.java.JavaBlazeRules.RuleTypes;
 import com.intellij.execution.Location;
 import com.intellij.execution.testframework.sm.runner.SMTestLocator;
@@ -39,7 +33,6 @@ import com.intellij.psi.PsiMethod;
 import com.intellij.psi.search.GlobalSearchScope;
 import javax.annotation.Nullable;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -58,26 +51,11 @@ public class BlazeJavaWebTestEventsHandlerTest extends BlazeIntegrationTestCase 
 
   @Test
   public void testSuiteLocationResolves() {
-    TargetMap targetMap =
-        TargetMapBuilder.builder()
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setLabel("//java/com/google/lib:JavaClass_chrome-linux")
-                    .setKind("java_web_test")
-                    .setBuildFile(src("java/com/google/lib/BUILD"))
-                    .addDependency("//java/com/google/lib:JavaClass_wrapped_test"))
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setLabel("//java/com/google/lib:JavaClass_wrapped_test")
-                    .setKind("java_test")
-                    .setBuildFile(src("java/com/google/lib/BUILD"))
-                    .addSource(src("java/com/google/lib/JavaClass.java")))
-            .build();
 
-    registerProjectService(
-        BlazeProjectDataManager.class,
-        new MockBlazeProjectDataManager(
-            MockBlazeProjectDataBuilder.builder(workspaceRoot).setTargetMap(targetMap).build()));
+    //query sync: registerProjectService(
+    //    BlazeProjectDataManager.class,
+    //    new MockBlazeProjectDataManager(
+    //        MockBlazeProjectDataBuilder.builder(workspaceRoot).setTargetMap(targetMap).build()));
 
     PsiFile javaFile =
         workspace.createPsiFile(
@@ -99,26 +77,11 @@ public class BlazeJavaWebTestEventsHandlerTest extends BlazeIntegrationTestCase 
 
   @Test
   public void testMethodLocationResolves() {
-    TargetMap targetMap =
-        TargetMapBuilder.builder()
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setLabel("//java/com/google/lib:JavaClass_chrome-linux")
-                    .setKind("java_web_test")
-                    .setBuildFile(src("java/com/google/lib/BUILD"))
-                    .addDependency("//java/com/google/lib:JavaClass_wrapped_test"))
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setLabel("//java/com/google/lib:JavaClass_wrapped_test")
-                    .setKind("java_test")
-                    .setBuildFile(src("java/com/google/lib/BUILD"))
-                    .addSource(src("java/com/google/lib/JavaClass.java")))
-            .build();
 
-    registerProjectService(
-        BlazeProjectDataManager.class,
-        new MockBlazeProjectDataManager(
-            MockBlazeProjectDataBuilder.builder(workspaceRoot).setTargetMap(targetMap).build()));
+    // query sync: registerProjectService(
+    //    BlazeProjectDataManager.class,
+    //    new MockBlazeProjectDataManager(
+    //        MockBlazeProjectDataBuilder.builder(workspaceRoot).setTargetMap(targetMap).build()));
 
     PsiFile javaFile =
         workspace.createPsiFile(
@@ -145,26 +108,11 @@ public class BlazeJavaWebTestEventsHandlerTest extends BlazeIntegrationTestCase 
 
   @Test
   public void testParameterizedMethodLocationResolves() {
-    TargetMap targetMap =
-        TargetMapBuilder.builder()
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setLabel("//java/com/google/lib:JavaClass_chrome-linux")
-                    .setKind("java_web_test")
-                    .setBuildFile(src("java/com/google/lib/BUILD"))
-                    .addDependency("//java/com/google/lib:JavaClass_wrapped_test"))
-            .addTarget(
-                TargetIdeInfo.builder()
-                    .setLabel("//java/com/google/lib:JavaClass_wrapped_test")
-                    .setKind("java_test")
-                    .setBuildFile(src("java/com/google/lib/BUILD"))
-                    .addSource(src("java/com/google/lib/JavaClass.java")))
-            .build();
 
-    registerProjectService(
-        BlazeProjectDataManager.class,
-        new MockBlazeProjectDataManager(
-            MockBlazeProjectDataBuilder.builder(workspaceRoot).setTargetMap(targetMap).build()));
+    // query sync: registerProjectService(
+    //    BlazeProjectDataManager.class,
+    //    new MockBlazeProjectDataManager(
+    //        MockBlazeProjectDataBuilder.builder(workspaceRoot).setTargetMap(targetMap).build()));
 
     PsiFile javaFile =
         workspace.createPsiFile(

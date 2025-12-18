@@ -225,6 +225,7 @@ void Agent::Initialize(const vector<string>& args) {
 }
 
 void Agent::Run(const vector<string>& args) {
+  main_thread_id_ = this_thread::get_id();
   Initialize(args);
 
   struct sigaction action = { .sa_handler = sighup_handler };
@@ -243,6 +244,7 @@ void Agent::Run(const vector<string>& args) {
     audio_socket_writer_->Write(&channel_marker, sizeof(channel_marker));  // Audio channel marker.
   }
   control_socket_fd_ = CreateAndConnectSocket(socket_name_);
+  controller_ = new Controller(control_socket_fd_);
   string mime_type = (codec_name_.compare(0, 2, "vp") == 0 ? "video/x-vnd.on2." : "video/") + codec_name_;
   codec_info_ = SelectVideoEncoder(mime_type);
   WriteVideoChannelHeader(codec_name_, video_socket_writer_);
@@ -257,7 +259,6 @@ void Agent::Run(const vector<string>& args) {
     audio_streamer_->Start();
   }
 
-  controller_ = new Controller(control_socket_fd_);
   Log::D("Created video and control sockets");
   if ((flags_ & START_VIDEO_STREAM) != 0) {
     primary_display_streamer_->Start();
@@ -273,6 +274,7 @@ void Agent::StartVideoStream(int32_t display_id, Size max_video_resolution) {
     display_streamer = primary_display_streamer_;
     created = false;
   } else {
+    assert(this_thread::get_id() == main_thread_id_);
     auto ret = display_streamers_.try_emplace(
         display_id,
         display_id, codec_info_, max_video_resolution, DisplayStreamer::CURRENT_DISPLAY_ORIENTATION,
@@ -287,6 +289,7 @@ void Agent::StartVideoStream(int32_t display_id, Size max_video_resolution) {
 }
 
 void Agent::StopVideoStream(int32_t display_id) {
+  assert(this_thread::get_id() == main_thread_id_);
   auto it = display_streamers_.find(display_id);
   if (it != display_streamers_.end()) {
     DisplayStreamer& display_streamer = it->second;
@@ -298,14 +301,20 @@ void Agent::StopVideoStream(int32_t display_id) {
 }
 
 void Agent::SetVideoOrientation(int32_t display_id, int32_t orientation) {
-  auto it = display_streamers_.find(display_id);
-  if (it != display_streamers_.end()) {
-    DisplayStreamer& display_streamer = it->second;
-    display_streamer.SetVideoOrientation(orientation);
+  if (display_id == PRIMARY_DISPLAY_ID) {
+    primary_display_streamer_->SetVideoOrientation(orientation);
+  } else {
+    assert(this_thread::get_id() == main_thread_id_);
+    auto it = display_streamers_.find(display_id);
+    if (it != display_streamers_.end()) {
+      DisplayStreamer& display_streamer = it->second;
+      display_streamer.SetVideoOrientation(orientation);
+    }
   }
 }
 
 void Agent::SetMaxVideoResolution(int32_t display_id, Size max_video_resolution) {
+  assert(this_thread::get_id() == main_thread_id_);
   auto it = display_streamers_.find(display_id);
   if (it != display_streamers_.end()) {
     DisplayStreamer& display_streamer = it->second;
@@ -329,6 +338,7 @@ void Agent::StopAudioStream() {
 }
 
 DisplayInfo Agent::GetDisplayInfo(int32_t display_id) {
+  assert(this_thread::get_id() == main_thread_id_);
   auto it = display_streamers_.find(display_id);
   if (it != display_streamers_.end()) {
     DisplayStreamer& display_streamer = it->second;
@@ -347,30 +357,51 @@ SessionEnvironment& Agent::GetSessionEnvironment() {
 
 void Agent::RestoreEnvironment() {
   unique_lock lock(environment_mutex_);
+  Log::D("Restoring environment");
   delete session_environment_;
   session_environment_ = nullptr;
 }
 
 void Agent::Shutdown() {
-  if (!shutting_down_.exchange(true)) {
-    for (auto& it : display_streamers_) {
-      it.second.Stop();
+  shutting_down_ = true;
+  if (this_thread::get_id() == main_thread_id_) {
+    if (!shutting_down_.exchange(true)) {
+      Log::D("Shutting down");
+      DisplayManager::RemoveAllDisplayListeners();
+      for (auto& it: display_streamers_) {
+        it.second.Stop();
+      }
+      if (audio_streamer_ != nullptr) {
+        audio_streamer_->Stop();
+      }
+      if (video_socket_writer_ != nullptr) {
+        Log::D("Shutting down video socket");
+        shutdown(video_socket_writer_->socket_fd(), SHUT_RDWR);
+      }
+      if (audio_socket_writer_ != nullptr) {
+        Log::D("Shutting down audio socket");
+        shutdown(audio_socket_writer_->socket_fd(), SHUT_RDWR);
+      }
+      RestoreEnvironment();
+      Jvm::Exit(exit_code_);
     }
-    DisplayManager::RemoveAllDisplayListeners(Jvm::GetJni());
-    if (audio_streamer_ != nullptr) {
-      audio_streamer_->Stop();
-    }
+  } else {
+    // Stopping Controller and shutting down control socket makes Shutdown to be called again on the main thread.
     if (controller_ != nullptr) {
       controller_->Stop();
     }
-    if (video_socket_writer_ != nullptr) {
-      close(video_socket_writer_->socket_fd());
+    Log::D("Shutting down control socket");
+    if (shutdown(control_socket_fd_, SHUT_RDWR) != 0) {
+      Log::E("Failed to shut down control socket - %s", strerror(errno));
     }
-    if (audio_socket_writer_ != nullptr) {
-      close(audio_socket_writer_->socket_fd());
-    }
-    RestoreEnvironment();
   }
+}
+
+[[noreturn]] void Agent::ErrorShutdown(int32_t exit_code) {
+  int32_t success = EXIT_SUCCESS;
+  exit_code_.compare_exchange_strong(success, exit_code);
+  Shutdown();
+  throw EmergencyShutdownException();
 }
 
 const string& Agent::device_manufacturer() {
@@ -381,6 +412,8 @@ const string& Agent::device_manufacturer() {
   return device_manufacturer_;
 }
 
+thread::id Agent::main_thread_id_;
+std::atomic_int32_t Agent::exit_code_(EXIT_SUCCESS);
 int32_t Agent::feature_level_(0);
 DeviceType Agent::device_type_(DeviceType::GENERIC);
 string Agent::device_manufacturer_("<uninitialized>");

@@ -37,8 +37,6 @@ import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEdit
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.util.containers.addIfNotNull
 import org.jetbrains.kotlin.backend.common.output.OutputFile
-import org.jetbrains.kotlin.codegen.`when`.WhenByEnumsMapping.MAPPINGS_CLASS_NAME_POSTFIX
-import org.jetbrains.kotlin.codegen.`when`.WhenByEnumsMapping.MAPPING_ARRAY_FIELD_PREFIX
 import org.jetbrains.kotlin.psi.KtFile
 import java.util.concurrent.TimeUnit
 import kotlin.metadata.jvm.KotlinClassMetadata
@@ -265,7 +263,7 @@ internal class LiveEditOutputBuilder(val unrestricted: Boolean = false) {
  * mapping is changed, we will need to go into unsupported state.
  */
 private fun isWhenMapping(clazz: IrClass) : Boolean {
-  return clazz.name.endsWith(MAPPINGS_CLASS_NAME_POSTFIX) && clazz.fields.all { it.name.startsWith(MAPPING_ARRAY_FIELD_PREFIX)}
+  return clazz.name.endsWith("\$WhenMappings") && clazz.fields.all { it.name.startsWith("\$EnumSwitchMapping$")}
 }
 
 

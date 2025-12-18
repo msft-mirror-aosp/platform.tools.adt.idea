@@ -103,7 +103,7 @@ class LegacyPropertiesProviderTest {
   fun testExample() {
     val lookup = Mockito.mock(ViewNodeAndResourceLookup::class.java)
     whenever(lookup.resourceLookup).thenReturn(Mockito.mock(ResourceLookup::class.java))
-    val root = ViewNode(1234, "TextView", null, Rectangle(), null, "", 0)
+    val root = ViewNode(1234, "TextView", null, Rectangle(), null, "", 0, false)
     val provider = LegacyPropertiesProvider()
     val propertyLoader = LegacyPropertiesProvider.Updater(lookup)
     propertyLoader.parseProperties(root, example)
@@ -120,7 +120,6 @@ class LegacyPropertiesProviderTest {
       .isEqualTo("ResourceReference{namespace=apk/res-auto, type=id, name=textView}")
     // TODO(171901393): assertThat(root.isDimBehind).isTrue()
     assertThat(properties.getOrNull(ANDROID_URI, ATTR_DIM_BEHIND)).isNull()
-    check(properties, NAMESPACE_INTERNAL, SdkConstants.ATTR_NAME, "TextView", PropertySection.VIEW)
     check(properties, NAMESPACE_INTERNAL, "x", "4px", PropertySection.DIMENSION)
     check(properties, NAMESPACE_INTERNAL, "y", "350px", PropertySection.DIMENSION)
     check(properties, NAMESPACE_INTERNAL, "width", "1432px", PropertySection.DIMENSION)

@@ -19,7 +19,10 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.ml-api" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.impl.shared" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.log.impl" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.log" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.dvcs" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.vcs.dvcs.impl" level="project" />
     <orderEntry type="module" module-name="google-login" />
     <orderEntry type="library" name="studio-plugin-intellij.libraries.grpc" level="project" />
