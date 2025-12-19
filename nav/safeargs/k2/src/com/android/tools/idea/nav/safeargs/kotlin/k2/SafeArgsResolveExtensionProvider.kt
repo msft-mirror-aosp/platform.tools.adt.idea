@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.idea.base.projectStructure.openapiModule
 
 @OptIn(KaExperimentalApi::class, KaSpiExtensionPoint::class)
 class SafeArgsResolveExtensionProvider : KaResolveExtensionProvider() {
+  @KaSpiExtensionPoint
   override fun provideExtensionsFor(module: KaModule): List<KaResolveExtension> =
     when (module) {
       is KaSourceModule -> {

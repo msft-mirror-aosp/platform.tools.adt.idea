@@ -35,19 +35,22 @@ abstract class SafeArgsResolveExtensionFile(val classId: ClassId) : KaResolveExt
     check(!classId.isLocal && classId.outermostClassId == classId) { "classId ${classId} must be top-level" }
   }
 
-  override fun getFileName(): String = "${classId.shortClassName}.kt"
+  @KaSpiExtensionPoint override fun getFileName(): String = "${classId.shortClassName}.kt"
 
-  override fun getFilePackageName(): FqName = classId.packageFqName
+  private val filePackageNameImpl: FqName
+    get() = classId.packageFqName
 
-  override fun getTopLevelCallableNames(): Set<Name> = setOf()
+  @KaSpiExtensionPoint override fun getFilePackageName(): FqName = filePackageNameImpl
 
-  override fun getTopLevelClassifierNames(): Set<Name> = setOf(classId.shortClassName)
+  @KaSpiExtensionPoint override fun getTopLevelCallableNames(): Set<Name> = setOf()
+
+  @KaSpiExtensionPoint override fun getTopLevelClassifierNames(): Set<Name> = setOf(classId.shortClassName)
 
   private val fileText: String by lazy {
     buildString {
       appendLine("// This file is generated on-the-fly by SafeArgs.")
       appendLine()
-      appendLine("package ${getFilePackageName().toEscapedString()}")
+      appendLine("package ${filePackageNameImpl.toEscapedString()}")
       appendLine()
       buildClassBody()
     }
@@ -55,7 +58,7 @@ abstract class SafeArgsResolveExtensionFile(val classId: ClassId) : KaResolveExt
 
   protected abstract fun StringBuilder.buildClassBody()
 
-  override fun buildFileText(): String = fileText
+  @KaSpiExtensionPoint override fun buildFileText(): String = fileText
 
   protected abstract fun KaSession.getNavigationElementForDeclaration(symbol: KaDeclarationSymbol): PsiElement?
 
@@ -67,9 +70,10 @@ abstract class SafeArgsResolveExtensionFile(val classId: ClassId) : KaResolveExt
 
   private val navigationTargetsProvider by lazy {
     object : KaResolveExtensionNavigationTargetsProvider() {
+      @KaSpiExtensionPoint
       override fun KaSession.getNavigationTargets(element: KtElement): Collection<PsiElement> = listOfNotNull(getNavigationElement(element))
     }
   }
 
-  override fun createNavigationTargetsProvider() = navigationTargetsProvider
+  @KaSpiExtensionPoint override fun createNavigationTargetsProvider() = navigationTargetsProvider
 }
