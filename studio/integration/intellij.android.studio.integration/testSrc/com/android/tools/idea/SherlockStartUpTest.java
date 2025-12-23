@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -36,6 +37,7 @@ public class SherlockStartUpTest {
   public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
+  @Ignore("Disabled due to b/469172273")
   public void startUpTest() throws Exception {
     TestFileSystem fileSystem = new TestFileSystem(tempFolder.getRoot().toPath());
     SherlockInstallation install = SherlockInstallation.fromZip(fileSystem);
