@@ -24,6 +24,7 @@ import com.android.tools.idea.testartifacts.createAndroidGradleTestConfiguration
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromClass
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromDirectory
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromMethod
+import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil.Companion.getPsiElement
 import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromMethod
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths.ANDROID_KOTLIN_MULTIPLATFORM
@@ -43,6 +44,7 @@ import com.intellij.coverage.CoverageSuitesBundle
 import com.intellij.coverage.DefaultCoverageFileProvider
 import com.intellij.coverage.IDEACoverageRunner
 import com.intellij.coverage.JavaCoverageEngine
+import com.intellij.execution.actions.ConfigurationFromContext
 import com.intellij.execution.actions.ConfigurationFromContextImpl
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
@@ -61,6 +63,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
+import org.jetbrains.kotlin.idea.gradleJava.testing.KotlinAllInPackageGradleConfigurationProducer
 import org.jetbrains.plugins.gradle.GradleManager
 import org.jetbrains.plugins.gradle.execution.test.runner.AllInPackageGradleConfigurationProducer
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestsExecutionConsoleManager
@@ -89,6 +92,21 @@ class AndroidGradleConfigurationProducersTest {
     verifyCannotCreateDirectoryGradleRunConfigurationFromAndroidTestDirectory("app/src/androidTest/java")
     verifyCannotCreateDirectoryGradleRunConfigurationFromAndroidTestDirectory("app/src/androidTest")
     verifyCanCreateGradleConfigurationFromTestDirectory()
+  }
+
+  // Test for b/450247317
+  @Test
+  fun testPackageRunConfigurationInSimpleProject() {
+    projectRule.loadProject(SIMPLE_APPLICATION)
+    val packagePsiElement = getPsiElement(project, "app/src/test/java/google/simpleapplication", true)
+    val kotlinPackageConfigurations = createConfigurationsFromContext(packagePsiElement)
+
+    val expectedConfigurationName = "Tests in 'google.simpleapplication'"
+    val expectedConfigurationProducer = KotlinAllInPackageGradleConfigurationProducer::class.java
+
+    assertThat(kotlinPackageConfigurations.size).isEqualTo(1)
+    assertThat(kotlinPackageConfigurations[0].configuration.name).isEqualTo(expectedConfigurationName)
+    assertThat(kotlinPackageConfigurations[0].isProducedBy(expectedConfigurationProducer)).isTrue()
   }
 
   @Test
@@ -341,6 +359,11 @@ class AndroidGradleConfigurationProducersTest {
   private fun createConfigurationFromContext(psiFile: PsiElement): ConfigurationFromContextImpl? {
     val context = TestConfigurationTestingUtil.createContext(project, psiFile)
     return context.configurationsFromContext?.firstOrNull() as ConfigurationFromContextImpl?
+  }
+
+  private fun createConfigurationsFromContext(psiFile: PsiElement): List<ConfigurationFromContext> {
+    val context = TestConfigurationTestingUtil.createContext(project, psiFile)
+    return context.configurationsFromContext.orEmpty()
   }
 
   private fun checkConfigurationTasksAreAsExpected(
