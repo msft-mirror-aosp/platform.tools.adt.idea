@@ -28,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Wrapper that represents a client connected to a channel via the input |channelName|.
  */
-public class TransportClient {
+public class TransportClient implements AutoCloseable {
 
   private static final long SHUTDOWN_TIMEOUT_MS = 1000;
 
@@ -54,6 +54,11 @@ public class TransportClient {
 
   public CompletableFuture<Transport.ExecuteResponse> executeAsync(Command command, Executor executor) {
     return executeAsync(myTransportStub, command, executor);
+  }
+
+  @Override
+  public void close() throws InterruptedException {
+    shutdown();
   }
 
   public static CompletableFuture<Transport.ExecuteResponse> executeAsync(

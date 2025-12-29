@@ -654,7 +654,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
         val manager: BuildAttributionManager? = project.getService(BuildAttributionManager::class.java)
         if (manager != null && manager.shouldShowBuildOutputLink()) {
           val buildAttributionTabLinkLine: String = buildOutputLine()
-          onTaskOutput(id, "\n" + buildAttributionTabLinkLine + "\n", true)
+          onTaskOutput(id, "\n" + buildAttributionTabLinkLine + "\n", ProcessOutputType.STDOUT)
         }
       }
     }

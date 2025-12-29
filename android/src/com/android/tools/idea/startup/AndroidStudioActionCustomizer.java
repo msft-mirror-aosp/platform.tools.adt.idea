@@ -29,14 +29,9 @@ public class AndroidStudioActionCustomizer implements ActionConfigurationCustomi
   public void customize(@NotNull ActionManager actionManager) {
     setUpNewFilePopupActions(actionManager);
     hideRarelyUsedIntellijActions(actionManager);
-    setupResourceManagerActions(actionManager);
     setUpCodeMenuActions(actionManager);
     setUpGradleActions(actionManager);
     hideDebuggerHotSwapAction(actionManager);
-  }
-
-  private static void setupResourceManagerActions(ActionManager actionManager) {
-    Actions.hideAction(actionManager, "Images.ShowThumbnails");
   }
 
   // Remove popup actions that we don't use

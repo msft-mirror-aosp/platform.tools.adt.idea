@@ -221,7 +221,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
         myBuildStopper.register(id, cancellationTokenSource)
         taskListener.onStart(gradleRootProjectPath, id)
-        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), true)
+        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), ProcessOutputType.STDOUT)
         val buildState = GradleBuildState.getInstance(project)
         val buildCompleter = buildState.buildStarted(BuildContext(myRequest))
         var buildAttributionManager: BuildAttributionManager? = null

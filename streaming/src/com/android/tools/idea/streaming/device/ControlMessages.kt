@@ -84,6 +84,7 @@ sealed class ControlMessage(val type: Int) {
         DisplayRemovedNotification.TYPE -> DisplayRemovedNotification.deserialize(stream)
         XrPassthroughCoefficientChangedNotification.TYPE -> XrPassthroughCoefficientChangedNotification.deserialize(stream)
         XrEnvironmentChangedNotification.TYPE -> XrEnvironmentChangedNotification.deserialize(stream)
+        XrInputUnavailableNotification.TYPE -> XrInputUnavailableNotification.deserialize(stream)
         UiSettingsRequest.TYPE -> UiSettingsRequest.deserialize(stream)
         UiSettingsResponse.TYPE -> UiSettingsResponse.deserialize(stream)
         UiSettingsChangeRequest.TYPE -> UiSettingsChangeRequest.deserialize(stream)
@@ -898,6 +899,29 @@ internal data class XrEnvironmentChangedNotification(val environment: XrEnvironm
   }
 }
 
+/** Notification that XR-specific input services are not available on the device. */
+internal data class XrInputUnavailableNotification(val reason: Reason) : ControlMessage(TYPE) {
+
+  override fun serialize(stream: Base128OutputStream) {
+    super.serialize(stream)
+    stream.writeEnum(reason)
+  }
+
+  override fun toString(): String =
+      "XrInputUnavailableNotification(reason=$reason)"
+
+  companion object : Deserializer {
+    const val TYPE = 30
+
+    override fun deserialize(stream: Base128InputStream): XrInputUnavailableNotification {
+      val reason = stream.readEnum<Reason>();
+      return XrInputUnavailableNotification(reason)
+    }
+  }
+
+  enum class Reason { SERVICE_NOT_RUNNING, PROPERTY_NOT_SET }
+}
+
 /** Queries the current UI settings from a device. */
 internal data class UiSettingsRequest private constructor(override val requestId: Int) : CorrelatedMessage(TYPE) {
 
@@ -907,7 +931,7 @@ internal data class UiSettingsRequest private constructor(override val requestId
       "UiSettingsRequest(requestId=$requestId)"
 
   companion object : Deserializer {
-    const val TYPE = 30
+    const val TYPE = 31
 
     override fun deserialize(stream: Base128InputStream): UiSettingsRequest {
       val requestId = stream.readInt()
@@ -997,7 +1021,7 @@ internal data class UiSettingsResponse(
   }
 
   companion object : Deserializer {
-    const val TYPE = 31
+    const val TYPE = 32
 
     override fun deserialize(stream: Base128InputStream): UiSettingsResponse {
       val requestId = stream.readInt()
@@ -1123,7 +1147,7 @@ internal data class UiSettingsChangeRequest<T>(
       "UiSettingsChangeRequest(requestId=$requestId, command=${command.toString(value)})"
 
   companion object : Deserializer {
-    const val TYPE = 32
+    const val TYPE = 33
 
     override fun deserialize(stream: Base128InputStream): CorrelatedMessage {
       val requestId = stream.readInt()
@@ -1148,7 +1172,7 @@ internal data class UiSettingsChangeResponse(
       "UiSettingsChangeResponse(requestId=$requestId, originalValues=\"$originalValues\")"
 
   companion object : Deserializer {
-    const val TYPE = 33
+    const val TYPE = 34
 
     override fun deserialize(stream: Base128InputStream): UiSettingsChangeResponse {
       val requestId = stream.readInt()
@@ -1167,7 +1191,7 @@ internal data class ResetUiSettingsRequest(override val requestId: Int) : Correl
       "ResetUiSettingsRequest(requestId=$requestId)"
 
   companion object : Deserializer {
-    const val TYPE = 34
+    const val TYPE = 35
 
     override fun deserialize(stream: Base128InputStream): ResetUiSettingsRequest {
       val requestId = stream.readInt()

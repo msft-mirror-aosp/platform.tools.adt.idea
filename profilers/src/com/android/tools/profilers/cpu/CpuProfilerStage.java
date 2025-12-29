@@ -33,16 +33,15 @@ import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.adtui.model.updater.UpdatableManager;
 import com.android.tools.idea.transport.TransportFileManager;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profiler.proto.Trace.TraceInitiationType;
 import com.android.tools.profiler.proto.Trace;
+import com.android.tools.profiler.proto.Trace.TraceInitiationType;
+import com.android.tools.profilers.InterimStage;
 import com.android.tools.profilers.LogUtils;
-import com.android.tools.profilers.NullMonitorStage;
 import com.android.tools.profilers.ProfilerAspect;
 import com.android.tools.profilers.RecordingOption;
 import com.android.tools.profilers.RecordingOptionsModel;
 import com.android.tools.profilers.StreamingStage;
 import com.android.tools.profilers.StudioProfilers;
-import com.android.tools.profilers.InterimStage;
 import com.android.tools.profilers.cpu.adapters.CpuDataProvider;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.CpuProfilerConfigModel;
@@ -51,14 +50,11 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.AdditionalO
 import com.android.tools.profilers.event.EventMonitor;
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel;
 import com.android.tools.profilers.tasks.TaskEventTrackerUtils;
-import com.android.tools.profilers.tasks.TaskMetadataStatus;
 import com.android.tools.profilers.tasks.TaskStartFailedMetadata;
 import com.android.tools.profilers.tasks.TaskStopFailedMetadata;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent;
-import com.google.wireless.android.sdk.stats.TaskFailedMetadata;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.registry.Registry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -152,6 +148,9 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
   @Nullable
   private final RecordingScreenModel<CpuProfilerStage> myRecordingScreenModel;
+
+  @Nullable
+  private EventMonitor myEventMonitor;
 
   public CpuProfilerStage(@NotNull StudioProfilers profilers) {
     this(profilers, new CpuCaptureParser(profilers), CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN, () -> {});
@@ -258,8 +257,9 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     return "CPU";
   }
 
+  @Nullable
   public EventMonitor getEventMonitor() {
-    return myCpuDataProvider.getEventMonitor();
+    return myEventMonitor;
   }
 
   public RecordingOptionsModel getRecordingModel() {
@@ -288,7 +288,10 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
   @Override
   public void enter() {
     logEnterStage();
-    getEventMonitor().enter();
+    myEventMonitor = getEventMonitorInstance();
+    if (myEventMonitor != null) {
+      myEventMonitor.enter();
+    }
     getStudioProfilers().getUpdater().register(getCpuUsage());
     getStudioProfilers().getUpdater().register(getTraceDurations());
     getStudioProfilers().getUpdater().register(myInProgressTraceHandler);
@@ -309,7 +312,9 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
   @Override
   public void exit() {
-    getEventMonitor().exit();
+    if (myEventMonitor != null) {
+      myEventMonitor.exit();
+    }
     getStudioProfilers().getUpdater().unregister(getCpuUsage());
     getStudioProfilers().getUpdater().unregister(getTraceDurations());
     getStudioProfilers().getUpdater().unregister(myInProgressTraceHandler);
@@ -324,6 +329,12 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     myCaptureParser.abortParsing();
     getRangeSelectionModel().clearListeners();
     getUpdatableManager().releaseAll();
+  }
+
+  @Nullable
+  private EventMonitor getEventMonitorInstance() {
+    boolean jvmtiEnabled = getStudioProfilers().getSessionsManager().getSelectedSessionMetaData().getJvmtiEnabled();
+    return jvmtiEnabled ? new EventMonitor(getStudioProfilers()) : null;
   }
 
   @Override
