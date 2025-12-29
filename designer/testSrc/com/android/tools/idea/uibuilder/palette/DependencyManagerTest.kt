@@ -31,7 +31,6 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.module.StdModuleTypes
 import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TestDialog
@@ -41,9 +40,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Ref
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
-import java.nio.file.Files.createTempDirectory
-import java.util.ArrayDeque
-import java.util.concurrent.Future
+import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_MODULE_ENTITY_TYPE_ID_NAME
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.After
 import org.junit.Before
@@ -52,6 +49,9 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.rules.TestName
 import org.mockito.Mockito.mock
+import java.nio.file.Files.createTempDirectory
+import java.util.ArrayDeque
+import java.util.concurrent.Future
 
 class DependencyManagerTest {
   private var panel: PalettePanel? = null
@@ -198,7 +198,7 @@ class DependencyManagerTest {
         WriteCommandAction.runWriteCommandAction(
           tempProject,
           Computable<Module> {
-            ModuleManager.getInstance(tempProject).newModule(bar, StdModuleTypes.JAVA.id)
+            ModuleManager.getInstance(tempProject).newModule(bar, JAVA_MODULE_ENTITY_TYPE_ID_NAME)
           },
         )
 
