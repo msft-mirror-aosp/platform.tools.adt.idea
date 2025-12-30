@@ -376,6 +376,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                                                                                  event.getTraceStatus().getTraceStopStatus());
                                                                              }
                                                                              else {
+                                                                               cleanupFailedCapture();
                                                                                // unknown/undefined trace status event found
                                                                                if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
                                                                                  myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(Trace.TraceStopStatus.getDefaultInstance(), null, null));
@@ -451,6 +452,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       default:
         getLogger().error(status.getErrorMessage());
         if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+          cleanupFailedCapture();
           myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(status, null, null));
         }
         break;
@@ -509,6 +511,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       case FAILURE_UNKNOWN:
       case UNRECOGNIZED:
         if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+          cleanupFailedCapture();
           myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(null, null, status));
         }
         break;
@@ -539,6 +542,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
           break;
         default:
           if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+            cleanupFailedCapture();
             if (enable) {
               // Start task failure
               myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(null, status, null));
@@ -665,6 +669,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
     myRecordingOptionsModel.setFinished();
     myNativeAllocationTracking = false;
+    setTrackingAllocations(false);
+    getTimeline().setStreaming(false);
   }
 
   public static boolean canSafelyLoadHprof(long fileSize) {
