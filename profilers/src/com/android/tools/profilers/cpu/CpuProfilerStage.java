@@ -437,9 +437,6 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
     }
     else if (!status.getStatus().equals(Trace.TraceStopStatus.Status.SUCCESS)) {
       CpuCaptureMetadata captureMetadata = trackAndLogTraceStopFailures(status);
-      if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-        myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, null, captureMetadata));
-      }
       // Return to IDLE state and set the current capture to null
       setCaptureState(CaptureState.IDLE);
     }
@@ -465,6 +462,11 @@ public class CpuProfilerStage extends StreamingStage implements InterimStage {
 
     getLogger().warn("Unable to stop tracing: " + status.getStatus() +" error code " + status.getErrorCode());
     getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.getCaptureStopFailure(status.getStatus().toString()));
+
+    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+      myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, null, captureMetadata));
+    }
+
     return captureMetadata;
   }
 
