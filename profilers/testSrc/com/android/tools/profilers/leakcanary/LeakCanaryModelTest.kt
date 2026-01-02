@@ -366,7 +366,7 @@ class LeakCanaryModelTest : WithFakeTimer {
       className = className,
       leakingStatus = leakingStatus,
       leakingStatusReason = "",
-      retainedByteSize = 2048,
+      retainedHeapSize = "2 KB",
       retainedObjectCount = 2024,
       notes = emptyList(),
       referencingField = referencingField
