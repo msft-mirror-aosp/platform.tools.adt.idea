@@ -79,6 +79,8 @@ class ArtifactTrackerStateSerializer {
       .addAllSources(javaInfo.sources().map { projectPathToProto(it) })
       .addAllSrcJars(javaInfo.srcJars().map { projectPathToProto(it) })
       .setAndroidResourcesPackage(javaInfo.androidResourcesPackage())
+      .addAllKotlinCompilerFlags(javaInfo.kotlinCompilerFlags())
+      .setIsKotlinToolchain(javaInfo.isKotlinToolchain)
   }
 
   private fun toProtos(artifacts: Collection<BuildArtifact>): List<ArtifactTrackerProto.Artifact> {

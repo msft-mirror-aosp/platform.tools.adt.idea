@@ -20,9 +20,8 @@ import com.intellij.java.workspace.entities.JavaSourceRootPropertiesEntity
 import com.intellij.java.workspace.entities.javaSourceRoots
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.edtWriteAction
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.BaseProjectDirectories
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.BaseProjectDirectories.Companion.getBaseDirectories
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.RootsChangeRescanningInfo
@@ -32,7 +31,6 @@ import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.workspace.jps.JpsProjectFileEntitySource
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
@@ -65,6 +63,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.AndroidFacetType
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
+import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.config.IKotlinFacetSettings
 import org.jetbrains.kotlin.config.KotlinFacetSettings
 import org.jetbrains.kotlin.config.KotlinModuleKind
@@ -134,6 +133,7 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
     val dependencies: List<LibraryName>,
     val contentRoots: List<ContentRootData>,
     val isAndroidModule: Boolean,
+    val kotlinCompilerFlags: List<String>,
   ) {
     companion object
   }
@@ -204,7 +204,13 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
       dependencies: List<LibraryName>,
       contentRoots: List<ContentRootData>,
     ): ModuleData {
-      return ModuleData(name = module.name, dependencies = dependencies, contentRoots = contentRoots, isAndroidModule = module.isAndroidModule)
+      return ModuleData(
+        name = module.name,
+        dependencies = dependencies,
+        contentRoots = contentRoots,
+        isAndroidModule = module.isAndroidModule,
+        kotlinCompilerFlags = module.kotlinCompilerFlags
+      )
     }
 
     fun LibraryData.Companion.from(library: ProjectProto.Library): LibraryData {
@@ -428,7 +434,7 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
                     entitySource = BazelEntitySource
                     ) {
                     module = this@ModuleEntity
-                    updatePluginOptions(KotlinFacetSettingsWorkspaceModel(this), listOf())
+                    updatePluginOptions(KotlinFacetSettingsWorkspaceModel(this), listOf(), moduleData.kotlinCompilerFlags)
                   }
                 )
               }
@@ -478,11 +484,16 @@ private val qsyncDisableCompose = BoolExperiment("qsync.disable.compose", false)
 
 private fun updatePluginOptions(
   facetSettings: IKotlinFacetSettings,
-  newPluginOptions: List<String>
+  newPluginOptions: List<String>,
+  kotlinCompilerFlags: List<String> = emptyList(),
 ) {
   var commonArguments = facetSettings.compilerArguments
   if (commonArguments == null) {
     commonArguments = K2JVMCompilerArguments()
+  }
+
+  if (kotlinCompilerFlags.isNotEmpty()) {
+    parseCommandLineArguments(kotlinCompilerFlags, commonArguments)
   }
 
   if (isK2Mode() && !qsyncDisableCompose.value) {

@@ -21,12 +21,37 @@ import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.serviceContainer.AlreadyDisposedException
+import com.google.idea.blaze.base.qsync.QuerySyncManager
+import com.google.idea.blaze.common.Label
+import com.google.idea.blaze.qsync.project.TargetsToBuild
+import com.intellij.openapi.project.Project
+import kotlin.jvm.optionals.getOrNull
 
-internal class BazelBuildTargetReference internal constructor(module: Module, val file: VirtualFile) : BuildTargetReference {
+internal data class BazelBuildTargetReference internal constructor(val module_: Module, val file: VirtualFile) : BuildTargetReference {
   fun getFileWorkspaceRelativePath() = WorkspaceRoot.virtualFilesToWorkspaceRelativePaths(project, listOf(file)).single()
 
-  override val module = module
-    get() = if (field.isDisposed) throw AlreadyDisposedException("Already disposed: $field") else field
+  override val module
+    get() = if (module_.isDisposed) throw AlreadyDisposedException("Already disposed: $module_") else module_
 
-  override val moduleIfNotDisposed = if (module.isDisposed) null else module
+  override val moduleIfNotDisposed = if (module_.isDisposed) null else module_
+}
+
+internal fun BazelBuildTargetReference.toAllLabels(): Set<Label> {
+  return QuerySyncManager.getInstance(project).getTargetsToBuildByPaths(
+    listOf(getFileWorkspaceRelativePath())).flatMap { it.targets }.toSet()
+}
+
+internal fun BazelBuildTargetReference.toPreferredLabel(): Label? {
+  return QuerySyncManager.getInstance(project)
+    .getTargetsToBuildByPaths(listOf(getFileWorkspaceRelativePath()))
+    .toPreferredLabel(project)
+}
+
+internal fun Collection<TargetsToBuild>.toPreferredLabel(project: Project): Label? {
+  val candidates = flatMap { it.targets }.toSet()
+  if (candidates.size <= 1) return candidates.singleOrNull()
+
+  val snapshot = QuerySyncManager.getInstance(project).currentSnapshot.getOrNull() ?: return null
+  val builds = snapshot.artifactIndex.builtDepsMap()
+  return candidates.filter { builds.containsKey(it) }.singleOrNull()
 }

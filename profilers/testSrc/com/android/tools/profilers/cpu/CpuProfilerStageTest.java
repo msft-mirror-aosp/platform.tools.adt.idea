@@ -34,7 +34,6 @@ import com.android.tools.profiler.proto.Cpu;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.FakeFeatureTracker;
 import com.android.tools.profilers.FakeIdeProfilerServices;
-import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilersTestData;
 import com.android.tools.profilers.StudioMonitorStage;
@@ -47,14 +46,13 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.event.FakeEventService;
 import com.android.tools.profilers.sessions.SessionsManager;
-import com.android.tools.profilers.tasks.TaskFinishedState;
+import com.android.tools.profilers.tasks.analytics.TaskTracker;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
@@ -998,7 +996,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
       @Nullable TraceType preferredProfilerType,
       int idHint,
       @Nullable String nameHint,
-      @NotNull Consumer<TaskFinishedState> trackTaskFinished) {
+      @NotNull TaskTracker taskTracker) {
       CompletableFuture<CpuCapture> capture = new CompletableFuture<>();
       capture.cancel(true);
       return capture;
