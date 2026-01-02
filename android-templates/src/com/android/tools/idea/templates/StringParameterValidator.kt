@@ -63,12 +63,11 @@ fun StringParameter.validate(
   module: Module?,
   provider: SourceProvider?,
   packageName: String?,
-  testSuiteName: String?,
   value: Any?,
   relatedValues: Set<Any>
 ): String? {
   val v = value?.toString().orEmpty()
-  val violations = validateStringType(project, module, provider, packageName, testSuiteName, v, relatedValues)
+  val violations = validateStringType(project, module, provider, packageName, v, relatedValues)
   return violations.mapNotNull { getErrorMessageForViolatedConstraint(it, v) }.firstOrNull()
 }
 
@@ -79,7 +78,7 @@ private fun StringParameter.getErrorMessageForViolatedConstraint(c: Constraint, 
   PACKAGE -> "$name is not set to a valid package name"
   MODULE -> "$name is not set to a valid module name"
   KOTLIN_FUNCTION -> "$name is not set to a valid function name"
-  DRAWABLE, NAVIGATION, STRING, LAYOUT, JOURNEY -> {
+  DRAWABLE, NAVIGATION, STRING, LAYOUT -> {
     val rft = c.toResourceFolderType()
     val resourceNameError = IdeResourceNameValidator.forFilename(rft).getErrorText(value)
     if (resourceNameError == null)
@@ -107,7 +106,6 @@ fun StringParameter.validateStringType(
   module: Module?,
   provider: SourceProvider?,
   packageName: String?,
-  testSuiteName: String?,
   value: String?,
   relatedValues: Set<Any> = setOf()
 ): Collection<Constraint> {
@@ -124,7 +122,7 @@ fun StringParameter.validateStringType(
     URI_AUTHORITY -> !value.matches("$URI_AUTHORITY_REGEX(;$URI_AUTHORITY_REGEX)*".toRegex())
     ACTIVITY, CLASS, PACKAGE, KOTLIN_FUNCTION -> !isValidFullyQualifiedJavaIdentifier(fqName)
     APP_PACKAGE -> AndroidUtils.validateAndroidPackageName(value) != null
-    DRAWABLE, NAVIGATION, STRING, LAYOUT, VALUES, JOURNEY -> {
+    DRAWABLE, NAVIGATION, STRING, LAYOUT, VALUES -> {
       val rft = c.toResourceFolderType()
       IdeResourceNameValidator.forFilename(rft).getErrorText(value) != null
     }
@@ -189,15 +187,6 @@ fun StringParameter.validateStringType(
         val vFile = VfsUtil.findFileByIoFile(file, true)
         facet.sourceProviders.getForFile(vFile) != null
       }
-    JOURNEY -> {
-      module ?: return false
-      testSuiteName ?: return false
-      val moduleRootDir = AndroidRootUtil.findModuleRootFolderPath(module) ?: return false
-      val testSuiteDir = moduleRootDir
-        .resolve("src")
-        .resolve(testSuiteName)
-      return testSuiteDir.resolve("$value.journey.xml").exists()
-    }
       NONEMPTY, STRING, URI_AUTHORITY -> false
       UNIQUE, EXISTS -> false // not applicable
     }
@@ -222,10 +211,9 @@ fun StringParameter.uniquenessSatisfied(
   module: Module?,
   provider: SourceProvider?,
   packageName: String?,
-  testSuiteName: String?,
   value: String?,
   relatedValues: Set<Any>
-): Boolean = !validateStringType(project, module, provider, packageName, testSuiteName, value, relatedValues).contains(UNIQUE)
+): Boolean = !validateStringType(project, module, provider, packageName, value, relatedValues).contains(UNIQUE)
 
 private const val URI_AUTHORITY_REGEX = "[a-zA-Z][a-zA-Z0-9-_.]*(:\\d+)?"
 
@@ -287,7 +275,6 @@ fun Constraint.toResourceFolderType(): ResourceFolderType = when (this) {
   STRING, VALUES -> ResourceFolderType.VALUES
   LAYOUT -> ResourceFolderType.LAYOUT
   NAVIGATION -> ResourceFolderType.NAVIGATION
-  JOURNEY -> ResourceFolderType.XML
   else -> throw IllegalArgumentException("There is no matching ResourceFolderType for $this constraint")
 }
 

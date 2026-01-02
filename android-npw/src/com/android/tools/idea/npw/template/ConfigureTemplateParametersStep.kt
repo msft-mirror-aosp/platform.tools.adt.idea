@@ -68,7 +68,6 @@ import com.android.tools.idea.wizard.template.Separator
 import com.android.tools.idea.wizard.template.StringParameter
 import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.TemplateConstraint
-import com.android.tools.idea.wizard.template.TestSuiteWidget
 import com.android.tools.idea.wizard.template.TextFieldWidget
 import com.android.tools.idea.wizard.template.UrlLinkWidget
 import com.android.tools.idea.wizard.template.Widget
@@ -130,7 +129,6 @@ class ConfigureTemplateParametersStep(
   model: RenderTemplateModel,
   @NlsContexts.Label title: String,
   private val templates: List<NamedModuleTemplate>,
-  private val showTargetSourceSetPicker: Boolean = true,
 ) : ModelWizardStep<RenderTemplateModel>(model, title) {
   private val bindings = BindingsManager()
   private val listeners = ListenerManager()
@@ -228,13 +226,12 @@ class ConfigureTemplateParametersStep(
         // We cannot know a good default value for package in template, but it's being preset in
         // [createRowForWidget]
         is PackageNameWidget -> parameter.value = property!!.get()
-        is TestSuiteWidget -> parameter.value = property!!.get()
         is EnumWidget -> row.setValue((parameter.value as Enum<*>).name)
         else -> row.setValue(parameter.value)
       }
     }
 
-    if (showTargetSourceSetPicker && templates.size > 1) {
+    if (templates.size > 1) {
       val row =
         RowEntry(
             message("android.wizard.target.source.set.header"),
@@ -317,21 +314,6 @@ class ConfigureTemplateParametersStep(
         listeners.listen(model.packageName) { enqueueEvaluateParameters() }
         rowEntry
       }
-      is TestSuiteWidget -> {
-        val rowEntry = RowEntry(widget.p.name, TextFieldProvider(widget.parameter))
-
-        // If the test suite name is unset on the model, set it to the default defined by the
-        // string parameter in the template
-        if (model.testSuiteName.get().isEmpty()) {
-          model.testSuiteName.set(widget.p.defaultValue)
-        }
-
-        val testSuiteName = rowEntry.property as StringProperty
-        bindings.bindTwoWay(testSuiteName, model.testSuiteName)
-        listeners.listen(model.testSuiteName) { enqueueEvaluateParameters() }
-
-        rowEntry
-      }
       is CheckBoxWidget -> RowEntry(CheckboxProvider(widget.p))
       is UrlLinkWidget -> RowEntry(UrlLinkProvider(widget.urlName, widget.urlAddress))
       is Separator -> RowEntry(SeparatorProvider())
@@ -396,7 +378,6 @@ class ConfigureTemplateParametersStep(
         model.module,
         sourceProvider,
         model.packageName.get(),
-        model.testSuiteName.get(),
         property.get(),
         getRelatedValues(parameter),
       )
@@ -580,7 +561,6 @@ class ConfigureTemplateParametersStep(
         model.module,
         sourceProvider,
         model.packageName.get(),
-        model.testSuiteName.get(),
         suggested,
         relatedValues,
       )
