@@ -22,21 +22,35 @@ import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.GradleModelProvider;
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel;
 import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogView;
+import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogsModel;
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel;
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
 import com.android.tools.idea.gradle.dsl.model.GradleSettingsModelImpl;
 import com.android.tools.idea.gradle.dsl.model.GradleVersionCatalogViewImpl;
+import com.android.tools.idea.gradle.dsl.model.GradleVersionCatalogsModelImpl;
 import com.android.tools.idea.gradle.dsl.model.ProjectBuildModelImpl;
 import com.android.tools.idea.gradle.dsl.model.SimplifiedVersionCatalogViewImpl;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
+import com.android.tools.idea.gradle.dsl.parser.files.GradleVersionCatalogFile;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.projectsystem.AndroidProjectRootUtil;
+import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectUtil;
+import com.intellij.openapi.util.ModificationTracker;
+import com.intellij.openapi.util.UserDataHolder;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.SystemIndependent;
@@ -112,6 +126,40 @@ public final class GradleModelSource extends GradleModelProvider {
     BuildModelContext context = createContext(hostProject);
     VirtualFile file = context.getGradleSettingsFile(new File(compositeRoot));
     return file != null ? parseSettingsFile(context, file, hostProject, "settings") : null;
+  }
+
+  @Override
+  public @NotNull GradleVersionCatalogsModel getCachedVersionCatalogsModel(@NotNull Module module) {
+    // Use module as UserDataHolder for following reasons:
+    // - files are not good for holders so we are not using settings file here
+    // - from another perspective there can be embedded project where module can have its own
+    // settings/catalog files
+    return CachedValuesManager.getManager(module.getProject()).getCachedValue(module, () -> {
+      BuildModelContext context = createContext(module.getProject());
+      VirtualFile settingsFile =  findSettingsFile(module);
+      GradleSettingsModel settings =
+        settingsFile != null ? parseSettingsFile(context, settingsFile, module.getProject(), "settings") : null;
+      Set<GradleVersionCatalogFile> files = context.initializeCatalogs(settings, module.getProject());
+      GradleVersionCatalogsModel model = new GradleVersionCatalogsModelImpl(files, context);
+      ModificationTracker tracker = (settingsFile != null) ? settingsFile : ModificationTracker.EVER_CHANGED;
+      List<ModificationTracker> dependencies = new ArrayList<>();
+      dependencies.add(tracker);// need to track settings file
+      // and catalog files as well
+      dependencies.addAll(files.stream().map(GradleVersionCatalogFile::getFile).toList());
+      return new CachedValueProvider.Result<>(
+        model,
+        dependencies.toArray()
+      );
+    });
+  }
+
+  private static @Nullable VirtualFile findSettingsFile(@NotNull Module module) {
+    String buildPath = ExternalSystemModulePropertyManager.getInstance(module).getLinkedProjectPath();
+    if (buildPath != null) {
+      VirtualFile buildPathVirtualFile = LocalFileSystem.getInstance().findFileByIoFile(new File(buildPath));
+      return BuildModelContext.tryToFindSettingsFile(buildPathVirtualFile);
+    }
+    return null;
   }
 
   @NotNull
