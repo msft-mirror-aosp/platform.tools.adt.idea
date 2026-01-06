@@ -99,10 +99,10 @@ class PropertiesPanel<P : PropertyItem>(parentDisposable: Disposable) :
     }
   }
 
-  override fun propertyValuesChanged(model: PropertiesModel<P>) {
+  override fun propertyValuesChanged(model: PropertiesModel<P>, childElementChanges: Boolean) {
     if (model == activeModel) {
-      mainPage.propertyValuesChanged()
-      pages.forEach { it.propertyValuesChanged() }
+      mainPage.propertyValuesChanged(childElementChanges)
+      pages.forEach { it.propertyValuesChanged(childElementChanges) }
     }
   }
 

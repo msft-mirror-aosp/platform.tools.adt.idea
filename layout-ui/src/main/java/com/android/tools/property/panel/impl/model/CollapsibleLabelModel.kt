@@ -110,7 +110,7 @@ open class CollapsibleLabelModel(
 
   override fun isMatch(matcher: Matcher) = editorModel != null && matcher.matches(name)
 
-  override fun refresh() {
+  override fun refresh(childElementChanges: Boolean) {
     editorModel?.refresh()
   }
 
