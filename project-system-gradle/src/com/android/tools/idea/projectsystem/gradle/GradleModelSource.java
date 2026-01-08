@@ -21,15 +21,12 @@ import static com.android.tools.idea.gradle.dsl.model.GradleModelFactory.createG
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.GradleModelProvider;
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel;
-import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogView;
 import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogsModel;
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel;
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
 import com.android.tools.idea.gradle.dsl.model.GradleSettingsModelImpl;
-import com.android.tools.idea.gradle.dsl.model.GradleVersionCatalogViewImpl;
 import com.android.tools.idea.gradle.dsl.model.GradleVersionCatalogsModelImpl;
 import com.android.tools.idea.gradle.dsl.model.ProjectBuildModelImpl;
-import com.android.tools.idea.gradle.dsl.model.SimplifiedVersionCatalogViewImpl;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleVersionCatalogFile;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
@@ -160,29 +157,6 @@ public final class GradleModelSource extends GradleModelProvider {
       return BuildModelContext.tryToFindSettingsFile(buildPathVirtualFile);
     }
     return null;
-  }
-
-  @NotNull
-  @Override
-  public GradleVersionCatalogView getVersionCatalogView(@NotNull Project hostProject) {
-    GradleSettingsModel settings = getSettingsModel(hostProject);
-    if (settings != null) {
-      return new GradleVersionCatalogViewImpl(settings);
-    }
-    else {
-      return new SimplifiedVersionCatalogViewImpl(hostProject);
-    }
-  }
-
-  @Override
-  public @Nullable GradleVersionCatalogView getVersionCatalogView(@NotNull Project hostProject, @NotNull String compositeRoot) {
-    GradleSettingsModel settings = getSettingsModel(hostProject, compositeRoot);
-    if (settings != null) {
-      return new GradleVersionCatalogViewImpl(settings);
-    }
-    else {
-      return new SimplifiedVersionCatalogViewImpl(compositeRoot);
-    }
   }
 
   @NotNull
