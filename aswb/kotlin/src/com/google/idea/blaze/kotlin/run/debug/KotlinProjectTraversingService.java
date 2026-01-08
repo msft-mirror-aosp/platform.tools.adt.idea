@@ -15,9 +15,7 @@
  */
 package com.google.idea.blaze.kotlin.run.debug;
 
-import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.base.model.primitives.Label;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
@@ -84,11 +82,11 @@ public final class KotlinProjectTraversingService {
 
   /** Return the Label of the target to debug. */
   private static Optional<Label> getSingleTarget(BlazeCommandRunConfiguration config) {
-    ImmutableList<? extends TargetExpression> targets = config.getTargets();
-    if (targets.size() == 1 && targets.get(0) instanceof Label) {
-      return Optional.of((Label) targets.get(0));
+    String pattern = config.getSingleTargetPattern();
+    if (pattern == null) {
+      return Optional.empty();
     }
-    return Optional.empty();
+    return Optional.ofNullable(Label.createIfValid(pattern));
   }
 
   private static void notify(String content) {

@@ -18,7 +18,6 @@ package com.google.idea.blaze.base.sync;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -29,7 +28,6 @@ import com.google.idea.blaze.base.MockProjectViewManager;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
 import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.command.info.BlazeInfoRunner;
-import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.logging.SyncStats;
 import com.google.idea.blaze.base.model.primitives.WorkspaceType;
 import com.google.idea.blaze.base.projectview.ProjectView;
@@ -43,31 +41,22 @@ import com.google.idea.blaze.base.scope.ErrorCollector;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BuildSystemName;
-import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
 import com.google.idea.blaze.base.sync.projectview.LanguageSupport;
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolverImpl;
 import com.google.idea.blaze.base.vcs.BlazeVcsHandlerProvider;
 import com.google.idea.testing.ServiceHelper;
-import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.WriteAction;
-import com.intellij.openapi.module.Module;
-import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
-import com.intellij.openapi.roots.ContentEntry;
-import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.IdeaTestUtil;
 import com.intellij.util.lang.JavaVersion;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Future;
-import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
 
@@ -87,7 +76,6 @@ public abstract class BlazeSyncIntegrationTestCase extends BlazeIntegrationTestC
   private MockProjectViewManager projectViewManager;
   private MockBlazeInfoRunner blazeInfoData;
   private MockEventLoggingService eventLogger;
-  @Nullable private ProjectModuleMocker moduleMocker; // this will be null for heavy test cases
 
   protected ErrorCollector errorCollector;
   protected String execRoot;
@@ -100,9 +88,6 @@ public abstract class BlazeSyncIntegrationTestCase extends BlazeIntegrationTestC
         BlazeVcsHandlerProvider.EP_NAME, new MockBlazeVcsHandlerProvider(), thisClassDisposable);
     blazeInfoData = new MockBlazeInfoRunner();
     eventLogger = new MockEventLoggingService(thisClassDisposable);
-    if (isLightTestCase()) {
-      moduleMocker = new ProjectModuleMocker(getProject(), thisClassDisposable);
-    }
     registerApplicationService(BlazeInfoRunner.class, blazeInfoData);
 
     errorCollector = new ErrorCollector();
@@ -141,39 +126,6 @@ public abstract class BlazeSyncIntegrationTestCase extends BlazeIntegrationTestC
   @After
   public void doTearDown() {
     Disposer.dispose(thisClassDisposable);
-  }
-
-  /** The workspace content entries created during sync */
-  protected ImmutableList<ContentEntry> getWorkspaceContentEntries() {
-    if (moduleMocker != null) {
-      return moduleMocker.getWorkspaceContentEntries();
-    }
-
-    ModuleManager moduleManager = ModuleManager.getInstance(getProject());
-    Module workspaceModule = moduleManager.findModuleByName(BlazeDataStorage.WORKSPACE_MODULE_NAME);
-    assertThat(workspaceModule).isNotNull();
-
-    ContentEntry[] entries = ModuleRootManager.getInstance(workspaceModule).getContentEntries();
-    return ImmutableList.copyOf(entries);
-  }
-
-  /** Search the workspace module's {@link ContentEntry}s for one with the given file. */
-  @Nullable
-  protected ContentEntry findContentEntry(VirtualFile root) {
-    for (ContentEntry entry : getWorkspaceContentEntries()) {
-      if (root.equals(entry.getFile())) {
-        return entry;
-      }
-    }
-    return null;
-  }
-
-  protected String getExecRoot() {
-    return execRoot;
-  }
-
-  protected static ArtifactLocation sourceRoot(String relativePath) {
-    return ArtifactLocation.builder().setRelativePath(relativePath).setIsSource(true).build();
   }
 
   protected void setProjectView(String... contents) {
@@ -219,24 +171,6 @@ public abstract class BlazeSyncIntegrationTestCase extends BlazeIntegrationTestC
 
   protected ProjectViewSet getProjectViewSet() {
     return projectViewManager.getProjectViewSet();
-  }
-
-  protected void runBlazeSync(BlazeSyncParams syncParams) {
-    BlazeContext context = BlazeContext.create();
-    context.addOutputSink(IssueOutput.class, errorCollector);
-
-    // We need to run sync off EDT to keep IntelliJ's transaction system happy
-    // Because the sync task itself wants to run occasional EDT tasks, we'll have
-    // to keep flushing the event queue.
-    Future<?> future = Futures.immediateFailedFuture(new UnsupportedOperationException());
-    while (!future.isDone()) {
-      IdeEventQueue.getInstance().flushQueue();
-      try {
-        Thread.sleep(50);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    }
   }
 
   protected List<SyncStats> getSyncStats() {

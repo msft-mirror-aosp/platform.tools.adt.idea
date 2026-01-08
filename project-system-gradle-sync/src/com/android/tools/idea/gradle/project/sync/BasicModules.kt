@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.AndroidProject
-import com.android.builder.model.NativeAndroidProject
 import com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
@@ -221,19 +220,10 @@ internal class BasicV1AndroidModuleGradleProject(
         return androidProjectResult
           .mapCatching { androidProjectResult ->
             val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
-            val nativeAndroidProject: NativeAndroidProject? =
-              if (nativeModule == null)
-                controller.findParameterizedAndroidModel(
-                  gradleProject, NativeAndroidProject::class.java,
-                  shouldBuildVariant = false
-                )
-              else null
-
             createAndroidModuleV1(
               modelVersions,
               gradleProject,
               androidProjectResult,
-              nativeAndroidProject,
               nativeModule,
               buildInfo.buildPathMap,
               modelCache
@@ -363,7 +353,6 @@ private fun createAndroidModuleV1(
   modelVersions: ModelVersions,
   gradleProject: BasicGradleProject,
   androidProjectResult: AndroidProjectResult.V1Project,
-  nativeAndroidProject: NativeAndroidProject?,
   nativeModule: NativeModule?,
   buildPathMap: Map<String, BuildId>,
   modelCache: ModelCache.V1
@@ -371,10 +360,6 @@ private fun createAndroidModuleV1(
   val ideAndroidProject = androidProjectResult.ideAndroidProject
   val allVariantNames = androidProjectResult.allVariantNames
   val defaultVariantName: String? = androidProjectResult.defaultVariantName
-
-  val ideNativeAndroidProject = nativeAndroidProject?.let {
-    modelCache.nativeAndroidProjectFrom(it, androidProjectResult.ndkVersion)
-  }
   val ideNativeModule = nativeModule?.let(modelCache::nativeModuleFrom)
 
   val androidModule = AndroidModule.V1(
@@ -385,7 +370,6 @@ private fun createAndroidModuleV1(
     allVariantNames = allVariantNames,
     defaultVariantName = defaultVariantName,
     variantFetcher = androidProjectResult.createVariantFetcher(),
-    nativeAndroidProject = ideNativeAndroidProject,
     nativeModule = ideNativeModule,
     legacyAndroidGradlePluginProperties = androidProjectResult.legacyAndroidGradlePluginProperties,
   )

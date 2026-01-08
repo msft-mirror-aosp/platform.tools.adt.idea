@@ -367,6 +367,10 @@ public final class StudioFlags {
 
   public static final Flag<Boolean> PROFILER_TRACEBOX =
     new BooleanFlag(PROFILER, "tracebox", "Tracebox", "Tracebox for versions M,N,O,P of Android");
+
+  public static final Flag<Boolean> PROFILER_SYSTEM_TRACE_IN_EDITOR = new BooleanFlag(
+    PROFILER, "system.trace.in.editor", "Open System Trace in Editor",
+    "Opens System Trace files in a new editor tab");
   //endregion
 
   //region Design Tools
@@ -2674,6 +2678,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "context.compression.prunecalls",
                     "Remove obsolete tool calls from the context",
                     "Enables removing redundant tool calls from the context");
+
+  public static final Flag<Boolean> STUDIOBOT_DISPLAY_TOKEN_USAGE =
+    new BooleanFlag(STUDIOBOT, "context.display.usage",
+                    "Display context usage",
+                    "Enables displaying the token usage in the context");
 
   public static final Flag<Boolean> STUDIOBOT_CONTEXT_COMPRESSION =
     new BooleanFlag(STUDIOBOT, "context.compression",

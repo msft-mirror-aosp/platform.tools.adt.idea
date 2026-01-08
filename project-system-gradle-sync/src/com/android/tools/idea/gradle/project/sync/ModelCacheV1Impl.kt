@@ -38,13 +38,6 @@ import com.android.builder.model.JavaLibrary
 import com.android.builder.model.Library
 import com.android.builder.model.LintOptions
 import com.android.builder.model.MavenCoordinates
-import com.android.builder.model.NativeAndroidProject
-import com.android.builder.model.NativeArtifact
-import com.android.builder.model.NativeFile
-import com.android.builder.model.NativeSettings
-import com.android.builder.model.NativeToolchain
-import com.android.builder.model.NativeVariantAbi
-import com.android.builder.model.NativeVariantInfo
 import com.android.builder.model.ProductFlavor
 import com.android.builder.model.ProductFlavorContainer
 import com.android.builder.model.SigningConfig
@@ -63,7 +56,6 @@ import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.builder.model.v2.models.ndk.NativeVariant
 import com.android.ide.common.gradle.Component
 import com.android.ide.common.gradle.Version
-import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.tools.idea.gradle.model.CodeShrinker
@@ -116,13 +108,6 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeViewBindingOptionsImpl
 import com.android.tools.idea.gradle.model.impl.ThrowingIdeVariantCore
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeAndroidProjectImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeArtifactImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeFileImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeSettingsImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeToolchainImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeVariantAbiImpl
-import com.android.tools.idea.gradle.model.impl.ndk.v1.IdeNativeVariantInfoImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeAbiImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeModuleImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeVariantImpl
@@ -1054,79 +1039,6 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     )
   }
 
-  fun nativeFileFrom(file: NativeFile): IdeNativeFileImpl {
-    return IdeNativeFileImpl(
-      filePath = file.filePath,
-      settingsName = file.settingsName,
-      workingDirectory = file.workingDirectory
-    )
-  }
-
-  fun nativeArtifactFrom(artifact: NativeArtifact): IdeNativeArtifactImpl {
-    return IdeNativeArtifactImpl(
-      name = artifact.name,
-      toolChain = artifact.toolChain,
-      groupName = artifact.groupName,
-      sourceFiles = copy(artifact::getSourceFiles, ::nativeFileFrom),
-      exportedHeaders = copy(artifact::getExportedHeaders, ::deduplicateFile),
-      abi = copyNewProperty(artifact::getAbi, ""),
-      targetName = copyNewProperty(artifact::getTargetName, ""),
-      outputFile = artifact.outputFile
-    )
-  }
-
-  fun nativeToolchainFrom(toolchain: NativeToolchain): IdeNativeToolchainImpl {
-    return IdeNativeToolchainImpl(
-      name = toolchain.name,
-      cCompilerExecutable = toolchain.cCompilerExecutable,
-      cppCompilerExecutable = toolchain.cppCompilerExecutable
-    )
-  }
-
-  fun nativeVariantFrom(variantInfo: NativeVariantInfo): IdeNativeVariantInfoImpl {
-    return IdeNativeVariantInfoImpl(
-      abiNames = copy(variantInfo::getAbiNames, ::deduplicateString),
-      buildRootFolderMap = copy(variantInfo::getBuildRootFolderMap, ::deduplicateFile)
-    )
-  }
-
-  fun nativeSettingsFrom(settings: NativeSettings): IdeNativeSettingsImpl {
-    return IdeNativeSettingsImpl(
-      name = settings.name,
-      compilerFlags = copy(settings::getCompilerFlags, ::deduplicateString)
-    )
-  }
-
-  fun nativeAndroidProjectFrom(project: NativeAndroidProject, ndkVersion: String?): IdeNativeAndroidProjectImpl {
-    val defaultNdkVersion = copyNewProperty(project::getDefaultNdkVersion, "")
-    return IdeNativeAndroidProjectImpl(
-      modelVersion = project.modelVersion,
-      apiVersion = project.apiVersion,
-      name = project.name,
-      buildFiles = copy(project::getBuildFiles, ::deduplicateFile),
-      variantInfos = copy(project::getVariantInfos, ::nativeVariantFrom),
-      artifacts = copy(project::getArtifacts, ::nativeArtifactFrom),
-      toolChains = copy(project::getToolChains, ::nativeToolchainFrom),
-      settings = copy(project::getSettings, ::nativeSettingsFrom),
-      fileExtensions = copy(project::getFileExtensions, ::deduplicateString),
-      defaultNdkVersion = defaultNdkVersion,
-      ndkVersion = ndkVersion ?: defaultNdkVersion,
-      buildSystems = copy(project::getBuildSystems, ::deduplicateString)
-    )
-  }
-
-  fun nativeVariantAbiFrom(variantAbi: NativeVariantAbi): IdeNativeVariantAbiImpl {
-    return IdeNativeVariantAbiImpl(
-      buildFiles = copy(variantAbi::getBuildFiles, ::deduplicateFile),
-      artifacts = copy(variantAbi::getArtifacts, ::nativeArtifactFrom),
-      toolChains = copy(variantAbi::getToolChains, ::nativeToolchainFrom),
-      settings = copy(variantAbi::getSettings, ::nativeSettingsFrom),
-      fileExtensions = copy(variantAbi::getFileExtensions, ::deduplicateString),
-      variantName = variantAbi.variantName,
-      abi = variantAbi.abi
-    )
-  }
-
   fun nativeModuleFrom(nativeModule: NativeModule): IdeNativeModuleImpl {
     return IdeNativeModuleImpl(
       name = nativeModule.name,
@@ -1143,15 +1055,11 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     )
   }
 
-  fun lintOptionsFrom(options: LintOptions, modelVersion: AgpVersion?): IdeLintOptionsImpl = IdeLintOptionsImpl(
-    baselineFile = if (modelVersion != null)
-      options.baselineFile
-    else
-      null,
+  fun lintOptionsFrom(options: LintOptions): IdeLintOptionsImpl = IdeLintOptionsImpl(
+    baselineFile = options.baselineFile,
     lintConfig = copyNewProperty(options::lintConfig),
     severityOverrides = options.severityOverrides?.toMap(),
-    isCheckTestSources = modelVersion != null &&
-      options.isCheckTestSources,
+    isCheckTestSources = options.isCheckTestSources,
     isCheckDependencies = copyNewProperty({ options.isCheckDependencies }, false),
     disable = copy(options::disable, ::deduplicateString),
     enable = copy(options::enable, ::deduplicateString),
@@ -1221,16 +1129,10 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
 
   fun createVariantBuildInformation(
     project: AndroidProject,
-    agpVersion: AgpVersion?
-  ): Collection<IdeVariantBuildInformationImpl> {
-    return if (agpVersion != null && agpVersion.compareIgnoringQualifiers("4.1.0") >= 0) {
-      // make deep copy of VariantBuildInformation.
+  ): Collection<IdeVariantBuildInformationImpl> =
       project.variantsBuildInformation.map { variantBuildInformation ->
         ideVariantBuildInformationFrom(variantBuildInformation, project.projectType)
       }
-    } else emptyList()
-    // VariantBuildInformation is not available.
-  }
 
   fun viewBindingOptionsFrom(model: ViewBindingOptions): IdeViewBindingOptionsImpl {
     return IdeViewBindingOptionsImpl(enabled = model.isEnabled)
@@ -1249,7 +1151,6 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     booleanFlagMap: Map<AndroidGradlePluginProjectFlags.BooleanFlag, Boolean>,
     gradlePropertiesModel: GradlePropertiesModel,
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-    parsedModelVersion: AgpVersion?,
   ): IdeAndroidGradlePluginProjectFlagsImpl {
     return IdeAndroidGradlePluginProjectFlagsImpl(
       applicationRClassConstantIds =
@@ -1263,16 +1164,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       unifiedTestPlatformEnabled = booleanFlagMap.getBooleanFlag(AndroidGradlePluginProjectFlags.BooleanFlag.UNIFIED_TEST_PLATFORM),
       useAndroidX = gradlePropertiesModel.useAndroidX ?: com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags.BooleanFlag.USE_ANDROID_X.legacyDefault,
       dataBindingEnabled = legacyAndroidGradlePluginProperties?.dataBindingEnabled ?: false,
-      generateManifestClass = when {
-        // Probably an ancient AGP version.
-        parsedModelVersion == null -> true
-        // AAPT1
-        parsedModelVersion < AgpVersion.parse("4.0.0-alpha01") -> true
-        // AAPT2, behaviour changed silently, no support for Gradle property
-        parsedModelVersion < AgpVersion.parse("4.2.0-alpha01") -> false
-        // Gradle property respected, implicitly defaulting to `false`
-        else -> gradlePropertiesModel.generateManifestClass ?: false
-      },
+      generateManifestClass = gradlePropertiesModel.generateManifestClass ?: false,
       disableAgpUpgradePrompt = gradlePropertiesModel.disableAgpUpgradePrompt ?: false,
       useCustomManagedDevices = gradlePropertiesModel.useCustomManagedDevices ?: false,
       highlightGradualR8Api = false
@@ -1288,14 +1180,6 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     AndroidProjectTypes.PROJECT_TYPE_FEATURE -> IdeAndroidProjectType.PROJECT_TYPE_FEATURE
     AndroidProjectTypes.PROJECT_TYPE_DYNAMIC_FEATURE -> IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE
     else -> error("Unknown Android project type: $this")
-  }
-
-  fun getProjectType(project: AndroidProject, modelVersion: AgpVersion?): IdeAndroidProjectType {
-    if (modelVersion != null) {
-      return project.projectType.toIdeAndroidProjectType()
-    }
-    // Support for old Android Gradle Plugins must be maintained.
-    return if (project.isLibrary) IdeAndroidProjectType.PROJECT_TYPE_LIBRARY else IdeAndroidProjectType.PROJECT_TYPE_APP
   }
 
   fun basicVariantFrom(name: String, variantToBuildType: (String) -> String?, legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?): IdeBasicVariantImpl {
@@ -1317,9 +1201,6 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     gradlePropertiesModel: GradlePropertiesModel,
     defaultVariantName: String?
   ): ModelResult<IdeAndroidProjectImpl> {
-    // Old plugin versions do not return model version.
-    val parsedModelVersion = AgpVersion.tryParse(project.modelVersion)
-
     val projectFlags = copyNewProperty(project::getFlags)
     val mlModelBindingEnabled = projectFlags?.booleanFlagMap?.getBooleanFlag(AndroidGradlePluginProjectFlags.BooleanFlag.ML_MODEL_BINDING)
       ?: false
@@ -1346,25 +1227,20 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       variantToBuildType = { variant -> suffixToBuildType.entries.firstOrNull { variant.endsWith(it.key)}?.value }
     }
     val basicVariantsCopy: Collection<IdeBasicVariantImpl> =
-      (
-        if (parsedModelVersion != null && parsedModelVersion < MODEL_VERSION_3_2_0)
-          copy(fun(): Collection<String> = project.variants.map { it.name }, ::deduplicateString)
-        else
-          copy(project::getVariantNames, ::deduplicateString)
-        )
+      copy(project::getVariantNames, ::deduplicateString)
         .map { basicVariantFrom(it, variantToBuildType, legacyAndroidGradlePluginProperties) }
     val flavorDimensionCopy: Collection<String> = copy(project::getFlavorDimensions, ::deduplicateString)
     val bootClasspathCopy: Collection<String> = project::getBootClasspath.copy()
     val signingConfigsCopy: Collection<IdeSigningConfigImpl> = copy(project::getSigningConfigs, ::signingConfigFrom)
-    val lintOptionsCopy: IdeLintOptionsImpl = copyModel(project.lintOptions, { lintOptionsFrom(it, parsedModelVersion) })
+    val lintOptionsCopy: IdeLintOptionsImpl = copyModel(project.lintOptions, { lintOptionsFrom(it) })
     val javaCompileOptionsCopy = copyModel(project.javaCompileOptions, ::javaCompileOptionsFrom)
     val aaptOptionsCopy = copyModel(project.aaptOptions, ::aaptOptionsFrom)
     val dynamicFeaturesCopy: Collection<String> = copy(project::getDynamicFeatures, ::deduplicateString)
-    val variantBuildInformation = createVariantBuildInformation(project, parsedModelVersion)
+    val variantBuildInformation = createVariantBuildInformation(project)
     val viewBindingOptionsCopy: IdeViewBindingOptionsImpl? = copyNewModel(project::getViewBindingOptions, ::viewBindingOptionsFrom)
     val dependenciesInfoCopy: IdeDependenciesInfoImpl? = copyNewModel(project::getDependenciesInfo, ::dependenciesInfoFrom)
     val buildToolsVersionCopy = copyNewProperty(project::getBuildToolsVersion)
-    val groupId = if (parsedModelVersion != null && parsedModelVersion.isAtLeast(3, 6, 0, "alpha", 5, false)) project.groupId else null
+    val groupId = project.groupId
     val namespace = copyNewProperty(project::getNamespace) ?: legacyAndroidGradlePluginProperties?.namespace
     val testNamespace = copyNewProperty(project::getAndroidTestNamespace) ?: legacyAndroidGradlePluginProperties?.androidTestNamespace
     val lintRuleJarsCopy: List<File> = copy(project::getLintRuleJars, ::deduplicateFile)
@@ -1372,7 +1248,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
     // AndroidProject#isBaseSplit is always non null.
     val isBaseSplit = copyNewProperty({ project.isBaseSplit }, false)
     val agpFlags: IdeAndroidGradlePluginProjectFlagsImpl =
-      createIdeAndroidGradlePluginProjectFlagsImpl(projectFlags?.booleanFlagMap ?: emptyMap(), gradlePropertiesModel, legacyAndroidGradlePluginProperties, parsedModelVersion)
+      createIdeAndroidGradlePluginProjectFlagsImpl(projectFlags?.booleanFlagMap ?: emptyMap(), gradlePropertiesModel, legacyAndroidGradlePluginProperties)
     return ModelResult.create {
       IdeAndroidProjectImpl(
         agpVersion = project.modelVersion,
@@ -1409,7 +1285,7 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
         groupId = groupId,
         namespace = namespace,
         testNamespace = testNamespace,
-        projectType = getProjectType(project, parsedModelVersion),
+        projectType = project.projectType.toIdeAndroidProjectType(),
         isBaseSplit = isBaseSplit,
         agpFlags = agpFlags,
         isKaptEnabled = false,
@@ -1454,17 +1330,8 @@ internal fun modelCacheV1Impl(internedModels: InternedModels, buildFolderPaths: 
       androidArtifactOutputFrom(output)
 
     override fun nativeModuleFrom(nativeModule: NativeModule): IdeNativeModuleImpl = nativeModuleFrom(nativeModule)
-    override fun nativeVariantAbiFrom(variantAbi: NativeVariantAbi): IdeNativeVariantAbiImpl =
-      nativeVariantAbiFrom(variantAbi)
-
-    override fun nativeAndroidProjectFrom(
-      project: NativeAndroidProject,
-      ndkVersion: String?
-    ): IdeNativeAndroidProjectImpl = nativeAndroidProjectFrom(project, ndkVersion)
   }
 }
-
-val MODEL_VERSION_3_2_0 = AgpVersion.parse("3.2.0")
 
 internal inline fun <T> safeGet(original: () -> T, default: T): T = try {
   original()

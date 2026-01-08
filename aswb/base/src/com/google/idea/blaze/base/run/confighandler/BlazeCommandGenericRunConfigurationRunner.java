@@ -249,7 +249,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
         BlazeContext context) {
       final var testResultFinderStrategy = new BlazeTestResultFetcher();
       BlazeTestUiSession testUiSession = null;
-      if (BlazeTestEventsHandler.targetsSupported(project, configuration.getTargets())) {
+      if (BlazeTestEventsHandler.targetsSupported(project, configuration.getTargetPatterns())) {
         testUiSession =
             BlazeTestUiSession.create(
                 ImmutableList.<String>builder()
@@ -335,7 +335,7 @@ public final class BlazeCommandGenericRunConfigurationRunner
       }
 
       return BlazeCommand.builder(invoker, command)
-          .addTargets(configuration.getTargets())
+          .addTargetStrings(configuration.getTargetPatterns())
           .addBlazeFlags(
               BlazeFlags.blazeFlags(
                   project,

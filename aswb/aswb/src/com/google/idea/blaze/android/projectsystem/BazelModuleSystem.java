@@ -49,9 +49,7 @@ import com.google.idea.blaze.android.compose.ComposeStatusProvider;
 import com.google.idea.blaze.android.npw.project.BlazeAndroidModuleTemplate;
 import com.google.idea.blaze.android.projectsystem.BazelModuleSystem.BlazeRegisteredDependencyId;
 import com.google.idea.blaze.android.projectsystem.BazelModuleSystem.BlazeRegisteredDependencyQueryId;
-import com.google.idea.blaze.android.sync.model.AndroidResourceModuleRegistry;
 import com.google.idea.blaze.android.sync.model.idea.BlazeAndroidModel;
-import com.google.idea.blaze.base.ideinfo.TargetKey;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.qsync.QuerySyncManager;
@@ -59,6 +57,7 @@ import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
+import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.qsync.QuerySyncProjectSnapshot;
 import com.google.idea.blaze.qsync.project.ProjectPath;
 import com.google.idea.blaze.qsync.project.ProjectProto;
@@ -162,7 +161,7 @@ public final class BazelModuleSystem implements AndroidModuleSystem, Registering
     if (blazeProjectData == null) {
       return;
     }
-    AndroidResourceModuleRegistry registry = AndroidResourceModuleRegistry.getInstance(project);
+    //AndroidResourceModuleRegistry registry = AndroidResourceModuleRegistry.getInstance(project);
     // TODO: Implement for query sync.
     return;
     //
@@ -276,7 +275,7 @@ public final class BazelModuleSystem implements AndroidModuleSystem, Registering
   }
 
   @Nullable
-  private TargetKey getResolvedTarget(WellKnownMavenArtifactId id) {
+  private Object getResolvedTarget(WellKnownMavenArtifactId id) {
     // TODO (b/262289199): While there is a way of mapping a gradle coordinate to a target,
     //  that is a very tricky practice that while it could be supported with Query Sync, we
     //  should try to avoid it.  (Maybe we should revisit this now that we do not need to
@@ -284,12 +283,11 @@ public final class BazelModuleSystem implements AndroidModuleSystem, Registering
     return null;
   }
 
-  private Stream<TargetKey> locateArtifactsFor(WellKnownMavenArtifactId id) {
+  private Stream<Label> locateArtifactsFor(WellKnownMavenArtifactId id) {
     return MavenArtifactLocator.forBuildSystem(Blaze.getBuildSystemName(module.getProject()))
         .stream()
         .map(locator -> locator.labelFor(id))
-        .filter(Objects::nonNull)
-        .map(TargetKey::forPlainTarget);
+        .filter(Objects::nonNull);
   }
   /**
    * Currently, the ordering of the returned list of modules is meaningless for the Blaze
@@ -482,8 +480,8 @@ public final class BazelModuleSystem implements AndroidModuleSystem, Registering
 
   public static class BlazeRegisteredDependencyQueryId implements RegisteredDependencyQueryId {
     WellKnownMavenArtifactId id;
-    List<TargetKey> keys;
-    BlazeRegisteredDependencyQueryId(WellKnownMavenArtifactId id, List<TargetKey> keys) {
+    List<Label> keys;
+    BlazeRegisteredDependencyQueryId(WellKnownMavenArtifactId id, List<Label> keys) {
       super();
       this.id = id;
       this.keys = keys;
@@ -493,8 +491,8 @@ public final class BazelModuleSystem implements AndroidModuleSystem, Registering
   abstract public static class BlazeRegisteredDependencyId implements RegisteredDependencyId {
   }
   public static class BlazeTargetRegisteredDependencyId extends BlazeRegisteredDependencyId {
-    TargetKey key;
-    BlazeTargetRegisteredDependencyId(TargetKey key) {
+    Label key;
+    BlazeTargetRegisteredDependencyId(Label key) {
       super();
       this.key = key;
     }

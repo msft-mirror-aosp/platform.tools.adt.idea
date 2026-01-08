@@ -24,10 +24,7 @@ import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
-import com.google.idea.blaze.base.io.FileOperationProvider;
-import com.google.idea.blaze.base.io.TempDirectoryProvider;
 import com.google.idea.blaze.base.issueparser.BlazeIssueParser;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.google.idea.blaze.base.projectview.ProjectViewManager;
 import com.google.idea.blaze.base.projectview.ProjectViewSet;
@@ -42,8 +39,6 @@ import com.google.idea.blaze.base.settings.BlazeUserSettings;
 import com.google.idea.blaze.base.toolwindow.Task;
 import com.google.idea.blaze.exception.BuildException;
 import com.intellij.openapi.project.Project;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -78,7 +73,7 @@ public final class BlazeBeforeRunCommandHelper {
         overridableExtraBlazeFlags,
         invocationContext,
         progressMessage,
-        configuration.getTargets(),
+        configuration.getTargetPatterns(),
         consumer);
   }
 
@@ -93,7 +88,7 @@ public final class BlazeBeforeRunCommandHelper {
       List<String> overridableExtraBlazeFlags,
       BlazeInvocationContext invocationContext,
       String progressMessage,
-      ImmutableList<TargetExpression> targets,
+      ImmutableList<String> targets,
       BuildEventStreamConsumer<T> consumer) {
 
     Project project = configuration.getProject();
@@ -130,7 +125,7 @@ public final class BlazeBeforeRunCommandHelper {
 
                 BlazeCommand.Builder command =
                     BlazeCommand.builder(invoker, commandName)
-                        .addTargets(targets)
+                        .addTargetStrings(targets)
                         .addBlazeFlags(overridableExtraBlazeFlags)
                         .addBlazeFlags(
                             BlazeFlags.blazeFlags(
@@ -149,14 +144,5 @@ public final class BlazeBeforeRunCommandHelper {
                 }
               }
             });
-  }
-
-  /** Creates a temporary output file to write the shell script to. */
-  public static Path createScriptPathFile() throws IOException {
-    Path tempDir = TempDirectoryProvider.getInstance().getTempDirectory();
-    Path tempFile =
-        FileOperationProvider.getInstance().createTempFile(tempDir, "blaze-script-", "");
-    tempFile.toFile().deleteOnExit();
-    return tempFile;
   }
 }

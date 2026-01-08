@@ -75,7 +75,7 @@ private fun registerProvider(registrar: KotlinPsiReferenceRegistrar) {
   registrar.registerProvider<KtDotQualifiedExpression> provider@{ element: KtDotQualifiedExpression ->
     if (!element.containingFile.name.endsWith(".gradle.kts")) return@provider null
     if (element.isEndOfDotExpression()) {
-      val file = findVersionCatalog(element.text, element.project) ?: return@provider null
+      val file = findVersionCatalog(element.text, element) ?: return@provider null
       return@provider KtsDotExpressionVersionCatalogReference(element, file)
     }
 

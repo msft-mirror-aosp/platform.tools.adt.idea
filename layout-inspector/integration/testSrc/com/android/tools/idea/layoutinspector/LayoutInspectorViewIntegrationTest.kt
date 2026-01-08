@@ -18,6 +18,7 @@ package com.android.tools.idea.layoutinspector
 import com.android.tools.asdriver.tests.AndroidProject
 import com.android.tools.asdriver.tests.AndroidSystem
 import com.android.tools.asdriver.tests.MavenRepo
+import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 import org.jetbrains.kotlin.utils.join
 import org.junit.Rule
@@ -25,15 +26,16 @@ import org.junit.Test
 
 class LayoutInspectorViewIntegrationTest {
 
-  @get:Rule val system = AndroidSystem.standard()
+  @get:Rule val system = AndroidSystem.standardWithTmpDir()
 
   @Test
   fun testEmptyApplication() {
-    val project =
-      AndroidProject(
-        "tools/adt/idea/layout-inspector/integration/testData/projects/emptyApplication"
-      )
+    val projectArtifactsPath =
+      Paths.get("tools/adt/idea/layout-inspector/emptyApplication_project_model")
+    val project = AndroidProject(projectArtifactsPath.resolve("emptyApplication").toString())
 
+    system.getInstallation().copySystemDir(projectArtifactsPath)
+    system.getInstallation().copyConfigDir(projectArtifactsPath)
     system.installation.addVmOption(
       join(
         listOf(
@@ -53,8 +55,8 @@ class LayoutInspectorViewIntegrationTest {
         adb.waitForDevice(emulator)
 
         system.runStudio(project) { studio ->
-          studio.waitForSync()
-          studio.waitForIndex()
+          studio.waitForSyncSkippedLog()
+          studio.waitForIndexingSkippedLog()
 
           studio.executeAction("MakeGradleProject")
           studio.waitForBuild()

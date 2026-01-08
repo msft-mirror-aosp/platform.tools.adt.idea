@@ -19,7 +19,6 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.idea.blaze.base.BlazeTestCase;
 import com.google.idea.blaze.base.dependencies.TargetInfo;
-import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
 import com.google.idea.blaze.base.model.primitives.GenericBlazeRules;
@@ -96,7 +95,7 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    assertThat(targets.stream().map(t -> t.label).collect(Collectors.toList()))
+    assertThat(targets.stream().map(t -> t.label()).collect(Collectors.toList()))
         .containsExactly(Label.create("//test:test"));
   }
 
@@ -122,7 +121,7 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    assertThat(targets.stream().map(t -> t.label).collect(Collectors.toList()))
+    assertThat(targets.stream().map(t -> t.label()).collect(Collectors.toList()))
         .containsExactly(Label.create("//test:test"));
   }
 
@@ -154,7 +153,7 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    assertThat(targets.stream().map(t -> t.label).collect(Collectors.toList()))
+    assertThat(targets.stream().map(t -> t.label()).collect(Collectors.toList()))
         .containsExactly(Label.create("//test:test"), Label.create("//test:test2"));
   }
 
@@ -192,7 +191,7 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    assertThat(targets.stream().map(t -> t.label).collect(Collectors.toList()))
+    assertThat(targets.stream().map(t -> t.label()).collect(Collectors.toList()))
         .containsExactly(Label.create("//test:test"), Label.create("//test:test2"))
         .inOrder();
   }
@@ -231,7 +230,7 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    assertThat(targets.stream().map(t -> t.label).collect(Collectors.toList()))
+    assertThat(targets.stream().map(t -> t.label()).collect(Collectors.toList()))
         .containsExactly(Label.create("//test:test"), Label.create("//test:test2"));
   }
 
@@ -264,7 +263,7 @@ public class TestMapTest extends BlazeTestCase {
         SourceToTargetFinder.findTargetsForSourceFile(
             project, new File("/test/Test.java"), Optional.of(RuleType.TEST));
 
-    assertThat(targets.stream().map(t -> t.label).collect(Collectors.toList()))
+    assertThat(targets.stream().map(t -> t.label()).collect(Collectors.toList()))
         .containsExactly(Label.create("//test:test"));
   }
 
@@ -287,10 +286,6 @@ public class TestMapTest extends BlazeTestCase {
     // Unknown rule type does not match the test rule type but the intention of this test is to make sure unknown rule types
     // do not cause NPE crashes.
     assertThat(targets).isEmpty();
-  }
-
-  private ArtifactLocation sourceRoot(String relativePath) {
-    return ArtifactLocation.builder().setRelativePath(relativePath).setIsSource(true).build();
   }
 
   private static class MockBlazeProjectDataManager implements BlazeProjectDataManager {

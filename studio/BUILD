@@ -98,6 +98,7 @@ studio_plugin(
         "//prebuilts/tools/common/m2:shark-graph-2.14",
         "//prebuilts/tools/common/m2:shark-hprof-2.14",
         "//prebuilts/tools/common/m2:shark-log-2.14",
+        "//prebuilts/tools/common/m2:wire-runtime-jvm-5.4.0",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
         "//tools/adt/idea/.idea/libraries:android-core-proto",
@@ -148,6 +149,8 @@ studio_plugin(
         "//tools/base/repository:schema-generated",
         "//tools/base/sdk-common:aia-proto",
         "//tools/base/sdklib:schema-generated",
+        "//tools/base/tracer:tracing-desktop-2.0.0-SNAPSHOT",
+        "//tools/base/tracer:tracing-wire-desktop-2.0.0-SNAPSHOT",
         "//tools/adt/idea/debuggers:libjava_sites",
         "//tools/base/deploy/deployer:libjava_version",
         "//tools/vendor/google/game-tools/main:game-tools-protos",
@@ -474,7 +477,6 @@ studio_plugin(
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.images",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.lvcs.impl",
@@ -837,6 +839,8 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/editor/prediction:aiplugin.editor.prediction",
             "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",
             "//tools/vendor/google/ml/aiplugin/mcp/client:aiplugin.mcp.client.sdkcompat",
+            "//tools/vendor/google/ml/aiplugin/rag/indexer:aiplugin.rag.indexer",
+            "//tools/vendor/google/ml/aiplugin/rag/kb:aiplugin.rag.kb",
             "//tools/vendor/google/ml/aiplugin/rag/lucene/sdkcompat:aiplugin.rag.lucene.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/sdkcompat:aiplugin.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/cloudcode-core:aiplugin.cloudcode-core",
@@ -866,7 +870,6 @@ studio_plugin(
         "@intellij//:intellij.platform.jewel.ideLafBridge",
         "@intellij//:intellij.platform.jewel.markdown.core",
         "@intellij//:intellij.platform.jewel.markdown.extensions.gfmTables",
-        "@intellij//:intellij.platform.jewel.markdown.extensions.images",
         "@intellij//:intellij.platform.jewel.markdown.ideLafBridgeStyling",
         "@intellij//:intellij.platform.jewel.ui",
         "@intellij//:intellij.platform.lvcs.impl",
@@ -1296,20 +1299,6 @@ iml_test(
     ],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpTest",
-)
-
-iml_test(
-    name = "SherlockStartUpTest",
-    intellij_platform = "sherlock-sdk",
-    module = ":intellij.android.studio.integration",
-    tags_linux = ["block-network"],
-    tags_mac = [
-        "ci:studio-mac",
-        "ci:studio-mac-arm",
-        "cpu:4",
-    ],
-    tags_windows = ["block-network"],
-    test_class = "com.android.tools.idea.SherlockStartUpTest",
 )
 
 iml_test(

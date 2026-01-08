@@ -200,7 +200,7 @@
 
     <projectService serviceImplementation="com.google.idea.blaze.base.build.BlazeBuildService"/>
     <projectService serviceInterface="com.google.idea.blaze.base.sync.data.BlazeProjectDataManager"
-                    serviceImplementation="com.google.idea.blaze.base.sync.data.DelegatingBlazeProjectDataManager"/>
+                    serviceImplementation="com.google.idea.blaze.base.qsync.QuerySyncProjectDataManager"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.BlazeSyncManager"/>
 
     <applicationConfigurable displayName="Query Sync" id="query.sync" parentId="com.google.idea.blaze.AswbSettings"
@@ -283,7 +283,6 @@
     <projectService serviceImplementation="com.google.idea.blaze.base.ui.problems.ProblemsViewConfiguration"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.query.MacroLineMarkerProvider$FileDataProvider"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.query.BlazeQueryOutputBaseProvider"/>
-    <projectService serviceImplementation="com.google.idea.blaze.base.sync.autosync.ProjectTargetManagerImpl"/>
     <projectTaskRunner implementation="com.google.idea.blaze.base.project.BazelProjectTaskRunner"
         id="aswb" order="first"/>
     <configurationType implementation="com.google.idea.blaze.base.run.BlazeCommandRunConfigurationType"/>
@@ -400,8 +399,6 @@
     <extensionPoint qualifiedName="com.google.idea.blaze.BlazeConsoleLineProcessorProvider" interface="com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.OutputArtifactParser"
                     interface="com.google.idea.blaze.base.command.buildresult.bepparser.OutputArtifactParser"/>
-    <extensionPoint qualifiedName="com.google.idea.blaze.RemoteOutputArtifactParser"
-                    interface="com.google.idea.blaze.base.command.buildresult.RemoteOutputArtifact$Parser"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.BlazeHighlightStatsCollector"
                     interface="com.google.idea.blaze.base.editor.BlazeHighlightStatsCollector"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.AbsolutePathPatcher"
@@ -455,7 +452,6 @@
     <extensionPoint qualifiedName="com.google.idea.blaze.TargetFinder" interface="com.google.idea.blaze.base.run.targetfinder.TargetFinder"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.SourceToTargetFinder" interface="com.google.idea.blaze.base.run.SourceToTargetFinder"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.TestComparisonFailureParser" interface="com.google.idea.blaze.base.run.smrunner.TestComparisonFailureParser"/>
-    <extensionPoint qualifiedName="com.google.idea.blaze.WorkspacePathResolverExtractor" interface="com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver$Extractor"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.TargetKindProvider" interface="com.google.idea.blaze.base.model.primitives.Kind$Provider"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.TestContextProvider" interface="com.google.idea.blaze.base.run.producers.TestContextProvider"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.BinaryContextProvider" interface="com.google.idea.blaze.base.run.producers.BinaryContextProvider"/>
@@ -471,7 +467,6 @@
     <SyncListener implementation="com.google.idea.blaze.base.sync.SyncCache$ClearSyncCache"/>
     <SyncListener implementation="com.google.idea.blaze.base.run.BlazeRunConfigurationSyncListener"/>
     <SyncListener implementation="com.google.idea.blaze.base.dependencies.ExternalFileProjectManagementHelper$UpdateNotificationsAfterSync"/>
-    <SyncListener implementation="com.google.idea.blaze.base.sync.autosync.ProjectTargetManagerImpl$TargetSyncListener"/>
     <SyncListener implementation="com.google.idea.blaze.base.lang.buildfile.language.semantics.BuildLanguageSpecProviderImpl$Listener"/>
     <SyncListener implementation="com.google.idea.blaze.base.syncstatus.QuerySyncNodeDecorator$Listener"/>
     <BuildFlagsProvider implementation="com.google.idea.blaze.base.command.BuildFlagsProviderImpl"/>
@@ -494,7 +489,6 @@
     <ProjectViewDefaultValueProvider implementation="com.google.idea.blaze.base.projectview.section.sections.AutomaticallyDeriveTargetsSection$DefaultValueProvider"/>
     <ProjectViewDefaultValueProvider implementation="com.google.idea.blaze.base.projectview.section.sections.TargetSection$TargetsProjectViewDefaultValueProvider"/>
     <ProjectViewDefaultValueProvider implementation="com.google.idea.blaze.base.projectview.section.sections.AdditionalLanguagesSection$AdditionalLanguagesDefaultValueProvider"/>
-    <BuildSystemVersionChecker implementation="com.google.idea.blaze.base.plugin.BazelVersionChecker"/>
     <BuildSystemVersionChecker implementation="com.google.idea.blaze.base.plugin.QuerySyncBazelVersionChecker"/>
     <BlazeConsoleLineProcessorProvider implementation="com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider$GeneralProvider"/>
     <TargetFinder implementation="com.google.idea.blaze.base.run.targetfinder.ProjectTargetFinder"/>
@@ -504,7 +498,6 @@
     <SourceToTargetFilteringStrategy implementation="com.google.idea.blaze.base.dependencies.SourceToTargetFilteringStrategy$IgnoredRules"/>
     <SourceToTargetFilteringStrategy implementation="com.google.idea.blaze.base.dependencies.SourceToTargetFilteringStrategy$SupportedLanguages"/>
     <SourceToTargetFilteringStrategy implementation="com.google.idea.blaze.base.dependencies.SourceToTargetFilteringStrategy$PrioritizeKnownRules"/>
-    <WorkspacePathResolverExtractor implementation="com.google.idea.blaze.base.sync.workspace.WorkspacePathResolverImpl$Extractor"/>
     <LoggedSettingsProvider implementation="com.google.idea.blaze.base.settings.BlazeUserSettings$SettingsLogger" id="BlazeUserSettingsLogger"/>
     <LoggedSettingsProvider implementation="com.google.idea.blaze.base.sync.autosync.AutoSyncSettings$SettingsLogger" order="after BlazeUserSettingsLogger"/>
     <LoggedSettingsProvider implementation="com.google.idea.blaze.base.qsync.settings.QuerySyncSettings$SettingsLogger" order="after BlazeUserSettingsLogger"/>

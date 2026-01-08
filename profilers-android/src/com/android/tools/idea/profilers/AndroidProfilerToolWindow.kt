@@ -91,65 +91,70 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     TransportService.getInstance()
 
     val client = ProfilerClient(TransportService.channelName)
-    profilers = StudioProfilers(client, ideProfilerServices, taskHandlers,
-                                { taskType, args -> ProfilerTaskTabs.create(project, taskType, args) }, { ProfilerTaskTabs.open(project) },
-                                { getToolbarDeviceSelections(project) }, { getPreferredProcessName(project) }, ::getCurrentTaskHandler)
+    try {
+      profilers = StudioProfilers(client, ideProfilerServices, taskHandlers,
+                                  { taskType, args -> ProfilerTaskTabs.create(project, taskType, args) }, { ProfilerTaskTabs.open(project) },
+                                  { getToolbarDeviceSelections(project) }, { getPreferredProcessName(project) }, ::getCurrentTaskHandler)
 
-    val navigator = ideProfilerServices.codeNavigator
-    // CPU ABI architecture, when needed by the code navigator, should be retrieved from StudioProfiler selected session.
-    navigator.cpuArchSource = Supplier { profilers.sessionsManager.selectedSessionMetaData.processAbi }
+      val navigator = ideProfilerServices.codeNavigator
+      // CPU ABI architecture, when needed by the code navigator, should be retrieved from StudioProfiler selected session.
+      navigator.cpuArchSource = Supplier { profilers.sessionsManager.selectedSessionMetaData.processAbi }
 
-    profilers.addDependency(this).onChange(ProfilerAspect.STAGE) { stageChanged() }
+      profilers.addDependency(this).onChange(ProfilerAspect.STAGE) { stageChanged() }
 
-    // Attempt to find the last-run process and start profiling it. This covers the case where the user presses "Run" (without profiling),
-    // but then opens the profiling window manually.
-    val processInfo = project.getUserData(LAST_RUN_APP_INFO)
-    if (processInfo != null) {
-      profilers.setPreferredProcess(processInfo.deviceName,
-                                    processInfo.processName) { p: Common.Process? -> processInfo.processFilter.invoke(p!!) }
-      project.putUserData(LAST_RUN_APP_INFO, null)
-    }
-    else if (!IdeInfo.getInstance().isGameTools){
-      StartupManager.getInstance(project).runWhenProjectIsInitialized { profilers.preferredProcessName = getPreferredProcessName(project) }
-    }
-
-    if (IdeInfo.getInstance().isGameTools && ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
-      invokeLater {
-        AndroidNotification.getInstance(project).showBalloon(
-          "Unsupported feature detected",
-          "Standalone Profiler cannot be used in Task-Based UX mode. Please set the profiler.task.based.ux flag in Android Studio to off" +
-          " (or reset it to its default value) and restart the profiler.",
-          NotificationType.ERROR)
+      // Attempt to find the last-run process and start profiling it. This covers the case where the user presses "Run" (without profiling),
+      // but then opens the profiling window manually.
+      val processInfo = project.getUserData(LAST_RUN_APP_INFO)
+      if (processInfo != null) {
+        profilers.setPreferredProcess(processInfo.deviceName,
+                                      processInfo.processName) { p: Common.Process? -> processInfo.processFilter.invoke(p!!) }
+        project.putUserData(LAST_RUN_APP_INFO, null)
       }
+      else if (!IdeInfo.getInstance().isGameTools){
+        StartupManager.getInstance(project).runWhenProjectIsInitialized { profilers.preferredProcessName = getPreferredProcessName(project) }
+      }
+
+      if (IdeInfo.getInstance().isGameTools && ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
+        invokeLater {
+          AndroidNotification.getInstance(project).showBalloon(
+            "Unsupported feature detected",
+            "Standalone Profiler cannot be used in Task-Based UX mode. Please set the profiler.task.based.ux flag in Android Studio to off" +
+            " (or reset it to its default value) and restart the profiler.",
+            NotificationType.ERROR)
+        }
+      }
+
+      ideProfilerComponents = IntellijProfilerComponents(project, this, ideProfilerServices.featureTracker)
+
+      // Create and store the task handlers in a map.
+      initializeTaskHandlers()
+
+      if (ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
+        // Initialize the two static/un-closable tabs: home and past recordings tabs.
+        homeTab = StudioProfilersHomeTab(profilers, ideProfilerComponents)
+        homePanel = JPanel(BorderLayout())
+        homePanel.removeAll()
+        homePanel.add(homeTab.view.panel)
+        homePanel.revalidate()
+        homePanel.repaint()
+        pastRecordingsTab = StudioProfilersPastRecordingsTab(profilers, ideProfilerComponents)
+        pastRecordingsPanel = JPanel(BorderLayout())
+        pastRecordingsPanel.removeAll()
+        pastRecordingsPanel.add(pastRecordingsTab.view.panel)
+        pastRecordingsPanel.revalidate()
+        pastRecordingsPanel.repaint()
+      }
+      // The Profiler tab is initialized here with the home tab so that the view bindings will be ready in the case the user imports a file
+      // from a fresh/un-opened Profiler tool window state. While entering a stage from an uninitialized Profiler state after importing is
+      // not a possible flow in the Task-Based UX, the initialization of the Profiler tab logic is used for both the Sessions-based Profiler
+      // tab and the Task-Based UX Profiler tab, so it must be called in a place that accommodates both tabs.
+      initializeProfilerTab()
+
+      ideProfilerServices.featureTracker.trackProfilerToolWindowCreated()
+    } catch(t: Throwable) {
+      client.shutdownChannel()
+      throw t
     }
-
-    ideProfilerComponents = IntellijProfilerComponents(project, this, ideProfilerServices.featureTracker)
-
-    // Create and store the task handlers in a map.
-    initializeTaskHandlers()
-
-    if (ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
-      // Initialize the two static/un-closable tabs: home and past recordings tabs.
-      homeTab = StudioProfilersHomeTab(profilers, ideProfilerComponents)
-      homePanel = JPanel(BorderLayout())
-      homePanel.removeAll()
-      homePanel.add(homeTab.view.panel)
-      homePanel.revalidate()
-      homePanel.repaint()
-      pastRecordingsTab = StudioProfilersPastRecordingsTab(profilers, ideProfilerComponents)
-      pastRecordingsPanel = JPanel(BorderLayout())
-      pastRecordingsPanel.removeAll()
-      pastRecordingsPanel.add(pastRecordingsTab.view.panel)
-      pastRecordingsPanel.revalidate()
-      pastRecordingsPanel.repaint()
-    }
-    // The Profiler tab is initialized here with the home tab so that the view bindings will be ready in the case the user imports a file
-    // from a fresh/un-opened Profiler tool window state. While entering a stage from an uninitialized Profiler state after importing is
-    // not a possible flow in the Task-Based UX, the initialization of the Profiler tab logic is used for both the Sessions-based Profiler
-    // tab and the Task-Based UX Profiler tab, so it must be called in a place that accommodates both tabs.
-    initializeProfilerTab()
-
-    ideProfilerServices.featureTracker.trackProfilerToolWindowCreated()
   }
 
   private fun getToolbarDeviceSelections(project: Project): List<ToolbarDeviceSelection> {
@@ -266,47 +271,45 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     createdTaskTab.setDisposer {
       onTaskTabClose()
     }
+  }
 
-    registerSessionEndListener()
+  /**
+   * Closes the Profiler task tab for a specified task type.
+   */
+  fun closeTaskTab(taskType: ProfilerTaskType) {
+    val contentManager = window.getContentManager()
+    val taskTabTitle = StringUtils.getTaskTabTitle(taskType, profilers.ideServices.featureConfig.isTaskTitleV2Enabled)
+    val taskTab = contentManager.contents.find {
+      it.displayName == taskTabTitle || it.tabName == taskTabTitle
+    }
+    taskTab?.let { content ->
+      contentManager.removeContent(content, true)
+    }
   }
 
   private fun onTaskTabClose() {
+    // On close of the task tab, end the current session/task if its ongoing and reset the current session selection.
+    // If the current task/session is ongoing/alive, terminate it and reset the selected session to reflect that the closed task is
+    // no longer selected.
     val sessionsManager = profilers.sessionsManager
-
-    // On close of the task tab, end the current session/task if its ongoing
-    // Once the session end event is received, reset the selected session
-    // to reflect that the closed task is no longer selected
     if (sessionsManager.isSessionAlive) {
-      currentTaskHandler?.takeIf { it.canStop() }?.stopTask()
-    }
-    else {
-      // Perform session cleanup and deregister listener.
-      sessionsManager.removeDependencies(this)
-      sessionsManager.resetSessionSelection()
-    }
-
-    currentTaskHandler!!.exit()
-    currentTaskHandler = null
-  }
-
-  private fun registerSessionEndListener() {
-    val sessionsManager = profilers.sessionsManager
-
-    sessionsManager.removeDependencies(this)
-    sessionsManager.addDependency(this).onChange(SessionAspect.ONGOING_SESSION_NEWLY_ENDED) {
-      // In an edge-case scenario if another session is started we do not want to clean up the new session.
-      // This check prevents the session cleanup logic to be fired if a new session has started.
-      if (sessionsManager.isSessionAlive) return@onChange
-
-      currentTaskHandler?.takeIf { it.canStop() }?.stopTask()
-
-      // If the task tab is closed, reset the selected session.
-      // Also see [onTaskTabClose].
-      if (findTaskTab() == null) {
+      // Reset the session selection when the ongoing task's session is ended and processed by the SessionsManager.
+      sessionsManager.addDependency(this).onChange(SessionAspect.ONGOING_SESSION_NEWLY_ENDED) {
+        // Remove this aspect listener to prevent repetitive/future calls.
         sessionsManager.removeDependencies(this)
+        // Reflect the selected task being removed by resetting the session selection.
         sessionsManager.resetSessionSelection()
       }
+      // Stop the task which will also stop the underlying session.
+      currentTaskHandler!!.stopTask()
     }
+    // If the task is already terminated on close, there is no need to end ongoing session.
+    else {
+      // Reflect the selected task being removed by resetting the session selection.
+      sessionsManager.resetSessionSelection()
+    }
+    currentTaskHandler!!.exit()
+    currentTaskHandler = null
   }
 
   /**

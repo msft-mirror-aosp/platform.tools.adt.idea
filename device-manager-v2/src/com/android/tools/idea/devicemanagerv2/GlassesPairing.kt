@@ -45,7 +45,7 @@ class PairGlassesAction() : DumbAwareAction("Pair Glasses") {
     val pairGlassesAction = deviceHandle?.pairGlassesAction ?: return
 
     deviceHandle.launchCatchingDeviceActionException(project = e.project) {
-      pairGlassesAction.pairGlasses(e.componentToRestoreFocusTo(), deviceHandle)
+      pairGlassesAction.pairGlasses(e.componentToRestoreFocusTo())
     }
   }
 }

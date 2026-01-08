@@ -174,7 +174,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
     BlazeTestUiSession testUiSession = null;
     final var testResultFinderStrategy = new BlazeTestResultFetcher();
     if (useTestUi()
-        && BlazeTestEventsHandler.targetsSupported(project, getConfiguration().getTargets())) {
+        && BlazeTestEventsHandler.targetsSupported(project, getConfiguration().getTargetPatterns())) {
       testUiSession =
         BlazeTestUiSession.create(
           ImmutableList.<String>builder()
@@ -263,7 +263,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
     BlazeCommand.Builder command = handlerState.getBlazeBinaryState().getBlazeBinary() != null
         ? BlazeCommand.builder(invoker, blazeCommand, handlerState.getBlazeBinaryState().getBlazeBinary())
         : BlazeCommand.builder(invoker, blazeCommand);
-    command.addTargets(configuration.getTargets())
+    command.addTargetStrings(configuration.getTargetPatterns())
         .addBlazeFlags(
           BlazeFlags.blazeFlags(
             project,
@@ -305,7 +305,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
   }
 
   private File getDownloadDir() {
-    String testTargetString = getConfiguration().getSingleTarget().toString();
+    String testTargetString = getConfiguration().getSingleTargetPattern();
     return new File(
       FileUtilRt.getTempDirectory(),
       testTargetString.substring(testTargetString.lastIndexOf(":") + 1) + ".runfiles");
@@ -318,7 +318,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
 
   private String getEntryPointScript() {
     return CharMatcher.is('/')
-      .trimLeadingFrom(getConfiguration().getSingleTarget().toString())
+      .trimLeadingFrom(getConfiguration().getSingleTargetPattern())
       .replace(':', '/');
   }
 

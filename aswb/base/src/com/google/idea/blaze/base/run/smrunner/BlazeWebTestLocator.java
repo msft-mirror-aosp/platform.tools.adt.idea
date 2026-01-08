@@ -16,24 +16,16 @@
 package com.google.idea.blaze.base.run.smrunner;
 
 import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
-import com.google.idea.blaze.base.ideinfo.Dependency;
-import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
-import com.google.idea.blaze.base.ideinfo.TargetKey;
 import com.google.idea.blaze.base.model.BlazeProjectData;
-import com.google.idea.blaze.base.model.primitives.Kind;
 import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.Location;
 import com.intellij.execution.testframework.sm.runner.SMTestLocator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.util.io.URLUtil;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
-import javax.annotation.Nullable;
 
 /**
  * Finds the corresponding wrapped test for a web_test and recreates the test URL with the correct
@@ -94,32 +86,33 @@ class BlazeWebTestLocator implements SMTestLocator {
     //return builder.build();
   }
 
-  @Nullable
-  private static String recreateUrl(
-      BlazeTestEventsHandler handler, Label label, Kind kind, List<String> components) {
-    switch (components.size()) {
-      case 2: // test suite
-        return handler.suiteLocationUrl(label, kind, /* name = */ components.get(1));
-      case 4: // test case
-        return handler.testLocationUrl(
-            label,
-            kind,
-            /* parentSuite = */ components.get(1),
-            /* name = */ components.get(2),
-            /* className = */ Strings.emptyToNull(components.get(3)));
-      default:
-        return null;
-    }
-  }
-
-  @SuppressWarnings("rawtypes")
-  private static List<Location> locate(
-      SMTestLocator locator, String url, Project project, GlobalSearchScope scope) {
-    List<String> components = Splitter.on(URLUtil.SCHEME_SEPARATOR).limit(2).splitToList(url);
-    if (components.size() != 2) {
-      return ImmutableList.of();
-    }
-    return locator.getLocation(
-        /* protocol = */ components.get(0), /* path = */ components.get(1), project, scope);
-  }
+  // query sync: re-implement using new classes when re-implementing the feature.
+  //@Nullable
+  //private static String recreateUrl(
+  //    BlazeTestEventsHandler handler, Label label, Kind kind, List<String> components) {
+  //  switch (components.size()) {
+  //    case 2: // test suite
+  //      return handler.suiteLocationUrl(label, kind, /* name = */ components.get(1));
+  //    case 4: // test case
+  //      return handler.testLocationUrl(
+  //          label,
+  //          kind,
+  //          /* parentSuite = */ components.get(1),
+  //          /* name = */ components.get(2),
+  //          /* className = */ Strings.emptyToNull(components.get(3)));
+  //    default:
+  //      return null;
+  //  }
+  //}
+  //
+  //@SuppressWarnings("rawtypes")
+  //private static List<Location> locate(
+  //    SMTestLocator locator, String url, Project project, GlobalSearchScope scope) {
+  //  List<String> components = Splitter.on(URLUtil.SCHEME_SEPARATOR).limit(2).splitToList(url);
+  //  if (components.size() != 2) {
+  //    return ImmutableList.of();
+  //  }
+  //  return locator.getLocation(
+  //      /* protocol = */ components.get(0), /* path = */ components.get(1), project, scope);
+  //}
 }

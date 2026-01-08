@@ -173,7 +173,7 @@ internal class FakeDeviceHandle(
     override val presentation =
       MutableStateFlow(StudioDefaultDeviceActionPresentation.fromContext())
 
-    override suspend fun pairGlasses(parent: Component?, glassesHandle: DeviceHandle) {
+    override suspend fun pairGlasses(parent: Component?) {
       invoked++
     }
   }

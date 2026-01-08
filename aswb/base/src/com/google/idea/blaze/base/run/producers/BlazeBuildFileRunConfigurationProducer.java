@@ -61,7 +61,7 @@ public class BlazeBuildFileRunConfigurationProducer
         return null;
       }
       Kind kind = Kind.fromRuleName(ruleName);
-      return kind != null ? TargetInfo.builder(label, kind.getKindString()).build() : null;
+      return kind != null ? new TargetInfo(label, kind.getKindString()) : null;
     }
   }
 
@@ -97,7 +97,7 @@ public class BlazeBuildFileRunConfigurationProducer
     if (target == null) {
       return false;
     }
-    if (!Objects.equals(configuration.getTargets(), ImmutableList.of(target.label))) {
+    if (!Objects.equals(configuration.getTargetPatterns(), ImmutableList.of(target.label.toString()))) {
       return false;
     }
     // We don't know any details about how the various factories set up configurations from here.
@@ -186,7 +186,7 @@ public class BlazeBuildFileRunConfigurationProducer
     if (info != null) {
       config.setTargetInfo(info);
     } else {
-      config.setTarget(target.label);
+      config.setTargetPattern(target.label.toString());
     }
     BlazeCommandRunConfigurationCommonState state =
         config.getHandlerStateIfType(BlazeCommandRunConfigurationCommonState.class);

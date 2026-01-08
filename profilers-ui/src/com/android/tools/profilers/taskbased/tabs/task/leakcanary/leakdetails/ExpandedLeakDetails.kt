@@ -87,8 +87,8 @@ fun LeakNodeDetails(node: Node, modifier: Modifier = Modifier) {
       node.referencingField?.let {
         DetailText("$LEAKCANARY_REFERENCING_FIELD$it")
       }
-      node.retainedByteSize?.let {
-        DetailText("$LEAKCANARY_RETAINED_BYTES$it bytes")
+      node.retainedHeapSize?.let {
+        DetailText("$LEAKCANARY_RETAINED_BYTES$it")
       }
       node.retainedObjectCount?.let {
         DetailText("$LEAKCANARY_REFERENCING_OBJECTS$it")
