@@ -13,7 +13,7 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<idea-plugin>
+<idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
   <extensions defaultExtensionNs="com.intellij">
     <!--suppress PluginXmlValidity - Plugin XML files are merged into the same plugin.xml -->
     <library.toolWindow id="Android Profiler"
@@ -123,4 +123,5 @@
     <listener class="com.android.tools.idea.profilers.AndroidProfilerRunWindowRestorerExecutionListener" topic="com.intellij.execution.ExecutionListener" />
     <listener class="com.android.tools.idea.profilers.ProfilerExecutionListener" topic="com.intellij.execution.ExecutionListener"/>
   </projectListeners>
+  <xi:include href="/META-INF/studio-common.xml" xpointer="xpointer(/idea-plugin/*)"/>
 </idea-plugin>
