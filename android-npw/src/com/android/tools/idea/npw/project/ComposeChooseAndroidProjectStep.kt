@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -68,9 +69,9 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.jewel.bridge.toComposeColor
 import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
+import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
 import org.jetbrains.jewel.foundation.lazy.SelectionMode
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
-import org.jetbrains.jewel.foundation.lazy.rememberSelectableLazyListState
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Divider
@@ -111,8 +112,16 @@ private fun LeftSidePanel(
   updateEntrySelected: (ChooseAndroidProjectEntry?) -> Unit,
 ) {
   val focusRequester = remember { FocusRequester() }
-  val stateList = rememberSelectableLazyListState()
-  stateList.lastActiveItemIndex = selectedEntry?.let { entries.indexOf(it) }
+  val stateList = remember {
+    SelectableLazyListState(lazyListState = LazyListState()).apply {
+      // Initialize state based on selectedEntry, i.e., restore previous selection state
+      val selectedEntryIndex = entries.indexOf(selectedEntry)
+      if (selectedEntryIndex >= 0) {
+        selectedKeys = setOf(selectedEntry!!)
+        lastActiveItemIndex = selectedEntryIndex
+      }
+    }
+  }
 
   Column {
     Text(
