@@ -155,6 +155,6 @@ class FindReferencesRecipeExecutor(private val context: RenderingContext) : Reci
   }
 
   override fun useLibrary(name: String) {}
-  override fun addCompileSdk(androidVersion: AndroidVersion) {}
+  override fun addCompileSdk(androidVersion: AndroidVersion, isKotlinMultiplatform: Boolean) {}
   override fun addJourneysTestSuite(testSuiteName: String, targetVariant: String?) {}
 }
