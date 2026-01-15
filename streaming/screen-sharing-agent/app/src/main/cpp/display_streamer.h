@@ -24,6 +24,7 @@
 
 #include "accessors/display_manager.h"
 #include "accessors/window_manager.h"
+#include "codec_info.h"
 #include "common.h"
 #include "geom.h"
 #include "jvm.h"
@@ -33,25 +34,6 @@
 
 namespace screensharing {
 
-struct CodecInfo {
-  std::string mime_type;
-  std::string name;
-  Size max_resolution;
-  Size size_alignment;
-  int32_t max_frame_rate;
-  bool hardware_accelerated;
-
-  CodecInfo(std::string mime_type, std::string name, Size max_resolution, Size size_alignment, int32_t max_frame_rate,
-            bool hardware_accelerated)
-      : mime_type(std::move(mime_type)),
-        name(std::move(name)),
-        max_resolution(max_resolution),
-        size_alignment(size_alignment),
-        max_frame_rate(max_frame_rate),
-        hardware_accelerated(hardware_accelerated) {
-  }
-};
-
 // Processes control socket commands.
 class DisplayStreamer : private DisplayManager::DisplayListener {
 public:
@@ -60,7 +42,7 @@ public:
   };
 
   DisplayStreamer(
-      int display_id, const CodecInfo* codec_name, Size max_video_resolution, int initial_video_orientation, int max_bitrate,
+      int display_id, const CodecInfo* codec_info, Size max_video_resolution, int initial_video_orientation, int max_bitrate,
       SocketWriter* writer);
   ~DisplayStreamer() override;
 

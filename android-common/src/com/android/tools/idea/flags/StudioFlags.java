@@ -2149,6 +2149,42 @@ public final class StudioFlags {
                     "Enable sending inline code completion metrics to the AIDA CES service",
                     "When enabled, metrics related to inline code completion suggestions will be sent to the CES service for AIDA.");
 
+  public static final Flag<Boolean> STUDIOBOT_QUERY_CODE_COMPLETION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "query.completion",
+                    "Enable query code completion",
+                    "When enabled, queries will use code completion in the agent mode query box"
+                    );
+
+  public static final Flag<Boolean> STUDIOBOT_QUERY_CYCLIC_EXPAND =
+    new BooleanFlag(STUDIOBOT, "query.cyclic.expand",
+                    "Enable cyclic expansion in queries",
+                    "When enabled, queries will allow cyclic expansion of symbols in the context."
+                    );
+
+  public static final Flag<Boolean> STUDIOBOT_INCLUDE_SYMBOL_REFERENCES =
+    new BooleanFlag(STUDIOBOT, "include.symbol.references",
+                    "Include symbol references in context",
+                    "When enabled, symbol references will be included in the context sent to Gemini."
+                    );
+
+  public static final Flag<Boolean> STUDIOBOT_READ_OUTLINE_TOOL =
+    new BooleanFlag(STUDIOBOT, "read.outline.tool",
+                    "Enable the Read Outline tool",
+                    "When enabled, the Read Outline tool will be available for agents."
+    );
+
+  public static final Flag<Boolean> STUDIOBOT_FIND_DECLARATION_TOOL =
+    new BooleanFlag(STUDIOBOT, "find.declaration.tool",
+                    "Enable the Find Declaration tool",
+                    "When enabled, the Find Declaration tool will be available for agents."
+    );
+
+  public static final Flag<Boolean> STUDIOBOT_READ_URI_TOOL =
+    new BooleanFlag(STUDIOBOT, "read.uri.tool",
+                    "Enable the Read URI tool",
+                    "When enabled, the Read URI tool will be available for agents."
+    );
+
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_FILE_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
                     "Enable sending additional file context with completion requests",
@@ -2313,6 +2349,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "prompt.library.chat.lookup",
                     "Show Saved Prompts in chat lookup",
                     "When enabled, add Rules section to lookup popup.");
+
+  public static final Flag<Boolean> STUDIOBOT_AGENT_NOTIFICATIONS =
+    new BooleanFlag(STUDIOBOT, "agent.notifications",
+                    "Enable agent notifications",
+                    "Shows notifications when agent is blocked or finishes long tasks");
 
   public static final Flag<Boolean> STUDIOBOT_MCP_HOST_ENABLED =
     new BooleanFlag(STUDIOBOT, "mcp.host.enabled",
@@ -2643,6 +2684,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "gemini.next.prediction",
                     "Enable next edit/action prediction in the IDE",
                     "Enable next edit/action prediction in the IDE");
+
+  public static final Flag<Boolean> GEMINI_NEXT_PREDICTION_DEBUG_SETTINGS =
+    new BooleanFlag(STUDIOBOT, "gemini.next.prediction.debug.settings",
+                    "Enable next edit/action prediction debug settings",
+                    "Enable next edit/action prediction debug settings");
 
   public static final Flag<Boolean> STUDIOBOT_AGENT_EXPERIMENTAL_BUILD_PROMPT =
     new BooleanFlag(STUDIOBOT, "agent.experimental.build.prompt",

@@ -158,10 +158,15 @@ class InspectorPropertiesModel(parentDisposable: Disposable) :
       return
     }
     if (properties.sameKeys(table) && view.drawId == propertiesForDrawId) {
+      var childElementChanges = false
       for (property in table.values) {
-        properties[property.namespace, property.name].value = property.snapshotValue
+        for (property in table.values) {
+          if (properties[property.namespace, property.name].updateValue(property)) {
+            childElementChanges = true
+          }
+        }
       }
-      firePropertyValuesChanged()
+      firePropertyValuesChanged(childElementChanges)
     } else {
       properties = table
       propertiesForDrawId = view.drawId
@@ -175,9 +180,11 @@ class InspectorPropertiesModel(parentDisposable: Disposable) :
     }
   }
 
-  private fun firePropertyValuesChanged() {
+  private fun firePropertyValuesChanged(childElementChanges: Boolean = false) {
     modelListeners.forEach {
-      ApplicationManager.getApplication().invokeLater { it.propertyValuesChanged(this) }
+      ApplicationManager.getApplication().invokeLater {
+        it.propertyValuesChanged(this, childElementChanges)
+      }
     }
   }
 }

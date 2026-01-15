@@ -20,11 +20,10 @@ import com.android.tools.idea.execution.common.DeployOptions;
 import com.android.tools.idea.execution.common.debug.AndroidDebugger;
 import com.android.tools.idea.execution.common.debug.AndroidDebuggerState;
 import com.android.tools.idea.projectsystem.ApplicationProjectContext;
+import com.android.tools.idea.run.ApkProvider;
 import com.android.tools.idea.run.ApplicationIdProvider;
 import com.android.tools.idea.run.ConsoleProvider;
 import com.android.tools.idea.run.LaunchOptions;
-import com.android.tools.idea.run.blaze.BlazeLaunchTask;
-import com.android.tools.idea.run.blaze.BlazeLaunchTasksProvider;
 import com.android.tools.idea.run.editor.ProfilerState;
 import com.google.common.collect.ImmutableList;
 import com.intellij.execution.ExecutionException;
@@ -49,10 +48,9 @@ public interface BlazeAndroidRunContext {
 
   ApplicationIdProvider getApplicationIdProvider();
 
-  ApplicationProjectContext getApplicationProjectContext();
+  ApkProvider getApkProvider();
 
-  BlazeLaunchTasksProvider getLaunchTasksProvider(LaunchOptions launchOptions)
-      throws ExecutionException;
+  ApplicationProjectContext getApplicationProjectContext();
 
   /** Returns the tasks to deploy the application. */
   ImmutableList<BlazeLaunchTask> getDeployTasks(IDevice device, DeployOptions deployOptions)
@@ -72,8 +70,7 @@ public interface BlazeAndroidRunContext {
       ExecutionEnvironment env,
       IDevice device,
       ConsoleView consoleView,
-      ProgressIndicator indicator,
-      String packageName);
+      ProgressIndicator indicator);
 
   @Nullable
   Integer getUserId(IDevice device) throws ExecutionException;

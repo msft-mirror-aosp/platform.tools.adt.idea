@@ -462,7 +462,7 @@ iml_test(
 iml_test(
     name = "ApplyCodeChangesTest",
     timeout = "long",
-    data = apply_changes_data + [":applychanges_project_model"],
+    data = apply_changes_data,
     module = ":intellij.android.core.integration",
     tags = [
         "studio-e2e-test",

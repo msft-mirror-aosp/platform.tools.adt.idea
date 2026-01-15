@@ -63,8 +63,7 @@ public class BlazeIdeInterfaceAspectsImpl implements BlazeIdeInterface {
       ProjectViewSet projectViewSet,
       List<? extends String> targets,
       WorkspaceLanguageSettings workspaceLanguageSettings,
-      BlazeInvocationContext blazeInvocationContext,
-      boolean invokeParallel) {
+      BlazeInvocationContext blazeInvocationContext) {
 
     final ShardedBuildProgressTracker progressTracker =
         new ShardedBuildProgressTracker(1);
@@ -86,7 +85,7 @@ public class BlazeIdeInterfaceAspectsImpl implements BlazeIdeInterface {
     // Fetching blaze flags here using parent context, to avoid duplicate fetch for every shard.
     List<String> additionalBlazeFlags =
         BlazeFlags.blazeFlags(
-            project, projectViewSet, BlazeCommandName.BUILD, context, blazeInvocationContext);
+          project, projectViewSet, BlazeCommandName.BUILD, blazeInvocationContext);
     return Scope.push(
         context,
         (childContext) -> {
@@ -108,8 +107,8 @@ public class BlazeIdeInterfaceAspectsImpl implements BlazeIdeInterface {
                     invoker,
                     childContext,
                     targets,
-                    additionalBlazeFlags,
-                    invokeParallel);
+                    additionalBlazeFlags
+                );
             printShardFinishedSummary(context, task.getName(), result1, invoker);
             return result1;
           } catch (BuildException e) {
@@ -166,13 +165,11 @@ public class BlazeIdeInterfaceAspectsImpl implements BlazeIdeInterface {
       BuildInvoker invoker,
       BlazeContext context,
       List<? extends String> targets,
-      List<String> additionalBlazeFlags,
-      boolean invokeParallel)
+      List<String> additionalBlazeFlags)
       throws BuildException {
 
-    BlazeCommand.Builder builder = BlazeCommand.builder(invoker, BlazeCommandName.BUILD);
+    BlazeCommand.Builder builder = BlazeCommand.builder(BlazeCommandName.BUILD);
     builder
-        .setInvokeParallel(invokeParallel)
         .addTargetStrings(targets)
         .addBlazeFlags(BlazeFlags.KEEP_GOING)
         .addBlazeFlags(BlazeFlags.DISABLE_VALIDATIONS) // b/145245918: don't run lint during sync

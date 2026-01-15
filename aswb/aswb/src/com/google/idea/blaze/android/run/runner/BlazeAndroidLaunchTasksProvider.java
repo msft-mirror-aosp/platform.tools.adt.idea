@@ -24,10 +24,7 @@ import com.android.tools.idea.execution.common.debug.AndroidDebugger;
 import com.android.tools.idea.execution.common.debug.AndroidDebuggerState;
 import com.android.tools.idea.profilers.AndroidProfilerLaunchTaskContributor;
 import com.android.tools.idea.run.ApkProvisionException;
-import com.android.tools.idea.run.ApplicationIdProvider;
 import com.android.tools.idea.run.LaunchOptions;
-import com.android.tools.idea.run.blaze.BlazeLaunchTask;
-import com.android.tools.idea.run.blaze.BlazeLaunchTasksProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.idea.blaze.android.run.binary.UserIdHelper;
@@ -50,17 +47,14 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
 
   private final Project project;
   private final BlazeAndroidRunContext runContext;
-  private final ApplicationIdProvider applicationIdProvider;
   private final LaunchOptions launchOptions;
 
   public BlazeAndroidLaunchTasksProvider(
       Project project,
       BlazeAndroidRunContext runContext,
-      ApplicationIdProvider applicationIdProvider,
       LaunchOptions launchOptions) {
     this.project = project;
     this.runContext = runContext;
-    this.applicationIdProvider = applicationIdProvider;
     this.launchOptions = launchOptions;
   }
 
@@ -70,12 +64,7 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
       throws ExecutionException {
     final List<BlazeLaunchTask> launchTasks = Lists.newArrayList();
 
-    String packageName;
-    try {
-      packageName = applicationIdProvider.getPackageName();
-    } catch (ApkProvisionException e) {
-      throw new ExecutionException("Unable to determine application id: " + e);
-    }
+    String packageName = runContext.getApplicationProjectContext().getApplicationId();
 
     Integer userId = runContext.getUserId(device);
 
@@ -141,8 +130,7 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
       @NotNull ExecutionEnvironment environment,
       @NotNull IDevice device,
       @NotNull ConsoleView console,
-      @NotNull ProgressIndicator indicator,
-      @NotNull String packageName)
+      @NotNull ProgressIndicator indicator)
       throws ExecutionException {
     // Do not get debugger state directly from the debugger itself.
     // See BlazeAndroidDebuggerService#getDebuggerState for an explanation.
@@ -167,7 +155,7 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
     }
 
     return runContext.startDebuggerSession(
-        debugger, debuggerState, environment, device, console, indicator, packageName);
+        debugger, debuggerState, environment, device, console, indicator);
   }
 
   private boolean isNativeDebuggingEnabled(LaunchOptions launchOptions) {

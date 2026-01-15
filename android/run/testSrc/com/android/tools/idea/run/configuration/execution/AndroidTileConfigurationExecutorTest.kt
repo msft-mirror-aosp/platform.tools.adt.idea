@@ -105,7 +105,6 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
       override val componentLaunchOptions = TileLaunchOptions().apply {
         componentName = this@AndroidTileConfigurationExecutorTest.componentName
       }
-      override val module = myModule
     }
 
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
@@ -179,7 +178,6 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
       override val componentLaunchOptions = TileLaunchOptions().apply {
         componentName = this@AndroidTileConfigurationExecutorTest.componentName
       }
-      override val module = myModule
     }
 
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())
@@ -228,7 +226,6 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
       override val componentLaunchOptions = TileLaunchOptions().apply {
         componentName = this@AndroidTileConfigurationExecutorTest.componentName
       }
-      override val module = myModule
     }
 
     val activator = mock<Activator>()
@@ -296,7 +293,6 @@ class AndroidTileConfigurationExecutorTest : AndroidConfigurationExecutorBaseTes
       override val componentLaunchOptions = TileLaunchOptions().apply {
         componentName = this@AndroidTileConfigurationExecutorTest.componentName
       }
-      override val module = myModule
     }
 
     val app = createApp(device, appId, servicesName = listOf(componentName), activitiesName = emptyList())

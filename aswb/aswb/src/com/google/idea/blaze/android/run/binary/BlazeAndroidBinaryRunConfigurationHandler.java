@@ -17,18 +17,21 @@ package com.google.idea.blaze.android.run.binary;
 
 import static com.google.idea.blaze.android.run.LaunchMetrics.logBinaryLaunch;
 
+import com.android.tools.idea.execution.common.DeployableToDevice;
 import com.android.tools.idea.run.ValidationError;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.idea.blaze.android.run.ApkBuildStepProvider;
+import com.google.idea.blaze.android.run.BazelApplicationProjectContext;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationCommonState;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationHandler;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationValidationUtil;
 import com.google.idea.blaze.android.run.LaunchMetrics;
 import com.google.idea.blaze.android.run.binary.AndroidBinaryLaunchMethodsUtils.AndroidBinaryLaunchMethod;
 import com.google.idea.blaze.android.run.binary.mobileinstall.BlazeAndroidBinaryMobileInstallRunContext;
+import com.google.idea.blaze.android.run.deployinfo.BlazeApkProvider;
 import com.google.idea.blaze.android.run.runner.ApkBuildStep;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidRunConfigurationRunner;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidRunContext;
@@ -60,20 +63,24 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import java.util.concurrent.TimeUnit;
-import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * {@link com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationHandler} for
+ * {@link com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner} for
  * android_binary targets.
  */
-public class BlazeAndroidBinaryRunConfigurationHandler
-  extends BlazeAndroidBinaryRunConfigurationHandlerTestHelper
-    implements BlazeAndroidRunConfigurationHandler {
+public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRunConfigurationHandler {
+
+  private final Project project;
+  private final BlazeAndroidBinaryRunConfigurationState configState;
 
   @VisibleForTesting
-  protected BlazeAndroidBinaryRunConfigurationHandler(BlazeCommandRunConfiguration configuration) {
-    super(configuration);
+  BlazeAndroidBinaryRunConfigurationHandler(BlazeCommandRunConfiguration configuration) {
+    this.project = configuration.getProject();
+    this.configState =
+        new BlazeAndroidBinaryRunConfigurationState(
+            Blaze.buildSystemName(configuration.getProject()));
+    configuration.putUserData(DeployableToDevice.getKEY(), true);
   }
 
   private static final Logger LOG =
@@ -105,7 +112,6 @@ public class BlazeAndroidBinaryRunConfigurationHandler
     Module module =
         ModuleFinder.getInstance(env.getProject())
             .findModuleByName(BlazeDataStorage.WORKSPACE_MODULE_NAME);
-    AndroidFacet facet = module != null ? AndroidFacet.getInstance(module) : null;
     ProjectViewSet projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
 
     // Only suggest building with mobile-install if native debugging isn't enabled.
@@ -141,14 +147,18 @@ public class BlazeAndroidBinaryRunConfigurationHandler
                 blazeFlags,
                 exeFlags,
                 launchId);
+    var applicationIdProvider = new BlazeAndroidBinaryApplicationIdProvider(buildStep);
+    var apkProvider = BlazeApkProvider.getApkProvider(project, buildStep);
+    var applicationProjectContext =
+        new BazelApplicationProjectContext(project, applicationIdProvider);
 
     // Create run context for matching launch method.
-    BlazeAndroidRunContext runContext = null;
+    BlazeAndroidRunContext runContext;
     switch (configState.getLaunchMethod()) {
       case NON_BLAZE:
         runContext =
             new BlazeAndroidBinaryNormalBuildRunContext(
-                project, facet, configuration, env, configState, buildStep, launchId);
+              project, env, configState, buildStep, launchId, applicationIdProvider, apkProvider, applicationProjectContext);
         break;
       case MOBILE_INSTALL_V2:
         // Standardize on a single mobile-install launch method
@@ -156,8 +166,8 @@ public class BlazeAndroidBinaryRunConfigurationHandler
         // fall through
       case MOBILE_INSTALL:
         runContext =
-            new BlazeAndroidBinaryMobileInstallRunContext(
-                project, facet, configuration, env, configState, buildStep, launchId);
+          new BlazeAndroidBinaryMobileInstallRunContext(
+            project, env, configState, buildStep, launchId, applicationIdProvider, apkProvider, applicationProjectContext);
         break;
       default:
         throw new ExecutionException("No compatible launch methods.");
@@ -169,7 +179,7 @@ public class BlazeAndroidBinaryRunConfigurationHandler
         env.getExecutor().getId(),
         configuration.getSingleTargetPattern(),
         configState.getCommonState().isNativeDebuggingEnabled());
-    return new BlazeAndroidRunConfigurationRunner(module, runContext, configuration);
+    return new BlazeAndroidRunConfigurationRunner(runContext, configuration);
   }
 
   @Override
@@ -308,3 +318,4 @@ public class BlazeAndroidBinaryRunConfigurationHandler
     }
   }
 }
+
