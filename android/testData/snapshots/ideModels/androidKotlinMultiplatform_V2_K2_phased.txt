@@ -1239,6 +1239,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1253,6 +1254,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1266,6 +1268,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -1287,6 +1290,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1301,6 +1305,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1315,6 +1320,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -1335,6 +1341,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/release/keepRules [-]
     ProductFlavors
         ProductFlavor
             Name                          : typeone
@@ -1351,6 +1358,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/typeone/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/typeone/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/typeone/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/typeone/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1365,6 +1373,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestTypeone/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestTypeone/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypeone/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypeone/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1378,6 +1387,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testTypeone/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testTypeone/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypeone/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testTypeone/keepRules [-]
         ProductFlavor
             Name                          : typetwo
             Dimension                     : type
@@ -1393,6 +1403,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/typetwo/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/typetwo/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/typetwo/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/typetwo/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1407,6 +1418,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestTypetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestTypetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypetwo/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1420,6 +1432,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testTypetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testTypetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testTypetwo/keepRules [-]
         ProductFlavor
             Name                          : modeone
             Dimension                     : mode
@@ -1435,6 +1448,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/modeone/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/modeone/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/modeone/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/modeone/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1449,6 +1463,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestModeone/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestModeone/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestModeone/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestModeone/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1462,6 +1477,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testModeone/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testModeone/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testModeone/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testModeone/keepRules [-]
         ProductFlavor
             Name                          : modetwo
             Dimension                     : mode
@@ -1477,6 +1493,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             AssetsDirectories             : <ROOT>/androidLib/src/modetwo/assets [-]
             JniLibsDirectories            : <ROOT>/androidLib/src/modetwo/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/androidLib/src/modetwo/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/androidLib/src/modetwo/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1491,6 +1508,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestModetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestModetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestModetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestModetwo/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1504,6 +1522,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testModetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testModetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testModetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testModetwo/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1575,6 +1594,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/typeoneModetwoDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/typeoneModetwoDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/typeoneModetwoDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/typeoneModetwoDebug/keepRules [-]
                 MultiFlavorSourceProvider
                     Name                          : typeoneModetwo
                     Manifest                      : <ROOT>/androidLib/src/typeoneModetwo/AndroidManifest.xml [-]
@@ -1586,6 +1606,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/typeoneModetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/typeoneModetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/typeoneModetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/typeoneModetwo/keepRules [-]
                 Dependencies
                     compileClasspath
                     runtimeClasspath
@@ -1618,6 +1639,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/keepRules [-]
                 MultiFlavorSourceProvider
                     Name                          : androidTestTypeoneModetwo
                     Manifest                      : <ROOT>/androidLib/src/androidTestTypeoneModetwo/AndroidManifest.xml [-]
@@ -1629,6 +1651,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/androidTestTypeoneModetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestTypeoneModetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypeoneModetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypeoneModetwo/keepRules [-]
                 Dependencies
                     compileClasspath
                         module                        : <ROOT>-:androidLib-MAIN
@@ -1669,6 +1692,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testTypeoneModetwoDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testTypeoneModetwoDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypeoneModetwoDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testTypeoneModetwoDebug/keepRules [-]
                 MultiFlavorSourceProvider
                     Name                          : testTypeoneModetwo
                     Manifest                      : <ROOT>/androidLib/src/testTypeoneModetwo/AndroidManifest.xml [-]
@@ -1680,6 +1704,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     AssetsDirectories             : <ROOT>/androidLib/src/testTypeoneModetwo/assets [-]
                     JniLibsDirectories            : <ROOT>/androidLib/src/testTypeoneModetwo/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypeoneModetwo/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/androidLib/src/testTypeoneModetwo/keepRules [-]
                 Dependencies
                     compileClasspath
                         module                        : <ROOT>-:androidLib-MAIN
@@ -1798,6 +1823,7 @@ MODULE                        : Kotlin_Multiplatform.app
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/main/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1812,6 +1838,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/androidTest/keepRules [-]
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1825,6 +1852,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/test/keepRules [-]
     BuildTypes
         BuildType
             Name                          : debug
@@ -1846,6 +1874,7 @@ MODULE                        : Kotlin_Multiplatform.app
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/debug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1860,6 +1889,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/androidTestDebug/keepRules [-]
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1874,6 +1904,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    KeepRulesDirectories          : <ROOT>/app/src/testDebug/keepRules [-]
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -1894,6 +1925,7 @@ MODULE                        : Kotlin_Multiplatform.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            KeepRulesDirectories          : <ROOT>/app/src/release/keepRules [-]
     SigningConfigs
         SigningConfig
             Name                          : debug
