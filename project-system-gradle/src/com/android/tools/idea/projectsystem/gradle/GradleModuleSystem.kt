@@ -610,7 +610,7 @@ class GradleModuleSystem(
       !desugarLibraryConfigFilesKnown -> "Only supported for projects using Android Gradle plugin '$DESUGAR_LIBRARY_CONFIG_MINIMUM_AGP_VERSION' and above."
       else -> null
     }
-  override val desugarLibraryConfigFiles: List<Path>
+  val desugarLibraryConfigFiles: List<Path>
     get() = GradleAndroidModel.get(module)?.androidProject?.desugarLibraryConfigFiles?.map { it.toPath() } ?: emptyList()
 
   override val disableAgpUpgradePrompt: Boolean
