@@ -16,16 +16,16 @@
 package com.android.tools.idea.gradle.dsl.model.android
 
 import com.android.tools.idea.gradle.dsl.api.android.CompileSdkPropertyModel
-import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidLibraryModel
+import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidModel
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel
 import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.SdkOrPreviewTransform
-import com.android.tools.idea.gradle.dsl.parser.android.KmpAndroidLibraryDslElement
+import com.android.tools.idea.gradle.dsl.parser.android.KmpAndroidDslElement
 import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint
 
-class KmpAndroidLibraryModelImpl(dslElement: KmpAndroidLibraryDslElement):
-  KmpAndroidLibraryModel, GradleDslBlockModel(dslElement) {
+class KmpAndroidModelImpl(dslElement: KmpAndroidDslElement):
+  KmpAndroidModel, GradleDslBlockModel(dslElement) {
   override fun namespace(): ResolvedPropertyModel {
     return getModelForProperty(AndroidModelImpl.NAMESPACE)
   }

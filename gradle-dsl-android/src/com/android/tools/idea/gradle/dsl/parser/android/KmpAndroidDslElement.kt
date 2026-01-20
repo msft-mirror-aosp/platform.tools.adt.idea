@@ -24,19 +24,15 @@ import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
-import com.android.tools.idea.gradle.dsl.parser.semantics.ArityHelper.exactly
 import com.android.tools.idea.gradle.dsl.parser.semantics.ArityHelper.property
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap
-import com.android.tools.idea.gradle.dsl.parser.semantics.MethodSemanticsDescription
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelMapCollector
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription
-import com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.VAR
-import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint
 import com.google.common.collect.ImmutableMap
 import java.util.stream.Stream
 
-class KmpAndroidLibraryDslElement(parent: GradleDslElement, name: GradleNameElement) :
+class KmpAndroidDslElement(parent: GradleDslElement, name: GradleNameElement) :
   GradleDslBlockElement(parent, name) {
 
   companion object {
@@ -50,11 +46,18 @@ class KmpAndroidLibraryDslElement(parent: GradleDslElement, name: GradleNameElem
       arrayOf("compileSdkPreview", property, COMPILE_SDK_VERSION, VAR),
       ).collect(ModelMapCollector.toModelMap())
 
-    val KMP_ANDROID_LIBRARY: PropertiesElementDescription<KmpAndroidLibraryDslElement> =
-      PropertiesElementDescription<KmpAndroidLibraryDslElement>(
-        "androidLibrary", KmpAndroidLibraryDslElement::class.java
+    val KMP_ANDROID: PropertiesElementDescription<KmpAndroidDslElement> =
+      PropertiesElementDescription<KmpAndroidDslElement>(
+        "android", KmpAndroidDslElement::class.java
       ) { parent, name ->
-        KmpAndroidLibraryDslElement(parent, name)
+        KmpAndroidDslElement(parent, name)
+      }
+
+    val KMP_ANDROID_LIBRARY: PropertiesElementDescription<KmpAndroidDslElement> =
+      PropertiesElementDescription<KmpAndroidDslElement>(
+        "androidLibrary", KmpAndroidDslElement::class.java
+      ) { parent, name ->
+        KmpAndroidDslElement(parent, name)
       }
   }
 
