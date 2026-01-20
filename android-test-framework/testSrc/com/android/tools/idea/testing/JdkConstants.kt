@@ -43,11 +43,14 @@ object JdkConstants {
   }
   val JDK_EMBEDDED_PATH by lazy { IdeSdks.getInstance().embeddedJdkPath.absolutePathString() }
 
-  val JDK_EMBEDDED_VERSION by lazy {
-    JdkVersionDetector.getInstance()
-      .detectJdkVersionInfo(JDK_EMBEDDED_PATH)!!
-      .version
-      .feature
-      .toString()
-  }
+  val JDK_21_VERSION by lazy { JDK_21_PATH.jdkFeatureVersion }
+
+  val JDK_EMBEDDED_VERSION by lazy { JDK_EMBEDDED_PATH.jdkFeatureVersion }
+
+  private val String.jdkFeatureVersion: String
+    get() = JdkVersionDetector.getInstance()
+    .detectJdkVersionInfo(this)
+    ?.version
+    ?.feature
+    ?.toString() ?: "Unknown"
 }
