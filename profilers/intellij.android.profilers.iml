@@ -13,6 +13,8 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" />
     <orderEntry type="module" module-name="android.sdktools.perflib" />
     <orderEntry type="module" module-name="android.sdktools.common" />
+    <orderEntry type="module" module-name="android.sdktools.sdk-common" />
+    <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.profilers.atrace" />
     <orderEntry type="module" module-name="android.sdktools.leakcanarylib" />
     <orderEntry type="module-library">
