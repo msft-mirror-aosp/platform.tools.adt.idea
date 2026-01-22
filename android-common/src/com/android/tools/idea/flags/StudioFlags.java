@@ -61,7 +61,7 @@ public final class StudioFlags {
   private static Flags createFlags() {
     FlagValueContainer userOverrides;
     if (isUnitTestMode()) {
-      userOverrides = new InMemoryFlagValueContainer();
+      userOverrides = new InMemoryFlagValueContainer("unit test user overrides");
     }
     else {
       userOverrides = new LazyStudioFlagSettings();
@@ -97,6 +97,11 @@ public final class StudioFlags {
     @Override
     public String get(@NotNull Flag<?> flag) {
       return StudioFlagSettings.getInstance().get(flag);
+    }
+
+    @Override
+    public String toString() {
+      return "LazyStudioFlagSettings(" + StudioFlagSettings.getInstance() + ")";
     }
   }
 
@@ -758,15 +763,6 @@ public final class StudioFlags {
     "Enable Logcat Panel memory saving feature",
     "Reduces memory usage of Logcat tool by writing data to a file when the panel is not visible");
 
-  public static final Flag<Boolean> LOGCAT_TERMINATE_APP_ACTIONS_ENABLED = new BooleanFlag(
-    LOGCAT,
-    "terminate.app.actions.enable",
-    "Enable right-click actions for terminating the application",
-    "Enable right-click actions for terminating the application. " +
-    "Note that this feature is only enabled if the flag ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER is also true. " +
-    "Changing the value of this flag requires restarting Android Studio."
-  );
-
   public static final Flag<Boolean> LOGCAT_IGNORE_STUDIO_TAGS = new BooleanFlag(
     LOGCAT,
     "ignore.studio.tags",
@@ -1272,9 +1268,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_EYE_TRACKING = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.eye.tracking", "Enable eye tracking input mode for XR AVDs",
     "Enables eye tracking input mode for XR AVDs");
-  public static final Flag<Boolean> EMBEDDED_EMULATOR_B458422581_LOGGING = new BooleanFlag(
-    EMBEDDED_EMULATOR, "b458422581.logging", "Enable logging for investigation of b/458422581",
-    "Enable logging for investigation of b/458422581");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs");
@@ -2185,6 +2178,12 @@ public final class StudioFlags {
                     "When enabled, the Read URI tool will be available for agents."
     );
 
+  public static final Flag<Boolean> STUDIOBOT_SHOW_THOUGHTS =
+    new BooleanFlag(STUDIOBOT, "show.thoughts",
+                    "Shows thoughts in the timeline",
+                    "When enabled, thoughts will be shown in the timeline for models that support thinking."
+    );
+
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_FILE_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
                     "Enable sending additional file context with completion requests",
@@ -2319,6 +2318,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "g1.integration.enabled",
                     "Enable the integration with Google one.",
                     "When enabled, the studio-bot will show UI and upgrade paths corresponding to the Google one subscription held by the user.");
+
+  public static final Flag<Boolean> STUDIOBOT_IS_SKILLS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "skills.enabled",
+                    "Enable Studio Bot Skills.",
+                    "When enabled, the studio-bot agents will be able to use skills.");
 
   public static final Flag<Boolean> STUDIOBOT_USE_BM25_FOR_FIND_FILES =
     new BooleanFlag(STUDIOBOT, "use.bm25.find.files",
@@ -2508,6 +2512,12 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
                     "Enable test scenario generation.",
                     "When enabled, generate test scenarios and corresponding function names for the selected code.");
+
+  public static final Flag<Boolean> STUDIOBOT_AGENTIC_TEST_GENERATION =
+      new BooleanFlag(STUDIOBOT, "agentic.test.generation",
+                      "Enable agentic automated unit test generation",
+                      "When enabled, generate unit tests using studio bot agent.");
+
 
   public static final Flag<Boolean> STUDIOBOT_SUPPORT_GIAS_ENTERPRISE =
     new BooleanFlag(STUDIOBOT, "support.gias.enterprise",

@@ -40,6 +40,7 @@ import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.java.LanguageLevelPropertyModel
 import com.android.tools.idea.gradle.dsl.api.settings.PluginsBlockModel
 import com.android.tools.idea.gradle.dsl.model.android.android
+import com.android.tools.idea.gradle.dsl.model.android.androidLibrary
 import com.android.tools.idea.gradle.dsl.model.dependencies.ArtifactDependencySpecImpl
 import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
 import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint
@@ -727,7 +728,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     buildModel.android().useLibraries().create(name)
   }
 
-  override fun addCompileSdk(androidVersion: AndroidVersion) {
+  override fun addCompileSdk(androidVersion: AndroidVersion, isKotlinMultiplatform: Boolean) {
     val agpVersion = AndroidGradlePluginVersion.parse(projectTemplateData.agpVersion.toString())
     val compileSdkBlockVersion = VersionConstraint.agpFrom(COMPILE_SDK_BLOCK_VERSION)
 
@@ -735,12 +736,21 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     val isBlockAllowedAGP = compileSdkBlockVersion.isOkWith(agpVersion)
     val apiLevelMajor = androidVersion.androidApiLevel.majorVersion
     val apiLevelMinor = androidVersion.androidApiLevel.minorVersion
-    val android = moduleGradleBuildModel?.android() ?: return
-    val afterElement: ResolvedPropertyModel? =
-      android.namespace().takeIf { it.psiElement != null }
+
+    val compileSdkModel =
+      if (isKotlinMultiplatform) {
+        val kmpModel = moduleGradleBuildModel?.kotlin()?.androidLibrary() ?: return
+        val afterElement = kmpModel.namespace().takeIf { it.psiElement != null }
+        kmpModel.compileSdkVersion(afterElement)
+      }
+      else {
+        val androidModel = moduleGradleBuildModel?.android() ?: return
+        val afterElement = androidModel.namespace().takeIf { it.psiElement != null }
+        androidModel.compileSdkVersion(afterElement)
+      }
 
     if (isBlockAllowedAGP) {
-      val config = android.compileSdkVersion(afterElement).toCompileSdkConfig() ?: return
+      val config = compileSdkModel.toCompileSdkConfig() ?: return
       when {
         androidVersion.isPreview ->
           config.setPreviewVersion(androidVersion.apiStringWithExtension)
@@ -749,11 +759,10 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
       }
     }
     else {
-      val resolvedVersion = android.compileSdkVersion(afterElement)
       when {
         androidVersion.isPreview ->
-          resolvedVersion.setValue(androidVersion.apiStringWithExtension)
-        else -> resolvedVersion.setValue(apiLevelMajor)
+          compileSdkModel.setValue(androidVersion.apiStringWithExtension)
+        else -> compileSdkModel.setValue(apiLevelMajor)
       }
     }
   }

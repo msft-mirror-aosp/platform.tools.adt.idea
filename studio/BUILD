@@ -804,9 +804,7 @@ studio_plugin(
         "//prebuilts/tools/common/m2:libgoogle_auth_transitive_deps",
         "//prebuilts/tools/common/m2:openai-java-sdk",
         "//prebuilts/tools/common/m2:sqlite-jdbc-3.43.0.0",
-        "//prebuilts/tools/common/m2:wire-runtime-jvm-5.3.1",
         "//tools/vendor/google/ml/aiplugin/android:agent_log_proto",
-        "//tools/vendor/google/ml/aiplugin/android/journeys:proto-models-1.0",
         "//tools/vendor/google/ml/aiplugin/cloudcode-core:libgoogle_auth_intellij_lib",
         "//tools/vendor/google/ml/aiplugin/cloudcode-core:libfeedback_java_proto",
         "//tools/vendor/google/ml/aiplugin/cloudcode-core:libv1internal_java_rest",
@@ -851,7 +849,6 @@ studio_plugin(
     },
     resources = {
         "resources": [
-            "//tools/vendor/google/uiautomator-recorder:recorder-release-androidTest.apk",
             "//tools/vendor/google/ml/aiplugin/android/journeys:journeys-art-resources-bundle",
             "//prebuilts/tools/common/kb:kb_zip",
         ],
@@ -1307,6 +1304,14 @@ iml_test(
     tags_linux = ["block-network"],
     tags_windows = ["block-network"],
     test_class = "com.android.tools.idea.StartUpCustomJvmTest",
+)
+
+iml_test(
+    name = "DuplicateClassesTest",
+    module = ":intellij.android.studio.integration",
+    tags_linux = ["block-network"],
+    tags_windows = ["block-network"],
+    test_class = "com.android.tools.idea.DuplicateClassesTest",
 )
 
 iml_test(

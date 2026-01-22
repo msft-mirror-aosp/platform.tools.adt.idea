@@ -24,17 +24,15 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.idea.blaze.android.run.ApkBuildStepProvider;
-import com.google.idea.blaze.android.run.BazelApplicationProjectContext;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationCommonState;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationHandler;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationValidationUtil;
 import com.google.idea.blaze.android.run.LaunchMetrics;
 import com.google.idea.blaze.android.run.binary.AndroidBinaryLaunchMethodsUtils.AndroidBinaryLaunchMethod;
-import com.google.idea.blaze.android.run.binary.mobileinstall.BlazeAndroidBinaryMobileInstallRunContext;
-import com.google.idea.blaze.android.run.deployinfo.BlazeApkProvider;
+import com.google.idea.blaze.android.run.binary.mobileinstall.MobileInstallDeployAndLaunchStrategy;
 import com.google.idea.blaze.android.run.runner.ApkBuildStep;
+import com.google.idea.blaze.android.run.runner.BlazeAndroidDeployAndLaunchStrategy;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidRunConfigurationRunner;
-import com.google.idea.blaze.android.run.runner.BlazeAndroidRunContext;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
 import com.google.idea.blaze.base.logging.EventLoggingService;
@@ -147,27 +145,18 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
                 blazeFlags,
                 exeFlags,
                 launchId);
-    var applicationIdProvider = new BlazeAndroidBinaryApplicationIdProvider(buildStep);
-    var apkProvider = BlazeApkProvider.getApkProvider(project, buildStep);
-    var applicationProjectContext =
-        new BazelApplicationProjectContext(project, applicationIdProvider);
 
-    // Create run context for matching launch method.
-    BlazeAndroidRunContext runContext;
+    BlazeAndroidDeployAndLaunchStrategy launchStrategy;
     switch (configState.getLaunchMethod()) {
       case NON_BLAZE:
-        runContext =
-            new BlazeAndroidBinaryNormalBuildRunContext(
-              project, env, configState, buildStep, launchId, applicationIdProvider, apkProvider, applicationProjectContext);
+        launchStrategy = new NormalBuildDeployAndLaunchStrategy(project, configState, launchId);
         break;
       case MOBILE_INSTALL_V2:
         // Standardize on a single mobile-install launch method
         configState.setLaunchMethod(AndroidBinaryLaunchMethod.MOBILE_INSTALL);
         // fall through
       case MOBILE_INSTALL:
-        runContext =
-          new BlazeAndroidBinaryMobileInstallRunContext(
-            project, env, configState, buildStep, launchId, applicationIdProvider, apkProvider, applicationProjectContext);
+        launchStrategy = new MobileInstallDeployAndLaunchStrategy(project, configState, launchId);
         break;
       default:
         throw new ExecutionException("No compatible launch methods.");
@@ -179,7 +168,7 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
         env.getExecutor().getId(),
         configuration.getSingleTargetPattern(),
         configState.getCommonState().isNativeDebuggingEnabled());
-    return new BlazeAndroidRunConfigurationRunner(runContext, configuration);
+    return new BlazeAndroidRunConfigurationRunner(launchStrategy, configuration, buildStep);
   }
 
   @Override
@@ -318,4 +307,3 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
     }
   }
 }
-

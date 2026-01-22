@@ -258,7 +258,7 @@ public class SelectSdkDialog extends DialogWrapper {
                                 ComponentWithBrowseButton<JTextField> textField,
                                 FileChooserDescriptor fileChooserDescriptor,
                                 @Nullable String defaultPath) {
-      super(title, null, textField, null, fileChooserDescriptor, TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT);
+      super(textField, null, fileChooserDescriptor.withTitle(title), TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT);
       myDefaultPath = defaultPath;
     }
 

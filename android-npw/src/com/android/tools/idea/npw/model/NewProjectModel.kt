@@ -333,7 +333,6 @@ class NewProjectModel : WizardModel(), ProjectModelData {
           data = data as ProjectTemplateData,
           appTitle = applicationName.get(),
           language = language.value,
-          addAndroidXSupport = true,
           useGradleKts = useGradleKts.get(),
         )
       }

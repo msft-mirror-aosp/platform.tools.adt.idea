@@ -115,12 +115,14 @@ internal class GradleApplicationLiveEditServices(private val module: Module): Ap
     return compilerConfiguration
   }
 
-  override fun getDesugarConfigs() =
-    if (module.getModuleSystem().desugarLibraryConfigFilesKnown) {
-      DesugarConfigs.Known(module.getModuleSystem().desugarLibraryConfigFiles)
-    } else {
-      DesugarConfigs.NotKnown(module.getModuleSystem().desugarLibraryConfigFilesNotKnownUserMessage)
+  override fun getDesugarConfigs(): DesugarConfigs {
+    val moduleSystem = module.getModuleSystem()
+    if (moduleSystem !is GradleModuleSystem) return DesugarConfigs.NotKnown(moduleSystem.desugarLibraryConfigFilesNotKnownUserMessage)
+    return when (moduleSystem.desugarLibraryConfigFilesKnown) {
+      true -> DesugarConfigs.Known(moduleSystem.desugarLibraryConfigFiles)
+      false -> DesugarConfigs.NotKnown(moduleSystem.desugarLibraryConfigFilesNotKnownUserMessage)
     }
+  }
 
   override fun getRuntimeVersionString(): String {
     val moduleSystem = module.getModuleSystem() as? GradleModuleSystem ?: return DEFAULT_RUNTIME_VERSION

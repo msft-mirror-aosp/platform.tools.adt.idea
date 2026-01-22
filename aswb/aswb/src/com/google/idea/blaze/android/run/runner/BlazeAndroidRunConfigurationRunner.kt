@@ -69,15 +69,16 @@ import org.jetbrains.android.util.AndroidBundle
  * Builds the APK and installs it, launches and debug tasks, etc.
  */
 class BlazeAndroidRunConfigurationRunner(
-  private val runContext: BlazeAndroidRunContext,
+  private val launchStrategy: BlazeAndroidDeployAndLaunchStrategy,
   private val runConfig: BlazeCommandRunConfiguration,
+  private val apkBuildStep: ApkBuildStep,
 ) : BlazeCommandRunConfigurationRunner {
   @Throws(ExecutionException::class)
   override fun getRunProfileState(executor: Executor, environment: ExecutionEnvironment): RunProfileState? {
     val project = environment.project
     val isDebug = executor is DefaultDebugExecutor
 
-    val deviceSelector = runContext.getDeviceSelector()
+    val deviceSelector = launchStrategy.getDeviceSelector()
     val deviceSession =
       deviceSelector.getDevice(project, executor, environment, isDebug, runConfig.uniqueID) ?: return null
 
@@ -103,39 +104,40 @@ class BlazeAndroidRunConfigurationRunner(
     }
 
     val launchOptionsBuilder = LaunchOptions.builder()
-    runContext.augmentLaunchOptions(launchOptionsBuilder)
+    launchStrategy.augmentLaunchOptions(launchOptionsBuilder)
 
-    // Store the run context on the execution environment so before-run tasks can access it.
-    environment.putCopyableUserData(RUN_CONTEXT_KEY, runContext)
+    // Instantiate the run context locally
+    val runContext = launchStrategy.createBlazeAndroidRunContext(environment, apkBuildStep, runConfig)
+
+    // Store the device session on the execution environment so before-run tasks can access it.
     environment.putCopyableUserData(DEVICE_SESSION_KEY, deviceSession)
 
     val state = runConfig.handler.getState()
 
-    val applicationProjectContext = runContext.getApplicationProjectContext()
+    val applicationProjectContext = runContext.applicationProjectContext
     val wearLaunchOptions = (state as? BlazeAndroidBinaryRunConfigurationState)?.currentWearLaunchOptions
-    if (wearLaunchOptions != null) {
-      return getWearExecutor(wearLaunchOptions, environment, deployTarget)
-    }
-
-    val launchOptions = launchOptionsBuilder.build()
-    val runner =
+    val configurationExecutor = if (wearLaunchOptions != null) {
+      getWearExecutor(wearLaunchOptions, environment, deployTarget, runContext)
+    } else {
+      val launchOptions = launchOptionsBuilder.build()
       BlazeAndroidConfigurationExecutor(
-        runContext.getConsoleProvider(),
+        runContext.consoleProvider,
         applicationProjectContext,
         environment,
         deviceFutures,
-        BlazeAndroidLaunchTasksProvider(project, runContext, launchOptions),
+        BlazeAndroidLaunchTasksProvider(project, runContext, launchStrategy, launchOptions),
         launchOptions,
-        runContext.getApkProvider(),
+        runContext.apkProvider,
         getInstance(environment.project)
       )
-    return AndroidConfigurationExecutorRunProfileState(runner)
+    }
+    return AndroidConfigurationExecutorRunProfileState(configurationExecutor)
   }
 
   @Throws(ExecutionException::class)
   private fun getWearExecutor(
-    launchOptions: ComponentLaunchOptions, env: ExecutionEnvironment, deployTarget: DeployTarget,
-  ): RunProfileState {
+    launchOptions: ComponentLaunchOptions, env: ExecutionEnvironment, deployTarget: DeployTarget, runContext: BlazeAndroidRunContext,
+    ): AndroidConfigurationExecutor {
     val settings: AppRunSettings =
       object : AppRunSettings {
         override val deployOptions: DeployOptions
@@ -156,43 +158,19 @@ class BlazeAndroidRunConfigurationRunner(
     val deployer: ApplicationDeployer =
       ApplicationDeployerImpl(env.project, RunStats.from(env))
 
-    val configurationExecutor: AndroidConfigurationExecutor =
-      when (launchOptions) {
-        is TileLaunchOptions ->
-          AndroidTileConfigurationExecutor(
-            env,
-            deviceFutures,
-            settings,
-            runContext.getApkProvider(),
-            runContext.getApplicationProjectContext(),
-            deployer
-          )
-
-        is WatchFaceLaunchOptions ->
-          AndroidWatchFaceConfigurationExecutor(
-            env,
-            deviceFutures,
-            settings,
-            runContext.getApkProvider(),
-            runContext.getApplicationProjectContext(),
-            deployer
-          )
-
-        is ComplicationLaunchOptions ->
-          AndroidComplicationConfigurationExecutor(
-            env,
-            deviceFutures,
-            settings,
-            runContext.getApkProvider(),
-            runContext.getApplicationProjectContext(),
-            deployer
-          )
-
-        else ->
-          error("Unknown launch options " + launchOptions.javaClass.getName())
-      }
-
-    return AndroidConfigurationExecutorRunProfileState(configurationExecutor)
+    return when (launchOptions) {
+      is TileLaunchOptions -> ::AndroidTileConfigurationExecutor
+      is WatchFaceLaunchOptions -> ::AndroidWatchFaceConfigurationExecutor
+      is ComplicationLaunchOptions -> ::AndroidComplicationConfigurationExecutor
+      else -> error("Unknown launch options " + launchOptions.javaClass.getName())
+    }(
+      env,
+      deviceFutures,
+      settings,
+      runContext.apkProvider,
+      runContext.applicationProjectContext,
+      deployer
+    )
   }
 
   override fun executeBeforeRunTask(environment: ExecutionEnvironment): Boolean {
@@ -217,7 +195,6 @@ class BlazeAndroidRunConfigurationRunner(
           .push(IdeaLogScope())
         val deviceSession = environment.getCopyableUserData(DEVICE_SESSION_KEY)
 
-        val buildStep = runContext.getBuildStep()
         try {
           val buildFuture =
             ProgressiveTaskWithProgressIndicator.builder(
@@ -226,7 +203,7 @@ class BlazeAndroidRunConfigurationRunner(
             )
               .submitTaskWithResult { progressIndicator ->
                 context.push(ProgressIndicatorScope(progressIndicator))
-                buildStep.build(context, deviceSession)
+                apkBuildStep.build(context, deviceSession)
               }
           Futures.getChecked(buildFuture, ExecutionException::class.java)
         } catch (e: ExecutionException) {
@@ -244,7 +221,6 @@ class BlazeAndroidRunConfigurationRunner(
   companion object {
     private val LOG = Logger.getInstance(BlazeAndroidRunConfigurationRunner::class.java)
 
-    private val RUN_CONTEXT_KEY = Key.create<BlazeAndroidRunContext>("blaze.run.context")
     val DEVICE_SESSION_KEY: Key<DeviceSession> = Key.create<DeviceSession>("blaze.device.session")
 
     private fun canDebug(

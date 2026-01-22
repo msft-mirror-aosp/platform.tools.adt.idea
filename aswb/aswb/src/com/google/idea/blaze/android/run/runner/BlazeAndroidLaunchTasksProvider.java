@@ -47,14 +47,17 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
 
   private final Project project;
   private final BlazeAndroidRunContext runContext;
+  private final BlazeAndroidDeployAndLaunchStrategy launchStrategy;
   private final LaunchOptions launchOptions;
 
   public BlazeAndroidLaunchTasksProvider(
       Project project,
       BlazeAndroidRunContext runContext,
+      BlazeAndroidDeployAndLaunchStrategy launchStrategy,
       LaunchOptions launchOptions) {
     this.project = project;
     this.runContext = runContext;
+    this.launchStrategy = launchStrategy;
     this.launchOptions = launchOptions;
   }
 
@@ -66,7 +69,7 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
 
     String packageName = runContext.getApplicationProjectContext().getApplicationId();
 
-    Integer userId = runContext.getUserId(device);
+    Integer userId = launchStrategy.getUserId(device);
 
     // NOTE: Task for opening the profiler tool-window should come before deployment
     // to ensure the tool-window opens correctly. This is required because starting
@@ -87,7 +90,8 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
       }
       DeployOptions deployOptions =
           new DeployOptions(Collections.emptyList(), pmInstallOption, false, false, false);
-      ImmutableList<BlazeLaunchTask> deployTasks = runContext.getDeployTasks(device, deployOptions);
+      ImmutableList<BlazeLaunchTask> deployTasks =
+          launchStrategy.getDeployTasks(runContext, device, deployOptions);
       launchTasks.addAll(deployTasks);
     }
 
@@ -98,7 +102,7 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
       }
 
       ImmutableList.Builder<String> amStartOptions = ImmutableList.builder();
-      amStartOptions.add(runContext.getAmStartOptions());
+      amStartOptions.add(launchStrategy.getAmStartOptions());
       if (isProfilerLaunch(runContext.getExecutor())) {
         amStartOptions.add(
             AndroidProfilerLaunchTaskContributor.getAmStartOptions(
@@ -109,8 +113,8 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
                 runContext.getExecutor()));
       }
       BlazeLaunchTask appLaunchTask =
-          runContext.getApplicationLaunchTask(
-              isDebug, userId, String.join(" ", amStartOptions.build()));
+          launchStrategy.getApplicationLaunchTask(
+              runContext, isDebug, userId, String.join(" ", amStartOptions.build()));
       if (appLaunchTask != null) {
         launchTasks.add(appLaunchTask);
         // TODO(arvindanekal): the live edit api changed and we cannot get the apk here to create
@@ -154,8 +158,8 @@ public class BlazeAndroidLaunchTasksProvider implements BlazeLaunchTasksProvider
       debuggerService.configureNativeDebugger(debuggerState, deployInfo);
     }
 
-    return runContext.startDebuggerSession(
-        debugger, debuggerState, environment, device, console, indicator);
+    return launchStrategy.startDebuggerSession(
+        runContext, debugger, debuggerState, environment, device, console, indicator);
   }
 
   private boolean isNativeDebuggingEnabled(LaunchOptions launchOptions) {
