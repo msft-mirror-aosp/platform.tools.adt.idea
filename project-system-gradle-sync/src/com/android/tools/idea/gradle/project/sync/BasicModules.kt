@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.AndroidProject
-import com.android.builder.model.NativeAndroidProject
 import com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
@@ -108,6 +107,7 @@ enum class ModelFeature(
   HAS_R8_PARTITION_FILE_PATH(ModelVersion(19, 0)),
   HAS_MATCHING_FALLBACKS(ModelVersion(20, 0)),
   HAS_MISSING_DIMENSION_STRATEGY(ModelVersion(21, 0)),
+  HAS_TEST_SUITES_SOURCES(ModelVersion(21, 1))
   ;
 
   init {
@@ -157,7 +157,8 @@ private fun getLegacyAndroidGradlePluginProperties(controller: BuildController,
       modelVersions[ModelFeature.HAS_NAMESPACE] &&
       modelVersions[ModelFeature.HAS_DATA_BINDING] &&
       modelVersions[ModelFeature.HAS_R8_MAPPING_FILE_PATH] &&
-      modelVersions[ModelFeature.HAS_MATCHING_FALLBACKS]
+      modelVersions[ModelFeature.HAS_MATCHING_FALLBACKS] &&
+      modelVersions[ModelFeature.HAS_MISSING_DIMENSION_STRATEGY]
     ) return null // Only fetch the model if it is needed.
   return controller.findModel(gradleProject, LegacyAndroidGradlePluginProperties::class.java,
                               LegacyAndroidGradlePluginPropertiesModelParameters::class.java) {
@@ -166,6 +167,7 @@ private fun getLegacyAndroidGradlePluginProperties(controller: BuildController,
     it.dataBinding = !modelVersions[ModelFeature.HAS_DATA_BINDING]
     it.mappingFile = !modelVersions[ModelFeature.HAS_R8_MAPPING_FILE_PATH]
     it.matchingFallbacks = !modelVersions[ModelFeature.HAS_MATCHING_FALLBACKS]
+    it.missingDimensionStrategies = !modelVersions[ModelFeature.HAS_MISSING_DIMENSION_STRATEGY]
   }
 }
 /**
@@ -218,19 +220,10 @@ internal class BasicV1AndroidModuleGradleProject(
         return androidProjectResult
           .mapCatching { androidProjectResult ->
             val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
-            val nativeAndroidProject: NativeAndroidProject? =
-              if (nativeModule == null)
-                controller.findParameterizedAndroidModel(
-                  gradleProject, NativeAndroidProject::class.java,
-                  shouldBuildVariant = false
-                )
-              else null
-
             createAndroidModuleV1(
               modelVersions,
               gradleProject,
               androidProjectResult,
-              nativeAndroidProject,
               nativeModule,
               buildInfo.buildPathMap,
               modelCache
@@ -360,7 +353,6 @@ private fun createAndroidModuleV1(
   modelVersions: ModelVersions,
   gradleProject: BasicGradleProject,
   androidProjectResult: AndroidProjectResult.V1Project,
-  nativeAndroidProject: NativeAndroidProject?,
   nativeModule: NativeModule?,
   buildPathMap: Map<String, BuildId>,
   modelCache: ModelCache.V1
@@ -368,10 +360,6 @@ private fun createAndroidModuleV1(
   val ideAndroidProject = androidProjectResult.ideAndroidProject
   val allVariantNames = androidProjectResult.allVariantNames
   val defaultVariantName: String? = androidProjectResult.defaultVariantName
-
-  val ideNativeAndroidProject = nativeAndroidProject?.let {
-    modelCache.nativeAndroidProjectFrom(it, androidProjectResult.ndkVersion)
-  }
   val ideNativeModule = nativeModule?.let(modelCache::nativeModuleFrom)
 
   val androidModule = AndroidModule.V1(
@@ -382,7 +370,6 @@ private fun createAndroidModuleV1(
     allVariantNames = allVariantNames,
     defaultVariantName = defaultVariantName,
     variantFetcher = androidProjectResult.createVariantFetcher(),
-    nativeAndroidProject = ideNativeAndroidProject,
     nativeModule = ideNativeModule,
     legacyAndroidGradlePluginProperties = androidProjectResult.legacyAndroidGradlePluginProperties,
   )

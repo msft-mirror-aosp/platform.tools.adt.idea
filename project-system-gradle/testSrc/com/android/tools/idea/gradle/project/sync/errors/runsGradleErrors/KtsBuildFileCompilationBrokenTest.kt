@@ -62,7 +62,7 @@ class KtsBuildFileCompilationBrokenTest: AbstractSyncFailureIntegrationTest() {
             exception: org.gradle.api.ProjectConfigurationException
               at: [0]org.gradle.configuration.project.LifecycleProjectEvaluator#wrapException
             exception: org.gradle.internal.exceptions.LocationAwareException
-              at: [0]org.gradle.kotlin.dsl.execution.Interpreter${'$'}ProgramHost${'#'}compileSecondStageOf${'$'}lambda${'$'}3
+              at: [0]org.gradle.kotlin.dsl.execution.Interpreter${'$'}ProgramHost${'#'}compileSecondStageOf${'$'}lambda${'$'}0
             exception: org.gradle.kotlin.dsl.support.ScriptCompilationException
               at: [0]org.gradle.kotlin.dsl.support.KotlinCompilerKt#reportToMessageCollectorAndThrowOnErrors
           }
@@ -113,7 +113,7 @@ class KtsBuildFileCompilationBrokenTest: AbstractSyncFailureIntegrationTest() {
     val preparedProject = projectRule.prepareTestProject(testProject())
 
     val buildFile = preparedProject.root.resolve(SdkConstants.FN_BUILD_GRADLE_KTS)
-    buildFile.appendText("\nandroid { abcd { } }")
+    buildFile.appendText("\n@Suppress(\"DEPRECATION\")\nandroid { abcd { } }")
 
     runSyncAndCheckFailure(
       preparedProject = preparedProject,

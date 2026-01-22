@@ -21,6 +21,7 @@ import com.android.tools.asdriver.tests.MavenRepo
 import com.android.tools.asdriver.tests.MemoryDashboardNameProviderWatcher
 import com.android.tools.platform.performance.testing.PlatformPerformanceBenchmark
 import com.intellij.openapi.util.SystemInfo
+import java.nio.file.Paths
 import org.apache.groovy.util.Maps
 import org.junit.Rule
 import org.junit.Test
@@ -28,7 +29,7 @@ import org.junit.Test
 class StartupPerformanceTest {
   @JvmField
   @Rule
-  val system: AndroidSystem = AndroidSystem.standard()
+  val system: AndroidSystem = AndroidSystem.standardWithTmpDir()
 
   @JvmField
   @Rule
@@ -37,25 +38,27 @@ class StartupPerformanceTest {
   @Test
   fun testStartupPerformance() {
     // Create a new android project, and set a fixed distribution
-    val project = AndroidProject("tools/adt/idea/android/integration/testData/architecture-samples")
+    val projectArtifactsPath = Paths.get("tools/adt/idea/android/integration/architectureSamples_project_model")
+    val project = AndroidProject(projectArtifactsPath.resolve("architecture-samples").toString())
     // Don't show Decompiler legal notice in case of resolving in .class files.
     system.installation.acceptLegalDecompilerNotice()
 
     // Create a maven repo and set it up in the installation and environment
     system.installRepo(MavenRepo("tools/adt/idea/android/integration/editor_performance_test_deps.manifest"))
+    system.getInstallation().copySystemDir(projectArtifactsPath)
     project.setDistribution("tools/external/gradle/gradle-8.6-bin.zip")
 
     system.runStudio(project) { studio ->
-      studio.waitForSync()
-      studio.waitForIndex()
+      studio.waitForSyncSkippedLog()
+      studio.waitForIndexingSkippedLog()
 
       studio.openFile(null, "app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/tasks/TasksScreenTest.kt", false,
                       true)
     }
 
     system.runStudio(project, watcher.dashboardName) { studio ->
-      studio.waitForSync()
-      studio.waitForIndex()
+      studio.waitForSyncSkippedLog()
+      studio.waitForIndexingSkippedLog()
 
       studio.waitForFinishedCodeAnalysis(null)
     }

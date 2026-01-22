@@ -237,7 +237,7 @@ class UpdateReferenceImagesDialog(
 
     val renderer = object : CheckboxTree.CheckboxTreeCellRenderer() {
       override fun customizeRenderer(
-        tree: JTree, value: Any?, selected: Boolean, expanded: Boolean,
+        tree: JTree, value: Any, selected: Boolean, expanded: Boolean,
         leaf: Boolean, row: Int, hasFocus: Boolean
       ) {
         val userObject = (value as? CheckedTreeNode)?.userObject
@@ -381,7 +381,7 @@ class UpdateReferenceImagesDialog(
 
     val failedPreviews = panelsToCopy.filter { !it.isLoadedSuccessfully }
     if (failedPreviews.isNotEmpty()) {
-      val failedNames = failedPreviews.joinToString(separator = "\n") { "- ${it.previewData.previewName}" }
+      val failedNames = failedPreviews.joinToString(separator = "\n") { "- ${it.previewData.methodName}.${it.previewData.previewName}" }
       logger.error("The following selected previews have not rendered successfully: $failedNames")
       Messages.showErrorDialog(
         project,
@@ -422,7 +422,7 @@ class UpdateReferenceImagesDialog(
           logger.info("Reference images were updated successfully")
           Messages.showInfoMessage(project, "Reference images were updated successfully.", "Update Successful")
         } else {
-          val failedNames = failures.joinToString(separator = "\n") { "- ${it.previewData.previewName}" }
+          val failedNames = failures.joinToString(separator = "\n") { "- ${it.previewData.methodName}.${it.previewData.previewName}" }
           logger.error("Failed to copy the following previews: $failedNames")
           Messages.showErrorDialog(project, "Failed to copy the following previews:\n\n$failedNames", "Copy Failed")
           okButton?.text = originalText

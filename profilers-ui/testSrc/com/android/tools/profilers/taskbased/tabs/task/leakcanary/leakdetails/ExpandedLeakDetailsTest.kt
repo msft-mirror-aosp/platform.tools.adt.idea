@@ -61,7 +61,7 @@ class ExpandedLeakDetailsTest : WithFakeTimer {
     val referencingField = ReferencingField("random.classname", ReferencingField.ReferencingFieldType.INSTANCE_FIELD,
                                             false, "referenceName")
     val node = Node(LeakTraceNodeType.INSTANCE, "random.classname", LeakingStatus.YES,
-                    "A Strong garbage collection.", 1024,
+                    "A Strong garbage collection.", "1024 bytes",
                     10, listOf("Note 1", "Note 2"), referencingField)
 
     composeTestRule.setContent {
@@ -107,5 +107,25 @@ class ExpandedLeakDetailsTest : WithFakeTimer {
     composeTestRule.onNodeWithText("Referencing Objects:").assertDoesNotExist()
 
     composeTestRule.onNodeWithText("More info").assertDoesNotExist()
+  }
+
+  @Test
+  fun `test unknown leak status with no reason does not show not leaking`() {
+    val referencingField = ReferencingField("random.classname", ReferencingField.ReferencingFieldType.INSTANCE_FIELD,
+                                            false, "referenceName")
+    val node = Node(LeakTraceNodeType.INSTANCE, "random.classname", LeakingStatus.UNKNOWN,
+                    "", "2 KB", 10, listOf(), referencingField)
+
+    composeTestRule.setContent {
+      LeakNodeDetails(node = node)
+    }
+
+    composeTestRule.onNodeWithText("Leaking").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Unknown").assertIsDisplayed()
+
+    composeTestRule.onNodeWithText("Not Leaking").assertDoesNotExist()
+    composeTestRule.onNodeWithText("Referencing Field: $referencingField").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Retained Bytes: 2 KB").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Referencing Objects: 10").assertIsDisplayed()
   }
 }

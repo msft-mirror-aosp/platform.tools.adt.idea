@@ -587,7 +587,8 @@ class DeviceToolWindowPanelTest {
     agent.clearCommandLog()
     // Rotating the device. Only the internal display should rotate.
     executeAction("android.device.rotate.left", panel.primaryDisplayView!!, project)
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetDeviceOrientationMessage(orientation=1))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(SetDeviceOrientationMessage(orientation = 1))
+    waitForFrame(displayId = PRIMARY_DISPLAY_ID)
     waitForFrame(displayId = secondaryDisplayId)
     assertAppearance("MultipleDisplays2", maxPercentDifferentMac = 0.06, maxPercentDifferentWindows = 0.06)
 
@@ -616,10 +617,10 @@ class DeviceToolWindowPanelTest {
     // Zoom in.
     deviceView.zoom(ZoomType.IN)
     fakeUi.layoutAndDispatchEvents()
-    assertThat(deviceView.scale).isWithin(0.0001).of(0.25)
-    assertThat(deviceView.preferredSize).isEqualTo(Dimension(270, 570))
+    assertThat(deviceView.scale).isWithin(0.0001).of(0.125)
+    assertThat(deviceView.preferredSize).isEqualTo(Dimension(135, 285))
     val viewport = deviceView.parent as JViewport
-    assertThat(viewport.viewSize).isEqualTo(Dimension(300, 570))
+    assertThat(viewport.viewSize).isEqualTo(Dimension(300, 285))
     // Scroll to the bottom.
     val scrollPosition = Point(viewport.viewPosition.x, viewport.viewSize.height - viewport.height)
     viewport.viewPosition = scrollPosition
@@ -636,8 +637,8 @@ class DeviceToolWindowPanelTest {
     waitForFrame()
 
     // Check that zoom level and scroll position are restored.
-    assertThat(deviceView.scale).isWithin(0.0001).of(0.25)
-    assertThat(viewport.viewSize).isEqualTo(Dimension(300, 570))
+    assertThat(deviceView.scale).isWithin(0.0001).of(0.125)
+    assertThat(viewport.viewSize).isEqualTo(Dimension(300, 285))
     assertThat(viewport.viewPosition).isEqualTo(scrollPosition)
 
     panel.destroyContent()

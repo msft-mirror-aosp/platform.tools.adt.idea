@@ -92,7 +92,6 @@ import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
 import com.android.tools.idea.gradle.project.model.NdkModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
-import com.android.tools.idea.gradle.project.model.V1NdkModel
 import com.android.tools.idea.gradle.project.model.V2NdkModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
@@ -101,7 +100,9 @@ import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
 import com.android.tools.idea.gradle.project.sync.InternedModels
 import com.android.tools.idea.gradle.project.sync.LibraryIdentity
 import com.android.tools.idea.gradle.project.sync.idea.AdditionalArtifactsPaths
+import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource
 import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectResolver
+import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleSourceSetEntitySource
 import com.android.tools.idea.gradle.project.sync.idea.GradleSyncExecutor.ALWAYS_SKIP_SYNC
 import com.android.tools.idea.gradle.project.sync.idea.IdeaSyncPopulateProjectTask
 import com.android.tools.idea.gradle.project.sync.idea.ModuleUtil
@@ -188,7 +189,6 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.module.StdModuleTypes.JAVA
 import com.intellij.openapi.progress.blockingContext
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -209,12 +209,14 @@ import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.platform.workspace.jps.entities.ExternalSystemModuleOptionsEntity
 import com.intellij.platform.workspace.jps.entities.InheritedSdkDependency
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
+import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
 import com.intellij.platform.workspace.jps.entities.ModuleSourceDependency
 import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.psi.PsiManager
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
@@ -227,7 +229,10 @@ import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.containers.MultiMap
 import com.intellij.util.messages.MessageBusConnection
+import com.intellij.workspaceModel.core.fileIndex.WorkspaceFileIndexContributor
+import com.intellij.workspaceModel.core.fileIndex.impl.WorkspaceFileIndexImpl
 import com.intellij.workspaceModel.ide.impl.jps.serialization.DelayedProjectSynchronizer
+import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_MODULE_ENTITY_TYPE_ID_NAME
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
@@ -245,6 +250,7 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.kotlin.idea.base.externalSystem.findAll
+import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtension
 import org.jetbrains.plugins.gradle.model.DefaultGradleExtensions
 import org.jetbrains.plugins.gradle.model.ExternalProject
@@ -256,10 +262,7 @@ import org.jetbrains.plugins.gradle.model.GradleTaskModel
 import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache
 import org.jetbrains.plugins.gradle.service.project.data.GradleExtensionsDataService
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleBuildEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleLinkedProjectEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleProjectEntitySource
-import org.jetbrains.plugins.gradle.service.syncContributor.entitites.GradleSourceSetEntitySource
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.jetbrains.plugins.gradle.util.gradleIdentityPath
 import org.jetbrains.plugins.gradle.util.gradlePath
@@ -1057,6 +1060,7 @@ fun AndroidProjectStubBuilder.buildAgpProjectFlagsStub(): IdeAndroidGradlePlugin
     generateManifestClass = true,
     disableAgpUpgradePrompt = false,
     useCustomManagedDevices = false,
+    highlightGradualR8Api = false,
   )
 
 fun AndroidProjectStubBuilder.buildDefaultConfigStub() =
@@ -1818,7 +1822,7 @@ fun setupTestProjectFromAndroidModel(
               .resolve("modules")
               .resolve("${project.name}.iml")
               .path,
-            JAVA.id,
+            JAVA_MODULE_ENTITY_TYPE_ID_NAME,
           )
         } else {
           moduleManager.modules[0]
@@ -1833,7 +1837,7 @@ fun setupTestProjectFromAndroidModel(
           ModuleData(
             ":",
             GRADLE_SYSTEM_ID,
-            JAVA.id,
+            JAVA_MODULE_ENTITY_TYPE_ID_NAME,
             project.name,
             rootProjectBasePath.resolve(".idea").resolve("modules").systemIndependentPath,
             rootProjectBasePath.systemIndependentPath,
@@ -2096,24 +2100,21 @@ private fun setupTestProjectFromAndroidModelCore(
     projectDataNode.addChild(moduleDataNode)
     PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
     // Top level module should already be created
-    if (!skipPhasedSync && moduleBasePath != rootProjectBasePath) {
+    if (!skipPhasedSync) {
       // Here we are setting up the entity sources for the holder modules
       val linkedProjectRootPath = rootProjectBasePath.absolutePath
-      val linkedProjectRootUrl = virtualFileUrlManager.getOrCreateFromUrl(linkedProjectRootPath)
-      val linkedProjectEntitySource = GradleLinkedProjectEntitySource(linkedProjectRootUrl)
-
-      val buildEntitySource =
-        GradleBuildEntitySource(linkedProjectEntitySource, linkedProjectRootUrl)
-
-      val projectRootUrl = virtualFileUrlManager.getOrCreateFromUrl(moduleBasePath.absolutePath)
-      val projectEntitySource = GradleProjectEntitySource(buildEntitySource, projectRootUrl)
+      val projectEntitySource =
+        AndroidGradleProjectEntitySource(
+          linkedProjectRootPath,
+          GradleSyncPhase.SOURCE_SET_MODEL_PHASE,
+        )
 
       // External module options is an extension of the module that annotates it with external
       // system information, in this case
       // it's to set up Gradle specific information such as the project path and whether it's a
       // source set module or not.
       fun externalModuleOptions(
-        moduleEntity: ModuleEntity.Builder,
+        moduleEntity: ModuleEntityBuilder,
         entitySource: EntitySource,
         moduleId: String,
         isSourceSet: Boolean,
@@ -2152,7 +2153,7 @@ private fun setupTestProjectFromAndroidModelCore(
       // parent)
       moduleDataNode.findAll(GradleSourceSetData.KEY).forEach { data ->
         val sourceSetEntitySource =
-          GradleSourceSetEntitySource(projectEntitySource, data.data.internalName)
+          AndroidGradleSourceSetEntitySource(projectEntitySource, data.data.internalName)
         entityChanges addEntity
           ModuleEntity(
               name = data.data.internalName,
@@ -2174,6 +2175,7 @@ private fun setupTestProjectFromAndroidModelCore(
   if (!skipPhasedSync) {
     runWriteAction {
       project.workspaceModel.updateProjectModel("Simulate phased sync entities") { storage ->
+        storage.entities(ModuleEntity::class.java).singleOrNull()?.let { storage.removeEntity(it) }
         storage.applyChangesFrom(entityChanges)
       }
     }
@@ -2312,28 +2314,6 @@ private fun createAndroidModuleDataNode(
             selectedVariantName,
             selectedAbiName,
             ndkModel,
-          ),
-          null,
-        )
-      )
-    }
-    is V1NdkModel -> {
-      val selectedAbiName =
-        selectedAbiName
-          ?: ndkModel.nativeVariantAbis.firstOrNull { it.variantName == selectedVariantName }?.abi
-          ?: error(
-            "Cannot determine the selected ABI for module '$qualifiedModuleName' with the selected variant '$selectedVariantName'"
-          )
-      moduleDataNode.addChild(
-        DataNode<NdkModuleModel>(
-          AndroidProjectKeys.NDK_MODEL,
-          NdkModuleModel(
-            qualifiedModuleName,
-            moduleBasePath,
-            selectedVariantName,
-            selectedAbiName,
-            ndkModel.androidProject,
-            ndkModel.nativeVariantAbis,
           ),
           null,
         )
@@ -2841,7 +2821,7 @@ constructor(
   val syncViewEventHandler: (BuildEvent) -> Unit = {},
   val subscribe: (MessageBusConnection) -> Unit = {},
   val disableKtsRelatedIndexing: Boolean = false,
-  val disableForcedAgpUpgradeDialog: Boolean = false,
+  val disableForcedAgpUpgradeDialog: Boolean = true,
   val reportProjectSizeUsage: Boolean = false,
   val overrideProjectGradleJdkPath: File? = null,
   val onProjectCreated: Project.() -> Unit = {},
@@ -2851,6 +2831,9 @@ constructor(
 
 fun OpenPreparedProjectOptions.withoutKtsRelatedIndexing(): OpenPreparedProjectOptions =
   copy(disableKtsRelatedIndexing = true)
+
+fun OpenPreparedProjectOptions.withForcedAgpUpgradeDialog(): OpenPreparedProjectOptions =
+  copy(disableForcedAgpUpgradeDialog = false)
 
 /**
  * Opens a test project previously prepared under the given [name], verifies the state of the
@@ -2911,6 +2894,7 @@ private fun <T> openPreparedProject(
   fun body(): T {
     val disposable = Disposer.newDisposable()
     try {
+      val projectScopedDisposable = Disposer.newDisposable()
       val project = run {
         runInEdtAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
@@ -2927,7 +2911,7 @@ private fun <T> openPreparedProject(
             disableKtsIndexing(project, disposable)
           }
           if (options.disableForcedAgpUpgradeDialog) {
-            disableForcedAgpUpgradeDialog(project, disposable)
+            disableForcedAgpUpgradeDialog(project, projectScopedDisposable)
           }
           // After create is invoked via three different execution paths:
           //   (1) when we import a new Android Gradle project that does not yet have a `.idea`
@@ -3015,7 +2999,12 @@ private fun <T> openPreparedProject(
           awaitGradleStartupActivity.asCompletableFuture(),
           TimeUnit.MINUTES.toMillis(timeoutMinutes),
         )
-        runInEdtAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+        runInEdtAndWait {
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          if (!project.isDisposed) {
+            Disposer.register(project, projectScopedDisposable)
+          }
+        }
         project.maybeOutputDiagnostics()
         project
       }
@@ -3031,6 +3020,7 @@ private fun <T> openPreparedProject(
           if (!project.isDisposed) {
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
             PlatformTestUtil.saveProject(project, true)
+            Disposer.dispose(projectScopedDisposable)
             ProjectManager.getInstance().closeAndDispose(project)
           }
         }
@@ -3412,15 +3402,18 @@ private fun Project.maybeOutputDiagnostics() {
 }
 
 fun disableKtsIndexing(project: Project, disposable: Disposable) {
-  /* TODO(b/429975528): temporarily avoid disabling KTS indexing for IntelliJ 2025.2.
   val ep = WorkspaceFileIndexImpl.EP_NAME
-  val filteredExtensions = ep.extensionList.filter { it !is KotlinScriptWorkspaceFileIndexContributor }
-  ExtensionTestUtil.maskExtensions(ep, filteredExtensions, disposable)
-
-  if (KotlinPluginModeProvider.isK2Mode()) {
-    SCRIPT_DEFINITIONS_SOURCES.getPoint(project).unregisterExtensions({ _, _ -> false }, false)
+  val contributorPredicate: (WorkspaceFileIndexContributor<*>) -> Boolean = {
+    if (KotlinPluginModeProvider.isK1Mode()) {
+      it is
+        org.jetbrains.kotlin.idea.core.script.k1.dependencies.KotlinScriptWorkspaceFileIndexContributor
+    } else {
+      it is org.jetbrains.kotlin.idea.core.script.k2.KotlinScriptWorkspaceFileIndexContributor
+    }
   }
-  */
+  val filteredExtensions = ep.extensionList.filter { !contributorPredicate(it) }
+
+  ExtensionTestUtil.maskExtensions(ep, filteredExtensions, disposable)
 }
 
 fun disableForcedAgpUpgradeDialog(project: Project, disposable: Disposable) {

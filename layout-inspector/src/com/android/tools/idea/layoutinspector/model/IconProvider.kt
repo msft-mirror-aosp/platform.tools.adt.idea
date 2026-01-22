@@ -32,6 +32,7 @@ import icons.StudioIcons.LayoutEditor.Palette.TAB_ITEM
 import icons.StudioIcons.LayoutEditor.Palette.TEXT_VIEW
 import icons.StudioIcons.LayoutEditor.Palette.UNKNOWN_VIEW
 import icons.StudioIcons.LayoutEditor.Palette.VIEW
+import icons.StudioIcons.LayoutEditor.Palette.WEB_VIEW
 import javax.swing.Icon
 import org.jetbrains.android.dom.AndroidDomElementDescriptorProvider
 
@@ -39,18 +40,20 @@ const val ROOT_NAME = "root"
 
 object IconProvider {
 
-  fun getIconForView(qualifiedName: String, isCompose: Boolean): Icon =
-    if (isCompose) getIconForComposeViewNode(qualifiedName) else getIconForViewNode(qualifiedName)
+  fun getIconForView(view: ViewNode): Icon =
+    if (view is ComposeViewNode) getIconForComposeViewNode(view.qualifiedName)
+    else getIconForViewNode(view)
 
-  private fun getIconForViewNode(viewName: String): Icon {
+  private fun getIconForViewNode(view: ViewNode): Icon {
     // Remove "AppCompat" and "Material" prefixes from the simple tag name such that we get
     // e.g. the ImageView icon for an AppCompatImageIcon etc.
     val simpleName =
-      viewName.substringAfterLast('.').removePrefix("AppCompat").removePrefix("Material")
-    if (simpleName == ROOT_NAME) {
-      return UNKNOWN_VIEW
+      view.qualifiedName.substringAfterLast('.').removePrefix("AppCompat").removePrefix("Material")
+    return when {
+      simpleName == ROOT_NAME -> UNKNOWN_VIEW
+      view.isDerivedFromWebView -> WEB_VIEW
+      else -> AndroidDomElementDescriptorProvider.getIconForViewTag(simpleName) ?: UNKNOWN_VIEW
     }
-    return AndroidDomElementDescriptorProvider.getIconForViewTag(simpleName) ?: UNKNOWN_VIEW
   }
 
   private fun getIconForComposeViewNode(nodeName: String): Icon =

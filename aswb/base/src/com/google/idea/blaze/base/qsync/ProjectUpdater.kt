@@ -20,8 +20,8 @@ import com.intellij.java.workspace.entities.JavaSourceRootPropertiesEntity
 import com.intellij.java.workspace.entities.javaSourceRoots
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.edtWriteAction
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.project.BaseProjectDirectories
 import com.intellij.openapi.project.BaseProjectDirectories.Companion.getBaseDirectories
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.RootsChangeRescanningInfo
@@ -31,7 +31,6 @@ import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.openapi.vfs.newvfs.RefreshQueue
 import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.workspace.jps.JpsProjectFileEntitySource
 import com.intellij.platform.workspace.jps.entities.ContentRootEntity
@@ -58,11 +57,13 @@ import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_TEST_ROOT_ENT
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.AndroidFacetType
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
+import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.config.IKotlinFacetSettings
 import org.jetbrains.kotlin.config.KotlinFacetSettings
 import org.jetbrains.kotlin.config.KotlinModuleKind
@@ -87,6 +88,8 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
   }
 
   private var lastProjectProtoSnapshot: ProjectProto.Project = ProjectProto.Project.getDefaultInstance()
+
+  private val logger = Logger.getInstance(ProjectUpdater::class.java)
 
   override fun onNewProjectStructure(
     context: Context<*>,
@@ -130,6 +133,7 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
     val dependencies: List<LibraryName>,
     val contentRoots: List<ContentRootData>,
     val isAndroidModule: Boolean,
+    val kotlinCompilerFlags: List<String>,
   ) {
     companion object
   }
@@ -200,7 +204,13 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
       dependencies: List<LibraryName>,
       contentRoots: List<ContentRootData>,
     ): ModuleData {
-      return ModuleData(name = module.name, dependencies = dependencies, contentRoots = contentRoots, isAndroidModule = module.isAndroidModule)
+      return ModuleData(
+        name = module.name,
+        dependencies = dependencies,
+        contentRoots = contentRoots,
+        isAndroidModule = module.isAndroidModule,
+        kotlinCompilerFlags = module.kotlinCompilerFlags
+      )
     }
 
     fun LibraryData.Companion.from(library: ProjectProto.Library): LibraryData {
@@ -279,21 +289,42 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
   private fun EntityWorker.updateProjectModel() {
     runBlocking {
       context.output(PrintOutput.output("Begin updating project model"))
-      val originalSnapshot = WorkspaceModel.getInstance(project).currentSnapshot
-      val changes = MutableEntityStorage.from(originalSnapshot)
-      buildChanges(changes, ProjectData.from(spec))
-      withContext(Dispatchers.EDT) {
-        edtWriteAction {
-          WorkspaceModel.getInstance(project).updateProjectModel("Updating project model") { builder ->
-            context.output(PrintOutput.output("Applying project model changes"))
-            if (originalSnapshot !== WorkspaceModel.getInstance(project).currentSnapshot) {
-              context.output(PrintOutput.error("FAILED: Project model has changed"))
-              error("Concurrent changes to project model detected. TODO: Retry.")
-            }
-            builder.applyChangesFrom(changes)
-            context.output(PrintOutput.output("Project model changes applied"))
-          }
+      var attempts = 0
+      while (attempts < 5) {
+        if (attempts > 0) {
+          delay(250)
         }
+        attempts++
+        if (tryUpdateProjectModel()) {
+          return@runBlocking
+        }
+        val msg = "Concurrent changes to project model detected. Retrying..."
+        logger.warn(msg)
+        context.output(PrintOutput.output(msg))
+      }
+      val message = "FAILED: Concurrent changes to project model detected after $attempts attempts."
+      context.output(PrintOutput.error(message))
+      error(message)
+    }
+  }
+
+  private suspend fun EntityWorker.tryUpdateProjectModel(): Boolean {
+    val originalSnapshot = WorkspaceModel.getInstance(project).currentSnapshot
+    val changes = MutableEntityStorage.from(originalSnapshot)
+    buildChanges(changes, ProjectData.from(spec))
+    return withContext(Dispatchers.EDT) {
+      edtWriteAction {
+        var success = false
+        WorkspaceModel.getInstance(project).updateProjectModel("Updating project model") { builder ->
+          if (originalSnapshot !== WorkspaceModel.getInstance(project).currentSnapshot) {
+            return@updateProjectModel
+          }
+          context.output(PrintOutput.output("Applying project model changes"))
+          builder.applyChangesFrom(changes)
+          context.output(PrintOutput.output("Project model changes applied"))
+          success = true
+        }
+        success
       }
     }
   }
@@ -403,7 +434,7 @@ class ProjectUpdater(private val project: Project) : QuerySyncProjectListener {
                     entitySource = BazelEntitySource
                     ) {
                     module = this@ModuleEntity
-                    updatePluginOptions(KotlinFacetSettingsWorkspaceModel(this), listOf())
+                    updatePluginOptions(KotlinFacetSettingsWorkspaceModel(this), listOf(), moduleData.kotlinCompilerFlags)
                   }
                 )
               }
@@ -453,11 +484,16 @@ private val qsyncDisableCompose = BoolExperiment("qsync.disable.compose", false)
 
 private fun updatePluginOptions(
   facetSettings: IKotlinFacetSettings,
-  newPluginOptions: List<String>
+  newPluginOptions: List<String>,
+  kotlinCompilerFlags: List<String> = emptyList(),
 ) {
   var commonArguments = facetSettings.compilerArguments
   if (commonArguments == null) {
     commonArguments = K2JVMCompilerArguments()
+  }
+
+  if (kotlinCompilerFlags.isNotEmpty()) {
+    parseCommandLineArguments(kotlinCompilerFlags, commonArguments)
   }
 
   if (isK2Mode() && !qsyncDisableCompose.value) {

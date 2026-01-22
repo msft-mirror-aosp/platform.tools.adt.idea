@@ -72,7 +72,6 @@ import org.bytedeco.ffmpeg.global.avcodec.av_parser_close
 import org.bytedeco.ffmpeg.global.avcodec.av_parser_init
 import org.bytedeco.ffmpeg.global.avcodec.av_parser_parse2
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
-import org.bytedeco.ffmpeg.global.avcodec.avcodec_close
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_decoder_by_name
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
@@ -154,7 +153,7 @@ class VideoDecoder internal constructor(
 
   /**
    * Starts reading the video channel and returns. The decoder will continue to run until the video channel
-   * is disconnected or [decoderScope] is cancelled. If the [enableDecodingForPrimaryDisplay] parameter
+   * is disconnected or [decoderScope] is canceled. If the [enableDecodingForPrimaryDisplay] parameter
    * is true, decoding is enabled for primary display.
    */
   fun start(enableDecodingForPrimaryDisplay: Boolean) {
@@ -276,7 +275,8 @@ class VideoDecoder internal constructor(
     @GuardedBy("this") private val pendingPacket: AVPacket = av_packet_alloc()
     @GuardedBy("this") private var hasPendingPacket = false
     @GuardedBy("this") private var framesAtBitRate: Int = 0 // Used for primary display only.
-    @GuardedBy("this") private var initialized: Boolean? = false // Set to null by the close method.
+    /** Null value means that the decoding context has been closed and cannot be initialized again. */
+    @GuardedBy("this") private var initialized: Boolean? = false
     private val frameListeners = ContainerUtil.createLockFreeCopyOnWriteList<FrameListener>()
 
     init {
@@ -345,7 +345,6 @@ class VideoDecoder internal constructor(
       onEndOfVideoStream()
       if (initialized == true) {
         av_parser_close(parserContext)
-        avcodec_close(codecContext)
         avcodec_free_context(codecContext)
         av_frame_free(decodingFrame)
         renderingFrame?.let { av_frame_free(it) }

@@ -40,7 +40,7 @@ class BlazeInfoRunnerImpl extends BlazeInfoRunner {
     return BlazeExecutor.getInstance()
         .submit(
             () -> {
-              BlazeCommand.Builder builder = BlazeCommand.builder(invoker, BlazeCommandName.INFO);
+              BlazeCommand.Builder builder = BlazeCommand.builder(BlazeCommandName.INFO);
               builder.addBlazeFlags(blazeFlags);
               if (key != null) {
                 builder.addBlazeFlags(key);
@@ -49,19 +49,6 @@ class BlazeInfoRunnerImpl extends BlazeInfoRunner {
                 return blazeInfoStream.readAllBytes();
               }
             });
-  }
-
-  @Override
-  public ListenableFuture<String> runBlazeInfo(
-      Project project,
-      BuildInvoker invoker,
-      BlazeContext context,
-      List<String> blazeFlags,
-      String key) {
-    return Futures.transform(
-        runBlazeInfoGetBytes(project, invoker, context, blazeFlags, key),
-        bytes -> new String(bytes, StandardCharsets.UTF_8).trim(),
-        BlazeExecutor.getInstance().getExecutor());
   }
 
   @Override

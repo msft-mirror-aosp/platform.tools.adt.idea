@@ -41,8 +41,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import javax.imageio.ImageIO
 import layoutinspector.snapshots.Metadata
-import org.jetbrains.kotlin.idea.core.util.readString
-import org.jetbrains.kotlin.idea.core.util.writeString
+import org.jetbrains.kotlin.idea.core.script.v1.readString
+import org.jetbrains.kotlin.idea.core.script.v1.writeString
 
 class LegacySnapshotLoader : SnapshotLoader {
   override val propertiesProvider = LegacyPropertiesProvider()

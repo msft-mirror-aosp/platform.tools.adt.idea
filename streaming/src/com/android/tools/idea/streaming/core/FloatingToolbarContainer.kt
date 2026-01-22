@@ -88,6 +88,7 @@ internal class FloatingToolbarContainer(
   private val inactiveAlpha: Double = 1.0,
   private val collapsedStateSelector: ((ActionButton) -> Boolean)? = null,
   private val activateOnHover: Boolean = false,
+  initiallyActive: Boolean = false,
 ) : JPanel() {
 
   @Orientation
@@ -105,7 +106,7 @@ internal class FloatingToolbarContainer(
 
   /** Zero means inactive, one means active. */
   @VisibleForTesting
-  internal var activationFactor: Double = 0.0
+  internal var activationFactor: Double = if (initiallyActive) 1.0 else 0.0
     private set(value) {
       if (field != value) {
         field = value
@@ -499,7 +500,7 @@ internal class FloatingToolbarContainer(
       var pendingSpacer = false
       for (child in components) {
         val childSize = child.preferredSize(collapsed)
-        if (childSize[orientation] != 0) {
+        if (childSize[orientation] != 0 && (size[orientation] > 0 || child.containsActionButtonsOtherThanCollapser())) {
           if (pendingSpacer) {
             size.increment(orientation, SPACER_SIZE)
           }
@@ -509,6 +510,20 @@ internal class FloatingToolbarContainer(
       }
       return size
     }
+  }
+
+  private fun Component.containsActionButtonsOtherThanCollapser(): Boolean {
+    if (this is ActionButton && action !is CollapserAction) {
+      return true
+    }
+    else if (this is Container) {
+      for (child in components) {
+        if (child.containsActionButtonsOtherThanCollapser()) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   /** Action that triggers collapse of the floating toolbar. */

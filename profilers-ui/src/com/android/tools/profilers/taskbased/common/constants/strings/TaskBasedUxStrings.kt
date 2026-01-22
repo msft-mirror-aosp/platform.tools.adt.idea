@@ -37,7 +37,7 @@ object TaskBasedUxStrings {
   const val STOPPING_TIME_WARNING = "It might take up to a few minutes for the recording to stop."
   const val ACTION_BAR_RECORDING = "Recording:"
   const val ACTION_BAR_STOP_RECORDING = "Stop Recording"
-  const val FAILED_TO_RECORD_TITLE = "%s failed to record"
+  const val FAILED_TO_RECORD_TITLE = "%s task did not complete successfully"
   const val FAILED_TO_RECORD_MESSAGE = "An unexpected error occurred. Please close this tab and try again."
 
   // Icon description strings
@@ -133,6 +133,7 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_ANALYSIS = "Analyzing results:"
   const val LEAKCANARY_WAITING_HEAP_DUMP = "Waiting to dump heap until"
   const val LEAKCANARY_RETAINED_OBJECT = "retained object"
+  const val LEAKCANARY_FORCE_DUMP = "Force dump"
 
   fun getTaskTooltip(taskType: ProfilerTaskType) = when (taskType) {
     ProfilerTaskType.SYSTEM_TRACE -> "Captures a trace that can help you understand how your app interacts with system resources"
@@ -175,7 +176,7 @@ object TaskBasedUxStrings {
         ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Record Method Calls"
         ProfilerTaskType.NATIVE_ALLOCATIONS -> "Record Memory Allocations (Native)"
         ProfilerTaskType.LIVE_VIEW -> "View Live Telemetry"
-        ProfilerTaskType.LEAKCANARY -> "Find memory leaks with LeakCanary"
+        ProfilerTaskType.LEAKCANARY -> "Find Memory Leaks with LeakCanary"
         ProfilerTaskType.UNSPECIFIED -> ""
       }
     }
@@ -188,7 +189,7 @@ object TaskBasedUxStrings {
         ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "Find CPU Hotspots"
         ProfilerTaskType.NATIVE_ALLOCATIONS -> "Track Memory Consumption"
         ProfilerTaskType.LIVE_VIEW -> "View Live Telemetry"
-        ProfilerTaskType.LEAKCANARY -> "Find memory leaks with LeakCanary"
+        ProfilerTaskType.LEAKCANARY -> "Find Memory Leaks with LeakCanary"
         ProfilerTaskType.UNSPECIFIED -> ""
       }
     }

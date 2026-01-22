@@ -104,7 +104,7 @@ public class IdeaWizardAdapterTest {
 
     @Nullable
     @Override
-    protected String getHelpID() {
+    protected String getHelpId() {
       return null;
     }
 

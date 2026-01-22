@@ -90,18 +90,6 @@ public interface BuildSystemProvider {
     return getBuildSystem().getName();
   }
 
-  /**
-   * Returns true if syncing is done off the user's local machine.
-   *
-   * @deprecated Whether syncs happen remotely is not determined statically anymore. Logic depending
-   *     on this should be reconsidered, or updated to use the state of the most recent sync as
-   *     appropriate.
-   */
-  @Deprecated
-  default boolean syncingRemotely() {
-    return false;
-  }
-
   WorkspaceRootProvider getWorkspaceRootProvider();
 
   /** Directories containing artifacts produced during the build process. */
@@ -114,15 +102,6 @@ public interface BuildSystemProvider {
   /** The URL providing documentation for project view files, if one can be found. */
   @Nullable
   String getProjectViewDocumentationUrl();
-
-  /**
-   * The URL providing documentation for language support, if one can be found.
-   *
-   * @param relativeDocName the path to the language doc, relative to the plugin documentation
-   *     site's base URL, without the webpage's file extension.
-   */
-  @Nullable
-  String getLanguageSupportDocumentationUrl(String relativeDocName);
 
   /**
    * The BUILD filenames supported by this build system, in decreasing order of preference (e.g. if

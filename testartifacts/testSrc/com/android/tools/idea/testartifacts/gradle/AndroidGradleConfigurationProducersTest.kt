@@ -24,6 +24,7 @@ import com.android.tools.idea.testartifacts.createAndroidGradleTestConfiguration
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromClass
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromDirectory
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromMethod
+import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil.Companion.getPsiElement
 import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromMethod
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths.ANDROID_KOTLIN_MULTIPLATFORM
@@ -43,7 +44,9 @@ import com.intellij.coverage.CoverageSuitesBundle
 import com.intellij.coverage.DefaultCoverageFileProvider
 import com.intellij.coverage.IDEACoverageRunner
 import com.intellij.coverage.JavaCoverageEngine
+import com.intellij.execution.actions.ConfigurationFromContext
 import com.intellij.execution.actions.ConfigurationFromContextImpl
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
@@ -61,6 +64,8 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.idea.gradleJava.testing.KotlinAllInPackageGradleConfigurationProducer
 import org.jetbrains.plugins.gradle.GradleManager
 import org.jetbrains.plugins.gradle.execution.test.runner.AllInPackageGradleConfigurationProducer
 import org.jetbrains.plugins.gradle.execution.test.runner.GradleTestsExecutionConsoleManager
@@ -91,6 +96,21 @@ class AndroidGradleConfigurationProducersTest {
     verifyCanCreateGradleConfigurationFromTestDirectory()
   }
 
+  // Test for b/450247317
+  @Test
+  fun testPackageRunConfigurationInSimpleProject() {
+    projectRule.loadProject(SIMPLE_APPLICATION)
+    val packagePsiElement = getPsiElement(project, "app/src/test/java/google/simpleapplication", true)
+    val kotlinPackageConfigurations = createConfigurationsFromContext(packagePsiElement)
+
+    val expectedConfigurationName = "Tests in 'google.simpleapplication'"
+    val expectedConfigurationProducer = KotlinAllInPackageGradleConfigurationProducer::class.java
+
+    assertThat(kotlinPackageConfigurations.size).isEqualTo(1)
+    assertThat(kotlinPackageConfigurations[0].configuration.name).isEqualTo(expectedConfigurationName)
+    assertThat(kotlinPackageConfigurations[0].isProducedBy(expectedConfigurationProducer)).isTrue()
+  }
+
   @Test
   fun testCanCreateDifferentConfigurationsWhenDuplicateNames() {
     projectRule.loadProject(SIMPLE_APPLICATION_WITH_DUPLICATES)
@@ -114,7 +134,7 @@ class AndroidGradleConfigurationProducersTest {
   }
 
   @Test
-  fun testTasksIsReExecuted() {
+  fun testTasksIsReExecuted() = runBlocking {
     projectRule.loadProject(TEST_RESOURCES)
 
     // Create the Run configuration.
@@ -122,7 +142,7 @@ class AndroidGradleConfigurationProducersTest {
       var messagesLog = StringBuilder()
       var finalMessage = ""
 
-      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
+      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
         messagesLog.append(text)
       }
 
@@ -141,10 +161,7 @@ class AndroidGradleConfigurationProducersTest {
 
     // Get all the UserData properties we get from creating a test RC. These need to be passed to the execution settings because they
     // determine if the task will be executed as a test and that they will be forcefully re-executed.
-    val keyMap = gradleRunConfiguration.get()
-    for (key in keyMap.keys) {
-      firstExecutionSettings.putUserData(key as Key<Any>, keyMap[key])
-    }
+    copyUserDataKeysTo(gradleRunConfiguration, firstExecutionSettings)
 
     firstExecutionSettings.tasks = listOf(":app:testDebugUnitTest")
 
@@ -162,9 +179,7 @@ class AndroidGradleConfigurationProducersTest {
     // Prepare for second tasks execution.
     val secondExecutionSettings =
       ExternalSystemApiUtil.getExecutionSettings<GradleExecutionSettings>(project, project.basePath!!, GradleConstants.SYSTEM_ID)
-    for (key in keyMap.keys) {
-      secondExecutionSettings.putUserData(key as Key<Any>, keyMap[key])
-    }
+    copyUserDataKeysTo(gradleRunConfiguration, secondExecutionSettings)
 
     secondExecutionSettings.tasks = listOf(":app:testDebugUnitTest")
 
@@ -179,6 +194,17 @@ class AndroidGradleConfigurationProducersTest {
     val expectedMessage = "Task ':app:testDebugUnitTest' is not up-to-date because:((\r)?\n)+\\s+Task\\.upToDateWhen is false\\.".toRegex()
     assertThat(expectedMessage.containsMatchIn(listener.finalMessage)).isTrue()
     assertThat(listener.messagesLog.lines()).contains("> Task :app:testDebugUnitTest")
+  }
+
+  private fun copyUserDataKeysTo(
+    gradleRunConfiguration: GradleRunConfiguration,
+    firstExecutionSettings: GradleExecutionSettings,
+  ) {
+    @Suppress("UnstableApiUsage", "UNCHECKED_CAST")
+    for (key in gradleRunConfiguration.userMap.keys) {
+      val userData = gradleRunConfiguration.getUserData<Any?>(key)
+      firstExecutionSettings.putUserData(key as Key<Any?>, userData)
+    }
   }
 
   @Test
@@ -230,7 +256,7 @@ class AndroidGradleConfigurationProducersTest {
   }
 
   @Test
-  fun testCoverageEngineDoesntRequireRecompilation() {
+  fun testCoverageEngineDoesntRequireRecompilation() = runBlocking {
     projectRule.loadProject(SIMPLE_APPLICATION)
     // Run a Gradle task.
     val projectPath = project.basePath!!
@@ -341,6 +367,11 @@ class AndroidGradleConfigurationProducersTest {
   private fun createConfigurationFromContext(psiFile: PsiElement): ConfigurationFromContextImpl? {
     val context = TestConfigurationTestingUtil.createContext(project, psiFile)
     return context.configurationsFromContext?.firstOrNull() as ConfigurationFromContextImpl?
+  }
+
+  private fun createConfigurationsFromContext(psiFile: PsiElement): List<ConfigurationFromContext> {
+    val context = TestConfigurationTestingUtil.createContext(project, psiFile)
+    return context.configurationsFromContext.orEmpty()
   }
 
   private fun checkConfigurationTasksAreAsExpected(

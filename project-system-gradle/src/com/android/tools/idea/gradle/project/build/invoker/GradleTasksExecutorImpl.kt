@@ -46,6 +46,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_STALE_CHANGES
 import com.intellij.compiler.CompilerConfiguration
 import com.intellij.compiler.CompilerManagerImpl
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
@@ -80,6 +81,13 @@ import com.intellij.util.ArrayUtil
 import com.intellij.util.ExceptionUtil
 import com.intellij.util.Function
 import com.intellij.util.ui.UIUtil
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import org.gradle.tooling.BuildAction
 import org.gradle.tooling.BuildActionExecuter
 import org.gradle.tooling.BuildCancelledException
@@ -89,18 +97,11 @@ import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.events.OperationType
+import org.gradle.tooling.model.build.BuildEnvironment
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
-import org.jetbrains.plugins.gradle.service.project.GradleProjectResolver
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
-import java.util.Locale
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 
 internal class GradleTasksExecutorImpl : GradleTasksExecutor {
   override fun execute(
@@ -220,7 +221,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
         val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
         myBuildStopper.register(id, cancellationTokenSource)
         taskListener.onStart(gradleRootProjectPath, id)
-        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), true)
+        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), ProcessOutputType.STDOUT)
         val buildState = GradleBuildState.getInstance(project)
         val buildCompleter = buildState.buildStarted(BuildContext(myRequest))
         var buildAttributionManager: BuildAttributionManager? = null
@@ -232,7 +233,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             }
           }
 
-          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
+          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
             // For test use only: save the logs to a file. Note that if there are multiple tasks at once
             // the output will be interleaved.
             if (StudioFlags.GRADLE_SAVE_LOG_TO_FILE.get()) {
@@ -244,13 +245,16 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
               }
             }
             if (myBuildStopper.contains(id)) {
-              taskListener.onTaskOutput(id, text, stdOut)
+              taskListener.onTaskOutput(id, text, processOutputType)
             }
           }
         }
-        val context = GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
-        context.buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context)
+        var buildEnvironment: BuildEnvironment? = null
         val invocationResult = try {
+          val context = GradleExecutionContextImpl(gradleRootProjectPath, id, executionSettings, listener, cancellationTokenSource.token())
+          buildEnvironment = GradleExecutionHelper.getBuildEnvironment(connection, context).also {
+            context.buildEnvironment = it
+          }
           val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
           val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
           if (!commandLineArguments.contains(GradleBuilds.PARALLEL_BUILD_OPTION) &&
@@ -331,7 +335,7 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
               handleTaskExecutionError(e)
             }
           }.exceptionOrNull() ?: e
-          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), context.buildEnvironment)
+          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), buildEnvironment)
         }
 
 

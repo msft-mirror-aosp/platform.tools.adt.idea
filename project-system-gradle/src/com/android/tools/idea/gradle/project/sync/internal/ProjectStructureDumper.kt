@@ -86,7 +86,7 @@ fun ProjectDumper.dumpProject(project: Project) {
     nest {
       prop("Version") { ProjectRootManager.getInstance(project).projectSdk?.versionString?.replaceJdkVersion() }
     }
-    ModuleManager.getInstance(project).modules.sortedBy { it.name }.forEach { dump(it) }
+    ModuleManager.getInstance(project).modules.sortModules().forEach { dump(it) }
     RunManagerEx.getInstanceEx(project).allConfigurationsList.sortedBy { it.name }.forEach { dump(it) }
     val libraries = LibraryTablesRegistrar.getInstance().getLibraryTable(project).libraries
     if (libraries.isNotEmpty()) {
@@ -125,6 +125,9 @@ fun ProjectDumper.dump(module: Module) {
   val moduleFile = module.moduleFilePath.toPrintablePath()
   head("MODULE") { module.name }
   nest {
+    if(checkObjectIdentity) {
+      prop("JavaObjectId") { System.identityHashCode(module).toString() }
+    }
     val groups = ModuleManager.getInstance(module.project).getModuleGroupPath(module)
     groups?.forEach { group ->
       prop("- ModuleGroupPath") { group }
@@ -374,6 +377,9 @@ private fun ProjectDumper.dump(sourceFolder: SourceFolder) {
 private fun ProjectDumper.dump(facet: Facet<*>) {
   head("FACET") { facet.name }
   nest {
+    if(checkObjectIdentity) {
+      prop("JavaObjectId") { System.identityHashCode(facet).toString() }
+    }
     prop("TypeId") { facet.typeId.toString() }
     prop("ExternalSource") { facet.externalSource?.id }
     val configuration = facet.configuration

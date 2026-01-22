@@ -18,13 +18,12 @@ package com.google.idea.blaze.base.run.producers;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.base.command.BlazeCommandName;
-import com.google.idea.blaze.base.model.primitives.TargetExpression;
+import com.google.idea.blaze.base.qsync.QuerySyncManager;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfigurationType;
 import com.google.idea.blaze.base.run.producers.BinaryContextProvider.BinaryRunContext;
 import com.google.idea.blaze.base.run.smrunner.SmRunnerUtils;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
-import com.google.idea.blaze.base.sync.BlazeSyncModificationTracker;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.openapi.util.Ref;
 import com.intellij.psi.PsiElement;
@@ -78,9 +77,9 @@ public class BinaryContextRunConfigurationProducer
             psi,
             () ->
                 CachedValueProvider.Result.create(
-                    doFindRunContext(wrapper.context),
-                    PsiModificationTracker.MODIFICATION_COUNT,
-                    BlazeSyncModificationTracker.getInstance(wrapper.context.getProject())));
+                  doFindRunContext(wrapper.context),
+                  PsiModificationTracker.MODIFICATION_COUNT,
+                  QuerySyncManager.getInstance(context.getProject()).getProjectModificationTracker()));
   }
 
   @Nullable
@@ -129,7 +128,7 @@ public class BinaryContextRunConfigurationProducer
     if (runContext == null) {
       return false;
     }
-    ImmutableList<? extends TargetExpression> targets = configuration.getTargets();
-    return targets.size() == 1 && runContext.getTarget().label.equals(targets.get(0));
+    ImmutableList<? extends String> targets = configuration.getTargetPatterns();
+    return targets.size() == 1 && runContext.getTarget().label().toString().equals(targets.get(0));
   }
 }

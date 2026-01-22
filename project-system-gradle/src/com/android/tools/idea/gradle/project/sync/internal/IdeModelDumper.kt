@@ -67,6 +67,7 @@ import com.android.tools.idea.gradle.project.sync.idea.data.DataNodeCaches
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
+import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.getHolderModule
 import com.android.tools.idea.projectsystem.gradle.isHolderModule
 import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
@@ -117,7 +118,7 @@ fun ProjectDumper.dumpAndroidIdeModel(
       }
       dumpLibraryTable(project)
 
-      ModuleManager.getInstance(project).modules.sortedBy { it.name }.forEach { module ->
+      ModuleManager.getInstance(project).modules.sortModules().forEach { module ->
         head("MODULE") { module.name }
         nest {
           module.gradleModuleModel?.let {
@@ -297,7 +298,7 @@ private val jbModelDumpers = listOf(
  * Note: Other tests in the IDE (e.g., templates, editor, UI tools, deployment) should not use
  * this constant as they don't need to test against the latest preview version of Kotlin.
  */
-const val KOTLIN_VERSION_FOR_TESTS = "2.3.0-RC2"
+const val KOTLIN_VERSION_FOR_TESTS = "2.3.20-Beta1"
 
 fun String.replaceKotlinVersionForTests(): String = replace(KOTLIN_VERSION_FOR_TESTS, "<KOTLIN_VERSION_FOR_TESTS>")
 

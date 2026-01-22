@@ -57,8 +57,5 @@ public abstract class GradleModelProvider {
   public abstract GradleSettingsModel getSettingsModel(@NotNull Project hostProject, @NotNull String compositeRoot);
 
   @NotNull
-  public abstract GradleVersionCatalogView getVersionCatalogView(@NotNull Project hostProject);
-
-  @Nullable
-  public abstract GradleVersionCatalogView getVersionCatalogView(@NotNull Project hostProject, @NotNull String compositeRoot);
+  public abstract GradleVersionCatalogsModel getCachedVersionCatalogsModel(@NotNull Module module);
 }

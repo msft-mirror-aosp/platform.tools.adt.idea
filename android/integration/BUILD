@@ -1,4 +1,6 @@
+load("@rules_java//java:defs.bzl", "java_library")
 load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "INTEGRATION_TEST_SYSTEM_IMAGE", "KOTLIN_ARTIFACTS_FOR_TESTS")
+load("//tools/adt/idea/studio:studio.bzl", "studio_project_model")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
@@ -65,7 +67,7 @@ iml_test(
     name = "ShowUsagesTest",
     timeout = "long",
     data = [
-        ":minapp",
+        ":minapp_project_model",
         ":showusages_deps",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
@@ -155,26 +157,9 @@ maven_repository(
 )
 
 iml_test(
-    name = "EditorPerformanceTest",
-    timeout = "long",
-    data = editor_performance_test_data,
-    module = ":intellij.android.core.integration",
-    tags = [
-        "ci:perfgate-linux",
-        "ci:perfgate-win",
-        "noci:studio-linux",
-        "noci:studio-win",
-        "studio-e2e-test",
-    ],
-    tags_linux = ["block-network"],
-    tags_windows = ["block-network"],
-    test_class = "com.android.tools.idea.EditorPerformanceTest",
-)
-
-iml_test(
     name = "HighlightingAfterTypingTest",
     timeout = "long",
-    data = editor_performance_test_data,
+    data = editor_performance_test_data + [":architectureSamples_project_model"],
     module = ":intellij.android.core.integration",
     tags = [
         "ci:perfgate-linux",
@@ -190,7 +175,7 @@ iml_test(
 iml_test(
     name = "StartupPerformanceTest",
     timeout = "long",
-    data = editor_performance_test_data,
+    data = editor_performance_test_data + [":architectureSamples_project_model"],
     module = ":intellij.android.core.integration",
     tags = [
         "ci:perfgate-linux",
@@ -284,7 +269,7 @@ iml_test(
     timeout = "long",
     data = [
         ":buildproject_deps",
-        ":mindebugapp",
+        ":mindebugapp_project_model",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
@@ -372,8 +357,8 @@ iml_test(
     name = "GoToDeclarationTest",
     timeout = "long",
     data = [
-        ":languagehighlighting",
         ":languagehighlighting_deps",
+        ":languagehighlighting_project_model",
         INTEGRATION_TEST_GRADLE_VERSION,
         INTEGRATION_TEST_SYSTEM_IMAGE,
     ],
@@ -492,8 +477,8 @@ iml_test(
 )
 
 build_and_run_test_data = [
+    ":minapp_project_model",
     ":buildproject_deps",
-    ":minapp",
     "//prebuilts/studio/sdk:build-tools/33.0.1",
     "//prebuilts/studio/sdk:emulator",
     "//prebuilts/studio/sdk:platform-tools",
@@ -628,9 +613,9 @@ iml_test(
     timeout = "long",
     data = [
         ":buildproject_deps",
-        ":minapp",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         INTEGRATION_TEST_GRADLE_VERSION,
+        ":minapp_project_model",
     ],
     module = ":intellij.android.core.integration",
     tags = [
@@ -721,7 +706,7 @@ iml_test(
     name = "BuildAndRunInstrumentedTest",
     timeout = "long",
     data = [
-        ":instrumenttestapp",
+        ":instrumenttestapp_project_model",
         ":run_instrumented_test_project_deps",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:emulator",
@@ -748,7 +733,7 @@ iml_test(
     name = "MultipleDevicesInstrumentedTest",
     timeout = "long",
     data = [
-        ":instrumenttestapp",
+        ":instrumenttestapp_project_model",
         ":run_instrumented_test_project_deps",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:emulator",
@@ -774,7 +759,7 @@ iml_test(
     timeout = "long",
     data = [
         ":debug_junit_test_deps",
-        ":debugjunittest",
+        ":debugjunittest_project_model",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         INTEGRATION_TEST_GRADLE_VERSION,
     ],
@@ -795,7 +780,7 @@ iml_test(
     timeout = "long",
     data = [
         ":buildkmpproject_deps",
-        ":kmpapp",
+        ":kmpapp_project_model",
         "//prebuilts/studio/sdk:build-tools/33.0.1",
         "//prebuilts/studio/sdk:emulator",
         "//prebuilts/studio/sdk:platform-tools",
@@ -854,7 +839,7 @@ iml_test(
 iml_test(
     name = "MultiProjectSameWindowTest",
     timeout = "long",
-    data = multi_project_test_data,
+    data = multi_project_test_data + [":minapp_project_model"],
     module = ":intellij.android.core.integration",
     tags = [
         "studio-e2e-test",
@@ -953,7 +938,6 @@ maven_repository(
         "@maven//:com.android.tools.lint.lint-gradle_31.13.0",
         "@maven//:commons-io.commons-io_2.13.0",
         "@maven//:junit.junit_4.13.2",
-        "@maven//:org.jetbrains.compose.ui.ui-test-junit4-desktop_1.7.3",
         "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.2.10",
         "@maven//:org.jetbrains.kotlin.kotlin-build-tools-impl_2.2.10",
         "@maven//:org.jetbrains.kotlin.kotlin-compose-compiler-plugin-embeddable_2.2.10",
@@ -1176,4 +1160,112 @@ filegroup(
 filegroup(
     name = "architectureSamplesScenarioScripts",
     srcs = glob(["testData/architecture-samples-scenarios/**"]),
+)
+
+java_library(
+    name = "project_model_generator_lib",
+    testonly = True,
+    srcs = ["testSrc/com/android/tools/idea/ProjectIndexAndGradleSyncGenerator.java"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//tools/adt/idea/as-driver:as-driver.utils_testlib",
+        "//tools/base/common:studio.android.sdktools.common",
+    ],
+)
+
+studio_project_model(
+    name = "minapp_project_model",
+    srcs = [
+        ":buildproject_deps",
+        ":minapp",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
+    out_dir_name = "minapp_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/minapp",
+    visibility = ["//visibility:public"],
+)
+
+studio_project_model(
+    name = "debugjunittest_project_model",
+    srcs = [
+        ":debug_junit_test_deps",
+        ":debugjunittest",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/debug_junit_test_deps.manifest",
+    out_dir_name = "debugjunittest_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/JUnitTestApp",
+)
+
+studio_project_model(
+    name = "architectureSamples_project_model",
+    srcs = [
+        ":architectureSamples",
+        ":editor_performance_test_deps",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/editor_performance_test_deps.manifest",
+    out_dir_name = "architectureSamples_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/architecture-samples",
+)
+
+studio_project_model(
+    name = "languagehighlighting_project_model",
+    srcs = [
+        ":languagehighlighting",
+        ":languagehighlighting_deps",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/languagehighlighting_deps.manifest",
+    out_dir_name = "languagehighlighting_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/languagehighlighting",
+)
+
+studio_project_model(
+    name = "applychanges_project_model",
+    srcs = [
+        ":applychangesproject",
+        ":buildproject_deps",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
+    out_dir_name = "applychanges_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/applychanges",
+)
+
+studio_project_model(
+    name = "instrumenttestapp_project_model",
+    srcs = [
+        ":instrumenttestapp",
+        ":run_instrumented_test_project_deps",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/run_instrumented_test_project_deps.manifest",
+    out_dir_name = "instrumenttestapp_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/InstrumentedTestApp",
+)
+
+studio_project_model(
+    name = "mindebugapp_project_model",
+    srcs = [
+        ":buildproject_deps",
+        ":mindebugapp",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/buildproject_deps.manifest",
+    out_dir_name = "mindebugapp_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/mindebugapp",
+)
+
+studio_project_model(
+    name = "kmpapp_project_model",
+    srcs = [
+        ":buildkmpproject_deps",
+        ":kmpapp",
+        "//tools/base/build-system:gradle-distrib-8.6",
+    ],
+    manifest_path = "tools/adt/idea/android/integration/buildkmpproject_deps.manifest",
+    out_dir_name = "kmpapp_project_model",
+    project_path = "tools/adt/idea/android/integration/testData/kmpapp",
 )

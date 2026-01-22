@@ -17,7 +17,7 @@ package com.android.tools.idea.welcome.wizard
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.sdk.IdeSdks
+import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.idea.welcome.config.AndroidFirstRunPersistentData
 import com.android.tools.idea.welcome.config.FirstRunWizardMode
@@ -26,6 +26,7 @@ import com.android.tools.idea.welcome.config.installerData
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.net.HttpConnectionUtils
 import com.intellij.util.net.JdkProxyProvider
@@ -60,7 +61,7 @@ class AndroidStudioWelcomeScreenService {
       getWizardMode(
         AndroidFirstRunPersistentData.getInstance(),
         installerData,
-        IdeSdks.getInstance(),
+        AndroidSdks.getInstance(),
       ) != null
   }
 
@@ -70,13 +71,13 @@ class AndroidStudioWelcomeScreenService {
    *
    * @param persistentData Persistent data related to Android Studio's first-run configuration.
    * @param installerData Data from the installer, if available. Used for install handoff scenarios.
-   * @param ideSdks The IDE's SDK manager. Used to check for installed SDKs.
+   * @param androidSdks The IDE's SDK manager. Used to check for installed SDKs.
    * @return The [FirstRunWizardMode] to use, or `null` if the wizard should not be shown.
    */
   fun getWizardMode(
     persistentData: AndroidFirstRunPersistentData,
     installerData: InstallerData?,
-    ideSdks: IdeSdks,
+    androidSdks: AndroidSdks,
   ): FirstRunWizardMode? {
     if (StudioFlags.NPW_FIRST_RUN_SHOW.get()) {
       return FirstRunWizardMode.NEW_INSTALL
@@ -85,7 +86,7 @@ class AndroidStudioWelcomeScreenService {
     return when {
       isHandoff(persistentData, installerData) -> FirstRunWizardMode.INSTALL_HANDOFF
       !persistentData.isSdkUpToDate -> FirstRunWizardMode.NEW_INSTALL
-      ideSdks.eligibleAndroidSdks.isEmpty() -> FirstRunWizardMode.MISSING_SDK
+      androidSdks.tryToChooseAndroidSdk() == null -> FirstRunWizardMode.MISSING_SDK
       else -> null
     }
   }
@@ -152,7 +153,7 @@ class AndroidStudioWelcomeScreenService {
         arrayOf("Setup Proxy", "Cancel"),
         1,
         Messages.getErrorIcon(),
-        null,
+        null as DoNotAskOption?, // Disambiguate to use the non-deprecated overload
       )
     val showSetupProxy = selection == 0
     if (showSetupProxy) {

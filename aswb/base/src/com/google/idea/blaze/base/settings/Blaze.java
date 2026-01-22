@@ -19,6 +19,7 @@ import com.google.idea.blaze.base.bazel.BuildSystemProvider;
 import com.google.idea.blaze.base.qsync.QuerySync;
 import com.google.idea.blaze.base.settings.BlazeImportSettings.ProjectType;
 import com.intellij.ide.DataManager;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import javax.annotation.Nullable;
@@ -55,10 +56,7 @@ public class Blaze {
     if (blazeImportSettings == null) {
       return ProjectType.UNKNOWN;
     }
-    if (!QuerySync.legacySyncEnabled()) {
-      return ProjectType.QUERY_SYNC;
-    }
-    return blazeImportSettings.getProjectType();
+    return ProjectType.QUERY_SYNC;
   }
 
   /**
@@ -123,7 +121,7 @@ public class Blaze {
       return openProjects[0];
     }
     if (SwingUtilities.isEventDispatchThread()) {
-      return (Project) DataManager.getInstance().getDataContext().getData("project");
+      return DataManager.getInstance().getDataContext().getData(CommonDataKeys.PROJECT);
     }
     return null;
   }

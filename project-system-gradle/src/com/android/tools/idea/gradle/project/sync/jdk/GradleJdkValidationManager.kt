@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.sync.jdk
 
+import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationManager
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.InvalidEnvironmentVariableJavaHomeException
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.InvalidEnvironmentVariableStudioGradleJdkException
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.InvalidGradleLocalJavaHomeException
@@ -54,7 +55,7 @@ class GradleJdkValidationManager private constructor() {
     fun getInstance(project: Project): GradleJdkValidationManager = project.getService(GradleJdkValidationManager::class.java)
   }
 
-  fun validateProjectGradleJvmPath(
+  suspend fun validateProjectGradleJvmPath(
     project: Project,
     gradleRootPath: @SystemIndependent String
   ): GradleJdkException? {
@@ -62,7 +63,7 @@ class GradleJdkValidationManager private constructor() {
     return validateProjectGradleJvmPath(project, gradleProjectSettings)
   }
 
-  fun validateProjectGradleJvmPath(
+  suspend fun validateProjectGradleJvmPath(
     project: Project,
     gradleProjectSettings: GradleProjectSettings
   ): GradleJdkException? {
@@ -70,14 +71,14 @@ class GradleJdkValidationManager private constructor() {
     // delegating to Gradle the responsibility to locate matching toolchain locally or download one
     if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(gradleProjectSettings)) return null
     val gradleRootPath = gradleProjectSettings.externalProjectPath
-    val resolvedGradleJdkPath = GradleInstallationManager.getInstance().getGradleJvmPath(project, gradleRootPath)?.asPath()?.let { gradleJdkPath ->
+    val resolvedGradleJdkPath = AndroidStudioGradleInstallationManager.instance.resolveGradleJvmPath(project, gradleRootPath)?.asPath()?.let { gradleJdkPath ->
       val validJdkPath = IdeSdks.getInstance().validateJdkPath(gradleJdkPath)
       if (validJdkPath != null) return null
       gradleJdkPath
     }
 
     val gradleJdkException = if (IdeSdks.getInstance().isUsingEnvVariableJdk) {
-      InvalidEnvironmentVariableStudioGradleJdkException(project, gradleRootPath, resolvedGradleJdkPath)
+      InvalidEnvironmentVariableStudioGradleJdkException(project, gradleRootPath)
     } else {
       getInvalidJdkExceptionBasedOnGradleJvm(project, gradleRootPath, resolvedGradleJdkPath)
     }
@@ -100,7 +101,7 @@ class GradleJdkValidationManager private constructor() {
       ExternalSystemJdkUtil.USE_JAVA_HOME -> InvalidEnvironmentVariableJavaHomeException(project, gradleRootPath, resolvedGradleJdkPath)
       USE_GRADLE_JAVA_HOME -> InvalidGradlePropertiesJavaHomeException(project, gradleRootPath, resolvedGradleJdkPath)
       USE_GRADLE_LOCAL_JAVA_HOME -> InvalidGradleLocalJavaHomeException(project, gradleRootPath, resolvedGradleJdkPath)
-      JDK_LOCATION_ENV_VARIABLE_NAME -> InvalidEnvironmentVariableStudioGradleJdkException(project, gradleRootPath, resolvedGradleJdkPath)
+      JDK_LOCATION_ENV_VARIABLE_NAME -> InvalidEnvironmentVariableStudioGradleJdkException(project, gradleRootPath)
       else -> InvalidTableEntryJdkException(project, gradleRootPath, gradleJvm)
     }
   }

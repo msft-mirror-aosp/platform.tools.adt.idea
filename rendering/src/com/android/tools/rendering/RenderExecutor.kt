@@ -231,26 +231,24 @@ private constructor(
     mayInterruptIfRunning: Boolean,
   ): Int {
     var numberOfCancelledActions = 0
-    pendingActionsQueueLock.withLock {
-      for (topic in topicsToCancel) {
-        pendingActionsQueueByTopic[topic]?.let { queue ->
-          while (queue.isNotEmpty()) {
-            val removed = queue.remove()
-            allPendingActionsQueue.remove(removed)
-            removed.cancel(false)
-            numberOfCancelledActions++
-          }
+    pendingActionsQueueLock
+      .withLock {
+        topicsToCancel.flatMap { topic ->
+          pendingActionsQueueByTopic.remove(topic)?.also { topicQueue ->
+            allPendingActionsQueue.removeAll(topicQueue.toSet())
+          } ?: emptyList()
         }
       }
-    }
-    runningRenderLock.withLock {
-      runningRender?.let {
-        if (it.renderingTopic in topicsToCancel) {
-          it.cancel(mayInterruptIfRunning)
-          numberOfCancelledActions++
-        }
+      .let { actionsToCancel ->
+        actionsToCancel.forEach { it.cancel(false) }
+        numberOfCancelledActions += actionsToCancel.size
       }
-    }
+    runningRenderLock
+      .withLock { runningRender?.takeIf { it.renderingTopic in topicsToCancel } }
+      ?.let {
+        it.cancel(mayInterruptIfRunning)
+        numberOfCancelledActions++
+      }
     return numberOfCancelledActions
   }
 

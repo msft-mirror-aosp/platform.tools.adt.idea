@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include <thread>
-
 #include "accessors/audio_record.h"
 #include "audio_reader.h"
 #include "codec_handle.h"
+#include "thread_handle.h"
 
 namespace screensharing {
 
@@ -29,19 +28,18 @@ class AudioRecordReader : public AudioReader {
 public:
   // Creates a new AudioRecordReader.
   AudioRecordReader(int32_t num_channels, int32_t sample_rate);
-  virtual ~AudioRecordReader();
+  ~AudioRecordReader() override;
 
-  // Starts the reader's thread.
-  virtual void Start(CodecHandle* codec_handle);
+  virtual bool Start(CodecHandle* codec_handle) override;
   // Stops the reader. Waits for the reader's thread to terminate.
-  virtual void Stop();
+  virtual void Stop() override;
 
 private:
   void Run();
-  void ReadUntilStopped();
+  void ReadUntilStopped(Jni jni);
 
-  std::thread thread_;
   AudioRecord audio_record_;
+  ThreadHandle thread_handle_;
 };
 
 }  // namespace screensharing

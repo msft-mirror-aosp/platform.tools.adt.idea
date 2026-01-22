@@ -21,13 +21,13 @@ import com.android.ide.gradle.model.dependencies.Coordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.repository.Revision
 import com.android.tools.idea.IdeInfo
+import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.LibraryFilePaths
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
-import com.android.tools.idea.gradle.model.IdeCompositeBuildMap
 import com.android.tools.idea.gradle.model.IdeDebugInfo
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeSyncIssue
@@ -39,7 +39,6 @@ import com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTable
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
-import com.android.tools.idea.gradle.model.ndk.v1.IdeNativeVariantAbi
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData.Companion.create
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
@@ -50,7 +49,6 @@ import com.android.tools.idea.gradle.project.sync.AndroidSyncException
 import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType
 import com.android.tools.idea.gradle.project.sync.ModelProviderCachedData
 import com.android.tools.idea.gradle.project.sync.IdeAndroidModels
-import com.android.tools.idea.gradle.project.sync.IdeAndroidNativeVariantsModels
 import com.android.tools.idea.gradle.project.sync.IdeAndroidSyncError
 import com.android.tools.idea.gradle.project.sync.IdeAndroidSyncIssuesAndExceptions
 import com.android.tools.idea.gradle.project.sync.IdeSyncExecutionReport
@@ -149,6 +147,8 @@ import java.util.IdentityHashMap
 import java.util.function.Function
 import java.util.zip.ZipException
 import kotlin.io.path.Path
+import kotlinx.coroutines.async
+import kotlinx.coroutines.future.asCompletableFuture
 
 private val LOG = Logger.getInstance(AndroidGradleProjectResolver::class.java)
 
@@ -195,19 +195,6 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       printDebugInfo()
     }
 
-    // This is used in the special mode sync to fetch additional native variants.
-    for (gradleModule in gradleProject.modules) {
-      val nativeVariants = resolverCtx.getExtraProject(gradleModule, IdeAndroidNativeVariantsModels::class.java)
-      if (nativeVariants != null) {
-        projectDataNode.createChild(
-          AndroidProjectKeys.NATIVE_VARIANTS,
-          IdeAndroidNativeVariantsModelsWrapper(
-            gradleModule.projectIdentifier.projectPath,
-            nativeVariants
-          )
-        )
-      }
-    }
     val syncExecutionReport = resolverCtx.getRootModel(IdeSyncExecutionReport::class.java)
     if (syncExecutionReport != null) {
       projectDataNode.createChild(AndroidProjectKeys.SYNC_EXECUTION_REPORT, syncExecutionReport)
@@ -309,13 +296,15 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     // Remove platform ProjectSdkDataService data node overwritten by our ProjectJdkUpdateService
     ExternalSystemApiUtil.find(projectDataNode, ProjectSdkData.KEY)?.clear(true)
 
-    if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(linkedExternalProjectPath, gradleVersion)) {
-      gradleProject.javaLanguageSettings.jdk.javaHome.absolutePath
-    } else {
-      GradleJdkConfigurationUtils.getMaxVersionJdkPathFromAllGradleRoots(project)
-    } ?.let { gradleJdkPath ->
-      projectDataNode.createChild(AndroidProjectKeys.PROJECT_JDK_UPDATE, ProjectJdkUpdateData(gradleJdkPath))
-    }
+    project.coroutineScope.async {
+      if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(linkedExternalProjectPath, gradleVersion)) {
+        gradleProject.javaLanguageSettings.jdk.javaHome.absolutePath
+      } else {
+        GradleJdkConfigurationUtils.getMaxVersionJdkPathFromAllGradleRoots(project)
+      } ?.let { gradleJdkPath ->
+        projectDataNode.createChild(AndroidProjectKeys.PROJECT_JDK_UPDATE, ProjectJdkUpdateData(gradleJdkPath))
+      }
+    }.asCompletableFuture().join()
   }
 
   override fun populateModuleCompileOutputSettings(
@@ -908,21 +897,6 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
           ideModels.selectedVariantName,
           selectedAbiName,
           V2NdkModel(ideModels.androidProject.agpVersion, ideModels.v2NativeModule!!)
-        )
-      }
-      // V2 model not available, fallback to V1 model.
-      if (ideModels.v1NativeProject != null) {
-        val ideNativeVariantAbis: MutableList<IdeNativeVariantAbi> = ArrayList()
-        if (ideModels.v1NativeVariantAbi != null) {
-          ideNativeVariantAbis.add(ideModels.v1NativeVariantAbi!!)
-        }
-        return NdkModuleModel(
-          moduleName,
-          rootModulePath,
-          ideModels.selectedVariantName,
-          selectedAbiName,
-          ideModels.v1NativeProject!!,
-          ideNativeVariantAbis
         )
       }
       return null

@@ -27,9 +27,6 @@ import com.google.idea.blaze.base.command.buildresult.BuildResult;
 import com.google.idea.blaze.base.command.buildresult.BuildResultParser;
 import com.google.idea.blaze.base.command.buildresult.LocalFileArtifact;
 import com.google.idea.blaze.base.command.buildresult.bepparser.ParsedBepOutput;
-import com.google.idea.blaze.base.ideinfo.PyIdeInfo;
-import com.google.idea.blaze.base.ideinfo.TargetIdeInfo;
-import com.google.idea.blaze.base.ideinfo.TargetKey;
 import com.google.idea.blaze.base.io.FileOperationProvider;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.Label;
@@ -279,11 +276,15 @@ public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurati
 
   private static Label getSingleTarget(BlazeCommandRunConfiguration config)
       throws ExecutionException {
-    ImmutableList<? extends TargetExpression> targets = config.getTargets();
-    if (targets.size() != 1 || !(targets.get(0) instanceof Label)) {
+    String target = config.getSingleTargetPattern();
+    if (target == null) {
       throw new ExecutionException("Invalid configuration: doesn't have a single target label");
     }
-    return (Label) targets.get(0);
+    Label label = Label.createIfValid(target);
+    if (label == null) {
+      throw new ExecutionException("Invalid configuration: doesn't have a single target label");
+    }
+    return label;
   }
 
   /**
@@ -366,15 +367,7 @@ public class BlazePyRunConfigurationRunner implements BlazeCommandRunConfigurati
 
   private static ImmutableList<String> getPythonArgsFor(
       BlazeProjectData projectData, Label target) {
-    TargetIdeInfo ideInfo = projectData.getTargetMap().get(TargetKey.forPlainTarget(target));
-    if (ideInfo == null) {
       return ImmutableList.of();
-    }
-    PyIdeInfo pyIdeInfo = ideInfo.getPyIdeInfo();
-    if (pyIdeInfo == null) {
-      return ImmutableList.of();
-    }
-    return pyIdeInfo.getArgs();
   }
 
   /**

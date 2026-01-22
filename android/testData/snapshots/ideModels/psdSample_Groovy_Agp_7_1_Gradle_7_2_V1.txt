@@ -9,8 +9,7 @@ MODULE                        : project
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/project [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    : <ROOT>/.idea/modules/project.iml [-]
-    ModuleTypeName                : JAVA_MODULE
+    ModuleFile                    :  [-]
     CONENT_ENTRY                  : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
@@ -1692,6 +1691,8 @@ MODULE                        : project.app
             resourceConfigurations        : xhdpi
             VectorDrawables
             MatchingFallbacks             : [bar]
+            MissingDimensionStrategy
+                type                          : [typeone]
         SourceProvider
             Name                          : otherBar
             Manifest                      : <ROOT>/app/src/otherBar/AndroidManifest.xml [-]

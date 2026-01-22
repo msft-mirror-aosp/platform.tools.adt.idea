@@ -21,6 +21,7 @@ import com.android.testutils.ImageDiffUtil
 import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
+import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.DataManagerRule
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
@@ -43,7 +44,6 @@ import com.android.tools.idea.ui.screenshot.ScreenshotViewer
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.actionSystem.impl.ActionButton
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.DialogWrapper.CLOSE_EXIT_CODE
 import com.intellij.openapi.vfs.VirtualFile
@@ -53,6 +53,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import java.awt.Component
 import java.awt.Dimension
 import java.awt.image.BufferedImage
 import java.io.IOException
@@ -119,10 +120,8 @@ class EmulatorScreenshotActionTest {
     assertThat(clipComboBox.selectedItem?.toString()).isEqualTo("Rectangular")
     assertAppearance(screenshotViewer.waitForUpdateAndGetImage(), "WithoutFrame")
 
-    if (ApplicationInfo.getInstance().build.baselineVersion != 253) { // TODO: Remove the condition (b/462824863)
-      clipComboBox.selectFirstMatch("Show Device Frame")
-      assertAppearance(screenshotViewer.waitForUpdateAndGetImage(), "WithFrame")
-    }
+    clipComboBox.selectFirstMatch("Show Device Frame")
+    assertAppearance(screenshotViewer.waitForUpdateAndGetImage(), "WithFrame")
   }
 
   @Test
@@ -227,6 +226,8 @@ class EmulatorScreenshotActionTest {
     waitForCondition(5.seconds) { emulatorController.connectionState == EmulatorController.ConnectionState.CONNECTED }
     panel.size = Dimension(400, 600)
     panel.createContent(true)
+    TreeWalker(panel).descendantStream().forEach(Component::doLayout)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue() // Allow resizing events to propagate.
     return panel
   }
 

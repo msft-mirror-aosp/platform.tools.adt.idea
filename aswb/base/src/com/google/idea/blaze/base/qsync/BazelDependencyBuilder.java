@@ -116,6 +116,9 @@ public class BazelDependencyBuilder implements DependencyBuilder, BazelDependenc
   public static final Label RULES_ANDROID_RULES_BZL1 = Label.of("@@rules_android~//android:rules.bzl");
   public static final Label RULES_ANDROID_RULES_BZL2 = Label.of("@@rules_android+//android:rules.bzl");
 
+  public static final Label RULES_KOTLIN_BZL1 = Label.of("@@rules_kotlin~//kotlin/internal:defs.bzl");
+  public static final Label RULES_KOTLIN_BZL2 = Label.of("@@rules_kotlin+//kotlin/internal:defs.bzl");
+
   // The following .bzl file defines the iml_module rule used by Android Studio
   public static final Label STUDIO_IML_MODULE_RULE =  Label.of("//tools/base/bazel:bazel.bzl");
 
@@ -201,7 +204,7 @@ public class BazelDependencyBuilder implements DependencyBuilder, BazelDependenc
           BuildDepsStatsScope.fromContext(context);
       buildDepsStatsBuilder.ifPresent(stats -> stats.setBlazeBinaryType(invoker.getType()));
       BlazeCommand.Builder builder =
-          BlazeCommand.builder(invoker, BlazeCommandName.BUILD)
+          BlazeCommand.builder(BlazeCommandName.BUILD)
               .addBlazeFlags(buildDependenciesBazelInvocationInfo.argsAndFlags());
 
       buildDepsStatsBuilder.ifPresent(
@@ -266,7 +269,6 @@ public class BazelDependencyBuilder implements DependencyBuilder, BazelDependenc
             project,
             projectViewSet,
             BlazeCommandName.BUILD,
-            context,
             BlazeInvocationContext.OTHER_CONTEXT);
 
     final var querySyncFlags = ImmutableList.<String>builder();
@@ -346,9 +348,19 @@ public class BazelDependencyBuilder implements DependencyBuilder, BazelDependenc
     files.put(
       "build_dependencies_java_proto_deps.bzl",
       MoreFiles.asByteSource(getBundledAspectPath("build_dependencies_java_proto_deps.bzl")));
-    files.put(
-      "build_dependencies_kotlin_deps.bzl",
-      MoreFiles.asByteSource(getBundledAspectPath("build_dependencies_kotlin_deps.bzl")));
+
+    // Aspects for Kotlin support
+    if (snapshotHolder.getCurrent().map(it -> it.getQueryData().querySummary().getAllBuildIncludedFiles().contains(RULES_KOTLIN_BZL1) ||
+                                              it.getQueryData().querySummary().getAllBuildIncludedFiles().contains(RULES_KOTLIN_BZL2))
+      .orElse(false)) {
+      files.put(
+        "build_dependencies_kotlin_deps.bzl",
+        MoreFiles.asByteSource(getBundledAspectPath("build_dependencies_kotlin_deps.bzl")));
+    } else {
+      files.put(
+        "build_dependencies_kotlin_deps.bzl",
+        MoreFiles.asByteSource(getBundledAspectPath("build_dependencies_kotlin_stub_deps.bzl")));
+    }
     return files.build();
   }
 
@@ -442,7 +454,7 @@ public class BazelDependencyBuilder implements DependencyBuilder, BazelDependenc
   @VisibleForTesting
   @Override
   public Path getBundledAspectPath(String filename) {
-    return aspectFiles.getBundledAspectPath(filename);
+    return AspectFiles.getBundledAspectPath(filename, workspaceRoot.absolutePathFor(""));
   }
 
   /**

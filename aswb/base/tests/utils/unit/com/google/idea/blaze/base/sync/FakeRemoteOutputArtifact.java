@@ -16,14 +16,9 @@
 package com.google.idea.blaze.base.sync;
 
 import com.google.idea.blaze.base.command.buildresult.RemoteOutputArtifact;
-import com.google.idea.blaze.common.artifact.ArtifactState;
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.nio.file.Path;
-import org.jetbrains.annotations.Nullable;
 
 /** Use local file to fake {@link RemoteOutputArtifact} that used by tests. */
 public class FakeRemoteOutputArtifact implements RemoteOutputArtifact {
@@ -46,11 +41,6 @@ public class FakeRemoteOutputArtifact implements RemoteOutputArtifact {
   }
 
   @Override
-  public BufferedInputStream getInputStream() throws IOException {
-    return new BufferedInputStream(new FileInputStream(file));
-  }
-
-  @Override
   public Path getArtifactPath() {
     return artifactPath;
   }
@@ -59,15 +49,6 @@ public class FakeRemoteOutputArtifact implements RemoteOutputArtifact {
   public int getArtifactPathPrefixLength() {
     return artifactPathPrefixLength;
   }
-
-  @Nullable
-  @Override
-  public ArtifactState toArtifactState() {
-    return null;
-  }
-
-  @Override
-  public void prefetch() {}
 
   @Override
   public String getHashId() {

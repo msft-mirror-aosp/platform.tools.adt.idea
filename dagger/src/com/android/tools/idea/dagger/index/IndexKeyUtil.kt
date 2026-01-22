@@ -24,8 +24,8 @@ import com.intellij.psi.PsiType
 import com.intellij.psi.search.GlobalSearchScope
 import java.io.DataInput
 import java.io.DataOutput
-import org.jetbrains.kotlin.idea.core.util.readString
-import org.jetbrains.kotlin.idea.core.util.writeString
+import org.jetbrains.kotlin.idea.core.script.v1.readString
+import org.jetbrains.kotlin.idea.core.script.v1.writeString
 import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 import org.jetbrains.kotlin.name.ClassId
 

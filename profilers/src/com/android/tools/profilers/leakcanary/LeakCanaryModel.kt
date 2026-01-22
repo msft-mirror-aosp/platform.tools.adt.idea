@@ -20,7 +20,6 @@ import com.android.tools.adtui.model.updater.Updatable
 import com.android.tools.idea.codenavigation.CodeLocation
 import com.android.tools.idea.transport.poller.TransportEventListener
 import com.android.tools.inspectors.common.api.actions.NavigateToCodeAction
-import com.android.tools.leakcanarylib.LeakCanaryParser
 import com.android.tools.leakcanarylib.data.Analysis
 import com.android.tools.leakcanarylib.data.AnalysisFailure
 import com.android.tools.leakcanarylib.data.AnalysisUpdate
@@ -34,8 +33,8 @@ import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.ModelStage
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
-import com.android.tools.profilers.tasks.TaskEventTrackerUtils.trackTaskFinished
-import com.android.tools.profilers.tasks.TaskFinishedState
+import com.android.tools.profilers.tasks.analytics.TaskFinishedState
+import com.android.tools.profilers.tasks.analytics.TaskTracker
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidProfilerEvent
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -48,16 +47,26 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.jetbrains.annotations.NotNull
 
-class LeakCanaryModel(@NotNull private val profilers: StudioProfilers) : ModelStage(profilers), Updatable {
+class LeakCanaryModel(@NotNull private val profilers: StudioProfilers,
+                      heapDumper: LeakCanaryHeapDumper? = null) : ModelStage(profilers), Updatable {
 
   private lateinit var statusListener: TransportEventListener
   private lateinit var hostAnalysisTriggerListener: TransportEventListener
   private val logger: Logger = Logger.getInstance(LeakCanaryModel::class.java)
-  private val heapDumper = LeakCanaryHeapDumper(profilers).apply {
-    onHostAnalysisFinished = { analysis ->
-      handleLeakAnalysis(analysis)
+  private var sessionData = profilers.session
+  private val heapDumper: LeakCanaryHeapDumper
+
+  init {
+    this.heapDumper = heapDumper ?: LeakCanaryHeapDumper(profilers).apply {
+      onHostAnalysisFinished = { analysis ->
+        handleLeakAnalysis(analysis)
+      }
+      onAnalysisProgress = { progress ->
+        setAnalysisProgress(progress)
+      }
     }
   }
+
   val requiredRetainedObjectCount = 5
   private val _leaks = MutableStateFlow(listOf<Leak>())
   val leaks = _leaks.asStateFlow()
@@ -73,18 +82,21 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers) : ModelSt
   val analysisProgress = _analysisProgress.asStateFlow()
   private val _isLeakCanaryPresent = MutableStateFlow(true)
   val isLeakCanaryPresent = _isLeakCanaryPresent.asStateFlow()
+  val isLeakCanaryMilestone2Enabled
+    get() = profilers.ideServices.featureConfig.isLeakCanaryMilestone2Enabled
 
-  override fun enter() {
+  override fun onEnter() {
+    sessionData = profilers.session
     // If we are entering this stage for a past recording (i.e., the session is not live),
     // we need to tell the TransportService to use task specific database to query.
     // For a new, live recording, this is handled by TransportService when the session starts.
     if (!profilers.sessionsManager.isSessionAlive) {
-      profilers.sessionsManager.setTaskDb(profilers.session)
+      profilers.sessionsManager.setTaskDb(sessionData)
     }
   }
 
-  override fun exit() {
-    profilers.sessionsManager.unsetTaskDb(profilers.session)
+  override fun onExit() {
+    profilers.sessionsManager.unsetTaskDb(sessionData)
   }
 
   fun startListening() {
@@ -104,7 +116,13 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers) : ModelSt
     profilers.updater.unregister(this)
 
     // Track the successful completion of the user-initiated leakCanary recording task.
-    trackTaskFinished(profilers, true, TaskFinishedState.COMPLETED)
+    myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
+  }
+
+  fun forceHeapDump() {
+    profilers.ideServices.poolExecutor.execute {
+      heapDumper.triggerAndAnalyze()
+    }
   }
 
   fun setIsRecording(isRecording: Boolean) {
@@ -218,6 +236,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers) : ModelSt
     val retainedObjectsRegex = """Found (\d+) objects retained""".toRegex()
     return retainedObjectsRegex.find(analysis.message)?.let { matchResult ->
       matchResult.groupValues.getOrNull(1)?.toIntOrNull()?.let { count ->
+        logger.info("LeakCanary: $count objects retained.")
         setObjectRetainedCount(count)
       }
       true
@@ -229,6 +248,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers) : ModelSt
     val analysisProgressRegex = """Analysis in progress, (\d+)% done""".toRegex()
     return analysisProgressRegex.find(analysis.message)?.let { matchResult ->
       matchResult.groupValues.getOrNull(1)?.toIntOrNull()?.let { progress ->
+        logger.info("LeakCanary: Analysis is $progress% done.")
         setAnalysisProgress(progress)
       }
       true
@@ -299,7 +319,7 @@ class LeakCanaryModel(@NotNull private val profilers: StudioProfilers) : ModelSt
     }
 
     // Track the successful completion of loading a past Leak Canary session.
-    trackTaskFinished(profilers, false, TaskFinishedState.COMPLETED)
+    myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
   }
 
   private fun getAllLeakCanaryEvents(session: Common.Session,

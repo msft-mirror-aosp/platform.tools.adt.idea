@@ -61,12 +61,6 @@ interface BuildGraphData {
   fun packages(): PackageSet
 
   /**
-   * Returns a [Label] representing the given path in the workspace with the current build packages. The file does not need to exist.
-   */
-  @VisibleForTesting
-  fun pathToLabel(file: Path): Label?
-
-  /**
    * If the given path represents a currently known source file returns a [Label] representing the given path in the workspace with
    * the current build packages.
    */
@@ -107,13 +101,6 @@ interface BuildGraphData {
 
   fun getSourceFileOwners(label: Label): Set<Label>
 
-  @Deprecated(
-    """Choosing a target based on the number of deps it has is not a good strategy, as we
-        could end up selecting one that doesn't build in the current config. Allow the user to
-        choose, or require the projects source -> target mapping to be unambiguous instead."""
-  )
-  fun selectLabelWithLeastDeps(candidates: Collection<Label>): Label?
-
   /** Returns a list of all the java source files of the project, relative to the workspace root.  */
   fun getJavaSourceFiles(): List<Path>
 
@@ -123,12 +110,6 @@ interface BuildGraphData {
   fun getSourceFilesByRuleKindAndType(
     ruleKindPredicate: (String) -> Boolean, vararg sourceTypes: ProjectTarget.SourceType
   ): Map<Label, List<Path>>
-
-  /**
-   * Returns a list of regular (java/kt) source files owned by an Android target, relative to the
-   * workspace root.
-   */
-  fun getAndroidSourceFiles(): List<Path>
 
   fun getAndroidResourceFiles(): List<Path>
 
@@ -145,12 +126,6 @@ interface BuildGraphData {
    * the set of all targets defined in all build packages within the directory (recursively).
    */
   fun getProjectTargets(workspaceRelativePath: Path): TargetsToBuild
-
-  /**
-   * Returns the set of [target languages][ProjectTarget.languages] for a set of project
-   * targets.
-   */
-  fun getTargetLanguages(targets: Set<Label>): Set<QuerySyncLanguage>
 
   /**
    * Calculates the [RequestedTargets] for a project target.

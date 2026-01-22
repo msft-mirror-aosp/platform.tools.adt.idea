@@ -28,6 +28,7 @@ import com.intellij.ide.GeneralSettings
 import com.intellij.ide.IdeBundle
 import com.intellij.ide.impl.ProjectNewWindowDoNotAskOption
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.ex.ProjectManagerEx
@@ -36,6 +37,8 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.projectImport.ProjectOpenProcessor
 import com.intellij.ui.IdeUICustomization
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.android.util.AndroidBundle
 
 /**
@@ -55,7 +58,7 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
     return GradleProjects.canImportAsGradleProject(file)
   }
 
-  override fun doOpenProject(virtualFile: VirtualFile, projectToClose: Project?, forceOpenInNewFrame: Boolean): Project? {
+  override suspend fun openProjectAsync(virtualFile: VirtualFile, projectToClose: Project?, forceOpenInNewFrame: Boolean): Project? {
     val importTarget = findGradleTarget(virtualFile) ?: return null
     val adjustedOpenTarget =
         if (importTarget.isDirectory) importTarget
@@ -83,15 +86,19 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
     )
   }
 
-  private fun promptToCloseIfNecessary(project: Project?): Boolean {
+  private suspend fun promptToCloseIfNecessary(project: Project?): Boolean {
     var success = true
     val openProjects = ProjectManager.getInstance().openProjects
     if (openProjects.isNotEmpty()) {
-      val exitCode = confirmOpenNewProject()
+      val exitCode = withContext(Dispatchers.EDT) {
+        confirmOpenNewProject()
+      }
       if (exitCode == GeneralSettings.OPEN_PROJECT_SAME_WINDOW) {
         val toClose = if (project != null && !project.isDefault) project else openProjects[openProjects.size - 1]
-        if (!ProjectManager.getInstance().closeAndDispose(toClose)) {
-          success = false
+        withContext(Dispatchers.EDT) {
+          if (!ProjectManager.getInstance().closeAndDispose(toClose)) {
+            success = false
+          }
         }
       }
       else if (exitCode != GeneralSettings.OPEN_PROJECT_NEW_WINDOW) {

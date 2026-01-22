@@ -482,9 +482,11 @@ class RenderExecutorTest {
       }
     }
     var cancellationCount = executor.cancelActionsByTopic(listOf(lowPriorityTopic), false)
+    var secondCancellationCount = executor.cancelActionsByTopic(listOf(lowPriorityTopic), false)
     var numActions = actionExecutor.runAll()
     assertEquals(20, numActions)
     assertEquals(10, cancellationCount)
+    assertEquals(0, secondCancellationCount)
     assertEquals(10, counterHighPriority.get())
     assertEquals(0, counterLowPriority.get())
 

@@ -87,11 +87,6 @@ interface BuildSystem {
       RETURN_PROCESS_HANDLER,
 
       /**
-       * Capability to run parallel builds
-       */
-      BUILD_PARALLEL_SHARDS,
-
-      /**
        * Capability to run blaze/bazel query command with --query_file flag
        */
       SUPPORT_QUERY_FILE,
@@ -172,7 +167,8 @@ interface BuildSystem {
     fun getInvokeCommandForBinaryPath(userSpecifiedBinaryPath: String): List<String> {
       if (canOverrideBinaryPath) {
         return listOf(userSpecifiedBinaryPath)
-      } else {
+      }
+      else {
         throw UnsupportedOperationException("This BuildInvoker does not support user-specified binary paths.")
       }
     }
@@ -216,24 +212,8 @@ interface BuildSystem {
    * otherwise returns the standard invoker.
    */
   fun getBuildInvoker(project: Project): BuildInvoker {
-    if (Blaze.getProjectType(project) != BlazeImportSettings.ProjectType.QUERY_SYNC
-        && getSyncStrategy(project) == SyncStrategy.PARALLEL
-    ) {
-      return getBuildInvoker(
-        project,
-        requirements = setOf(Capability.BUILD_PARALLEL_SHARDS)
-      ).orElseThrow()
-    }
-    return getBuildInvoker(
-      project,
-      requirements = emptySet()
-    ).orElseThrow()
+    return getBuildInvoker(project, requirements = emptySet()).orElseThrow()
   }
-
-  /**
-   * Return the strategy for remote syncs to be used with this build system.
-   */
-  fun getSyncStrategy(project: Project): SyncStrategy
 
   /**
    * Populates the passed builder with version data.
@@ -253,8 +233,6 @@ interface BuildSystem {
    * Returns invocation link for the given invocation ID.
    */
   fun getInvocationLink(invocationId: String): Optional<String>
-
-  fun createQueryRunner(project: Project): BazelQueryRunner
 }
 
 @VisibleForTesting
@@ -276,7 +254,7 @@ class TestBuildInvoker @TestOnly constructor(
     blazeContext: BlazeContext,
     consumer: BuildSystem.BuildEventStreamConsumer<T>,
   ): T {
-    invocations.add(RecordedInvocation("invoke", blazeCommandBuilder.build().toList()))
+    invocations.add(RecordedInvocation("invoke", blazeCommandBuilder.build().toArgumentList()))
     return consumer.consume(bepStreamProvider(blazeCommandBuilder, blazeContext))
   }
 
@@ -285,7 +263,7 @@ class TestBuildInvoker @TestOnly constructor(
     blazeContext: BlazeContext,
     consumer: BuildSystem.BuildEventStreamConsumer<Unit>,
   ): ProcessHandler {
-    invocations.add(RecordedInvocation("invokeAsProcessHandler", blazeCommandBuilder.build().toList()))
+    invocations.add(RecordedInvocation("invokeAsProcessHandler", blazeCommandBuilder.build().toArgumentList()))
     // Output to the process handler and its closure should go first here.
     consumer.consume(bepStreamProvider(blazeCommandBuilder, blazeContext))
     error("not implemented")
@@ -295,7 +273,7 @@ class TestBuildInvoker @TestOnly constructor(
     blazeCommandBuilder: BlazeCommand.Builder,
     blazeContext: BlazeContext,
   ): InputStream {
-    invocations.add(RecordedInvocation("invokeQuery", blazeCommandBuilder.build().toList()))
+    invocations.add(RecordedInvocation("invokeQuery", blazeCommandBuilder.build().toArgumentList()))
     error("not implemented")
   }
 
@@ -303,7 +281,7 @@ class TestBuildInvoker @TestOnly constructor(
     blazeCommandBuilder: BlazeCommand.Builder,
     blazeContext: BlazeContext,
   ): InputStream {
-    invocations.add(RecordedInvocation("invokeInfo", blazeCommandBuilder.build().toList()))
+    invocations.add(RecordedInvocation("invokeInfo", blazeCommandBuilder.build().toArgumentList()))
     error("not implemented")
   }
 

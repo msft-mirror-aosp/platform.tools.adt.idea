@@ -42,6 +42,7 @@ import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveA
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.FULL
 import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.MemoryDataProvider
+import com.android.tools.profilers.sessions.SessionAspect
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.diagnostic.Logger
@@ -150,18 +151,25 @@ abstract class BaseStreamingMemoryProfilerStage(profilers: StudioProfilers,
     allocationSamplingRateUpdatable.update(0)
   }
 
-  override fun enter() {
+  override fun onEnter() {
     loader.start()
     eventMonitor.enter()
     updatables.forEach(studioProfilers.updater::register)
     studioProfilers.ideServices.featureTracker.trackEnterStage(stageType)
+    studioProfilers.sessionsManager.addDependency(this)
+      .onChange(SessionAspect.SESSIONS) {
+        if (studioProfilers.stage == this) {
+          queryAndSelectCaptureObject(studioProfilers.ideServices.mainExecutor)
+        }
+      }
   }
 
-  override fun exit() {
+  override fun onExit() {
     eventMonitor.exit()
     updatables.forEach(studioProfilers.updater::unregister)
     loader.stop()
     rangeSelectionModel.clearListeners()
+    studioProfilers.sessionsManager.removeDependencies(this)
   }
 
   /**

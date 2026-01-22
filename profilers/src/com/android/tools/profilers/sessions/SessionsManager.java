@@ -46,7 +46,6 @@ import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.android.tools.profilers.tasks.TaskTypeMappingUtils;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
@@ -163,7 +162,13 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     mySessionViewRangeMap = new HashMap<>();
 
     myArtifactsFetchers = new ArrayList<>();
-    myArtifactsFetchers.add(HprofSessionArtifact::getSessionArtifacts);
+    // LeakCanary tasks generate their own artifacts, so we skip the standard Hprof artifact to avoid duplicates.
+    myArtifactsFetchers.add((studioProfilers, session, sessionMetaData) -> {
+      if (sessionMetaData.getTaskType() == Common.ProfilerTaskType.LEAKCANARY) {
+        return Collections.emptyList();
+      }
+      return HprofSessionArtifact.getSessionArtifacts(studioProfilers, session, sessionMetaData);
+    });
     myArtifactsFetchers.add(CpuCaptureSessionArtifact::getSessionArtifacts);
     myArtifactsFetchers.add(HeapProfdSessionArtifact::getSessionArtifacts);
     myArtifactsFetchers.add(AllocationSessionArtifact::getSessionArtifacts);
@@ -470,7 +475,11 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   }
 
   private void setSessionInternal(@NotNull Common.Session session) {
-    if (session.equals(mySelectedSession)) {
+    // When System Trace In Editor is enabled, although a system trace session is selected, its editor tab may be hidden because the user
+    // has shifted to another tab or closed it, so we need to reselect it to bring it to focus even if it's already selected.
+    SessionItem sessionItem = mySessionItems.get(session.getSessionId());
+    if (session.equals(mySelectedSession) &&
+        !(myProfilers.getIdeServices().getFeatureConfig().isSystemTraceInEditorEnabled() && sessionItem != null && sessionItem.getTaskType() == ProfilerTaskType.SYSTEM_TRACE)) {
       return;
     }
 

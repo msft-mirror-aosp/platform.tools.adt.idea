@@ -61,19 +61,21 @@ class ProjectProto {
     val name: String,
     val isAndroidModule: Boolean,
     val contentEntries: Map<ProjectPath, ContentEntry>,
-    val androidResourceDirectories: List<ProjectPath.SourceCodeRepositoryRelativeProjectPath>,
+    val androidResourceDirectories: List<ProjectPath>,
     val androidSourcePackages: List<String>,
     val androidCustomPackages: List<String>,
     val androidExternalLibraries: List<ExternalAndroidLibrary>,
+    val kotlinCompilerFlags: List<String>,
   ): ProjectProtoModel {
     class Builder(
       var name: String,
       var isAndroidModule: Boolean = false,
       val contentEntries: MutableMap<ProjectPath, ContentEntry> = mutableMapOf(),
-      val androidResourceDirectories: MutableList<ProjectPath.SourceCodeRepositoryRelativeProjectPath> = mutableListOf(),
+      val androidResourceDirectories: MutableList<ProjectPath> = mutableListOf(),
       val androidSourcePackages: MutableList<String> = mutableListOf(),
       val androidCustomPackages: MutableList<String> = mutableListOf(),
       val androidExternalLibraries: MutableList<ExternalAndroidLibrary> = mutableListOf(),
+      val kotlinCompilerFlags: MutableList<String> = mutableListOf(),
     ) {
       fun build(): Module = Module(
         name = name,
@@ -83,6 +85,7 @@ class ProjectProto {
         androidSourcePackages = androidSourcePackages.toList(),
         androidCustomPackages = androidCustomPackages.toList(),
         androidExternalLibraries = androidExternalLibraries.toList(),
+        kotlinCompilerFlags = kotlinCompilerFlags.toList(),
       )
     }
 
@@ -94,6 +97,7 @@ class ProjectProto {
       androidSourcePackages = androidSourcePackages.toMutableList(),
       androidCustomPackages = androidCustomPackages.toMutableList(),
       androidExternalLibraries = androidExternalLibraries.toMutableList(),
+      kotlinCompilerFlags = kotlinCompilerFlags.toMutableList(),
     )
   }
 

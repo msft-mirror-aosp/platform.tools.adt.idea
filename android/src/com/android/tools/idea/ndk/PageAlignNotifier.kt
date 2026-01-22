@@ -16,8 +16,8 @@
 package com.android.tools.idea.ndk
 
 import com.android.SdkConstants
-import com.android.ide.common.pagealign.AlignmentProblems.ElfLoadSectionsNot16kAligned
-import com.android.ide.common.pagealign.AlignmentProblems.ElfNot16kAlignedInZip
+import com.android.ide.common.pagealign.AlignmentProblem.LoadSectionNotAligned
+import com.android.ide.common.pagealign.AlignmentProblem.ZipEntryNotAligned
 import com.android.ide.common.pagealign.findElfFile16kAlignmentInfo
 import com.android.tools.idea.ndk.PageAlignConfig.createSoNotAlignedInZipMessage
 import com.android.tools.idea.ndk.PageAlignConfig.createSoUnalignedLoadSegmentsMessage
@@ -57,10 +57,10 @@ abstract class PageAlignNotifier(
         event.buildCharacteristics = buildCharacteristics
       }
       logUsage(AndroidStudioEvent.newBuilder()
-                         .setKind(AndroidStudioEvent.EventKind.ALIGN16KB_EVENT)
-                         .setProjectId(AnonymizerUtil.anonymizeUtf8(apkInfo.applicationId))
-                         .setRawProjectId(apkInfo.applicationId)
-                         .setAlign16KbEvent(event))
+                 .setKind(AndroidStudioEvent.EventKind.ALIGN16KB_EVENT)
+                 .setProjectId(AnonymizerUtil.anonymizeUtf8(apkInfo.applicationId))
+                 .setRawProjectId(apkInfo.applicationId)
+                 .setAlign16KbEvent(event))
     }
     // Determine whether this is an ARM64 device or emulator.
     val deviceIsArm64 = productCpuAbiList.contains(SdkConstants.ABI_ARM64_V8A)
@@ -93,16 +93,19 @@ abstract class PageAlignNotifier(
 
       // Show a warning balloon for the SO files that aren't aligned at a 16 KB boundary within the APK
       val apkLink = "<a href='$apkFile'>${apkFile.name}</a>"
-      problems.filter { it.value.contains(ElfNot16kAlignedInZip) }.map { it.key }.let { files ->
-        if (files.isNotEmpty()) {
-          logEvent(ALIGN_NATIVE_BUBBLE_ZIP_OFFSET_DEPLOYED)
-          val message = createSoNotAlignedInZipMessage(apkLink, files)
-          showBalloon(message)
+      problems.filter { entry -> entry.value.any { it is ZipEntryNotAligned } }
+        .map { it.key }.let { files ->
+          if (files.isNotEmpty()) {
+            logEvent(ALIGN_NATIVE_BUBBLE_ZIP_OFFSET_DEPLOYED)
+            val message = createSoNotAlignedInZipMessage(apkLink, files)
+            showBalloon(message)
+          }
         }
-      }
 
       // Show a warning balloon for SO files that have LOAD sections not aligned on 16 KB boundary
-      problems.filter { it.value.contains(ElfLoadSectionsNot16kAligned) }.map { it.key }.let { files ->
+      problems.filter { entry ->
+        entry.value.any { it is LoadSectionNotAligned }
+      }.map { it.key }.let { files ->
         if (files.isNotEmpty()) {
           logEvent(ALIGN_NATIVE_BUBBLE_LOAD_SECTIONS_DEPLOYED)
           val message = createSoUnalignedLoadSegmentsMessage(apkLink, files)

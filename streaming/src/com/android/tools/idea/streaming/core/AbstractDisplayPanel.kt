@@ -22,7 +22,6 @@ import com.android.tools.adtui.actions.ZoomInAction
 import com.android.tools.adtui.actions.ZoomOutAction
 import com.android.tools.adtui.actions.ZoomToFitAction
 import com.android.tools.adtui.common.primaryPanelBackground
-import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ZoomLevelIndicator
@@ -72,7 +71,6 @@ abstract class AbstractDisplayPanel<T : AbstractDisplayView>(
 ) : BorderLayoutPanel(), UiDataProvider, Disposable {
 
   private val scrollPane: JScrollPane
-  private val centerPanel: NotificationHolderPanel
   private val floatingToolbarLayerPane: JComponent
   private var zoomToolbar: JComponent? = null
   private var xrNavigationToolbar: JComponent? = null
@@ -144,21 +142,13 @@ abstract class AbstractDisplayPanel<T : AbstractDisplayView>(
 
     loadingPanel = StreamingLoadingPanel(this)
     loadingPanel.add(layeredPane, BorderLayout.CENTER)
-
-    centerPanel = NotificationHolderPanel(loadingPanel)
-    addToCenter(centerPanel)
+    addToCenter(loadingPanel)
   }
 
   protected fun createFloatingToolbar() {
     floatingToolbarLayerPane.removeAll()
     when (deviceType) {
       DeviceType.XR_HEADSET -> createXrNavigationToolbar()
-      DeviceType.AI_GLASSES -> {
-        if (StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.get()) {
-          createZoomToolbar()
-        }
-        createXrNavigationToolbar()
-      }
       else -> createZoomToolbar()
     }
   }
@@ -196,7 +186,8 @@ abstract class AbstractDisplayPanel<T : AbstractDisplayView>(
 
   private fun createXrNavigationToolbar() {
     if (StudioFlags.RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS.get()) {
-      val toolbar = FloatingToolbarContainer(horizontal = true, inactiveAlpha = 0.8, collapsedStateSelector = { it.isSelected }).apply {
+      val toolbar = FloatingToolbarContainer(horizontal = true, inactiveAlpha = 0.8, collapsedStateSelector = { it.isSelected },
+                                             initiallyActive = true).apply {
         val group = DefaultActionGroup()
         val actionManager = ActionManager.getInstance()
         val inputModeGroup = actionManager.getAction("android.streaming.xr.input.mode.group") as? ActionGroup

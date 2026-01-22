@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.importing
 
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.Projects
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
@@ -25,11 +26,11 @@ import com.intellij.openapi.externalSystem.model.project.ProjectData
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModuleWithNameAlreadyExists
-import com.intellij.openapi.module.StdModuleTypes
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.util.PathUtil
+import com.intellij.workspaceModel.ide.legacyBridge.impl.java.JAVA_MODULE_ENTITY_TYPE_ID_NAME
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
@@ -82,7 +83,7 @@ class TopLevelModuleFactory() {
     val module = projectModifieableModel
       .modules
       .singleOrNull { ModuleRootManager.getInstance(it).contentEntries.singleOrNull()?.url == gradleRootUrl }
-      ?: projectModifieableModel.newModule(moduleFile.path, StdModuleTypes.JAVA.id)
+      ?: projectModifieableModel.newModule(moduleFile.path, JAVA_MODULE_ENTITY_TYPE_ID_NAME)
     try {
       // A top level module name is usually the same as the name of the project it is contained in. If the caller of this method sets
       // up the project name correctly, we can prevent the root mdule from being disposed by sync if we configure its name correctly.
@@ -98,23 +99,25 @@ class TopLevelModuleFactory() {
     }
     projectModifieableModel.commit()
     val projectRootDirPath = PathUtil.toSystemIndependentName(gradleRoot.path)
-    ExternalSystemModulePropertyManager.getInstance(module)
-      .setExternalOptions(
-        GradleProjectSystemUtil.GRADLE_SYSTEM_ID,
-        ModuleData(
-          ":",
+    if (!StudioFlags.PHASED_SYNC_ENABLED.get()) {
+      ExternalSystemModulePropertyManager.getInstance(module)
+        .setExternalOptions(
           GradleProjectSystemUtil.GRADLE_SYSTEM_ID,
-          StdModuleTypes.JAVA.id, gradleRoot.name,
-          projectRootDirPath!!,
-          projectRootDirPath
-        ),
-        ProjectData(
-          /* owner = */ GradleProjectSystemUtil.GRADLE_SYSTEM_ID,
-          /* externalName = */ project.name,
-          /* ideProjectFileDirectoryPath = */ gradleRootPath,
-          /* linkedExternalProjectPath = */ ExternalSystemApiUtil.toCanonicalPath(gradleRoot.canonicalPath)
+          ModuleData(
+            ":",
+            GradleProjectSystemUtil.GRADLE_SYSTEM_ID,
+            JAVA_MODULE_ENTITY_TYPE_ID_NAME, gradleRoot.name,
+            projectRootDirPath!!,
+            projectRootDirPath
+          ),
+          ProjectData(
+            /* owner = */ GradleProjectSystemUtil.GRADLE_SYSTEM_ID,
+            /* externalName = */ project.name,
+            /* ideProjectFileDirectoryPath = */ gradleRootPath,
+            /* linkedExternalProjectPath = */ ExternalSystemApiUtil.toCanonicalPath(gradleRoot.canonicalPath)
+          )
         )
-      )
+    }
     val model = ModuleRootManager.getInstance(module).modifiableModel
 
     if (model.contentEntries.singleOrNull() == null) {

@@ -100,6 +100,7 @@ public final class StudioIcons {
     /** 16x16 */ public static final @NotNull Icon CROP = load("studio/icons/common/crop.svg", 1868859328, 2);
     /** 16x16 */ public static final @NotNull Icon DELETE = load("studio/icons/common/delete.svg", -2052248004, 2);
     /** 16x16 */ public static final @NotNull Icon DISLIKE = load("studio/icons/common/dislike.svg", -1062610438, 2);
+    /** 16x16 */ public static final @NotNull Icon DOWN_RIGHT_ARROW = load("studio/icons/common/down-right-arrow.svg", 605649798, 2);
     /** 16x16 */ public static final @NotNull Icon EDIT = load("studio/icons/common/edit.svg", -1523029447, 2);
     /** 16x16 */ public static final @NotNull Icon ERROR_DECORATOR = load("studio/icons/common/error-decorator.svg", 679206806, 2);
     /** 16x16 */ public static final @NotNull Icon ERROR_INLINE = load("studio/icons/common/error-inline.svg", 462246295, 2);
@@ -274,6 +275,7 @@ public final class StudioIcons {
       /** 16x16 */ public static final @NotNull Icon POSTURE_OPEN = load("studio/icons/emulator/menu/posture-open.svg", -1102094041, 2);
       /** 16x16 */ public static final @NotNull Icon POSTURE_REAR_DISPLAY = load("studio/icons/emulator/menu/posture-rear-display.svg", -1179940746, 2);
       /** 16x16 */ public static final @NotNull Icon POSTURE_TENT = load("studio/icons/emulator/menu/posture-tent.svg", -854201469, 2);
+      /** 16x16 */ public static final @NotNull Icon VIRTUAL_SENSORS = load("studio/icons/emulator/menu/virtual_sensors.svg", 819501391, 2);
     }
 
     public static final class Snapshots {

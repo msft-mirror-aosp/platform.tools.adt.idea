@@ -133,6 +133,7 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
     const val ID = "Android Profiler"
     private const val PROFILER_TOOL_WINDOW_TITLE = "Profiler"
     @VisibleForTesting
+    @JvmField
     val PROJECT_PROFILER_MAP: MutableMap<Project, AndroidProfilerToolWindow> = HashMap()
 
     private fun createContent(project: Project, toolWindow: ToolWindow) {

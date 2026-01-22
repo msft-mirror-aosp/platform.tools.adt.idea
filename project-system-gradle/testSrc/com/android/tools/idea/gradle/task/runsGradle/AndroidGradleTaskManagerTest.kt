@@ -23,6 +23,7 @@ import com.android.tools.idea.testing.hookExecuteTasks
 import com.google.common.truth.Expect
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.runWriteActionAndWait
+import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.LocationAwareExternalSystemException
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
@@ -31,6 +32,7 @@ import com.intellij.openapi.externalSystem.service.ExternalSystemFacadeManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.writeText
+import kotlinx.coroutines.runBlocking
 import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
 import org.jetbrains.plugins.gradle.service.task.PredefinedVersionSpecificInitScript
@@ -49,7 +51,7 @@ class AndroidGradleTaskManagerTest {
   val projectRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   @Test
-  fun `app assembleDebug from root and app`() {
+  fun `app assembleDebug from root and app`() = runBlocking {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedProject.open { project ->
       val path = preparedProject.root
@@ -91,10 +93,9 @@ class AndroidGradleTaskManagerTest {
   }
 
   @Test
-  fun `Given invalid java home settings When executing any task Then no exception was thrown since invalid path is not specified to TAPI`() {
+  fun `Given invalid java home settings When executing any task Then no exception was thrown since invalid path is not specified to TAPI`() = runBlocking {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedProject.open {
-      var capturedException: Exception? = null
       val executionSettings = ExternalSystemApiUtil.getExecutionSettings<GradleExecutionSettings>(
         project, project.basePath!!, GradleConstants.SYSTEM_ID
       ).apply {
@@ -102,23 +103,22 @@ class AndroidGradleTaskManagerTest {
         javaHome = "invalid"
       }
 
-      AndroidGradleTaskManager().executeTasks(
-        project.basePath!!,
-        ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
-        executionSettings,
-        object : ExternalSystemTaskNotificationListener {
-          override fun onFailure(projectPath: String, id: ExternalSystemTaskId, exception: java.lang.Exception) {
-            capturedException = exception
-          }
-        }
-      )
+      val exception = assertThrows(ExternalSystemException::class.java) {
+        AndroidGradleTaskManager().executeTasks(
+          project.basePath!!,
+          ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
+          executionSettings,
+          ExternalSystemTaskNotificationListener.NULL_OBJECT
+        )
+      }
 
-      assertNull(capturedException)
+      assertThat(exception.cause).isInstanceOf(IllegalArgumentException::class.java)
+      assertThat(exception.message).contains("Supplied javaHome is not a valid folder")
     }
   }
 
   @Test
-  fun `supports version-specific scripts`() {
+  fun `supports version-specific scripts`() = runBlocking {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedProject.open { project ->
       var capturedException: Exception? = null
@@ -156,7 +156,7 @@ class AndroidGradleTaskManagerTest {
   }
 
   @Test
-  fun `throws exception if gradle task execution fails`() {
+  fun `throws exception if gradle task execution fails`() = runBlocking {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
     preparedProject.open { project ->
       runWriteActionAndWait {

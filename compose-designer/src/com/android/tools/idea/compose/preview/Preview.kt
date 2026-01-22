@@ -123,6 +123,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.event.CaretEvent
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.progress.ProgressIndicator
@@ -719,10 +720,9 @@ class ComposePreviewRepresentation(
       )
       .apply { mainSurface.background = Colors.DEFAULT_BACKGROUND_COLOR }
       .also {
-        it.mainSurface.analyticsManager.setEditorFileTypeWithoutTracking(
-          psiFilePointer.virtualFile,
-          project,
-        )
+        psiFilePointer.virtualFile?.let { vFile ->
+          it.mainSurface.analyticsManager.setEditorFileTypeWithoutTracking(vFile, project)
+        }
       }
 
   val staticNavHandler =
@@ -994,8 +994,19 @@ class ComposePreviewRepresentation(
       (!hasRenderedAtLeastOnce.get() ||
         surface.sceneManagers.any { it.renderResult.isErrorResult(COMPOSE_VIEW_ADAPTER_FQN) })
 
-  private fun hasSyntaxErrors(): Boolean =
-    WolfTheProblemSolver.getInstance(project).isProblemFile(psiFilePointer.virtualFile)
+  private fun hasSyntaxErrors(): Boolean {
+    val vFile = psiFilePointer.virtualFile
+
+    if (vFile == null) {
+      thisLogger()
+        .warn(
+          "virtualFile is null for $psiFilePointer element=${psiFilePointer.element} file=${psiFilePointer.containingFile}"
+        )
+      return false
+    }
+
+    return WolfTheProblemSolver.getInstance(project).isProblemFile(vFile)
+  }
 
   override fun status(): ComposePreviewManager.Status {
     val projectBuildStatus = renderingBuildStatusManager.status
@@ -1278,8 +1289,9 @@ class ComposePreviewRepresentation(
     if (isDisposed.get()) return CompletableDeferred<Unit>().also { it.completeAlreadyDisposed() }
 
     val requestLogger = LoggerWithFixedInfo(log, mapOf("requestId" to refreshRequest.requestId))
+    val containingFileName = runReadAction { psiFilePointer.containingFile?.name }
     requestLogger.debug(
-      "Refresh triggered editor=${psiFilePointer.containingFile?.name}. Refresh type: ${refreshRequest.refreshType}"
+      "Refresh triggered editor=$containingFileName. Refresh type: ${refreshRequest.refreshType}"
     )
     val refreshTriggers: List<Throwable> = refreshRequest.requestSources
 
@@ -1292,9 +1304,7 @@ class ComposePreviewRepresentation(
         !(refreshRequest.refreshType == ComposePreviewRefreshType.QUALITY &&
           allowQualityChangeIfInactive.getAndSet(false))
     ) {
-      requestLogger.debug(
-        "Inactive representation (${psiFilePointer.containingFile?.name}), no work being done"
-      )
+      requestLogger.debug("Inactive representation ($containingFileName), no work being done")
       return CompletableDeferred(Unit)
     }
 
@@ -1317,10 +1327,7 @@ class ComposePreviewRepresentation(
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(
         project,
-        message(
-          "refresh.progress.indicator.title",
-          psiFilePointer.containingFile?.let { " (${it.name})" } ?: "",
-        ),
+        message("refresh.progress.indicator.title", containingFileName?.let { " ($it)" } ?: ""),
         "",
         "",
         true,

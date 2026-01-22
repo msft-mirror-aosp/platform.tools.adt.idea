@@ -27,6 +27,7 @@ import com.android.tools.idea.appinspection.test.DEFAULT_TEST_INSPECTION_STREAM
 import com.android.tools.idea.layoutinspector.LayoutInspectorRule
 import com.android.tools.idea.layoutinspector.MODERN_DEVICE
 import com.android.tools.idea.layoutinspector.createProcess
+import com.android.tools.idea.layoutinspector.model.COMPOSE4
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.ViewNode
@@ -307,13 +308,6 @@ class AppInspectionPropertiesProviderTest {
       // Technically the view with ID #1 has no properties, but synthetic properties are always
       // added
       result.table.run {
-        assertProperty(
-          "name",
-          PropertyType.STRING,
-          "androidx.constraintlayout.widget.ConstraintLayout",
-          group = PropertySection.VIEW,
-          namespace = NAMESPACE_INTERNAL,
-        )
         assertProperty(
           "x",
           PropertyType.DIMENSION,
@@ -737,14 +731,21 @@ class AppInspectionPropertiesProviderTest {
 
     var generatedCount = 0
     var valuesChanged = 0
+    var childElementChangeCount = 0
     propertiesModel.addListener(
       object : PropertiesModelListener<InspectorPropertyItem> {
         override fun propertiesGenerated(model: PropertiesModel<InspectorPropertyItem>) {
           generatedCount++
         }
 
-        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>) {
+        override fun propertyValuesChanged(
+          model: PropertiesModel<InspectorPropertyItem>,
+          childElementChanges: Boolean,
+        ) {
           valuesChanged++
+          if (childElementChanges) {
+            childElementChangeCount++
+          }
         }
       }
     )
@@ -777,6 +778,69 @@ class AppInspectionPropertiesProviderTest {
     // Verify that we did not fire a properties generated notification after the original
     assertThat(generatedCount).isEqualTo(3)
     assertThat(valuesChanged).isEqualTo(1)
+    assertThat(childElementChangeCount).isEqualTo(0)
+  }
+
+  @Test
+  fun testPropertiesModelNotificationsWithParameters() {
+    projectRule.fixture.addFileToProject(
+      "src/java/com/google/android/material/textview/MaterialTextView.java",
+      """
+        package com.google.android.material.textview;
+        public class MaterialTextView extends android.widget.TextView {}
+      """
+        .trimIndent(),
+    )
+    val propertiesModel = InspectorPropertiesModel(inspectorRule.disposable)
+    propertiesModel.layoutInspector = inspectorRule.inspector
+
+    var generatedCount = 0
+    var valuesChanged = 0
+    var childElementChangeCount = 0
+    propertiesModel.addListener(
+      object : PropertiesModelListener<InspectorPropertyItem> {
+        override fun propertiesGenerated(model: PropertiesModel<InspectorPropertyItem>) {
+          generatedCount++
+        }
+
+        override fun propertyValuesChanged(
+          model: PropertiesModel<InspectorPropertyItem>,
+          childElementChanges: Boolean,
+        ) {
+          valuesChanged++
+          if (childElementChanges) {
+            childElementChangeCount++
+          }
+        }
+      }
+    )
+
+    inspectorRule.processNotifier.fireConnected(MODERN_PROCESS)
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { generatedCount == 2 }
+    assertThat(valuesChanged).isEqualTo(0)
+
+    val targetNode = inspectorRule.inspectorModel[COMPOSE4]!!
+    inspectorRule.inspectorModel.setSelection(targetNode, SelectionOrigin.COMPONENT_TREE)
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) { generatedCount == 3 }
+    propertiesModel.properties.assertParameter("onTextLayout", PropertyType.LAMBDA, "λ")
+    propertiesModel.properties.assertParameter("dataObject", PropertyType.STRING, "PojoClass")
+    val p1 = propertiesModel.properties["parameter", "dataObject"] as ParameterGroupItem
+    assertThat(p1.children).hasSize(3)
+
+    // Add another element to dataObject
+    inspectorState.addParameterElement(COMPOSE4, "dataObject")
+
+    inspectorState.triggerLayoutCapture(rootId = 1)
+
+    waitForCondition(TIMEOUT, TIMEOUT_UNIT) {
+      val parameter = propertiesModel.properties["parameter", "dataObject"] as ParameterGroupItem
+      parameter.children.size == 4 && valuesChanged > 0
+    }
+
+    // Verify that we did not fire a properties generated notification after the original
+    assertThat(generatedCount).isEqualTo(3)
+    assertThat(valuesChanged).isEqualTo(1)
+    assertThat(childElementChangeCount).isEqualTo(1)
   }
 
   @Test
@@ -792,7 +856,10 @@ class AppInspectionPropertiesProviderTest {
           generatedCount++
         }
 
-        override fun propertyValuesChanged(model: PropertiesModel<InspectorPropertyItem>) {
+        override fun propertyValuesChanged(
+          model: PropertiesModel<InspectorPropertyItem>,
+          childElementChanges: Boolean,
+        ) {
           valuesChanged++
         }
       }

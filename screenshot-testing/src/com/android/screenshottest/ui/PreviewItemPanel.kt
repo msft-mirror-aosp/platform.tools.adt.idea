@@ -22,6 +22,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ImageLoader
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.AsyncProcessIcon
@@ -34,22 +35,26 @@ import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.ExecutorService
 import javax.swing.BorderFactory
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 
 // Limits the maximum dimension (width or height) of the preview thumbnail
 // to ensure it fits within the list item layout without distorting the UI.
-private const val MAX_IMAGE_SIZE = 200
+private val MAX_IMAGE_SIZE: Int get() = JBUIScale.scale(200)
 
 /**
  * A UI panel that displays a single screenshot test preview image.
  */
 class PreviewItemPanel(
   val previewData: PreviewDetails,
-  private val showDetails: Boolean = true,
-  private val logger: Logger = Logger.getInstance(PreviewItemPanel::class.java)
+  showDetails: Boolean = true,
+  private val logger: Logger = Logger.getInstance(PreviewItemPanel::class.java),
+  private val appExecutorService: ExecutorService = AppExecutorUtil.getAppExecutorService(),
+  private val createImageIcon: PreviewItemPanel.(String)->JBImageIcon? = PreviewItemPanel::createImageIconImpl,
 ) : JPanel() {
+  private var currentImagePath: String = ""
   private val imagePanel: ImagePanel
   var isLoadedSuccessfully: Boolean = false
     private set
@@ -91,10 +96,10 @@ class PreviewItemPanel(
     }
   }
 
-  private fun createMatchPercentageLabel(previewData: PreviewDetails): JBLabel {
+  private fun createMatchPercentageLabel(previewData: PreviewDetails): JPanel {
     val diffDouble = previewData.diffPercent?.toDoubleOrNull()
     val matchPercentage = ScreenshotTestUtils.calculateMatchPercentage(diffDouble)
-    val text = matchPercentage ?: DEFAULT_MATCH_PERCENTAGE
+    val percentageText = matchPercentage ?: DEFAULT_MATCH_PERCENTAGE
 
     val color = if (previewData.testResult == AndroidTestCaseResult.PASSED) {
       JBColor.GREEN.darker()
@@ -102,10 +107,16 @@ class PreviewItemPanel(
       JBColor.RED
     }
 
-    return JBLabel(text).apply {
-      foreground = color
-      font = font.deriveFont(Font.BOLD)
+    return JPanel().apply {
+      layout = BoxLayout(this, BoxLayout.X_AXIS)
+      isOpaque = false
       alignmentX = LEFT_ALIGNMENT
+
+      add(JBLabel("Match: "))
+      add(JBLabel(percentageText).apply {
+        foreground = color
+        font = font.deriveFont(Font.BOLD)
+      })
     }
   }
 
@@ -159,7 +170,12 @@ class PreviewItemPanel(
       previewData.srcImagePath?.let { _sourceImageToCopy[it] = simpleClassName }
     }
 
-    AppExecutorUtil.getAppExecutorService().submit {
+    if (currentImagePath == newPath) {
+      return
+    }
+    currentImagePath = newPath
+
+    appExecutorService.submit {
       val image = createImageIcon(newPath)
 
       ApplicationManager.getApplication().invokeLater {
@@ -179,7 +195,7 @@ class PreviewItemPanel(
     }
   }
 
-  private fun createImageIcon(path: String): JBImageIcon? {
+  private fun createImageIconImpl(path: String): JBImageIcon? {
     val ioFile = File(path)
     if (!ioFile.exists()) {
       logger.warn("Image file not found. Path: $path")
@@ -233,7 +249,7 @@ class PreviewItemPanel(
   private class ImagePanel : JPanel(GridBagLayout()) {
     private var image: JBImageIcon? = null
     private val loadingIcon = AsyncProcessIcon(WAITING_FOR_IMAGE_TEXT)
-    private val initialSize = Dimension(200, 200)
+    private val initialSize: Dimension get() = Dimension(MAX_IMAGE_SIZE, MAX_IMAGE_SIZE)
 
     init {
       // Set an initial fixed size for the loading state.

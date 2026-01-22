@@ -35,6 +35,8 @@
     <orderEntry type="module" module-name="intellij.android.core.editing.documentation" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-plugin-intellij.spellchecker" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-tanvd.grazi" level="project" />
+    <orderEntry type="library" scope="TEST" name="studio-plugin-com.jetbrains.sh" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.core" />
 </module>

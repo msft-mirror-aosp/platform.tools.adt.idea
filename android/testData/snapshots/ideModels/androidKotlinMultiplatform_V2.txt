@@ -930,7 +930,6 @@ MODULE                        : Kotlin_Multiplatform
                         - androidApiElements-published          : <ROOT>/kmpFirstLib/build/outputs/aar/kmpFirstLib.aar [-]
                         - androidRuntimeElements-published      : <ROOT>/kmpFirstLib/build/outputs/aar/kmpFirstLib.aar [-]
                         - androidSourcesElements-published      : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-android-sources.jar [-]
-                        - archives                    : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
                         - metadataApiElements         : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
                         - metadataSourcesElements     : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-kotlin-sources.jar [-]
                     - additionalArtifacts         : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
@@ -955,8 +954,6 @@ MODULE                        : Kotlin_Multiplatform
                     - taskArtifacts               : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-metadata.jar [-]
                     - taskArtifacts               : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
                     configurationArtifacts
-                        - archives                    : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
-                        - archives                    : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-metadata.jar [-]
                         - jvmApiElements              : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
                         - jvmApiElements-published    : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
                         - jvmRuntimeElements          : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
@@ -1045,8 +1042,6 @@ MODULE                        : Kotlin_Multiplatform
                         - androidApiElements-published          : <ROOT>/kmpSecondLib/build/outputs/aar/kmpSecondLib.aar [-]
                         - androidRuntimeElements-published      : <ROOT>/kmpSecondLib/build/outputs/aar/kmpSecondLib.aar [-]
                         - androidSourcesElements-published      : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-android-sources.jar [-]
-                        - archives                    : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
-                        - archives                    : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-metadata.jar [-]
                         - jvmApiElements              : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
                         - jvmApiElements-published    : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
                         - jvmRuntimeElements          : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
@@ -1790,6 +1785,9 @@ MODULE                        : Kotlin_Multiplatform.app
                 ApiString                     : 34
             VectorDrawables
                 UseSupportLibrary             : false
+            MissingDimensionStrategy
+                mode                          : [modetwo]
+                type                          : [typeone]
         SourceProvider
             Name                          : main
             Manifest                      : <ROOT>/app/src/main/AndroidManifest.xml
@@ -1962,16 +1960,16 @@ MODULE                        : Kotlin_Multiplatform.app
                             module                        : <ROOT>-:androidLib-MAIN
                             module                        : <ROOT>-:kmpSecondLib-androidMain
                             module                        : <ROOT>-:kmpSecondLib-commonMain
-                            module                        : <ROOT>-:kmpJvmOnly-commonMain
                             module                        : <ROOT>-:kmpJvmOnly-jvmMain
+                            module                        : <ROOT>-:kmpJvmOnly-commonMain
                             module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
                         module                        : <ROOT>-:kmpSecondLib-androidMain
                         module                        : <ROOT>-:kmpSecondLib-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        module                        : <ROOT>-:kmpJvmOnly-commonMain
                         module                        : <ROOT>-:kmpJvmOnly-jvmMain
+                        module                        : <ROOT>-:kmpJvmOnly-commonMain
                         module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 ApplicationId                 : com.example.app
@@ -2116,16 +2114,16 @@ MODULE                        : Kotlin_Multiplatform.app
                             module                        : <ROOT>-:androidLib-MAIN
                             module                        : <ROOT>-:kmpSecondLib-androidMain
                             module                        : <ROOT>-:kmpSecondLib-commonMain
-                            module                        : <ROOT>-:kmpJvmOnly-commonMain
                             module                        : <ROOT>-:kmpJvmOnly-jvmMain
+                            module                        : <ROOT>-:kmpJvmOnly-commonMain
                             module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
                         module                        : <ROOT>-:kmpSecondLib-androidMain
                         module                        : <ROOT>-:kmpSecondLib-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        module                        : <ROOT>-:kmpJvmOnly-commonMain
                         module                        : <ROOT>-:kmpJvmOnly-jvmMain
+                        module                        : <ROOT>-:kmpJvmOnly-commonMain
                         module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
@@ -2288,8 +2286,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:androidLib-MAIN
                         module                        : :-:kmpSecondLib-commonMain
                         module                        : :-:kmpSecondLib-androidMain
-                        module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
+                        module                        : :-:kmpJvmOnly-commonMain
                     runtimeClasspath
                         module                        : :-:kmpFirstLib-commonMain
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
@@ -2297,8 +2295,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:androidLib-MAIN
                         module                        : :-:kmpSecondLib-commonMain
                         module                        : :-:kmpSecondLib-androidMain
-                        module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
+                        module                        : :-:kmpJvmOnly-commonMain
                 IsSigned                      : false
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
@@ -2315,12 +2313,11 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     compileClasspath
                         module                        : :-:kmpFirstLib-androidMain
                         module                        : :-:kmpFirstLib-commonMain
-                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                         androidLibrary                : androidx.appcompat:appcompat:1.4.1@aar
                         androidLibrary                : androidx.test:runner:1.4.0-alpha06@aar
                         androidLibrary                : androidx.test.ext:junit:1.1.2@aar
                         androidLibrary                : androidx.test:core:1.4.0-alpha06@aar
-                        javaLibrary                   : org.jetbrains:annotations:13.0
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                         androidLibrary                : androidx.fragment:fragment:1.3.6@aar
                         androidLibrary                : androidx.activity:activity:1.2.4@aar
                         androidLibrary                : androidx.appcompat:appcompat-resources:1.4.1@aar
@@ -2348,14 +2345,15 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         androidLibrary                : androidx.interpolator:interpolator:1.0.0@aar
                         javaLibrary                   : androidx.annotation:annotation:1.3.0
                         javaLibrary                   : junit:junit:4.12
+                        javaLibrary                   : org.jetbrains:annotations:13.0
                         androidLibrary                : androidx.annotation:annotation-experimental:1.1.0@aar
                         javaLibrary                   : com.google.code.findbugs:jsr305:2.0.1
                         javaLibrary                   : org.hamcrest:hamcrest-core:1.3
                         module                        : :-:androidLib-MAIN
                         module                        : :-:kmpSecondLib-commonMain
                         module                        : :-:kmpSecondLib-androidMain
-                        module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
+                        module                        : :-:kmpJvmOnly-commonMain
                     runtimeClasspath
                         module                        : :-:kmpFirstLib-androidMain
                         module                        : :-:kmpFirstLib-commonMain
@@ -2406,8 +2404,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:androidLib-MAIN
                         module                        : :-:kmpSecondLib-commonMain
                         module                        : :-:kmpSecondLib-androidMain
-                        module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
+                        module                        : :-:kmpJvmOnly-commonMain
                 ProvidedDependencies
                     - provided                    : androidx.arch.core:core-runtime:2.0.0
                     - provided                    : androidx.lifecycle:lifecycle-common:2.3.1
@@ -2458,8 +2456,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:androidLib-MAIN
                         module                        : :-:kmpSecondLib-commonMain
                         module                        : :-:kmpSecondLib-androidMain
-                        module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
+                        module                        : :-:kmpJvmOnly-commonMain
                     runtimeClasspath
                         module                        : :-:kmpFirstLib-commonTest
                         module                        : :-:kmpFirstLib-androidMain
@@ -2473,8 +2471,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                         module                        : :-:androidLib-MAIN
                         module                        : :-:kmpSecondLib-commonMain
                         module                        : :-:kmpSecondLib-androidMain
-                        module                        : :-:kmpJvmOnly-commonMain
                         module                        : :-:kmpJvmOnly-jvmMain
+                        module                        : :-:kmpJvmOnly-commonMain
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     kotlinMppGradleModel          : {androidDeviceTest=androidDeviceTest, androidHostTest=androidHostTest, androidMain=androidMain, commonMain=commonMain, commonTest=commonTest} (KotlinMPPGradleModelImpl)
         dependencies
@@ -3054,7 +3052,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpJvmOnly/build/libs/kmpJvmOnly-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test
@@ -3452,7 +3449,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
             disambiguationClassifier      : jvm
             jar                           : KotlinTargetJarImpl
                 archiveFile                   : <ROOT>/kmpSecondLib/build/libs/kmpSecondLib-jvm.jar [-]
-                - compilations                : main (KotlinCompilationImpl) (*seen*)
             platform                      : JVM
             - testRunTasks                : KotlinTestRunTaskImpl
                 compilationName               : test

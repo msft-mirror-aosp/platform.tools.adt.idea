@@ -46,6 +46,7 @@ import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.execution.ui.RunContentManager
@@ -117,11 +118,13 @@ class GradleConnectedAndroidTestInvoker(
     val taskOutputProcessor = TaskOutputProcessor(adapters)
     val executionId = executionEnvironment.executionId
     val listener = object : ExternalSystemTaskNotificationListener {
+      private var view: AndroidTestSuiteView? = androidTestSuiteView
+
       val outputLineProcessor = TaskOutputLineProcessor(object : TaskOutputLineProcessor.LineProcessor {
         override fun processLine(line: String) {
           val processedText = taskOutputProcessor.process(line)
           if (!(processedText.isBlank() && line != processedText)) {
-            androidTestSuiteView.println(processedText)
+            view?.println(processedText)
           }
         }
       })
@@ -133,13 +136,13 @@ class GradleConnectedAndroidTestInvoker(
         testRunIsCancelled.set(true)
       }
 
-      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
-        super.onTaskOutput(id, text, stdOut)
-        if (stdOut) {
+      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
+        super.onTaskOutput(id, text, processOutputType)
+        if (ProcessOutputType.isStdout(processOutputType)) {
           outputLineProcessor.append(text)
         }
         else {
-          androidTestSuiteView.print(text, ConsoleViewContentType.ERROR_OUTPUT)
+          view?.print(text, ConsoleViewContentType.ERROR_OUTPUT)
         }
       }
 
@@ -176,7 +179,7 @@ class GradleConnectedAndroidTestInvoker(
             gradleTestResultAdapterFactory,
           )
           rerunDevices.forEach {
-            androidTestSuiteView.onRerunScheduled(it.device)
+            view?.onRerunScheduled(it.device)
           }
           rerunInvoker.runGradleTask(
             project,
@@ -203,13 +206,16 @@ class GradleConnectedAndroidTestInvoker(
                                                               }
                                                             }, ModalityState.nonModal(), project.disposed)
           }
-
-          RunContentManager.getInstance(project).allDescriptors.find {
-            it.executionId == executionEnvironment.executionId
-          }?.let {
-            it.processHandler?.detachProcess()
+          ApplicationManager.getApplication().invokeLater {
+            if (project.isDisposed) return@invokeLater
+            RunContentManager.getInstance(project).allDescriptors.find {
+              it.executionId == executionEnvironment.executionId
+            }?.let {
+              it.processHandler?.detachProcess()
+            }
           }
         }
+        view = null
       }
     }
 

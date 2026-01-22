@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension.BooleanOptions.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
@@ -28,6 +29,7 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import java.io.File
+import kotlinx.coroutines.runBlocking
 
 data class GradleAndroidTestsTaskManagerTestDef(
   override val name: String,
@@ -43,14 +45,16 @@ data class GradleAndroidTestsTaskManagerTestDef(
         testProject = TestProject.SIMPLE_APPLICATION,
       ) { project ->
         val id = ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.RESOLVE_PROJECT, project)
-        val settings = GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project).apply {
-          tasks = listOf("tasks")
-          jvmParameters = null
-          putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+        val settings = runBlocking {
+          GradleProjectSystemUtil.getOrCreateGradleExecutionSettings(project).apply {
+            tasks = listOf("tasks")
+            jvmParameters = null
+            putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+          }
         }
         val sb = StringBuilder()
         GradleTaskManager().executeTasks(requireNotNull(project.basePath), id, settings, object : ExternalSystemTaskNotificationListener {
-          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, stdOut: Boolean) {
+          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
             sb.append(text)
           }
         })

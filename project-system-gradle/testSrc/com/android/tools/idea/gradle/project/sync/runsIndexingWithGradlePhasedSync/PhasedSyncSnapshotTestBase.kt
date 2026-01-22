@@ -26,27 +26,28 @@ import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.testing.nameProperties
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
-import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.platform.workspace.storage.MutableEntityStorage
+import com.intellij.platform.workspace.jps.entities.exModuleOptions
+import com.intellij.util.application
+import com.intellij.workspaceModel.ide.legacyBridge.findModuleEntity
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
-import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncContributor
-import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncProjectConfigurator.project
+import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncListener
 import java.io.File
 
-abstract class PhasedSyncSnapshotTestBase {
+abstract class PhasedSyncSnapshotTestBase(checkObjectIdentity: Boolean = false) {
 
-  private val modelDumpSyncContributor = ModelDumpSyncContributor()
+  private val modelDumpSyncContributor = ModelDumpSyncContributor(checkObjectIdentity)
   internal val intermediateDump get() = modelDumpSyncContributor.intermediateDump
   internal val knownAndroidPaths get() = modelDumpSyncContributor.knownAndroidPaths
 
 
   @Suppress("UnstableApiUsage")
   fun setupPhasedSyncIntermediateStateCollector(disposable: Disposable) {
-    GradleSyncContributor.EP_NAME.point.registerExtension(modelDumpSyncContributor, disposable)
+    application.messageBus.connect(disposable)
+      .subscribe(GradleSyncListener.TOPIC, modelDumpSyncContributor)
   }
 
   companion object {
@@ -107,7 +108,6 @@ abstract class PhasedSyncSnapshotTestBase {
 
 
 data class ModuleDumpWithType(
-  val rootModuleNames: List<String>,
   val phasedSyncModuleNames : List<String>,
   val androidModuleNames: List<String>,
   val projectStructure: Sequence<String>,
@@ -116,7 +116,6 @@ data class ModuleDumpWithType(
 
 fun ModuleDumpWithType.projectStructure() : String = annotate().projectStructure.joinToString(separator = "\n")
 fun ModuleDumpWithType.ideModels() : String = annotate().ideModels.joinToString(separator = "\n")
-fun ModuleDumpWithType.filterOutRootModule() = excludeByModuleName(rootModuleNames)
 fun ModuleDumpWithType.filterToPhasedSyncModules() = includeByModuleName(phasedSyncModuleNames)
 fun ModuleDumpWithType.filterToAndroidModules() = includeByModuleName(androidModuleNames)
 
@@ -149,29 +148,19 @@ fun ModuleDumpWithType.filterOutExpectedInconsistencies() = copy(
     !line.contains("BUILD_TASKS") // We don't set up tasks in phased sync
   })
 
-fun Project.dumpModules(knownAndroidPaths: Set<File>): ModuleDumpWithType {
+fun Project.dumpModules(knownAndroidPaths: Set<File>, checkObjectIdentity: Boolean = false): ModuleDumpWithType {
   // Filter KTS modules since with IntelliJ 2025.2 there are differences between intermediate and full sync b/431159711
   val modulesFiltered = modules.filter { !it.isKotlinBuildScript }
   return ModuleDumpWithType(
-    rootModuleNames = modulesFiltered
-      .groupBy {
-        ExternalSystemModulePropertyManager.getInstance(it).getLinkedProjectPath()
-      }.mapValues {
-        it.value.minBy { it.name.length }
-      }.filter { (linkedProjectPath, module) ->
-        ExternalSystemModulePropertyManager.getInstance(module).getRootProjectPath() == linkedProjectPath
-      }.values.map {
-        it.name
-      },
     phasedSyncModuleNames = modulesFiltered.filter { it.moduleFilePath.isEmpty() }.map { it.name },
     androidModuleNames = modulesFiltered.filter { it.projectDirectory() in knownAndroidPaths }.map { it.name },
-    projectStructure = dumpAllModuleEntries(),
+    projectStructure = dumpAllModuleEntries(checkObjectIdentity),
     ideModels = dumpAllIdeModels()
   )
 }
 
-private fun Project.dumpAllModuleEntries() : Sequence<String> {
-  val dumper = createDumper()
+private fun Project.dumpAllModuleEntries(checkObjectIdentity: Boolean) : Sequence<String> {
+  val dumper = createDumper(checkObjectIdentity)
   modules.sortedBy { it.name }.forEach {
     dumper.dump(it)
   }
@@ -180,7 +169,7 @@ private fun Project.dumpAllModuleEntries() : Sequence<String> {
 }
 
 private fun Project.dumpAllIdeModels() : Sequence<String> {
-  val dumper = createDumper()
+  val dumper = createDumper(checkObjectIdentity = false)
   dumper.dumpAndroidIdeModel(
       this,
       kotlinModels = { null },
@@ -193,11 +182,12 @@ private fun Project.dumpAllIdeModels() : Sequence<String> {
 }
 
 
-private fun Project.createDumper() = ProjectDumper(
+private fun Project.createDumper(checkObjectIdentity: Boolean) = ProjectDumper(
   androidSdk = getSdk().toFile(),
   devBuildHome = TestUtils.getWorkspaceRoot().toFile(),
   projectJdk = ProjectRootManager.getInstance(this).projectSdk,
-  forSnapshotComparison = true
+  forSnapshotComparison = true,
+  checkObjectIdentity = checkObjectIdentity
 )
 
 private fun Module.projectDirectory(): File? = ExternalSystemModulePropertyManager.getInstance(this).getLinkedProjectPath()?.let { File(it) }
@@ -238,13 +228,11 @@ private fun ModuleDumpWithType.includeByModuleName(names: List<String>) = copy (
 )
 
 @Suppress("UnstableApiUsage")
-@Order(Int.MAX_VALUE)
-internal class ModelDumpSyncContributor: GradleSyncContributor {
+internal class ModelDumpSyncContributor(val checkObjectIdentity: Boolean) : GradleSyncListener {
   val knownAndroidPaths = mutableSetOf<File>()
   lateinit var intermediateDump: ModuleDumpWithType
 
-  override suspend fun onModelFetchCompleted(context: ProjectResolverContext,
-                                             storage: MutableEntityStorage) {
+  override fun onModelFetchCompleted(context: ProjectResolverContext) {
     // Multiple composite builds can invoke this method, so keeping track of all android projects
     knownAndroidPaths += context.allBuilds.flatMap { buildModel ->
       buildModel.projects.sortedBy{ it.path }.filter { projectModel ->
@@ -254,6 +242,6 @@ internal class ModelDumpSyncContributor: GradleSyncContributor {
       }
     }
 
-    intermediateDump = context.project.dumpModules(knownAndroidPaths)
+    intermediateDump = context.project.dumpModules(knownAndroidPaths, checkObjectIdentity)
   }
 }

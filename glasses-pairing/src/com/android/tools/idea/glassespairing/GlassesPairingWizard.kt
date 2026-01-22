@@ -42,7 +42,7 @@ import com.android.adblib.tools.aiglasses.ShellCommandException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceState
-import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.deviceprovisioner.awaitReady
 import com.android.sdklib.deviceprovisioner.mapChangedState
 import com.android.sdklib.deviceprovisioner.pairWithNestedState
@@ -159,6 +159,7 @@ internal constructor(
     pairingTrigger
       .flatMapLatest {
         pair(it.glasses, it.phone).catch { cause ->
+          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNSPECIFIED)
           emit(PairingState.Error("Unexpected error: $cause"))
         }
       }
@@ -345,7 +346,7 @@ internal sealed class PairingState {
   ) : PairingState() {
     constructor(detailText: String) : this("Pairing failed.", detailText)
 
-    fun toLogMessage() = "$heading: $detailText${logDetail?.let { " [$it]" } ?: ""}"
+    fun toLogMessage() = "$heading: $detailText${logDetail?.let { " [$it]" } ?: "" }"
   }
 
   data object Complete : PairingState() {
@@ -361,15 +362,15 @@ internal enum class LaunchState {
 }
 
 internal fun launchAvd(handle: DeviceHandle): Flow<LaunchState> = flow {
-  withTimeout(30.seconds) {
+  withTimeout(60.seconds) {
     handle.stateFlow.takeWhile { it.isTransitioning }.collect { emit(LaunchState.Waiting) }
   }
   if (handle.state.isReady) emit(LaunchState.Ready)
   else {
     emit(LaunchState.Launching)
-    withTimeout(180.seconds) { handle.activationAction!!.activate() }
+    withTimeout(360.seconds) { handle.activationAction!!.activate() }
     emit(LaunchState.Booting)
-    withTimeout(60.seconds) { handle.awaitReady() }
+    withTimeout(120.seconds) { handle.awaitReady() }
     emit(LaunchState.Ready)
   }
 }
@@ -382,7 +383,7 @@ internal fun Project.userInvolvementRequired(deviceHandle: DeviceHandle) {
 }
 
 private fun isAiGlassesCompatible(handle: DeviceHandle) =
-  handle is LocalEmulatorDeviceHandle && handle.avdInfo.isAiGlassesCompatibleDevice
+  (handle.state.properties as? LocalEmulatorProperties)?.isAiGlassesCompatible == true
 
 internal suspend fun FlowCollector<PairingState>.launchGlassesAndPhone(
   glasses: DeviceHandle,
@@ -490,6 +491,9 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
         // If phoneBluetoothAddress is null, we may not have access to it; we just have to proceed
         // and hope for the best.
         if (phoneBluetoothAddress == glassesBluetoothAddress) {
+          GlassesPairingUsageTracker.log(
+            GlassesPairingEvent.EventKind.PAIRING_ERROR_BLUETOOTH_ADDRESS
+          )
           emit(
             PairingState.Error(
               heading = "Network simulation error",
@@ -526,7 +530,13 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
                           )
                           "Failed to connect to device."
                         }
-                        "WORKER_CANCELLED" -> "Pairing was cancelled."
+                        "WORKER_CANCELLED" -> {
+                          GlassesPairingUsageTracker.log(
+                            GlassesPairingEvent.EventKind
+                              .UNSPECIFIED // TODO: Add a new event kind for this
+                          )
+                          "Pairing was cancelled."
+                        }
                         else -> "Error pairing device."
                       },
                     logDetail = pairingState,
@@ -535,9 +545,39 @@ internal fun pairGlassesToPhone(glasses: DeviceHandle, phone: DeviceHandle): Flo
               else -> emit(PairingState.Pairing("Pairing in progress..."))
             }
           }
+          .catch { cause ->
+            if (cause is ShellCommandException) {
+              GlassesPairingUsageTracker.log(
+                GlassesPairingEvent.EventKind.PAIRING_ERROR_LAUNCH_FAILED
+              )
+              emit(
+                PairingState.Error(
+                  heading = "Pairing failed",
+                  detailText =
+                    "An error occurred while communicating with the device. Please check the device state.",
+                  logDetail = cause.message,
+                )
+              )
+            } else if (cause is java.io.IOException) {
+              GlassesPairingUsageTracker.log(
+                GlassesPairingEvent.EventKind.PAIRING_ERROR_CONNECTION_FAILED
+              )
+              emit(
+                PairingState.Error(
+                  heading = "Connection lost",
+                  detailText =
+                    "The connection to one or both of the devices was lost. Pairing may have still succeeded; please check the phone.",
+                  logDetail = cause.message,
+                )
+              )
+            } else {
+              throw cause
+            }
+          }
           .first { it in AiGlassesPairing.TERMINAL_STATES }
       }
     }
+    .distinctUntilChanged()
     .onEach {
       when (it) {
         PairingState.NotStarted,

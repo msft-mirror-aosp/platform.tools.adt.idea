@@ -45,7 +45,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.EdtExecutorService
 import com.intellij.util.ui.components.BorderLayoutPanel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
@@ -72,7 +71,6 @@ data class SelectedTabState(
   val deviceId: DeviceId,
   val tabComponents: TabComponents,
   val layoutInspector: LayoutInspector,
-  val coroutineScope: CoroutineScope = disposable.createCoroutineScope(),
 ) : Disposable {
 
   private var uiConfig = UiConfig.HORIZONTAL
@@ -103,6 +101,8 @@ data class SelectedTabState(
 
   init {
     Disposer.register(disposable, this)
+
+    val coroutineScope = createCoroutineScope()
 
     // Try to restore UI config
     val uiConfigString = PropertiesComponent.getInstance().getValue(UI_CONFIGURATION_KEY)
@@ -164,14 +164,9 @@ data class SelectedTabState(
   private fun wrapUi(uiConfig: UiConfig) {
     PropertiesComponent.getInstance().setValue(UI_CONFIGURATION_KEY, uiConfig.name)
 
-    wrapLogic =
-      WrapLogic(
-        parentDisposable = this,
-        component = tabComponents.tabContentPanel,
-        container = tabComponents.tabContentPanelContainer,
-      )
+    wrapLogic = WrapLogic(parentDisposable = this, content = tabComponents.tabContentPanel)
 
-    wrapLogic?.wrapComponent { disposable, component ->
+    wrapLogic?.wrapContent { disposable, component ->
       val processPicker =
         TargetSelectionActionFactory.getSingleDeviceProcessPicker(
           layoutInspector,
@@ -255,14 +250,14 @@ data class SelectedTabState(
     ApplicationManager.getApplication().assertIsDispatchThread()
 
     isEnabled = false
-    unwrapUi()
 
     renderingComponents.forEach { it.removeRenderer() }
+    unwrapUi()
 
     layoutInspector.processModel?.removeSelectedProcessListener(selectedProcessListener)
 
-    tabComponents.tabContentPanelContainer.revalidate()
-    tabComponents.tabContentPanelContainer.repaint()
+    tabComponents.tabContentPanel.revalidate()
+    tabComponents.tabContentPanel.repaint()
   }
 
   private val selectedProcessListener = {

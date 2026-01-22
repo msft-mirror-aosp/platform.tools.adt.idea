@@ -59,6 +59,9 @@ class DeclaredDependenciesModelBuilder : ToolingModelBuilder {
       }
     return DeclaredDependenciesImpl(configurationsToCoordinates, allOutgoingProjectDependencies)
   }
+  private val ProjectDependency.dependencyProject: Project
+    get() = javaClass.getMethod("getDependencyProject").invoke(this) as Project
+
 
   companion object {
     // FIXME(xof): it would be nice to be able to have a manifest constant shared between this and the

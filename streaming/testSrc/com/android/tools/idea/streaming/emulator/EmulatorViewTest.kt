@@ -17,8 +17,9 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.emulator.control.Posture.PostureValue
 import com.android.mockito.kotlin.whenever
-import com.android.sdklib.internal.avd.AvdInfo
+import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
 import com.android.testutils.ImageDiffUtil
+import com.android.testutils.ProcessHandleProviderRule
 import com.android.testutils.TestUtils
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.ZoomType
@@ -128,6 +129,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeoutException
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
+import org.junit.After
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
@@ -152,7 +154,7 @@ class EmulatorViewTest {
 
   private val emulatorViewRule = EmulatorViewRule()
   @get:Rule
-  val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), EdtRule())
+  val ruleChain = RuleChain(emulatorViewRule, ClipboardSynchronizationDisablementRule(), ProcessHandleProviderRule(), EdtRule())
   @get:Rule
   val usageTrackerRule = UsageTrackerRule()
   private lateinit var view: EmulatorView
@@ -173,6 +175,11 @@ class EmulatorViewTest {
     mouseInfo.whenever<PointerInfo> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
     focusManager = FakeKeyboardFocusManager(testRootDisposable)
     ActionManager.getInstance() // Instantiate ActionManager to trigger loading of keyboard shortcuts.
+  }
+
+  @After
+  fun tearDown() {
+    EmulatorNotificationDispatcher.getInstance().reset()
   }
 
   @Test
@@ -196,20 +203,13 @@ class EmulatorViewTest {
     assertThat(call.completion.isCancelled).isFalse() // The call has not been cancelled.
     assertThat(call.completion.isDone).isFalse() // The call is still ongoing.
 
-    // Check resizing.
-    val previousCall = call
-    fakeUi.root.size = Dimension(250, 200)
+    // Check zoom.
+    fakeUi.root.size = Dimension(250, 405)
     fakeUi.layoutAndDispatchEvents()
     call = getStreamScreenshotCallAndWaitForFrame()
-    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 364")
-    assertAppearance("EmulatorView2")
-    assertThat(previousCall.completion.isCancelled).isTrue() // The previous call is cancelled.
-    assertThat(call.completion.isCancelled).isFalse() // The latest call has not been cancelled.
-    assertThat(call.completion.isDone).isFalse() // The latest call is still ongoing.
-
-    // Check zoom.
+    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 738")
     val skinHeight = 3245
-    assertThat(view.scale).isWithin(1e-4).of(200 * fakeUi.screenScale / skinHeight)
+    assertThat(view.scale).isWithin(1e-4).of(fakeUi.root.height * fakeUi.screenScale / skinHeight)
     assertThat(view.canZoomIn()).isTrue()
     assertThat(view.canZoomOut()).isFalse()
     assertThat(view.canZoomToActual()).isTrue()
@@ -218,7 +218,7 @@ class EmulatorViewTest {
     view.zoom(ZoomType.IN)
     fakeUi.layoutAndDispatchEvents()
     call = getStreamScreenshotCallAndWaitForFrame()
-    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 436 height: 740")
+    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 720 height: 1481")
     assertThat(view.canZoomIn()).isTrue()
     assertThat(view.canZoomOut()).isTrue()
     assertThat(view.canZoomToActual()).isTrue()
@@ -245,11 +245,22 @@ class EmulatorViewTest {
     view.zoom(ZoomType.FIT)
     fakeUi.layoutAndDispatchEvents()
     call = getStreamScreenshotCallAndWaitForFrame()
-    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 364")
+    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 738")
     assertThat(view.canZoomIn()).isTrue()
     assertThat(view.canZoomOut()).isFalse()
     assertThat(view.canZoomToActual()).isTrue()
     assertThat(view.canZoomToFit()).isFalse()
+
+    // Check resizing.
+    val previousCall = call
+    fakeUi.root.size = Dimension(250, 200)
+    fakeUi.layoutAndDispatchEvents()
+    call = getStreamScreenshotCallAndWaitForFrame()
+    assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 364")
+    assertAppearance("EmulatorView2")
+    assertThat(previousCall.completion.isCancelled).isTrue() // The previous call is cancelled.
+    assertThat(call.completion.isCancelled).isFalse() // The latest call has not been cancelled.
+    assertThat(call.completion.isDone).isFalse() // The latest call is still ongoing.
 
     // Check rotation.
     emulatorViewRule.executeAction("android.device.rotate.left", view)
@@ -635,9 +646,7 @@ class EmulatorViewTest {
 
   @Test
   fun testMouseMoveNotSendWhenCameraOperating() {
-    view = emulatorViewRule.newEmulatorView()
-    val panel = NotificationHolderPanel(view)
-    val container = HeadlessRootPaneContainer(panel)
+    val container = createRootContainer()
     container.rootPane.size = Dimension(200, 300)
     fakeUi = FakeUi(container.rootPane)
 
@@ -854,7 +863,7 @@ class EmulatorViewTest {
 
   @Test
   fun testHideCameraNotificationDuringHardwareInput() {
-    val container = HeadlessRootPaneContainer(NotificationHolderPanel(createEmulatorDisplayPanel()))
+    val container = createRootContainer()
     container.rootPane.size = Dimension(200, 300)
     fakeUi = FakeUi(container.rootPane, 1.0)
 
@@ -884,7 +893,7 @@ class EmulatorViewTest {
 
   @Test
   fun testCameraNotificationHasOperatingMessageWhenHardwareInputDisabledWithShift() {
-    val container = HeadlessRootPaneContainer(NotificationHolderPanel(createEmulatorDisplayPanel()))
+    val container = createRootContainer()
     container.rootPane.size = Dimension(200, 300)
     fakeUi = FakeUi(container.rootPane, 1.0)
 
@@ -1029,16 +1038,17 @@ class EmulatorViewTest {
 
     val messageBus = ApplicationManager.getApplication().messageBus
     val avdFolder = view.emulator.emulatorConfig.avdFolder
-    val iniFile = avdFolder.resolveSibling(avdFolder.fileName.toString().substringBefore(".") + ".ini")
-    val avd = AvdInfo(iniFile = iniFile, dataFolderPath = avdFolder, systemImage = null)
 
-    messageBus.syncPublisher(EmulatorLogListener.TOPIC).messageLogged(avd, EmulatorLogListener.Severity.WARNING, true, "Attention!")
+    val processHandle = ProcessHandleProvider.getProcessHandle(view.emulator.emulatorId.pid)!!
+    messageBus.syncPublisher(EmulatorLogListener.TOPIC).messageLogged(
+        processHandle, avdFolder, EmulatorLogListener.Severity.WARNING, true, "Attention!")
     waitForCondition(2.seconds) { notificationHolderPanel.findDescendant<EditorNotificationPanel>() != null }
     var notificationPanel = notificationHolderPanel.getDescendant<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Attention!")
     assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.WARNING_BACKGROUND)
 
-    messageBus.syncPublisher(EmulatorLogListener.TOPIC).messageLogged(avd, EmulatorLogListener.Severity.ERROR, true, "Crashed!")
+    messageBus.syncPublisher(EmulatorLogListener.TOPIC).messageLogged(
+        processHandle, avdFolder, EmulatorLogListener.Severity.ERROR, true, "Crashed!")
     waitForCondition(2.seconds) { notificationHolderPanel.findDescendant<EditorNotificationPanel>() != null }
     notificationPanel = notificationHolderPanel.getDescendant<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Crashed!")
@@ -1120,9 +1130,11 @@ class EmulatorViewTest {
     assertThat(shortDebugString(call.getNextRequest(2.seconds))).isEqualTo("xr_head_movement_event { delta_z: $TRANSLATION_STEP_SIZE }")
   }
 
-  private fun createEmulatorDisplayPanel(avdCreator: ((Path) -> Path)? = null): EmulatorDisplayPanel {
-    return emulatorViewRule.newEmulatorDisplayPanel(avdCreator).apply { view = displayView }
-  }
+  private fun createRootContainer(): HeadlessRootPaneContainer =
+      HeadlessRootPaneContainer(NotificationHolderPanel(createEmulatorDisplayPanel()))
+
+  private fun createEmulatorDisplayPanel(avdCreator: ((Path) -> Path)? = null): EmulatorDisplayPanel =
+      emulatorViewRule.newEmulatorDisplayPanel(avdCreator).apply { view = displayView }
 
   @Throws(TimeoutException::class)
   private fun getStreamScreenshotCallAndWaitForFrame(): GrpcCallRecord {

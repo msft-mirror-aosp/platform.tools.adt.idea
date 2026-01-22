@@ -39,6 +39,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:android-core-proto",
         "//tools/adt/idea/server-flags:intellij.android.server-flags",
         "//tools/adt/idea/ml-api:intellij.android.ml-api",
+        "@intellij//:intellij.platform.vcs.dvcs",
         "@intellij//:intellij.platform.vcs.dvcs.impl",
         "@intellij//:intellij.libraries.grpc",
         "@intellij//:intellij.libraries.grpc.netty.shaded",

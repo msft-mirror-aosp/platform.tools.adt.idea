@@ -43,6 +43,9 @@ public abstract class JavaArtifactInfo {
   /** Whether the target is in project view. */
   public abstract boolean isExternalDependency();
 
+  /** Whether the target is a Kotlin toolchain. */
+  public abstract boolean isKotlinToolchain();
+
   /**
    * The jar artifacts relative path (blaze-out/xxx) that can be used to retrieve local copy in the
    * cache.
@@ -63,7 +66,7 @@ public abstract class JavaArtifactInfo {
    * the cache.
    */
   public abstract ImmutableSet<BuildArtifact> genSrcs();
-
+  public abstract ImmutableSet<BuildArtifact> genAndroidRes();
   public abstract ImmutableSet<BuildArtifact> protoSrcjars();
 
   /** Workspace relative sources for this dependency, extracted at dependency build time. */
@@ -72,6 +75,7 @@ public abstract class JavaArtifactInfo {
   public abstract ImmutableSet<ProjectPath> srcJars();
 
   public abstract String androidResourcesPackage();
+  public abstract ImmutableList<String> kotlinCompilerFlags();
 
   public abstract Builder toBuilder();
 
@@ -82,6 +86,7 @@ public abstract class JavaArtifactInfo {
     }
     return toBuilder()
         .setGenSrcs(BuildArtifact.addMetadata(genSrcs(), metadata))
+        .setGenAndroidRes(BuildArtifact.addMetadata(genAndroidRes(), metadata))
         .setProtoSrcjars(BuildArtifact.addMetadata(protoSrcjars(), metadata))
         .setIdeAar(ideAar() != null ?ideAar().withMetadata(metadata.get(ideAar())) : null)
         .setJars(BuildArtifact.addMetadata(jars(), metadata))
@@ -108,6 +113,7 @@ public abstract class JavaArtifactInfo {
         .setJars(BuildArtifact.fromProtos(proto.getJarsList(), digestMap, target))
         .setOutputJars(BuildArtifact.fromProtos(proto.getOutputJarsList(), digestMap, target))
         .setGenSrcs(BuildArtifact.fromProtos(proto.getGenSrcsList(), digestMap, target))
+        .setGenAndroidRes(BuildArtifact.fromProtos(proto.getGenAndroidResList(), digestMap, target))
         .setProtoSrcjars(BuildArtifact.fromProtos(proto.getProtoSrcjarsList(), digestMap, target))
         .setSources(proto.getSrcsList().stream()
                       .map(it -> ProjectPath.workspaceRelative(Interners.pathOf(it), externalRepositoryFinder))
@@ -117,6 +123,8 @@ public abstract class JavaArtifactInfo {
               .map(it -> ProjectPath.workspaceRelative(Interners.pathOf(it), externalRepositoryFinder))
               .collect(toImmutableSet()))
         .setAndroidResourcesPackage(proto.getAndroidResourcesPackage())
+        .setKotlinCompilerFlags(ImmutableList.copyOf(proto.getKotlinCompilerFlagsList()))
+        .setIsKotlinToolchain(proto.getIsKotlinToolchain())
         .build();
   }
 
@@ -127,10 +135,13 @@ public abstract class JavaArtifactInfo {
         .setJars(ImmutableList.of())
         .setOutputJars(ImmutableList.of())
         .setGenSrcs(ImmutableList.of())
+        .setGenAndroidRes(ImmutableList.of())
         .setProtoSrcjars(ImmutableList.of())
         .setSources(ImmutableSet.of())
         .setSrcJars(ImmutableSet.of())
         .setAndroidResourcesPackage("")
+        .setKotlinCompilerFlags(ImmutableList.of())
+        .setIsKotlinToolchain(false)
         .build();
   }
 
@@ -141,6 +152,8 @@ public abstract class JavaArtifactInfo {
     public abstract Builder setLabel(Label value);
 
     public abstract Builder setIsExternalDependency(boolean value);
+
+    public abstract Builder setIsKotlinToolchain(boolean value);
 
     public abstract Builder setJars(List<BuildArtifact> value);
 
@@ -155,6 +168,8 @@ public abstract class JavaArtifactInfo {
     public abstract Builder setGenSrcs(List<BuildArtifact> value);
 
     public abstract Builder setGenSrcs(BuildArtifact... value);
+    public abstract Builder setGenAndroidRes(List<BuildArtifact> value);
+    public abstract ImmutableSet.Builder<BuildArtifact> genAndroidResBuilder();
 
     public abstract Builder setProtoSrcjars(List<BuildArtifact> value);
 
@@ -163,6 +178,8 @@ public abstract class JavaArtifactInfo {
     public abstract Builder setSrcJars(Set<ProjectPath> value);
 
     public abstract Builder setAndroidResourcesPackage(String value);
+
+    public abstract Builder setKotlinCompilerFlags(ImmutableList<String> value);
 
     public abstract JavaArtifactInfo build();
   }

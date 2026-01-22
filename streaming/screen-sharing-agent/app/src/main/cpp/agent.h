@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <atomic>
 #include <map>
 #include <string>
 #include <vector>
 
 #include "audio_streamer.h"
+#include "codec_info.h"
 #include "controller.h"
 #include "display_streamer.h"
 #include "session_environment.h"
@@ -58,6 +60,7 @@ public:
   static void StopAudioStream();
 
   static void Shutdown();
+  [[noreturn]] static void ErrorShutdown(int32_t exit_code);
 
   // Calls DisplayStreamer::SetVideoOrientation.
   static void SetVideoOrientation(int32_t display_id, int32_t orientation);
@@ -85,10 +88,14 @@ public:
 
 private:
   static void Initialize(const std::vector<std::string>& args);
+  static void SighupHandler(int signal_number);
   // Restores the original environment that existed before GetSessionEnvironment was first called.
   // May be called on any thread. Safe to be called multiple times.
   static void RestoreEnvironment();
 
+  static std::thread::id main_thread_id_;
+  static std::atomic_bool shutting_down_;
+  static std::atomic_int32_t exit_code_;
   static int32_t feature_level_;
   static DeviceType device_type_;
   static std::string device_manufacturer_;
@@ -108,7 +115,6 @@ private:
   static Controller* controller_;
   static std::mutex environment_mutex_;
   static SessionEnvironment* session_environment_;  // GUARDED_BY(environment_mutex_)
-  static std::atomic_bool shutting_down_;
 };
 
 }  // namespace screensharing

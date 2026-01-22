@@ -15,30 +15,29 @@
  */
 package com.android.tools.idea.gradle.project
 
-import com.android.tools.idea.sdk.IdeSdks
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.util.application
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
-import org.jetbrains.plugins.gradle.settings.GradleSettings
 
-class AndroidStudioGradleInstallationManager : GradleInstallationManager() {
+class AndroidStudioGradleInstallationManager: GradleInstallationManager() {
+
+  companion object {
+    @JvmStatic
+    val instance: AndroidStudioGradleInstallationManager
+      get() = application.service<GradleInstallationManager>() as AndroidStudioGradleInstallationManager
+  }
+
+  @Deprecated(
+    "use resolveGradleJvmPath, since getGradleJvmPath reports an error when current thread doesn't have a ProgressIndicator or Job",
+    ReplaceWith("resolveGradleJvmPath")
+  )
   override fun getGradleJvmPath(project: Project, linkedProjectPath: String): String? {
-    val ideSdks = IdeSdks.getInstance()
-    // Using environment variable
-    if (ideSdks.isUsingEnvVariableJdk()) {
-      return ideSdks.getEnvVariableJdkValue()
-    }
-
-    val settings = GradleSettings.getInstance(project).getLinkedProjectSettings(linkedProjectPath)
-    if (settings != null) {
-      val settingsJvm = settings.getGradleJvm()
-      if (settingsJvm != null) {
-        // Try to resolve from variables before looking in GradleInstallationManager
-        when (settingsJvm) {
-          IdeSdks.JDK_LOCATION_ENV_VARIABLE_NAME -> return ideSdks.getEnvVariableJdkValue()
-        }
-      }
-    }
-    // None of the environment variables is used (or is used but invalid), handle it in the same way IDEA does.
     return super.getGradleJvmPath(project, linkedProjectPath)
+  }
+
+  @Suppress("DEPRECATION")
+  suspend fun resolveGradleJvmPath(project: Project, linkedProjectPath: String): String? {
+    return getGradleJvmPath(project, linkedProjectPath)
   }
 }

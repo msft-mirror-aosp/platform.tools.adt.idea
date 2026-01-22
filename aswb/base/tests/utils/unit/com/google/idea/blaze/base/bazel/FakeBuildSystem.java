@@ -34,15 +34,12 @@ import org.jetbrains.annotations.NotNull;
  *
  * <p>You must provide a {@link BuildSystemName} to use this class; reasonable defaults are provided
  * for all other values.
- *
- * <p>To modify the behaviour of a real instance of {@link BuildSystem}, consider using {@link
- * com.google.idea.blaze.base.bazel.BuildSystemProviderWrapper.BuildSystemWrapper} instead.
  */
 @AutoValue
 public abstract class FakeBuildSystem implements BuildSystem {
 
   public static Builder builder(BuildSystemName name) {
-    return new AutoValue_FakeBuildSystem.Builder().setName(name).setSyncStrategy(SyncStrategy.SERIAL);
+    return new AutoValue_FakeBuildSystem.Builder().setName(name);
   }
 
   @Override
@@ -56,13 +53,6 @@ public abstract class FakeBuildSystem implements BuildSystem {
     return getBuildInvoker();
   }
   @Override
-  public SyncStrategy getSyncStrategy(Project project) {
-    return getSyncStrategy();
-  }
-
-  protected abstract SyncStrategy getSyncStrategy();
-
-  @Override
   public void populateBlazeVersionData(WorkspaceRoot workspaceRoot, BlazeInfo blazeInfo, BlazeVersionData.Builder builder) { }
 
   abstract Optional<String> getBazelVersionString();
@@ -70,11 +60,6 @@ public abstract class FakeBuildSystem implements BuildSystem {
   @Override
   public Optional<String> getBazelVersionString(BlazeInfo blazeInfo) {
     return getBazelVersionString();
-  }
-
-  @Override
-  public BazelQueryRunner createQueryRunner(Project project) {
-    return null;
   }
 
   @Override
@@ -104,8 +89,6 @@ public abstract class FakeBuildSystem implements BuildSystem {
     public abstract Builder setName(BuildSystemName value);
 
     public abstract Builder setBuildInvoker(BuildInvoker value);
-
-    public abstract Builder setSyncStrategy(SyncStrategy value);
 
     public abstract Builder setBazelVersionString(Optional<String> value);
   }

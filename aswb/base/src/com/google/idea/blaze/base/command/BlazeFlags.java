@@ -15,14 +15,12 @@
  */
 package com.google.idea.blaze.base.command;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.idea.blaze.base.command.BlazeInvocationContext.ContextType;
 import com.google.idea.blaze.base.projectview.ProjectViewSet;
 import com.google.idea.blaze.base.projectview.section.sections.BuildFlagsSection;
 import com.google.idea.blaze.base.projectview.section.sections.SyncFlagsSection;
 import com.google.idea.blaze.base.projectview.section.sections.TestFlagsSection;
-import com.google.idea.blaze.base.scope.BlazeContext;
 import com.intellij.execution.configurations.ParametersList;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
@@ -50,8 +48,6 @@ public final class BlazeFlags {
   // Re-run the test even if the results are cached.
   public static final String NO_CACHE_TEST_RESULTS = "--nocache_test_results";
 
-  public static final String DELETED_PACKAGES = "--deleted_packages";
-
   // Avoid running validation actions at the end of build. This flag is expected to be set only
   // during syncing projects.
   public static final String DISABLE_VALIDATIONS = "--noexperimental_run_validations";
@@ -64,7 +60,6 @@ public final class BlazeFlags {
       Project project,
       ProjectViewSet projectViewSet,
       BlazeCommandName command,
-      BlazeContext context,
       BlazeInvocationContext invocationContext) {
     List<String> flags = Lists.newArrayList();
     for (BuildFlagsProvider buildFlagsProvider : BuildFlagsProvider.EP_NAME.getExtensions()) {
@@ -72,10 +67,6 @@ public final class BlazeFlags {
     }
     flags.addAll(expandBuildFlags(projectViewSet.listItems(BuildFlagsSection.KEY)));
     if (invocationContext.type() == ContextType.Sync) {
-      for (BuildFlagsProvider buildFlagsProvider : BuildFlagsProvider.EP_NAME.getExtensions()) {
-        buildFlagsProvider.addSyncFlags(
-            project, projectViewSet, command, context, invocationContext, flags);
-      }
       flags.addAll(expandBuildFlags(projectViewSet.listItems(SyncFlagsSection.KEY)));
     }
     if (BlazeCommandName.TEST.equals(command)) {
@@ -84,7 +75,6 @@ public final class BlazeFlags {
     return flags;
   }
 
-  public static final String ADB_PATH = "--adb_path";
   public static final String DEVICE = "--device";
 
   // Pass-through arg for sending test arguments.
@@ -95,11 +85,6 @@ public final class BlazeFlags {
   // TODO: remove these when mobile-install V1 is obsolete
   // When used with mobile-install, deploys the an app incrementally.
   public static final String INCREMENTAL = "--incremental";
-  // When used with mobile-install, deploys the an app incrementally
-  // can be used for API 23 or higher, for which it is preferred to --incremental
-  public static final String SPLIT_APKS = "--split_apks";
-  // Pass-through arg for sending adb options during mobile-install.
-  public static final String ADB_ARG = "--adb_arg=";
   public static final String ADB = "--adb";
 
   // We add this to every single BlazeCommand instance. It's for tracking usage.
