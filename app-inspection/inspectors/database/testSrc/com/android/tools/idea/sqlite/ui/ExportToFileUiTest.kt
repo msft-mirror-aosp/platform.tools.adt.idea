@@ -32,6 +32,7 @@ import com.android.tools.idea.sqlite.ui.mainView.DatabaseInspectorView
 import com.android.tools.idea.sqlite.ui.mainView.DatabaseInspectorViewImpl
 import com.android.tools.idea.sqlite.ui.mainView.ViewDatabase
 import com.android.tools.idea.sqlite.ui.tableView.TableView
+import com.android.tools.idea.sqlite.ui.tableView.TableView.TableViewType.TABLE
 import com.android.tools.idea.sqlite.ui.tableView.TableViewImpl
 import com.android.tools.idea.testing.ui.FakeActionPopupMenu
 import com.google.common.truth.Truth.assertThat
@@ -83,13 +84,13 @@ class ExportToFileUiTest : LightPlatformTestCase() {
   private val schema = SqliteSchema(listOf(table1))
 
   fun test_tableView_exportButtonVisibleByDefault() {
-    assertThat(findExportButtonInActionPanel(TableViewImpl())).isNotNull()
+    assertThat(findExportButtonInActionPanel(TableViewImpl(TABLE))).isNotNull()
   }
 
   fun test_tableView_exportButton() {
     // given
     val listener = mock(TableView.Listener::class.java)
-    val tableView = TableViewImpl().also { it.addListener(listener) }
+    val tableView = TableViewImpl(TABLE).also { it.addListener(listener) }
     val exportButton = findExportButtonInActionPanel(tableView)!!
 
     // when
