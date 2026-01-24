@@ -27,13 +27,13 @@ import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker
 import com.google.idea.blaze.base.command.BlazeCommand
 import com.google.idea.blaze.base.command.BlazeCommandName
 import com.google.idea.blaze.base.command.buildresult.BuildResultParser
-import com.google.idea.blaze.base.model.primitives.Label
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.scope.output.IssueOutput
 import com.google.idea.blaze.base.scope.output.StatusOutput
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs
 import com.google.idea.blaze.base.util.SaveUtil
 import com.google.idea.blaze.common.Interners
+import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.exception.BuildException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -51,6 +51,11 @@ class BlazeApkBuildStep(
   private val buildInvoker: BuildInvoker,
   private val deployInfoExtractor: DeployInfoExtractor
 ) : ApkBuildStep {
+  private var done = false
+  override fun isDone(): Boolean {
+    return done
+  }
+
   private var blazeAndroidDeployInfo: BlazeAndroidDeployInfo? = null
 
   /**
@@ -97,7 +102,7 @@ class BlazeApkBuildStep(
           launchId,
           stopwatch.elapsed(),
           buildOutputs!!.buildResult().exitCode,
-          ImmutableMap.of<String, String>()
+          ImmutableMap.of()
         )
         BazelExitCodeException.throwIfFailed(command, buildOutputs.buildResult())
         logger.info("Finished build, id: " + buildOutputs.idForLogging())
@@ -120,6 +125,7 @@ class BlazeApkBuildStep(
     try {
       blazeAndroidDeployInfo =
         deployInfoExtractor.extract(
+          project,
           buildOutputs,
           deployOutputGroup,
           apkOutputGroup,
@@ -132,7 +138,7 @@ class BlazeApkBuildStep(
       IssueOutput.error(message).submit(context)
       return
     }
-
+    done = true
     context.output(StatusOutput("Deployment information parsed from build artifacts."))
   }
 

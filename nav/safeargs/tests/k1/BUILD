@@ -23,10 +23,6 @@ iml_module(
         },
         "non-gradle": {},
     },
-    tags = [
-        "no_k2",
-        "noci:studio-win",
-    ],
     test_class = "com.android.tools.idea.nav.safeargs.kotlin.k1.SafeArgsK1TestSuite",
     # keep sorted
     test_data = [
@@ -53,6 +49,10 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
     ],
     test_srcs = ["src"],
+    test_tags = [
+        "no_k2",
+        "noci:studio-win",
+    ],
     test_timeout = "long",
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

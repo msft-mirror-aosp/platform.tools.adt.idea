@@ -232,6 +232,11 @@ public final class StudioFlags {
     "Enable GenAI template",
     "Allows the GenAI template to be used.");
 
+  public static final Flag<Boolean> NPW_ENABLE_GEMINI_FIREBASE_TEMPLATE = new BooleanFlag(
+    NPW, "gemini.firebase.template",
+    "Enable 'Gemini API Starter with Firebase' template",
+    "Allows the 'Gemini API Starter with Firebase' template to be used.");
+
   public static final Flag<Boolean> NPW_ENABLE_XR_TEMPLATE = new BooleanFlag(
     NPW, "xr.template",
     "Enable XR template",
@@ -1280,6 +1285,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS = new BooleanFlag(
     EMBEDDED_EMULATOR, "collapsible.floating.toolbars", "Make zoom and XR toolbars collapsible",
     "Make zoom and XR toolbars in the Running Devices window collapsible");
+  public static final Flag<Boolean> UI_SETTINGS_B475894230_LOGGING = new BooleanFlag(
+    EMBEDDED_EMULATOR, "b475894230.logging", "Enable logging for investigation of b/475894230",
+    "Enable logging for investigation of b/475894230");
   //endregion
 
   //region Device Mirroring
@@ -1642,14 +1650,10 @@ public final class StudioFlags {
     "Invalidates the preview is there is a resource change"
     );
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW = new BooleanFlag(
-    COMPOSE, "preview.generate.preview.action", "Enable editor action for generating Compose Previews",
-    "Enable context-menu actions that can generate a Compose Preview corresponding to the selected @Composable"
-    );
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC = new BooleanFlag(
     COMPOSE, "preview.generate.preview.action.agentic", "Use agents to generate Compose Previews",
-    "Uses agentic approach when generating Compose Previews corresponding to the selected @Composable. This replaces the transform based approach set by compose.preview.generate.preview.action. preview.generate.preview.action must be enabled for the action to be available."
+    "Uses agentic approach when generating Compose Previews corresponding to the selected @Composable."
   );
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_EXTRA_PARAMETER_CONTEXT = new BooleanFlag(
@@ -1672,10 +1676,6 @@ public final class StudioFlags {
     "Enables a button to fix with AI render errors related to previews"
   );
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI = new BooleanFlag(
-    COMPOSE, "transform.ui.with.ai", "Enable action to transform UI with Gemini",
-    "Enables a context-menu action to transform UI with Gemini."
-    );
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI_AGENTIC = new BooleanFlag(
     COMPOSE, "transform.ui.with.ai.agentic", "Use agent for Transform UI with Gemini",
@@ -2597,6 +2597,11 @@ public final class StudioFlags {
                     "Enable the Wait Tool",
                     "Enables a tool providing the agent a way to sleep for a bit and recheck the UI state after.");
 
+  public static final Flag<Boolean> STUDIOBOT_LAYOUT_TO_COMPOSE_MIGRATION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "layout.to.compose.migration.enabled",
+                    "Enable Layout XML to Compose migration",
+                    "Enables the AI-powered migration flow from Layout XML to Jetpack Compose.");
+
   public static final Flag<Boolean> GEMINI_AGENT_MODE =
     new BooleanFlag(STUDIOBOT, "agent.mode",
                     "Enable agent mode.",
@@ -2872,33 +2877,6 @@ public final class StudioFlags {
     "Enable the new wizard for creating Journeys with Gemini."
   );
   // endregion JOURNEYS_WITH_GEMINI
-
-  // region WIZARD_MIGRATION
-  private static final FlagGroup WIZARD_MIGRATION = new FlagGroup(
-    FLAGS,
-    "wizard.migration",
-    "Wizard Migration"
-  );
-
-  public static final Flag<Boolean> FIRST_RUN_MIGRATED_WIZARD_ENABLED = new BooleanFlag(
-    WIZARD_MIGRATION,
-    "first.run.migrated.wizard.enabled",
-    "Migrated First Run Wizard Enabled",
-    "Show the migrated version of the welcome wizard when Studio first starts"
-  );
-  public static final Flag<Boolean> SDK_SETUP_MIGRATED_WIZARD_ENABLED = new BooleanFlag(
-    WIZARD_MIGRATION,
-    "sdk.setup.migrated.wizard.enabled",
-    "Migrated SDK Setup Wizard Enabled",
-    "Show the migrated version of the SDK setup wizard"
-  );
-  public static final Flag<Boolean> AEHD_CONFIGURATION_MIGRATED_WIZARD_ENABLED = new BooleanFlag(
-    WIZARD_MIGRATION,
-    "aehd.configuration.migrated.wizard.enabled",
-    "Migrated AEHD Configuration Wizard Enabled",
-    "Show the migrated version fo the AEHD configuration wizard"
-  );
-  // endregion WIZARD_MIGRATION
 
   public static Boolean isBuildOutputShowsDownloadInfo() {
     // In Android Studio: enabled if BUILD_OUTPUT_DOWNLOADS_INFORMATION=true.

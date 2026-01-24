@@ -86,10 +86,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
-import org.junit.runners.Parameterized.Parameter
-import org.junit.runners.Parameterized.Parameters
 import org.mockito.MockedStatic
 import org.mockito.Mockito.CALLS_REAL_METHODS
 import org.mockito.Mockito.inOrder
@@ -107,17 +103,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @RunsInEdt
-@RunWith(Parameterized::class)
 class WelcomeScreenWizardTest {
-
-  companion object {
-    @JvmStatic
-    @Parameters(name = "isTestingLegacyWizard={0}")
-    fun parameters() = listOf(arrayOf(true), arrayOf(false))
-  }
-
-  @Parameter @JvmField var isTestingLegacyWizard: Boolean? = null
-
   private val projectRule = AndroidProjectRule.withSdk().initAndroid(true)
   private val sdkHandlerRule = AndroidSdkHandlerRule()
 
@@ -125,7 +111,6 @@ class WelcomeScreenWizardTest {
   val chain =
     RuleChain(
       FlagRule(StudioFlags.NPW_COMPILE_SDK_VERSION, AndroidApiLevel(35)),
-      FlagRule(StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED),
       sdkHandlerRule,
       projectRule,
       HeadlessDialogRule(),
@@ -138,8 +123,6 @@ class WelcomeScreenWizardTest {
 
   @Before
   fun setUp() {
-    StudioFlags.FIRST_RUN_MIGRATED_WIZARD_ENABLED.override(!isTestingLegacyWizard!!)
-
     val dialog = TestMessagesDialog(Messages.OK)
     TestDialogManager.setTestDialog(dialog)
 
@@ -175,8 +158,6 @@ class WelcomeScreenWizardTest {
 
   @After
   fun tearDown() {
-    StudioFlags.FIRST_RUN_MIGRATED_WIZARD_ENABLED.clearOverride()
-
     mockFirstRunWizardDefaults.close()
   }
 
@@ -394,8 +375,7 @@ class WelcomeScreenWizardTest {
     val title = checkNotNull(fakeUi.findComponent<JLabel> { it.text.contains("License Agreement") })
     assertTrue(fakeUi.isShowing(title))
 
-    val proceedButton =
-      checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) })
+    val proceedButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") })
     assertTrue(fakeUi.isShowing(proceedButton))
     assertFalse(proceedButton.isEnabled)
 
@@ -467,8 +447,7 @@ class WelcomeScreenWizardTest {
       assertFalse(acceptButton.isSelected)
     }
 
-    val proceedButton =
-      checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) })
+    val proceedButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") })
     assertFalse(proceedButton.isEnabled)
   }
 
@@ -896,13 +875,7 @@ class WelcomeScreenWizardTest {
 
     val installer = sdkComponentInstaller ?: SdkComponentInstaller()
     val welcomeScreen =
-      AndroidStudioWelcomeScreenProvider()
-        .createWelcomeScreen(
-          useNewWizard = !isTestingLegacyWizard!!,
-          wizardMode,
-          installer,
-          tracker,
-        )
+      AndroidStudioWelcomeScreenProvider().createWelcomeScreen(wizardMode, installer, tracker)
 
     Disposer.register(projectRule.testRootDisposable, welcomeScreen)
 
@@ -937,21 +910,18 @@ class WelcomeScreenWizardTest {
   private fun navigateToLinuxKvmInfoStep(fakeUi: FakeUi) {
     navigateToLicenseAgreementStep(fakeUi)
     acceptAllLicenses(fakeUi)
-    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) })
-      .doClick()
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
   }
 
   private fun navigateToProgressStep(fakeUi: FakeUi) {
     navigateToLicenseAgreementStep(fakeUi)
     acceptAllLicenses(fakeUi)
-    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getLicenseStepNextText()) })
-      .doClick()
+    checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     if (willShowKvmStep()) {
-      checkNotNull(fakeUi.findComponent<JButton> { it.text.contains(getKvmStepNextText()) })
-        .doClick()
+      checkNotNull(fakeUi.findComponent<JButton> { it.text.contains("Next") }).doClick()
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     }
   }
@@ -967,21 +937,8 @@ class WelcomeScreenWizardTest {
     }
   }
 
-  private fun getLicenseStepNextText(): String {
-    if (willShowKvmStep()) {
-      return "Next"
-    }
-    // This is a quirk of the old wizard - it shows 'Finish' on the penultimate step
-    return if (isTestingLegacyWizard == true) "Finish" else "Next"
-  }
-
   private fun willShowKvmStep() =
     SystemInfo.isLinux && !HardwareAccelerationCheck.isChromeOSAndIsNotHWAccelerated()
-
-  private fun getKvmStepNextText(): String {
-    // This is a quirk of the old wizard - it shows 'Finish' on the penultimate step
-    return if (isTestingLegacyWizard == true) "Finish" else "Next"
-  }
 
   private fun createFakeRemotePackageWithLicense(path: String): RemotePackage {
     val remotePackage = FakeRemotePackage(path)

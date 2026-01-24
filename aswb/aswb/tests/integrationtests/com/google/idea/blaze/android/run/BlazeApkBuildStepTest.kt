@@ -23,11 +23,10 @@ import com.google.idea.blaze.android.run.runner.BlazeApkBuildStep
 import com.google.idea.blaze.android.run.runner.DeployInfoExtractor
 import com.google.idea.blaze.base.BlazeIntegrationTestCase
 import com.google.idea.blaze.base.bazel.FakeBuildInvoker
-import com.google.idea.blaze.base.model.primitives.Label
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.scope.ErrorCollector
 import com.google.idea.blaze.base.scope.output.IssueOutput
-import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs
+import com.google.idea.blaze.common.Label
 import java.io.File
 import java.io.IOException
 import org.junit.Before
@@ -64,10 +63,7 @@ class BlazeApkBuildStepTest : BlazeIntegrationTestCase() {
   @Test
   fun bepParseError_terminatesLaunch() {
     // Set up a build step with the deploy info extractor throwing an error.
-    val mockDeployInfoExtractor =
-      DeployInfoExtractor { buildOutputs: BlazeBuildOutputs?, deployInfoOutputGroup: String?, apksOutputGroup: String?, context: BlazeContext?, nativeSymbols: List<File?>? ->
-        throw IOException("some error")
-      }
+    val mockDeployInfoExtractor = DeployInfoExtractor { _, _, _, _, _, _ -> throw IOException("some error") }
     val buildStep = createBlazeApkBuildStep(mockDeployInfoExtractor)
 
     // Issue the build
@@ -86,14 +82,12 @@ class BlazeApkBuildStepTest : BlazeIntegrationTestCase() {
   fun build_savesDeployInfo() {
     // Set up a build step with a mock deploy info extractor
     val deployInfo =
-      BlazeAndroidDeployInfo(
-        ParsedManifest("some.pkg.name", emptyList(), null),
+      BlazeAndroidDeployInfo.createBlazeAndroidDeployInfo(
+        BlazeAndroidDeployInfo.ManifestWithApks(ParsedManifest("some.pkg.name", emptyList(), null), emptyList()),
         null,
-        emptyList(),
         nativeSymbols
       )
-    val mockDeployInfoExtractor =
-      DeployInfoExtractor { buildOutputs: BlazeBuildOutputs?, deployInfoOutputGroup: String?, apksOutputGroup: String?, context: BlazeContext?, nativeSymbols: List<File?>? -> deployInfo }
+    val mockDeployInfoExtractor = DeployInfoExtractor { _, _, _, _, _, _ -> deployInfo }
     val buildStep = createBlazeApkBuildStep(mockDeployInfoExtractor)
 
     // Issue the build
@@ -107,7 +101,7 @@ class BlazeApkBuildStepTest : BlazeIntegrationTestCase() {
   private fun createBlazeApkBuildStep(deployInfoExtractor: DeployInfoExtractor): BlazeApkBuildStep {
     return BlazeApkBuildStep(
       project = getProject(),
-      targets = listOf(Label.create("//default/test:target")),
+      targets = listOf(Label.of("//default/test:target")),
       blazeFlags = emptyList<String>(),
       exeFlags = emptyList<String>(),
       useMobileInstall = true,
