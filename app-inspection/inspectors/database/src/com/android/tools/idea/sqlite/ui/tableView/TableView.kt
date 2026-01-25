@@ -110,8 +110,6 @@ interface TableView {
 
     /** Invoked when the user wants to cancel the SQLite statement that is currently running. */
     fun cancelRunningStatementInvoked()
-
-    fun removeRowInvoked(targetRowIndex: Int)
   }
 }
 

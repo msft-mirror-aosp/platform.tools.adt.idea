@@ -27,6 +27,7 @@ import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.wizard.AehdModelWizard
+import com.android.tools.idea.sdk.wizard.AehdWizard
 import com.android.tools.idea.sdk.wizard.AehdWizardController
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.welcome.install.AehdSdkComponentTreeNode
@@ -47,6 +48,10 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameter
+import org.junit.runners.Parameterized.Parameters
 import org.mockito.MockedStatic
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockStatic
@@ -59,7 +64,16 @@ import org.mockito.kotlin.timeout
 import org.mockito.kotlin.whenever
 
 @RunsInEdt
+@RunWith(Parameterized::class)
 class AehdWizardTest {
+  companion object {
+    @JvmStatic
+    @Parameters(name = "isTestingLegacyWizard={0}")
+    fun parameters() = listOf(arrayOf(true), arrayOf(false))
+  }
+
+  @Parameter @JvmField var isTestingLegacyWizard: Boolean? = null
+
   private val projectRule = AndroidProjectRule.withSdk().initAndroid(true)
 
   @get:Rule
@@ -160,7 +174,11 @@ class AehdWizardTest {
 
   @Test
   fun cancellingWizardTriggersCleanup() {
-    val tracker = FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.AEHD_WIZARD, false)
+    val tracker =
+      FirstRunWizardTracker(
+        SetupWizardEvent.SetupWizardMode.AEHD_WIZARD,
+        isTestingLegacyWizard == true,
+      )
     showWizard(mockAehdWizardController, tracker) { fakeUi ->
       val cancelButton = checkNotNull(fakeUi.findComponent<JButton> { it.text.equals("Cancel") })
       assertTrue { fakeUi.isShowing(cancelButton) }
@@ -241,6 +259,36 @@ class AehdWizardTest {
     aehdWizardController: AehdWizardController,
     tracker: FirstRunWizardTracker,
     showCallback: (FakeUi) -> Unit,
+  ) {
+    if (isTestingLegacyWizard == true) {
+      showOldWizard(aehdWizardController, showCallback, tracker)
+    } else {
+      showNewWizard(aehdWizardController, showCallback, tracker)
+    }
+  }
+
+  private fun showOldWizard(
+    aehdWizardController: AehdWizardController,
+    showCallback: (FakeUi) -> Unit,
+    tracker: FirstRunWizardTracker,
+  ) {
+    val wizard =
+      AehdWizard(
+          AehdSdkComponentTreeNode.InstallationIntention.INSTALL_WITH_UPDATES,
+          aehdWizardController,
+          tracker,
+        )
+        .apply { init() }
+
+    createModalDialogAndInteractWithIt(dialogTrigger = { wizard.show() }) {
+      showCallback(FakeUi(getRoot(wizard.contentPane)))
+    }
+  }
+
+  private fun showNewWizard(
+    aehdWizardController: AehdWizardController,
+    showCallback: (FakeUi) -> Unit,
+    tracker: FirstRunWizardTracker,
   ) {
     val wizard =
       AehdModelWizard(

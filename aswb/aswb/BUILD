@@ -133,10 +133,7 @@ aswb_library(
 intellij_unit_test_suite(
     name = "unit_tests",
     srcs = glob(
-        [
-            "tests/unittests/**/*.java",
-            "tests/unittests/**/*.kt",
-        ],
+        ["tests/unittests/**/*.java"],
         exclude = [
             "tests/unittests/com/google/idea/blaze/android/sync/model/idea/BlazeClassJarProviderTest.java",  # b/145809318
         ],

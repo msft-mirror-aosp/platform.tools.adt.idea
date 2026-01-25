@@ -24,7 +24,6 @@ import static com.google.idea.blaze.base.bazel.BepUtils.setOfFiles;
 import static com.google.idea.blaze.base.bazel.BepUtils.started;
 import static com.google.idea.blaze.base.bazel.BepUtils.targetComplete;
 
-import com.android.tools.idea.run.ApkProvisionException;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableList;
 import com.google.common.hash.HashCode;
@@ -42,10 +41,10 @@ import com.google.idea.blaze.base.BlazeIntegrationTestCase;
 import com.google.idea.blaze.base.bazel.BepUtils.FileArtifact;
 import com.google.idea.blaze.base.command.buildresult.bepparser.BuildEventStreamProvider.BuildEventStreamException;
 import com.google.idea.blaze.base.command.buildresult.bepparser.ParsedBepOutput;
+import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.run.RuntimeArtifactKind;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
-import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.common.artifact.OutputArtifact;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -66,8 +65,8 @@ import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class AitDeployInfoExtractorTest extends BlazeIntegrationTestCase {
-  private static final Label TEST_APP = Label.of("//javatests/com/foo/test:binary");
-  private static final Label TARGET_APP = Label.of("//javatests/com/foo/target:binary");
+  private static final Label TEST_APP = Label.create("//javatests/com/foo/test:binary");
+  private static final Label TARGET_APP = Label.create("//javatests/com/foo/target:binary");
 
   private static final String MNEMONIC = "k9-opt";
   private static final ImmutableList<String> BIN_PREFIXES =
@@ -92,7 +91,7 @@ public class AitDeployInfoExtractorTest extends BlazeIntegrationTestCase {
 
   @Test
   public void extract_testWithNoTarget_deployInfoContainsDataFromTestTarget()
-    throws BuildEventStreamException, IOException, ApkProvisionException {
+      throws BuildEventStreamException, IOException {
 
     // Create build output that matches the output for a setup with a test target (TEST_APP)
     // that instruments itself (i.e. no target app).
@@ -109,7 +108,7 @@ public class AitDeployInfoExtractorTest extends BlazeIntegrationTestCase {
 
     BlazeAndroidDeployInfo deployInfo =
         new AitDeployInfoExtractor(getProject(), instrumentationInfo)
-            .extract(getProject(), buildOutputs, "android-deploy-info", "default", context, nativeSymbols);
+            .extract(buildOutputs, "android-deploy-info", "default", context, nativeSymbols);
 
     assertThat(deployInfo).isNotNull();
     assertThat(deployInfo.getMergedManifest().packageName)
@@ -122,7 +121,7 @@ public class AitDeployInfoExtractorTest extends BlazeIntegrationTestCase {
 
   @Test
   public void extract_testWithApp_deployInfoContainsDataFromTestAndTargetApp()
-    throws BuildEventStreamException, IOException, ApkProvisionException {
+      throws BuildEventStreamException, IOException {
     // Create build output that matches the output for a setup with a test target (TEST_APP)
     // that instruments TARGET_APP
     InstrumentationInfo instrumentationInfo = new InstrumentationInfo(TARGET_APP, TEST_APP);
@@ -142,7 +141,7 @@ public class AitDeployInfoExtractorTest extends BlazeIntegrationTestCase {
 
     BlazeAndroidDeployInfo deployInfo =
         new AitDeployInfoExtractor(getProject(), instrumentationInfo)
-            .extract(getProject(), buildOutputs, "android-deploy-info", "default", context, nativeSymbols);
+            .extract(buildOutputs, "android-deploy-info", "default", context, nativeSymbols);
 
     assertThat(deployInfo).isNotNull();
     assertThat(deployInfo.getMergedManifest().packageName)

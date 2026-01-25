@@ -16,6 +16,8 @@
 package com.android.tools.idea.insights.client
 
 import com.android.tools.idea.insights.InsightsProvider
+import com.android.tools.idea.insights.ai.AiInsight
+import com.android.tools.idea.insights.ai.codecontext.ContextSharingState
 import com.android.tools.idea.insights.model.common.Interval
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.event.Event
@@ -28,6 +30,7 @@ import com.android.tools.idea.insights.model.issue.SignalType
 import com.android.tools.idea.insights.model.note.Note
 import com.android.tools.idea.insights.model.note.NoteId
 import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import java.util.SortedSet
 import java.util.TreeSet
 
@@ -78,6 +81,31 @@ interface AppInsightsCache {
   /** Removes the note matching [NoteId] from the cache. */
   fun removeNote(connection: Connection, noteId: NoteId)
 
+  /**
+   * Gets the cached [AiInsight] if one exists.
+   *
+   * TODO(b/378563731): cache insights by context data in addition to issueId.
+   */
+  fun getAiInsight(
+    connection: Connection,
+    issueId: IssueId,
+    variantId: String?,
+    contextSharingState: ContextSharingState,
+  ): AiInsight?
+
+  /**
+   * Puts an [AiInsight] in the cache.
+   *
+   * If [clearExistingCacheEntries] is specified, clears all cached insights. This is used to force
+   * the client to re-fetch an insight.
+   */
+  fun putAiInsight(
+    connection: Connection,
+    issueId: IssueId,
+    variantId: String?,
+    aiInsight: AiInsight,
+  )
+
   /** Removes the cached entry of an issue. */
   fun removeIssue(connection: Connection, issueId: IssueId)
 }
@@ -94,7 +122,16 @@ private data class IssueDetailsValue(
     AppInsightsIssue(issueDetails, sampleEvents.first(), insightsProvider, state)
 }
 
-private data class CacheValue(val issueDetails: IssueDetailsValue?, val notes: List<Note>?)
+private data class AiInsightKey(
+  val variantId: String?,
+  val contextSharingState: ContextSharingState,
+)
+
+private data class CacheValue(
+  val issueDetails: IssueDetailsValue?,
+  val notes: List<Note>?,
+  val aiInsights: Map<AiInsightKey, AiInsight>,
+)
 
 // TODO(b/249510375): persist cache
 /** Cache for storing issues used in offline and online mode. */
@@ -160,7 +197,11 @@ class AppInsightsCacheImpl(val source: InsightsProvider, private val maxIssuesCo
     val issuesCache = getOrCreateIssuesCache(connection).asMap()
     issues.forEach { newIssue ->
       issuesCache.compute(newIssue.issueDetails.id) { _, oldValue ->
-        CacheValue(oldValue?.issueDetails.reconcileWith(newIssue), oldValue?.notes)
+        CacheValue(
+          oldValue?.issueDetails.reconcileWith(newIssue),
+          oldValue?.notes,
+          oldValue?.aiInsights ?: emptyMap(),
+        )
       }
     }
   }
@@ -206,6 +247,38 @@ class AppInsightsCacheImpl(val source: InsightsProvider, private val maxIssuesCo
       checkNotNull(oldValue) { "Issue should exist for this note by this time." }
       checkNotNull(oldValue.notes) { "Notes should already be populated." }
       oldValue.copy(notes = oldValue.notes.filterNot { it.id.noteId == noteId.noteId })
+    }
+  }
+
+  override fun getAiInsight(
+    connection: Connection,
+    issueId: IssueId,
+    variantId: String?,
+    contextSharingState: ContextSharingState,
+  ): AiInsight? {
+    return compositeIssuesCache
+      .getIfPresent(connection)
+      ?.getIfPresent(issueId)
+      ?.aiInsights
+      ?.get(AiInsightKey(variantId, contextSharingState))
+      ?.copy(isCached = true)
+  }
+
+  override fun putAiInsight(
+    connection: Connection,
+    issueId: IssueId,
+    variantId: String?,
+    aiInsight: AiInsight,
+  ) {
+    val issuesCache = getOrCreateIssuesCache(connection).asMap()
+    issuesCache.compute(issueId) { _, oldValue ->
+      val cacheValue = oldValue ?: CacheValue(null, null, emptyMap())
+      cacheValue.copy(
+        aiInsights =
+          cacheValue.aiInsights.plus(
+            AiInsightKey(variantId, aiInsight.codeContextData.contextSharingState) to aiInsight
+          )
+      )
     }
   }
 
@@ -265,4 +338,10 @@ class AppInsightsCacheImpl(val source: InsightsProvider, private val maxIssuesCo
 
   private fun getOrCreateIssuesCache(firebaseConnection: Connection): Cache<IssueId, CacheValue> =
     compositeIssuesCache.get(firebaseConnection) { createNew(MAXIMUM_ISSUES_CACHE_SIZE) }
+
+  private fun <K, V> createNew(maximumSize: Long): Cache<K, V> {
+    // TODO: consider adding back weak keys support, which does not
+    // work with kotlin String keys.
+    return Caffeine.newBuilder().maximumSize(maximumSize).build()
+  }
 }

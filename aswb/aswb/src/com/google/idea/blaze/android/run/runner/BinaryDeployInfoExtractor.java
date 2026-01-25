@@ -17,8 +17,8 @@ package com.google.idea.blaze.android.run.runner;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-import com.android.tools.idea.run.ApkProvisionException;
 import com.google.common.collect.ImmutableList;
+import com.google.idea.blaze.android.run.NativeSymbolFinder;
 import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
 import com.google.idea.blaze.base.run.RuntimeArtifactCache;
 import com.google.idea.blaze.base.run.RuntimeArtifactKind;
@@ -49,18 +49,17 @@ public final class BinaryDeployInfoExtractor implements DeployInfoExtractor {
 
   @Override
   public BlazeAndroidDeployInfo extract(
-    Project project,
     BlazeBuildOutputs buildOutputs,
     String deployInfoOutputGroups,
     String apkOutputGroup,
     BlazeContext context,
     List<? extends File> nativeSymbols)
-    throws ApkProvisionException {
+    throws IOException {
 
     String suffix = useMobileInstall ? "_mi.deployinfo.pb" : ".deployinfo.pb";
 
-    var deployData = DeployDataExtractor.extract(
-        targetLabel,
+    DeployData deployData =
+      DeployDataExtractor.extract(
         buildOutputs.getOutputGroupArtifacts(deployInfoOutputGroups),
         buildOutputs.getOutputGroupArtifacts(apkOutputGroup),
         suffix,
@@ -71,9 +70,7 @@ public final class BinaryDeployInfoExtractor implements DeployInfoExtractor {
       runtimeArtifactCache.fetchArtifacts(targetLabel, deployData.apks(), context, RuntimeArtifactKind.APK).stream()
         .map(Path::toFile)
         .collect(toImmutableList());
-    return BlazeAndroidDeployInfo.createBlazeAndroidDeployInfo(
-      new BlazeAndroidDeployInfo.ManifestWithApks(deployData.mergedManifest(), localApks),
-      /* testTargetMergedManifest */ null,
-      ImmutableList.copyOf(nativeSymbols));
+    return new BlazeAndroidDeployInfo(
+      deployData.mergedManifest(), /* testTargetMergedManifest */ null, localApks, ImmutableList.copyOf(nativeSymbols));
   }
 }

@@ -15,17 +15,17 @@
  */
 package com.google.idea.blaze.android.run.runner;
 
+import com.android.tools.idea.run.ApkProvisionException;
 import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
 import com.google.idea.blaze.base.scope.BlazeContext;
 
 /** Builds the APK and optionally installs the APK. */
 public interface ApkBuildStep {
-  boolean isDone();
   /**
    * Builds and optionally installs the APK. Errors and messages are bubbled up to the caller via
    * the given {@link BlazeContext}.
    */
   void build(BlazeContext context, BlazeAndroidDeviceSelector.DeviceSession deviceSession);
 
-  BlazeAndroidDeployInfo getDeployInfo();
+  BlazeAndroidDeployInfo getDeployInfo() throws ApkProvisionException;
 }

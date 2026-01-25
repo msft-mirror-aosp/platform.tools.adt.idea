@@ -1,5 +1,6 @@
 package com.android.tools.idea.npw.project;
 
+import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.observable.core.BoolValueProperty;
 import com.android.tools.idea.observable.core.ObservableBool;
 import com.android.tools.idea.sdk.IdeSdks;
@@ -32,11 +33,13 @@ public class ConfigureAndroidSdkStep extends ModelWizardStep.WithoutModel {
     setupUI();
     myInstallSDKButton.addActionListener(e -> {
       File initialSdkLocation = FirstRunWizardDefaults.getInitialSdkLocation(FirstRunWizardMode.MISSING_SDK);
+      boolean useDeprecatedWizard = !StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED.get();
       SetupSdkApplicationService.getInstance().showSdkSetupWizard(
         initialSdkLocation.getPath(),
         null,
         new SdkComponentInstaller(),
-        new FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.SDK_SETUP, false)
+        new FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.SDK_SETUP, useDeprecatedWizard),
+        useDeprecatedWizard
       );
 
       boolean success = IdeSdks.getInstance().getAndroidSdkPath() != null;

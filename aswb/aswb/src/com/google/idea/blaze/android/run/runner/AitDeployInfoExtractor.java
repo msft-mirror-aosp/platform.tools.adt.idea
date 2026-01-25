@@ -17,15 +17,14 @@ package com.google.idea.blaze.android.run.runner;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 
-import com.android.tools.idea.run.ApkProvisionException;
 import com.google.common.collect.ImmutableList;
-import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
-import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo.ManifestWithApks;
+import com.google.idea.blaze.android.manifest.ManifestParser.ParsedManifest;
 import com.google.idea.blaze.base.run.RuntimeArtifactCache;
+import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
+import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.run.RuntimeArtifactKind;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs;
-import com.google.idea.blaze.common.Label;
 import com.google.idea.blaze.common.artifact.OutputArtifact;
 import com.intellij.openapi.project.Project;
 import java.io.File;
@@ -46,25 +45,24 @@ public final class AitDeployInfoExtractor implements DeployInfoExtractor {
 
   @Override
   public BlazeAndroidDeployInfo extract(
-      Project project,
       BlazeBuildOutputs buildOutputs,
       String deployInfoOutputGroups,
       String apkOutputGroup,
       BlazeContext context,
       List<? extends File> nativeSymbols)
-    throws ApkProvisionException {
+      throws IOException {
     DeployData testData =
         deployDataForTarget(
-          Label.of(instrumentationInfo.testApp.toString()),
-          buildOutputs,
-          deployInfoOutputGroups,
-          apkOutputGroup,
-          context);
+            instrumentationInfo.testApp,
+            buildOutputs,
+            deployInfoOutputGroups,
+            apkOutputGroup,
+            context);
     DeployData targetData = null;
     if (instrumentationInfo.targetApp != null) {
       targetData =
           deployDataForTarget(
-              Label.of(instrumentationInfo.targetApp.toString()),
+              instrumentationInfo.targetApp,
               buildOutputs,
               deployInfoOutputGroups,
               apkOutputGroup,
@@ -79,34 +77,37 @@ public final class AitDeployInfoExtractor implements DeployInfoExtractor {
       BlazeBuildOutputs buildOutputs,
       String deployInfoOutputGroups,
       String apkOutputGroup,
-      BlazeContext context) throws ApkProvisionException {
+      BlazeContext context)
+      throws IOException {
     ImmutableList<OutputArtifact> infoArtifacts =
         buildOutputs.getOutputGroupTargetArtifacts(deployInfoOutputGroups, label.toString());
     ImmutableList<OutputArtifact> apkArtifacts =
         buildOutputs.getOutputGroupTargetArtifacts(apkOutputGroup, label.toString());
     return DeployDataExtractor.extract(
-      label, infoArtifacts.asList(), apkArtifacts.asList(), "deployinfo.pb", context, project);
+        infoArtifacts.asList(), apkArtifacts.asList(), "deployinfo.pb", context, project);
   }
 
   private BlazeAndroidDeployInfo merge(
       DeployData testData,
       @Nullable DeployData targetData,
       BlazeContext context,
-      List<? extends File> nativeSymbols) throws ApkProvisionException {
-    var mainAppApks = cacheLocally(instrumentationInfo.testApp, testData.apks(), context);
-    var mainAppPackage = new ManifestWithApks(testData.mergedManifest(), mainAppApks);
-    ManifestWithApks testTargetAppPackage = null;
+      List<? extends File> nativeSymbols) {
+    ParsedManifest targetManifest = targetData == null ? null : targetData.mergedManifest();
+
+    ImmutableList.Builder<File> apks = new ImmutableList.Builder<File>();
+    apks.addAll(cacheLocally(instrumentationInfo.testApp, testData.apks(), context));
     if (targetData != null) {
-      var testTargetAppApks = cacheLocally(instrumentationInfo.targetApp, targetData.apks(), context);
-      testTargetAppPackage = new ManifestWithApks(targetData.mergedManifest(), testTargetAppApks);
+      apks.addAll(cacheLocally(instrumentationInfo.targetApp, targetData.apks(), context));
     }
-    return BlazeAndroidDeployInfo.createBlazeAndroidDeployInfo(mainAppPackage, testTargetAppPackage, ImmutableList.copyOf(nativeSymbols));
+    return new BlazeAndroidDeployInfo(testData.mergedManifest(), targetManifest, apks.build(), ImmutableList.copyOf(nativeSymbols));
   }
 
-  private ImmutableList<File> cacheLocally(Label targetLabel, List<? extends OutputArtifact> artifacts, BlazeContext context) {
+  private ImmutableList<File> cacheLocally(
+    Label targetLabel, List<? extends OutputArtifact> artifacts, BlazeContext context) {
     RuntimeArtifactCache runtimeArtifactCache = RuntimeArtifactCache.getInstance(project);
     return runtimeArtifactCache
-      .fetchArtifacts(targetLabel, artifacts, context, RuntimeArtifactKind.APK)
+        .fetchArtifacts(
+          com.google.idea.blaze.common.Label.of(targetLabel.toString()), artifacts, context, RuntimeArtifactKind.APK)
         .stream()
         .map(Path::toFile)
         .collect(toImmutableList());

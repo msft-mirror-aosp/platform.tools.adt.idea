@@ -59,13 +59,7 @@ class PreviewBuildListenersManager(
     onBuildStarted: () -> Unit = {},
   ) {
     val psiFile = runReadAction { psiFilePointer.element }
-    if (psiFile == null) {
-      log.warn(
-        "PsiFile was disposed before the preview initialization completed. " +
-          "Build listeners were not set up for this PsiFile."
-      )
-      return
-    }
+    requireNotNull(psiFile) { "PsiFile was disposed before the preview initialization completed." }
     val buildTargetReference = BuildTargetReference.from(psiFile) ?: return
     setupBuildListener(
       buildTargetReference,

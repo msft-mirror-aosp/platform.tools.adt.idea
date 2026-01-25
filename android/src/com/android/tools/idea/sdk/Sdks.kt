@@ -16,6 +16,7 @@
 package com.android.tools.idea.sdk
 
 import com.android.sdklib.repository.AndroidSdkHandler
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.wizard.SetupSdkApplicationService
 import com.android.tools.idea.welcome.install.SdkComponentInstaller
 import com.android.tools.idea.welcome.wizard.FirstRunWizardTracker
@@ -46,11 +47,13 @@ suspend fun getOrSetupValidSdk(project: Project?, missingSdkMessage: String): An
           .noText("Cancel")
           .ask(project)
       ) {
+        val useDeprecatedWizard = !StudioFlags.SDK_SETUP_MIGRATED_WIZARD_ENABLED.get()
         SetupSdkApplicationService.instance.showSdkSetupWizard(
           "",
           { sdkPath = it },
           SdkComponentInstaller(),
-          FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.MISSING_SDK, false),
+          FirstRunWizardTracker(SetupWizardEvent.SetupWizardMode.MISSING_SDK, useDeprecatedWizard),
+          useDeprecatedWizard,
         )
       }
       sdkPath != null

@@ -226,7 +226,7 @@ internal class ComposePreviewViewImpl(
       val actionDataText =
         "${message("panel.needs.build.action.text")}${getBuildAndRefreshShortcut().asString()}"
       return ActionData(actionDataText) {
-        val virtualFile = psiFilePointer.virtualFile
+        val virtualFile = psiFilePointer.element?.virtualFile
         scope.launch(workerThread) {
           if (virtualFile != null) project.requestBuildArtifactsForRendering(virtualFile)
           withContext(uiThread) {
@@ -282,7 +282,7 @@ internal class ComposePreviewViewImpl(
     log.debug("ProjectStatus: $projectStatus")
     when (projectStatus) {
       RenderingBuildStatus.NeedsBuild -> {
-        if (psiFilePointer.virtualFile?.fileSystem?.isReadOnly == true) {
+        if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
           log.debug("Preview not supported in read-only files")
           showModalErrorMessage(message("panel.read.only.file"))
         } else {
@@ -388,7 +388,7 @@ internal class ComposePreviewViewImpl(
         workbench.isMessageVisible &&
           renderingBuildStatusManager.status == RenderingBuildStatus.NeedsBuild
       ) {
-        if (psiFilePointer.virtualFile?.fileSystem?.isReadOnly == true) {
+        if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
           showModalErrorMessage(message("panel.read.only.file"))
         } else {
           log.debug("Needs successful build")

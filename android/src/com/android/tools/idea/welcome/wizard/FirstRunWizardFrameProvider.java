@@ -15,13 +15,14 @@
  */
 package com.android.tools.idea.welcome.wizard;
 
+import com.android.tools.idea.welcome.wizard.deprecated.FirstRunWizard;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.WelcomeFrameProvider;
 import com.intellij.openapi.wm.WelcomeScreenProvider;
 import com.intellij.openapi.wm.impl.welcomeScreen.WelcomeFrame;
 
 /**
- * {@link WelcomeFrameProvider} for the first run wizard.
+ * {@link WelcomeFrameProvider} for the {@link FirstRunWizard}.
  */
 public class FirstRunWizardFrameProvider implements WelcomeFrameProvider {
   @Override

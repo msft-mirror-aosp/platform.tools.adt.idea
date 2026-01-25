@@ -24,23 +24,25 @@ import com.android.tools.idea.execution.common.debug.DebugSessionStarter;
 import com.android.tools.idea.run.ApkFileUnit;
 import com.android.tools.idea.run.ApkInfo;
 import com.android.tools.idea.run.ApkProvisionException;
+import com.android.tools.idea.run.ConsoleProvider;
 import com.android.tools.idea.run.LaunchOptions;
 import com.android.tools.idea.run.activity.DefaultStartActivityFlagsProvider;
 import com.android.tools.idea.run.activity.StartActivityFlagsProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.idea.blaze.android.run.BazelApplicationIdProvider;
 import com.google.idea.blaze.android.run.BazelApplicationProjectContext;
+import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryApplicationIdProvider;
 import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryApplicationLaunchTaskProvider;
 import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryConsoleProvider;
 import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryRunConfigurationState;
 import com.google.idea.blaze.android.run.binary.DeploymentTimingReporterTask;
 import com.google.idea.blaze.android.run.binary.UserIdHelper;
-import com.google.idea.blaze.android.run.BazelApkProvider;
+import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
+import com.google.idea.blaze.android.run.deployinfo.BlazeApkProvider;
 import com.google.idea.blaze.android.run.runner.ApkBuildStep;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidDeployAndLaunchStrategy;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidDeviceSelector;
-import com.google.idea.blaze.android.run.BazelAndroidRunContext;
+import com.google.idea.blaze.android.run.runner.BlazeAndroidRunContext;
 import com.google.idea.blaze.android.run.runner.BlazeLaunchTask;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
@@ -101,22 +103,18 @@ public class MobileInstallDeployAndLaunchStrategy implements BlazeAndroidDeployA
   }
 
   @Override
-  public BazelAndroidRunContext createBlazeAndroidRunContext(
-      ExecutionEnvironment env, ApkBuildStep buildStep, BlazeCommandRunConfiguration configuration) throws ApkProvisionException {
-    var deployInfo = buildStep.getDeployInfo();
+  public BlazeAndroidRunContext createBlazeAndroidRunContext(
+      ExecutionEnvironment env, ApkBuildStep buildStep, BlazeCommandRunConfiguration configuration) {
+    var applicationIdProvider = new BlazeAndroidBinaryApplicationIdProvider(buildStep);
+    var apkProvider = BlazeApkProvider.getApkProvider(project, buildStep);
+    var applicationProjectContext =
+        new BazelApplicationProjectContext(project, applicationIdProvider);
 
-    var applicationId = deployInfo.getMainAppPackageName();
-    var applicationIds = new BazelApplicationIdProvider(applicationId, null);
-
-    var apkProvider = new BazelApkProvider(deployInfo.getApkInfos(), deployInfo.getSymbolFiles());
-    var applicationProjectContext = new BazelApplicationProjectContext(project, applicationId);
-
-    var consoleProvider = new BlazeAndroidBinaryConsoleProvider(project);
-
-    return new BazelAndroidRunContext(
+    ConsoleProvider consoleProvider = new BlazeAndroidBinaryConsoleProvider(project);
+    return new BlazeAndroidRunContext(
         consoleProvider,
         buildStep,
-        applicationIds,
+        applicationIdProvider,
         apkProvider,
         applicationProjectContext,
         env.getExecutor(),
@@ -125,11 +123,23 @@ public class MobileInstallDeployAndLaunchStrategy implements BlazeAndroidDeployA
 
   @Override
   public ImmutableList<BlazeLaunchTask> getDeployTasks(
-    BazelAndroidRunContext runContext, IDevice device, DeployOptions deployOptions) {
-    var deployInfo = runContext.getBuildStep().getDeployInfo();
-    var packageName = runContext.getApplicationIdProvider().getPackageName();
+      BlazeAndroidRunContext runContext, IDevice device, DeployOptions deployOptions)
+      throws ExecutionException {
+    ApkBuildStep buildStep = runContext.getBuildStep();
+    BlazeAndroidDeployInfo deployInfo;
+    String packageName;
+    try {
+      deployInfo = buildStep.getDeployInfo();
+      packageName = runContext.getApplicationIdProvider().getPackageName();
+    } catch (ApkProvisionException e) {
+      throw new ExecutionException(e);
+    }
 
-    var info =
+    if (packageName == null) {
+      throw new ExecutionException("Could not determine package name from application ID provider");
+    }
+
+    ApkInfo info =
         new ApkInfo(
             deployInfo.getApksToDeploy().stream()
                 .map(file -> new ApkFileUnit(BlazeDataStorage.WORKSPACE_MODULE_NAME, file))
@@ -141,16 +151,17 @@ public class MobileInstallDeployAndLaunchStrategy implements BlazeAndroidDeployA
             launchId, project, Collections.singletonList(info), deployOptions));
   }
 
+  @SuppressWarnings("unchecked") // upstream API
   @Override
   @Nullable
   public BlazeLaunchTask getApplicationLaunchTask(
-    BazelAndroidRunContext runContext,
-    boolean isDebug,
-    @Nullable Integer userId,
-    @NotNull String contributorsAmStartOptions)
+      BlazeAndroidRunContext runContext,
+      boolean isDebug,
+      @Nullable Integer userId,
+      @NotNull String contributorsAmStartOptions)
       throws ExecutionException {
 
-    var extraFlags = UserIdHelper.getFlagsFromUserId(userId);
+    String extraFlags = UserIdHelper.getFlagsFromUserId(userId);
     if (!contributorsAmStartOptions.isEmpty()) {
       extraFlags += (extraFlags.isEmpty() ? "" : " ") + contributorsAmStartOptions;
     }
@@ -160,10 +171,15 @@ public class MobileInstallDeployAndLaunchStrategy implements BlazeAndroidDeployA
 
     final StartActivityFlagsProvider startActivityFlagsProvider =
         new DefaultStartActivityFlagsProvider(project, isDebug, extraFlags);
-    var deployInfo = runContext.getBuildStep().getDeployInfo();
+    BlazeAndroidDeployInfo deployInfo;
+    try {
+      deployInfo = runContext.getBuildStep().getDeployInfo();
+    } catch (ApkProvisionException e) {
+      throw new ExecutionException(e);
+    }
 
     return BlazeAndroidBinaryApplicationLaunchTaskProvider.getApplicationLaunchTask(
-      runContext.getApplicationIdProvider(),
+        runContext.getApplicationIdProvider(),
         deployInfo.getMergedManifest(),
         configState,
         startActivityFlagsProvider);
@@ -172,13 +188,13 @@ public class MobileInstallDeployAndLaunchStrategy implements BlazeAndroidDeployA
   @Nullable
   @Override
   public XDebugSession startDebuggerSession(
-    BazelAndroidRunContext runContext,
-    AndroidDebugger androidDebugger,
-    AndroidDebuggerState androidDebuggerState,
-    ExecutionEnvironment env,
-    IDevice device,
-    ConsoleView consoleView,
-    ProgressIndicator indicator) {
+      BlazeAndroidRunContext runContext,
+      AndroidDebugger androidDebugger,
+      AndroidDebuggerState androidDebuggerState,
+      ExecutionEnvironment env,
+      IDevice device,
+      ConsoleView consoleView,
+      ProgressIndicator indicator) {
     try {
       return BuildersKt.runBlocking(
           EmptyCoroutineContext.INSTANCE,

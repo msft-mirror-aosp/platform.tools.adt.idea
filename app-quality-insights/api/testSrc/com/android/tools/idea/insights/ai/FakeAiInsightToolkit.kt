@@ -19,6 +19,7 @@ import com.android.tools.idea.insights.CallInProgress
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.codecontext.CodeContextResolver
 import com.android.tools.idea.insights.ai.codecontext.FakeCodeContextResolver
+import com.android.tools.idea.insights.client.AppInsightsCache
 import com.android.tools.idea.insights.client.GeminiAiInsightClient
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.model.event.Event
@@ -31,11 +32,12 @@ open class FakeAiInsightToolkit(
   codeContextResolver: CodeContextResolver = FakeCodeContextResolver(emptyList()),
   override val aiInsightOnboardingProvider: InsightsOnboardingProvider =
     StubInsightsOnboardingProvider(),
+  cache: AppInsightsCache,
 ) :
   AiInsightToolkit(
     project,
     codeContextResolver,
-    GeminiAiInsightClient(project, codeContextResolver),
+    GeminiAiInsightClient(project, cache, codeContextResolver),
   ) {
 
   private val fetchInsightCall = CallInProgress<LoadingState.Done<AiInsight>>()

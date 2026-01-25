@@ -19,7 +19,6 @@ import static com.android.tools.idea.wizard.dynamic.ScopedStateStore.Key;
 import static com.android.tools.idea.wizard.dynamic.ScopedStateStore.Scope.WIZARD;
 import static com.android.tools.idea.wizard.dynamic.ScopedStateStore.createKey;
 
-import com.android.tools.idea.wizard.dynamic.ScopedStateStore;
 import com.android.tools.idea.wizard.ui.StudioWizardLayout;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
@@ -70,6 +69,4 @@ public class WizardConstants {
   // State Store Keys
   // TODO After the wizard migration delete as many of these keys as possible
   public static final Key<String> KEY_SDK_INSTALL_LOCATION = createKey("download.sdk.location", WIZARD, String.class);
-
-  public static final Key<Boolean> KEY_CUSTOM_INSTALL = createKey("custom.install", ScopedStateStore.Scope.WIZARD, Boolean.class);
 }

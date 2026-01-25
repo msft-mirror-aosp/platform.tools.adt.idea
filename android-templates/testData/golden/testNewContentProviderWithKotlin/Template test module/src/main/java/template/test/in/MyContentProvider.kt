@@ -12,7 +12,10 @@ class MyContentProvider : ContentProvider() {
     }
 
     override fun getType(uri: Uri): String? {
-        TODO("Implement this to handle requests for the MIME type of the data at the given URI")
+        TODO(
+            "Implement this to handle requests for the MIME type of the data" +
+                    "at the given URI"
+        )
     }
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? {

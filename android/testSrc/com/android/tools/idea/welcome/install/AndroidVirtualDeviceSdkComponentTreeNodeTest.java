@@ -41,11 +41,11 @@ import com.android.tools.idea.sdk.AndroidSdks;
 import com.android.tools.idea.sdk.IdeAvdManagers;
 import com.android.tools.idea.sdk.IdeSdks;
 import com.android.tools.idea.testing.TemporaryDirectoryRule;
-import com.android.tools.idea.welcome.wizard.AbstractProgressStep;
+import com.android.tools.idea.welcome.wizard.deprecated.AbstractProgressStep;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.wireless.android.sdk.stats.SetupWizardEvent;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.io.NioFiles;
 import com.intellij.testFramework.ApplicationRule;
@@ -149,11 +149,15 @@ public final class AndroidVirtualDeviceSdkComponentTreeNodeTest {
     AndroidSdks androidSdks = spy(AndroidSdks.getInstance());
     when(androidSdks.tryToChooseSdkHandler()).thenReturn(sdkHandler);
     ServiceContainerUtil.replaceService(ApplicationManager.getApplication(), AndroidSdks.class, androidSdks, disposableRule.getDisposable());
-    progressStep = new AbstractProgressStep(mock(), "") {
+    progressStep = new AbstractProgressStep(disposableRule.getDisposable(), "test", mock()) {
       @Override
-      protected void execute() { }
+      protected SetupWizardEvent.WizardStep.WizardStepKind getWizardStepKind() {
+        return SetupWizardEvent.WizardStep.WizardStepKind.UNKNOWN_STEP;
+      }
+
+      @Override
+      protected void execute() {}
     };
-    Disposer.register(disposableRule.getDisposable(), () -> progressStep.dispose());
   }
 
   @Test

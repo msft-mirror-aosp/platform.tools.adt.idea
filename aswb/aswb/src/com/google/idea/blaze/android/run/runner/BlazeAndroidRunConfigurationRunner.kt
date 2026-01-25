@@ -15,7 +15,7 @@
  */
 package com.google.idea.blaze.android.run.runner
 
-import com.android.tools.idea.editors.liveedit.LiveEditService
+import com.android.tools.idea.editors.liveedit.LiveEditService.Companion.getInstance
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutorRunProfileState
 import com.android.tools.idea.execution.common.AppRunSettings
@@ -34,9 +34,7 @@ import com.android.tools.idea.run.configuration.execution.TileLaunchOptions
 import com.android.tools.idea.run.configuration.execution.WatchFaceLaunchOptions
 import com.android.tools.idea.run.editor.DeployTarget
 import com.android.tools.idea.run.editor.DeployTargetState
-import com.android.utils.executeWithRetries
 import com.google.common.util.concurrent.Futures
-import com.google.idea.blaze.android.run.BazelAndroidRunContext
 import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryRunConfigurationState
 import com.google.idea.blaze.android.run.runner.BlazeAndroidDeviceSelector.DeviceSession
 import com.google.idea.blaze.base.async.executor.ProgressiveTaskWithProgressIndicator
@@ -57,16 +55,12 @@ import com.google.idea.blaze.base.settings.BlazeUserSettings
 import com.google.idea.blaze.base.toolwindow.Task
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
-import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.runners.ExecutionEnvironment
-import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.util.Key
 import java.util.concurrent.CancellationException
-import kotlin.lazy
 import org.jetbrains.android.util.AndroidBundle
 
 /**
@@ -112,47 +106,38 @@ class BlazeAndroidRunConfigurationRunner(
     val launchOptionsBuilder = LaunchOptions.builder()
     launchStrategy.augmentLaunchOptions(launchOptionsBuilder)
 
-    return AndroidConfigurationExecutorRunProfileState(
-      LazilyInitializedDelegatingBlazeAndroidConfigurationExecutor(runConfig) {
-        executeBuild(environment)
-        if (!apkBuildStep.isDone) error("Build must be complete")
-        // Instantiate the run context locally after completion of the build step.
-        val runContext = launchStrategy.createBlazeAndroidRunContext(environment, apkBuildStep, runConfig)
+    // Instantiate the run context locally
+    val runContext = launchStrategy.createBlazeAndroidRunContext(environment, apkBuildStep, runConfig)
 
-        // Store the device session on the execution environment so before-run tasks can access it.
-        environment.putCopyableUserData(DEVICE_SESSION_KEY, deviceSession)
+    // Store the device session on the execution environment so before-run tasks can access it.
+    environment.putCopyableUserData(DEVICE_SESSION_KEY, deviceSession)
 
-        val state = runConfig.handler.getState()
+    val state = runConfig.handler.getState()
 
-        val applicationProjectContext = runContext.applicationProjectContext
-        val wearLaunchOptions = (state as? BlazeAndroidBinaryRunConfigurationState)?.currentWearLaunchOptions
-        if (wearLaunchOptions != null) {
-          getWearExecutor(wearLaunchOptions, environment, deployTarget, runContext)
-        }
-        else {
-          val launchOptions = launchOptionsBuilder.build()
-          BlazeAndroidConfigurationExecutor(
-            runContext.consoleProvider,
-            applicationProjectContext,
-            environment,
-            deviceFutures,
-            runContext,
-            launchStrategy,
-            launchOptions,
-            LiveEditService.getInstance(environment.project)
-          )
-        }
-      }
-    )
+    val applicationProjectContext = runContext.applicationProjectContext
+    val wearLaunchOptions = (state as? BlazeAndroidBinaryRunConfigurationState)?.currentWearLaunchOptions
+    val configurationExecutor = if (wearLaunchOptions != null) {
+      getWearExecutor(wearLaunchOptions, environment, deployTarget, runContext)
+    } else {
+      val launchOptions = launchOptionsBuilder.build()
+      BlazeAndroidConfigurationExecutor(
+        runContext.consoleProvider,
+        applicationProjectContext,
+        environment,
+        deviceFutures,
+        BlazeAndroidLaunchTasksProvider(project, runContext, launchStrategy, launchOptions),
+        launchOptions,
+        runContext.apkProvider,
+        getInstance(environment.project)
+      )
+    }
+    return AndroidConfigurationExecutorRunProfileState(configurationExecutor)
   }
 
   @Throws(ExecutionException::class)
   private fun getWearExecutor(
-    launchOptions: ComponentLaunchOptions,
-    env: ExecutionEnvironment,
-    deployTarget: DeployTarget,
-    runContext: BazelAndroidRunContext,
-  ): AndroidConfigurationExecutor {
+    launchOptions: ComponentLaunchOptions, env: ExecutionEnvironment, deployTarget: DeployTarget, runContext: BlazeAndroidRunContext,
+    ): AndroidConfigurationExecutor {
     val settings: AppRunSettings =
       object : AppRunSettings {
         override val deployOptions: DeployOptions
@@ -189,10 +174,6 @@ class BlazeAndroidRunConfigurationRunner(
   }
 
   override fun executeBeforeRunTask(environment: ExecutionEnvironment): Boolean {
-    return true
-  }
-
-  private fun executeBuild(environment: ExecutionEnvironment): Boolean {
     val project = environment.project
     val settings = BlazeUserSettings.getInstance()
     return Scope.root(
@@ -252,18 +233,4 @@ class BlazeAndroidRunConfigurationRunner(
     }
 
   }
-}
-
-/**
- * A delegating executor that initializes the actual [AndroidConfigurationExecutor] lazily.
- * This is used to delay the creation of the executor until the build step is complete.
- */
-private class LazilyInitializedDelegatingBlazeAndroidConfigurationExecutor(
-  override val configuration: RunConfiguration,
-  factory: () -> AndroidConfigurationExecutor
-) : AndroidConfigurationExecutor {
-
-  private val delegate  by lazy(mode = LazyThreadSafetyMode.PUBLICATION, factory)
-  override fun run(indicator: ProgressIndicator): RunContentDescriptor = delegate.run(indicator)
-  override fun debug(indicator: ProgressIndicator): RunContentDescriptor = delegate.debug(indicator)
 }
