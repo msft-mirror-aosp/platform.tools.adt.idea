@@ -37,6 +37,9 @@ import java.nio.file.Path
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.cli.create
+import org.jetbrains.kotlin.cli.extensionsStorage
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.idea.base.projectStructure.languageVersionSettings
@@ -90,6 +93,8 @@ internal class GradleApplicationLiveEditServices(private val module: Module) : A
     val module = ktFile.module ?: return CompilerConfiguration.create()
     val compilerConfiguration =
       CompilerConfiguration.create().apply<CompilerConfiguration> {
+        @OptIn(ExperimentalCompilerApi::class)
+        extensionsStorage = CompilerPluginRegistrar.ExtensionStorage()
         put(CommonConfigurationKeys.MODULE_NAME, module.name)
         KotlinFacet.get(module)?.let { kotlinFacet ->
           val moduleName =
