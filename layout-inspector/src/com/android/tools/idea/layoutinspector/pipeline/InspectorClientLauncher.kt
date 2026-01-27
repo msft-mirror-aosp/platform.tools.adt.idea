@@ -23,7 +23,6 @@ import com.android.tools.idea.layoutinspector.metrics.LayoutInspectorSessionMetr
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
-import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyClient
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.google.common.annotations.VisibleForTesting
@@ -100,23 +99,12 @@ class InspectorClientLauncher(
         }
       }
 
-      val legacyClientFactory = ClientFactory { params ->
-        LegacyClient(
-          params.process,
-          model,
-          notificationModel,
-          metrics,
-          coroutineScope,
-          parentDisposable,
-        )
-      }
-
       val launchers =
         if (LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled) {
           // Embedded Layout Inspector is meant to be used only with an App Inspection inspector.
           listOf(appInspectionInspectorClientFactory)
         } else {
-          listOf(appInspectionInspectorClientFactory, legacyClientFactory)
+          listOf(appInspectionInspectorClientFactory)
         }
 
       return InspectorClientLauncher(
