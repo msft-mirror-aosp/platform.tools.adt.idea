@@ -109,7 +109,6 @@ import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.MAIN
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet.TEST_FIXTURES
 import com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl
-import com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl
@@ -944,19 +943,6 @@ fun modelCacheV2Impl(
       buildInformation = buildTasksOutputInformationFrom(artifact),
       codeShrinker = convertCodeShrinker(artifact.codeShrinker),
       isTestArtifact = isMainArtifactInTestProject || name == IdeArtifactName.ANDROID_TEST || name == IdeArtifactName.TEST_FIXTURES,
-      privacySandboxSdkInfo =
-        if (modelVersions[ModelFeature.HAS_PRIVACY_SANDBOX_SDK_INFO])
-          artifact.privacySandboxSdkInfo?.let {
-            IdePrivacySandboxSdkInfoImpl(
-              it.task,
-              it.outputListingFile,
-              it.additionalApkSplitTask,
-              it.additionalApkSplitFile,
-              it.taskLegacy,
-              it.outputListingLegacyFile,
-            )
-          }
-        else null,
       desugaredMethodsFiles = getDesugaredMethodsList(artifact, fallbackDesugaredMethodsFiles).toList(),
       generatedClassPaths = if (modelVersions[ModelFeature.HAS_GENERATED_CLASSPATHS]) artifact.generatedClassPaths else emptyMap(),
       bytecodeTransforms =
