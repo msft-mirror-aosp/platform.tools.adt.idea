@@ -101,6 +101,7 @@ import org.gradle.tooling.model.build.BuildEnvironment
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
+import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper.AUTO_JAVA_HOME
 import org.jetbrains.plugins.gradle.service.task.GradleTaskManager
 
 internal class GradleTasksExecutorImpl : GradleTasksExecutor {
@@ -322,7 +323,8 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             }
             val buildInfo = buildAttributionManager?.onBuildSuccess(myRequest)
             val invokedByAgent = executionSettings.arguments.contains("-Pandroid.studio.agent=true")
-            if (buildInfo?.agpVersion != null && !invokedByAgent) {
+            val isJavaHomeOperation = executionSettings.getUserData(AUTO_JAVA_HOME) ?: false
+            if (buildInfo?.agpVersion != null && !invokedByAgent && !isJavaHomeOperation) {
               reportAgpVersionMismatch(project, buildInfo)
             }
             GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, null, model.get())
