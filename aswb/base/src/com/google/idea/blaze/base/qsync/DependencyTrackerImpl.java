@@ -37,6 +37,7 @@ import com.google.idea.blaze.qsync.project.RequestedTargets;
 import com.intellij.openapi.util.text.StringUtil;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Set;
 
 /**
  * A file that tracks what files in the project can be analyzed and what is the status of their
@@ -88,10 +89,12 @@ public class DependencyTrackerImpl implements DependencyTracker {
   private RequestedTargets getRequestedTargets(
       QuerySyncProjectSnapshot snapshot, DependencyBuildRequest request) {
     return switch (request.requestType) {
+      case SPECIAL_TARGETS -> new RequestedTargets(request.targets, ImmutableSet.of());
       case MULTIPLE_TARGETS -> snapshot.getGraph()
         .computeRequestedTargets(request.targets, querySyncUserPreferences.getExperimentalBuildNativeTargetsFromAndroidTransitionPoint());
       case WHOLE_PROJECT -> snapshot.getGraph().computeWholeProjectTargets();
       case FILE_PREVIEWS -> new RequestedTargets(request.targets, ImmutableSet.of());
+      case LIVE_EDIT_BUILD_APK -> new RequestedTargets(request.targets, ImmutableSet.of());
     };
   }
 
@@ -168,5 +171,12 @@ public class DependencyTrackerImpl implements DependencyTracker {
   @Override
   public DependencyBuilder getBuilder() {
     return builder;
+  }
+
+  @Override
+  public void updateDependenciesFromOutputInfo(
+      BlazeContext context, OutputInfo outputInfo, Set<Label> targets)
+      throws BuildException {
+    artifactTracker.update(targets, outputInfo, context);
   }
 }

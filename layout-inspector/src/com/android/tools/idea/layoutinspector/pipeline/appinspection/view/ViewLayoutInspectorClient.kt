@@ -133,9 +133,7 @@ class ViewLayoutInspectorClient(
       launchMonitor: InspectorClientLaunchMonitor,
     ): ViewLayoutInspectorClient {
       // Set force = true, to be more aggressive about connecting the layout inspector if an old
-      // version was
-      // left running for some reason. This is a better experience than silently falling back to a
-      // legacy client.
+      // version was left running for some reason.
       val params =
         LaunchParameters(process, VIEW_LAYOUT_INSPECTOR_ID, JAR, model.project.name, force = true)
       val messenger = apiServices.launchInspector(params)
@@ -399,6 +397,7 @@ class ViewLayoutInspectorClient(
         )
       // Delete the file in case we wrote out partial data
       Files.delete(path)
+      throw e
     }
     return snapshotMetadata
   }

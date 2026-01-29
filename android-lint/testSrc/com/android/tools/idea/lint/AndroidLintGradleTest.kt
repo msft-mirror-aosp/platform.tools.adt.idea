@@ -22,6 +22,7 @@ import com.android.tools.idea.lint.common.AndroidLintInspectionBase
 import com.android.tools.idea.lint.common.AndroidLintSimilarGradleDependencyInspection
 import com.android.tools.idea.lint.common.AndroidLintUseTomlInsteadInspection
 import com.android.tools.idea.lint.common.AndroidLintUseValueOfInspection
+import com.android.tools.idea.lint.common.AndroidLintVisibleForTestsInspection
 import com.android.tools.idea.lint.common.AndroidLintWrongGradleMethodInspection
 import com.android.tools.idea.lint.inspections.AndroidLintAligned16KBInspection
 import com.android.tools.idea.lint.inspections.AndroidLintDuplicateActivityInspection
@@ -230,11 +231,11 @@ class AndroidLintGradleTest {
       AndroidLintUseTomlInsteadInspection(),
       "com.android.support:appcompat-v|7:28.0.0",
       """
-        Warning: Use version catalog instead
-            implementation("com.android.support:appcompat-v7:28.0.0")
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Fix: Replace with new library catalog declaration for appcompat-v7
-            Fix: Suppress UseTomlInstead with a comment
+      Warning: Use version catalog instead
+          implementation("com.android.support:appcompat-v7:28.0.0")
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          Fix: Replace with new library catalog declaration for appcompat-v7
+          Fix: Suppress UseTomlInstead with a comment
       """
         .trimIndent(),
     )
@@ -244,11 +245,11 @@ class AndroidLintGradleTest {
       AndroidLintUseTomlInsteadInspection(),
       "com.android.support:appcompat-v|7:28.0.0",
       """
-        Warning: Use version catalog instead
-            implementation("com.android.support:appcompat-v7:28.0.0")
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            Fix: Replace with new library catalog declaration for appcompat-v7
-            Fix: Suppress UseTomlInstead with a comment
+      Warning: Use version catalog instead
+          implementation("com.android.support:appcompat-v7:28.0.0")
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          Fix: Replace with new library catalog declaration for appcompat-v7
+          Fix: Suppress UseTomlInstead with a comment
       """
         .trimIndent(),
     )
@@ -263,7 +264,7 @@ class AndroidLintGradleTest {
       AndroidLintSimilarGradleDependencyInspection(),
       "androidx-core-ktx = { group = \"androidx.|core\", name = \"core-ktx\", version.ref = \"coreKtx\" }\n",
       """
-        No warnings.
+      No warnings.
       """
         .trimIndent(),
     )
@@ -374,6 +375,36 @@ class AndroidLintGradleTest {
             Fix: Set compileSdkVersion to ${GradleDetector.HIGHEST_KNOWN_STABLE_ANDROID_API}
             Fix: Suppress GradleDependency with a comment
         """,
+    )
+  }
+
+  @Test
+  fun testComAndroidTestProject() {
+    projectRule.loadProject(TestProjectPaths.TEST_ONLY_VISIBILITY)
+
+    val appFile = fixture.loadFile("app/src/main/java/com/example/myapplication/Utils.kt")
+    fixture.checkLint(
+      appFile,
+      AndroidLintVisibleForTestsInspection(),
+      "fo|o(x+1)" to
+        """
+        Warning: This method should only be accessed from tests or within private scope
+            fun add(x: Int) = foo(x+1)
+                              ~~~
+            Fix: Suppress VisibleForTests with an annotation
+        """
+          .trimIndent(),
+    )
+
+    val testFile = fixture.loadFile("test/src/main/java/com/example/mylibrary/Test.kt")
+    fixture.checkLint(
+      testFile,
+      AndroidLintVisibleForTestsInspection(),
+      "fo|o(2)" to
+        """
+        No warnings.
+        """
+          .trimIndent(),
     )
   }
 

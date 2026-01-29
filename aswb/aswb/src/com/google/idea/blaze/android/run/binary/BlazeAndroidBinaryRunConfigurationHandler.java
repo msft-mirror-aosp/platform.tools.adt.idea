@@ -23,23 +23,21 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.idea.blaze.android.run.ApkBuildStepProvider;
+import com.google.idea.blaze.android.run.BazelApkBuildStepProvider;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationCommonState;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationHandler;
 import com.google.idea.blaze.android.run.BlazeAndroidRunConfigurationValidationUtil;
 import com.google.idea.blaze.android.run.LaunchMetrics;
 import com.google.idea.blaze.android.run.binary.AndroidBinaryLaunchMethodsUtils.AndroidBinaryLaunchMethod;
 import com.google.idea.blaze.android.run.binary.mobileinstall.MobileInstallDeployAndLaunchStrategy;
-import com.google.idea.blaze.android.run.runner.ApkBuildStep;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidDeployAndLaunchStrategy;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidRunConfigurationRunner;
+import com.google.idea.blaze.android.run.runner.BlazeApkBuildStep;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
 import com.google.idea.blaze.base.logging.EventLoggingService;
 import com.google.idea.blaze.base.logging.GenericEvent;
-import com.google.idea.blaze.base.model.primitives.Label;
-import com.google.idea.blaze.base.projectview.ProjectViewManager;
-import com.google.idea.blaze.base.projectview.ProjectViewSet;
+import com.google.idea.blaze.base.qsync.QuerySyncUserPreferencesProvider;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfigurationType;
 import com.google.idea.blaze.base.run.BlazeConfigurationNameBuilder;
@@ -47,8 +45,7 @@ import com.google.idea.blaze.base.run.ExecutorType;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationRunner;
 import com.google.idea.blaze.base.run.state.RunConfigurationState;
 import com.google.idea.blaze.base.settings.Blaze;
-import com.google.idea.blaze.base.sync.data.BlazeDataStorage;
-import com.google.idea.blaze.base.sync.projectstructure.ModuleFinder;
+import com.google.idea.blaze.common.Label;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
@@ -57,7 +54,6 @@ import com.intellij.execution.configurations.RuntimeConfigurationException;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import java.util.concurrent.TimeUnit;
@@ -107,10 +103,6 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
         BlazeAndroidRunConfigurationHandler.getCommandConfig(env);
 
     BlazeAndroidRunConfigurationValidationUtil.validate(project);
-    Module module =
-        ModuleFinder.getInstance(env.getProject())
-            .findModuleByName(BlazeDataStorage.WORKSPACE_MODULE_NAME);
-    ProjectViewSet projectViewSet = ProjectViewManager.getInstance(project).getProjectViewSet();
 
     // Only suggest building with mobile-install if native debugging isn't enabled.
     if (configState.getLaunchMethod() == AndroidBinaryLaunchMethod.NON_BLAZE
@@ -128,23 +120,23 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
             .getCommonState()
             .getExpandedBuildFlags(
                 project,
-                projectViewSet,
                 BlazeCommandName.RUN,
                 BlazeInvocationContext.runConfigContext(
                     ExecutorType.fromExecutor(env.getExecutor()), configuration.getType(), false));
     ImmutableList<String> exeFlags =
         ImmutableList.copyOf(
             configState.getCommonState().getExeFlagsState().getFlagsForExternalProcesses());
-    ApkBuildStep buildStep =
-        ApkBuildStepProvider.getInstance(Blaze.getBuildSystemName(project))
+    BlazeApkBuildStep buildStep =
+        BazelApkBuildStepProvider
             .getBinaryBuildStep(
-                project,
-                AndroidBinaryLaunchMethodsUtils.useMobileInstall(configState.getLaunchMethod()),
-                configState.getCommonState().isNativeDebuggingEnabled(),
-                Label.create(configuration.getSingleTargetPattern()),
-                blazeFlags,
-                exeFlags,
-                launchId);
+              project,
+              AndroidBinaryLaunchMethodsUtils.useMobileInstall(configState.getLaunchMethod()),
+              configState.getCommonState().isNativeDebuggingEnabled(),
+              QuerySyncUserPreferencesProvider.getInstance(project).getUserPreferences().getLiveEditEnabled(),
+              configuration.getSingleTargetPattern() != null ? Label.of(configuration.getSingleTargetPattern()): Label.of("//"),
+              blazeFlags,
+              exeFlags,
+              launchId);
 
     BlazeAndroidDeployAndLaunchStrategy launchStrategy;
     switch (configState.getLaunchMethod()) {
@@ -168,7 +160,7 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
         env.getExecutor().getId(),
         configuration.getSingleTargetPattern(),
         configState.getCommonState().isNativeDebuggingEnabled());
-    return new BlazeAndroidRunConfigurationRunner(launchStrategy, configuration, buildStep);
+    return new BlazeAndroidRunConfigurationRunner(launchStrategy, configuration, buildStep, buildStep.getDeployInfoExtractor());
   }
 
   @Override

@@ -17,7 +17,6 @@ package com.google.idea.blaze.base.qsync
 
 import com.google.common.io.ByteSource
 import com.google.idea.blaze.base.bazel.BuildSystem
-import com.google.idea.blaze.base.qsync.BazelDependencyBuilder.BuildDependenciesBazelInvocationInfo
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.exception.BuildException
@@ -31,13 +30,14 @@ import org.jetbrains.annotations.VisibleForTesting
  *
  * Our test framework wraps instances and the interface allows it to delegate these methods to the original implementation.
  */
-interface BazelDependencyBuilderPublicForTests {
+interface BazelDependencyBuilderPublicForTests : DependencyBuilder {
   @VisibleForTesting
   fun getInvocationInfo(
     context: BlazeContext,
     buildTargets: Set<Label>,
     buildInvokerCapabilities: Set<BuildSystem.BuildInvoker.Capability>,
-    outputGroups: Collection<OutputGroup>
+    outputGroups: Collection<OutputGroup>,
+    replaceOutputGroups: Boolean
   ): BuildDependenciesBazelInvocationInfo
 
   @VisibleForTesting

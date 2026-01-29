@@ -1,0 +1,72 @@
+/*
+ * Copyright 2024 The Bazel Authors. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.tools.idea.run.deployment.liveedit.tokens
+
+import com.android.tools.idea.projectsystem.ApplicationProjectContext
+import com.android.tools.idea.projectsystem.ClassContent
+import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices.Companion.DEFAULT_RUNTIME_VERSION
+import com.google.idea.blaze.android.projectsystem.BazelProjectSystem
+import com.google.idea.blaze.android.projectsystem.BazelToken
+import com.google.idea.blaze.android.run.BazelApplicationProjectContext
+import com.google.idea.blaze.base.qsync.QuerySyncUserPreferencesProvider
+import com.google.idea.common.experiments.BoolExperiment
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiFile
+import java.nio.file.Path
+import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.psi.KtFile
+
+class BazelBuildSystemLiveEditServices :  BuildSystemLiveEditServices<BazelProjectSystem, BazelApplicationProjectContext>, BazelToken {
+
+  override fun isApplicable(
+    applicationProjectContext: ApplicationProjectContext
+  ): Boolean {
+    return applicationProjectContext is BazelApplicationProjectContext
+           && QuerySyncUserPreferencesProvider(applicationProjectContext.project).userPreferences.liveEditEnabled
+  }
+
+  override fun getApplicationServices(
+    bazelApplicationProjectContext: BazelApplicationProjectContext
+  ): ApplicationLiveEditServices {
+    return object: ApplicationLiveEditServices {
+      private val compilationDependencies = object: ApplicationLiveEditServices.CompilationDependencies {
+        override fun getExternalLibraries(): List<Path> = emptyList()
+        override fun getBootClasspath(): List<Path> = emptyList()
+      }
+
+      override fun getClassContent(
+        file: VirtualFile,
+        className: String,
+      ): ClassContent? {
+        throw UnsupportedOperationException()
+      }
+
+      override fun getCompilationDependencies(file: PsiFile): ApplicationLiveEditServices.CompilationDependencies? = compilationDependencies
+
+      override fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration {
+        throw UnsupportedOperationException()
+      }
+
+      override fun getDesugarConfigs() = DesugarConfigs.NotKnown("Desugar config not supported in ASWB")
+
+
+      override fun getRuntimeVersionString() = DEFAULT_RUNTIME_VERSION
+    }
+  }
+  override fun disqualifyingBytecodeTransformation(
+    bazelApplicationProjectContext: BazelApplicationProjectContext
+  ): BuildSystemBytecodeTransformation? = null
+}

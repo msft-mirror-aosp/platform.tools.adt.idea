@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 
 /**
@@ -20,6 +21,9 @@ class BasicActivity : Activity() {
       findViewById(R.id.button_id_fizz),
       findViewById(R.id.button_id_buzz)
     )
+
+    val imageView: ImageView = findViewById(R.id.img_id_fizz)
+    imageView.setImageResource(R.drawable.foo)
 
     for (b in buttons) {
       b.setOnClickListener { v ->

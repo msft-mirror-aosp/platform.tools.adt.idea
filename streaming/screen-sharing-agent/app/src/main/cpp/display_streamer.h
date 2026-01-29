@@ -16,9 +16,6 @@
 
 #pragma once
 
-#include <android/native_window.h>
-#include <media/NdkMediaCodec.h>
-
 #include <chrono>
 #include <mutex>
 
@@ -28,6 +25,7 @@
 #include "common.h"
 #include "geom.h"
 #include "jvm.h"
+#include "ndk_types.h"
 #include "socket_writer.h"
 #include "thread_handle.h"
 #include "video_packet_header.h"
@@ -42,7 +40,7 @@ public:
   };
 
   DisplayStreamer(
-      int display_id, const CodecInfo* codec_info, Size max_video_resolution, int initial_video_orientation, int max_bitrate,
+      int display_id, const CodecInfo* codec_info, Size max_video_resolution, int initial_video_orientation, int max_bit_rate,
       SocketWriter* writer);
   ~DisplayStreamer() override;
 
@@ -109,8 +107,7 @@ private:
   VirtualDisplay virtual_display_;
   JObject display_token_;
 
-  AMediaCodec* codec_ = nullptr;
-  ANativeWindow* surface_ = nullptr;
+  MediaCodec codec_;
   std::recursive_mutex mutex_;
   DisplayInfo display_info_;  // GUARDED_BY(mutex_)
   Size max_video_resolution_;  // GUARDED_BY(mutex_)

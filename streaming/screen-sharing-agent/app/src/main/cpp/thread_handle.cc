@@ -32,7 +32,6 @@ ThreadHandle::~ThreadHandle() {
 
 void ThreadHandle::Start(const std::string& thread_name, const std::function<void()>& runnable) {
   std::unique_lock lock(mutex_);
-  Log::D("ThreadHandle::Start(\"%s\", ...) run_state_=%d", thread_name.c_str(), run_state_);  // b/476936376
   if (run_state_ == RunState::RUNNING) {
     return;
   }
@@ -42,7 +41,7 @@ void ThreadHandle::Start(const std::string& thread_name, const std::function<voi
     lock.lock();
   }
   if (run_state_ == RunState::STOPPED) {
-    thread_ = CreateThread(thread_name, runnable);
+    thread_ = CreateThread(thread_name, [this, runnable]() { Run(runnable); });
     run_state_ = RunState::RUNNING;
   }
 }
@@ -73,8 +72,12 @@ bool ThreadHandle::IsStopping() {
   return run_state_ == RunState::STOPPING;
 }
 
+void ThreadHandle::Run(const std::function<void()>& runnable) {
+  runnable();
+  Stop();
+}
+
 thread CreateThread(const string& thread_name, const std::function<void()>& runnable) {
-  Log::D("ThreadHandle::CreateThread(\"%s\", ...)", thread_name.c_str());  // b/476936376
   return std::thread([thread_name, runnable]() {
     Jvm::AttachCurrentThread(thread_name.c_str());
     try {

@@ -38,11 +38,13 @@ import com.android.tools.idea.sqlite.model.SqliteStatementType
 import com.android.tools.idea.sqlite.model.SqliteValue
 import com.android.tools.idea.sqlite.model.createSqliteStatement
 import com.android.tools.idea.sqlite.ui.tableView.RowDiffOperation
+import com.android.tools.idea.sqlite.ui.tableView.TableView.TableViewType.EVALUATOR
 import com.android.tools.idea.sqlite.utils.SqliteTestUtil
 import com.android.tools.idea.sqlite.utils.getJdbcDatabaseConnection
 import com.android.tools.idea.sqlite.utils.toViewColumns
 import com.android.tools.idea.testing.ProjectServiceRule
 import com.android.tools.idea.testing.runDispatching
+import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.SettableFuture
 import com.google.wireless.android.sdk.stats.AppInspectionEvent
@@ -61,8 +63,6 @@ import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.concurrency.EdtExecutorService
 import org.jetbrains.ide.PooledThreadExecutor
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -138,7 +138,7 @@ class SqliteEvaluatorControllerTest {
     runDispatching { databaseRepository.addDatabaseConnection(databaseId, mockDatabaseConnection) }
     databaseInspectorModel.addDatabaseSchema(databaseId, SqliteSchema(emptyList()))
     sqliteUtil.setUp()
-    viewFactory.createTableView()
+    viewFactory.createTableView(EVALUATOR)
   }
 
   @After
@@ -227,10 +227,8 @@ class SqliteEvaluatorControllerTest {
     verify(sqliteEvaluatorView).setQueryHistory(listOf("SELECT", "fake query"))
     verify(propertiesService)
       .setList("com.android.tools.idea.sqlite.queryhistory", listOf("SELECT", "fake query"))
-    assertEquals(
-      listOf("The statement was run successfully"),
-      successfulInvocationNotificationInvocations,
-    )
+    assertThat(successfulInvocationNotificationInvocations)
+      .isEqualTo(listOf("The statement was run successfully"))
   }
 
   @Test
@@ -634,8 +632,8 @@ class SqliteEvaluatorControllerTest {
     val future3 = sqliteEvaluatorController.refreshData()
 
     // Assert
-    assertEquals(future1, future2)
-    assertTrue(future2 != future3)
+    assertThat(future2).isEqualTo(future1)
+    assertThat(future3).isNotEqualTo(future2)
   }
 
   @Test
@@ -740,10 +738,8 @@ class SqliteEvaluatorControllerTest {
     // Assert
     verify(mockDatabaseConnection).execute(SqliteStatement(sqliteStatementType, sqliteStatement))
     verify(sqliteEvaluatorView).showMessagePanel("The statement was run successfully")
-    assertEquals(
-      listOf("The statement was run successfully"),
-      successfulInvocationNotificationInvocations,
-    )
+    assertThat(successfulInvocationNotificationInvocations)
+      .containsExactly("The statement was run successfully")
   }
 
   @Test
@@ -900,10 +896,8 @@ class SqliteEvaluatorControllerTest {
 
     // Assert
     verify(sqliteEvaluatorView).showSqliteStatement("PRAGMA cache_size = 2")
-    assertEquals(
-      listOf("The statement was run successfully"),
-      successfulInvocationNotificationInvocations,
-    )
+    assertThat(successfulInvocationNotificationInvocations)
+      .containsExactly("The statement was run successfully")
   }
 
   @Test
@@ -941,10 +935,8 @@ class SqliteEvaluatorControllerTest {
     // Assert
     verify(sqliteEvaluatorView).showSqliteStatement("INSERT INTO t1 VALUES (0);")
     verify(sqliteEvaluatorView).showMessagePanel("The statement was run successfully")
-    assertEquals(
-      listOf("The statement was run successfully"),
-      successfulInvocationNotificationInvocations,
-    )
+    assertThat(successfulInvocationNotificationInvocations)
+      .containsExactly("The statement was run successfully")
   }
 
   @Test

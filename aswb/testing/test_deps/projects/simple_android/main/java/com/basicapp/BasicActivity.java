@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 /**
@@ -34,6 +35,10 @@ public class BasicActivity extends Activity {
     final Button buttons[] = {
       findViewById(R.id.button_id_fizz), findViewById(R.id.button_id_buzz),
     };
+
+    ImageView imageView = findViewById(R.id.img_id_fizz);
+    imageView.setImageResource(R.drawable.foo);
+
 
     for (var b : buttons) {
       b.setOnClickListener(

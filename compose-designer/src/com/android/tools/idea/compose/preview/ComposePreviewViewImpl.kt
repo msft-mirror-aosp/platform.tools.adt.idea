@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.flags.ifEnabled
 import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.stdui.ActionData
@@ -226,7 +227,7 @@ internal class ComposePreviewViewImpl(
       val actionDataText =
         "${message("panel.needs.build.action.text")}${getBuildAndRefreshShortcut().asString()}"
       return ActionData(actionDataText) {
-        val virtualFile = psiFilePointer.element?.virtualFile
+        val virtualFile = psiFilePointer.virtualFile
         scope.launch(workerThread) {
           if (virtualFile != null) project.requestBuildArtifactsForRendering(virtualFile)
           withContext(uiThread) {
@@ -282,7 +283,7 @@ internal class ComposePreviewViewImpl(
     log.debug("ProjectStatus: $projectStatus")
     when (projectStatus) {
       RenderingBuildStatus.NeedsBuild -> {
-        if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
+        if (psiFilePointer.virtualFile?.fileSystem?.isReadOnly == true) {
           log.debug("Preview not supported in read-only files")
           showModalErrorMessage(message("panel.read.only.file"))
         } else {
@@ -388,7 +389,7 @@ internal class ComposePreviewViewImpl(
         workbench.isMessageVisible &&
           renderingBuildStatusManager.status == RenderingBuildStatus.NeedsBuild
       ) {
-        if (psiFilePointer.virtualFile.fileSystem.isReadOnly) {
+        if (psiFilePointer.virtualFile?.fileSystem?.isReadOnly == true) {
           showModalErrorMessage(message("panel.read.only.file"))
         } else {
           log.debug("Needs successful build")
@@ -422,12 +423,12 @@ internal class ComposePreviewViewImpl(
 
   /** Creates an [AnAction] to that generates Compose Previews for this file. */
   private fun createGeneratePreviewsActionData(): AnAction? {
-    return getComposeStudioBotActionFactory()?.createPreviewGenerator()?.also {
-      it.templatePresentation.text =
-        if (StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC.get())
+    return StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC.ifEnabled {
+      getComposeStudioBotActionFactory()?.createPreviewGenerator()?.also {
+        it.templatePresentation.text =
           message("action.generate.single.preview.for.file.empty.panel")
-        else message("action.generate.previews.for.file.empty.panel")
-      it.templatePresentation.icon = StudioIcons.StudioBot.GENERIC_AI_ACTION
+        it.templatePresentation.icon = StudioIcons.StudioBot.GENERIC_AI_ACTION
+      }
     }
   }
 

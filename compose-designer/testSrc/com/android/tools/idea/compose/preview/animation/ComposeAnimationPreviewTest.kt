@@ -69,7 +69,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class ComposeAnimationPreviewTest : InspectorTests() {
+class ComposeAnimationPreviewTest : AnimationPreviewTests() {
 
   private val animations =
     ComposeAnimationType.values().map { createComposeAnimation(it.toString(), type = it) }
@@ -558,7 +558,6 @@ class ComposeAnimationPreviewTest : InspectorTests() {
           NoopComposeAnimationTracker,
           { sceneManager },
           surface,
-          psiFilePointer,
         )
         .also { it.animationClock = AnimationClock(TestClock()) }
 

@@ -22,9 +22,8 @@ import com.google.idea.blaze.android.BlazeAndroidIntegrationTestCase;
 import com.google.idea.blaze.android.MockSdkUtil;
 import com.google.idea.blaze.android.run.runner.InstrumentationInfo;
 import com.google.idea.blaze.android.run.runner.InstrumentationInfo.InstrumentationParserException;
-import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
+import com.google.idea.blaze.common.Label;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -74,14 +73,14 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
   public void separateInstrumentationAndTargetApp() {
     setupProject();
 
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:instrumentation_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:instrumentation_test");
     InstrumentationInfo info =
         InstrumentationInfo.getInstrumentationInfo(
             instrumentationTestLabel,
-            BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
+            getProject());
 
-    assertThat(info.testApp).isEqualTo(Label.create("//java/com/foo/app:test_app"));
-    assertThat(info.targetApp).isEqualTo(Label.create("//java/com/foo/app:app"));
+    assertThat(info.testApp).isEqualTo(Label.of("//java/com/foo/app:test_app"));
+    assertThat(info.targetApp).isEqualTo(Label.of("//java/com/foo/app:app"));
     assertThat(info.isSelfInstrumentingTest()).isFalse();
   }
 
@@ -89,14 +88,14 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
   public void selfInstrumentingTest() {
     setupProject();
 
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:self_instrumenting_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:self_instrumenting_test");
     InstrumentationInfo info =
         InstrumentationInfo.getInstrumentationInfo(
             instrumentationTestLabel,
-            BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
+            getProject());
 
     assertThat(info.testApp)
-        .isEqualTo(Label.create("//java/com/foo/app:test_app_self_instrumenting"));
+        .isEqualTo(Label.of("//java/com/foo/app:test_app_self_instrumenting"));
     assertThat(info.targetApp).isNull();
     assertThat(info.isSelfInstrumentingTest()).isTrue();
   }
@@ -131,11 +130,11 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
     //    android_instrumentation_test("//java/com/foo/app:instrumentation_test"));
     // query sync: runFullBlazeSyncWithNoIssues();
 
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:instrumentation_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:instrumentation_test");
     try {
       InstrumentationInfo.getInstrumentationInfo(
           instrumentationTestLabel,
-          BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
+          getProject());
       fail("parsing should've thrown an exception");
     } catch (InstrumentationParserException e) {
       assertThat(e.getMessage())
@@ -147,12 +146,12 @@ public class InstrumentationInfoTest extends BlazeAndroidIntegrationTestCase {
   @Test
   public void findTestAndAppTargets() {
     setupProject();
-    Label instrumentationTestLabel = Label.create("//java/com/foo/app:instrumentation_test");
+    Label instrumentationTestLabel = Label.of("//java/com/foo/app:instrumentation_test");
     InstrumentationInfo info =
         InstrumentationInfo.getInstrumentationInfo(
             instrumentationTestLabel,
-            BlazeProjectDataManager.getInstance(getProject()).getBlazeProjectData());
-    assertThat(info.testApp).isEqualTo(Label.create("//java/com/foo/app:test_app"));
-    assertThat(info.targetApp).isEqualTo(Label.create("//java/com/foo/app:app"));
+            getProject());
+    assertThat(info.testApp).isEqualTo(Label.of("//java/com/foo/app:test_app"));
+    assertThat(info.targetApp).isEqualTo(Label.of("//java/com/foo/app:app"));
   }
 }

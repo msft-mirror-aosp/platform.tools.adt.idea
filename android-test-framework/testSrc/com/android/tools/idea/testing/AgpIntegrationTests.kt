@@ -22,6 +22,7 @@ import com.intellij.openapi.projectRoots.JavaSdkVersion
 import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_11
 import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_17
 import com.intellij.openapi.projectRoots.JavaSdkVersion.JDK_1_8
+import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 
 // This Gradle version is exclusively used for the Sync Comparison Benchmarks and gets updated
 // frequently. Please do not use for other purposes
@@ -218,7 +219,7 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   AGP_8_11(agpVersion = "8.11.0", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
   AGP_8_12(agpVersion = "8.12.0", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
   AGP_8_13(agpVersion = "8.13.0", gradleVersion = "8.13", jdkVersion = JDK_17, compileSdk = "35"),
-  AGP_9_0(agpVersion = "9.0.0", gradleVersion = "9.0", jdkVersion = JDK_17, compileSdk = "35"),
+  AGP_9_0(agpVersion = "9.0.0", gradleVersion = "9.0.0", jdkVersion = JDK_17, compileSdk = "35"),
   AGP_LATEST_KOTLIN_SNAPSHOT(
     agpVersion = null,
     gradleVersion = null,
@@ -282,7 +283,7 @@ class SnapshotContext(
 ) : SnapshotComparisonTest {
 
   private val name: String =
-    "$projectName${agpVersion.agpSuffix()}${agpVersion.gradleSuffix()}${agpVersion.modelVersion}"
+    "test${projectName.capitalizeAsciiOnly()}${agpVersion.agpSuffix()}${agpVersion.gradleSuffix()}${agpVersion.modelVersion}"
 
   override fun getName(): String = name
 }

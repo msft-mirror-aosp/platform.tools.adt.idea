@@ -55,6 +55,7 @@ import com.android.tools.idea.sqlite.utils.toSqliteValues
 import com.android.tools.idea.sqlite.utils.toViewColumn
 import com.android.tools.idea.sqlite.utils.toViewColumns
 import com.android.tools.idea.testing.runDispatching
+import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.SettableFuture
 import com.google.wireless.android.sdk.stats.AppInspectionEvent
@@ -72,8 +73,6 @@ import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.testFramework.registerServiceInstance
 import com.intellij.util.concurrency.EdtExecutorService
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -328,7 +327,7 @@ class TableControllerTest {
     val error = pumpEventsAndWaitForFutureException(tableController.setUp())
 
     // Assert
-    assertEquals(error.cause, throwable)
+    assertThat(error.cause).isEqualTo(throwable)
     orderVerifier.verify(tableView).startTableLoading()
     orderVerifier
       .verify(tableView)
@@ -460,8 +459,8 @@ class TableControllerTest {
     val future3 = tableController.refreshData()
 
     // Assert
-    assertEquals(future1, future2)
-    assertTrue(future2 != future3)
+    assertThat(future1).isEqualTo(future2)
+    assertThat(future2).isNotEqualTo(future3)
   }
 
   @Test
@@ -1736,6 +1735,118 @@ class TableControllerTest {
   }
 
   @Test
+  fun testRemoveRows_oneRow() {
+    // Prepare
+    val customSqliteTable =
+      SqliteTable(
+        "tableName",
+        listOf(
+          SqliteColumn("rowid", SqliteAffinity.INTEGER, isNullable = false, inPrimaryKey = false),
+          SqliteColumn("c1", SqliteAffinity.TEXT, true, inPrimaryKey = false),
+        ),
+        RowIdName.ROWID,
+        false,
+      )
+
+    whenever(mockDatabaseConnection.execute(any())).thenReturn(Futures.immediateFuture(Unit))
+    whenever(mockDatabaseConnection.query(any()))
+      .thenReturn(Futures.immediateFuture(sqliteResultSet))
+    val tableController =
+      TableController(
+        project,
+        10,
+        tableView,
+        mockDatabaseConnectionId,
+        { customSqliteTable },
+        databaseRepository,
+        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM tableName"),
+        {},
+        {},
+        edtExecutor,
+        edtExecutor,
+      )
+    Disposer.register(disposable, tableController)
+    pumpEventsAndWaitForFuture(tableController.setUp())
+
+    val orderVerifier = inOrder(tableView, mockDatabaseConnection)
+
+    // Act
+    tableView.listeners.first().removeRowsInvoked(listOf(1))
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Assert
+    orderVerifier.verify(tableView).startTableLoading()
+    orderVerifier.verify(tableView).startTableLoading()
+    orderVerifier
+      .verify(mockDatabaseConnection)
+      .execute(
+        SqliteStatement(
+          SqliteStatementType.DELETE,
+          "DELETE FROM tableName WHERE (rowid = ?)",
+          listOf(1).toSqliteValues(),
+          "DELETE FROM tableName WHERE (rowid = '1')",
+        )
+      )
+    orderVerifier.verify(tableView).stopTableLoading()
+  }
+
+  @Test
+  fun testRemoveRows_multipleRows() {
+    // Prepare
+    val customSqliteTable =
+      SqliteTable(
+        "tableName",
+        listOf(
+          SqliteColumn("rowid", SqliteAffinity.INTEGER, isNullable = false, inPrimaryKey = false),
+          SqliteColumn("c1", SqliteAffinity.TEXT, true, inPrimaryKey = false),
+        ),
+        RowIdName.ROWID,
+        false,
+      )
+
+    whenever(mockDatabaseConnection.execute(any())).thenReturn(Futures.immediateFuture(Unit))
+    whenever(mockDatabaseConnection.query(any()))
+      .thenReturn(Futures.immediateFuture(sqliteResultSet))
+    val tableController =
+      TableController(
+        project,
+        10,
+        tableView,
+        mockDatabaseConnectionId,
+        { customSqliteTable },
+        databaseRepository,
+        SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM tableName"),
+        {},
+        {},
+        edtExecutor,
+        edtExecutor,
+      )
+    Disposer.register(disposable, tableController)
+    pumpEventsAndWaitForFuture(tableController.setUp())
+
+    val orderVerifier = inOrder(tableView, mockDatabaseConnection)
+
+    // Act
+    tableView.listeners.first().removeRowsInvoked(listOf(1, 3, 5))
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // Assert
+    orderVerifier.verify(tableView).startTableLoading()
+    orderVerifier.verify(tableView).startTableLoading()
+    orderVerifier
+      .verify(mockDatabaseConnection)
+      .execute(
+        SqliteStatement(
+          SqliteStatementType.DELETE,
+          "DELETE FROM tableName WHERE (rowid = ?) OR (rowid = ?) OR (rowid = ?)",
+          listOf(1, 3, 5).toSqliteValues(),
+          "DELETE FROM tableName WHERE (rowid = '1') OR (rowid = '3') OR (rowid = '5')",
+        )
+      )
+    orderVerifier.verify(tableView).stopTableLoading()
+  }
+
+  @Test
   fun testUpdateCellOnRealDbIsSuccessfulWith_rowid_() {
     val customSqliteFile =
       sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("c1"))
@@ -1879,8 +1990,9 @@ class TableControllerTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     // Assert
-    assertEquals("Can't execute update: ", tableView.errorReported.first().first)
-    assertEquals("No primary keys or rowid column", tableView.errorReported.first().second?.message)
+    assertThat(tableView.errorReported.first().first).isEqualTo("Can't execute update: ")
+    assertThat(tableView.errorReported.first().second?.message)
+      .isEqualTo("No primary keys or rowid column")
 
     orderVerifier.verify(tableView).stopTableLoading()
     orderVerifier.verify(tableView).revertLastTableCellEdit()
@@ -1894,7 +2006,7 @@ class TableControllerTest {
       )
     val rows = pumpEventsAndWaitForFuture(sqliteResultSet.getRowBatch(0, 1)).rows
     val value = rows.first().values.first { it.columnName == targetCol.name }.value
-    assertEquals(originalValue, value)
+    assertThat(value).isEqualTo(originalValue)
   }
 
   @Test
@@ -1984,8 +2096,9 @@ class TableControllerTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     // Assert
-    assertEquals("Can't execute update: ", tableView.errorReported.first().first)
-    assertEquals("No primary keys or rowid column", tableView.errorReported.first().second?.message)
+    assertThat(tableView.errorReported.first().first).isEqualTo("Can't execute update: ")
+    assertThat(tableView.errorReported.first().second?.message)
+      .isEqualTo("No primary keys or rowid column")
     val sqliteResultSet =
       pumpEventsAndWaitForFuture(
         customDatabaseConnection!!.query(
@@ -1994,7 +2107,7 @@ class TableControllerTest {
       )
     val rows = pumpEventsAndWaitForFuture(sqliteResultSet.getRowBatch(0, 1)).rows
     val value = rows.first().values.first { it.columnName == targetCol.name }.value
-    assertEquals(originalValue, value)
+    assertThat(value).isEqualTo(originalValue)
   }
 
   @Test
@@ -2789,7 +2902,7 @@ class TableControllerTest {
     val error = pumpEventsAndWaitForFutureException(tableController.setUp())
 
     // Assert
-    assertEquals(error.cause, connectionException)
+    assertThat(error.cause).isEqualTo(connectionException)
     orderVerifier.verify(tableView).startTableLoading()
     orderVerifier.verify(tableView).resetView()
     orderVerifier.verify(tableView).stopTableLoading()
@@ -2906,14 +3019,13 @@ class TableControllerTest {
     tableView.listeners.first().rowCountChanged("nan")
 
     // Assert
-    assertEquals(
-      listOf(
+    assertThat(tableView.errorReported)
+      .containsExactly(
         Pair("Row count must be a positive integer.", null),
         Pair("Row count must be a positive integer.", null),
         Pair("Row count must be a positive integer.", null),
-      ),
-      tableView.errorReported,
-    )
+      )
+      .inOrder()
   }
 
   private fun testUpdateWorksOnCustomDatabase(
@@ -2979,10 +3091,10 @@ class TableControllerTest {
       )
     val rows = pumpEventsAndWaitForFuture(sqliteResultSet.getRowBatch(0, 1)).rows
     val value = rows.first().values.first { it.columnName == targetCol.name }.value
-    assertEquals(SqliteValue.StringValue("test value"), value)
+    assertThat(value).isEqualTo(SqliteValue.StringValue("test value"))
     val executedUpdateStatement =
       databaseConnectionWrapper.executedSqliteStatements.first { it.startsWith("UPDATE") }
-    assertEquals(expectedSqliteStatement, executedUpdateStatement)
+    assertThat(executedUpdateStatement).isEqualTo(expectedSqliteStatement)
   }
 
   private fun SqliteColumn.toResultSetCol(): ResultSetSqliteColumn {
@@ -2993,10 +3105,10 @@ class TableControllerTest {
     invocations: List<List<SqliteRow>>,
     expectedInvocations: List<List<SqliteValue>>,
   ) {
-    assertTrue(invocations.size == expectedInvocations.size)
+    assertThat(invocations).hasSize(expectedInvocations.size)
     invocations.forEachIndexed { index, rows ->
-      assertEquals(expectedInvocations[index][0], rows.first().values[0].value)
-      assertEquals(expectedInvocations[index][1], rows.last().values[0].value)
+      assertThat(rows.first().values[0].value).isEqualTo(expectedInvocations[index][0])
+      assertThat(rows.last().values[0].value).isEqualTo(expectedInvocations[index][1])
     }
   }
 

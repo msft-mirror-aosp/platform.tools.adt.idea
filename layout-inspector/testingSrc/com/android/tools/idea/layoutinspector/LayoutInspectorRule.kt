@@ -36,8 +36,6 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorClientSettings
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.AppInspectionInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeParametersCache
 import com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection.DeviceModel
-import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyClient
-import com.android.tools.idea.layoutinspector.pipeline.legacy.LegacyTreeLoader
 import com.android.tools.idea.layoutinspector.ui.LAYOUT_INSPECTOR_DATA_KEY
 import com.android.tools.idea.layoutinspector.util.FakeTreeSettings
 import com.android.tools.idea.layoutinspector.util.ReportingCountDownLatch
@@ -49,23 +47,19 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.ide.util.PropertiesComponent
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.RuleChain
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.android.facet.AndroidFacet
-import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito
-import org.mockito.kotlin.whenever
 
-val MODERN_DEVICE =
+val DEVICE_1 =
   object : DeviceDescriptor {
     override val manufacturer = "Google"
     override val model = "Modern Model"
@@ -76,20 +70,26 @@ val MODERN_DEVICE =
     override val codename: String? = null
   }
 
-val LEGACY_DEVICE =
-  object : DeviceDescriptor by MODERN_DEVICE {
-    override val model = "Legacy Model"
-    override val serial = "123"
-    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.M)
-    override val version = "M"
+val DEVICE_2 =
+  object : DeviceDescriptor {
+    override val manufacturer = "Google"
+    override val model = "Modern Model"
+    override val serial = "1234567"
+    override val isEmulator = false
+    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.R)
+    override val version = "R"
+    override val codename: String? = null
   }
 
-val OLDER_LEGACY_DEVICE =
-  object : DeviceDescriptor by MODERN_DEVICE {
-    override val model = "Older Legacy Model"
-    override val serial = "12"
-    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.LOLLIPOP)
-    override val version = "L"
+val UNSUPPORTED_DEVICE =
+  object : DeviceDescriptor {
+    override val manufacturer = "Google"
+    override val model = "Modern Model"
+    override val serial = "12345678"
+    override val isEmulator = false
+    override val apiLevel = AndroidApiLevel(AndroidVersion.VersionCodes.P)
+    override val version = "P"
+    override val codename: String? = null
   }
 
 fun DeviceDescriptor.createProcess(
@@ -118,25 +118,6 @@ fun DeviceDescriptor.createProcess(
  */
 fun interface InspectorClientProvider {
   fun create(params: InspectorClientLauncher.Params, inspector: LayoutInspector): InspectorClient?
-}
-
-/** Simple, convenient provider for generating a real [LegacyClient] */
-fun LegacyClientProvider(
-  getDisposable: () -> Disposable,
-  treeLoaderOverride: LegacyTreeLoader? =
-    Mockito.mock(LegacyTreeLoader::class.java).also {
-      whenever(it.getAllWindowIds(ArgumentMatchers.any())).thenReturn(listOf("1"))
-    },
-) = InspectorClientProvider { params, inspector ->
-  LegacyClient(
-    params.process,
-    inspector.inspectorModel,
-    inspector.notificationModel,
-    LayoutInspectorSessionMetrics(inspector.inspectorModel.project, params.process),
-    AndroidCoroutineScope(getDisposable()),
-    getDisposable(),
-    treeLoaderOverride,
-  )
 }
 
 /**
@@ -224,7 +205,9 @@ class LayoutInspectorRule(
 
   val adbRule = FakeAdbServerAdbLibRule()
   val adbFileProviderRule = AdbFileProviderRule(projectRule::project)
-  private val ruleChain = RuleChain.outerRule(adbRule).around(adbFileProviderRule)
+  private val provisionerServiceRule = DeviceProvisionerServiceCleanUpRule(projectRule::project)
+
+  private val ruleChain = RuleChain(adbRule, adbFileProviderRule, provisionerServiceRule)
 
   lateinit var inspector: LayoutInspector
     private set

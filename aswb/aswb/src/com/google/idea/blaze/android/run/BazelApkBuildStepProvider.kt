@@ -16,15 +16,12 @@
 package com.google.idea.blaze.android.run
 
 import com.google.idea.blaze.android.run.runner.AitDeployInfoExtractor
-import com.google.idea.blaze.android.run.runner.ApkBuildStep
 import com.google.idea.blaze.android.run.runner.BinaryDeployInfoExtractor
 import com.google.idea.blaze.android.run.runner.BlazeApkBuildStep
 import com.google.idea.blaze.android.run.runner.InstrumentationInfo
 import com.google.idea.blaze.android.run.runner.InstrumentationInfo.InstrumentationParserException
-import com.google.idea.blaze.base.model.primitives.Label
 import com.google.idea.blaze.base.settings.Blaze
-import com.google.idea.blaze.base.settings.BuildSystemName
-import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager
+import com.google.idea.blaze.common.Label
 import com.intellij.execution.ExecutionException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -32,20 +29,25 @@ import com.intellij.openapi.project.Project
 /**
  * Provides APK build steps for Bazel projects.
  */
-class BazelApkBuildStepProvider : ApkBuildStepProvider {
-  override fun getBinaryBuildStep(
+object BazelApkBuildStepProvider {
+  @JvmStatic
+  fun getBinaryBuildStep(
     project: Project,
     useMobileInstall: Boolean,
     nativeDebuggingEnabled: Boolean,
+    liveEditEnabled: Boolean,
     label: Label,
     blazeFlags: List<String>,
     exeFlags: List<String>,
     launchId: String,
-  ): ApkBuildStep {
+  ): BlazeApkBuildStep {
     val buildInvoker =
       Blaze.getBuildSystemProvider(project)
         .getBuildSystem()
         .getBuildInvoker(project)
+
+    val deployInfoOutputGroup = if (useMobileInstall) "mobile_install_INTERNAL_" else "android_deploy_info"
+    val apkOutputGroup = if (useMobileInstall) "mobile_install_INTERNAL_" else "default"
 
     return BlazeApkBuildStep(
       project = project,
@@ -54,20 +56,23 @@ class BazelApkBuildStepProvider : ApkBuildStepProvider {
       exeFlags = exeFlags,
       useMobileInstall = useMobileInstall,
       nativeDebuggingEnabled = nativeDebuggingEnabled,
+      liveEditEnabled = liveEditEnabled,
       launchId = launchId,
       buildInvoker = buildInvoker,
       deployInfoExtractor =
         BinaryDeployInfoExtractor(
-          project,
           com.google.idea.blaze.common.Label.of(label.toString()),
           useMobileInstall,
-          nativeDebuggingEnabled
+          nativeDebuggingEnabled,
+          deployInfoOutputGroup,
+          apkOutputGroup
         )
     )
   }
 
   @Throws(ExecutionException::class)
-  override fun getAitBuildStep(
+  @JvmStatic
+  fun getAitBuildStep(
     project: Project,
     useMobileInstall: Boolean,
     nativeDebuggingEnabled: Boolean,
@@ -75,13 +80,10 @@ class BazelApkBuildStepProvider : ApkBuildStepProvider {
     blazeFlags: List<String>,
     exeFlags: List<String>,
     launchId: String
-  ): ApkBuildStep {
-    val data =
-      BlazeProjectDataManager.getInstance(project)
-        .getBlazeProjectData() ?: error("BlazeProjectData not found")
+  ): BlazeApkBuildStep {
     val info: InstrumentationInfo =
       try {
-        InstrumentationInfo.getInstrumentationInfo(label, data)
+        InstrumentationInfo.getInstrumentationInfo(label, project)
       }
       catch (e: InstrumentationParserException) {
         logger.warn("Could not get instrumentation info: " + e.message)
@@ -93,6 +95,7 @@ class BazelApkBuildStepProvider : ApkBuildStepProvider {
       Blaze.getBuildSystemProvider(project)
         .getBuildSystem()
         .getBuildInvoker(project)
+
     return BlazeApkBuildStep(
       project = project,
       targets = targets,
@@ -100,15 +103,12 @@ class BazelApkBuildStepProvider : ApkBuildStepProvider {
       exeFlags = exeFlags,
       useMobileInstall = useMobileInstall,
       nativeDebuggingEnabled = nativeDebuggingEnabled,
+      liveEditEnabled = false,
       launchId = launchId,
       buildInvoker = buildInvoker,
-      deployInfoExtractor = AitDeployInfoExtractor(project, info)
+      deployInfoExtractor = AitDeployInfoExtractor(project, info, nativeDebuggingEnabled, "android_deploy_info", "default")
     )
   }
 
-  override fun getSupportedBuildSystems(): Set<BuildSystemName> = setOf(BuildSystemName.Blaze, BuildSystemName.Bazel)
-
-  companion object {
-    private val logger = Logger.getInstance(BazelApkBuildStepProvider::class.java)
-  }
+  private val logger = Logger.getInstance(BazelApkBuildStepProvider::class.java)
 }

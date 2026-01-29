@@ -15,10 +15,13 @@
  */
 package com.android.tools.idea.rendering.tokens
 
+import com.google.idea.blaze.base.qsync.rendering.BazelComposeToolingProjectLabelProvider
+
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.projectsystem.ClassFileFinder
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.rendering.tokens.BuildSystemFilePreviewServices.RenderingServices
+import com.android.tools.idea.run.classes.BuildOutcome
+import com.android.tools.idea.run.classes.BuildOutcomeCache
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.SettableFuture
@@ -53,6 +56,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Service(Service.Level.PROJECT)
@@ -61,16 +65,9 @@ internal class BazelBuildServicesCoroutineScope(val scope: CoroutineScope)
 // TODO: b/418844903 - Update the artifact manager
 internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices<BazelBuildTargetReference> {
   private val listeners: MutableCollection<BuildSystemFilePreviewServices.BuildListener> = CopyOnWriteArrayList()
-  private val keyToBuildOutcomeMap: MutableMap<Label, BuildOutcome> = ConcurrentHashMap()
+  private val buildOutcomeCache = BuildOutcomeCache()
 
-  internal data class BuildOutcome(
-    val status: ProjectSystemBuildManager.BuildStatus,
-    val timestamp: Instant,
-    val classFileFinder: ClassFileFinder? = null,
-    val externalJars: Collection<Path> = emptyList()
-  )
-
-  internal fun getBuildOutcome(label: Label): BuildOutcome? = keyToBuildOutcomeMap[label]
+  internal fun getBuildOutcome(label: Label): BuildOutcome? = buildOutcomeCache.get(label)
 
   /**
    * Executed by an application pool thread and the EDT
@@ -92,11 +89,7 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
   }
 
   override fun getLastCompileStatus(buildTarget: BazelBuildTargetReference): ProjectSystemBuildManager.BuildStatus {
-    return buildTarget.toAllLabels()
-      .mapNotNull { keyToBuildOutcomeMap[it] }
-      .maxByOrNull { it.timestamp }
-      ?.status
-      ?: ProjectSystemBuildManager.BuildStatus.UNKNOWN
+    return buildOutcomeCache.getMaxStatus(buildTarget.toAllLabels())
   }
 
   /**
@@ -150,11 +143,14 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
         val qSyncManager = QuerySyncManager.getInstance(project)
         val operation = QuerySyncManager.createOperation("Build & Refresh", "Building and refreshing", QuerySyncManager.OperationType.BUILD_DEPS) { context ->
           context.push(scope)
-          buildAndRefresh(project, context, label)
+          val output = executeBuild(project, context, label)
+          cacheRuntimeArtifacts(project, label, output, context)
+          // Update the artifact tracker to resolve IDE symbols and make Android resources available (generated).
+          updateArtifactTracker(project, output, label, context)
         }
 
         val succeeded = qSyncManager.runOperationWithToolWindow(
-          this@async,
+          this,
           scope,
           QuerySyncManager.TaskOrigin.USER_ACTION,
           operation
@@ -162,10 +158,10 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
         buildResultSettableFuture.set(newBuildResult(succeeded, project))
         succeeded
       } catch (e: CancellationException) {
-        keyToBuildOutcomeMap[label] = BuildOutcome(ProjectSystemBuildManager.BuildStatus.CANCELLED, Instant.now())
+        buildOutcomeCache.invalidate(label, ProjectSystemBuildManager.BuildStatus.CANCELLED)
         buildResultSettableFuture.cancel(true)
         throw e
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
         buildResultSettableFuture.setException(e)
         throw e
       }
@@ -176,11 +172,11 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
    * Executed by the Blaze executor
    */
   @Throws(BuildException::class)
-  private fun buildAndRefresh(
+  private fun executeBuild(
     project: Project,
     context: BlazeContext,
     label: Label
-  ) {
+  ): com.google.idea.blaze.qsync.deps.OutputInfo {
     val tracker: DependencyTracker =
       QuerySyncManager.getInstance(project).getDependencyTracker()!!
     val builder = tracker.getBuilder()
@@ -189,56 +185,50 @@ internal class BazelBuildServices : BuildSystemFilePreviewServices.BuildServices
     val toolingLabel = BazelComposeToolingProjectLabelProvider.getComposeToolingLabel(project)
     val targets = setOfNotNull(label, toolingLabel)
 
+    return builder.build(context, targets, groups)
+  }
+
+  /**
+   * Executed by the Blaze executor
+   */
+  private fun cacheRuntimeArtifacts(
+    project: Project,
+    label: Label,
+    output: com.google.idea.blaze.qsync.deps.OutputInfo,
+    context: BlazeContext
+  ) {
     try {
-      val output = builder.build(context, targets, groups)
-      keyToBuildOutcomeMap[label] =
-        if (BuildResult.fromExitCode(output.exitCode).status == BuildResult.Status.SUCCESS) {
-          val artifacts = cacheOutput(project, label, output, context)
-          BuildOutcome(
-            ProjectSystemBuildManager.BuildStatus.SUCCESS,
-            Instant.now(),
-            BazelClassFileFinder(artifacts.jars),
-            artifacts.externalJars
-          )
-        }
-        else {
-          BuildOutcome(ProjectSystemBuildManager.BuildStatus.FAILED, Instant.now())
-        }
+      buildOutcomeCache.cacheOutput(project, label, output, context)
     } catch (exception: Exception) {
       val status = when (exception) {
         is ProcessCanceledException, is CancellationException, is InterruptedException -> ProjectSystemBuildManager.BuildStatus.CANCELLED
         else -> ProjectSystemBuildManager.BuildStatus.FAILED
       }
-      keyToBuildOutcomeMap[label] = BuildOutcome(status, Instant.now())
+      buildOutcomeCache.invalidate(label, status)
       throw exception
     }
   }
 
-  private data class CachedArtifacts(val jars: Collection<Path>, val externalJars: Collection<Path>)
-
-  private fun cacheOutput(
+  /**
+   * Executed by the Blaze executor
+   */
+  @Throws(BuildException::class)
+  private fun updateArtifactTracker(
     project: Project,
+    output: com.google.idea.blaze.qsync.deps.OutputInfo,
     label: Label,
-    output: OutputInfo,
     context: BlazeContext
-  ): CachedArtifacts {
-    val cache = RuntimeArtifactCache.getInstance(project)
-    val jars =
-      cache.fetchArtifacts(
-        label,
-        output.transitiveRuntimeJars,
-        context,
-        RuntimeArtifactKind.TRANSITIVE_RUNTIME_JAR
-      )
-
-    val externalJars = cache.fetchArtifacts(
-      label,
-      output.externalTransitiveRuntimeJars,
-      context,
-      RuntimeArtifactKind.EXTERNAL_TRANSITIVE_RUNTIME_JAR
-    )
-
-    return CachedArtifacts(jars, externalJars)
+  ) {
+    val toolingLabel = BazelComposeToolingProjectLabelProvider.getComposeToolingLabel(project)
+    val targets = setOfNotNull(label, toolingLabel)
+    try {
+      QuerySyncManager.getInstance(project)
+      val tracker: DependencyTracker =
+        QuerySyncManager.getInstance(project).getDependencyTracker() ?: error("Dependency track not available")
+      tracker.updateDependenciesFromOutputInfo(context, output, targets)
+    } catch (e: Exception) {
+      throw BuildException("Failed to update artifact tracker", e)
+    }
   }
 
   /**

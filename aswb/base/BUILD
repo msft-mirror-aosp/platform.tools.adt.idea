@@ -64,7 +64,6 @@ intellij_plugin_library(
     deps = [
         ":base",
         "//tools/adt/idea/aswb/aswb/src/com/android/tools/idea/rendering/tokens",
-        "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/deployment/liveedit/tokens",
         "//tools/adt/idea/aswb/base/src/com/google/idea/blaze/base/project/analysis/ijar",
     ],
 )
@@ -342,7 +341,7 @@ java_library(
     visibility = G3PLUGINS_VISIBILITY,
     deps = [
         "//tools/vendor/google/aswb/plugin_api",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -376,7 +375,7 @@ java_library(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -407,8 +406,8 @@ aswb_library(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
         "@bazel_tools//tools/java/runfiles",
-        "@maven//:com.google.guava.guava",
     ],
 )
 
@@ -444,7 +443,7 @@ intellij_unit_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )
 
@@ -507,6 +506,6 @@ intellij_integration_test_suite(
         "//tools/vendor/google/aswb/plugin_api:jsr305",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",  # unuseddeps: keep
         "//tools/vendor/google/aswb/plugin_api:test_libs",
-        "@maven//:com.google.guava.guava",
+        "//tools/vendor/google/aswb/plugin_api/maven:guava",
     ],
 )

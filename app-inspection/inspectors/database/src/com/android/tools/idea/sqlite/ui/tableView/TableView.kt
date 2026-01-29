@@ -22,6 +22,15 @@ import javax.swing.JComponent
 
 /** Interface used to abstract views that display the content of SQL tables. */
 interface TableView {
+  /** The type data being displayed */
+  enum class TableViewType {
+    /** A database table or view */
+    TABLE,
+
+    /** A generic query being evaluated */
+    EVALUATOR,
+  }
+
   /** The JComponent containing the view's UI. */
   val component: JComponent
 
@@ -110,6 +119,8 @@ interface TableView {
 
     /** Invoked when the user wants to cancel the SQLite statement that is currently running. */
     fun cancelRunningStatementInvoked()
+
+    fun removeRowsInvoked(targetRowIndices: List<Int>)
   }
 }
 

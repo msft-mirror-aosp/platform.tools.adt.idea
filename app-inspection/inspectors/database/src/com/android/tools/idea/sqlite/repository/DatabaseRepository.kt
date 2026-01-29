@@ -32,10 +32,12 @@ import com.android.tools.idea.sqlite.model.createSqliteStatement
 import com.android.tools.idea.sqlite.model.transform
 import com.android.tools.idea.sqlite.ui.tableView.OrderBy
 import com.google.common.util.concurrent.ListenableFuture
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import java.util.concurrent.Executor
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.guava.await
@@ -73,6 +75,12 @@ interface DatabaseRepository {
     targetRow: SqliteRow,
     targetColumnName: String,
     newValue: SqliteValue,
+  ): ListenableFuture<Unit>
+
+  fun removeRows(
+    databaseId: SqliteDatabaseId,
+    targetTable: SqliteTable,
+    targetRows: List<SqliteRow>,
   ): ListenableFuture<Unit>
 
   fun selectOrdered(
@@ -191,6 +199,29 @@ class DatabaseRepositoryImpl(
             updateStatement,
             listOf(newValue) + whereExpression.parameters,
           )
+        withContext(workerDispatcher) { databaseConnection.execute(sqliteStatement).await() }
+      }
+    }
+
+  override fun removeRows(
+    databaseId: SqliteDatabaseId,
+    targetTable: SqliteTable,
+    targetRows: List<SqliteRow>,
+  ): ListenableFuture<Unit> =
+    scope.future {
+      val databaseConnection = getDatabaseConnection(databaseId)
+      val whereExpressions = targetRows.mapNotNull { getWhereExpression(targetTable, it) }
+      if (whereExpressions.size != targetRows.size) {
+        error("No primary keys or rowid column")
+      }
+      val whereExpression = whereExpressions.joinToString(" OR ") { "(${it.expression})" }
+      val whereParameters = whereExpressions.flatMap { it.parameters }
+
+      val statement =
+        "DELETE FROM ${AndroidSqlLexer.getValidName(targetTable.name)} " + "WHERE $whereExpression"
+
+      withContext(Dispatchers.EDT) {
+        val sqliteStatement = createSqliteStatement(project, statement, whereParameters)
         withContext(workerDispatcher) { databaseConnection.execute(sqliteStatement).await() }
       }
     }

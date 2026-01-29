@@ -15,15 +15,15 @@
  */
 package com.android.tools.idea.layoutinspector.pipeline.foregroundprocessdetection
 
-import com.android.sdklib.AndroidApiLevel
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.appinspection.api.process.ProcessesModel
-import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.android.tools.idea.appinspection.internal.process.TransportProcessDescriptor
 import com.android.tools.idea.appinspection.internal.process.toDeviceDescriptor
 import com.android.tools.idea.appinspection.test.TestProcessDiscovery
+import com.android.tools.idea.layoutinspector.DeviceProvisionerServiceCleanUpRule
 import com.android.tools.idea.layoutinspector.metrics.ForegroundProcessDetectionMetrics
+import com.android.tools.idea.layoutinspector.pipeline.fakeDevice
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.transport.TransportClient
 import com.android.tools.idea.transport.TransportService
@@ -35,6 +35,7 @@ import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.replaceService
 import com.intellij.util.concurrency.SameThreadExecutor
 import java.util.concurrent.CountDownLatch
@@ -44,7 +45,6 @@ import layout_inspector.LayoutInspector
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.RuleChain
 import org.mockito.kotlin.mock
 
 class ForegroundProcessDetectionInitializerTest {
@@ -58,10 +58,11 @@ class ForegroundProcessDetectionInitializerTest {
     )
   private val streamManagerRule = TransportStreamManagerRule(grpcServerRule)
 
-  @get:Rule val ruleChain = RuleChain.outerRule(grpcServerRule).around(streamManagerRule)
+  private val device1 = fakeDevice(serial = "1", deviceId = 1)
+  private val device2 = fakeDevice(serial = "2", deviceId = 2)
 
-  private val device1 = FakeDevice(serial = "1")
-  private val device2 = FakeDevice(serial = "2")
+  private val deviceDescriptor1 = device1.toDeviceDescriptor()
+  private val deviceDescriptor2 = device2.toDeviceDescriptor()
 
   private lateinit var processModel: ProcessesModel
   private lateinit var deviceModel: DeviceModel
@@ -76,7 +77,11 @@ class ForegroundProcessDetectionInitializerTest {
 
   private lateinit var testProcessDiscovery: TestProcessDiscovery
 
-  @get:Rule val projectRule = AndroidProjectRule.inMemory().initAndroid(false)
+  private val projectRule = AndroidProjectRule.inMemory().initAndroid(false)
+  private val provisionerServiceRule = DeviceProvisionerServiceCleanUpRule { projectRule.project }
+
+  @get:Rule
+  val chain = RuleChain(projectRule, grpcServerRule, streamManagerRule, provisionerServiceRule)
 
   @Before
   fun setup() {
@@ -120,17 +125,29 @@ class ForegroundProcessDetectionInitializerTest {
       metrics = ForegroundProcessDetectionMetrics,
     )
 
-    deviceModel.setSelectedDevice(device1)
+    deviceModel.setSelectedDevice(deviceDescriptor1)
 
-    foregroundProcessListener.onNewProcess(device1, ForegroundProcess(1, "process1"), true)
+    foregroundProcessListener.onNewProcess(
+      deviceDescriptor1,
+      ForegroundProcess(1, "process1"),
+      true,
+    )
     assertThat(processModel.selectedProcess).isEqualTo(fakeProcess1)
 
-    foregroundProcessListener.onNewProcess(device1, ForegroundProcess(2, "process2"), true)
+    foregroundProcessListener.onNewProcess(
+      deviceDescriptor1,
+      ForegroundProcess(2, "process2"),
+      true,
+    )
     assertThat(processModel.selectedProcess).isEqualTo(fakeProcess2)
 
-    deviceModel.setSelectedDevice(device2)
+    deviceModel.setSelectedDevice(deviceDescriptor2)
 
-    foregroundProcessListener.onNewProcess(device2, ForegroundProcess(1, "process1"), true)
+    foregroundProcessListener.onNewProcess(
+      deviceDescriptor2,
+      ForegroundProcess(1, "process1"),
+      true,
+    )
     assertThat(processModel.selectedProcess).isEqualTo(fakeProcess1)
   }
 
@@ -153,9 +170,13 @@ class ForegroundProcessDetectionInitializerTest {
       metrics = ForegroundProcessDetectionMetrics,
     )
 
-    deviceModel.setSelectedDevice(device1)
+    deviceModel.setSelectedDevice(deviceDescriptor1)
 
-    foregroundProcessListener.onNewProcess(device1, ForegroundProcess(4, "process4"), false)
+    foregroundProcessListener.onNewProcess(
+      deviceDescriptor1,
+      ForegroundProcess(4, "process4"),
+      false,
+    )
     // process4 is not available in app inspection yet, so the selected process should be null.
     assertThat(processModel.selectedProcess).isNull()
 
@@ -272,11 +293,8 @@ class ForegroundProcessDetectionInitializerTest {
     )
   }
 
-  private fun createFakeStream(streamId: Long, fakeDevice: FakeDevice): Common.Stream {
-    return Common.Stream.newBuilder()
-      .setStreamId(streamId)
-      .setDevice(fakeDevice.toTransport(streamId))
-      .build()
+  private fun createFakeStream(streamId: Long, fakeDevice: Common.Device): Common.Stream {
+    return Common.Stream.newBuilder().setStreamId(streamId).setDevice(fakeDevice).build()
   }
 
   private fun FakeTransportService.setCommandHandler(
@@ -296,31 +314,4 @@ class ForegroundProcessDetectionInitializerTest {
   private fun connectStream(stream: Common.Stream) {
     transportService.addDevice(stream.device)
   }
-
-  private fun sendEvent(stream: Common.Stream, event: Common.Event) {
-    transportService.addEventToStream(stream.streamId, event)
-  }
-
-  private fun FakeDevice.toTransport(id: Long): Common.Device {
-    return Common.Device.newBuilder()
-      .setDeviceId(id)
-      .setSerial(serial)
-      .setApiLevel(apiLevel.majorVersion)
-      .setApiLevelMinor(apiLevel.minorVersion)
-      .setFeatureLevel(apiLevel.majorVersion)
-      .setModel(model)
-      .setCpuAbi("arm64-v8a")
-      .setState(Common.Device.State.ONLINE)
-      .build()
-  }
-
-  private data class FakeDevice(
-    override val manufacturer: String = "manufacturer",
-    override val model: String = "model",
-    override val serial: String = "serial",
-    override val isEmulator: Boolean = false,
-    override val apiLevel: AndroidApiLevel = AndroidApiLevel(1),
-    override val version: String = "version",
-    override val codename: String? = "codename",
-  ) : DeviceDescriptor
 }

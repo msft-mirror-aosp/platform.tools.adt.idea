@@ -34,6 +34,8 @@ import com.android.tools.idea.log.LogWrapper
 import com.android.tools.instrumentation.threading.agent.callback.ThreadingCheckerUtil
 import com.android.tools.proguard.ProguardMap
 import com.android.utils.FileUtils
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonObject
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooser
@@ -60,7 +62,6 @@ import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
-import org.jetbrains.annotations.VisibleForTesting
 import java.beans.PropertyChangeListener
 import java.io.File
 import java.io.IOException
@@ -71,8 +72,10 @@ import java.security.NoSuchAlgorithmException
 import java.util.Optional
 import javax.swing.JComponent
 import javax.swing.LayoutFocusTraversalPolicy
+import kotlin.io.path.extension
 import kotlin.io.path.name
 import kotlin.math.max
+import org.jetbrains.annotations.VisibleForTesting
 
 internal class ApkEditor(
   private val project: Project,
@@ -192,10 +195,7 @@ internal class ApkEditor(
   override fun selectApkAndCompare() {
     val desc = FileChooserDescriptor(true, false, false, false, false, false)
     desc.withFileFilter(Condition { file: VirtualFile? -> ApkFileSystem.EXTENSIONS.contains(file!!.getExtension()) })
-    val file = FileChooser.chooseFile(desc, project, null)
-    if (file == null) {
-      return  // User canceled.
-    }
+    val file = FileChooser.chooseFile(desc, project, null) ?: return  // User canceled.
     val oldApk: VirtualFile = checkNotNull(ApkFileSystem.getInstance().getRootByLocal(file))
     val builder = DialogBuilder(project)
     builder.setTitle(oldApk.name + " (old) vs " + root.name + " (new)")
@@ -305,10 +305,7 @@ internal class ApkEditor(
     // a single editor for a single filetype, so arbitrarily pick the first file:
     val n: ArchiveTreeNode = nodes[0]
     val p = n.data.path
-    val fileName = p.fileName
-    if (fileName == null) {
-      return EmptyPanel()
-    }
+    val fileName = p.fileName ?: return EmptyPanel()
     if ("resources.arsc" == fileName.toString()) {
       val arscContent: ByteArray?
       try {
@@ -339,8 +336,7 @@ internal class ApkEditor(
   }
 
   private fun createVirtualFile(archive: Archive, p: Path): VirtualFile? {
-    val name = p.fileName
-    if (name == null) {
+    if (p.fileName == null) {
       return null
     }
 
@@ -382,6 +378,11 @@ internal class ApkEditor(
         null -> ApkVirtualFile.create(p, content)
         else -> ApkVirtualFile.createText(p, text)
       }
+    }
+    if (p.extension == "json") {
+      val gson = GsonBuilder().setPrettyPrinting().create()
+      val jsonObject = gson.fromJson(String(content), JsonObject::class.java)
+      return ApkVirtualFile.createText(p, gson.toJson(jsonObject))
     }
 
     val file = JarFileSystem.getInstance().findFileByPath(archive.getPath().toString())
