@@ -1147,6 +1147,11 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
+  fun testAddAndApplySetMethodBuildTypeBlock() {
+    doTestAddAndApplyOneBuildTypeBlock("of", TestFile.ADD_AND_APPLY_SET_METHOD_BUILD_TYPE_BLOCK_EXPECTED)
+  }
+
+  @Test
   fun testAddAndApplyBuildTypeBlock() {
     writeToBuildFile(TestFile.ADD_AND_APPLY_BUILD_TYPE_BLOCK)
     val buildModel = gradleBuildModel
@@ -2614,6 +2619,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     ADD_AND_APPLY_NON_ASCII_BUILD_TYPE_BLOCK_EXPECTED("addAndApplyNonAsciiBuildTypeBlockExpected"),
     ADD_AND_APPLY_NUMERIC_BUILD_TYPE_BLOCK_EXPECTED("addAndApplyNumericBuildTypeBlockExpected"),
     ADD_AND_APPLY_OPERATOR_BUILD_TYPE_BLOCK_EXPECTED("addAndApplyOperatorBuildTypeBlockExpected"),
+    ADD_AND_APPLY_SET_METHOD_BUILD_TYPE_BLOCK_EXPECTED("addAndApplySetMethodBuildTypeBlockExpected"),
     ADD_AND_APPLY_SPACE_BUILD_TYPE_BLOCK_EXPECTED("addAndApplySpaceBuildTypeBlockExpected"),
     ADD_AND_APPLY_PRODUCT_FLAVOR_BLOCK("addAndApplyProductFlavorBlock"),
     ADD_AND_APPLY_PRODUCT_FLAVOR_BLOCK_EXPECTED("addAndApplyProductFlavorBlockExpected"),
