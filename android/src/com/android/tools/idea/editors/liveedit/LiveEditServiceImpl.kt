@@ -202,7 +202,7 @@ class LiveEditServiceImpl(val project: Project, var executor: Executor, override
   }
 
   override fun inlineCandidateCache(): SourceInlineCandidateCache {
-    return deployMonitor.compiler.inlineCandidateCache
+    return deployMonitor.inlineCandidateCache
   }
 
   companion object {
@@ -217,7 +217,7 @@ class LiveEditServiceImpl(val project: Project, var executor: Executor, override
   }
 
   override fun devices(): Set<IDevice> {
-    return deployMonitor.devices()
+    return deployMonitor.liveEditDevices.devices()
   }
 
   override fun editStatus(device: IDevice): LiveEditStatus {
