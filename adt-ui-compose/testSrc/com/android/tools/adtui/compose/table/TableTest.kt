@@ -70,18 +70,11 @@ class TableTest {
     val clicks = mutableListOf<Cat>()
 
     composeTestRule.setContent {
-      Table(
-        columns = listOf(name, weight),
-        cats,
-        { it },
-        onRowSecondaryClick = { cat, offset -> clicks.add(cat) },
-      )
+      Table(columns = listOf(name, weight), cats, { it }, onRowSecondaryClick = { cat, offset -> clicks.add(cat) })
     }
 
     composeTestRule.onNodeWithText("Hobbes").assertIsDisplayed()
-    composeTestRule.onNodeWithText("Hobbes").performMouseInput {
-      click(button = MouseButton.Secondary)
-    }
+    composeTestRule.onNodeWithText("Hobbes").performMouseInput { click(button = MouseButton.Secondary) }
 
     assertThat(clicks).containsExactly(hobbes)
   }
@@ -93,13 +86,7 @@ class TableTest {
     val devices = listOf(scooter, benson, bella)
 
     composeTestRule.setContent {
-      Table(
-        columns = columns,
-        devices,
-        tableSelectionState = tableSelectionState,
-        rowId = { it },
-        modifier = Modifier.size(400.dp, 100.dp),
-      )
+      Table(columns = columns, devices, tableSelectionState = tableSelectionState, rowId = { it }, modifier = Modifier.size(400.dp, 100.dp))
     }
 
     // Select Benson.
@@ -138,13 +125,7 @@ class TableTest {
     val cats = (1..30).map { cats[0].copy(name = "Cat $it") }.toList()
 
     composeTestRule.setContent {
-      Table(
-        columns = columns,
-        cats,
-        tableSelectionState = tableSelectionState,
-        rowId = { it },
-        modifier = Modifier.size(400.dp, 100.dp),
-      )
+      Table(columns = columns, cats, tableSelectionState = tableSelectionState, rowId = { it }, modifier = Modifier.size(400.dp, 100.dp))
     }
 
     composeTestRule.onNodeWithText(cats[0].name).performClick()
@@ -166,9 +147,7 @@ class TableTest {
   fun keepSelectionVisible() {
     val cats = (0..20).map { benson.copy(name = "Cat ${'A' + it}") }.toList()
 
-    composeTestRule.setContent {
-      Table(columns = columns, cats, rowId = { it }, modifier = Modifier.size(400.dp, 100.dp))
-    }
+    composeTestRule.setContent { Table(columns = columns, cats, rowId = { it }, modifier = Modifier.size(400.dp, 100.dp)) }
 
     composeTestRule.onNodeWithText("Cat A").performClick()
     composeTestRule.onNodeWithText("Cat A").assertIsSelected()
@@ -225,19 +204,9 @@ class TableTest {
   private val scooter = Cat("Scooter", weight = 8)
   private val cats = listOf(benson, bella, hobbes, scooter)
 
-  private val name =
-    TableTextColumn<Cat>(
-      "Name",
-      TableColumnWidth.Weighted(2f),
-      attribute = { it.name },
-      maxLines = 2,
-    )
+  private val name = TableTextColumn<Cat>("Name", TableColumnWidth.Weighted(2f), attribute = { it.name }, maxLines = 2)
   private val weight =
-    DefaultSortableTableColumn<Cat, Int>(
-      "Weight",
-      width = TableColumnWidth.ToFit("20", extraPadding = 8.dp),
-      attribute = { it.weight },
-    )
+    DefaultSortableTableColumn<Cat, Int>("Weight", width = TableColumnWidth.ToFit("20", extraPadding = 8.dp), attribute = { it.weight })
 
   private val columns = listOf(name, weight)
 }

@@ -23,9 +23,11 @@ import com.intellij.openapi.editor.actions.EditorActionUtil
 import com.intellij.psi.PsiDocumentManager
 
 /**
- * Handles insertions of an [InsertionFormat], moving the caret at the position specified by the '|' character.
+ * Handles insertions of an [InsertionFormat], moving the caret at the position specified by the '|'
+ * character.
  */
-class FormatWithCaretInsertHandler(private val format: InsertionFormat) : InsertHandler<LookupElement> {
+class FormatWithCaretInsertHandler(private val format: InsertionFormat) :
+  InsertHandler<LookupElement> {
   override fun handleInsert(context: InsertionContext, item: LookupElement) {
     with(context) {
       val isMoveCaret = format.insertableString.contains('|')

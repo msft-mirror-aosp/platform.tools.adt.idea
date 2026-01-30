@@ -16,7 +16,6 @@
 package com.android.build.attribution
 
 import com.android.build.attribution.data.SuppressedWarnings
-import com.android.build.attribution.data.TaskData
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.project.Project
@@ -34,7 +33,9 @@ class BuildAttributionWarningsFilter : PersistentStateComponent<SuppressedWarnin
 
   var suppressNoGCSettingWarning: Boolean
     get() = suppressedWarnings.noGCSettingWarning
-    set(value) { suppressedWarnings.noGCSettingWarning = value }
+    set(value) {
+      suppressedWarnings.noGCSettingWarning = value
+    }
 
   override fun getState(): SuppressedWarnings? {
     return suppressedWarnings

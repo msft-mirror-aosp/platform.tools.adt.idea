@@ -35,27 +35,18 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 
-class RemoteDeviceManager constructor(deviceModel: String, apiLevel: String): AutoCloseable {
+class RemoteDeviceManager constructor(deviceModel: String, apiLevel: String) : AutoCloseable {
 
   private val deviceStreamingAPIEndpoint = "dns:///devicestreaming.googleapis.com"
-  private val metadataServerEndpoint =
-    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
+  private val metadataServerEndpoint = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
   private val cloudProjectId = "adt-device-testing"
   private val directAccessReservationManager: DirectAccessReservationManager
-  private val scope: CoroutineScope =
-    CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher())
+  private val scope: CoroutineScope = CoroutineScope(MoreExecutors.directExecutor().asCoroutineDispatcher())
   private val channel: ManagedChannel =
-    NettyChannelBuilder.forTarget(deviceStreamingAPIEndpoint)
-      .withOption(ChannelOption.TCP_NODELAY, true)
-      .build()
+    NettyChannelBuilder.forTarget(deviceStreamingAPIEndpoint).withOption(ChannelOption.TCP_NODELAY, true).build()
   private val oAuthTokenFetcher: () -> String = {
     val client = HttpClient.newHttpClient()
-    val request =
-      HttpRequest.newBuilder()
-        .uri(URI.create(metadataServerEndpoint))
-        .GET()
-        .header("Metadata-Flavor", "Google")
-        .build()
+    val request = HttpRequest.newBuilder().uri(URI.create(metadataServerEndpoint)).GET().header("Metadata-Flavor", "Google").build()
     val response = client.send(request, HttpResponse.BodyHandlers.ofString())
     val authResponse = JsonParser.parseString(response.body()).getAsJsonObject()
     authResponse.get("access_token").asString
@@ -67,18 +58,10 @@ class RemoteDeviceManager constructor(deviceModel: String, apiLevel: String): Au
   private val apiLevel: String
 
   init {
-    directAccessReservationManager =
-      DirectAccessReservationManager(cloudProjectId, scope, true, channel, oAuthTokenFetcher)
+    directAccessReservationManager = DirectAccessReservationManager(cloudProjectId, scope, true, channel, oAuthTokenFetcher)
     adbSession = AdbSession.create(AdbSessionHost())
     directAccessConnectionManager =
-      DirectAccessConnectionManager(
-        scope,
-        adbSession,
-        true,
-        oAuthTokenFetcher,
-        channel,
-        directAccessReservationManager,
-      )
+      DirectAccessConnectionManager(scope, adbSession, true, oAuthTokenFetcher, channel, directAccessReservationManager)
     this.deviceModel = deviceModel
     this.apiLevel = apiLevel
   }

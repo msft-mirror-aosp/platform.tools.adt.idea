@@ -60,7 +60,6 @@ import java.awt.Rectangle
 import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 import javax.swing.JTable
-import kotlin.time.Duration.Companion.milliseconds
 import org.junit.Rule
 import org.junit.Test
 
@@ -110,12 +109,7 @@ class EditorBasedTableCellRendererTest {
   }
 
   /** Return true if the cell renderer for the specified [controlType] is an expansion hot zone. */
-  private fun isExpansionHotZone(
-    ui: FakeUi,
-    items: BiMap<ControlType, FakePropertyItem>,
-    controlType: ControlType,
-    x: Int,
-  ): Boolean {
+  private fun isExpansionHotZone(ui: FakeUi, items: BiMap<ControlType, FakePropertyItem>, controlType: ControlType, x: Int): Boolean {
     val table = ui.root as PTableImpl
     val item = items[controlType]!!
     val row = table.tableModel.items.indexOf(item)
@@ -126,7 +120,8 @@ class EditorBasedTableCellRendererTest {
     ui.mouse.moveTo(rect.x + x, rect.centerY.toInt())
     (table.expandableItemsHandler as AbstractExpandableItemsHandler<*, *>)
       .updateAlarm
-      .getAlarm().waitForAllExecuted(20, TimeUnit.MILLISECONDS)
+      .getAlarm()
+      .waitForAllExecuted(20, TimeUnit.MILLISECONDS)
     return table.isExpandedItem(row, 1)
   }
 
@@ -150,29 +145,20 @@ class EditorBasedTableCellRendererTest {
       }
     val provider =
       object : PTableCellRendererProvider {
-        override fun invoke(
-          table: PTable,
-          item: PTableItem,
-          colum: PTableColumn,
-        ): PTableCellRenderer = renderer
+        override fun invoke(table: PTable, item: PTableItem, colum: PTableColumn): PTableCellRenderer = renderer
       }
-    return object :
-      PTableImpl(model, rendererProvider = provider, nameColumnFraction = ColumnFraction(0.5f)) {
+    return object : PTableImpl(model, rendererProvider = provider, nameColumnFraction = ColumnFraction(0.5f)) {
       init {
         setRowHeight(ROW_HEIGHT)
       }
 
       override fun createExpandableItemsHandler(): ExpandableItemsHandler<TableCell> {
-        return if (withFakeHandler) FakeExpandableItemsHandler(this)
-        else super.createExpandableItemsHandler()
+        return if (withFakeHandler) FakeExpandableItemsHandler(this) else super.createExpandableItemsHandler()
       }
     }
   }
 
-  private fun createRenderer(
-    items: BiMap<ControlType, FakePropertyItem>,
-    performLayout: Boolean = false,
-  ): PTableCellRenderer {
+  private fun createRenderer(items: BiMap<ControlType, FakePropertyItem>, performLayout: Boolean = false): PTableCellRenderer {
     val controlTypeProvider =
       object : ControlTypeProvider<FakePropertyItem> {
         override fun invoke(item: FakePropertyItem): ControlType = items.inverse()[item]!!
@@ -205,16 +191,7 @@ class EditorBasedTableCellRendererTest {
           hasFocus: Boolean,
           isExpanded: Boolean,
         ): JComponent? {
-          val component =
-            renderer.getEditorComponent(
-              table,
-              item,
-              column,
-              depth,
-              isSelected,
-              hasFocus,
-              isExpanded,
-            )
+          val component = renderer.getEditorComponent(table, item, column, depth, isSelected, hasFocus, isExpanded)
           if (performLayout) {
             val row = table.tableModel.items.indexOf(item)
             val rect = (table.component as JTable).getCellRect(row, column.ordinal, true)
@@ -255,43 +232,26 @@ class EditorBasedTableCellRendererTest {
         override fun actionPerformed(e: AnActionEvent) {}
       }
     val map = HashBiMap.create<ControlType, FakePropertyItem>()
-    map[ControlType.TEXT_EDITOR] =
-      FakePropertyItem("", "text", LONG_STRING_VALUE, browse, null, support)
-    map[ControlType.COLOR_EDITOR] =
-      FakePropertyItem("", "color", LONG_STRING_VALUE, browse, color, support)
-    map[ControlType.COMBO_BOX] =
-      FakePropertyItem("", "combo_box", LONG_STRING_VALUE, browse, color, support)
-    map[ControlType.DROPDOWN] =
-      FakePropertyItem("", "dropdown", LONG_STRING_VALUE, browse, color, support)
-    map[ControlType.BOOLEAN] =
-      FakePropertyItem("", "boolean", LONG_STRING_VALUE, browse, color, support)
-    map[ControlType.THREE_STATE_BOOLEAN] =
-      FakePropertyItem("", "3_boolean", LONG_STRING_VALUE, browse, color, support)
+    map[ControlType.TEXT_EDITOR] = FakePropertyItem("", "text", LONG_STRING_VALUE, browse, null, support)
+    map[ControlType.COLOR_EDITOR] = FakePropertyItem("", "color", LONG_STRING_VALUE, browse, color, support)
+    map[ControlType.COMBO_BOX] = FakePropertyItem("", "combo_box", LONG_STRING_VALUE, browse, color, support)
+    map[ControlType.DROPDOWN] = FakePropertyItem("", "dropdown", LONG_STRING_VALUE, browse, color, support)
+    map[ControlType.BOOLEAN] = FakePropertyItem("", "boolean", LONG_STRING_VALUE, browse, color, support)
+    map[ControlType.THREE_STATE_BOOLEAN] = FakePropertyItem("", "3_boolean", LONG_STRING_VALUE, browse, color, support)
     map[ControlType.FLAG_EDITOR] =
-      FakeFlagsPropertyItem(
-        "",
-        "flags",
-        listOf("one", "two", "three", "four"),
-        listOf(1, 2, 4, 8),
-        "one, two, three",
-      )
+      FakeFlagsPropertyItem("", "flags", listOf("one", "two", "three", "four"), listOf(1, 2, 4, 8), "one, two, three")
     map[ControlType.LINK_EDITOR] = FakeLinkPropertyItem("", "link", "bla bla", link)
     return map
   }
 
-  private class FakeExpandableItemsHandler(private val table: PTable) :
-    TableExpandableItemsHandler(table.component as JTable) {
+  private class FakeExpandableItemsHandler(private val table: PTable) : TableExpandableItemsHandler(table.component as JTable) {
     private var expandedCell: TableCell? = null
     private var isPopupShowing = false
 
     fun emulate(state: TableExpansionState, item: PTableItem) {
       val row = table.tableModel.items.indexOf(item)
       expandedCell = if (state != TableExpansionState.NORMAL) TableCell(row, 1) else null
-      ClientProperty.put(
-        table.component,
-        ExpandableItemsHandler.EXPANDED_RENDERER,
-        state == TableExpansionState.EXPANDED_POPUP,
-      )
+      ClientProperty.put(table.component, ExpandableItemsHandler.EXPANDED_RENDERER, state == TableExpansionState.EXPANDED_POPUP)
       isPopupShowing = state == TableExpansionState.EXPANDED_CELL_FOR_POPUP
     }
 
@@ -301,9 +261,7 @@ class EditorBasedTableCellRendererTest {
 
     override fun isShowing(): Boolean = isPopupShowing
 
-    fun computeCellRendererAndBounds(
-      key: TableCell
-    ): com.intellij.openapi.util.Pair<Component, Rectangle>? {
+    fun computeCellRendererAndBounds(key: TableCell): com.intellij.openapi.util.Pair<Component, Rectangle>? {
       return getCellRendererAndBounds(key)
     }
   }

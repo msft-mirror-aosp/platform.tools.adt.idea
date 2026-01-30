@@ -37,22 +37,11 @@ private class TestDisposableImage : ImagePool.Image, DisposableImage {
 
   override fun getHeight(): Int = 0
 
-  override fun drawImageTo(
-    g: Graphics,
-    dx1: Int,
-    dy1: Int,
-    dx2: Int,
-    dy2: Int,
-    sx1: Int,
-    sy1: Int,
-    sx2: Int,
-    sy2: Int,
-  ) {}
+  override fun drawImageTo(g: Graphics, dx1: Int, dy1: Int, dx2: Int, dy2: Int, sx1: Int, sy1: Int, sx2: Int, sy2: Int) {}
 
   override fun paint(command: Consumer<Graphics2D>?) {}
 
-  override fun getCopy(gc: GraphicsConfiguration?, x: Int, y: Int, w: Int, h: Int): BufferedImage? =
-    null
+  override fun getCopy(gc: GraphicsConfiguration?, x: Int, y: Int, w: Int, h: Int): BufferedImage? = null
 
   override fun isValid(): Boolean = !isDisposed
 }

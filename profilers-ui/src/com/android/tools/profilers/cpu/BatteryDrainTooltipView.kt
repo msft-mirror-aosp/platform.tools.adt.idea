@@ -18,7 +18,6 @@ package com.android.tools.profilers.cpu
 import com.android.tools.adtui.TabularLayout
 import com.android.tools.adtui.TooltipView
 import com.android.tools.adtui.model.formatter.NumberFormatter
-import com.android.tools.profilers.cpu.systemtrace.BatteryDrainTrackModel.Companion.getUnitFromTrackName
 import com.google.common.annotations.VisibleForTesting
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -26,8 +25,7 @@ import javax.swing.JPanel
 class BatteryDrainTooltipView(parent: JComponent, val tooltip: BatteryDrainTooltip) : TooltipView(tooltip.timeline) {
   private val content = JPanel(TabularLayout("*").setVGap(12))
 
-  @VisibleForTesting
-  val valueLabel = createTooltipLabel()
+  @VisibleForTesting val valueLabel = createTooltipLabel()
 
   override fun createTooltip(): JComponent {
     return content
@@ -36,10 +34,12 @@ class BatteryDrainTooltipView(parent: JComponent, val tooltip: BatteryDrainToolt
   private fun updateView() {
     val batteryDrainValueText = NumberFormatter.formatInteger(tooltip.activeValue)
     valueLabel.text = "${getTitle(tooltip.counterName)}: $batteryDrainValueText"
-    valueLabel.text += when (tooltip.unit) {
-      "µah", "µa" -> " ${tooltip.unit}"
-      else -> tooltip.unit
-    }
+    valueLabel.text +=
+      when (tooltip.unit) {
+        "µah",
+        "µa" -> " ${tooltip.unit}"
+        else -> tooltip.unit
+      }
   }
 
   private fun getTitle(counterName: String) = counterName

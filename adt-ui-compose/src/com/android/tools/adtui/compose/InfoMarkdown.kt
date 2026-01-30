@@ -34,12 +34,11 @@ import org.jetbrains.jewel.ui.component.Typography
 import org.jetbrains.jewel.ui.component.copyWithSize
 
 /**
- * Renders a Markdown string with a default styling for information text. This means that text will
- * be based on [Typography.medium] with color
- * [`JewelTheme.globalColors.text.info`][org.jetbrains.jewel.foundation.TextColors.info].
+ * Renders a Markdown string with a default styling for information text. This means that text will be based on [Typography.medium] with
+ * color [`JewelTheme.globalColors.text.info`][org.jetbrains.jewel.foundation.TextColors.info].
  *
- * This composable is a wrapper around [Markdown] that provides a default styling that is suitable
- * for displaying informational messages to the user.
+ * This composable is a wrapper around [Markdown] that provides a default styling that is suitable for displaying informational messages to
+ * the user.
  *
  * @param markdown The Markdown string to render.
  * @param modifier The modifier to apply to this layout node.
@@ -71,18 +70,10 @@ fun InfoMarkdown(
   processor: MarkdownProcessor = JewelTheme.markdownProcessor,
 ) {
   val markdownStyling =
-    remember(
-      JewelTheme.name,
-      JewelTheme.isDark,
-      textStyle,
-      markdownFactory,
-      editorTextStyle,
-      textColor,
-    ) {
+    remember(JewelTheme.name, JewelTheme.isDark, textStyle, markdownFactory, editorTextStyle, textColor) {
       markdownFactory.createStyling(
         baseTextStyle = if (textColor.isSpecified) textStyle.copy(color = textColor) else textStyle,
-        editorTextStyle =
-          if (textColor.isSpecified) editorTextStyle.copy(color = textColor) else editorTextStyle,
+        editorTextStyle = if (textColor.isSpecified) editorTextStyle.copy(color = textColor) else editorTextStyle,
       )
     }
 
@@ -96,9 +87,6 @@ fun InfoMarkdown(
     onTextClick = onTextClick,
     markdownStyling = markdownStyling,
     processor = processor,
-    blockRenderer =
-      remember(markdownStyling, markdownFactory) {
-        markdownFactory.createBlockRenderer(markdownStyling)
-      },
+    blockRenderer = remember(markdownStyling, markdownFactory) { markdownFactory.createBlockRenderer(markdownStyling) },
   )
 }

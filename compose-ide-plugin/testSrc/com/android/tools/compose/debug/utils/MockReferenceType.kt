@@ -28,10 +28,7 @@ import com.sun.jdi.Value
 import com.sun.jdi.VirtualMachine
 import org.mockito.kotlin.mock
 
-sealed class MockReferenceType(
-  private val debugProcess: DebugProcessImpl,
-  private val name: String,
-) : ReferenceType by mock() {
+sealed class MockReferenceType(private val debugProcess: DebugProcessImpl, private val name: String) : ReferenceType by mock() {
   private val methods = mutableListOf<Method>()
 
   override fun methods(): List<Method> = methods
@@ -75,12 +72,7 @@ class MockClassType(
     methodToValue[name] = value
   }
 
-  override fun invokeMethod(
-    thread: ThreadReference?,
-    method: Method,
-    arguments: List<Value>,
-    options: Int,
-  ): Value {
+  override fun invokeMethod(thread: ThreadReference?, method: Method, arguments: List<Value>, options: Int): Value {
     val name = method.name() ?: error("Name of method \"$method\" is null.")
     return methodToValue[name] ?: error("Fake value is not set for method \"$name\" when asked.")
   }
@@ -97,12 +89,7 @@ class MockClassType(
 
   override fun setValue(field: Field?, value: Value?) {}
 
-  override fun newInstance(
-    thread: ThreadReference?,
-    method: Method,
-    arguments: List<Value>,
-    options: Int,
-  ): ObjectReference {
+  override fun newInstance(thread: ThreadReference?, method: Method, arguments: List<Value>, options: Int): ObjectReference {
     throw UnsupportedOperationException()
   }
 

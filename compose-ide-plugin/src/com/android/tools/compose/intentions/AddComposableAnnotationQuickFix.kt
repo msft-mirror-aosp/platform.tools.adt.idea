@@ -58,15 +58,12 @@ import org.jetbrains.kotlin.psi.KtTypeReference
  * }
  * ```
  *
- * The call to `ComposableFunction()` within `NonComposableFunction` is not allowed. Both the
- * invocation `ComposableFunction()` and the function declaration `NonComposableFunction` will have
- * an error.
+ * The call to `ComposableFunction()` within `NonComposableFunction` is not allowed. Both the invocation `ComposableFunction()` and the
+ * function declaration `NonComposableFunction` will have an error.
  *
- * This quick fix appears on both errors, and offers to add `@Composable` to
- * `NonComposableFunction`.
+ * This quick fix appears on both errors, and offers to add `@Composable` to `NonComposableFunction`.
  */
-class AddComposableAnnotationQuickFix
-private constructor(element: KtModifierListOwner, private val displayText: String) :
+class AddComposableAnnotationQuickFix private constructor(element: KtModifierListOwner, private val displayText: String) :
   KotlinQuickFixAction<KtModifierListOwner>(element) {
 
   override fun getFamilyName(): String = ComposeBundle.message("add.composable.annotation")
@@ -80,34 +77,23 @@ private constructor(element: KtModifierListOwner, private val displayText: Strin
     //                  element to shorten seems to be wrong. It will be fixed in the upstream.
     //                  After fixing it, remove the following reference shortener call.
     if (KotlinPluginModeProvider.isK2Mode()) {
-      @OptIn(KaIdeApi::class)
-      (element?.parent as? KtElement)?.let { parent -> shortenReferences(parent) }
+      @OptIn(KaIdeApi::class) (element?.parent as? KtElement)?.let { parent -> shortenReferences(parent) }
     }
   }
 
-  /**
-   * Creates a fix for the COMPOSABLE_INVOCATION error, which appears on a Composable function call
-   * from within a non-Composable scope.
-   */
+  /** Creates a fix for the COMPOSABLE_INVOCATION error, which appears on a Composable function call from within a non-Composable scope. */
   object ComposableInvocationFactory : KotlinSingleIntentionActionFactory() {
-    override fun createAction(diagnostic: Diagnostic): IntentionAction? =
-      createAction(diagnostic.psiElement)
+    override fun createAction(diagnostic: Diagnostic): IntentionAction? = createAction(diagnostic.psiElement)
 
     fun createAction(psiElement: PsiElement): AddComposableAnnotationQuickFix? {
       val node = (psiElement as? KtElement)?.expectedComposableAnnotationHolder()
-      return node?.takeIf(PsiElement::isWritable)?.toDisplayText()?.let {
-        AddComposableAnnotationQuickFix(node, it)
-      }
+      return node?.takeIf(PsiElement::isWritable)?.toDisplayText()?.let { AddComposableAnnotationQuickFix(node, it) }
     }
   }
 
-  /**
-   * Creates a fix for the COMPOSABLE_EXPECTED error, which appears on a non-Composable scope that
-   * contains a Composable function call.
-   */
+  /** Creates a fix for the COMPOSABLE_EXPECTED error, which appears on a non-Composable scope that contains a Composable function call. */
   object ComposableExpectedFactory : KotlinSingleIntentionActionFactory() {
-    override fun createAction(diagnostic: Diagnostic): IntentionAction? =
-      createAction(diagnostic.psiElement.parent)
+    override fun createAction(diagnostic: Diagnostic): IntentionAction? = createAction(diagnostic.psiElement.parent)
 
     fun createAction(psiElement: PsiElement): AddComposableAnnotationQuickFix? {
       val node: KtModifierListOwner? =
@@ -115,13 +101,11 @@ private constructor(element: KtModifierListOwner, private val displayText: Strin
           // If there is only one accessor, and it is a getter, then we can figure out what to
           // fix.
           is KtProperty ->
-            psiElement.accessors.singleOrNull()?.takeIf(KtPropertyAccessor::isGetter)
-              ?: (psiElement.initializer as? KtNamedFunction)
+            psiElement.accessors.singleOrNull()?.takeIf(KtPropertyAccessor::isGetter) ?: (psiElement.initializer as? KtNamedFunction)
           is KtNamedFunction -> psiElement
           // These are currently the only cases we handle.
           else -> {
-            thisLogger()
-              .warn("Saw COMPOSABLE_EXPECTED on unhandled element type: ${psiElement.javaClass}")
+            thisLogger().warn("Saw COMPOSABLE_EXPECTED on unhandled element type: ${psiElement.javaClass}")
             null
           }
         }
@@ -130,16 +114,17 @@ private constructor(element: KtModifierListOwner, private val displayText: Strin
   }
 
   companion object {
-    val k2DiagnosticFixFactory = KotlinQuickFixFactory.IntentionBased<KtCompilerPluginDiagnostic0> { diagnostic ->
-      val psiElement = diagnostic.psi
-      listOfNotNull(
-        when (diagnostic.factoryName) {
-          "COMPOSABLE_INVOCATION" -> ComposableInvocationFactory.createAction(psiElement)
-          "COMPOSABLE_EXPECTED" -> ComposableExpectedFactory.createAction(psiElement)
-          else -> null
-        }
-      )
-    }
+    val k2DiagnosticFixFactory =
+      KotlinQuickFixFactory.IntentionBased<KtCompilerPluginDiagnostic0> { diagnostic ->
+        val psiElement = diagnostic.psi
+        listOfNotNull(
+          when (diagnostic.factoryName) {
+            "COMPOSABLE_INVOCATION" -> ComposableInvocationFactory.createAction(psiElement)
+            "COMPOSABLE_EXPECTED" -> ComposableExpectedFactory.createAction(psiElement)
+            else -> null
+          }
+        )
+      }
 
     private fun KtModifierListOwner.toDisplayText(): String? =
       when (this) {
@@ -163,16 +148,9 @@ private constructor(element: KtModifierListOwner, private val displayText: Strin
         val functionName = (param.parent?.parent as? KtNamedFunction)?.name
         val paramName = param.name ?: return null
         if (functionName != null) {
-          return ComposeBundle.message(
-            "add.composable.to.lambda.parameter",
-            functionName,
-            paramName,
-          )
+          return ComposeBundle.message("add.composable.to.lambda.parameter", functionName, paramName)
         }
-        return ComposeBundle.message(
-          "add.composable.to.lambda.parameter.of.anonymous.function",
-          paramName,
-        )
+        return ComposeBundle.message("add.composable.to.lambda.parameter.of.anonymous.function", paramName)
       }
       // Second case - this is a type of a property (with a functional type).
       val propertyName = (parent as? KtProperty)?.name ?: return null

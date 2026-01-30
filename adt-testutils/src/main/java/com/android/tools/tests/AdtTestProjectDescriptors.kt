@@ -47,26 +47,17 @@ open class AdtTestProjectDescriptor(
 
   override fun getSdk(): Sdk = jdk
 
-  final override fun configureModule(
-    module: Module,
-    model: ModifiableRootModel,
-    contentEntry: ContentEntry,
-  ) {
+  final override fun configureModule(module: Module, model: ModifiableRootModel, contentEntry: ContentEntry) {
     super.configureModule(module, model, contentEntry)
     this.configureModule(module, model)
   }
 
   open fun configureModule(module: Module, model: ModifiableRootModel) {
-    model.getModuleExtension(LanguageLevelModuleExtension::class.java)?.apply {
-      languageLevel = javaLanguageVersion
-    }
+    model.getModuleExtension(LanguageLevelModuleExtension::class.java)?.apply { languageLevel = javaLanguageVersion }
   }
 
   fun configureModule(module: Module) {
-    ModuleRootManager.getInstance(module)
-      .modifiableModel
-      .apply { configureModule(module, this) }
-      .commit()
+    ModuleRootManager.getInstance(module).modifiableModel.apply { configureModule(module, this) }.commit()
   }
 
   open fun configureFixture(fixtureBuilder: JavaModuleFixtureBuilder<*>) {
@@ -76,11 +67,9 @@ open class AdtTestProjectDescriptor(
     }
   }
 
-  open fun withJavaVersion(version: LanguageLevel): AdtTestProjectDescriptor =
-    AdtTestProjectDescriptor(version, jdkPath)
+  open fun withJavaVersion(version: LanguageLevel): AdtTestProjectDescriptor = AdtTestProjectDescriptor(version, jdkPath)
 
-  open fun withJdkPath(path: Path): AdtTestProjectDescriptor =
-    AdtTestProjectDescriptor(javaLanguageVersion, path)
+  open fun withJdkPath(path: Path): AdtTestProjectDescriptor = AdtTestProjectDescriptor(javaLanguageVersion, path)
 }
 
 /** A project descriptor that configures the Kotlin standard library. */
@@ -93,9 +82,7 @@ class KotlinAdtTestProjectDescriptor(
     libraryFilesProvider().also {
       for ((rootType, files) in it) {
         assert(files.isNotEmpty()) { "No files provided for root type: ${rootType.name()}" }
-        files.forEach { file ->
-          assert(file.exists()) { "Library file doesn't exist: ${file.absolutePath}" }
-        }
+        files.forEach { file -> assert(file.exists()) { "Library file doesn't exist: ${file.absolutePath}" } }
       }
     }
   }
@@ -123,10 +110,7 @@ class KotlinAdtTestProjectDescriptor(
     super.configureFixture(fixtureBuilder)
 
     if (libraryFiles.isNotEmpty()) {
-      fixtureBuilder.addLibrary(
-        LIBRARY_NAME,
-        libraryFiles.mapValues { (_, files) -> files.map { it.toString() }.toTypedArray() },
-      )
+      fixtureBuilder.addLibrary(LIBRARY_NAME, libraryFiles.mapValues { (_, files) -> files.map { it.toString() }.toTypedArray() })
     }
   }
 
@@ -149,26 +133,18 @@ object AdtTestProjectDescriptors {
   @JvmStatic fun java() = AdtTestProjectDescriptor()
 
   /** Creates a project descriptor for Kotlin projects, with a binary stdlib. */
-  @JvmStatic
-  fun kotlin() = KotlinAdtTestProjectDescriptor {
-    mapOf(OrderRootType.CLASSES to listOf(AdtTestKotlinArtifacts.kotlinStdlib))
-  }
+  @JvmStatic fun kotlin() = KotlinAdtTestProjectDescriptor { mapOf(OrderRootType.CLASSES to listOf(AdtTestKotlinArtifacts.kotlinStdlib)) }
 
   /**
    * Creates a project descriptor for Kotlin projects, using a combined binary and source stdlib.
    *
-   * This should only be used if you need PSI for symbols in the stdlib. Otherwise, prefer the
-   * faster [kotlin] descriptor.
+   * This should only be used if you need PSI for symbols in the stdlib. Otherwise, prefer the faster [kotlin] descriptor.
    */
   @JvmStatic
   fun kotlinWithStdlibSources() = KotlinAdtTestProjectDescriptor {
     mapOf(
       OrderRootType.CLASSES to listOf(AdtTestKotlinArtifacts.kotlinStdlib),
-      OrderRootType.SOURCES to
-        listOf(
-          AdtTestKotlinArtifacts.kotlinStdlibSources,
-          AdtTestKotlinArtifacts.kotlinStdlibCommonSources,
-        ),
+      OrderRootType.SOURCES to listOf(AdtTestKotlinArtifacts.kotlinStdlibSources, AdtTestKotlinArtifacts.kotlinStdlibCommonSources),
     )
   }
 

@@ -30,14 +30,7 @@ object TooltipStyleFactory {
     JewelTheme.tooltipStyle.metrics.let {
       TooltipStyle(
         JewelTheme.tooltipStyle.colors,
-        TooltipMetrics(
-          it.contentPadding,
-          duration,
-          it.cornerSize,
-          it.borderWidth,
-          it.shadowSize,
-          it.placement,
-        ),
+        TooltipMetrics(it.contentPadding, duration, it.cornerSize, it.borderWidth, it.shadowSize, it.placement),
       )
     }
 }

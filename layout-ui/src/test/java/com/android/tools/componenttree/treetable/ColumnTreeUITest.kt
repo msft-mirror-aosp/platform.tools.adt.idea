@@ -123,9 +123,7 @@ class ColumnTreeUITest {
     assertThat(verticalScrollPane.verticalScrollBar.model.value).isAtLeast(32)
   }
 
-  private fun createTree(
-    customChange: ComponentTreeBuilder.() -> ComponentTreeBuilder = { this }
-  ): ComponentTreeBuildResult {
+  private fun createTree(customChange: ComponentTreeBuilder.() -> ComponentTreeBuilder = { this }): ComponentTreeBuildResult {
     val result = createTreeWithScrollPane(customChange)
     val table = result.focusComponent as TreeTableImpl
     item2.add(item3)
@@ -135,9 +133,7 @@ class ColumnTreeUITest {
     return result
   }
 
-  private fun createTreeWithScrollPane(
-    customChange: ComponentTreeBuilder.() -> ComponentTreeBuilder
-  ): ComponentTreeBuildResult {
+  private fun createTreeWithScrollPane(customChange: ComponentTreeBuilder.() -> ComponentTreeBuilder): ComponentTreeBuildResult {
     return ComponentTreeBuilder()
       .withNodeType(ItemNodeType())
       .withNodeType(StyleNodeType())

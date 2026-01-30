@@ -31,9 +31,7 @@ class ComposeClassNameCalculator : ClassNameCalculator {
   override fun getClassNames(file: KtFile): Map<KtElement, String> {
     val cache = file.project.service<CanonicalFileService>()
     val canonicalFile = cache.getCanonicalFile(file)
-    return CachedValuesManager.getCachedValue(canonicalFile) {
-      Result(calculate(canonicalFile), canonicalFile)
-    }
+    return CachedValuesManager.getCachedValue(canonicalFile) { Result(calculate(canonicalFile), canonicalFile) }
   }
 
   private fun calculate(file: KtFile): MutableMap<KtElement, String> {

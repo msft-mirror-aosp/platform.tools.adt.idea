@@ -21,7 +21,6 @@ import com.android.support.AndroidxName
 import com.android.tools.idea.projectsystem.cacheInvalidatingOnSyncModifications
 import com.android.tools.idea.projectsystem.getAndroidFacets
 import com.android.tools.idea.projectsystem.getModuleSystem
-import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.project.Project
 
@@ -43,9 +42,7 @@ fun Project.isAndroidx(): Boolean = cacheInvalidatingOnSyncModifications {
   getAndroidFacets().firstOrNull()?.getModuleSystem()?.useAndroidX ?: false
 }
 
-/**
- * Checks that the "enableJetifier" property is set to true
- */
+/** Checks that the "enableJetifier" property is set to true */
 fun Project.isEnableJetifier(): Boolean = runReadAction {
   getProjectProperties()?.findPropertyByKey(ENABLE_JETIFIER_PROPERTY)?.value?.toBoolean() ?: false
 }
@@ -53,6 +50,4 @@ fun Project.isEnableJetifier(): Boolean = runReadAction {
 /**
  * Returns the actual name of an [AndroidxName] class to be used in a given [Project], based on the AndroidX properties set by the project.
  */
-fun AndroidxName.getNameInProject(project: Project): String = runReadAction {
-  if (project.isAndroidx()) newName() else oldName()
-}
+fun AndroidxName.getNameInProject(project: Project): String = runReadAction { if (project.isAndroidx()) newName() else oldName() }
