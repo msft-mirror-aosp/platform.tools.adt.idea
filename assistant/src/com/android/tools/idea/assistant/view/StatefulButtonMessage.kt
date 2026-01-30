@@ -27,13 +27,10 @@ import javax.swing.text.DefaultCaret
 import org.jetbrains.annotations.TestOnly
 
 /**
- * Displays a message in lieu of a button when an action may not be completed. Note, this is not an
- * extension of JBLabel as it will display other elements such as an edit link and potentially
- * support progress indication.
+ * Displays a message in lieu of a button when an action may not be completed. Note, this is not an extension of JBLabel as it will display
+ * other elements such as an edit link and potentially support progress indication.
  */
-open class StatefulButtonMessage
-@JvmOverloads
-constructor(val title: String, val state: AssistActionState, val body: String? = null) :
+open class StatefulButtonMessage @JvmOverloads constructor(val title: String, val state: AssistActionState, val body: String? = null) :
   JPanel(GridBagLayout()) {
 
   private var myMessageDisplay: JBLabel? = null

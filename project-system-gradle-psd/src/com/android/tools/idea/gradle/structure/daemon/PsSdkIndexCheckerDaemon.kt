@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.structure.daemon
 
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.projectsystem.gradle.IdeGooglePlaySdkIndex
 import com.intellij.openapi.Disposable
@@ -25,10 +24,7 @@ import com.intellij.util.ui.update.MergingUpdateQueue
 import com.intellij.util.ui.update.Update
 import java.util.EventListener
 
-class PsSdkIndexCheckerDaemon(
-  parentDisposable: Disposable,
-  private val project: PsProject
-) : PsDaemon(parentDisposable) {
+class PsSdkIndexCheckerDaemon(parentDisposable: Disposable, private val project: PsProject) : PsDaemon(parentDisposable) {
   private val eventDispatcher = EventDispatcher.create(SdkIndexIssuesListener::class.java)
 
   fun queueCheck() {
@@ -38,14 +34,15 @@ class PsSdkIndexCheckerDaemon(
   fun add(@UiThread listener: () -> Unit, parentDisposable: Disposable) {
     eventDispatcher.addListener(
       object : SdkIndexIssuesListener {
-        @UiThread
-        override fun availableIssues() = listener()
-      }, parentDisposable)
+        @UiThread override fun availableIssues() = listener()
+      },
+      parentDisposable,
+    )
   }
 
   private inner class RefreshSdkIndexIssues : Update(project) {
     override fun run() {
-      IdeGooglePlaySdkIndex.initializeAndSetFlags();
+      IdeGooglePlaySdkIndex.initializeAndSetFlags()
       resultsUpdaterQueue.queue(SdkIndexAvailable())
     }
   }
@@ -57,13 +54,11 @@ class PsSdkIndexCheckerDaemon(
     }
   }
 
-
   override val mainQueue: MergingUpdateQueue = createQueue("Project Structure Daemon SDK Index Checker", null)
-  override val resultsUpdaterQueue: MergingUpdateQueue = createQueue("Project Structure SDK Index Results Updater",
-                                                                     MergingUpdateQueue.ANY_COMPONENT)
+  override val resultsUpdaterQueue: MergingUpdateQueue =
+    createQueue("Project Structure SDK Index Results Updater", MergingUpdateQueue.ANY_COMPONENT)
 
   private interface SdkIndexIssuesListener : EventListener {
-    @UiThread
-    fun availableIssues()
+    @UiThread fun availableIssues()
   }
 }

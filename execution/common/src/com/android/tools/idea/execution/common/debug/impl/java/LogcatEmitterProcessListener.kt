@@ -37,8 +37,8 @@ private const val ANDROID_LOG_TAG = "Debugger"
  * console. The text is emitted using [ProcessListener.onTextAvailable], so we intercept this callback and try to invoke
  * `android.util.Log.i()` on the process virtual machine.
  *
- * Note that [ProcessListener.onTextAvailable] is called from other places as well. Most notably, it's called to log the
- * `Connected to the target VM` and `Disconnected from the target VM` but there are other cases too.
+ * Note that [ProcessListener.onTextAvailable] is called from other places as well. Most notably, it's called to log the `Connected to the
+ * target VM` and `Disconnected from the target VM` but there are other cases too.
  *
  * We make a best-effort attempt to emit the text to the devices Logcat. If we can't get an `EvaluationContext` from the process, we abort
  * silently. This can happen when `onTextAvailable` is called while the process is not in the proper state, for example, the
@@ -61,7 +61,6 @@ internal class LogcatEmitterProcessListener(private val process: DebugProcessImp
 
       val evaluationContext = EvaluationContextImpl(eventContext, eventContext.frameProxy)
       process.invokeMethod(evaluationContext, logClass, logMethod, listOf(vm.mirrorOf(ANDROID_LOG_TAG), vm.mirrorOf(event.text)))
-
     } catch (e: Exception) {
       thisLogger().debug(e) { "Failed to emit text to process Logcat: '${event.text}'" }
     }

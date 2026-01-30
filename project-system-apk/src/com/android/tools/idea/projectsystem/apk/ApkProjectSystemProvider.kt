@@ -18,7 +18,6 @@ package com.android.tools.idea.projectsystem.apk
 import com.android.tools.idea.apk.ApkFacet
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.project.DefaultProjectSystem
-import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.AndroidProjectSystemProvider
 import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.project.Project
@@ -27,10 +26,12 @@ class ApkProjectSystemProvider : AndroidProjectSystemProvider {
   companion object {
     const val ID = "com.android.tools.idea.ApkProjectSystem"
   }
+
   override val id: String = ID
+
   override fun isApplicable(project: Project) =
-    StudioFlags.ENABLE_APK_PROJECT_SYSTEM.get() &&
-    ProjectFacetManager.getInstance(project).hasFacets(ApkFacet.getFacetTypeId())
+    StudioFlags.ENABLE_APK_PROJECT_SYSTEM.get() && ProjectFacetManager.getInstance(project).hasFacets(ApkFacet.getFacetTypeId())
+
   override fun projectSystemFactory(project: Project) =
     if (StudioFlags.ENABLE_APK_PROJECT_SYSTEM.get()) ApkProjectSystem(project) else DefaultProjectSystem(project)
 }

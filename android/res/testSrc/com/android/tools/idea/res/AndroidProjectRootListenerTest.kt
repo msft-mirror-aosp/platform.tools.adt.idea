@@ -55,9 +55,7 @@ class AndroidProjectRootListenerTest {
 
     // Simulate sync finishing.
     ApplicationManager.getApplication().invokeAndWait {
-      project.messageBus
-        .syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC)
-        .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
+      project.messageBus.syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC).syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
     }
 
     // Wait for the event queue to clear out, and verify the ResourceFolderManager was updated.

@@ -150,8 +150,7 @@ private const val GOT_IT_ID = "filter.tip"
 
 private val deleteKeyCodes = arrayOf(VK_DELETE, VK_BACK_SPACE)
 
-private val logcatFilterHelpUrl =
-  URL("https://developer.android.com/studio/debug/logcat#key-value-search")
+private val logcatFilterHelpUrl = URL("https://developer.android.com/studio/debug/logcat#key-value-search")
 
 private val filterHistoryItemBorder = JBUI.Borders.empty(0, 4)
 
@@ -192,14 +191,10 @@ internal class FilterTextField(
       textField.text = value
     }
 
-  private val filterUpdateChannel =
-    Channel<FilterUpdated>(capacity = 1, onBufferOverflow = DROP_LATEST)
+  private val filterUpdateChannel = Channel<FilterUpdated>(capacity = 1, onBufferOverflow = DROP_LATEST)
   @VisibleForTesting
   internal val filterUpdateFlow =
-    filterUpdateChannel
-      .consumeAsFlow()
-      .distinctUntilChanged()
-      .stateIn(logcatPresenter.createCoroutineScope(), Eagerly, null)
+    filterUpdateChannel.consumeAsFlow().distinctUntilChanged().stateIn(logcatPresenter.createCoroutineScope(), Eagerly, null)
 
   init {
     text = initialText
@@ -245,10 +240,7 @@ internal class FilterTextField(
             val hintText = getFilterHintText()
             @Suppress("UnstableApiUsage")
             GotItTooltip(GOT_IT_ID, hintText, logcatPresenter)
-              .withBrowserLink(
-                LogcatBundle.message("logcat.filter.got.it.link.text"),
-                logcatFilterHelpUrl,
-              )
+              .withBrowserLink(LogcatBundle.message("logcat.filter.got.it.link.text"), logcatFilterHelpUrl)
               .show(textField, BOTTOM_LEFT)
           }
 
@@ -334,15 +326,12 @@ internal class FilterTextField(
     LogcatUsageTracker.log(
       LogcatUsageEvent.newBuilder()
         .setType(FILTER_ADDED_TO_HISTORY)
-        .setLogcatFilter(
-          filterParser.getUsageTrackingEvent(text, matchCase)?.setIsFavorite(isFavorite)
-        )
+        .setLogcatFilter(filterParser.getUsageTrackingEvent(text, matchCase)?.setIsFavorite(isFavorite))
     )
   }
 
   private inner class FilterTextFieldBorder : DarculaTextBorder() {
-    override fun isFocused(c: Component?): Boolean =
-      textField.editor?.contentComponent?.hasFocus() == true
+    override fun isFocused(c: Component?): Boolean = textField.editor?.contentComponent?.hasFocus() == true
   }
 
   private inner class FilterEditorTextField(
@@ -421,42 +410,27 @@ internal class FilterTextField(
   }
 
   /**
-   * It's hard (impossible?) to test the actual popup UI with the existing test framework, so we do
-   * the next best thing which is to test the rendering from the JBList (HistoryList) directly.
+   * It's hard (impossible?) to test the actual popup UI with the existing test framework, so we do the next best thing which is to test the
+   * rendering from the JBList (HistoryList) directly.
    */
   @VisibleForTesting
   @UiThread
-  internal inner class HistoryList(
-    parentDisposable: Disposable,
-    parentContext: CoroutineContext = EmptyCoroutineContext,
-  ) : JBList<FilterHistoryItem>() {
+  internal inner class HistoryList(parentDisposable: Disposable, parentContext: CoroutineContext = EmptyCoroutineContext) :
+    JBList<FilterHistoryItem>() {
     private val listModel = CollectionListModel<FilterHistoryItem>()
-    private val inactiveColor =
-      String.format("%06x", NamedColorUtil.getInactiveTextColor().rgb and 0xffffff)
+    private val inactiveColor = String.format("%06x", NamedColorUtil.getInactiveTextColor().rgb and 0xffffff)
 
     init {
       // The "count" field in FilterHistoryItem.Item takes time to calculate so initially, add all
       // items with no count.
       val items =
         mutableListOf<FilterHistoryItem>().apply {
-          addAll(
-            filterHistory.favorites.map {
-              Item(filter = it, isFavorite = true, count = null, filterParser)
-            }
-          )
+          addAll(filterHistory.favorites.map { Item(filter = it, isFavorite = true, count = null, filterParser) })
           if (filterHistory.favorites.isNotEmpty() && filterHistory.nonFavorites.isNotEmpty()) {
             add(Separator())
           }
-          addAll(
-            filterHistory.named.map {
-              Item(filter = it, isFavorite = false, count = null, filterParser)
-            }
-          )
-          addAll(
-            filterHistory.nonFavorites.map {
-              Item(filter = it, isFavorite = false, count = null, filterParser)
-            }
-          )
+          addAll(filterHistory.named.map { Item(filter = it, isFavorite = false, count = null, filterParser) })
+          addAll(filterHistory.nonFavorites.map { Item(filter = it, isFavorite = false, count = null, filterParser) })
         }
       // Parse all the filters here while we're still in the EDT
       val filters = items.map { if (it is Item) filterParser.parse(it.filter, matchCase) else null }
@@ -480,18 +454,12 @@ internal class FilterTextField(
         listModel.items.forEachIndexed { index, item ->
           if (item is Item) {
             launch {
-              val count =
-                application.runReadAction<Int> {
-                  logcatPresenter.countFilterMatches(filters[index])
-                }
+              val count = application.runReadAction<Int> { logcatPresenter.countFilterMatches(filters[index]) }
               // Replacing an item in the model will remove the selection. Save the selected index,
               // so we can restore it after.
               withContext(Dispatchers.EDT + parentContext) {
                 val selected = selectedIndex
-                listModel.setElementAt(
-                  Item(item.filter, item.isFavorite, count, filterParser),
-                  index,
-                )
+                listModel.setElementAt(Item(item.filter, item.isFavorite, count, filterParser), index)
                 if (selected >= 0) {
                   selectedIndex = selected
                 }
@@ -515,8 +483,7 @@ internal class FilterTextField(
       val deleteIconBounds = item.getDeleteIconBounds(cellLocation)
       return when {
         favoriteIconBounds.contains(event.point) -> getFavoriteTooltip(item)
-        deleteIconBounds.contains(event.point) ->
-          LogcatBundle.message("logcat.filter.history.delete.tooltip", inactiveColor)
+        deleteIconBounds.contains(event.point) -> LogcatBundle.message("logcat.filter.history.delete.tooltip", inactiveColor)
         else -> item.tooltip
       }
     }
@@ -533,8 +500,7 @@ internal class FilterTextField(
      * This method does several things:
      * 1. Toggle [Item.isFavorite]
      * 2. Update [FilterTextField.filterHistory] by moving the [Item.filter] to its new collection
-     * 3. If the item happens to be the current, item in the [FilterTextField.text] also toggle
-     *    [FilterTextField.isFavorite]
+     * 3. If the item happens to be the current, item in the [FilterTextField.text] also toggle [FilterTextField.isFavorite]
      * 4. Force a paint
      */
     private fun toggleFavoriteItem(index: Int, bounds: Rectangle) {
@@ -571,19 +537,16 @@ internal class FilterTextField(
     }
 
     /**
-     * Track mouse events and manipulate the UI to reflect them. For example, toggling Favorite
-     * state.
+     * Track mouse events and manipulate the UI to reflect them. For example, toggling Favorite state.
      *
      * This allows us to detect mouse events on specific UI areas such as the favorite icon.
      *
-     * We need this because the implementation of JList is such that the UI doesn't actually contain
-     * any components. Rather, a dummy component (provided by the
-     * [ListCellRenderer.getListCellRendererComponent]) is used to draw directly onto the list
+     * We need this because the implementation of JList is such that the UI doesn't actually contain any components. Rather, a dummy
+     * component (provided by the [ListCellRenderer.getListCellRendererComponent]) is used to draw directly onto the list
      * [java.awt.Graphics]. Mouse listeners on the item components are not actually triggered.
      *
-     * When processing a mouse event, we map the event location in the list to the specific item. We
-     * use [JList.getSelectedIndex] to find the item. This works because the item corresponding to
-     * the mouse event must be the selected item since the mouse is hovering on it.
+     * When processing a mouse event, we map the event location in the list to the specific item. We use [JList.getSelectedIndex] to find
+     * the item. This works because the item corresponding to the mouse event must be the selected item since the mouse is hovering on it.
      */
     inner class MouseListener : MouseAdapter() {
       private var hoveredFavoriteIndex: Int? = null
@@ -597,8 +560,7 @@ internal class FilterTextField(
           val deleteIconBounds = item.getDeleteIconBounds(cellLocation)
           var consume = true
           when {
-            favoriteIconBounds.contains(event.point) ->
-              toggleFavoriteItem(index, favoriteIconBounds)
+            favoriteIconBounds.contains(event.point) -> toggleFavoriteItem(index, favoriteIconBounds)
             deleteIconBounds.contains(event.point) -> deleteItem(index)
             else -> consume = false
           }
@@ -637,8 +599,7 @@ internal class FilterTextField(
         item.isFavoriteHovered = value
       }
 
-      private fun ListModel<FilterHistoryItem>.getItemAt(index: Int): Item? =
-        runCatching { model.getElementAt(index) }.getOrNull() as? Item
+      private fun ListModel<FilterHistoryItem>.getItemAt(index: Int): Item? = runCatching { model.getElementAt(index) }.getOrNull() as? Item
     }
   }
 
@@ -655,12 +616,8 @@ internal class FilterTextField(
   /** See [HistoryList] for why this is VisibleForTesting */
   @VisibleForTesting
   internal sealed class FilterHistoryItem {
-    class Item(
-      val filter: String,
-      var isFavorite: Boolean,
-      val count: Int?,
-      private val filterParser: LogcatFilterParser,
-    ) : FilterHistoryItem() {
+    class Item(val filter: String, var isFavorite: Boolean, val count: Int?, private val filterParser: LogcatFilterParser) :
+      FilterHistoryItem() {
 
       var isFavoriteHovered: Boolean = false
 
@@ -710,8 +667,7 @@ internal class FilterTextField(
         if (filterName != null) {
           val history = AndroidLogcatFilterHistory.getInstance().items
           // If there is more than one Item with the same filterName, show the name and the filter.
-          val sameName =
-            history.count { filterParser.parse(it, matchCase)?.filterName == filterName }
+          val sameName = history.count { filterParser.parse(it, matchCase)?.filterName == filterName }
           filterLabel.append(filterName, namedFilterHistoryItemColor)
           val filterWithoutName = filterParser.removeFilterNames(filter)
           tooltip =
@@ -727,10 +683,7 @@ internal class FilterTextField(
         }
       }
 
-      override fun getComponent(
-        isSelected: Boolean,
-        list: JList<out FilterHistoryItem>,
-      ): JComponent {
+      override fun getComponent(isSelected: Boolean, list: JList<out FilterHistoryItem>): JComponent {
         // This can be mico optimized, but it's more readable like this
         favoriteLabel.icon =
           when {
@@ -756,14 +709,12 @@ internal class FilterTextField(
         filterLabel.foreground = foreground
         deleteLabel.foreground = foreground
         component.background = background
-        countLabel.foreground =
-          if (isSelected) foreground else SimpleTextAttributes.GRAYED_ATTRIBUTES.fgColor
+        countLabel.foreground = if (isSelected) foreground else SimpleTextAttributes.GRAYED_ATTRIBUTES.fgColor
 
         return component
       }
 
-      private fun whiteIconForOldUI(icon: Icon): Icon =
-        if (NewUI.isEnabled()) icon else ColoredIconGenerator.generateWhiteIcon(icon)
+      private fun whiteIconForOldUI(icon: Icon): Icon = if (NewUI.isEnabled()) icon else ColoredIconGenerator.generateWhiteIcon(icon)
 
       // Items have unique text, so we only need to check the "filter" field. We MUST ignore the
       // "count" field because we do not yet know
@@ -796,10 +747,7 @@ internal class FilterTextField(
           add(JSeparator(HORIZONTAL))
         }
 
-      override fun getComponent(
-        isSelected: Boolean,
-        list: JList<out FilterHistoryItem>,
-      ): JComponent {
+      override fun getComponent(isSelected: Boolean, list: JList<out FilterHistoryItem>): JComponent {
         component.background = list.background
         return component
       }
@@ -811,16 +759,12 @@ internal class FilterTextField(
   /**
    * An icon button that reacts to being hovered by changing the icon.
    *
-   * If a [hoverIcon] is provided, it uses it when the button is in the hovered state. In no
-   * hoverIcon is provided, the hover state is done by painting a background overlay.
+   * If a [hoverIcon] is provided, it uses it when the button is in the hovered state. In no hoverIcon is provided, the hover state is done
+   * by painting a background overlay.
    *
    * Based on [com.intellij.ui.components.IconLabelButton].
    */
-  private abstract class HoverButton(
-    icon: Icon,
-    tooltip: String,
-    private val hoverIcon: Icon? = null,
-  ) : JBLabel(icon) {
+  private abstract class HoverButton(icon: Icon, tooltip: String, private val hoverIcon: Icon? = null) : JBLabel(icon) {
     private var hovered = false
 
     init {
@@ -854,11 +798,7 @@ internal class FilterTextField(
   }
 
   private inner class ClearButton :
-    HoverButton(
-      AllIcons.Actions.Close,
-      LogcatBundle.message("logcat.filter.clear.tooltip"),
-      AllIcons.Actions.CloseHovered,
-    ) {
+    HoverButton(AllIcons.Actions.Close, LogcatBundle.message("logcat.filter.clear.tooltip"), AllIcons.Actions.CloseHovered) {
     init {
       name = "ClearButton"
     }
@@ -868,8 +808,7 @@ internal class FilterTextField(
     }
   }
 
-  private inner class FavoriteButton :
-    HoverButton(FAVORITE_OUTLINE, LogcatBundle.message("logcat.filter.tag.favorite.tooltip")) {
+  private inner class FavoriteButton : HoverButton(FAVORITE_OUTLINE, LogcatBundle.message("logcat.filter.tag.favorite.tooltip")) {
     init {
       name = "FavoriteButton"
     }
@@ -909,12 +848,7 @@ internal class FilterTextField(
 
   /** Based on [com.intellij.find.SearchTextArea.MyActionButton] */
   private inner class MatchCaseButton private constructor(action: AnAction) :
-    ActionButton(
-      action,
-      action.templatePresentation.clone(),
-      "FilterTextField",
-      DEFAULT_MINIMUM_BUTTON_SIZE,
-    ) {
+    ActionButton(action, action.templatePresentation.clone(), "FilterTextField", DEFAULT_MINIMUM_BUTTON_SIZE) {
 
     constructor() : this(ToggleMatchCase())
 
@@ -948,13 +882,7 @@ internal class FilterTextField(
 }
 
 private fun getFilterHintText(): String {
-  return when (
-    val shortcut =
-      KeymapManager.getInstance()
-        .activeKeymap
-        .getShortcuts(IdeActions.ACTION_CODE_COMPLETION)
-        .firstOrNull()
-  ) {
+  return when (val shortcut = KeymapManager.getInstance().activeKeymap.getShortcuts(IdeActions.ACTION_CODE_COMPLETION).firstOrNull()) {
     null -> LogcatBundle.message("logcat.filter.hint.no.shortcut")
     else -> LogcatBundle.message("logcat.filter.hint", KeymapUtil.getShortcutText(shortcut))
   }

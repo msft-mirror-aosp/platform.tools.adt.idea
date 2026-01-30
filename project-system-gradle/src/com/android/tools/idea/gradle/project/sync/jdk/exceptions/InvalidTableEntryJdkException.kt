@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.gradle.project.sync.jdk.exceptions
 
+import com.android.tools.idea.gradle.project.sync.jdk.exceptions.base.GradleJdkException
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.InvalidGradleJvmTableEntryJavaHome
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.UndefinedGradleJvmTableEntry
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.UndefinedGradleJvmTableEntryJavaHome
-import com.android.tools.idea.gradle.project.sync.jdk.exceptions.base.GradleJdkException
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.ProjectJdkTable
@@ -28,14 +28,11 @@ import org.jetbrains.kotlin.tools.projectWizard.core.asPath
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 
 /**
- * A [GradleJdkException] when gradle root [GradleProjectSettings.getGradleJvm] is configured with unknown macro or
- * desired jdk name that represents an undefined or invalid [ProjectJdkTable] entry.
+ * A [GradleJdkException] when gradle root [GradleProjectSettings.getGradleJvm] is configured with unknown macro or desired jdk name that
+ * represents an undefined or invalid [ProjectJdkTable] entry.
  */
-class InvalidTableEntryJdkException(
-  project: Project,
-  gradleRootPath: @SystemIndependent String,
-  private val jdkName: String,
-): GradleJdkException(project, gradleRootPath) {
+class InvalidTableEntryJdkException(project: Project, gradleRootPath: @SystemIndependent String, private val jdkName: String) :
+  GradleJdkException(project, gradleRootPath) {
 
   override val cause: InvalidGradleJdkCause
     get() {

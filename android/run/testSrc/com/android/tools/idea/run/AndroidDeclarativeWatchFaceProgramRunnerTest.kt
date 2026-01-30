@@ -29,8 +29,7 @@ import org.junit.Test
 
 class AndroidDeclarativeWatchFaceProgramRunnerTest {
 
-  @get:Rule
-  val projectRule = ProjectRule()
+  @get:Rule val projectRule = ProjectRule()
 
   private lateinit var declarativeWatchFaceRunConfiguration: RunConfiguration
   private lateinit var programRunner: AndroidDeclarativeWatchFaceProgramRunner
@@ -43,14 +42,16 @@ class AndroidDeclarativeWatchFaceProgramRunnerTest {
     val factory = AndroidDeclarativeWatchFaceConfigurationType().configurationFactories[0]
     declarativeWatchFaceRunConfiguration = factory.createTemplateConfiguration(projectRule.project)
 
-    val syncManager = object: ProjectSystemSyncManager {
-      override fun requestSyncProject(reason: ProjectSystemSyncManager.SyncReason) = throw IllegalStateException("not implemented")
-      override fun getLastSyncResult() = throw IllegalStateException("not implemented")
+    val syncManager =
+      object : ProjectSystemSyncManager {
+        override fun requestSyncProject(reason: ProjectSystemSyncManager.SyncReason) = throw IllegalStateException("not implemented")
 
-      override fun isSyncInProgress() = isSyncInProgress
+        override fun getLastSyncResult() = throw IllegalStateException("not implemented")
 
-      override fun isSyncNeeded() = isSyncNeeded
-    }
+        override fun isSyncInProgress() = isSyncInProgress
+
+        override fun isSyncNeeded() = isSyncNeeded
+      }
 
     programRunner = AndroidDeclarativeWatchFaceProgramRunner { syncManager }
   }

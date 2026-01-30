@@ -102,39 +102,21 @@ class PreviewPickerTests {
         .trimIndent()
 
     val file = fixture.configureByText("Test.kt", fileContent)
-    val previews =
-      AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile)
-        .toList()
+    val previews = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile).toList()
     ReadAction.run<Throwable> {
       previews[0].also { noParametersPreview ->
         val parsed =
-          PreviewPickerPropertiesModel.fromPreviewElement(
-            project,
-            module,
-            noParametersPreview.previewElementDefinition,
-            NoOpTracker,
-          )
+          PreviewPickerPropertiesModel.fromPreviewElement(project, module, noParametersPreview.previewElementDefinition, NoOpTracker)
         assertNotNull(parsed.properties["", "name"])
         assertNull(parsed.properties.getOrNull("", "name2"))
       }
       previews[1].also { namedPreview ->
-        val parsed =
-          PreviewPickerPropertiesModel.fromPreviewElement(
-            project,
-            module,
-            namedPreview.previewElementDefinition,
-            NoOpTracker,
-          )
+        val parsed = PreviewPickerPropertiesModel.fromPreviewElement(project, module, namedPreview.previewElementDefinition, NoOpTracker)
         assertEquals("named", parsed.properties["", "name"].value)
       }
       previews[3].also { namedPreviewFromConst ->
         val parsed =
-          PreviewPickerPropertiesModel.fromPreviewElement(
-            project,
-            module,
-            namedPreviewFromConst.previewElementDefinition,
-            NoOpTracker,
-          )
+          PreviewPickerPropertiesModel.fromPreviewElement(project, module, namedPreviewFromConst.previewElementDefinition, NoOpTracker)
         assertEquals("Name from Const", parsed.properties["", "name"].value)
       }
     }
@@ -267,12 +249,7 @@ class PreviewPickerTests {
         .trimIndent()
 
     val model = getFirstModel(fileContent)
-    val preview =
-      AnnotationFilePreviewElementFinder.findPreviewElements(
-          fixture.project,
-          fixture.findFileInTempDir("Test.kt"),
-        )
-        .first()
+    val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
 
     fun checkFontScaleChange(newValue: String, expectedPropertyValue: String) {
       val expectedTextValue = expectedPropertyValue + 'f'
@@ -320,15 +297,15 @@ class PreviewPickerTests {
 
       assertEquals(
         """
-            import android.content.res.Configuration
-            import androidx.compose.runtime.Composable
-            import androidx.compose.ui.tooling.preview.Preview
+        import android.content.res.Configuration
+        import androidx.compose.runtime.Composable
+        import androidx.compose.ui.tooling.preview.Preview
 
-            @Composable
-            @Preview(uiMode = Configuration.UI_MODE_TYPE_NORMAL)
-            fun Preview() {
-            }
-          """
+        @Composable
+        @Preview(uiMode = Configuration.UI_MODE_TYPE_NORMAL)
+        fun Preview() {
+        }
+        """
           .trimIndent(),
         fixture.file.text,
       )
@@ -336,15 +313,15 @@ class PreviewPickerTests {
       nightModeOption.select(uiModeProperty) {}
       assertEquals(
         """
-            import android.content.res.Configuration
-            import androidx.compose.runtime.Composable
-            import androidx.compose.ui.tooling.preview.Preview
+        import android.content.res.Configuration
+        import androidx.compose.runtime.Composable
+        import androidx.compose.ui.tooling.preview.Preview
 
-            @Composable
-            @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
-            fun Preview() {
-            }
-          """
+        @Composable
+        @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
+        fun Preview() {
+        }
+        """
           .trimIndent(),
         fixture.file.text,
       )
@@ -374,15 +351,15 @@ class PreviewPickerTests {
 
       assertEquals(
         """
-            import androidx.compose.runtime.Composable
-            import androidx.compose.ui.tooling.preview.Preview
-            import androidx.compose.ui.tooling.preview.Wallpapers
+        import androidx.compose.runtime.Composable
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.ui.tooling.preview.Wallpapers
 
-            @Composable
-            @Preview(wallpaper = Wallpapers.BLUE_DOMINATED_EXAMPLE)
-            fun Preview() {
-            }
-          """
+        @Composable
+        @Preview(wallpaper = Wallpapers.BLUE_DOMINATED_EXAMPLE)
+        fun Preview() {
+        }
+        """
           .trimIndent(),
         fixture.file.text,
       )
@@ -406,12 +383,7 @@ class PreviewPickerTests {
         .trimIndent()
 
     val model = getFirstModel(fileContent)
-    val preview =
-      AnnotationFilePreviewElementFinder.findPreviewElements(
-          fixture.project,
-          fixture.findFileInTempDir("Test.kt"),
-        )
-        .first()
+    val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
 
     fun checkShowBackgroundChange(newValue: String?, expectedPropertyValue: String?) {
       model.properties["", "showBackground"].value = newValue
@@ -486,42 +458,27 @@ class PreviewPickerTests {
     assertEquals(14, testTracker.valuesRegistered.size)
     var index = 0
     // Device
-    assertEquals(
-      PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED,
-      testTracker.valuesRegistered[index++],
-    )
+    assertEquals(PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[index++])
 
     // Orientation
     assertEquals(PreviewPickerValue.ORIENTATION_PORTRAIT, testTracker.valuesRegistered[index++])
     assertEquals(PreviewPickerValue.ORIENTATION_LANDSCAPE, testTracker.valuesRegistered[index++])
-    assertEquals(
-      PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE,
-      testTracker.valuesRegistered[index++],
-    )
+    assertEquals(PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE, testTracker.valuesRegistered[index++])
 
     // Density
     assertEquals(PreviewPickerValue.DENSITY_XX_HIGH, testTracker.valuesRegistered[index++])
     assertEquals(PreviewPickerValue.DENSITY_XX_HIGH, testTracker.valuesRegistered[index++])
     assertEquals(PreviewPickerValue.DENSITY_X_HIGH, testTracker.valuesRegistered[index++])
     assertEquals(PreviewPickerValue.DENSITY_XXX_HIGH, testTracker.valuesRegistered[index++])
-    assertEquals(
-      PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE,
-      testTracker.valuesRegistered[index++],
-    )
+    assertEquals(PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE, testTracker.valuesRegistered[index++])
 
     // DimensionUnit
     assertEquals(PreviewPickerValue.UNIT_DP, testTracker.valuesRegistered[index++])
     assertEquals(PreviewPickerValue.UNIT_PIXELS, testTracker.valuesRegistered[index++])
-    assertEquals(
-      PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE,
-      testTracker.valuesRegistered[index++],
-    )
+    assertEquals(PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE, testTracker.valuesRegistered[index++])
 
     // Width/Height
-    assertEquals(
-      PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED,
-      testTracker.valuesRegistered[index++],
-    )
+    assertEquals(PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[index++])
     assertEquals(PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED, testTracker.valuesRegistered[index])
   }
 
@@ -592,8 +549,7 @@ class PreviewPickerTests {
         .trimIndent()
     val model = getFirstModel(fileContent)
 
-    val property =
-      model.properties.values.find { it.name == "showSystemUi" } as PsiCallParameterPropertyItem
+    val property = model.properties.values.find { it.name == "showSystemUi" } as PsiCallParameterPropertyItem
 
     model.addListener(FakePropertiesRefreshListener())
 
@@ -618,8 +574,7 @@ class PreviewPickerTests {
         .trimIndent()
     val model = getFirstModel(fileContent)
 
-    val property =
-      model.properties.values.find { it.name == "showSystemUi" } as PsiCallParameterPropertyItem
+    val property = model.properties.values.find { it.name == "showSystemUi" } as PsiCallParameterPropertyItem
 
     model.addListener(FakePropertiesRefreshListener())
 
@@ -658,8 +613,7 @@ class PreviewPickerTests {
         .trimIndent()
     val model = getFirstModel(fileContent)
 
-    val property =
-      model.properties.values.find { it.name == "name" } as PsiCallParameterPropertyItem
+    val property = model.properties.values.find { it.name == "name" } as PsiCallParameterPropertyItem
 
     model.addListener(FakePropertiesRefreshListener())
 
@@ -690,8 +644,7 @@ class PreviewPickerTests {
         .trimIndent()
     val model = getFirstModel(fileContent)
 
-    val property =
-      model.properties.values.find { it.name == "showSystemUi" } as PsiCallParameterPropertyItem
+    val property = model.properties.values.find { it.name == "showSystemUi" } as PsiCallParameterPropertyItem
 
     model.addListener(FakePropertiesRefreshListener())
 
@@ -711,25 +664,15 @@ class PreviewPickerTests {
 
   private suspend fun assertUpdatingModelUpdatesPsiCorrectly(fileContent: String) {
     val file = fixture.configureByText("Test.kt", fileContent)
-    val noParametersPreview =
-      AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile)
-        .first()
+    val noParametersPreview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile).first()
     val model =
       ReadAction.compute<PsiPropertiesModel, Throwable> {
-        PreviewPickerPropertiesModel.fromPreviewElement(
-          project,
-          module,
-          noParametersPreview.previewElementDefinition,
-          NoOpTracker,
-        )
+        PreviewPickerPropertiesModel.fromPreviewElement(project, module, noParametersPreview.previewElementDefinition, NoOpTracker)
       }
     var expectedModificationsCountdown = 3
     model.addListener(
       object : PropertiesModelListener<PsiPropertyItem> {
-        override fun propertyValuesChanged(
-          model: PropertiesModel<PsiPropertyItem>,
-          childElementChanges: Boolean,
-        ) {
+        override fun propertyValuesChanged(model: PropertiesModel<PsiPropertyItem>, childElementChanges: Boolean) {
           expectedModificationsCountdown--
         }
       }
@@ -779,22 +722,12 @@ class PreviewPickerTests {
     return Pair(testTracker, model)
   }
 
-  private suspend fun getFirstModel(
-    fileContent: String,
-    tracker: ComposePickerTracker = NoOpTracker,
-  ): PsiPropertiesModel {
+  private suspend fun getFirstModel(fileContent: String, tracker: ComposePickerTracker = NoOpTracker): PsiPropertiesModel {
     val file = fixture.configureByText("Test.kt", fileContent)
-    val preview =
-      AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile)
-        .first()
+    val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile).first()
     ConfigurationManager.getOrCreateInstance(module)
     return ReadAction.compute<PsiPropertiesModel, Throwable> {
-      PreviewPickerPropertiesModel.fromPreviewElement(
-        project,
-        module,
-        preview.previewElementDefinition,
-        tracker,
-      )
+      PreviewPickerPropertiesModel.fromPreviewElement(project, module, preview.previewElementDefinition, tracker)
     }
   }
 }
@@ -816,17 +749,13 @@ private class TestTracker : ComposePickerTracker {
 }
 
 /**
- * This listener is going through all the properties and reads their values. However, whenever to
- * read a property value we call PsiCallParameterPropertyItem.value. Whenever we get
- * [PsiCallParameterPropertyItem.value] the [analyze] function is called. Because it is forbidden to
- * call a write action within an [analyze] a ProhibitedAnalysisException is thrown.
+ * This listener is going through all the properties and reads their values. However, whenever to read a property value we call
+ * PsiCallParameterPropertyItem.value. Whenever we get [PsiCallParameterPropertyItem.value] the [analyze] function is called. Because it is
+ * forbidden to call a write action within an [analyze] a ProhibitedAnalysisException is thrown.
  */
 private class FakePropertiesRefreshListener : PropertiesModelListener<PsiPropertyItem> {
 
-  override fun propertyValuesChanged(
-    model: PropertiesModel<PsiPropertyItem>,
-    childElementChanges: Boolean,
-  ) {
+  override fun propertyValuesChanged(model: PropertiesModel<PsiPropertyItem>, childElementChanges: Boolean) {
     // We simulate a refresh of all the properties, getting their values to trigger analyze()
     model.properties.values.forEach { it.value }
   }

@@ -31,13 +31,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 
-/**
- * Tests the data sharing checkbox in the settings/preferences ui.
- */
+/** Tests the data sharing checkbox in the settings/preferences ui. */
 @RunsInEdt
 class AnalyticsSettingsUiTest {
-  @get:Rule
-  val ruleChain: RuleChain = RuleChain.outerRule(ApplicationRule()).around(EdtRule())
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(ApplicationRule()).around(EdtRule())
 
   @Test
   fun testSettingsUi() {

@@ -31,9 +31,7 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationResult
@@ -53,14 +51,16 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 
 @OptIn(KaExperimentalApi::class)
-internal class LiveEditCompilerForK2(private val project: Project,
-                                     private val module: Module) : LiveEditCompiler.LiveEditCompilerForKotlinVersion {
+internal class LiveEditCompilerForK2(private val project: Project, private val module: Module) :
+  LiveEditCompiler.LiveEditCompilerForKotlinVersion {
 
   private val LOGGER = LogWrapper(Logger.getInstance(LiveEditCompilerForK2::class.java))
 
-  override fun compileKtFile(applicationLiveEditServices: ApplicationLiveEditServices,
-                             file: KtFile,
-                             inputs: Collection<LiveEditCompilerInput>) = runWithCompileLock {
+  override fun compileKtFile(
+    applicationLiveEditServices: ApplicationLiveEditServices,
+    file: KtFile,
+    inputs: Collection<LiveEditCompilerInput>,
+  ) = runWithCompileLock {
     LOGGER.info("Using Live Edit K2 CodeGen")
     readActionPrebuildChecks(project, file)
     val result = backendCodeGenForK2(file, module, applicationLiveEditServices.getKotlinCompilerConfiguration(file))
@@ -79,9 +79,7 @@ private fun getCompileTargetFile(original: KtFile, module: Module): KtFile {
   }
 
   val androidModule = module.findAndroidModule() ?: return original
-  val sourceModule = androidModule.toKaSourceModuleForProduction()
-                     ?: androidModule.toKaSourceModuleForTest()
-                     ?: return original
+  val sourceModule = androidModule.toKaSourceModuleForProduction() ?: androidModule.toKaSourceModuleForTest() ?: return original
 
   // create a dangling copy of this file with the proper (Android) context.
   val danglingFile = KtPsiFactory(module.project).createFile(original.name, original.text)
@@ -106,21 +104,25 @@ fun backendCodeGenForK2(file: KtFile, module: Module, configuration: CompilerCon
 
   val substituteFile = getCompileTargetFile(file, module)
   analyze(substituteFile) {
-    val result = this@analyze.compile(substituteFile, configuration,
-                                      KaCompilerTarget.Jvm(isTestMode = false, compiledClassHandler = null, debuggerExtension = null)) {
-      // This is a lambda for `allowedErrorFilter` parameter. `compiler` API internally filters diagnostic errors with
-      // `allowedErrorFilter`. If `allowedErrorFilter(diagnosticError)` is true, the error will not be reported.
-      // Since we want to always report the diagnostic errors, we just return `false` here.
-      false
-    }
+    val result =
+      this@analyze.compile(
+        substituteFile,
+        configuration,
+        KaCompilerTarget.Jvm(isTestMode = false, compiledClassHandler = null, debuggerExtension = null),
+      ) {
+        // This is a lambda for `allowedErrorFilter` parameter. `compiler` API internally filters diagnostic errors with
+        // `allowedErrorFilter`. If `allowedErrorFilter(diagnosticError)` is true, the error will not be reported.
+        // Since we want to always report the diagnostic errors, we just return `false` here.
+        false
+      }
     when (result) {
       is KaCompilationResult.Success -> return result
-      is KaCompilationResult.Failure -> throw compilationError(result.errors.map{it.getErrorMessage()})
+      is KaCompilationResult.Failure -> throw compilationError(result.errors.map { it.getErrorMessage() })
     }
   }
 }
 
-private fun KaDiagnostic.getErrorMessage() : CompilerErrorSource {
+private fun KaDiagnostic.getErrorMessage(): CompilerErrorSource {
   var message = getDefaultMessageWithFactoryName()
   if (this is KaDiagnosticWithPsi<*>) {
     var lineNumber = getLineNumberFromKaDiagnostic()

@@ -32,16 +32,13 @@ object AgpIntegrationTestUtil {
   @JvmStatic
   fun importProject(project: Project, jdkVersion: JavaSdkVersion) {
     GradleProjectImporter.withAfterCreate(
-      afterCreate = {
-        overrideProjectGradleJdkPathWithVersion(Projects.getBaseDirPath(project), jdkVersion)
-      }
+      afterCreate = { overrideProjectGradleJdkPathWithVersion(Projects.getBaseDirPath(project), jdkVersion) }
     ) {
       runInEdtAndWait {
         val request = GradleProjectImporter.Request(project)
         configureNewProject(project)
         GradleProjectImporter.getInstance().importProjectNoSync(request)
-        AndroidGradleTests.syncProject(project, GradleSyncInvoker.Request.testRequest()) {
-          it: TestGradleSyncListener ->
+        AndroidGradleTests.syncProject(project, GradleSyncInvoker.Request.testRequest()) { it: TestGradleSyncListener ->
           AndroidGradleTests.checkSyncStatus(project, it)
         }
       }

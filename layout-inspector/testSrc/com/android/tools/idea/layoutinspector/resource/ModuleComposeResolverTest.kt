@@ -55,22 +55,15 @@ class ModuleComposeResolverTest {
       .onEdt()
   private val fileOpenCaptureRule = FileOpenCaptureRule(projectRule.projectRule)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(projectRule).around(fileOpenCaptureRule).around(EdtRule())!!
+  @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(fileOpenCaptureRule).around(EdtRule())!!
 
   private lateinit var appConfig: RunnerAndConfigurationSettings
   private lateinit var twoConfig: RunnerAndConfigurationSettings
 
   @Before
   fun before() {
-    projectRule.fixture.addFileToProject(
-      "app/src/java/com/example/MainActivity.kt",
-      createMainActivityFile("App"),
-    )
-    projectRule.fixture.addFileToProject(
-      "two/src/java/com/example/MainActivity.kt",
-      createMainActivityFile("Two"),
-    )
+    projectRule.fixture.addFileToProject("app/src/java/com/example/MainActivity.kt", createMainActivityFile("App"))
+    projectRule.fixture.addFileToProject("two/src/java/com/example/MainActivity.kt", createMainActivityFile("Two"))
     appConfig = addConfig("app-config", ".app.main")
     twoConfig = addConfig("two-config", ".two.main")
   }

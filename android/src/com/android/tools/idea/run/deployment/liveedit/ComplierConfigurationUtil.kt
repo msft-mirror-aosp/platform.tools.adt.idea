@@ -16,8 +16,6 @@
 package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.projectsystem.getProjectSystem
-import com.android.tools.idea.run.deployment.liveedit.setOptions
 import com.intellij.openapi.module.Module
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
@@ -47,50 +45,44 @@ import org.jetbrains.kotlin.psi.KtFile
  * limitations under the License.
  */
 
-fun getCompilerConfiguration(
-  module: Module,
-  file: KtFile
-): CompilerConfiguration {
+fun getCompilerConfiguration(module: Module, file: KtFile): CompilerConfiguration {
   if (file.module != module) {
     // *Note*: currently all 3 callers satisfy this condition and [module] parameter is going to be removed once both compose previews and
     // live edit migration to build system specific extension points is completed.
     error("$file must belong to $module")
   }
-  val compilerConfiguration = CompilerConfiguration().apply {
-    put(
-      CommonConfigurationKeys.MODULE_NAME,
-      module.name
-    )
-    KotlinFacet.get(module)?.let { kotlinFacet ->
-      val moduleName = when (val compilerArguments = kotlinFacet.configuration.settings.compilerArguments) {
-        is K2JVMCompilerArguments -> compilerArguments.moduleName
-        is K2MetadataCompilerArguments -> compilerArguments.moduleName
-        else -> null
+  val compilerConfiguration =
+    CompilerConfiguration().apply {
+      put(CommonConfigurationKeys.MODULE_NAME, module.name)
+      KotlinFacet.get(module)?.let { kotlinFacet ->
+        val moduleName =
+          when (val compilerArguments = kotlinFacet.configuration.settings.compilerArguments) {
+            is K2JVMCompilerArguments -> compilerArguments.moduleName
+            is K2MetadataCompilerArguments -> compilerArguments.moduleName
+            else -> null
+          }
+        moduleName?.let { put(CommonConfigurationKeys.MODULE_NAME, it) }
       }
-      moduleName?.let {
-        put(CommonConfigurationKeys.MODULE_NAME, it)
+
+      // This flag was created mostly for experimental Live Edit for ASwB. We should no longer be relying it
+      // once we can fetch flags from QuerySync
+      //
+      // see ApplicationLiveEditServices.getKotlinCompilerConfiguration which current not implemented on the Blaze side.
+      if (StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS.get().isNotEmpty()) {
+        val flags = StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS.get().split(" ")
+        val mainKotlinCompilerOptions = parseCommandLineArguments<K2JVMCompilerArguments>(flags)
+        val languageSettings = mainKotlinCompilerOptions.toLanguageVersionSettings(MessageCollector.NONE)
+        setOptions(languageSettings)
+      } else {
+        setOptions(file.languageVersionSettings)
       }
-    }
 
-    // This flag was created mostly for experimental Live Edit for ASwB. We should no longer be relying it
-    // once we can fetch flags from QuerySync
-    //
-    // see ApplicationLiveEditServices.getKotlinCompilerConfiguration which current not implemented on the Blaze side.
-    if (StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS.get().isNotEmpty()) {
-      val flags = StudioFlags.COMPOSE_DEPLOY_LIVE_EDIT_COMPILER_FLAGS.get().split(" ")
-      val mainKotlinCompilerOptions = parseCommandLineArguments<K2JVMCompilerArguments>(flags)
-      val languageSettings = mainKotlinCompilerOptions.toLanguageVersionSettings(MessageCollector.NONE)
-      setOptions(languageSettings)
-    } else {
-      setOptions(file.languageVersionSettings)
+      // TODO(b/367786795): We met an exception from JVM IR CodeGen in the middle of K2 LiveEdit. It was caused by an
+      //  optimization similar to constant propagation. As explained in https://youtrack.jetbrains.com/issue/KT-70261,
+      //  "It is kind of experimental (because of -X) but only because the whole interpretation and optimization
+      //  thing is experimental.", we simply pass `-Xignore-const-optimization-errors`. When the optimization is
+      //  stable, we can drop this.
+      put(CommonConfigurationKeys.IGNORE_CONST_OPTIMIZATION_ERRORS, true)
     }
-
-    // TODO(b/367786795): We met an exception from JVM IR CodeGen in the middle of K2 LiveEdit. It was caused by an
-    //  optimization similar to constant propagation. As explained in https://youtrack.jetbrains.com/issue/KT-70261,
-    //  "It is kind of experimental (because of -X) but only because the whole interpretation and optimization
-    //  thing is experimental.", we simply pass `-Xignore-const-optimization-errors`. When the optimization is
-    //  stable, we can drop this.
-    put(CommonConfigurationKeys.IGNORE_CONST_OPTIMIZATION_ERRORS, true)
-  }
   return compilerConfiguration
 }

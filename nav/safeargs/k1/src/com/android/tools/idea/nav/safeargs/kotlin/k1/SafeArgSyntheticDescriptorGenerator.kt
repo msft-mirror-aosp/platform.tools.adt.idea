@@ -38,9 +38,7 @@ internal fun ClassDescriptorImpl.createMethod(
   name: String,
   returnType: KotlinType,
   isOperator: Boolean = false,
-  valueParametersProvider: (SimpleFunctionDescriptorImpl) -> List<ValueParameterDescriptor> = {
-    emptyList()
-  },
+  valueParametersProvider: (SimpleFunctionDescriptorImpl) -> List<ValueParameterDescriptor> = { emptyList() },
   sourceElement: SourceElement = this.source.withFunctionIcon(name, this.fqNameSafe.asString()),
 ): SimpleFunctionDescriptorImpl {
 
@@ -71,20 +69,12 @@ internal fun ClassDescriptorImpl.createMethod(
 }
 
 internal fun ClassDescriptorImpl.createConstructor(
-  valueParameterProvider: (ClassConstructorDescriptor) -> List<ValueParameterDescriptor> = {
-    emptyList()
-  }
+  valueParameterProvider: (ClassConstructorDescriptor) -> List<ValueParameterDescriptor> = { emptyList() }
 ): ClassConstructorDescriptor {
-  return ClassConstructorDescriptorImpl.createSynthesized(
-      this,
-      Annotations.EMPTY,
-      true,
-      this.source,
-    )
-    .apply {
-      this.initialize(valueParameterProvider(this), DescriptorVisibilities.PUBLIC)
-      this.returnType = this@createConstructor.defaultType
-    }
+  return ClassConstructorDescriptorImpl.createSynthesized(this, Annotations.EMPTY, true, this.source).apply {
+    this.initialize(valueParameterProvider(this), DescriptorVisibilities.PUBLIC)
+    this.returnType = this@createConstructor.defaultType
+  }
 }
 
 internal fun ClassDescriptorImpl.createProperty(

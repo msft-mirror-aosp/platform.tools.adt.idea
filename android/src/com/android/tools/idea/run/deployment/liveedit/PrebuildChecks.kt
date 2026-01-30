@@ -94,7 +94,6 @@ internal fun checkSupportedFiles(file: PsiFile) {
   if (!virtualFile.exists()) {
     throw virtualFileNotExist(virtualFile, file)
   }
-
 }
 
 internal fun checkJetpackCompose(project: Project) {
@@ -122,8 +121,7 @@ internal fun checkKotlinPluginBundled() {
   }
 }
 
-fun isKotlinPluginBundled() =
-  PluginManager.getInstance().findEnabledPlugin(PluginId.getId(kotlinPluginId))?.isBundled ?: false
+fun isKotlinPluginBundled() = PluginManager.getInstance().findEnabledPlugin(PluginId.getId(kotlinPluginId))?.isBundled ?: false
 
 internal fun readActionPrebuildChecks(project: Project, file: PsiFile) {
   ApplicationManager.getApplication().assertReadAccessAllowed()
@@ -144,5 +142,4 @@ internal fun readActionPrebuildChecks(project: Project, file: PsiFile) {
       throw LiveEditUpdateException.moduleIsDisposed(module)
     }
   }
-
 }

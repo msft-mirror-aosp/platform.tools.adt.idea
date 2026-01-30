@@ -39,8 +39,7 @@ import org.jetbrains.kotlin.psi.KtValueArgument
 /**
  * A [PsiCallParameterPropertyItem] for Color parameters.
  *
- * Adds the Color picker to the property item and displays color values (Long values) in the proper
- * color format '0xAARRGGBB'.
+ * Adds the Color picker to the property item and displays color values (Long values) in the proper color format '0xAARRGGBB'.
  */
 internal class ColorPsiCallParameter(
   project: Project,

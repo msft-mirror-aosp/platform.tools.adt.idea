@@ -16,10 +16,10 @@
 package com.android.tools.idea.gradle.structure.model
 
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
-import com.android.tools.idea.gradle.repositories.search.RepositorySearchFactory
-import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.android.tools.idea.gradle.repositories.search.ArtifactRepository
+import com.android.tools.idea.gradle.repositories.search.RepositorySearchFactory
 import com.android.tools.idea.gradle.structure.model.android.DependencyResultLocation
+import com.android.tools.idea.gradle.structure.model.meta.ParsedValue
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import java.util.function.Consumer
@@ -40,8 +40,11 @@ interface PsProject : PsModel {
   fun getPluginArtifactRepositories(): Collection<ArtifactRepository>
 
   fun findModuleByName(moduleName: String): PsModule?
+
   fun findModuleByGradlePath(gradlePath: String): PsModule?
+
   fun forEachModule(consumer: Consumer<PsModule>)
+
   fun applyChanges()
 
   fun removeModule(gradlePath: String)
@@ -49,6 +52,8 @@ interface PsProject : PsModel {
   fun onModuleChanged(disposable: Disposable, handler: (PsModule) -> Unit)
 
   fun getGradleVersionValue(notApplied: Boolean): String?
+
   fun setGradleVersionValue(value: String)
-  fun findScopeByDependencyLocation(dependencyLocation: DependencyResultLocation):PsVariablesScope?
+
+  fun findScopeByDependencyLocation(dependencyLocation: DependencyResultLocation): PsVariablesScope?
 }

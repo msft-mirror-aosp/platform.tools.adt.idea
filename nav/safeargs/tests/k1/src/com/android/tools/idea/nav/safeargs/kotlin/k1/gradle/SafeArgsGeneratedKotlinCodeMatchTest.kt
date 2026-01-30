@@ -64,8 +64,7 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
     get() = projectRule.fixture as JavaCodeInsightTestFixture
 
   // TODO (b/162520387): Do not ignore these methods when testing.
-  private val IGNORED_METHODS =
-    setOf("equals", "hashCode", "toString", "getActionId", "getArguments")
+  private val IGNORED_METHODS = setOf("equals", "hashCode", "toString", "getActionId", "getArguments")
 
   @get:Rule val expect: Expect = Expect.create()
 
@@ -76,15 +75,12 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
   @Before
   fun initProject() {
     // to be able to change the project before import, we copy it into a temp folder
-    val testSrc =
-      resolveWorkspacePath("tools/adt/idea/nav/safeargs/testData/projects/SafeArgsTestApp")
+    val testSrc = resolveWorkspacePath("tools/adt/idea/nav/safeargs/testData/projects/SafeArgsTestApp")
     val container = temporaryFolder.newFile("TestApp")
     testSrc.toFile().copyRecursively(container, overwrite = true)
 
     val settingsFile =
-      container.resolve("settings.gradle").also {
-        assertWithMessage("settings file should exist").that(it.exists()).isTrue()
-      }
+      container.resolve("settings.gradle").also { assertWithMessage("settings file should exist").that(it.exists()).isTrue() }
     // update settings to only include the desired module
     settingsFile.writeText(
       """
@@ -102,7 +98,7 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
         writeText(
           // language=kotlin
           """
-            class FooClass
+          class FooClass
           """
             .trimIndent()
         )
@@ -122,9 +118,7 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
     LocalFileSystem.getInstance().refresh(false)
     val codeOutDir =
       File(projectRule.project.basePath, "$moduleName/$PLUGIN_OUT_DIR").also {
-        assertWithMessage("should be able to find generated navigation code")
-          .that(it.exists())
-          .isTrue()
+        assertWithMessage("should be able to find generated navigation code").that(it.exists()).isTrue()
       }
     // parse generated code
     val allGeneratedCode = listOf(codeOutDir).flatMap(::loadClasses).toSet()
@@ -136,48 +130,25 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
     // now find all that code via other means (in memory codegen) and assert it is the same.
 
     val moduleDescriptor = projectRule.project.findAppModule().getMainModule().toDescriptor()!!
-    moduleDescriptor.resolveClassByFqName(
-      FqName("com.example.safeargtest.Foo"),
-      NoLookupLocation.WHEN_FIND_BY_FQNAME,
-    )
+    moduleDescriptor.resolveClassByFqName(FqName("com.example.safeargtest.Foo"), NoLookupLocation.WHEN_FIND_BY_FQNAME)
 
     allGeneratedCode.forEach { generated ->
       val classDescriptor =
         if (generated.isCompanionObject) {
           moduleDescriptor
-            .resolveClassByFqName(
-              FqName(generated.qualifiedName).parent(),
-              NoLookupLocation.WHEN_FIND_BY_FQNAME,
-            )
+            .resolveClassByFqName(FqName(generated.qualifiedName).parent(), NoLookupLocation.WHEN_FIND_BY_FQNAME)
             ?.companionObjectDescriptor
             ?.toDescription()
         } else {
-          moduleDescriptor
-            .resolveClassByFqName(
-              FqName(generated.qualifiedName),
-              NoLookupLocation.WHEN_FIND_BY_FQNAME,
-            )
-            ?.toDescription()
+          moduleDescriptor.resolveClassByFqName(FqName(generated.qualifiedName), NoLookupLocation.WHEN_FIND_BY_FQNAME)?.toDescription()
         }
 
       expect.withMessage(generated.qualifiedName).that(classDescriptor).isNotNull()
       classDescriptor!!.let {
-        expect
-          .withMessage(generated.qualifiedName)
-          .that(classDescriptor.qualifiedName)
-          .isEqualTo(generated.qualifiedName)
-        expect
-          .withMessage(generated.qualifiedName)
-          .that(classDescriptor.constructor)
-          .isEqualTo(generated.constructor)
-        expect
-          .withMessage(generated.qualifiedName)
-          .that(classDescriptor.methods)
-          .containsExactlyElementsIn(generated.methods)
-        expect
-          .withMessage(generated.qualifiedName)
-          .that(classDescriptor.fields)
-          .containsExactlyElementsIn(generated.fields)
+        expect.withMessage(generated.qualifiedName).that(classDescriptor.qualifiedName).isEqualTo(generated.qualifiedName)
+        expect.withMessage(generated.qualifiedName).that(classDescriptor.constructor).isEqualTo(generated.constructor)
+        expect.withMessage(generated.qualifiedName).that(classDescriptor.methods).containsExactlyElementsIn(generated.methods)
+        expect.withMessage(generated.qualifiedName).that(classDescriptor.fields).containsExactlyElementsIn(generated.fields)
       }
     }
   }
@@ -193,19 +164,14 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
   private fun File.loadClassesDescriptions(): List<ClassDescription> {
     val descriptions = mutableListOf<ClassDescription>()
 
-    val virtual =
-      LocalFileSystem.getInstance().refreshAndFindFileByIoFile(this)
-        ?: throw IllegalArgumentException("cannot find $this")
+    val virtual = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(this) ?: throw IllegalArgumentException("cannot find $this")
     val psi = PsiManager.getInstance(projectRule.project).findFile(virtual)
     val uast = psi.toUElement()!!
     uast.accept(
       object : AbstractUastVisitor() {
         override fun visitClass(node: UClass): Boolean {
           val descriptor = (node as KotlinUClass).sourcePsi?.descriptor as? ClassDescriptor
-          descriptor
-            ?.takeIf { it.visibility == DescriptorVisibilities.PUBLIC }
-            ?.toDescription()
-            ?.let { descriptions.add(it) }
+          descriptor?.takeIf { it.visibility == DescriptorVisibilities.PUBLIC }?.toDescription()?.let { descriptions.add(it) }
           return super.visitClass(node)
         }
       }
@@ -257,11 +223,7 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
     )
 
   private fun ValueParameterDescriptor.toDescription() =
-    ParamDescription(
-      name = this.name.asString(),
-      type = this.type.toDescription(),
-      modifiers = setOf(this.visibility.toString()),
-    )
+    ParamDescription(name = this.name.asString(), type = this.type.toDescription(), modifiers = setOf(this.visibility.toString()))
 
   private fun KotlinType.toDescription(): String {
     val type = if (this.isMarkedNullable) this.makeNullable() else this
@@ -271,11 +233,7 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
       // not critical to verifying safe args behavior, so we're OK simply peeling the class name out
       // of the error type
       // for now.
-      is ErrorType ->
-        type.debugMessage
-          .removePrefix("Unresolved type for ")
-          .substringAfterLast('.')
-          .substringAfterLast('$')
+      is ErrorType -> type.debugMessage.removePrefix("Unresolved type for ").substringAfterLast('.').substringAfterLast('$')
       else -> type.fqName!!.shortName().asString().substringAfterLast('$')
     }
   }
@@ -288,24 +246,11 @@ class SafeArgsGeneratedKotlinCodeMatchTest {
     val fields: Set<FieldDescription>,
   )
 
-  private data class MethodDescription(
-    val name: String,
-    val type: String?,
-    val modifiers: Set<String>,
-    val params: Set<ParamDescription>,
-  )
+  private data class MethodDescription(val name: String, val type: String?, val modifiers: Set<String>, val params: Set<ParamDescription>)
 
-  private data class FieldDescription(
-    val name: String,
-    val type: String,
-    val modifiers: Set<String>,
-  )
+  private data class FieldDescription(val name: String, val type: String, val modifiers: Set<String>)
 
-  private data class ParamDescription(
-    val name: String,
-    val type: String,
-    val modifiers: Set<String>,
-  )
+  private data class ParamDescription(val name: String, val type: String, val modifiers: Set<String>)
 
   companion object {
     const val PLUGIN_OUT_DIR = "build/generated/source/navigation-args/debug"

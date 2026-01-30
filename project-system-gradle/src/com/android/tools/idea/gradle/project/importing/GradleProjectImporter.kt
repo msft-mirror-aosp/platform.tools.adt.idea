@@ -47,6 +47,9 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.java.LanguageLevel
 import com.intellij.serviceContainer.NonInjectable
 import com.intellij.util.ExceptionUtil
+import java.io.File
+import java.io.IOException
+import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
@@ -54,52 +57,43 @@ import org.jetbrains.plugins.gradle.service.project.open.setupGradleSettings
 import org.jetbrains.plugins.gradle.settings.GradleDefaultProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
-import java.io.File
-import java.io.IOException
-import java.nio.file.Path
 
-/**
- * Imports an Android-Gradle project without showing the "Import Project" Wizard UI.
- */
-class GradleProjectImporter @NonInjectable @VisibleForTesting internal constructor(
-  private val mySdkSync: SdkSync,
-  private val myTopLevelModuleFactory: TopLevelModuleFactory,
-) {
+/** Imports an Android-Gradle project without showing the "Import Project" Wizard UI. */
+class GradleProjectImporter
+@NonInjectable
+@VisibleForTesting
+internal constructor(private val mySdkSync: SdkSync, private val myTopLevelModuleFactory: TopLevelModuleFactory) {
   constructor() : this(SdkSync.getInstance(), TopLevelModuleFactory())
 
   /**
    * Ensures presence of the top level Gradle build file and the .idea directory and, additionally, performs cleanup of the libraries
    * storage to force their re-import.
    */
-  fun importAndOpenProjectCore(
-    projectToClose: Project?,
-    forceOpenInNewFrame: Boolean,
-    projectFolder: VirtualFile
-  ): Project? {
+  fun importAndOpenProjectCore(projectToClose: Project?, forceOpenInNewFrame: Boolean, projectFolder: VirtualFile): Project? {
     val projectFolderPath = VfsUtilCore.virtualToIoFile(projectFolder)
     try {
-      return ProjectManagerEx.getInstanceEx().openProject(projectFolderPath.toPath(), OpenProjectTask {
-        this.forceOpenInNewFrame = forceOpenInNewFrame
-        this.projectToClose = projectToClose
-        isNewProject = false
-        useDefaultProjectAsTemplate = false
-        beforeInit = {
-          setUpLocalProperties(projectFolderPath)
-        }
-        beforeOpen = {
-          // The scope of this is rather large to mimic old behaviour, it could likely be improved
-          withContext(Dispatchers.EDT) {
-            configureNewProject(it)
-            importProjectNoSync(Request(it))
-          }
-          true
-        }
-      })
-    }
-    catch (e: ProcessCanceledException) {
+      return ProjectManagerEx.getInstanceEx()
+        .openProject(
+          projectFolderPath.toPath(),
+          OpenProjectTask {
+            this.forceOpenInNewFrame = forceOpenInNewFrame
+            this.projectToClose = projectToClose
+            isNewProject = false
+            useDefaultProjectAsTemplate = false
+            beforeInit = { setUpLocalProperties(projectFolderPath) }
+            beforeOpen = {
+              // The scope of this is rather large to mimic old behaviour, it could likely be improved
+              withContext(Dispatchers.EDT) {
+                configureNewProject(it)
+                importProjectNoSync(Request(it))
+              }
+              true
+            }
+          },
+        )
+    } catch (e: ProcessCanceledException) {
       throw e
-    }
-    catch (e: Throwable) {
+    } catch (e: Throwable) {
       if (ApplicationManager.getApplication().isUnitTestMode) {
         ExceptionUtil.rethrowUnchecked(e)
       }
@@ -116,8 +110,7 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
       if (IdeInfo.getInstance().isAndroidStudio) {
         mySdkSync.syncIdeAndProjectAndroidSdks(localProperties)
       }
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
       logger.info("Failed to sync SDKs", e)
       Messages.showErrorDialog(e.message, "Project Import")
       throw e
@@ -142,7 +135,8 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
 
       // In practice, it really does not matter where the compiler output folder is. Gradle handles that. This is done just to please
       // IDEA.
-      val compilerOutputFolderPath = File(Projects.getBaseDirPath(newProject), FileUtil.join(GradleProjectSystemUtil.BUILD_DIR_DEFAULT_NAME, "classes"))
+      val compilerOutputFolderPath =
+        File(Projects.getBaseDirPath(newProject), FileUtil.join(GradleProjectSystemUtil.BUILD_DIR_DEFAULT_NAME, "classes"))
       val compilerOutputFolderUrl = FilePaths.pathToIdeaUrl(compilerOutputFolderPath)
       val compilerProjectExt = CompilerProjectExtension.getInstance(newProject)!!
       compilerProjectExt.setCompilerOutputUrl(compilerOutputFolderUrl)
@@ -154,32 +148,29 @@ class GradleProjectImporter @NonInjectable @VisibleForTesting internal construct
     ExternalSystemUtil.invokeLater(newProject) { ToolWindows.activateProjectView(newProject) }
   }
 
-  /**
-   * Creates a new not configured project in a given location.
-   */
+  /** Creates a new not configured project in a given location. */
   @JvmOverloads
   fun createProject(projectName: String, projectFolderPath: File, useDefaultProjectAsTemplate: Boolean = false): Project {
-    val newProject = ProjectManagerEx.getInstanceEx().newProject(
-      Path.of(projectFolderPath.path),
-      OpenProjectTask {
-        this.projectName = projectName
-        this.useDefaultProjectAsTemplate = useDefaultProjectAsTemplate
-      }
-    ) ?: throw NullPointerException("Failed to create a new project")
+    val newProject =
+      ProjectManagerEx.getInstanceEx()
+        .newProject(
+          Path.of(projectFolderPath.path),
+          OpenProjectTask {
+            this.projectName = projectName
+            this.useDefaultProjectAsTemplate = useDefaultProjectAsTemplate
+          },
+        ) ?: throw NullPointerException("Failed to create a new project")
     return newProject
   }
 
   class Request(@JvmField val project: Project) {
-    @JvmField
-    var javaLanguageLevel: LanguageLevel? = null
+    @JvmField var javaLanguageLevel: LanguageLevel? = null
 
-    @JvmField
-    var isNewProject = false
+    @JvmField var isNewProject = false
   }
 
   companion object {
-    @JvmStatic
-    fun getInstance(): GradleProjectImporter = ApplicationManager.getApplication().getService(GradleProjectImporter::class.java)
+    @JvmStatic fun getInstance(): GradleProjectImporter = ApplicationManager.getApplication().getService(GradleProjectImporter::class.java)
 
     internal fun beforeOpen(project: Project) {
       ApplicationManager.getApplication().getUserData(AFTER_CREATE)?.invoke(project)
@@ -214,8 +205,7 @@ fun <T> GradleProjectImporter.Companion.withAfterCreate(afterCreate: (Project) -
   application.putUserData(AFTER_CREATE, afterCreate)
   try {
     return body()
-  }
-  finally {
+  } finally {
     application.putUserData(AFTER_CREATE, null)
   }
 }

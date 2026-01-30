@@ -26,16 +26,12 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.AndroidRootUtil
 
 /**
- * An implementation of [SampleDataDirectoryProvider] which houses a module's sample data directory
- * in the main content root of the module.
+ * An implementation of [SampleDataDirectoryProvider] which houses a module's sample data directory in the main content root of the module.
  */
 class MainContentRootSampleDataDirectoryProvider(val module: Module) : SampleDataDirectoryProvider {
 
   override fun getSampleDataDirectory(): PathString? {
-    return AndroidFacet.getInstance(module)
-      ?.let(AndroidRootUtil::getMainContentRoot)
-      ?.toPathString()
-      ?.resolve(FD_SAMPLE_DATA)
+    return AndroidFacet.getInstance(module)?.let(AndroidRootUtil::getMainContentRoot)?.toPathString()?.resolve(FD_SAMPLE_DATA)
   }
 
   @Throws(IOException::class)

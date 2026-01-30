@@ -55,7 +55,7 @@ class HighlightingTest {
         writeText(
           // language=kotlin
           """
-            class FooClass
+          class FooClass
           """
             .trimIndent()
         )
@@ -68,20 +68,17 @@ class HighlightingTest {
   fun testDestructuringDeclaration() {
     projectRule.requestSyncAndWait()
 
-    val file =
-      fixture.project
-        .findAppModule()
-        .fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = fixture.project.findAppModule().fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     WriteCommandAction.runWriteCommandAction(fixture.project) {
       file!!.setText(
         // language=kotlin
         """
-          package com.example.mylibrary
-          class FooClass {
-              fun myTest() {
-                  val (arg1, arg2) = FirstFragmentArgs(1, 2)
-              }
-          }
+        package com.example.mylibrary
+        class FooClass {
+            fun myTest() {
+                val (arg1, arg2) = FirstFragmentArgs(1, 2)
+            }
+        }
         """
           .trimIndent(),
         fixture.project,

@@ -55,21 +55,13 @@ import org.junit.rules.RuleChain
 abstract class AbstractSafeArgsResolveExtensionTest {
   protected val safeArgsRule = SafeArgsRule(SafeArgsMode.KOTLIN)
 
-  @get:Rule
-  val ruleChain = RuleChain.outerRule(KotlinPluginRule(KotlinPluginMode.K2)).around(safeArgsRule)!!
+  @get:Rule val ruleChain = RuleChain.outerRule(KotlinPluginRule(KotlinPluginMode.K2)).around(safeArgsRule)!!
 
-  protected fun addNavXml(
-    @Language("xml") fileContent: String,
-    fileName: String = "main",
-  ): XmlFile =
-    safeArgsRule.fixture.addFileToProject("res/navigation/${fileName}.xml", fileContent).also {
-      safeArgsRule.waitForPendingUpdates()
-    } as XmlFile
+  protected fun addNavXml(@Language("xml") fileContent: String, fileName: String = "main"): XmlFile =
+    safeArgsRule.fixture.addFileToProject("res/navigation/${fileName}.xml", fileContent).also { safeArgsRule.waitForPendingUpdates() }
+      as XmlFile
 
-  protected fun addKotlinSource(
-    @Language("kotlin") fileContent: String,
-    fileName: String = "analyzedFile.kt",
-  ): KtFile =
+  protected fun addKotlinSource(@Language("kotlin") fileContent: String, fileName: String = "analyzedFile.kt"): KtFile =
     safeArgsRule.fixture.addFileToProject("src/$fileName", fileContent).also {
       safeArgsRule.fixture.configureFromExistingVirtualFile(it.virtualFile)
     } as KtFile
@@ -112,10 +104,7 @@ abstract class AbstractSafeArgsResolveExtensionTest {
   }
 
   @OptIn(KaExperimentalApi::class)
-  protected fun KaSession.getRenderedMemberFunctions(
-    symbol: KaClassSymbol,
-    renderer: KaDeclarationRenderer = RENDERER,
-  ): List<String> =
+  protected fun KaSession.getRenderedMemberFunctions(symbol: KaClassSymbol, renderer: KaDeclarationRenderer = RENDERER): List<String> =
     symbol.declaredMemberScope.callables
       .filterIsInstance<KaNamedFunctionSymbol>()
       .filter { it.origin != KaSymbolOrigin.SOURCE_MEMBER_GENERATED }
@@ -137,9 +126,7 @@ abstract class AbstractSafeArgsResolveExtensionTest {
     }
 
   @OptIn(KaExperimentalApi::class)
-  protected fun KaSession.getResolveExtensionPsiNavigationTargets(
-    symbol: KaSymbol
-  ): Collection<PsiElement> {
+  protected fun KaSession.getResolveExtensionPsiNavigationTargets(symbol: KaSymbol): Collection<PsiElement> {
     assertThat(symbol.psi).isInstanceOf(KtElement::class.java)
     val ktElement = symbol.psi as KtElement
     assertThat(ktElement.isFromResolveExtension).isTrue()
@@ -150,9 +137,7 @@ abstract class AbstractSafeArgsResolveExtensionTest {
     val KNOWN_SAFE_ARGS_VERSIONS: Map<String, Version> by lazy {
       SafeArgsFeatureVersions::class
         .declaredMemberProperties
-        .mapNotNull { property ->
-          (property.get(SafeArgsFeatureVersions) as? Version)?.let { property.name to it }
-        }
+        .mapNotNull { property -> (property.get(SafeArgsFeatureVersions) as? Version)?.let { property.name to it } }
         .sortedBy { it.second }
         .toMap()
     }

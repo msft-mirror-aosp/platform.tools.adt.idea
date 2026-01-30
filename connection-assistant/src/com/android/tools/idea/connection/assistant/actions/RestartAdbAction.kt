@@ -17,17 +17,15 @@ package com.android.tools.idea.connection.assistant.actions
 
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.tools.analytics.UsageTracker
+import com.android.tools.analytics.withProjectId
 import com.android.tools.idea.assistant.AssistActionHandler
 import com.android.tools.idea.assistant.datamodel.ActionData
-import com.android.tools.analytics.withProjectId
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ConnectionAssistantEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 
-/**
- * Used in Connection Assistant, allows user to restart ADB to scan for new connected Android devices.
- */
+/** Used in Connection Assistant, allows user to restart ADB to scan for new connected Android devices. */
 class RestartAdbAction : AssistActionHandler {
   companion object {
     @JvmStatic val ACTION_ID = "connection.restart.adb"
@@ -42,8 +40,9 @@ class RestartAdbAction : AssistActionHandler {
     UsageTracker.log(
       AndroidStudioEvent.newBuilder()
         .setKind(AndroidStudioEvent.EventKind.CONNECTION_ASSISTANT_EVENT)
-        .setConnectionAssistantEvent(ConnectionAssistantEvent.newBuilder()
-          .setType(ConnectionAssistantEvent.ConnectionAssistantEventType.RESTART_ADB_CLICKED))
+        .setConnectionAssistantEvent(
+          ConnectionAssistantEvent.newBuilder().setType(ConnectionAssistantEvent.ConnectionAssistantEventType.RESTART_ADB_CLICKED)
+        )
         .withProjectId(project)
     )
   }

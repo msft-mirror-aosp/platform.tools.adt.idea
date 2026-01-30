@@ -17,14 +17,14 @@ package com.android.tools.idea.connection.assistant.actions
 
 import com.android.ddmlib.IDevice
 
-/**
- * Identifies a category of device in the connection assistant.
- */
-enum class ConnectionAssistantSection { WORKING, POSSIBLE_PROBLEM, OTHER_USB };
+/** Identifies a category of device in the connection assistant. */
+enum class ConnectionAssistantSection {
+  WORKING,
+  POSSIBLE_PROBLEM,
+  OTHER_USB,
+}
 
-/**
- * Summary of a device that is displayed in the connection assistant. Only contains fields that are actually displayed in the UI.
- */
+/** Summary of a device that is displayed in the connection assistant. Only contains fields that are actually displayed in the UI. */
 data class DeviceSummary(val label: String, val device: IDevice?, val section: ConnectionAssistantSection, val errorMessage: String? = null)
 
 /**
@@ -37,14 +37,11 @@ fun summarize(crossReference: DeviceCrossReference): DeviceSummary {
   var label: String
   if (device != null) {
     label = device.name.orEmpty()
-  }
-  else if (!crossReference.adbDevice.isEmpty()) {
+  } else if (!crossReference.adbDevice.isEmpty()) {
     label = crossReference.adbDevice.first().serial.orEmpty()
-  }
-  else if (!crossReference.usbDevice.isEmpty()) {
+  } else if (!crossReference.usbDevice.isEmpty()) {
     label = crossReference.usbDevice.first().name
-  }
-  else {
+  } else {
     label = "Unknown device"
   }
 
@@ -56,10 +53,10 @@ fun summarize(crossReference: DeviceCrossReference): DeviceSummary {
     val adbDevice = crossReference.adbDevice.firstOrNull()
     if (adbDevice != null && adbDevice.state != devState) {
       section = ConnectionAssistantSection.POSSIBLE_PROBLEM
-      errorMessage = "ADB reports that the device is in the '${adbDevice.state?.state ?: "unknown"}' state but Android Studio reports" +
-                     " that it is in the '${devState?.state ?: "unknown"}' state"
-    }
-    else {
+      errorMessage =
+        "ADB reports that the device is in the '${adbDevice.state?.state ?: "unknown"}' state but Android Studio reports" +
+          " that it is in the '${devState?.state ?: "unknown"}' state"
+    } else {
       when (devState) {
         IDevice.DeviceState.ONLINE -> {
           section = ConnectionAssistantSection.WORKING
@@ -74,12 +71,10 @@ fun summarize(crossReference: DeviceCrossReference): DeviceSummary {
         }
       }
     }
-  }
-  else if (!crossReference.adbDevice.isEmpty()) {
+  } else if (!crossReference.adbDevice.isEmpty()) {
     section = ConnectionAssistantSection.POSSIBLE_PROBLEM
     errorMessage = "Device was detected by ADB but not Android Studio."
-  }
-  else {
+  } else {
     section = ConnectionAssistantSection.OTHER_USB
   }
 

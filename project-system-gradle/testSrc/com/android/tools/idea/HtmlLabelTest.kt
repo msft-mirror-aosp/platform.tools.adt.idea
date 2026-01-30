@@ -35,11 +35,9 @@ import org.mockito.kotlin.mock
 
 class HtmlLabelTest {
 
-  @get:Rule
-  val disposableRule = DisposableRule()
+  @get:Rule val disposableRule = DisposableRule()
 
-  @get:Rule
-  val applicationRule = ApplicationRule()
+  @get:Rule val applicationRule = ApplicationRule()
 
   private lateinit var htmlLabel: HtmlLabel
   val browserLauncher = createFakeBrowserLauncher()
@@ -88,25 +86,25 @@ class HtmlLabelTest {
     assertThat(launchedUrls).containsExactly(DEMO_URL)
   }
 
-  private fun createFakeBrowserLauncher(): BrowserLauncher = object : BrowserLauncher() {
-    override fun open(url: String) {
-      launchedUrls += url
+  private fun createFakeBrowserLauncher(): BrowserLauncher =
+    object : BrowserLauncher() {
+      override fun open(url: String) {
+        launchedUrls += url
+      }
+
+      override fun browse(file: File) = throw IllegalStateException()
+
+      override fun browse(file: Path) = throw IllegalStateException()
+
+      override fun browse(url: String, browser: WebBrowser?, project: Project?) {
+        launchedUrls += url
+      }
     }
-
-    override fun browse(file: File) = throw IllegalStateException()
-
-    override fun browse(file: Path) = throw IllegalStateException()
-
-    override fun browse(url: String, browser: WebBrowser?, project: Project?) {
-      launchedUrls += url
-    }
-  }
 
   private fun emitDemoEvent() {
     val event = HyperlinkEvent(htmlLabel, HyperlinkEvent.EventType.ACTIVATED, null, DEMO_URL)
     htmlLabel.hyperlinkListeners.onEach { it.hyperlinkUpdate(event) }
   }
-
 
   companion object {
     const val DEMO_URL = "http://android.com"

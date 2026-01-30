@@ -55,8 +55,8 @@ class ValidateEssentialPluginsAction : AnAction() {
   }
 
   /**
-   * Returns the required plugin dependencies of [plugin], including those implied by v2 module dependencies
-   * (unlike [PluginManagerCore.getNonOptionalDependenciesIds], which ignores v2 module edges).
+   * Returns the required plugin dependencies of [plugin], including those implied by v2 module dependencies (unlike
+   * [PluginManagerCore.getNonOptionalDependenciesIds], which ignores v2 module edges).
    */
   @OptIn(IntellijInternalApi::class)
   private fun getRequiredPluginDependencies(plugin: PluginId): Collection<PluginId> {

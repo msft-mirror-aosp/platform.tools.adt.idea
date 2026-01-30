@@ -60,13 +60,13 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
 
   override suspend fun openProjectAsync(virtualFile: VirtualFile, projectToClose: Project?, forceOpenInNewFrame: Boolean): Project? {
     val importTarget = findGradleTarget(virtualFile) ?: return null
-    val adjustedOpenTarget =
-        if (importTarget.isDirectory) importTarget
-        else importTarget.parent
+    val adjustedOpenTarget = if (importTarget.isDirectory) importTarget else importTarget.parent
 
     if (!adjustedOpenTarget.toIoFile().canWrite()) {
-      Messages.showErrorDialog(AndroidBundle.message("android.project.open.permission.readonly.message"),
-                               AndroidBundle.message("android.project.open.permission.readonly.title"))
+      Messages.showErrorDialog(
+        AndroidBundle.message("android.project.open.permission.readonly.message"),
+        AndroidBundle.message("android.project.open.permission.readonly.title"),
+      )
       return null
     }
 
@@ -80,19 +80,18 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
 
       return gradleImporter.importAndOpenProjectCore(projectToClose, forceOpenInNewFrame, adjustedOpenTarget)
     }
-    return ProjectManagerEx.getInstanceEx().openProject(
-      adjustedOpenTarget.toNioPath(),
-      projectSystemOpenProjectTask(GradleProjectSystemProvider.ID, forceOpenInNewFrame, projectToClose)
-    )
+    return ProjectManagerEx.getInstanceEx()
+      .openProject(
+        adjustedOpenTarget.toNioPath(),
+        projectSystemOpenProjectTask(GradleProjectSystemProvider.ID, forceOpenInNewFrame, projectToClose),
+      )
   }
 
   private suspend fun promptToCloseIfNecessary(project: Project?): Boolean {
     var success = true
     val openProjects = ProjectManager.getInstance().openProjects
     if (openProjects.isNotEmpty()) {
-      val exitCode = withContext(Dispatchers.EDT) {
-        confirmOpenNewProject()
-      }
+      val exitCode = withContext(Dispatchers.EDT) { confirmOpenNewProject() }
       if (exitCode == GeneralSettings.OPEN_PROJECT_SAME_WINDOW) {
         val toClose = if (project != null && !project.isDefault) project else openProjects[openProjects.size - 1]
         withContext(Dispatchers.EDT) {
@@ -100,8 +99,7 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
             success = false
           }
         }
-      }
-      else if (exitCode != GeneralSettings.OPEN_PROJECT_NEW_WINDOW) {
+      } else if (exitCode != GeneralSettings.OPEN_PROJECT_NEW_WINDOW) {
         success = false
       }
     }
@@ -109,12 +107,10 @@ class AndroidGradleProjectOpenProcessor : ProjectOpenProcessor() {
   }
 
   private fun canOpenAsExistingProject(file: VirtualFile): Boolean =
-      file.toPathString().resolve(Project.DIRECTORY_STORE_FOLDER).toVirtualFile(true) != null
+    file.toPathString().resolve(Project.DIRECTORY_STORE_FOLDER).toVirtualFile(true) != null
 }
 
-/**
- * todo Android should somehow do not duplicate platfrom functionality (it should be as part of openProject)
- */
+/** todo Android should somehow do not duplicate platfrom functionality (it should be as part of openProject) */
 @Suppress("DuplicatedCode")
 private fun confirmOpenNewProject(): Int {
   if (ApplicationManager.getApplication().isUnitTestMode) {
@@ -123,17 +119,19 @@ private fun confirmOpenNewProject(): Int {
 
   var mode = GeneralSettings.getInstance().confirmOpenNewProject
   if (mode == GeneralSettings.OPEN_PROJECT_ASK) {
-    val message =  IdeUICustomization.getInstance().projectMessage("prompt.open.project.in.new.frame")
-    val exitCode = MessageDialogBuilder.yesNoCancel(IdeBundle.message("title.open.project"), message)
-      .yesText(IdeBundle.message("button.existing.frame"))
-      .noText(IdeBundle.message("button.new.frame"))
-      .doNotAsk(ProjectNewWindowDoNotAskOption())
-      .guessWindowAndAsk()
-    mode = when (exitCode) {
-      Messages.YES -> GeneralSettings.OPEN_PROJECT_SAME_WINDOW
-      Messages.NO -> GeneralSettings.OPEN_PROJECT_NEW_WINDOW
-      else -> Messages.CANCEL
-    }
+    val message = IdeUICustomization.getInstance().projectMessage("prompt.open.project.in.new.frame")
+    val exitCode =
+      MessageDialogBuilder.yesNoCancel(IdeBundle.message("title.open.project"), message)
+        .yesText(IdeBundle.message("button.existing.frame"))
+        .noText(IdeBundle.message("button.new.frame"))
+        .doNotAsk(ProjectNewWindowDoNotAskOption())
+        .guessWindowAndAsk()
+    mode =
+      when (exitCode) {
+        Messages.YES -> GeneralSettings.OPEN_PROJECT_SAME_WINDOW
+        Messages.NO -> GeneralSettings.OPEN_PROJECT_NEW_WINDOW
+        else -> Messages.CANCEL
+      }
     if (mode != Messages.CANCEL) {
       LifecycleUsageTriggerCollector.onProjectFrameSelected(mode)
     }

@@ -97,9 +97,7 @@ class ComposeChooseAndroidProjectStepUITest {
 
     composeTestRule.onNodeWithText(FormFactor.Wear.displayName).performClick()
 
-    composeTestRule
-      .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)
-      .performClick()
+    composeTestRule.onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid).performClick()
 
     composeTestRule
       .onNodeWithTag(ChooseAndroidProjectStepLayoutTags.RightPanel.templateGrid)

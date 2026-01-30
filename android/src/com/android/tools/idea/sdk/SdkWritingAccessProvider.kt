@@ -36,12 +36,12 @@ class SdkWritingAccessProvider(private val project: Project) : WritingAccessProv
 
   private fun isInAndroidSdk(file: VirtualFile): Boolean {
     return SlowOperations.knownIssue("b/322462245").use {
-      ReadAction
-        .nonBlocking(
+      ReadAction.nonBlocking(
           Callable {
             // Optimization: avoid querying isInAndroidSdk() in the common case where the file is within project sources.
             !ProjectFileIndex.getInstance(project).isInContent(file) && AndroidSdks.getInstance().isInAndroidSdk(project, file)
-          })
+          }
+        )
         .expireWhen { project.isDisposed }
         .executeSynchronously()
     }

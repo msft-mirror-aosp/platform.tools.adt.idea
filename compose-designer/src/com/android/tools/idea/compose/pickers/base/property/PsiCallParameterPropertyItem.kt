@@ -44,15 +44,11 @@ private const val WRITE_COMMAND = "Psi Parameter Modification"
  *
  * @param project the [Project] the PSI belongs to.
  * @param model the [PsiCallPropertiesModel] managing this property.
- * @param addNewArgumentToResolvedCall A lambda that updates the current [KtValueArgument] with the
- *   new inserted one.
+ * @param addNewArgumentToResolvedCall A lambda that updates the current [KtValueArgument] with the new inserted one.
  * @param parameterName The name of the property item.
- * @param parameterTypeNameIfStandard The name of the type of the property (for example "String",
- *   "Boolean", ...)
- * @param argumentExpression The initial [KtExpression] for the argument when this parameter was
- *   initialized.
- * @param defaultValue The default value string for the parameter, this is the value that the
- *   parameter takes when it does not have a
+ * @param parameterTypeNameIfStandard The name of the type of the property (for example "String", "Boolean", ...)
+ * @param argumentExpression The initial [KtExpression] for the argument when this parameter was initialized.
+ * @param defaultValue The default value string for the parameter, this is the value that the parameter takes when it does not have a
  * @param validation A function used for input validation
  */
 internal open class PsiCallParameterPropertyItem(
@@ -77,29 +73,22 @@ internal open class PsiCallParameterPropertyItem(
   override var value: String?
     get() =
       SlowOperations.knownIssue("b/382724628").use {
-        allowAnalysisOnEdt {
-          argumentExpression?.let { analyze(it) { it.tryEvaluateConstantAsText(this) } }
-        }
+        allowAnalysisOnEdt { argumentExpression?.let { analyze(it) { it.tryEvaluateConstantAsText(this) } } }
       }
     set(value) {
       val newValue = value?.trim()?.nullize()
-      val trackable =
-        if (newValue == null) PreviewPickerValue.CLEARED
-        else PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+      val trackable = if (newValue == null) PreviewPickerValue.CLEARED else PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
       if (newValue != this.value) {
         writeNewValue(newValue, false, trackable)
       }
     }
 
   /**
-   * Writes the [newValue] to the property's PsiElement, wrapped in double quotation marks when the
-   * property's type is String, unless [writeAsIs] is True, in which case it will always be written
-   * as it is.
+   * Writes the [newValue] to the property's PsiElement, wrapped in double quotation marks when the property's type is String, unless
+   * [writeAsIs] is True, in which case it will always be written as it is.
    *
-   * [trackableValue] should be an option that bests represents [newValue]. Use
-   * [PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED] if none of the options matches the meaning of
-   * the value, or [PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE] if the assigned value is
-   * unexpected.
+   * [trackableValue] should be an option that bests represents [newValue]. Use [PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED] if none of
+   * the options matches the meaning of the value, or [PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE] if the assigned value is unexpected.
    */
   fun writeNewValue(newValue: String?, writeAsIs: Boolean, trackableValue: PreviewPickerValue) {
     model.tracker.registerModification(name, trackableValue, CurrentDeviceKey.getData(model))
@@ -130,12 +119,9 @@ internal open class PsiCallParameterPropertyItem(
       val currentArgumentExpression = argumentExpression
 
       if (currentArgumentExpression != null) {
-        newValueArgument =
-          currentArgumentExpression.parent.replace(newValueArgument) as KtValueArgument
+        newValueArgument = currentArgumentExpression.parent.replace(newValueArgument) as KtValueArgument
       } else {
-        addNewArgumentToResolvedCall(newValueArgument, model.psiFactory)?.let {
-          newValueArgument = it
-        }
+        addNewArgumentToResolvedCall(newValueArgument, model.psiFactory)?.let { newValueArgument = it }
       }
       argumentExpression = newValueArgument.getArgumentExpression()
       argumentExpression?.parent?.let { CodeStyleManager.getInstance(it.project).reformat(it) }

@@ -89,33 +89,16 @@ open class PerfgateComposeGradleTestBase {
       // Measures the full rendering time, including ModuleClassLoader instantiation, inflation
       // and render.
       ElapsedTimeMeasurement(Metric("${namePrefix}_refresh_time")),
-      HeapSnapshotMemoryUseMeasurement(
-        "android:designTools",
-        null,
-        Metric("${namePrefix}_total_memory"),
-      ),
-      HeapSnapshotMemoryUseMeasurement(
-        "android:designTools",
-        "rendering",
-        Metric("${namePrefix}_rendering_memory"),
-      ),
-      HeapSnapshotMemoryUseMeasurement(
-        "android:designTools",
-        "layoutEditor",
-        Metric("${namePrefix}_layoutEditor_memory"),
-      ),
-      HeapSnapshotMemoryUseMeasurement(
-        "android:designTools",
-        "layoutlib",
-        Metric("${namePrefix}_layoutlib_memory"),
-      ),
+      HeapSnapshotMemoryUseMeasurement("android:designTools", null, Metric("${namePrefix}_total_memory")),
+      HeapSnapshotMemoryUseMeasurement("android:designTools", "rendering", Metric("${namePrefix}_rendering_memory")),
+      HeapSnapshotMemoryUseMeasurement("android:designTools", "layoutEditor", Metric("${namePrefix}_layoutEditor_memory")),
+      HeapSnapshotMemoryUseMeasurement("android:designTools", "layoutlib", Metric("${namePrefix}_layoutlib_memory")),
       LayoutlibNativeMemoryMeasurement(Metric("${namePrefix}_layoutlib_native_memory")),
     )
 
   /**
-   * First, without using the [measurements], add [nPreviewsToAdd] @Previews on top of the
-   * first @Preview found in [psiMainFile], and wait for a refresh to happen. Then, execute the
-   * [measuredRunnable] under all [measurements] (see [measureOperation]).
+   * First, without using the [measurements], add [nPreviewsToAdd] @Previews on top of the first @Preview found in [psiMainFile], and wait
+   * for a refresh to happen. Then, execute the [measuredRunnable] under all [measurements] (see [measureOperation]).
    */
   protected fun addPreviewsAndMeasure(
     nPreviewsToAdd: Int,
@@ -123,9 +106,7 @@ open class PerfgateComposeGradleTestBase {
     measurements: List<MetricMeasurement<Unit>>,
     nSamples: Int = NUMBER_OF_SAMPLES,
     minRefreshTimeout: Int = 20,
-    measuredRunnable: suspend () -> Unit = {
-      fullRefresh(maxOf(minRefreshTimeout, nExpectedPreviewInstances).seconds)
-    },
+    measuredRunnable: suspend () -> Unit = { fullRefresh(maxOf(minRefreshTimeout, nExpectedPreviewInstances).seconds) },
   ) = runBlocking {
     if (nPreviewsToAdd > 0) {
       projectRule.runAndWaitForRefresh(
@@ -135,9 +116,7 @@ open class PerfgateComposeGradleTestBase {
         runWriteActionAndWait {
           fixture.openFileInEditor(psiMainFile.virtualFile)
           fixture.moveCaret("|@Preview")
-          fixture.editor.executeAndSave {
-            fixture.editor.insertText(generatePreviewAnnotations(nPreviewsToAdd))
-          }
+          fixture.editor.executeAndSave { fixture.editor.insertText(generatePreviewAnnotations(nPreviewsToAdd)) }
           PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
           FileDocumentManager.getInstance().saveAllDocuments()
           if (AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled) {
@@ -148,11 +127,7 @@ open class PerfgateComposeGradleTestBase {
     }
     Assert.assertEquals(
       nExpectedPreviewInstances,
-      composePreviewRepresentation
-        .renderedPreviewElementsInstancesFlowForTest()
-        .value
-        .asCollection()
-        .size,
+      composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size,
     )
 
     composeGradleTimeBenchmark.measureOperation(
@@ -169,9 +144,7 @@ open class PerfgateComposeGradleTestBase {
     val builder = StringBuilder()
     repeat(nPreviews) {
       // Use 'showSystemUi = true' for the previews to be somewhat big
-      builder.appendLine(
-        "@Preview(name = \"new ${it}\", showSystemUi = true, showBackground = true)"
-      )
+      builder.appendLine("@Preview(name = \"new ${it}\", showSystemUi = true, showBackground = true)")
     }
     return builder.toString()
   }

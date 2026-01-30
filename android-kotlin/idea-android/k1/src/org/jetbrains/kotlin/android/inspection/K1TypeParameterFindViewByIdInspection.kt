@@ -30,11 +30,12 @@ class K1TypeParameterFindViewByIdInspection : TypeParameterFindViewByIdInspectio
         // The original K1-only version of this inspection did not type-check the type parameter against
         // the type of the cast, so we don't do so here either.
         return FindViewCallInfo(
-            returnTypeNullability = when {
-                returnType.isNullabilityFlexible() -> ReturnTypeNullability.PLATFORM_TYPE
-                returnType.isMarkedNullable -> ReturnTypeNullability.NULLABLE
-                else -> ReturnTypeNullability.NOT_NULL
-            }
+            returnTypeNullability =
+                when {
+                    returnType.isNullabilityFlexible() -> ReturnTypeNullability.PLATFORM_TYPE
+                    returnType.isMarkedNullable -> ReturnTypeNullability.NULLABLE
+                    else -> ReturnTypeNullability.NOT_NULL
+                }
         )
     }
 }

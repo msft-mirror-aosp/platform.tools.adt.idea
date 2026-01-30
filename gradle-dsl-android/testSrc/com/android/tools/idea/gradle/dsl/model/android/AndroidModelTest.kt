@@ -15,28 +15,26 @@
  */
 package com.android.tools.idea.gradle.dsl.model.android
 
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.api.android.AndroidDeclarativeType
-import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.REGULAR
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType.VARIABLE
 import com.android.tools.idea.gradle.dsl.api.ext.RawText
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
+import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.model.android.externalNativeBuild.CMakeModelImpl
 import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
+import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.google.common.truth.Truth.assertThat
+import java.io.File
 import org.jetbrains.annotations.SystemDependent
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.io.File
 
-/**
- * Tests for [AndroidModelImpl].
- */
+/** Tests for [AndroidModelImpl]. */
 class AndroidModelTest : AndroidGradleFileModelTestCase() {
 
   @Before
@@ -99,7 +97,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     runBasicAndroidBlockTest(TestFile.ANDROID_BLOCK_WITH_APPLICATION_STATEMENTS_WITH_PARENTHESES)
   }
 
-  private fun runAssignmentTest(buildFile: TestFileName){
+  private fun runAssignmentTest(buildFile: TestFileName) {
     writeToBuildFile(buildFile)
     val android = gradleBuildModel.android()
     assertNotNull(android)
@@ -143,12 +141,15 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertThat(buildModel.existingAndroidElement()).isNull()
     buildModel.createAndroidElement(AndroidDeclarativeType.APPLICATION)
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile,
-                       """
-                         //
-                         androidApp{
-                         }
-                       """.trimIndent())
+    verifyFileContents(
+      myBuildFile,
+      """
+      //
+      androidApp{
+      }
+      """
+        .trimIndent(),
+    )
   }
 
   @Test
@@ -233,7 +234,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     val buildModel = gradleBuildModel
     val android = buildModel.android()
 
-    assertEquals("minSdkVersion", "1.0",  android.defaultConfig().versionName())
+    assertEquals("minSdkVersion", "1.0", android.defaultConfig().versionName())
     // adding applicationId element when parent "default" is from settings
     android.defaultConfig().applicationId().setValue("org.example")
 
@@ -463,7 +464,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("buildToolsVersion", "23.0.0", android.buildToolsVersion())
     assertEquals("compileSdkVersion", "23", android.compileSdkVersion())
     assertEquals("defaultPublishConfig", "debug", android.defaultPublishConfig())
-    if(!isGradleDeclarative()) {
+    if (!isGradleDeclarative()) {
       assertEquals("dynamicFeatures", listOf(":f1", ":f2"), android.dynamicFeatures())
       assertEquals("flavorDimensions", listOf("abi", "version"), android.flavorDimensions())
     }
@@ -475,7 +476,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.buildToolsVersion().delete()
     android.compileSdkVersion().delete()
     android.defaultPublishConfig().delete()
-    if(!isGradleDeclarative()) {
+    if (!isGradleDeclarative()) {
       android.dynamicFeatures().delete()
       android.flavorDimensions().delete()
     }
@@ -487,7 +488,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertMissingProperty("buildToolsVersion", android.buildToolsVersion())
     assertMissingProperty("compileSdkVersion", android.compileSdkVersion())
     assertMissingProperty("defaultPublishConfig", android.defaultPublishConfig())
-    if(!isGradleDeclarative()) {
+    if (!isGradleDeclarative()) {
       assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
       assertMissingProperty("flavorDimensions", android.flavorDimensions())
     }
@@ -501,7 +502,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("buildToolsVersion", "23.0.0", android.buildToolsVersion())
     assertEquals("compileSdkVersion", "23", android.compileSdkVersion())
     assertEquals("defaultPublishConfig", "debug", android.defaultPublishConfig())
-    if(!isGradleDeclarative()) {
+    if (!isGradleDeclarative()) {
       assertEquals("dynamicFeatures", listOf(":f1", ":f2"), android.dynamicFeatures())
       assertEquals("flavorDimensions", listOf("abi", "version"), android.flavorDimensions())
     }
@@ -855,7 +856,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("buildToolsVersion", "23.0.0", android.buildToolsVersion())
     assertEquals("compileSdkVersion", "23", android.compileSdkVersion())
     assertEquals("defaultPublishConfig", "debug", android.defaultPublishConfig())
-    if(!isGradleDeclarative) {
+    if (!isGradleDeclarative) {
       assertEquals("dynamicFeatures", listOf(":f1", ":f2"), android.dynamicFeatures())
       assertEquals("flavorDimensions", listOf("abi", "version"), android.flavorDimensions())
     }
@@ -867,7 +868,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.buildToolsVersion().delete()
     android.compileSdkVersion().delete()
     android.defaultPublishConfig().delete()
-    if(!isGradleDeclarative) {
+    if (!isGradleDeclarative) {
       android.dynamicFeatures().delete()
       android.flavorDimensions().delete()
     }
@@ -879,7 +880,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertMissingProperty("buildToolsVersion", android.buildToolsVersion())
     assertMissingProperty("compileSdkVersion", android.compileSdkVersion())
     assertMissingProperty("defaultPublishConfig", android.defaultPublishConfig())
-    if(!isGradleDeclarative) {
+    if (!isGradleDeclarative) {
       assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
       assertMissingProperty("flavorDimensions", android.flavorDimensions())
     }
@@ -892,7 +893,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertMissingProperty("buildToolsVersion", android.buildToolsVersion())
     assertMissingProperty("compileSdkVersion", android.compileSdkVersion())
     assertMissingProperty("defaultPublishConfig", android.defaultPublishConfig())
-    if(!isGradleDeclarative) {
+    if (!isGradleDeclarative) {
       assertMissingProperty("dynamicFeatures", android.dynamicFeatures())
       assertMissingProperty("flavorDimensions", android.flavorDimensions())
     }
@@ -902,7 +903,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertMissingProperty("targetProjectPath", android.targetProjectPath())
     checkForInvalidPsiElement(android, AndroidModelImpl::class.java)
 
-    if(!isGradleDeclarative) {
+    if (!isGradleDeclarative) {
       // this will recreate android element.
       // for declarative, it's not know whether it's a library or app
       buildModel.reparse()
@@ -1091,7 +1092,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertEquals(".five", buildTypes[4].applicationIdSuffix())
   }
 
-  private fun doTestAddAndApplyOneBuildTypeBlock(name : String, expected : TestFileName) {
+  private fun doTestAddAndApplyOneBuildTypeBlock(name: String, expected: TestFileName) {
     writeToBuildFile(TestFile.ADD_AND_APPLY_BUILD_TYPE_BLOCK)
     val buildModel = gradleBuildModel
     val android = buildModel.android()
@@ -1338,7 +1339,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     checkForValidPsiElement(android.defaultConfig(), ProductFlavorModelImpl::class.java)
 
     applyChanges(buildModel)
-    verifyFileContents(myBuildFile, if(isGradleDeclarative) "androidApp{\n}" else "")
+    verifyFileContents(myBuildFile, if (isGradleDeclarative) "androidApp{\n}" else "")
 
     assertMissingProperty(android.defaultConfig().applicationId())
     checkForInvalidPsiElement(android.defaultConfig(), ProductFlavorModelImpl::class.java)
@@ -1916,7 +1917,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-36")
     assertEquals("compileSdkVersion", "36", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_EXPECTED)
   }
 
   @Test
@@ -1932,7 +1933,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-36.1")
     assertEquals("compileSdkVersion", "android-36.1", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_EXPECTED)
   }
 
   @Test
@@ -1945,7 +1946,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-36.1")
     assertEquals("compileSdk", "android-36.1", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_AND_COMPILE_SDK_MINOR_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_AND_COMPILE_SDK_MINOR_EXPECTED)
   }
 
   @Test
@@ -1959,7 +1960,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-34-ext14")
     assertEquals("compileSdkVersion", "android-34-ext14", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_EXTENSION_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_EXTENSION_EXPECTED)
   }
 
   @Test
@@ -1973,7 +1974,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-36.1-ext2")
     assertEquals("compileSdkVersion", "android-36.1-ext2", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_AND_EXTENSION_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_AND_EXTENSION_EXPECTED)
   }
 
   @Test
@@ -1987,7 +1988,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-36.1-ext2")
     assertEquals("compileSdkVersion", "android-36.1-ext2", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_AND_EXTENSION_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_AND_EXTENSION_EXPECTED)
   }
 
   @Test
@@ -2000,7 +2001,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-34-ext14")
     assertEquals("compileSdkVersion", "android-34-ext14", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_AND_COMPILE_SDK_EXTENSION_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_AND_COMPILE_SDK_EXTENSION_EXPECTED)
   }
 
   @Test
@@ -2013,7 +2014,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-Baklava")
     assertEquals("compileSdkVersion", "android-Baklava", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.COMPILE_SDK_PREVIEW);
+    verifyFileContents(myBuildFile, TestFile.COMPILE_SDK_PREVIEW)
   }
 
   @Test
@@ -2026,7 +2027,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-36.1-ext2")
     assertEquals("compileSdkVersion", "android-36.1-ext2", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_AND_EXTENSION_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_COMPILE_SDK_WITH_MINOR_AND_EXTENSION_EXPECTED)
   }
 
   @Test
@@ -2040,7 +2041,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-S")
     assertEquals("compileSdkVersion", "android-S", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_STRING_SDK_ELEMENTS_EXPECTED);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_STRING_SDK_ELEMENTS_EXPECTED)
   }
 
   @Test
@@ -2055,7 +2056,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("android-S")
     assertEquals("compileSdkVersion", "android-S", android.compileSdkVersion())
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_STRING_SDK_ELEMENTS_EXPECTED_400);
+    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_STRING_SDK_ELEMENTS_EXPECTED_400)
   }
 
   @Test
@@ -2102,7 +2103,6 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     android.compileSdkVersion().setValue("Google Inc.:Google APIs:24")
     applyChangesAndReparse(buildModel)
     verifyFileContents(myBuildFile, TestFile.SET_COMPILE_SDK_VERSION_TO_ADD_ON_STRING_EXPECTED)
-
   }
 
   @Test
@@ -2329,8 +2329,8 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     val android = buildModel.android()
     assertNotNull(android)
 
-    var resConfigsModel : GradlePropertyModel?
-    var zzzModel : GradlePropertyModel?
+    var resConfigsModel: GradlePropertyModel?
+    var zzzModel: GradlePropertyModel?
 
     resConfigsModel = buildModel.declaredProperties[0]
     zzzModel = buildModel.declaredProperties[1]
@@ -2503,7 +2503,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertThat(library3.get(0).required()).isTrue()
 
     val library4 = android.useLibraries().find("library4")
-    assertThat(library4).hasSize(0);
+    assertThat(library4).hasSize(0)
   }
 
   @Test
@@ -2564,7 +2564,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     assertThat(library1.get(2).required()).isTrue()
 
     val library4 = android.useLibraries().find("library2")
-    assertThat(library4).hasSize(0);
+    assertThat(library4).hasSize(0)
   }
 
   enum class TestFile(val path: @SystemDependent String) : TestFileName {
@@ -2707,8 +2707,7 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     ANDROID_BLOCK_DUPLICATE_USE_LIBRARY("androidBlockDuplicateUseLibrary"),
     EMPTY_FILE("emptyFile"),
     COMPILE_SDK_MINOR_AND_EXTENSION("compileSdkMinorAndExtension"),
-    COMPILE_SDK_PREVIEW("compileSdkPreview")
-    ;
+    COMPILE_SDK_PREVIEW("compileSdkPreview");
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {
       return super.toFile("$basePath/androidModel/$path", extension)

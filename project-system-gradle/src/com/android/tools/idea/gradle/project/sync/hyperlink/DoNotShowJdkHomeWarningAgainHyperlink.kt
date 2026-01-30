@@ -16,24 +16,23 @@
 package com.android.tools.idea.gradle.project.sync.hyperlink
 
 import com.android.tools.idea.gradle.project.sync.GradleSyncState.Companion.JDK_LOCATION_WARNING_NOTIFICATION_GROUP
-import com.android.tools.idea.gradle.project.sync.issues.SyncIssueNotificationHyperlink
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink
 import com.intellij.notification.NotificationType
 import com.intellij.notification.NotificationsConfiguration
 import com.intellij.openapi.project.Project
 
-/**
- * A [NotificationHyperlink] that stops showing a warning when the JDK used by Studio is not the same as Java Home.
- */
-class DoNotShowJdkHomeWarningAgainHyperlink : NotificationHyperlink(
-  "doNotShowJdkHomeWarning", "Do not show this warning again") {
+/** A [NotificationHyperlink] that stops showing a warning when the JDK used by Studio is not the same as Java Home. */
+class DoNotShowJdkHomeWarningAgainHyperlink : NotificationHyperlink("doNotShowJdkHomeWarning", "Do not show this warning again") {
 
   public override fun execute(project: Project) {
-    val msg = "Warnings about JDK location not being JAVA_HOME were disabled.\n" +
-              "They can be enabled again in the Settings dialog."
+    val msg = "Warnings about JDK location not being JAVA_HOME were disabled.\n" + "They can be enabled again in the Settings dialog."
     JDK_LOCATION_WARNING_NOTIFICATION_GROUP.createNotification(msg, NotificationType.INFORMATION).notify(project)
-    NotificationsConfiguration.getNotificationsConfiguration().changeSettings(JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId,
-                                                                              JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayType,
-                                                                              false /* do not log */, false /* not read aloud */)
+    NotificationsConfiguration.getNotificationsConfiguration()
+      .changeSettings(
+        JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId,
+        JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayType,
+        false /* do not log */,
+        false, /* not read aloud */
+      )
   }
 }

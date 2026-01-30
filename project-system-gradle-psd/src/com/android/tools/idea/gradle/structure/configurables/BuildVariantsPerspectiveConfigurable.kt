@@ -26,8 +26,8 @@ import javax.swing.JComponent
 const val BUILD_VARIANTS_VIEW = "BuildVariantsView"
 const val BUILD_VARIANTS_PERSPECTIVE_DISPLAY_NAME = "Build Variants"
 
-class BuildVariantsPerspectiveConfigurable(context: PsContext)
-  : BasePerspectiveConfigurable(context, extraModules = listOf()), TrackedConfigurable {
+class BuildVariantsPerspectiveConfigurable(context: PsContext) :
+  BasePerspectiveConfigurable(context, extraModules = listOf()), TrackedConfigurable {
 
   override val leftConfigurable = PSDEvent.PSDLeftConfigurable.PROJECT_STRUCTURE_DIALOG_LEFT_CONFIGURABLE_BUILD_VARIANTS
 
@@ -36,14 +36,15 @@ class BuildVariantsPerspectiveConfigurable(context: PsContext)
   override fun createConfigurableFor(module: PsModule): AbstractModuleConfigurable<out PsModule, *> =
     when {
       module is PsAndroidModule && module.isKmpModule.not() -> createConfigurable(module)
-      module is PsAndroidModule && module.isKmpModule -> KmpModuleConfigurable(context, this, module, detailedMessage = "Please select a module that has build variants.")
+      module is PsAndroidModule && module.isKmpModule ->
+        KmpModuleConfigurable(context, this, module, detailedMessage = "Please select a module that has build variants.")
       else -> ModuleUnsupportedConfigurable(context, this, module)
     }
 
   override fun getDisplayName() = BUILD_VARIANTS_PERSPECTIVE_DISPLAY_NAME
 
   private fun createConfigurable(module: PsAndroidModule): AndroidModuleBuildVariantsConfigurable =
-      AndroidModuleBuildVariantsConfigurable(context, this, module).apply { history = myHistory }
+    AndroidModuleBuildVariantsConfigurable(context, this, module).apply { history = myHistory }
 
   override fun createComponent(): JComponent = super.createComponent().also { it.name = BUILD_VARIANTS_VIEW }
 }

@@ -31,9 +31,7 @@ import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 @OptIn(KaExperimentalApi::class)
 abstract class SafeArgsResolveExtensionFile(val classId: ClassId) : KaResolveExtensionFile() {
   init {
-    check(!classId.isLocal && classId.outermostClassId == classId) {
-      "classId ${classId} must be top-level"
-    }
+    check(!classId.isLocal && classId.outermostClassId == classId) { "classId ${classId} must be top-level" }
   }
 
   override fun getFileName(): String = "${classId.shortClassName}.kt"
@@ -58,21 +56,17 @@ abstract class SafeArgsResolveExtensionFile(val classId: ClassId) : KaResolveExt
 
   override fun buildFileText(): String = fileText
 
-  protected abstract fun KaSession.getNavigationElementForDeclaration(
-    symbol: KaDeclarationSymbol
-  ): PsiElement?
+  protected abstract fun KaSession.getNavigationElementForDeclaration(symbol: KaDeclarationSymbol): PsiElement?
 
   protected abstract val fallbackPsi: PsiElement?
 
   private fun KaSession.getNavigationElement(element: KtElement): PsiElement? =
-    element.parentsWithSelf.filterIsInstance<KtDeclaration>().firstNotNullOfOrNull {
-      getNavigationElementForDeclaration(it.symbol)
-    } ?: fallbackPsi
+    element.parentsWithSelf.filterIsInstance<KtDeclaration>().firstNotNullOfOrNull { getNavigationElementForDeclaration(it.symbol) }
+      ?: fallbackPsi
 
   private val navigationTargetsProvider by lazy {
     object : KaResolveExtensionNavigationTargetsProvider() {
-      override fun KaSession.getNavigationTargets(element: KtElement): Collection<PsiElement> =
-        listOfNotNull(getNavigationElement(element))
+      override fun KaSession.getNavigationTargets(element: KtElement): Collection<PsiElement> = listOfNotNull(getNavigationElement(element))
     }
   }
 

@@ -19,10 +19,7 @@ import com.android.tools.res.CodeVersionAdapter
 import com.intellij.ide.plugins.PluginManagerCore.getPlugin
 import com.intellij.openapi.extensions.PluginId
 
-/**
- * Android Studio implementation of [CodeVersionAdapter]. Returns the version of the Android IDE
- * plugin as the code version.
- */
+/** Android Studio implementation of [CodeVersionAdapter]. Returns the version of the Android IDE plugin as the code version. */
 internal class StudioCodeVersionAdapter private constructor() : CodeVersionAdapter() {
   override fun doGetCodeVersion(): String {
     val descriptor = getPlugin(PluginId.getId(ANDROID_PLUGIN_ID))

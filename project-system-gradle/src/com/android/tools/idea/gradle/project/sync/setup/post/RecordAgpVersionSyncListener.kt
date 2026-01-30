@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync.setup.post
 
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
-import com.android.tools.idea.gradle.project.sync.GradleSyncListener
 import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot
 import com.intellij.facet.ProjectFacetManager
 import com.intellij.openapi.project.Project
@@ -25,9 +24,7 @@ import org.jetbrains.annotations.SystemIndependent
 class RecordAgpVersionSyncListener : GradleSyncListenerWithRoot {
   override fun syncSucceeded(project: Project, rootProjectPath: @SystemIndependent String) {
     ProjectFacetManager.getInstance(project).getFacets(GradleFacet.getFacetTypeId()).forEach { facet ->
-      facet.configuration.let {
-        it.LAST_SUCCESSFUL_SYNC_AGP_VERSION = it.LAST_KNOWN_AGP_VERSION
-      }
+      facet.configuration.let { it.LAST_SUCCESSFUL_SYNC_AGP_VERSION = it.LAST_KNOWN_AGP_VERSION }
     }
   }
 }

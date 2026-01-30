@@ -81,8 +81,7 @@ class SafeArgsKtFindingUsageTest {
     projectRule.requestSyncAndWait()
 
     val appModuleMain = fixture.project.findAppModule().getMainModule()
-    val file =
-      appModuleMain.fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = appModuleMain.fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     fixture.configureFromExistingVirtualFile(file!!)
     val dataContext = (fixture.editor as EditorEx).dataContext
     val editor = CommonDataKeys.EDITOR.getData(dataContext)

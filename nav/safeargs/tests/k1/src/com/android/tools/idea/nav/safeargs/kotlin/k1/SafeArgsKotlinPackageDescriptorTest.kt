@@ -42,37 +42,37 @@ class SafeArgsKotlinPackageDescriptorTest {
       "res/navigation/main.xml",
       // language=XML
       """
-        <?xml version="1.0" encoding="utf-8"?>
-        <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
-            app:startDestination="@id/fragment1">
+      <?xml version="1.0" encoding="utf-8"?>
+      <navigation xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main"
+          app:startDestination="@id/fragment1">
 
-          <fragment
-              android:id="@+id/fragment1"
-              android:name="test.safeargs.Fragment1"
-              android:label="Fragment1">
-            <argument
-                android:name="arg1"
-                app:argType="string" />
-            <action
-                android:id="@+id/action_Fragment1_to_Fragment2"
-                app:destination="@id/fragment2" />
-          </fragment>
-          <fragment
-              android:id="@+id/fragment2"
-              android:name="test.safeargs.sub1.Fragment2"
-              android:label="Fragment2" >
-            <argument
-                android:name="arg2"
-                app:argType="integer[]" />
-            <action
-              android:id="@+id/action_Fragment2_to_main"
-              app:destination="@id/main" />
-          </fragment>  
+        <fragment
+            android:id="@+id/fragment1"
+            android:name="test.safeargs.Fragment1"
+            android:label="Fragment1">
+          <argument
+              android:name="arg1"
+              app:argType="string" />
           <action
-              android:id="@+id/action_main_to_fragment1"
-              app:destination="@id/fragment1" />                      
-        </navigation>
+              android:id="@+id/action_Fragment1_to_Fragment2"
+              app:destination="@id/fragment2" />
+        </fragment>
+        <fragment
+            android:id="@+id/fragment2"
+            android:name="test.safeargs.sub1.Fragment2"
+            android:label="Fragment2" >
+          <argument
+              android:name="arg2"
+              app:argType="integer[]" />
+          <action
+            android:id="@+id/action_Fragment2_to_main"
+            app:destination="@id/main" />
+        </fragment>  
+        <action
+            android:id="@+id/action_main_to_fragment1"
+            app:destination="@id/fragment1" />                      
+      </navigation>
       """
         .trimIndent(),
     )
@@ -81,9 +81,7 @@ class SafeArgsKotlinPackageDescriptorTest {
     StudioResourceRepositoryManager.getInstance(safeArgsRule.androidFacet).moduleResources
 
     val safeArgProviderExtension =
-      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first {
-        it is SafeArgsKtPackageProviderExtension
-      }
+      PackageFragmentProviderExtension.getInstances(safeArgsRule.project).first { it is SafeArgsKtPackageProviderExtension }
 
     val traceMock: BindingTrace = mock()
     val moduleSourceInfo = safeArgsRule.module.productionSourceInfo
@@ -101,10 +99,7 @@ class SafeArgsKotlinPackageDescriptorTest {
 
     // Check contents for Fragment1
     val classesMetadata1 =
-      fragmentProvider
-        .getPackageFragments(FqName("test.safeargs"))
-        .flatMap { it.getMemberScope().classesInScope() }
-        .sortedBy { it.fqcn }
+      fragmentProvider.getPackageFragments(FqName("test.safeargs")).flatMap { it.getMemberScope().classesInScope() }.sortedBy { it.fqcn }
 
     assertThat(classesMetadata1.map { it.toString() })
       .containsExactly(
@@ -121,9 +116,6 @@ class SafeArgsKotlinPackageDescriptorTest {
         .sortedBy { it.fqcn }
 
     assertThat(classesMetadata2.map { it.toString() })
-      .containsExactly(
-        "test.safeargs.sub1.Fragment2Args: androidx.navigation.NavArgs",
-        "test.safeargs.sub1.Fragment2Directions",
-      )
+      .containsExactly("test.safeargs.sub1.Fragment2Args: androidx.navigation.NavArgs", "test.safeargs.sub1.Fragment2Directions")
   }
 }

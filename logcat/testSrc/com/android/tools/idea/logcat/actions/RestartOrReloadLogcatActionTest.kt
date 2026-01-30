@@ -35,8 +35,7 @@ import org.junit.Test
 class RestartOrReloadLogcatActionTest {
   @get:Rule val applicationRule = ApplicationRule()
 
-  private val device =
-    Device.createPhysical("device", false, "11", AndroidVersion(30, 0), "Google", "Pixel 2")
+  private val device = Device.createPhysical("device", false, "11", AndroidVersion(30, 0), "Google", "Pixel 2")
 
   private val fakeLogcatPresenter = FakeLogcatPresenter()
 
@@ -83,6 +82,4 @@ class RestartOrReloadLogcatActionTest {
 }
 
 private fun testEvent(logcatPresenter: LogcatPresenter) =
-  TestActionEvent.createTestEvent(
-    SimpleDataContext.builder().add(LOGCAT_PRESENTER_ACTION, logcatPresenter).build()
-  )
+  TestActionEvent.createTestEvent(SimpleDataContext.builder().add(LOGCAT_PRESENTER_ACTION, logcatPresenter).build())

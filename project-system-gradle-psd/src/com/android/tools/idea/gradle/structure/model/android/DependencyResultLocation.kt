@@ -16,14 +16,12 @@
 package com.android.tools.idea.gradle.structure.model.android
 
 import com.android.tools.idea.gradle.dsl.api.GradleFileModel
-import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
-import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel
 import com.intellij.openapi.vfs.VirtualFile
 
 /**
- * Class encapsulates logic about result dependency location as it can be in different file that dependency declaration.
- * For example `implementation libs.core` pointing to default versions.toml file.
+ * Class encapsulates logic about result dependency location as it can be in different file that dependency declaration. For example
+ * `implementation libs.core` pointing to default versions.toml file.
  */
 class DependencyResultLocation(val model: ArtifactDependencyModel) {
   private val resultLocation: VirtualFile
@@ -31,5 +29,6 @@ class DependencyResultLocation(val model: ArtifactDependencyModel) {
       val resultModel = model.completeModel().resultModel
       return resultModel.gradleFile
     }
+
   fun matchLocation(model: GradleFileModel?): Boolean = model?.virtualFile == resultLocation
 }

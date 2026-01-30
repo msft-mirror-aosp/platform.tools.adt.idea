@@ -68,10 +68,7 @@ class DeviceSelectorIntegrationTest {
     )
   }
 
-  /**
-   * Use the DeviceAndSnapshotComboBoxTarget to activate a device, as if we had clicked Run, and
-   * verify that the device gets activated.
-   */
+  /** Use the DeviceAndSnapshotComboBoxTarget to activate a device, as if we had clicked Run, and verify that the device gets activated. */
   @RunsInEdt
   @Test
   fun activation() {

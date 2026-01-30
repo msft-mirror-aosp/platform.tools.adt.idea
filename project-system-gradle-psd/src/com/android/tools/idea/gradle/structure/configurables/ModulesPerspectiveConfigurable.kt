@@ -26,8 +26,8 @@ import javax.swing.JComponent
 const val MODULES_VIEW = "ModulesView"
 const val MODULES_PERSPECTIVE_DISPLAY_NAME: String = "Modules"
 
-class ModulesPerspectiveConfigurable(context: PsContext)
-  : BasePerspectiveConfigurable(context, extraModules = listOf()), TrackedConfigurable {
+class ModulesPerspectiveConfigurable(context: PsContext) :
+  BasePerspectiveConfigurable(context, extraModules = listOf()), TrackedConfigurable {
 
   override val leftConfigurable = PSDEvent.PSDLeftConfigurable.PROJECT_STRUCTURE_DIALOG_LEFT_CONFIGURABLE_MODULES
 
@@ -43,7 +43,7 @@ class ModulesPerspectiveConfigurable(context: PsContext)
   override fun getDisplayName() = MODULES_PERSPECTIVE_DISPLAY_NAME
 
   private fun createConfigurable(module: PsAndroidModule) =
-      AndroidModuleRootConfigurable(context, this, module).apply { history = myHistory }
+    AndroidModuleRootConfigurable(context, this, module).apply { history = myHistory }
 
   override fun createComponent(): JComponent = super.createComponent().also { it.name = MODULES_VIEW }
 }

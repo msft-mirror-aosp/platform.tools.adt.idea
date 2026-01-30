@@ -16,10 +16,10 @@
 package com.android.tools.idea.npw.module.recipes.automotiveModule
 
 import com.android.tools.idea.npw.module.recipes.basicThemesXml
-import com.android.tools.idea.wizard.template.ModuleTemplateData
-import com.android.tools.idea.wizard.template.RecipeExecutor
 import com.android.tools.idea.npw.module.recipes.generateCommonModule
 import com.android.tools.idea.npw.module.recipes.generateManifest
+import com.android.tools.idea.wizard.template.ModuleTemplateData
+import com.android.tools.idea.wizard.template.RecipeExecutor
 
 fun RecipeExecutor.generateAutomotiveModule(
   data: ModuleTemplateData,
@@ -27,24 +27,28 @@ fun RecipeExecutor.generateAutomotiveModule(
   useKts: Boolean,
   useVersionCatalog: Boolean = true,
 ) {
-  val usesFeatureBlock = """
+  val usesFeatureBlock =
+    """
 <uses-feature
     android:name="android.hardware.type.automotive"
     android:required="true"/>
 """
   generateCommonModule(
-    data = data, appTitle = appTitle, useKts = useKts,
-    manifestXml = generateManifest(
-      hasApplicationBlock = !data.isLibrary,
-      theme = "@style/${data.themesData.main.name}",
-      usesFeatureBlock = usesFeatureBlock,
-      appCategory = "audio"
-    ),
+    data = data,
+    appTitle = appTitle,
+    useKts = useKts,
+    manifestXml =
+      generateManifest(
+        hasApplicationBlock = !data.isLibrary,
+        theme = "@style/${data.themesData.main.name}",
+        usesFeatureBlock = usesFeatureBlock,
+        appCategory = "audio",
+      ),
     generateGenericLocalTests = true,
     generateGenericInstrumentedTests = true,
     themesXml = basicThemesXml("android:Theme.Material.Light.DarkActionBar", data.themesData.main.name),
     colorsXml = null,
-    useVersionCatalog = useVersionCatalog
+    useVersionCatalog = useVersionCatalog,
   )
   addDependency("com.android.support:appcompat-v7:${data.apis.appCompatVersion}.+")
 }

@@ -25,7 +25,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.res.StudioCodeVersionAdapter
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.stats.AndroidStudioUsageTracker
-import com.intellij.codeInsight.annoPackages.AnnotationPackageSupport
 import com.intellij.concurrency.JobScheduler
 import com.intellij.ide.ApplicationInitializedListener
 import com.intellij.openapi.application.ApplicationInfo
@@ -35,7 +34,6 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.updateSettings.impl.pluginsAdvertisement.PluginSuggestionProvider
 import com.intellij.openapi.util.IntellijInternalApi
 import com.intellij.util.application
-import kotlin.jvm.javaClass
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.android.sdk.AndroidSdkUtils
@@ -43,8 +41,8 @@ import org.jetbrains.android.sdk.AndroidSdkUtils
 /**
  * Performs Android Studio specific initialization tasks that are build-system-independent.
  *
- * **Note:** Do not add any additional tasks unless it is proven that the tasks are common to all IDEs. Use
- * GradleSpecificInitializer instead.
+ * **Note:** Do not add any additional tasks unless it is proven that the tasks are common to all IDEs. Use GradleSpecificInitializer
+ * instead.
  */
 class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : ApplicationInitializedListener {
 
@@ -54,9 +52,7 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
     setupAnalytics()
 
     // Initialize System Health Monitor after Analytics.
-    coroutineScope.launch {
-      AndroidStudioSystemHealthMonitor.getInstance().start()
-    }
+    coroutineScope.launch { AndroidStudioSystemHealthMonitor.getInstance().start() }
 
     // TODO: Remove this once the issue has been properly fixed in the IntelliJ platform
     //  see https://youtrack.jetbrains.com/issue/IDEA-316037
@@ -80,7 +76,7 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
     removePluginSuggestionProviderExtension()
   }
 
-  /** Sets up collection of Android Studio specific analytics.  */
+  /** Sets up collection of Android Studio specific analytics. */
   private fun setupAnalytics() {
     AndroidStudioAnalyticsImpl.getInstance().initializeAndroidStudioUsageTrackerAndPublisher()
 
@@ -99,9 +95,7 @@ class AndroidStudioInitializer(private val coroutineScope: CoroutineScope) : App
     val androidSdkPath = IdeSdks.getInstance().androidSdkPath ?: return
 
     thisLogger().info("Automatically creating an Android platform using SDK path $androidSdkPath and SDK version $androidPlatformToCreate")
-    invokeLater {
-      AndroidSdkUtils.createNewAndroidPlatform(androidSdkPath.toString())
-    }
+    invokeLater { AndroidSdkUtils.createNewAndroidPlatform(androidSdkPath.toString()) }
   }
 
   @OptIn(IntellijInternalApi::class)

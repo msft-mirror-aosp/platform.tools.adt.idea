@@ -15,27 +15,24 @@
  */
 package com.android.tools.idea.gradle.util
 
-import com.android.ide.common.build.BaselineProfileDetails
 import com.android.ide.common.build.GenericBuiltArtifactsLoader
 import com.android.tools.idea.log.LogWrapper
 import com.android.utils.FileUtils.writeToFile
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.testFramework.rules.TempDirectory
+import java.io.File
 import junit.framework.TestCase.assertEquals
 import org.intellij.lang.annotations.Language
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
-/**
- * Tests for GradleBuildOutputUtil.kt
- */
+/** Tests for GradleBuildOutputUtil.kt */
 class GradleBuildOutputUtilTest {
-  @get:Rule
-  val tempDir = TempDirectory()
+  @get:Rule val tempDir = TempDirectory()
 
   @Language("JSON")
-  val singleAPKOutputFileText = """
+  val singleAPKOutputFileText =
+    """
 {
   "version": 1,
   "artifactType": {
@@ -57,7 +54,8 @@ class GradleBuildOutputUtilTest {
 }"""
 
   @Language("JSON")
-  val multiAPKsOutputFileText = """
+  val multiAPKsOutputFileText =
+    """
 {
   "version": 1,
   "artifactType": {

@@ -47,10 +47,7 @@ class ProvideLintFeedbackPanelTest : AndroidTestCase() {
         }
       }
 
-      val usages =
-        usageTracker.usages.filter {
-          it.studioEvent.kind == AndroidStudioEvent.EventKind.LINT_ACTION
-        }
+      val usages = usageTracker.usages.filter { it.studioEvent.kind == AndroidStudioEvent.EventKind.LINT_ACTION }
       assertThat(usages).hasSize(1)
       with(usages[0].studioEvent) {
         with(lintAction) {

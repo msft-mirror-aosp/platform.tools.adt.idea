@@ -27,6 +27,7 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
 import org.jetbrains.kotlin.android.KotlinTestUtils.assertEqualsToFile
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.idea.compiler.configuration.IdeKotlinVersion
@@ -34,35 +35,31 @@ import org.jetbrains.kotlin.idea.configuration.ChangedConfiguratorFiles
 import org.jetbrains.kotlin.idea.configuration.NotificationMessageCollector
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.junit.Assert
-import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import java.io.File
 
 @RunsInEdt
 @RunWith(JUnit4::class)
 class ConfigureCatalogSingleModuleProjectTest {
 
     private val projectRule = AndroidProjectRule.withAndroidModel(AndroidProjectBuilder())
+
     companion object {
         private const val DEFAULT_VERSION = TestUtils.KOTLIN_VERSION_FOR_TESTS
         private const val GRADLE_CATALOG_DIR = "idea-android/testData/configuration/android-gradle/catalog"
     }
 
-    @get:Rule
-    val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+    @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())
 
     private lateinit var buildFile: VirtualFile
     private lateinit var catalogFile: VirtualFile
 
-    @Test
-    fun testSingleModuleProject() =
-      doTestWithSingleModule("${GRADLE_CATALOG_DIR}/singleModule", "gradle")
+    @Test fun testSingleModuleProject() = doTestWithSingleModule("${GRADLE_CATALOG_DIR}/singleModule", "gradle")
 
-    private fun doTestWithSingleModule(path: String,  extension: String) {
+    private fun doTestWithSingleModule(path: String, extension: String) {
         runWriteAction {
             buildFile = projectRule.fixture.tempDirFixture.createFile("build.${extension}")
             catalogFile = projectRule.fixture.tempDirFixture.createFile("gradle/libs.versions.toml")
@@ -87,10 +84,24 @@ class ConfigureCatalogSingleModuleProjectTest {
         val configurator = KotlinAndroidGradleModuleConfigurator()
         val jvmTarget = JvmTarget.JVM_1_8.description
         val changedFiles = ChangedConfiguratorFiles()
-        configurator.configureModule(projectRule.module, buildFile.toPsiFile(project)!!, isTopLevelProjectFile = true, version, jvmTarget,
-                                     collector, changedFiles)
-        configurator.configureModule(projectRule.module, buildFile.toPsiFile(project)!!, isTopLevelProjectFile = false, version, jvmTarget,
-                                     collector, changedFiles)
+        configurator.configureModule(
+            projectRule.module,
+            buildFile.toPsiFile(project)!!,
+            isTopLevelProjectFile = true,
+            version,
+            jvmTarget,
+            collector,
+            changedFiles,
+        )
+        configurator.configureModule(
+            projectRule.module,
+            buildFile.toPsiFile(project)!!,
+            isTopLevelProjectFile = false,
+            version,
+            jvmTarget,
+            collector,
+            changedFiles,
+        )
 
         collector.showNotification()
 
@@ -98,13 +109,9 @@ class ConfigureCatalogSingleModuleProjectTest {
         assertEqualsToFile(afterFile, VfsUtil.loadText(buildFile))
 
         val afterCatalogFile = File(testRoot, "${path}_after.versions.toml")
-        assertEqualsToFile(afterCatalogFile, VfsUtil.loadText(catalogFile)) {
-            it.replace("\$VERSION$", DEFAULT_VERSION)
-        }
+        assertEqualsToFile(afterCatalogFile, VfsUtil.loadText(catalogFile)) { it.replace("\$VERSION$", DEFAULT_VERSION) }
 
         // Clear JDK table
-        ProjectJdkTable.getInstance().allJdks.forEach {
-            SdkConfigurationUtil.removeSdk(it)
-        }
+        ProjectJdkTable.getInstance().allJdks.forEach { SdkConfigurationUtil.removeSdk(it) }
     }
 }

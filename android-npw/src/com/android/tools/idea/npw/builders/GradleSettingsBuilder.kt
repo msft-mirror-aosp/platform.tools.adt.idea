@@ -15,14 +15,14 @@
  */
 package com.android.tools.idea.npw.builders
 
+import java.net.URL
 import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.FOOJAY_RESOLVER_CONVENTION_NAME
 import org.jetbrains.plugins.gradle.frameworkSupport.settingsScript.getFoojayPluginVersion
-import java.net.URL
 
 class GradleSettingsBuilder(
   private val projectName: String,
   private val useGradleKts: Boolean,
-  private val builderFunction: GradleSettings.() -> Unit
+  private val builderFunction: GradleSettings.() -> Unit,
 ) {
 
   init {
@@ -35,27 +35,29 @@ class GradleSettingsBuilder(
     builderFunction.invoke(gradleSettings)
 
     val escapedAppTitle = projectName.replace("$", "\\$")
-    return settingsStringBuilder.apply {
-      if (isNotEmpty()) {
-        append("\n")
+    return settingsStringBuilder
+      .apply {
+        if (isNotEmpty()) {
+          append("\n")
+        }
+        append("rootProject.name = \"$escapedAppTitle\"")
       }
-      append("rootProject.name = \"$escapedAppTitle\"")
-    }.toString().gradleSettingsToKtsIfKts(useGradleKts)
+      .toString()
+      .gradleSettingsToKtsIfKts(useGradleKts)
   }
 
-  private fun String.gradleSettingsToKtsIfKts(isKts: Boolean): String = if (isKts) {
-    split("\n").joinToString("\n") {
-      it.replace("'", "\"")
-        .replace("id ", "id(").replace(" version", ") version")
+  private fun String.gradleSettingsToKtsIfKts(isKts: Boolean): String =
+    if (isKts) {
+      split("\n").joinToString("\n") { it.replace("'", "\"").replace("id ", "id(").replace(" version", ") version") }
+    } else {
+      this
     }
-  } else {
-    this
-  }
 }
 
 class GradleSettings(private val settingsBuilder: StringBuilder) {
   fun withPluginManager(repositoriesUrls: List<URL>) {
-    settingsBuilder.appendLine("""
+    settingsBuilder.appendLine(
+      """
 pluginManagement {
   repositories {${repositoriesUrls.toMavenUrlRepositories()}
     google {
@@ -68,26 +70,34 @@ pluginManagement {
     mavenCentral()
     gradlePluginPortal()
   }
-}""".trimIndent())
+}"""
+        .trimIndent()
+    )
   }
 
   fun withFoojayPlugin() {
-    settingsBuilder.appendLine("""
+    settingsBuilder.appendLine(
+      """
 plugins {
     id '$FOOJAY_RESOLVER_CONVENTION_NAME' version '${getFoojayPluginVersion()}'
-}""".trimIndent())
+}"""
+        .trimIndent()
+    )
   }
 
   fun withDependencyResolutionManagement(repositoriesUrls: List<URL>) {
-    settingsBuilder.appendLine("""
+    settingsBuilder.appendLine(
+      """
 dependencyResolutionManagement {
   repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
   repositories {${repositoriesUrls.toMavenUrlRepositories()}
     google()
     mavenCentral()
   }
-}""".trimIndent())
+}"""
+        .trimIndent()
+    )
   }
 
-  private fun List<URL>.toMavenUrlRepositories() = if(isEmpty()) "" else joinToString("") { "\n    maven { url = uri(\"${it}\") }" }
+  private fun List<URL>.toMavenUrlRepositories() = if (isEmpty()) "" else joinToString("") { "\n    maven { url = uri(\"${it}\") }" }
 }

@@ -39,8 +39,7 @@ class ComposeAnalysisTest {
   private var projectRule = AndroidProjectRule.inMemory().withKotlin()
   private val fakeAdbRule = FakeAdbServerAdbLibRule()
 
-  @get:Rule
-  val chain = RuleChain.outerRule(projectRule).around(fakeAdbRule)!!
+  @get:Rule val chain = RuleChain.outerRule(projectRule).around(fakeAdbRule)!!
 
   @Before
   fun setUp() {
@@ -50,11 +49,14 @@ class ComposeAnalysisTest {
 
   @Test
   fun `single restartable group`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       @Composable
       fun test() {}
-      """)
+      """
+      )
     ensureComposeCalls(output, START_RESTART_GROUP)
     val groupTable = computeGroupTableForTest(output)
     groupTable.assertGroupTable(groupCount = 1, restartLambdaCount = 1, lambdaGroupCount = 0, innerClassCount = 1)
@@ -65,13 +67,16 @@ class ComposeAnalysisTest {
 
   @Test
   fun `two restartable groups`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       @Composable
       fun first() {}
       @Composable
       fun second() {}
-      """)
+      """
+      )
 
     ensureComposeCalls(output, START_RESTART_GROUP)
     val groupTable = computeGroupTableForTest(output)
@@ -88,13 +93,16 @@ class ComposeAnalysisTest {
 
   @Test
   fun `two restartable groups with the same name`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       @Composable
       fun group() {}
       @Composable
       fun group(param: Int) {}
-      """)
+      """
+      )
     ensureComposeCalls(output, START_RESTART_GROUP)
     val groupTable = computeGroupTableForTest(output)
     groupTable.assertGroupTable(groupCount = 2, restartLambdaCount = 2, lambdaGroupCount = 0, innerClassCount = 2)
@@ -112,7 +120,9 @@ class ComposeAnalysisTest {
 
   @Test
   fun `composable with content`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       @Composable
       fun test() {
@@ -128,7 +138,8 @@ class ComposeAnalysisTest {
       fun outer(content: @Composable () -> Unit) {
         content()
       }
-      """)
+      """
+      )
     ensureComposeCalls(output, START_RESTART_GROUP)
     val groupTable = computeGroupTableForTest(output)
 
@@ -138,11 +149,12 @@ class ComposeAnalysisTest {
     groupTable.assertRestartLambda(test)
     assertEquals("test", test.name)
 
-    val outer = if (!KotlinPluginModeProvider.isK2Mode()) {
-      groupTable.assertGroup(169591811)
-    } else {
-      groupTable.assertGroup(-270222928)
-    }
+    val outer =
+      if (!KotlinPluginModeProvider.isK2Mode()) {
+        groupTable.assertGroup(169591811)
+      } else {
+        groupTable.assertGroup(-270222928)
+      }
     groupTable.assertRestartLambda(outer)
     assertEquals("outer", outer.name)
 
@@ -155,7 +167,9 @@ class ComposeAnalysisTest {
 
   @Test
   fun `nested composable with captures`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       @Composable
       fun test() {
@@ -173,7 +187,8 @@ class ComposeAnalysisTest {
       fun outer(content: @Composable () -> Unit) {
         content()
       }
-      """)
+      """
+      )
     ensureComposeCalls(output, START_RESTART_GROUP)
     val groupTable = computeGroupTableForTest(output)
     groupTable.assertGroupTable(groupCount = 5, restartLambdaCount = 2, lambdaGroupCount = 3, innerClassCount = 5)
@@ -182,11 +197,12 @@ class ComposeAnalysisTest {
     groupTable.assertRestartLambda(test)
     assertEquals("test", test.name)
 
-    val outer = if (!KotlinPluginModeProvider.isK2Mode()) {
-      groupTable.assertGroup(169591811)
-    } else {
-      groupTable.assertGroup(-270222928)
-    }
+    val outer =
+      if (!KotlinPluginModeProvider.isK2Mode()) {
+        groupTable.assertGroup(169591811)
+      } else {
+        groupTable.assertGroup(-270222928)
+      }
     groupTable.assertRestartLambda(outer)
     assertEquals("outer", outer.name)
 
@@ -198,7 +214,9 @@ class ComposeAnalysisTest {
 
   @Test
   fun `replaceable group`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       import androidx.compose.runtime.remember
       @Composable
@@ -206,7 +224,8 @@ class ComposeAnalysisTest {
         val state = remember(param) { param + 1 }
         return state
       }
-      """)
+      """
+      )
 
     val groupTable = computeGroupTableForTest(output)
 
@@ -226,7 +245,9 @@ class ComposeAnalysisTest {
 
   @Test
   fun `restartable, replaceable, reusable, and movable groups`() {
-    val output = compileForTest("""
+    val output =
+      compileForTest(
+        """
       import androidx.compose.runtime.Composable
       import androidx.compose.runtime.remember
       import androidx.compose.runtime.mutableStateOf
@@ -256,7 +277,8 @@ class ComposeAnalysisTest {
       fun Text(text: String) {
         // Pretend this does something
       }
-      """)
+      """
+      )
 
     if (KotlinPluginModeProvider.isK2Mode()) {
       ensureComposeCalls(output, START_RESTART_GROUP, START_REUSABLE_GROUP, START_MOVABLE_GROUP)
@@ -268,18 +290,13 @@ class ComposeAnalysisTest {
     computeGroupTableForTest(output)
   }
 
-
-  /**
-   * Asserts that the table contains a @Composable method with the provided key and returns that method.
-   */
+  /** Asserts that the table contains a @Composable method with the provided key and returns that method. */
   private fun GroupTable.assertGroup(key: Int): IrMethod {
     val (method, _) = groups.filterValues { it.key == key }.entries.single()
     return method
   }
 
-  /**
-   * Asserts that the table contains a restart lambda associated with the provided @Composable method and returns that lambda class.
-   */
+  /** Asserts that the table contains a restart lambda associated with the provided @Composable method and returns that lambda class. */
   private fun GroupTable.assertRestartLambda(method: IrMethod): IrClass {
     return restartLambdas.filterValues { it == method }.keys.single()
   }

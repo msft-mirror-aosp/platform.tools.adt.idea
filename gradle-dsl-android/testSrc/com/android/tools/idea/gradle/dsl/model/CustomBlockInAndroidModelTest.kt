@@ -16,10 +16,10 @@
 package com.android.tools.idea.gradle.dsl.model
 
 import com.android.tools.idea.gradle.dsl.TestFileName
-import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.gradle.dsl.api.android.BuildTypeModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.util.GradleDslModel
+import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
 import com.android.tools.idea.gradle.dsl.parser.android.BuildTypeDslElement
@@ -51,7 +51,7 @@ class CustomBlockInAndroidModelTest : GradleFileModelTestCase() {
   fun testWriteToPluggableNestedBlockInBuildType() {
     writeToBuildFile("")
     val buildModel = gradleBuildModel
-    val releaseBuildType =  buildModel.android().buildTypes().find { it.name() == "release"}
+    val releaseBuildType = buildModel.android().buildTypes().find { it.name() == "release" }
     assertThat(releaseBuildType).isNotNull()
     val myTestModel = releaseBuildType!!.getModel(MyBuildTypeNestedDslModel::class.java)
     myTestModel.setValue("some")
@@ -60,31 +60,31 @@ class CustomBlockInAndroidModelTest : GradleFileModelTestCase() {
   }
 
   enum class TestFile(val path: @SystemDependent String) : TestFileName {
-    PARSE_BUILD_TYPE_NESTED("parseBuildTypeNested"),
-    ;
+    PARSE_BUILD_TYPE_NESTED("parseBuildTypeNested");
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {
       return super.toFile("$basePath/pluggableBlock/$path", extension)
     }
   }
-
 }
 
 interface MyBuildTypeNestedDslModel : GradleDslModel {
   fun getValue(): String
+
   fun setValue(v: String)
 }
 
 class MyBuildTypeNestedDslElement(parent: GradleDslElement, name: GradleNameElement) : GradleDslBlockElement(parent, name) {
 
   companion object {
-    val MYNESTEDDSL = PropertiesElementDescription("buildTypeNested", MyBuildTypeNestedDslElement::class.java, ::MyBuildTypeNestedDslElement)
+    val MYNESTEDDSL =
+      PropertiesElementDescription("buildTypeNested", MyBuildTypeNestedDslElement::class.java, ::MyBuildTypeNestedDslElement)
   }
 }
 
 class MyNestedTypeDslModelImpl(dslElement: MyBuildTypeNestedDslElement) : MyBuildTypeNestedDslModel, GradleDslBlockModel(dslElement) {
   override fun getValue(): String {
-    return GradlePropertyModelBuilder.create(myDslElement, "nestedVal").buildResolved().getValue(GradlePropertyModel.STRING_TYPE) ?: "";
+    return GradlePropertyModelBuilder.create(myDslElement, "nestedVal").buildResolved().getValue(GradlePropertyModel.STRING_TYPE) ?: ""
   }
 
   override fun setValue(v: String) {
@@ -95,15 +95,17 @@ class MyNestedTypeDslModelImpl(dslElement: MyBuildTypeNestedDslElement) : MyBuil
 class MyBuildTypeModelProviderExtension : BlockModelProvider<BuildTypeModel, BuildTypeDslElement> {
   override val parentClass = BuildTypeModel::class.java
   override val parentDslClass = BuildTypeDslElement::class.java
-  override fun availableModels(kind: GradleDslNameConverter.Kind): List<BlockModelBuilder<*, BuildTypeDslElement>> = listOf(
-    object : BlockModelBuilder<MyBuildTypeNestedDslModel, BuildTypeDslElement> {
-      override fun modelClass() = MyBuildTypeNestedDslModel::class.java
-      override fun create(dslElement: BuildTypeDslElement) = MyNestedTypeDslModelImpl(
-        dslElement.ensurePropertyElement(MyBuildTypeNestedDslElement.MYNESTEDDSL))
-    }
-  )
 
-  override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> = mapOf(
-    "buildTypeNested" to MyBuildTypeNestedDslElement.MYNESTEDDSL
-  )
+  override fun availableModels(kind: GradleDslNameConverter.Kind): List<BlockModelBuilder<*, BuildTypeDslElement>> =
+    listOf(
+      object : BlockModelBuilder<MyBuildTypeNestedDslModel, BuildTypeDslElement> {
+        override fun modelClass() = MyBuildTypeNestedDslModel::class.java
+
+        override fun create(dslElement: BuildTypeDslElement) =
+          MyNestedTypeDslModelImpl(dslElement.ensurePropertyElement(MyBuildTypeNestedDslElement.MYNESTEDDSL))
+      }
+    )
+
+  override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> =
+    mapOf("buildTypeNested" to MyBuildTypeNestedDslElement.MYNESTEDDSL)
 }

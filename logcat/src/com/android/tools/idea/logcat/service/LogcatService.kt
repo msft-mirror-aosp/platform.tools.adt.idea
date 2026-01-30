@@ -28,10 +28,8 @@ interface LogcatService {
   /**
    * Streams messages from logcat.
    *
-   * @param sdk the API level of the device being read; this enables more efficient log reading on
-   *   newer devices.
-   * @param duration how long to continue following the logs. If Duration.ZERO is passed, only
-   *   provide historical logs and terminate.
+   * @param sdk the API level of the device being read; this enables more efficient log reading on newer devices.
+   * @param duration how long to continue following the logs. If Duration.ZERO is passed, only provide historical logs and terminate.
    * @param maxHistoryEntries maximum number of historical log messages to include
    */
   fun readLogcat(

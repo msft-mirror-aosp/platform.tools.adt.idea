@@ -20,8 +20,8 @@ import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.structure.model.helpers.androidGradlePluginVersionValues
-import com.android.tools.idea.gradle.structure.model.helpers.versionValues
 import com.android.tools.idea.gradle.structure.model.helpers.parseString
+import com.android.tools.idea.gradle.structure.model.helpers.versionValues
 import com.android.tools.idea.gradle.structure.model.meta.Annotated
 import com.android.tools.idea.gradle.structure.model.meta.DslText
 import com.android.tools.idea.gradle.structure.model.meta.KnownValues
@@ -46,9 +46,13 @@ import kotlin.reflect.KProperty
 
 object PsProjectDescriptors : ModelDescriptor<PsProject, Nothing, ProjectBuildModel> {
   private const val AGP_GROUP_ID_NAME = "com.android.tools.build:gradle"
+
   override fun getResolved(model: PsProject): Nothing? = null
+
   override fun getParsed(model: PsProject): ProjectBuildModel? = model.parsedModel
+
   override fun prepareForModification(model: PsProject) = Unit
+
   override fun setModified(model: PsProject) {
     model.isModified = true
   }
@@ -63,23 +67,19 @@ object PsProjectDescriptors : ModelDescriptor<PsProject, Nothing, ProjectBuildMo
       parsedPropertyGetter = {
         val models: List<ResolvedPropertyModel>? =
           projectBuildModel?.run {
-            buildscript().dependencies().all()
+            buildscript()
+              .dependencies()
+              .all()
               .mapNotNull { it as? ArtifactDependencyModel }
               .singleOrNull { it.isAgp() }
               ?.version()
-              ?.let { listOf(it) }
-            ?: plugins()
-              .filter { it.isAgp() }
-              .map { it.version() }
-              .nullize()
+              ?.let { listOf(it) } ?: plugins().filter { it.isAgp() }.map { it.version() }.nullize()
           }
-          ?: projectSettingsModel?.run {
-            pluginManagement().plugins().plugins().filter { it.isAgp() }.map { it.version() }.nullize()
-          }
-          ?: projectSettingsModel?.run {
-            // declarative branch
-            plugins().plugins().filter { it.isAgp() }.map { it.version() }.nullize()
-          }
+            ?: projectSettingsModel?.run { pluginManagement().plugins().plugins().filter { it.isAgp() }.map { it.version() }.nullize() }
+            ?: projectSettingsModel?.run {
+              // declarative branch
+              plugins().plugins().filter { it.isAgp() }.map { it.version() }.nullize()
+            }
         when {
           models == null -> null.also { LOG.warn("Android Gradle Plugin Version not found") }
           models.isEmpty() -> error("AGP version parsed property implementation inconsistency")
@@ -98,10 +98,7 @@ object PsProjectDescriptors : ModelDescriptor<PsProject, Nothing, ProjectBuildMo
       variableMatchingStrategy = VariableMatchingStrategy.WELL_KNOWN_VALUE,
       preferredVariableName = { "agp_version" },
       variableScope = { buildScriptVariables },
-      canExtractVariable = {
-        parsedModel.versionCatalogsModel.catalogNames().isEmpty() &&
-        parsedModel.projectBuildModel != null
-      }
+      canExtractVariable = { parsedModel.versionCatalogsModel.catalogNames().isEmpty() && parsedModel.projectBuildModel != null },
     )
   }
 
@@ -110,10 +107,11 @@ object PsProjectDescriptors : ModelDescriptor<PsProject, Nothing, ProjectBuildMo
 
       override fun bindContext(model: PsProject): ModelPropertyContext<String> =
         object : ModelPropertyContext<String> {
-          override fun parse(value: String): Annotated<ParsedValue<String>> = when {
-            value.isBlank() -> ParsedValue.NotSet.annotateWithError("Required.")
-            else -> ParsedValue.Set.Parsed(value, DslText.Literal).annotated()
-          }
+          override fun parse(value: String): Annotated<ParsedValue<String>> =
+            when {
+              value.isBlank() -> ParsedValue.NotSet.annotateWithError("Required.")
+              else -> ParsedValue.Set.Parsed(value, DslText.Literal).annotated()
+            }
 
           override fun parseEditorText(text: String): Annotated<ParsedValue<String>> = parse(text)
 
@@ -127,35 +125,32 @@ object PsProjectDescriptors : ModelDescriptor<PsProject, Nothing, ProjectBuildMo
       override fun bind(model: PsProject): ModelPropertyCore<String> =
         object : ModelPropertyCore<String> {
           override fun getParsedValue(): Annotated<ParsedValue<String>> =
-            model
-              .getGradleVersionValue(notApplied = true)
-              ?.let { ParsedValue.Set.Parsed(it, DslText.Literal).annotated() }
-            ?: ParsedValue.NotSet.annotated()
+            model.getGradleVersionValue(notApplied = true)?.let { ParsedValue.Set.Parsed(it, DslText.Literal).annotated() }
+              ?: ParsedValue.NotSet.annotated()
 
           override fun setParsedValue(value: ParsedValue<String>) {
             value.maybeLiteralValue?.let { model.setGradleVersionValue(it) }
           }
 
           override val isModified: Boolean?
-            get() =
-              model.getGradleVersionValue(true) != model.getGradleVersionValue(false)
+            get() = model.getGradleVersionValue(true) != model.getGradleVersionValue(false)
 
           override fun getResolvedValue(): ResolvedValue<String> = ResolvedValue.NotResolved()
 
           override val description: String = "Gradle Version"
           override val defaultValueGetter: (() -> String?)? = null
           override val variableScope: (() -> PsVariablesScope?)? = { PsVariablesScope.NONE }
+
           override fun annotateParsedResolvedMismatch(): ValueAnnotation? = null
         }
 
-      override fun getValue(thisRef: PsProject, property: KProperty<*>): ParsedValue<String> =
-        bind(thisRef).getParsedValue().value
+      override fun getValue(thisRef: PsProject, property: KProperty<*>): ParsedValue<String> = bind(thisRef).getParsedValue().value
 
-      override fun setValue(thisRef: PsProject, property: KProperty<*>, value: ParsedValue<String>) =
-        bind(thisRef).setParsedValue(value)
+      override fun setValue(thisRef: PsProject, property: KProperty<*>, value: ParsedValue<String>) = bind(thisRef).setParsedValue(value)
     }
   }
 
   override fun enumerateModels(model: PsProject): Collection<PsModel> = model.modules
+
   override val properties: Collection<ModelProperty<PsProject, *, *, *>> = listOf(androidGradlePluginVersion)
 }

@@ -55,9 +55,7 @@ internal fun PsiElement?.isSubtypeOf(baseClassName: String): Boolean {
           }
         }
       } else {
-        ktClass.toLightClass()?.let { ulc ->
-          InheritanceUtil.isInheritor(ulc, baseClassName)
-        } == true
+        ktClass.toLightClass()?.let { ulc -> InheritanceUtil.isInheritor(ulc, baseClassName) } == true
       }
     }
     is PsiClass -> InheritanceUtil.isInheritor(this, baseClassName)

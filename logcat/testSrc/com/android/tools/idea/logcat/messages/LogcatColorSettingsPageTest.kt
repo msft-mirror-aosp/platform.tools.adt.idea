@@ -29,22 +29,13 @@ class LogcatColorSettingsPageTest {
 
   @Test
   fun attributeDescriptors() {
-    val descriptors =
-      logcatColorSettingsPage.attributeDescriptors.associate { it.displayName to it.key }
+    val descriptors = logcatColorSettingsPage.attributeDescriptors.associate { it.displayName to it.key }
 
     assertThat(descriptors.size).isEqualTo(LogLevel.entries.size * 2)
     for (level in LogLevel.entries) {
       val name = level.name.lowercase(Locale.getDefault()).usLocaleCapitalize()
-      assertThat(descriptors)
-        .containsEntry(
-          LogcatBundle.message("logcat.color.page.indicator", name),
-          colors.getLogLevelKey(level),
-        )
-      assertThat(descriptors)
-        .containsEntry(
-          LogcatBundle.message("logcat.color.page.message", name),
-          colors.getMessageKey(level),
-        )
+      assertThat(descriptors).containsEntry(LogcatBundle.message("logcat.color.page.indicator", name), colors.getLogLevelKey(level))
+      assertThat(descriptors).containsEntry(LogcatBundle.message("logcat.color.page.message", name), colors.getMessageKey(level))
     }
   }
 
@@ -63,20 +54,14 @@ class LogcatColorSettingsPageTest {
   fun demoText() {
     // Extract only lines containing a sample log entry and trim out everything before the first
     // color tag (first '<' char)
-    val lines =
-      logcatColorSettingsPage.demoText
-        .lines()
-        .filter { it.contains("Sample") }
-        .map { it.substring(it.indexOf("<")) }
+    val lines = logcatColorSettingsPage.demoText.lines().filter { it.contains("Sample") }.map { it.substring(it.indexOf("<")) }
 
     assertThat(lines.size).isEqualTo(LogLevel.entries.size)
     for (level in LogLevel.entries) {
       val indicatorTag = level.toIndicatorTag()
       val messageTag = level.toMessageTag()
       assertThat(lines)
-        .contains(
-          "<$indicatorTag> ${level.priorityLetter} </$indicatorTag> <$messageTag>Sample ${level.stringValue} text</$messageTag>"
-        )
+        .contains("<$indicatorTag> ${level.priorityLetter} </$indicatorTag> <$messageTag>Sample ${level.stringValue} text</$messageTag>")
     }
   }
 }

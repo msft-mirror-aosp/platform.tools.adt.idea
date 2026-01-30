@@ -16,12 +16,9 @@
 package com.android.tools.idea.lang.agsl
 
 import com.intellij.lang.Language
-import com.intellij.lang.java.JavaLanguage
 import org.jetbrains.annotations.NonNls
 
-/**
- * Android Graphics Shading language.
- */
+/** Android Graphics Shading language. */
 class AgslLanguage private constructor() : Language(ID) {
   override fun getDisplayName(): String {
     return "AGSL (Android Graphics Shading Language)"
@@ -32,7 +29,6 @@ class AgslLanguage private constructor() : Language(ID) {
 
     fun getInstance(): AgslLanguage = INSTANCE
 
-    @NonNls
-    const val ID = "AGSL"
+    @NonNls const val ID = "AGSL"
   }
 }

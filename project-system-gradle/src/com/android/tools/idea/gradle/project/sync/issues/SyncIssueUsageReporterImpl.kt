@@ -19,7 +19,6 @@ import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.GradleSyncIssue
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import org.jetbrains.annotations.SystemIndependent
 
@@ -29,10 +28,10 @@ class SyncIssueUsageReporterImpl(private val project: Project) : SyncIssueUsageR
   override fun reportToUsageTracker(rootProjectPath: @SystemIndependent String) {
     if (collectedIssues.isNotEmpty()) {
       UsageTracker.log(
-        GradleSyncStateHolder
-          .getInstance(project)
+        GradleSyncStateHolder.getInstance(project)
           .generateSyncEvent(AndroidStudioEvent.EventKind.GRADLE_SYNC_ISSUES, rootProjectPath)
-          .addAllGradleSyncIssues(collectedIssues))
+          .addAllGradleSyncIssues(collectedIssues)
+      )
       collectedIssues.clear()
     }
   }
@@ -41,4 +40,3 @@ class SyncIssueUsageReporterImpl(private val project: Project) : SyncIssueUsageR
     collectedIssues.add(issue)
   }
 }
-

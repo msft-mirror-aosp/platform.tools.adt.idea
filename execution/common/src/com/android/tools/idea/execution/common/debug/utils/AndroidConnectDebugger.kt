@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.execution.common.debug.utils
 
-import com.android.annotations.concurrency.Slow
 import com.android.ddmlib.Client
 import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.execution.common.debug.AndroidDebugger
@@ -38,34 +37,36 @@ import kotlinx.coroutines.withContext
 
 object AndroidConnectDebugger {
   @JvmStatic
-  fun <S: AndroidDebuggerState> closeOldSessionAndRun(
+  fun <S : AndroidDebuggerState> closeOldSessionAndRun(
     project: Project,
     androidDebugger: AndroidDebugger<S>,
     client: Client,
-    configuration: RunConfigurationWithDebugger?
+    configuration: RunConfigurationWithDebugger?,
   ) {
     terminateRunSessions(project, client)
     val state: S = configuration?.androidDebuggerContext?.getAndroidDebuggerState() ?: androidDebugger.createState()
-    ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Attaching debugger") {
-      override fun run(indicator: ProgressIndicator) {
-        runBlockingCancellable {
-          try {
-            val existingSession = androidDebugger.getExistingDebugSession(project, client)
+    ProgressManager.getInstance()
+      .run(
+        object : Task.Backgroundable(project, "Attaching debugger") {
+          override fun run(indicator: ProgressIndicator) {
+            runBlockingCancellable {
+              try {
+                val existingSession = androidDebugger.getExistingDebugSession(project, client)
 
-            if (existingSession != null) {
-              if (activateDebugSessionWindow(project, existingSession)) {
-                return@runBlockingCancellable
+                if (existingSession != null) {
+                  if (activateDebugSessionWindow(project, existingSession)) {
+                    return@runBlockingCancellable
+                  }
+                  existingSession.debugProcess.processHandler.detachProcess()
+                }
+                attachDebuggerToClientAndShowTab(project, client, androidDebugger, state)
+              } catch (e: ExecutionException) {
+                showError(project, e, "Attach debug to process")
               }
-              existingSession.debugProcess.processHandler.detachProcess()
             }
-            attachDebuggerToClientAndShowTab(project, client, androidDebugger, state)
-          }
-          catch (e: ExecutionException) {
-            showError(project, e, "Attach debug to process")
           }
         }
-      }
-    })
+      )
   }
 
   // Disconnect any active run sessions to the same client

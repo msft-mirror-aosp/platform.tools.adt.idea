@@ -53,11 +53,7 @@ class FromProtoConversionTest {
         .apply {
           countryCode = 310
           networkCode = 410
-          screenLayout =
-            SCREENLAYOUT_SIZE_SMALL or
-              SCREENLAYOUT_LONG_YES or
-              SCREENLAYOUT_LAYOUTDIR_RTL or
-              SCREENLAYOUT_ROUND_YES
+          screenLayout = SCREENLAYOUT_SIZE_SMALL or SCREENLAYOUT_LONG_YES or SCREENLAYOUT_LAYOUTDIR_RTL or SCREENLAYOUT_ROUND_YES
           colorMode = COLOR_MODE_WIDE_COLOR_GAMUT_YES or COLOR_MODE_HDR_YES
           touchScreen = TOUCHSCREEN_STYLUS
           keyboard = KEYBOARD_QWERTY

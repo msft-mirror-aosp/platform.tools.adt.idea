@@ -45,20 +45,14 @@ class SafeArgsKtPackageProviderExtension(val project: Project) : PackageFragment
     if (facet.safeArgsMode != SafeArgsMode.KOTLIN) return null
 
     val packageDescriptors =
-      KtDescriptorCacheModuleService.getInstance(facet.module).getDescriptors(module).takeIf {
-        it.isNotEmpty()
-      } ?: return null
+      KtDescriptorCacheModuleService.getInstance(facet.module).getDescriptors(module).takeIf { it.isNotEmpty() } ?: return null
     return SafeArgsSyntheticPackageProvider(packageDescriptors)
   }
 }
 
-class SafeArgsSyntheticPackageProvider(
-  private val packageDescriptorProvider: Map<FqName, List<PackageFragmentDescriptor>>
-) : PackageFragmentProviderOptimized {
-  override fun collectPackageFragments(
-    fqName: FqName,
-    packageFragments: MutableCollection<PackageFragmentDescriptor>,
-  ) {
+class SafeArgsSyntheticPackageProvider(private val packageDescriptorProvider: Map<FqName, List<PackageFragmentDescriptor>>) :
+  PackageFragmentProviderOptimized {
+  override fun collectPackageFragments(fqName: FqName, packageFragments: MutableCollection<PackageFragmentDescriptor>) {
     val descriptors = packageDescriptorProvider[fqName] ?: return
     packageFragments.addAll(descriptors)
   }
@@ -68,10 +62,7 @@ class SafeArgsSyntheticPackageProvider(
   }
 
   override fun getSubPackagesOf(fqName: FqName, nameFilter: (Name) -> Boolean): List<FqName> {
-    return packageDescriptorProvider
-      .asSequence()
-      .filter { (k, _) -> !k.isRoot && k.parent() == fqName }
-      .mapTo(mutableListOf()) { it.key }
+    return packageDescriptorProvider.asSequence().filter { (k, _) -> !k.isRoot && k.parent() == fqName }.mapTo(mutableListOf()) { it.key }
   }
 
   override fun isEmpty(fqName: FqName): Boolean {

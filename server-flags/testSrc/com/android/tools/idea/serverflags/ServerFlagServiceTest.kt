@@ -33,10 +33,7 @@ class ServerFlagServiceEmptyTest {
     checkProto(service)
   }
 
-  private fun <T> checkNull(
-    service: ServerFlagService,
-    retrieve: (ServerFlagService, String) -> T?,
-  ) {
+  private fun <T> checkNull(service: ServerFlagService, retrieve: (ServerFlagService, String) -> T?) {
     assertThat(retrieve(service, "missing")).isNull()
   }
 

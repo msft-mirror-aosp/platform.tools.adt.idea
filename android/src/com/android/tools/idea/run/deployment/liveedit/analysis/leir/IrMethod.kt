@@ -16,11 +16,7 @@
 package com.android.tools.idea.run.deployment.liveedit.analysis.leir
 
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.ClassNode
 import org.objectweb.asm.tree.MethodNode
-import org.objectweb.asm.tree.analysis.Analyzer
-import org.objectweb.asm.tree.analysis.BasicInterpreter
-import org.objectweb.asm.tree.analysis.BasicValue
 
 class IrMethod(val clazz: IrClass, val node: MethodNode) {
   val name: String = node.name
@@ -28,7 +24,7 @@ class IrMethod(val clazz: IrClass, val node: MethodNode) {
   val access = parseAccess(node.access)
   val signature: String? = node.signature
 
-  fun getReadableDesc() : String {
+  fun getReadableDesc(): String {
     if (clazz.methods.count { it.name == name } > 1) {
       val type = Type.getMethodType(desc)
       val param = type.argumentTypes.joinToString { it.className }
@@ -39,11 +35,14 @@ class IrMethod(val clazz: IrClass, val node: MethodNode) {
   }
 
   // This will only be populated if the kotlin compiler is invoked with the -java-parameters flag.
-  val parameters: List<IrParameter> = node.parameters?.mapIndexed { idx, param ->
-    val visibleAnnotations = node.visibleParameterAnnotations?.get(idx) ?: emptyList()
-    val invisibleAnnotations = node.invisibleParameterAnnotations?.get(idx) ?: emptyList()
-    IrParameter(idx, param, visibleAnnotations, invisibleAnnotations)
-  }?.sortedBy { it.index } ?: emptyList()
+  val parameters: List<IrParameter> =
+    node.parameters
+      ?.mapIndexed { idx, param ->
+        val visibleAnnotations = node.visibleParameterAnnotations?.get(idx) ?: emptyList()
+        val invisibleAnnotations = node.invisibleParameterAnnotations?.get(idx) ?: emptyList()
+        IrParameter(idx, param, visibleAnnotations, invisibleAnnotations)
+      }
+      ?.sortedBy { it.index } ?: emptyList()
 
   val annotations = toAnnotationList(node.visibleAnnotations, node.invisibleAnnotations)
   val instructions = IrInstructionList(node.instructions)
@@ -67,6 +66,6 @@ class IrMethod(val clazz: IrClass, val node: MethodNode) {
   }
 }
 
-private fun shortClassName(name: String) : String {
+private fun shortClassName(name: String): String {
   return name.substring(name.lastIndexOf('.') + 1)
 }

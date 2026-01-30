@@ -101,7 +101,11 @@ class AgpUpgradeComponentNecessityTest : AndroidTestCase() {
     listOf(one, two, three).forEach { i ->
       listOf(one, two, three).forEach { j ->
         listOf(one, two, three).forEach { k ->
-          val thrower = ThrowableRunnable<Exception> { PointNecessity(k).computeNecessity(i, j); throw IllegalArgumentException() }
+          val thrower =
+            ThrowableRunnable<Exception> {
+              PointNecessity(k).computeNecessity(i, j)
+              throw IllegalArgumentException()
+            }
           // assert that standardPointNecessity does not throw anything *other* than an IllegalArgumentException
           assertThrows(IllegalArgumentException::class.java, thrower)
         }
@@ -114,7 +118,11 @@ class AgpUpgradeComponentNecessityTest : AndroidTestCase() {
       listOf(one, two, three, four).forEach { j ->
         listOf(one, two, three, four).forEach { k ->
           listOf(one, two, three, four).forEach { l ->
-            val thrower = ThrowableRunnable<Exception> { RegionNecessity(k, l).computeNecessity(i, j); throw IllegalArgumentException() }
+            val thrower =
+              ThrowableRunnable<Exception> {
+                RegionNecessity(k, l).computeNecessity(i, j)
+                throw IllegalArgumentException()
+              }
             // assert that standardRegionNecessity does not throw anything *other* than an IllegalArgumentException
             assertThrows(IllegalArgumentException::class.java, thrower)
           }

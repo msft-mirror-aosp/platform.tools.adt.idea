@@ -119,8 +119,7 @@ open class FakeComponentPopupBuilder : ComponentPopupBuilder {
 
   override fun setKeyEventHandler(handler: BooleanFunction<in KeyEvent>) = this
 
-  override fun setDimensionServiceKey(project: Project?, key: String?, useForXYLocation: Boolean) =
-    this
+  override fun setDimensionServiceKey(project: Project?, key: String?, useForXYLocation: Boolean) = this
 
   override fun setCancelOnMouseOutCallback(shouldCancel: MouseChecker) = this
 

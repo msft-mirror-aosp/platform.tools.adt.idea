@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.android
 
-import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl.COMPILE_SDK_VERSION
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl.COMPILE_SDK_EXTENSION
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl.COMPILE_SDK_MINOR
+import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl.COMPILE_SDK_VERSION
 import com.android.tools.idea.gradle.dsl.model.android.AndroidModelImpl.NAMESPACE
 import com.android.tools.idea.gradle.dsl.model.android.ProductFlavorModelImpl.MIN_SDK_VERSION
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
@@ -32,31 +32,28 @@ import com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescr
 import com.google.common.collect.ImmutableMap
 import java.util.stream.Stream
 
-class KmpAndroidDslElement(parent: GradleDslElement, name: GradleNameElement) :
-  GradleDslBlockElement(parent, name) {
+class KmpAndroidDslElement(parent: GradleDslElement, name: GradleNameElement) : GradleDslBlockElement(parent, name) {
 
   companion object {
-    val ktsToModelNameMap: ExternalToModelMap = Stream.of(
-      arrayOf("namespace", property, NAMESPACE, VAR),
-      arrayOf("minSdk", property, MIN_SDK_VERSION, VAR),
-      arrayOf("minSdkPreview", property, MIN_SDK_VERSION, VAR),
-      arrayOf("compileSdk", property, COMPILE_SDK_VERSION, VAR),
-      arrayOf("compileSdkExtension", property, COMPILE_SDK_EXTENSION, VAR),
-      arrayOf("compileSdkMinor", property, COMPILE_SDK_MINOR, VAR),
-      arrayOf("compileSdkPreview", property, COMPILE_SDK_VERSION, VAR),
-      ).collect(ModelMapCollector.toModelMap())
+    val ktsToModelNameMap: ExternalToModelMap =
+      Stream.of(
+          arrayOf("namespace", property, NAMESPACE, VAR),
+          arrayOf("minSdk", property, MIN_SDK_VERSION, VAR),
+          arrayOf("minSdkPreview", property, MIN_SDK_VERSION, VAR),
+          arrayOf("compileSdk", property, COMPILE_SDK_VERSION, VAR),
+          arrayOf("compileSdkExtension", property, COMPILE_SDK_EXTENSION, VAR),
+          arrayOf("compileSdkMinor", property, COMPILE_SDK_MINOR, VAR),
+          arrayOf("compileSdkPreview", property, COMPILE_SDK_VERSION, VAR),
+        )
+        .collect(ModelMapCollector.toModelMap())
 
     val KMP_ANDROID: PropertiesElementDescription<KmpAndroidDslElement> =
-      PropertiesElementDescription<KmpAndroidDslElement>(
-        "android", KmpAndroidDslElement::class.java
-      ) { parent, name ->
+      PropertiesElementDescription<KmpAndroidDslElement>("android", KmpAndroidDslElement::class.java) { parent, name ->
         KmpAndroidDslElement(parent, name)
       }
 
     val KMP_ANDROID_LIBRARY: PropertiesElementDescription<KmpAndroidDslElement> =
-      PropertiesElementDescription<KmpAndroidDslElement>(
-        "androidLibrary", KmpAndroidDslElement::class.java
-      ) { parent, name ->
+      PropertiesElementDescription<KmpAndroidDslElement>("androidLibrary", KmpAndroidDslElement::class.java) { parent, name ->
         KmpAndroidDslElement(parent, name)
       }
   }
@@ -66,7 +63,6 @@ class KmpAndroidDslElement(parent: GradleDslElement, name: GradleNameElement) :
   }
 
   override fun getExternalToModelMap(converter: GradleDslNameConverter): ExternalToModelMap {
-    return getExternalToModelMap(
-      converter, ExternalToModelMap.empty, ktsToModelNameMap)
+    return getExternalToModelMap(converter, ExternalToModelMap.empty, ktsToModelNameMap)
   }
 }

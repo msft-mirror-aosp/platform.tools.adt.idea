@@ -57,7 +57,7 @@ class StreamEvent(val event: Common.Event)
 
 private fun TransportServiceGrpc.TransportServiceBlockingStub.eventGroupFlow(
   pollPeriodMs: Long = DELAY_MILLIS,
-  requestBuilder: () -> GetEventGroupsRequest
+  requestBuilder: () -> GetEventGroupsRequest,
 ): Flow<GetEventGroupsResponse> = flow {
   while (true) {
     emit(getEventGroups(requestBuilder()))
@@ -68,6 +68,7 @@ private fun TransportServiceGrpc.TransportServiceBlockingStub.eventGroupFlow(
 @Service(Service.Level.APP)
 class TransportStreamManagerService : Disposable {
   private val client: TransportClient
+
   init {
     // Initialize transport gRpc machinery.
     TransportService.getInstance()
@@ -75,30 +76,22 @@ class TransportStreamManagerService : Disposable {
   }
 
   val streamManager =
-    TransportStreamManager(
-      TransportClient(TransportService.channelName).transportStub,
-      AndroidCoroutineScope(this, Dispatchers.IO)
-    )
+    TransportStreamManager(TransportClient(TransportService.channelName).transportStub, AndroidCoroutineScope(this, Dispatchers.IO))
 
   override fun dispose() = Unit
 }
 
 /**
- * Listens to and manages STREAM events from the transport pipeline. Users can subscribe to the
- * activity flow to listen in on new streams.
+ * Listens to and manages STREAM events from the transport pipeline. Users can subscribe to the activity flow to listen in on new streams.
  *
- * Streams are provided in the form of [TransportStreamChannel], which provides users the ability to
- * register their own listeners while automatically associating them with the stream.
+ * Streams are provided in the form of [TransportStreamChannel], which provides users the ability to register their own listeners while
+ * automatically associating them with the stream.
  *
- * Please use [TransportStreamManagerService] to obtain instance of [TransportStreamManager] in
- * production code.
+ * Please use [TransportStreamManagerService] to obtain instance of [TransportStreamManager] in production code.
  */
 class TransportStreamManager
 @VisibleForTesting
-constructor(
-  private val client: TransportServiceGrpc.TransportServiceBlockingStub,
-  scope: CoroutineScope
-) {
+constructor(private val client: TransportServiceGrpc.TransportServiceBlockingStub, scope: CoroutineScope) {
 
   private val streamState =
     flow {
@@ -109,10 +102,7 @@ constructor(
       }
       .shareIn(scope, SharingStarted.Lazily, 1)
 
-  /**
-   * Collects the current state of connected devices in the form of a flow of [StreamActivity]
-   * events.
-   */
+  /** Collects the current state of connected devices in the form of a flow of [StreamActivity] events. */
   fun streamActivityFlow(): Flow<StreamActivity> = flow {
     val streams = mutableMapOf<Long, TransportStreamChannel>()
     streamState.collect { streamState ->
@@ -143,7 +133,7 @@ constructor(
 class TransportStreamChannel(
   val stream: Common.Stream,
   val client: TransportServiceGrpc.TransportServiceBlockingStub,
-  private val dispatcher: CoroutineDispatcher
+  private val dispatcher: CoroutineDispatcher,
 ) {
   private val isClosed = AtomicBoolean(false)
 
@@ -180,9 +170,7 @@ class TransportStreamChannel(
 
   fun processesFlow(
     filter: (isAlive: Boolean, process: Common.Process) -> Boolean,
-    doQuery: suspend () -> List<Common.Process> = {
-      StreamQueryUtils.queryForProcesses(client, stream.streamId, filter)
-    }
+    doQuery: suspend () -> List<Common.Process> = { StreamQueryUtils.queryForProcesses(client, stream.streamId, filter) },
   ) =
     flow<Common.Process> {
         val processes = mutableMapOf<Int, Common.Process>()
@@ -201,9 +189,7 @@ class TransportStreamChannel(
           // was restarted. We check for this case by looking for known pids that have disappeared
           // from the
           // current query result.
-          deadProcesses.forEach { process ->
-            emit(process.toBuilder().setState(Common.Process.State.DEAD).build())
-          }
+          deadProcesses.forEach { process -> emit(process.toBuilder().setState(Common.Process.State.DEAD).build()) }
 
           // Emit updates in the order they were received
           queryResult.forEach { process ->

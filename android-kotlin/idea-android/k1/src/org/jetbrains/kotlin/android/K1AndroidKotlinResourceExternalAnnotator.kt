@@ -31,7 +31,7 @@ class K1AndroidKotlinResourceExternalAnnotator : AndroidKotlinResourceExternalAn
         val type = referenceTarget.getAndroidResourceType() ?: return null
         if (type == ResourceType.COLOR || type == ResourceType.DRAWABLE || type == ResourceType.MIPMAP) {
             val referenceType = referenceTarget.getResourceReferenceType()
-            @Suppress("SuspiciousPackagePrivateAccess")//false-positive, see https://youtrack.jetbrains.com/issue/KTIJ-34018
+            @Suppress("SuspiciousPackagePrivateAccess") // false-positive, see https://youtrack.jetbrains.com/issue/KTIJ-34018
             return ResourceReference(referenceType.namespace, type, getReferencedName())
         }
         return null
@@ -54,8 +54,7 @@ class K1AndroidKotlinResourceExternalAnnotator : AndroidKotlinResourceExternalAn
             if (SdkConstants.R_CLASS == rClass.name.asString()) {
                 return if ((rClass.containingDeclaration as? PackageFragmentDescriptor)?.fqName?.asString() == SdkConstants.ANDROID_PKG) {
                     AndroidPsiUtils.ResourceReferenceType.FRAMEWORK
-                }
-                else {
+                } else {
                     AndroidPsiUtils.ResourceReferenceType.APP
                 }
             }
@@ -63,5 +62,4 @@ class K1AndroidKotlinResourceExternalAnnotator : AndroidKotlinResourceExternalAn
             return AndroidPsiUtils.ResourceReferenceType.NONE
         }
     }
-
 }

@@ -16,10 +16,10 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.intellij.openapi.externalSystem.model.settings.ExternalSystemExecutionSettings.REMOTE_PROCESS_IDLE_TTL_IN_MS_KEY
-import org.junit.rules.ExternalResource
 import kotlin.time.Duration
+import org.junit.rules.ExternalResource
 
-class DaemonIdleTimeoutRule(private val timeout: Duration): ExternalResource() {
+class DaemonIdleTimeoutRule(private val timeout: Duration) : ExternalResource() {
   override fun before() {
     // If this is not set, tests won't respect the actual value below.
     System.setProperty(USE_EXTERNAL_SYSTEM_REMOTE_PROCESS_IDLE_TTL_FOR_TESTS_KEY, true.toString())

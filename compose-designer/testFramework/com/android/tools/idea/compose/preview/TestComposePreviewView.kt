@@ -109,10 +109,7 @@ class TestComposePreviewView : ComposePreviewView, JPanel {
     refreshCompletedListeners.forEach { it.invoke() }
   }
 
-  /**
-   * Returns a [CompletableDeferred] that completes when the next (or current if it's running)
-   * refresh finishes.
-   */
+  /** Returns a [CompletableDeferred] that completes when the next (or current if it's running) refresh finishes. */
   fun getOnRefreshCompletable() =
     synchronized(nextRefreshLock) {
       if (nextRefreshListener == null) nextRefreshListener = CompletableDeferred()

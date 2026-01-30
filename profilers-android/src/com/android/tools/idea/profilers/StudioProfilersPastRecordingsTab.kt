@@ -18,11 +18,8 @@ package com.android.tools.idea.profilers
 import com.android.tools.profilers.IdeProfilerComponents
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersPastRecordingsTabView
-import com.android.tools.profilers.taskbased.pastrecordings.PastRecordingsTabModel
 
-/**
- * A tab in the Profiler tool window, wrapping a [StudioProfilersPastRecordingsTabView].
- */
+/** A tab in the Profiler tool window, wrapping a [StudioProfilersPastRecordingsTabView]. */
 class StudioProfilersPastRecordingsTab(profilers: StudioProfilers, ideProfilerComponents: IdeProfilerComponents) {
   val view = StudioProfilersPastRecordingsTabView(profilers.pastRecordingsTabModel, ideProfilerComponents)
 }

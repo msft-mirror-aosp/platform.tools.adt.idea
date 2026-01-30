@@ -38,42 +38,21 @@ class PerfgateComposeEssentialsGradleTest : PerfgateComposeGradleTestBase() {
 
   @Test
   fun essentialsMode_5Previews() = runBlocking {
-    Assert.assertEquals(
-      1,
-      composePreviewRepresentation
-        .renderedPreviewElementsInstancesFlowForTest()
-        .value
-        .asCollection()
-        .size,
-    )
+    Assert.assertEquals(1, composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size)
     setUpEssentialsMode()
     addPreviewsAndMeasure(4, 1, buildMeasurements("essentials_5_previews"))
   }
 
   @Test
   fun essentialsMode_30Previews() = runBlocking {
-    Assert.assertEquals(
-      1,
-      composePreviewRepresentation
-        .renderedPreviewElementsInstancesFlowForTest()
-        .value
-        .asCollection()
-        .size,
-    )
+    Assert.assertEquals(1, composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size)
     setUpEssentialsMode()
     addPreviewsAndMeasure(29, 1, buildMeasurements("essentials_30_previews"))
   }
 
   @Test
   fun essentialsMode_500Previews() = runBlocking {
-    Assert.assertEquals(
-      1,
-      composePreviewRepresentation
-        .renderedPreviewElementsInstancesFlowForTest()
-        .value
-        .asCollection()
-        .size,
-    )
+    Assert.assertEquals(1, composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size)
     setUpEssentialsMode()
     addPreviewsAndMeasure(499, 1, buildMeasurements("essentials_500_previews"))
   }
@@ -82,21 +61,12 @@ class PerfgateComposeEssentialsGradleTest : PerfgateComposeGradleTestBase() {
     projectRule.runAndWaitForRefresh(failOnTimeout = false) {
       runWriteActionAndWait {
         AndroidEditorSettings.getInstance().globalState.isPreviewEssentialsModeEnabled = true
-        ApplicationManager.getApplication()
-          .messageBus
-          .syncPublisher(NlOptionsConfigurable.Listener.TOPIC)
-          .onOptionsChanged()
+        ApplicationManager.getApplication().messageBus.syncPublisher(NlOptionsConfigurable.Listener.TOPIC).onOptionsChanged()
       }
       delayUntilCondition(500, 5.seconds) { previewView.focusMode != null }
       previewView.focusMode!!.triggerSelectionChange(
-        SimpleDataContext.builder()
-          .add(getComposePreviewManagerKeyForTests(), composePreviewRepresentation)
-          .build(),
-        composePreviewRepresentation
-          .renderedPreviewElementsInstancesFlowForTest()
-          .value
-          .asCollection()
-          .first(),
+        SimpleDataContext.builder().add(getComposePreviewManagerKeyForTests(), composePreviewRepresentation).build(),
+        composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().first(),
       )
     }
   }

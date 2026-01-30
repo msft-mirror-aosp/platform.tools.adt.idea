@@ -50,16 +50,16 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.Computable
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.utils.editor.commitToPsi
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.fail
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.base.util.KOTLIN_FILE_TYPES
 import org.jetbrains.kotlin.idea.util.module
 import org.jetbrains.kotlin.psi.KtFile
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
-import kotlin.test.fail
 
 fun diff(old: IrClass, new: IrClass): ClassDiff? {
   return Differ.diff(old, new)
@@ -87,82 +87,79 @@ fun disableLiveEdit() {
   LiveEditApplicationConfiguration.getInstance().mode = LiveEditApplicationConfiguration.LiveEditMode.DISABLED
 }
 
-/**
- * Enables Live Edit so that edits to Kotlin files will trigger it
- */
+/** Enables Live Edit so that edits to Kotlin files will trigger it */
 fun enableLiveEdit() {
   LiveEditApplicationConfiguration.getInstance().mode = LiveEditApplicationConfiguration.LiveEditMode.LIVE_EDIT
 }
 
-/**
- * Compiles the given files and parses the generated classes into [IrClass] objects. Returns a map of class name to [IrClass]
- */
+/** Compiles the given files and parses the generated classes into [IrClass] objects. Returns a map of class name to [IrClass] */
 fun AndroidProjectRule.Typed<*, Nothing>.directApiCompileIr(inputFile: KtFile) = directApiCompileIr(listOf(inputFile))
 
-/**
- * Compiles the given file and parses the generated classes into [IrClass] objects. Returns a map of class name to [IrClass]
- */
-fun AndroidProjectRule.Typed<*, Nothing>.directApiCompileIr(inputFiles: List<KtFile>) = directApiCompile(inputFiles).map {
-  IrClass(it)
-}.associateBy { it.name }
+/** Compiles the given file and parses the generated classes into [IrClass] objects. Returns a map of class name to [IrClass] */
+fun AndroidProjectRule.Typed<*, Nothing>.directApiCompileIr(inputFiles: List<KtFile>) =
+  directApiCompile(inputFiles).map { IrClass(it) }.associateBy { it.name }
 
-/**
- * Compile the given file without calling into [LiveEditCompiler]. Should only be used to set up for tests.
- */
+/** Compile the given file without calling into [LiveEditCompiler]. Should only be used to set up for tests. */
 fun AndroidProjectRule.Typed<*, Nothing>.directApiCompileByteArray(inputFile: KtFile) = directApiCompileByteArray(listOf(inputFile))
 
 fun AndroidProjectRule.Typed<*, Nothing>.directApiCompileByteArray(inputFiles: List<KtFile>): HashMap<String, ByteArray> {
   val result = HashMap<String, ByteArray>()
-  directApiCompile(inputFiles).forEach {
-    result[IrClass(it).name] = it
-  }
+  directApiCompile(inputFiles).forEach { result[IrClass(it).name] = it }
   return result
 }
 
-/**
- * Compile the given files without calling into [LiveEditCompiler]. Should only be used to set up for tests.
- */
+/** Compile the given files without calling into [LiveEditCompiler]. Should only be used to set up for tests. */
 fun AndroidProjectRule.Typed<*, Nothing>.directApiCompile(inputFiles: List<KtFile>): List<ByteArray> {
-  return ApplicationManager.getApplication().runReadAction(Computable<List<ByteArray>> {
-    runWithCompileLock {
-      val output = mutableListOf<ByteArray>()
-      if (KotlinPluginModeProvider.isK2Mode()) {
-        @OptIn(KaExperimentalApi::class)
-        inputFiles.forEach { inputFile ->
-          val result = backendCodeGenForK2(inputFile, inputFile.module!!, getCompilerConfiguration(inputFile.module!!, inputFile))
-          result.output.filter { it.path.endsWith(".class") } .forEach { output.add(it.content) }
+  return ApplicationManager.getApplication()
+    .runReadAction(
+      Computable<List<ByteArray>> {
+        runWithCompileLock {
+          val output = mutableListOf<ByteArray>()
+          if (KotlinPluginModeProvider.isK2Mode()) {
+            @OptIn(KaExperimentalApi::class)
+            inputFiles.forEach { inputFile ->
+              val result = backendCodeGenForK2(inputFile, inputFile.module!!, getCompilerConfiguration(inputFile.module!!, inputFile))
+              result.output.filter { it.path.endsWith(".class") }.forEach { output.add(it.content) }
+            }
+          } else {
+            val resolution = fetchResolution(project, inputFiles)
+            val analysisResult = analyze(inputFiles, resolution)
+            val generationState: GenerationState =
+              backendCodeGen(
+                ApplicationLiveEditServices.LegacyForTests(project),
+                project,
+                analysisResult,
+                inputFiles,
+                inputFiles.first().module!!,
+                emptySet(),
+              )
+            generationState.factory
+              .asList()
+              .filter { it.relativePath.endsWith(".class") }
+              .map { it.asByteArray() }
+              .forEach { output.add(it) }
+          }
+          output
         }
-      } else {
-        val resolution = fetchResolution(project, inputFiles)
-        val analysisResult = analyze(inputFiles, resolution)
-        val generationState: GenerationState = backendCodeGen(ApplicationLiveEditServices.LegacyForTests(project),
-                                                              project,
-                                                              analysisResult,
-                                                              inputFiles,
-                                                              inputFiles.first().module!!,
-                                                              emptySet())
-        generationState.factory.asList()
-          .filter { it.relativePath.endsWith(".class") }
-          .map { it.asByteArray() }
-          .forEach { output.add(it) }
       }
-      output
-    }
-  })
+    )
 }
 
-
-fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompiler(file: KtFile) : LiveEditCompiler {
+fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompiler(file: KtFile): LiveEditCompiler {
   val cache = MutableIrClassCache()
   val apk = this.directApiCompileByteArray(file)
   return LiveEditCompiler(this.project, cache).withClasses(apk)
 }
 
 /**
- * Helper to compile a given file. It will behave like the .class of that given file exists from the build system's cache but
- * not our differ cache since it will be the first time it gets compiled.
+ * Helper to compile a given file. It will behave like the .class of that given file exists from the build system's cache but not our differ
+ * cache since it will be the first time it gets compiled.
  */
-fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompile(file: KtFile, modification: String? = null, apiVersions: Set<MinApiLevel> = emptySet()): LiveEditCompilerOutput {
+fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompile(
+  file: KtFile,
+  modification: String? = null,
+  apiVersions: Set<MinApiLevel> = emptySet(),
+): LiveEditCompilerOutput {
   val compiler = this.postDeploymentStateCompiler(file)
   if (modification != null) {
     this.modifyKtFile(file, modification)
@@ -176,7 +173,10 @@ fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompile(file: KtFile
  *
  * Unlike postDeploymentStateCompile. The modifications are not optional. If none is given, we will not perform any compilations.
  */
-fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompiles(file: KtFile, vararg modifications : String): List<LiveEditCompilerOutput> {
+fun AndroidProjectRule.Typed<*, Nothing>.postDeploymentStateCompiles(
+  file: KtFile,
+  vararg modifications: String,
+): List<LiveEditCompilerOutput> {
   val cache = MutableIrClassCache()
   val apk = this.directApiCompileByteArray(file)
   val compiler = LiveEditCompiler(this.project, cache).withClasses(apk)
@@ -200,10 +200,10 @@ fun AndroidProjectRule.Typed<*, Nothing>.initialCache(files: List<KtFile>): Muta
 
 /**
  * Asserts that:
- *  - the diff of [original] and [original] is null
- *  - the diff of [new] and [new] is null
- *  - the diff of [original] and [new] is null
- *  - the diff of [new] and [original] is null
+ * - the diff of [original] and [original] is null
+ * - the diff of [new] and [new] is null
+ * - the diff of [original] and [new] is null
+ * - the diff of [new] and [original] is null
  */
 fun assertNoChanges(original: IrClass, new: IrClass) {
   assertNull(diff(original, original))
@@ -214,10 +214,10 @@ fun assertNoChanges(original: IrClass, new: IrClass) {
 
 /**
  * Asserts that:
- *  - the diff of [original] and [original] is null
- *  - the diff of [new] and [new] is null
- *  - the diff of [original] and [new] has changes
- *  - the diff of [new] and [original] has changes
+ * - the diff of [original] and [original] is null
+ * - the diff of [new] and [new] is null
+ * - the diff of [original] and [new] has changes
+ * - the diff of [new] and [original] has changes
  */
 fun assertChanges(original: IrClass, new: IrClass) {
   assertNull(diff(original, original))
@@ -228,49 +228,55 @@ fun assertChanges(original: IrClass, new: IrClass) {
 
 fun assertFields(diff: ClassDiff, visitors: Map<String, FieldVisitor>) {
   val fields = visitors.keys.toMutableSet()
-  diff.accept(object : ClassVisitor {
-    override fun visitFields(added: List<IrField>, removed: List<IrField>, modified: List<FieldDiff>) {
-      for (field in modified) {
-        visitors[field.name]?.let { field.accept(it) }
-        fields.remove(field.name)
+  diff.accept(
+    object : ClassVisitor {
+      override fun visitFields(added: List<IrField>, removed: List<IrField>, modified: List<FieldDiff>) {
+        for (field in modified) {
+          visitors[field.name]?.let { field.accept(it) }
+          fields.remove(field.name)
+        }
       }
     }
-  })
+  )
   assertTrue(fields.isEmpty())
 }
 
 fun assertMethods(diff: ClassDiff, visitors: Map<String, MethodVisitor>) {
   val methods = visitors.keys.toMutableSet()
-  diff.accept(object : ClassVisitor {
-    override fun visitMethods(added: List<IrMethod>, removed: List<IrMethod>, modified: List<MethodDiff>) {
-      for (method in modified) {
-        val key = method.name + method.desc
-        visitors[key]?.let { method.accept(it) }
-        methods.remove(key)
+  diff.accept(
+    object : ClassVisitor {
+      override fun visitMethods(added: List<IrMethod>, removed: List<IrMethod>, modified: List<MethodDiff>) {
+        for (method in modified) {
+          val key = method.name + method.desc
+          visitors[key]?.let { method.accept(it) }
+          methods.remove(key)
+        }
       }
     }
-  })
+  )
   assertTrue(methods.isEmpty())
 }
 
 fun assertLocalVars(diff: ClassDiff, methodName: String, visitors: Map<Int, LocalVariableVisitor>) {
   val localVars = visitors.keys.toMutableSet()
-  val localVisitor = object : MethodVisitor {
-    override fun visitLocalVariables(added: List<IrLocalVariable>, removed: List<IrLocalVariable>, modified: List<LocalVariableDiff>) {
-      for (localVar in modified) {
-        val key = localVar.index
-        visitors[key]?.let { localVar.accept(it) }
-        localVars.remove(key)
+  val localVisitor =
+    object : MethodVisitor {
+      override fun visitLocalVariables(added: List<IrLocalVariable>, removed: List<IrLocalVariable>, modified: List<LocalVariableDiff>) {
+        for (localVar in modified) {
+          val key = localVar.index
+          visitors[key]?.let { localVar.accept(it) }
+          localVars.remove(key)
+        }
       }
     }
-  }
-  val methodVisitor = object : ClassVisitor {
-    override fun visitMethods(added: List<IrMethod>, removed: List<IrMethod>, modified: List<MethodDiff>) {
-      val method = modified.first { it.name == methodName }
-      assertNotNull(method)
-      method.accept(localVisitor)
+  val methodVisitor =
+    object : ClassVisitor {
+      override fun visitMethods(added: List<IrMethod>, removed: List<IrMethod>, modified: List<MethodDiff>) {
+        val method = modified.first { it.name == methodName }
+        assertNotNull(method)
+        method.accept(localVisitor)
+      }
     }
-  }
   diff.accept(methodVisitor)
   assertTrue(localVars.isEmpty())
 }

@@ -22,11 +22,11 @@ import com.android.sdklib.AndroidApiLevel
 import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.idea.execution.common.launchAndWaitForProcess
 import com.intellij.testFramework.ProjectRule
-import org.junit.Rule
-import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.test.fail
+import org.junit.Rule
+import org.junit.Test
 import org.junit.rules.RuleChain
 
 class AndroidProcessHandlerIntegrationTest {
@@ -41,13 +41,8 @@ class AndroidProcessHandlerIntegrationTest {
 
   @Test
   fun callCustomTerminationCallback() {
-    val deviceState = fakeAdbRule.connectDevice(
-      "test_device_001",
-      "test1",
-      "test2",
-      "model",
-      AndroidApiLevel(26),
-      DeviceState.HostConnectionType.USB)
+    val deviceState =
+      fakeAdbRule.connectDevice("test_device_001", "test1", "test2", "model", AndroidApiLevel(26), DeviceState.HostConnectionType.USB)
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
     deviceState.launchAndWaitForProcess(1234, 4321, appId, true)
@@ -67,13 +62,8 @@ class AndroidProcessHandlerIntegrationTest {
 
   @Test
   fun callForceStopIfCustomCallbackIsNotPassed() {
-    val deviceState = fakeAdbRule.connectDevice(
-      "test_device_001",
-      "test1",
-      "test2",
-      "model",
-      AndroidApiLevel(26),
-      DeviceState.HostConnectionType.USB)
+    val deviceState =
+      fakeAdbRule.connectDevice("test_device_001", "test1", "test2", "model", AndroidApiLevel(26), DeviceState.HostConnectionType.USB)
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
 
     deviceState.launchAndWaitForProcess(1234, 4321, appId, true)

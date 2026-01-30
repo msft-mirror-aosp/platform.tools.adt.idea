@@ -35,9 +35,7 @@ import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
-/**
- * Module service responsible for managing background actions taken by [ResourceFolderRepository].
- */
+/** Module service responsible for managing background actions taken by [ResourceFolderRepository]. */
 class ResourceFolderRepositoryBackgroundActions : Disposable.Default {
 
   private val updateChannel: Channel<Pair<String, Runnable>> = Channel(Channel.UNLIMITED)
@@ -48,25 +46,19 @@ class ResourceFolderRepositoryBackgroundActions : Disposable.Default {
     coroutineScope
       .launch(Dispatchers.Default) {
         supervisorScope {
-          updateChannel.consumeEach { (repositorySimpleId, action) ->
-            launch { doRunInUpdateQueue(repositorySimpleId, action) }.join()
-          }
+          updateChannel.consumeEach { (repositorySimpleId, action) -> launch { doRunInUpdateQueue(repositorySimpleId, action) }.join() }
         }
       }
       .cancelOnDispose(this)
 
     coroutineScope
-      .launch(Dispatchers.Default) {
-        supervisorScope {
-          wolfChannel.consumeEach { launch { blockingContext { it.run() } }.join() }
-        }
-      }
+      .launch(Dispatchers.Default) { supervisorScope { wolfChannel.consumeEach { launch { blockingContext { it.run() } }.join() } } }
       .cancelOnDispose(this)
   }
 
   /**
-   * Runs the given update action on [updateExecutor] in a read action. All update actions are
-   * executed in the same order they were scheduled.
+   * Runs the given update action on [updateExecutor] in a read action. All update actions are executed in the same order they were
+   * scheduled.
    */
   fun runInUpdateQueue(repository: Any, action: Runnable) {
     val repositorySimpleId = repository.simpleId
@@ -95,9 +87,7 @@ class ResourceFolderRepositoryBackgroundActions : Disposable.Default {
         if (e is ProcessCanceledException) {
           ResourceUpdateTracer.log { "$repositorySimpleId: Update $action was canceled" }
         } else {
-          ResourceUpdateTracer.log {
-            "$repositorySimpleId: Update $action finished with exception $e\n${getStackTrace(e)}"
-          }
+          ResourceUpdateTracer.log { "$repositorySimpleId: Update $action finished with exception $e\n${getStackTrace(e)}" }
           thisLogger().error(e)
         }
       }
@@ -108,8 +98,7 @@ class ResourceFolderRepositoryBackgroundActions : Disposable.Default {
     private val coroutineScope
       get() = application.service<ScopeService>().coroutineScope
 
-    @JvmStatic
-    fun getInstance(module: Module) = module.service<ResourceFolderRepositoryBackgroundActions>()
+    @JvmStatic fun getInstance(module: Module) = module.service<ResourceFolderRepositoryBackgroundActions>()
 
     @JvmStatic
     fun runInBackground(action: Runnable) {
@@ -120,9 +109,9 @@ class ResourceFolderRepositoryBackgroundActions : Disposable.Default {
   /**
    * Service that provides a coroutine scope to [ResourceFolderRepositoryBackgroundActions].
    *
-   * The platform does not provide coroutine scopes to module services, so one can't be sent
-   * directly to [ResourceFolderRepositoryBackgroundActions]. This service can be used instead,
-   * since each module service can share the same scope and just use separate [Channel]s.
+   * The platform does not provide coroutine scopes to module services, so one can't be sent directly to
+   * [ResourceFolderRepositoryBackgroundActions]. This service can be used instead, since each module service can share the same scope and
+   * just use separate [Channel]s.
    */
   @Service private class ScopeService(val coroutineScope: CoroutineScope)
 }

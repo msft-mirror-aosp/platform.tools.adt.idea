@@ -18,8 +18,6 @@ package com.android.tools.idea.rendering
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.Result
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.xml.XmlFile
 import org.intellij.lang.annotations.Language
 import org.junit.Assert.assertEquals
@@ -27,45 +25,40 @@ import org.junit.Rule
 import org.junit.Test
 
 class ReplaceTagFixTest {
-  @get:Rule
-  val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   @Test
   fun testTagReplace() {
     @Language("XML")
-    val layoutContents = """
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content">
-    <TextViw
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content">
-    </TextViw>
-
-    <LinearLayout
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content">
-     <TextView
+    val layoutContents =
+      """
+      <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
           android:layout_width="fill_parent"
-          android:layout_height="wrap_content"
-          android:text="TextViw"
-      />
-  </LinearLayout>
-</LinearLayout>
-    """.trimIndent()
+          android:layout_height="wrap_content">
+          <TextViw
+              android:layout_width="fill_parent"
+              android:layout_height="wrap_content">
+          </TextViw>
+
+          <LinearLayout
+          android:layout_width="fill_parent"
+          android:layout_height="wrap_content">
+           <TextView
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="TextViw"
+            />
+        </LinearLayout>
+      </LinearLayout>
+      """
+        .trimIndent()
     val xmlFile = projectRule.fixture.addFileToProject("src/res/layout/test.xml", layoutContents) as XmlFile
 
-    ApplicationManager.getApplication().invokeAndWait {
-      ReplaceTagFix(xmlFile, "TextViw", "TextView").run()
-    }
+    ApplicationManager.getApplication().invokeAndWait { ReplaceTagFix(xmlFile, "TextViw", "TextView").run() }
 
-    val afterText = ReadAction.compute<String, Throwable> {
-      xmlFile.document?.text
-    }!!
+    val afterText = ReadAction.compute<String, Throwable> { xmlFile.document?.text }!!
 
-    val matches = Regex("TextViw").findAll(afterText)
-      .map { it.value }
-      .toList()
+    val matches = Regex("TextViw").findAll(afterText).map { it.value }.toList()
 
     assertEquals(1, matches.size)
   }

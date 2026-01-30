@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.editors.fast
 
-import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.components.Service
@@ -24,9 +23,7 @@ import com.intellij.openapi.components.Storage
 import com.intellij.openapi.components.StoragePathMacros
 import org.jetbrains.annotations.TestOnly
 
-/**
- * Service that handles and persists the enabled state of the Fast Preview.
- */
+/** Service that handles and persists the enabled state of the Fast Preview. */
 @com.intellij.openapi.components.State(name = "FastPreviewConfiguration", storages = [(Storage(StoragePathMacros.NON_ROAMABLE_FILE))])
 @Service
 class FastPreviewConfiguration : SimplePersistentStateComponent<FastPreviewConfiguration.State>(State()) {
@@ -48,8 +45,6 @@ class FastPreviewConfiguration : SimplePersistentStateComponent<FastPreviewConfi
   }
 
   companion object {
-    fun getInstance(): FastPreviewConfiguration = ApplicationManager.getApplication().getService(
-      FastPreviewConfiguration::class.java
-    )
+    fun getInstance(): FastPreviewConfiguration = ApplicationManager.getApplication().getService(FastPreviewConfiguration::class.java)
   }
 }

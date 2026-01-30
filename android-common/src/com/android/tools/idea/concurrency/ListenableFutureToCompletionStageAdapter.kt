@@ -23,14 +23,14 @@ import java.util.concurrent.CompletableFuture
 
 internal class ListenableFutureToCompletionStageAdapter<T>(val wrapped: ListenableFuture<T>) : CompletableFuture<T>(), FutureCallback<T> {
   init {
-    Futures.addCallback(wrapped, this, MoreExecutors.directExecutor());
+    Futures.addCallback(wrapped, this, MoreExecutors.directExecutor())
   }
 
   override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
     // Note that we store these in local variables rather than just writing this as one "&&" expression since
     // we want to unconditionally call both cancel methods even if the first one returns false.
-    val result1= wrapped.cancel(mayInterruptIfRunning)
-    val result2= super.cancel(mayInterruptIfRunning)
+    val result1 = wrapped.cancel(mayInterruptIfRunning)
+    val result2 = super.cancel(mayInterruptIfRunning)
     return result1 && result2
   }
 

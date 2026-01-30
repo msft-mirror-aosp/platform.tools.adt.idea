@@ -16,9 +16,9 @@
 package com.android.tools.idea.gradle.structure.configurables
 
 import com.android.tools.idea.gradle.structure.configurables.ui.PropertiesUiModel
+import com.android.tools.idea.gradle.structure.configurables.ui.androidGradlePluginVersionViewer
 import com.android.tools.idea.gradle.structure.configurables.ui.project.ProjectPropertiesConfigPanel
 import com.android.tools.idea.gradle.structure.configurables.ui.simplePropertyEditor
-import com.android.tools.idea.gradle.structure.configurables.ui.androidGradlePluginVersionViewer
 import com.android.tools.idea.gradle.structure.configurables.ui.uiProperty
 import com.android.tools.idea.gradle.structure.model.PsProjectDescriptors
 import com.android.tools.idea.structure.dialog.TrackedConfigurable
@@ -30,22 +30,19 @@ import javax.swing.JComponent
 
 const val PROJECT_VIEW = "ProjectView"
 
-/**
- * Configurable defining the Project panel in the Project Structure Dialog.
- */
-class ProjectPerspectiveConfigurable(private val context: PsContext)
-  : BaseConfigurable(), TrackedConfigurable, Disposable {
+/** Configurable defining the Project panel in the Project Structure Dialog. */
+class ProjectPerspectiveConfigurable(private val context: PsContext) : BaseConfigurable(), TrackedConfigurable, Disposable {
   private var uiDisposed = true
+
   override fun getDisplayName(): String = "Project"
+
   override val leftConfigurable = PSDEvent.PSDLeftConfigurable.PROJECT_STRUCTURE_DIALOG_LEFT_CONFIGURABLE_PROJECT
 
   override fun createComponent(): JComponent? =
     ProjectPropertiesConfigPanel(context.project, context)
       .also { Disposer.register(this, it) }
       .getComponent()
-      .also {
-        it.name = PROJECT_VIEW
-      }
+      .also { it.name = PROJECT_VIEW }
 
   override fun apply() = context.applyChanges()
 
@@ -72,5 +69,6 @@ fun projectPropertiesModel() =
       // TODO(b/123013466): [New PSD] Analytics for new PSD missing fields.
       uiProperty(PsProjectDescriptors.androidGradlePluginVersion, ::androidGradlePluginVersionViewer, null),
       // TODO(b/123013466): [New PSD] Analytics for new PSD missing fields.
-      uiProperty(PsProjectDescriptors.gradleVersion, ::simplePropertyEditor, null)))
-
+      uiProperty(PsProjectDescriptors.gradleVersion, ::simplePropertyEditor, null),
+    )
+  )

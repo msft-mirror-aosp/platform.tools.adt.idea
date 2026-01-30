@@ -41,8 +41,8 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 /**
- * Class used for bundling together some data used across the tests in [RenderQualityManagerTest].
- * This class is conceptually acting as a "preview tool" using a RenderQualityManager.
+ * Class used for bundling together some data used across the tests in [RenderQualityManagerTest]. This class is conceptually acting as a
+ * "preview tool" using a RenderQualityManager.
  */
 private class TestPreviewTool {
   var errorMargin: Float = 0.1f
@@ -114,10 +114,7 @@ class RenderQualityManagerTest {
     Disposer.register(projectRule.disposable, surfaceMock)
     Disposer.register(projectRule.disposable, sceneManagerMock)
 
-    qualityManager =
-      DefaultRenderQualityManager(surfaceMock, TestRenderQualityPolicy(tool)) {
-        tool.qualityChangeMightBeNeeded()
-      }
+    qualityManager = DefaultRenderQualityManager(surfaceMock, TestRenderQualityPolicy(tool)) { tool.qualityChangeMightBeNeeded() }
   }
 
   @Test

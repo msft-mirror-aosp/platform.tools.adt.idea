@@ -36,23 +36,14 @@ class ChangeListenerProjectService(private val project: Project) : Disposable.De
     project.messageBus.connect(this).apply {
       subscribe(
         SafeArgsModeModuleService.MODE_CHANGED,
-        SafeArgsModeModuleService.SafeArgsModeChangedListener { module, mode ->
-          dispatchSafeArgsModeChange(module)
-        },
+        SafeArgsModeModuleService.SafeArgsModeChangedListener { module, mode -> dispatchSafeArgsModeChange(module) },
       )
-      subscribe(
-        PROJECT_SYSTEM_SYNC_TOPIC,
-        ProjectSystemSyncManager.SyncResultListener { dispatchProjectSystemSync() },
-      )
+      subscribe(PROJECT_SYSTEM_SYNC_TOPIC, ProjectSystemSyncManager.SyncResultListener { dispatchProjectSystemSync() })
     }
   }
 
   private fun dispatchSafeArgsModeChange(module: Module) {
-    runInEdt {
-      module.fireModificationEvent {
-        KotlinModuleStateModificationEvent(it, KotlinModuleStateModificationKind.UPDATE)
-      }
-    }
+    runInEdt { module.fireModificationEvent { KotlinModuleStateModificationEvent(it, KotlinModuleStateModificationKind.UPDATE) } }
   }
 
   private fun dispatchProjectSystemSync() {

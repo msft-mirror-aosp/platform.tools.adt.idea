@@ -45,21 +45,14 @@ interface AndroidProjectEntryProvider {
   fun getProjectEntries(): List<ChooseAndroidProjectEntry>
 
   companion object {
-    val EP_NAME =
-      ExtensionPointName.create<AndroidProjectEntryProvider>(
-        "com.android.androidProjectEntryProvider"
-      )
+    val EP_NAME = ExtensionPointName.create<AndroidProjectEntryProvider>("com.android.androidProjectEntryProvider")
 
-    fun getAllProjectEntries(): List<ChooseAndroidProjectEntry> =
-      EP_NAME.extensionList.flatMap { it.getProjectEntries() }
+    fun getAllProjectEntries(): List<ChooseAndroidProjectEntry> = EP_NAME.extensionList.flatMap { it.getProjectEntries() }
   }
 }
 
-class FormFactorProjectEntry(
-  val formFactorTitle: String,
-  val templates: List<Template>,
-  selectedTemplate: Template?,
-) : ChooseAndroidProjectEntry {
+class FormFactorProjectEntry(val formFactorTitle: String, val templates: List<Template>, selectedTemplate: Template?) :
+  ChooseAndroidProjectEntry {
   var selectedTemplate by mutableStateOf(selectedTemplate)
 
   @Composable
@@ -69,11 +62,7 @@ class FormFactorProjectEntry(
 
   @Composable
   override fun AndroidProjectEntryDetails() {
-    TemplateGrid(
-      templates = templates,
-      selectedTemplate = selectedTemplate,
-      onTemplateClick = { template -> selectedTemplate = template },
-    )
+    TemplateGrid(templates = templates, selectedTemplate = selectedTemplate, onTemplateClick = { template -> selectedTemplate = template })
   }
 
   override val canGoForward = derivedStateOf { selectedTemplate != null }
@@ -83,8 +72,7 @@ class FormFactorProjectEntry(
       newProjectModuleModel.formFactor.set(template.formFactor)
       newProjectModuleModel.newRenderTemplate.setNullableValue(template)
       val hasExtraDetailStep = template.uiContexts.contains(WizardUiContext.NewProjectExtraDetail)
-      newProjectModuleModel.extraRenderTemplateModel.newTemplate =
-        if (hasExtraDetailStep) template else NoActivity
+      newProjectModuleModel.extraRenderTemplateModel.newTemplate = if (hasExtraDetailStep) template else NoActivity
     }
   }
 }

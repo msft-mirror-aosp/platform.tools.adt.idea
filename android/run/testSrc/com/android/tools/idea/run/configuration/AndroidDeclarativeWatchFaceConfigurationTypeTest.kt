@@ -23,7 +23,6 @@ import com.intellij.compiler.options.CompileStepBeforeRun
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.openapi.extensions.ExtensionNotApplicableException
-import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
@@ -57,13 +56,10 @@ class AndroidDeclarativeWatchFaceConfigurationTypeTest {
   @Test
   fun `default make task is disabled`() {
     val factory = AndroidDeclarativeWatchFaceConfigurationType().configurationFactories.single()
-    val configSettings = RunManager.getInstance(project)
-      .createConfiguration("test config", factory)
+    val configSettings = RunManager.getInstance(project).createConfiguration("test config", factory)
     val beforeRunTasks = configSettings.configuration.beforeRunTasks
 
-    val makeTasks = beforeRunTasks
-      .filterIsInstance<CompileStepBeforeRun.MakeBeforeRunTask>()
-      .filter { it.isEnabled }
+    val makeTasks = beforeRunTasks.filterIsInstance<CompileStepBeforeRun.MakeBeforeRunTask>().filter { it.isEnabled }
     assertThat(makeTasks).isEmpty()
   }
 }

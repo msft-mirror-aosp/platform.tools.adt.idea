@@ -16,8 +16,7 @@ import org.mockito.kotlin.whenever
 class NavStatusCacheTest {
   @get:Rule val safeArgsRule = SafeArgsRule(SafeArgsMode.KOTLIN)
 
-  private val changeReasons: MutableSet<NavInfoChangeReason> =
-    EnumSet.noneOf(NavInfoChangeReason::class.java)
+  private val changeReasons: MutableSet<NavInfoChangeReason> = EnumSet.noneOf(NavInfoChangeReason::class.java)
   private val fetcher = mock<NavInfoFetcherBase>()
   private lateinit var invalidate: (NavInfoChangeReason) -> Unit
   private lateinit var computeStatus: (NavInfo) -> Any

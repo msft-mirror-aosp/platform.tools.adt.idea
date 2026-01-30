@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.structure.model.meta
 import com.android.tools.idea.gradle.structure.configurables.ui.properties.EditorExtensionAction
 import com.android.tools.idea.gradle.structure.configurables.ui.properties.ModelPropertyEditor
 import com.android.tools.idea.gradle.structure.configurables.ui.properties.ModelPropertyEditorFactory
-import com.android.tools.idea.gradle.structure.model.PsModule
 import com.android.tools.idea.gradle.structure.model.PsProject
 import com.android.tools.idea.util.toVirtualFile
 import com.intellij.icons.AllIcons
@@ -29,7 +28,7 @@ import javax.swing.Icon
 
 class BrowseFilesExtension<T : Any, PropertyCoreT : ModelPropertyCore<T>>(
   private val project: PsProject,
-  private val propertyContext: FileTypePropertyContext<T>
+  private val propertyContext: FileTypePropertyContext<T>,
 ) : EditorExtensionAction<T, PropertyCoreT> {
 
   override val title: String = "Choose File"
@@ -42,38 +41,33 @@ class BrowseFilesExtension<T : Any, PropertyCoreT : ModelPropertyCore<T>>(
   override fun invoke(
     property: PropertyCoreT,
     editor: ModelPropertyEditor<T>,
-    editorFactory: ModelPropertyEditorFactory<T, PropertyCoreT>) {
+    editorFactory: ModelPropertyEditorFactory<T, PropertyCoreT>,
+  ) {
 
     val resolveRootVirtualFile = propertyContext.resolveRootDir
     val browseRootVirtualFile = propertyContext.browseRootDir?.toVirtualFile()
 
     fun normalizePath(path: String): String =
-      if (resolveRootVirtualFile == null) path
-      else File(path).relativeToOrSelf(resolveRootVirtualFile).path
+      if (resolveRootVirtualFile == null) path else File(path).relativeToOrSelf(resolveRootVirtualFile).path
 
     fun String.resolveAbsoluteFile() = let { path ->
-      if (resolveRootVirtualFile == null) File(path).absoluteFile
-      else resolveRootVirtualFile.resolve(File(path)).absoluteFile
+      if (resolveRootVirtualFile == null) File(path).absoluteFile else resolveRootVirtualFile.resolve(File(path)).absoluteFile
     }
 
     editor.updateProperty()
-    val descriptor = FileChooserDescriptor(true, false, false, true, false, false).apply {
-      withTreeRootVisible(true)
-      withShowHiddenFiles(false)
-      propertyContext.filterPredicate?.let { predicate -> withFileFilter { predicate(File(it.path)) } }
-      browseRootVirtualFile?.let { withRoots(it) }
-    }
+    val descriptor =
+      FileChooserDescriptor(true, false, false, true, false, false).apply {
+        withTreeRootVisible(true)
+        withShowHiddenFiles(false)
+        propertyContext.filterPredicate?.let { predicate -> withFileFilter { predicate(File(it.path)) } }
+        browseRootVirtualFile?.let { withRoots(it) }
+      }
     val result =
-      FileChooserFactory.getInstance().createFileChooser(descriptor, project.ideProject, editor.component)
+      FileChooserFactory.getInstance()
+        .createFileChooser(descriptor, project.ideProject, editor.component)
         .choose(
           project.ideProject,
-          property
-            .getParsedValue()
-            .value
-            .maybeValue
-            ?.let { propertyContext.format(it) }
-            ?.resolveAbsoluteFile()
-            ?.toVirtualFile()
+          property.getParsedValue().value.maybeValue?.let { propertyContext.format(it) }?.resolveAbsoluteFile()?.toVirtualFile(),
         )
     val selectedPath = result.firstOrNull()?.path ?: return
     property.setParsedValue(propertyContext.parse(normalizePath(selectedPath)).value)

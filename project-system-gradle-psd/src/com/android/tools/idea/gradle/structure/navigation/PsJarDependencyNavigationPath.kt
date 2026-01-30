@@ -15,18 +15,17 @@
  */
 package com.android.tools.idea.gradle.structure.navigation
 
-import com.android.tools.idea.gradle.structure.configurables.DependenciesPerspectiveConfigurable
 import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.android.tools.idea.gradle.structure.configurables.dependencies.module.MODULE_DEPENDENCIES_PLACE_NAME
 import com.android.tools.idea.gradle.structure.model.PsJarDependency
 import com.android.tools.idea.gradle.structure.model.PsModulePath
-import com.android.tools.idea.gradle.structure.model.PsPath
 import com.android.tools.idea.gradle.structure.model.PsPlaceBasedPath
 import com.intellij.ui.navigation.Place
 
 data class PsJarDependencyNavigationPath(override val parent: PsDependenciesNavigationPath, val dependency: String) : PsPlaceBasedPath() {
-  constructor (dependency: PsJarDependency) :
-    this(PsDependenciesNavigationPath(PsModulePath(dependency.parent)), "${dependency.joinedConfigurationNames}/${dependency.filePath}")
+  constructor(
+    dependency: PsJarDependency
+  ) : this(PsDependenciesNavigationPath(PsModulePath(dependency.parent)), "${dependency.joinedConfigurationNames}/${dependency.filePath}")
 
   override fun queryPlace(place: Place, context: PsContext) {
     parent.queryPlace(place, context)

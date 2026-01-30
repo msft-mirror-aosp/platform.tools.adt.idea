@@ -47,8 +47,8 @@ import kotlinx.datetime.toKotlinInstant
 private val NEGATIVE_INFINITY = Duration.INFINITE * -1
 
 /**
- * Abstract read-through, on-disk cache of remotely accessed files. Implementations need to provide
- * [fetchAndFilterLocked] which actually does the work of fetching the data.
+ * Abstract read-through, on-disk cache of remotely accessed files. Implementations need to provide [fetchAndFilterLocked] which actually
+ * does the work of fetching the data.
  */
 abstract class RemoteFileCache<IdentifierType>(
   private val coroutineScope: CoroutineScope,
@@ -61,10 +61,7 @@ abstract class RemoteFileCache<IdentifierType>(
   private val tmpDir = createTempDirectory()
   private val mutex = Mutex()
 
-  /**
-   * Calls [getWithStats] but does not include a [FetchStats] in the return value and does not wrap
-   * exceptions.
-   */
+  /** Calls [getWithStats] but does not include a [FetchStats] in the return value and does not wrap exceptions. */
   fun get(
     identifier: IdentifierType,
     maxFileAge: Duration = NEGATIVE_INFINITY, // By default, no caching at all, EVER!
@@ -80,14 +77,11 @@ abstract class RemoteFileCache<IdentifierType>(
     }
 
   /**
-   * Downloads a file with the given [identifier] and returns a [Deferred] for the [Path] to the
-   * downloaded file.
+   * Downloads a file with the given [identifier] and returns a [Deferred] for the [Path] to the downloaded file.
    *
-   * If a [transform] is provided, this transform is applied to the file before writing to disk. If
-   * the file is already downloaded, not more than [maxFileAge] old, or the server indicates the
-   * file has not changed, the cached copy will be provided and the [transform] will NOT be
-   * re-applied. If an [Exception] is thrown, it will be wrapped with [RemoteFileCacheException],
-   * which holds a [FetchStats] object.
+   * If a [transform] is provided, this transform is applied to the file before writing to disk. If the file is already downloaded, not more
+   * than [maxFileAge] old, or the server indicates the file has not changed, the cached copy will be provided and the [transform] will NOT
+   * be re-applied. If an [Exception] is thrown, it will be wrapped with [RemoteFileCacheException], which holds a [FetchStats] object.
    */
   fun getWithStats(
     identifier: IdentifierType,
@@ -95,9 +89,7 @@ abstract class RemoteFileCache<IdentifierType>(
     indicator: ProgressIndicator? = null,
     transform: ((InputStream) -> InputStream)? = null,
   ): Deferred<Pair<Path, FetchStats>> =
-    coroutineScope.async(ioDispatcher, CoroutineStart.UNDISPATCHED) {
-      doGet(identifier, maxFileAge, indicator, transform)
-    }
+    coroutineScope.async(ioDispatcher, CoroutineStart.UNDISPATCHED) { doGet(identifier, maxFileAge, indicator, transform) }
 
   /** Actually does the work to get the value (and build the [FetchStats]). */
   private suspend fun doGet(
@@ -121,9 +113,7 @@ abstract class RemoteFileCache<IdentifierType>(
       // Otherwise yield onto the ioDispatcher and suspend.
       yield()
       fetchAndFilterLocked(existing, identifier, indicator, start)
-        .apply {
-          require(startsWith(tmpDir)) { "Can only return Paths created with getNewWritablePath()!" }
-        }
+        .apply { require(startsWith(tmpDir)) { "Can only return Paths created with getNewWritablePath()!" } }
         .transform(files[identifier], transform, start)
         .also {
           if (existing != it.first) {
@@ -150,16 +140,14 @@ abstract class RemoteFileCache<IdentifierType>(
     val numBytesCached: Long = 0,
   )
 
-  class RemoteFileCacheException(val fetchStats: FetchStats, delegate: Exception) :
-    Exception() {
+  class RemoteFileCacheException(val fetchStats: FetchStats, delegate: Exception) : Exception() {
     override val cause: Exception = delegate
     override val message = delegate.message
   }
 
   /**
-   * Actually fetches the file, returning a [Path] to the file. The returned [Path] must be obtained
-   * via a call to [getNewWritablePath]. This method can also return [existing], if the file has not
-   * been modified and did not need to be fetched anew.
+   * Actually fetches the file, returning a [Path] to the file. The returned [Path] must be obtained via a call to [getNewWritablePath].
+   * This method can also return [existing], if the file has not been modified and did not need to be fetched anew.
    */
   protected abstract fun fetchAndFilterLocked(
     existing: Path?,
@@ -171,11 +159,7 @@ abstract class RemoteFileCache<IdentifierType>(
   /** Gets a new [Path] where we can store the result of fetching the file. */
   protected fun getNewWritablePath() = createTempFile(tmpDir)
 
-  private fun Path.transform(
-    cachedPath: Path?,
-    transform: ((InputStream) -> InputStream)?,
-    start: TimeMark,
-  ): Pair<Path, FetchStats> {
+  private fun Path.transform(cachedPath: Path?, transform: ((InputStream) -> InputStream)?, start: TimeMark): Pair<Path, FetchStats> {
     // Don't bother with the transform if we want to serve the cached file. This means we found out
     // authoritatively the file wasn't modified (e.g. HTTP 403) and despite being stale, we can
     // still serve it.
@@ -193,9 +177,7 @@ abstract class RemoteFileCache<IdentifierType>(
       else {
         val transformedPath = getNewWritablePath()
         try {
-          Files.newInputStream(this).use {
-            Files.copy(transform(it), transformedPath, StandardCopyOption.REPLACE_EXISTING)
-          }
+          Files.newInputStream(this).use { Files.copy(transform(it), transformedPath, StandardCopyOption.REPLACE_EXISTING) }
         } catch (e: Exception) {
           transformedPath.deleteIfExists()
           // Nothing was cached because we threw.
@@ -208,12 +190,7 @@ abstract class RemoteFileCache<IdentifierType>(
         transformedPath
       }
 
-    val stats =
-      FetchStats(
-        start.elapsedNow(),
-        numBytesFetched = numBytesFetched,
-        numBytesCached = pathToReturn.fileSize(),
-      )
+    val stats = FetchStats(start.elapsedNow(), numBytesFetched = numBytesFetched, numBytesCached = pathToReturn.fileSize())
     // Set the last modified time using our injected clock.
     pathToReturn.setLastModifiedTime(FileTime.from(clock.now().toJavaInstant()))
     return pathToReturn to stats
