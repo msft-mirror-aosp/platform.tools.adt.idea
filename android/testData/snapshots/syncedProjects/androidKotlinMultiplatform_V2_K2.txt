@@ -1983,6 +1983,11 @@ PROJECT                       : Kotlin Multiplatform
         ORDER_ENTRY                   : <Module source>
         BUILD_TASKS
     MODULE                        : build-logic.lib-foo
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : build-logic.lib-foo
+            main                          : build-logic.lib-foo.androidMain
+            unitTest                      : build-logic.lib-foo.androidHostTest
+            androidTest                   : build-logic.lib-foo.androidDeviceTest
         ExternalModuleGroup           : build-logic
         ExternalModuleVersion         : unspecified
         LinkedProjectId               : :build-logic:lib-foo
@@ -2029,6 +2034,11 @@ PROJECT                       : Kotlin Multiplatform
                 BASELINE_PROFILE_GEN          : <PROJECT>::build-logic:lib-foo:generateAndroidMainBaselineProfile
                 BASELINE_PROFILE_GEN_ALL_VARIANTS       : <PROJECT>::build-logic:lib-foo:generateBaselineProfile
     MODULE                        : build-logic.lib-foo.androidDeviceTest
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : build-logic.lib-foo
+            main                          : build-logic.lib-foo.androidMain
+            unitTest                      : build-logic.lib-foo.androidHostTest
+            androidTest                   : build-logic.lib-foo.androidDeviceTest
         ExternalModuleGroup           : build-logic
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -2041,6 +2051,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.androidDeviceTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            ResFolderRelativePath         : /src/androidMain/res
+            AssetsFolderRelativePath      : /src/androidMain/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2078,8 +2105,10 @@ PROJECT                       : Kotlin Multiplatform
         CONENT_ENTRY                  : file://<PROJECT>/build-logic/lib-foo/src/androidDeviceTest [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/build-logic/lib-foo/src/androidDeviceTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/build-logic/lib-foo/src/androidDeviceTest/resources [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
             Scope                         : Test
@@ -2090,7 +2119,17 @@ PROJECT                       : Kotlin Multiplatform
         ORDER_ENTRY                   : build-logic.lib-foo.commonMain
             Scope                         : Test
         BUILD_TASKS
+                ASSEMBLE                      : <PROJECT>::build-logic:lib-foo:assembleAndroidDeviceTest
+                REBUILD                       : <PROJECT>::build-logic:lib-foo:assembleAndroidDeviceTest, <PROJECT>::build-logic:lib-foo:clean
+                COMPILE_JAVA                  : <PROJECT>::build-logic:lib-foo:compileAndroidDeviceTest
+                BASELINE_PROFILE_GEN          : <PROJECT>::build-logic:lib-foo:generateAndroidMainBaselineProfile
+                BASELINE_PROFILE_GEN_ALL_VARIANTS       : <PROJECT>::build-logic:lib-foo:generateBaselineProfile
     MODULE                        : build-logic.lib-foo.androidHostTest
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : build-logic.lib-foo
+            main                          : build-logic.lib-foo.androidMain
+            unitTest                      : build-logic.lib-foo.androidHostTest
+            androidTest                   : build-logic.lib-foo.androidDeviceTest
         ExternalModuleGroup           : build-logic
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -2103,6 +2142,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.androidHostTest.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            ResFolderRelativePath         : /src/androidMain/res
+            AssetsFolderRelativePath      : /src/androidMain/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2141,8 +2197,10 @@ PROJECT                       : Kotlin Multiplatform
         CONENT_ENTRY                  : file://<PROJECT>/build-logic/lib-foo/src/androidHostTest [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/build-logic/lib-foo/src/androidHostTest/kotlin [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/build-logic/lib-foo/src/androidHostTest/resources [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
             Scope                         : Test
@@ -2155,7 +2213,17 @@ PROJECT                       : Kotlin Multiplatform
         ORDER_ENTRY                   : build-logic.lib-foo.commonTest
             Scope                         : Test
         BUILD_TASKS
+                ASSEMBLE                      : <PROJECT>::build-logic:lib-foo:assembleAndroidHostTest
+                REBUILD                       : <PROJECT>::build-logic:lib-foo:assembleAndroidHostTest, <PROJECT>::build-logic:lib-foo:clean
+                COMPILE_JAVA                  : <PROJECT>::build-logic:lib-foo:compileAndroidHostTest
+                BASELINE_PROFILE_GEN          : <PROJECT>::build-logic:lib-foo:generateAndroidMainBaselineProfile
+                BASELINE_PROFILE_GEN_ALL_VARIANTS       : <PROJECT>::build-logic:lib-foo:generateBaselineProfile
     MODULE                        : build-logic.lib-foo.androidMain
+        LINKED_ANDROID_MODULE_GROUP
+            holder                        : build-logic.lib-foo
+            main                          : build-logic.lib-foo.androidMain
+            unitTest                      : build-logic.lib-foo.androidHostTest
+            androidTest                   : build-logic.lib-foo.androidDeviceTest
         ExternalModuleGroup           : build-logic
         ExternalModuleType            : sourceSet
         ExternalModuleVersion         : unspecified
@@ -2168,6 +2236,23 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.androidMain.iml [-]
         ModuleTypeName                : JAVA_MODULE
+        FACET                         : Android
+            TypeId                        : android
+            ExternalSource                : GRADLE
+            SelectedBuildVariant          : androidMain
+            AllowUserConfiguration        : false
+            GenFolderRelativePathApt      : /gen
+            GenFolderRelativePathAidl     : /gen
+            ManifestFileRelativePath      : /src/androidMain/AndroidManifest.xml
+            ResFolderRelativePath         : /src/androidMain/res
+            AssetsFolderRelativePath      : /src/androidMain/assets
+            LibsFolderRelativePath        : /libs
+            ProjectType                   : 1
+            PackTestCode                  : false
+            RunProguard                   : false
+            ProguardLogsFolderRelativePath          : /proguard_logs
+            UseCustomManifestPackage      : false
+            - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2205,8 +2290,10 @@ PROJECT                       : Kotlin Multiplatform
         CONENT_ENTRY                  : file://<PROJECT>/build-logic/lib-foo/src/androidMain
             JavaSource                    : file://<PROJECT>/build-logic/lib-foo/src/androidMain/kotlin
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/build-logic/lib-foo/src/androidMain/resources [-]
-        JDK                           : <NAME_CUT> JavaSDK
-        *isInherited                  : true
+        JDK                           : <NAME_CUT> Android SDK
+        *isInherited                  : false
+            SdkType                       : Android SDK
+            HomePath                      : <ANDROID_SDK>
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> [=]
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0 [=]
@@ -2215,6 +2302,11 @@ PROJECT                       : Kotlin Multiplatform
             -                             : file://<PROJECT>/build-logic/lib-foo/build/classes/kotlin/android/main
             -                             : file://<PROJECT>/build-logic/lib-foo/build/processedResources/android/main
         BUILD_TASKS
+                ASSEMBLE                      : <PROJECT>::build-logic:lib-foo:assembleAndroidMain
+                REBUILD                       : <PROJECT>::build-logic:lib-foo:assembleAndroidMain, <PROJECT>::build-logic:lib-foo:clean
+                COMPILE_JAVA                  : <PROJECT>::build-logic:lib-foo:compileAndroidMain
+                BASELINE_PROFILE_GEN          : <PROJECT>::build-logic:lib-foo:generateAndroidMainBaselineProfile
+                BASELINE_PROFILE_GEN_ALL_VARIANTS       : <PROJECT>::build-logic:lib-foo:generateBaselineProfile
     MODULE                        : build-logic.lib-foo.commonMain
         ExternalModuleGroup           : build-logic
         ExternalModuleType            : sourceSet
