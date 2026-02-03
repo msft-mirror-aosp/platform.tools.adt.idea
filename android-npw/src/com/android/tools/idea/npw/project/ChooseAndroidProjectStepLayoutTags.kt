@@ -29,6 +29,6 @@ object ChooseAndroidProjectStepLayoutTags {
 
     const val templateGrid = "$base.templateGrid"
     const val geminiTextArea = "$base.geminiTextArea"
-    const val geminiErrorText = "$base.geminiErrorText"
+    const val geminiLogin = "$base.geminiLogin"
   }
 }
