@@ -47,7 +47,7 @@ public class ManifestConflictTest {
   @Test
   public void testResolveAttributeConflict() throws Exception {
     projectRule.loadProject(MANIFEST_CONFLICT_ATTRIBUTE);
-    Module module = projectRule.getModule("testResolveAttributeConflict.main");
+    Module module = projectRule.getModuleByFullName("testResolveAttributeConflict.main");
     String[] errors = getErrorHtml(module);
     assertThat(errors).hasLength(1);
     clickLink(module, errors[0], 0);
@@ -57,7 +57,7 @@ public class ManifestConflictTest {
   @Test
   public void testResolveMinSdkConflict() throws Exception {
     projectRule.loadProject(MANIFEST_CONFLICT_MIN_SDK);
-    Module module = projectRule.getModule("testResolveMinSdkConflict.main");
+    Module module = projectRule.getModuleByFullName("testResolveMinSdkConflict.main");
     String[] errors = getErrorHtml(module);
     assertThat(errors).hasLength(1);
     clickLink(module, errors[0], 0);
@@ -72,7 +72,7 @@ public class ManifestConflictTest {
     // error message, and therefore we expect no link generated in the ManifestPanel's error message.
     // See b/269085620 for details. This is a temporary behavior until we fix the way we compute dynamic feature's set of dependency manifests.
     projectRule.loadProject(MANIFEST_CONFLICT_DYN_FEATURE_ATTR_CONFLICT_NOT_IN_XML);
-    var dynFeatureModule = projectRule.getModule("testDynamicFeatureExternalDependencyAttributeConflictNotInXml.app.dynamicfeature");
+    var dynFeatureModule = projectRule.getModuleByFullName("testDynamicFeatureExternalDependencyAttributeConflictNotInXml.app.dynamicfeature");
     String[] errors = getErrorHtml(dynFeatureModule);
     assertThat(errors).hasLength(1);
     assertThat(grabHTMLLinks(errors[0])).isEmpty();
@@ -82,7 +82,7 @@ public class ManifestConflictTest {
   public void testDynamicFeatureExternalDependencyAttributeConflictInXml() throws Exception{
     // Load a project with dynamic feature within an app and a node with conflicting attribute.
     projectRule.loadProject(MANIFEST_CONFLICT_DYN_FEATURE_ATTR_CONFLICT_IN_XML);
-    var dynFeatureModule = projectRule.getModule("testDynamicFeatureExternalDependencyAttributeConflictInXml.app.dynamicfeature");
+    var dynFeatureModule = projectRule.getModuleByFullName("testDynamicFeatureExternalDependencyAttributeConflictInXml.app.dynamicfeature");
     String[] errors = getErrorHtml(dynFeatureModule);
     assertThat(errors).hasLength(1);
     clickLink(dynFeatureModule, errors[0], 0);
