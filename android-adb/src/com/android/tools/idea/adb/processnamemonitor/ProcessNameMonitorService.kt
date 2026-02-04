@@ -49,11 +49,7 @@ internal class ProcessNameMonitorService(project: Project) : ProcessNameMonitor,
     val pollingIntervalMs = StudioFlags.PROCESS_NAME_TRACKER_AGENT_INTERVAL_MS.get()
     // If Logcat Proto format is supported and enabled, we don't need to use an agent.
     val shouldUseAgentForSdk: (Int) -> Boolean = { sdk -> sdk < LOGCAT_PROTO_SUPPORT_SDK || !StudioFlags.LOGCAT_PROTOBUF_ENABLED.get() }
-    val trackerAgentConfig =
-      when (StudioFlags.PROCESS_NAME_TRACKER_AGENT_ENABLE.get()) {
-        true -> AgentProcessTrackerConfig(getAgentPath(), pollingIntervalMs, shouldUseAgentForSdk)
-        false -> null
-      }
+    val trackerAgentConfig = AgentProcessTrackerConfig(getAgentPath(), pollingIntervalMs, shouldUseAgentForSdk)
     val config = ProcessNameMonitor.Config(StudioFlags.PROCESS_NAME_MONITOR_MAX_RETENTION.get(), trackerAgentConfig)
 
     ProcessNameMonitorImpl.create(parentScope, adbSession, deviceProvisioner, config, adbLogger)
