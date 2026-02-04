@@ -69,6 +69,7 @@ import com.android.tools.idea.wizard.template.FormFactor;
 import com.android.tools.idea.wizard.template.Language;
 import com.android.tools.idea.wizard.template.Template;
 import com.android.tools.idea.wizard.template.TemplateConstraint;
+import com.android.tools.idea.wizard.template.TemplateFlag;
 import com.android.tools.idea.wizard.ui.StudioWizardLayout;
 import com.android.tools.idea.wizard.ui.WizardUtils;
 import com.google.common.collect.ImmutableList;
@@ -160,7 +161,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
   private JComboBox<AgpVersions.NewProjectWizardAgpVersion> myAndroidGradlePluginCombo;
   private FormFactorSdkControls myFormFactorSdkControls;
 
-  private static final String AI_STARTER_TEMPLATE_NAME="AI Starter";
   public ConfigureAndroidProjectStep(@NotNull NewProjectModuleModel newProjectModuleModel, @NotNull NewProjectModel projectModel) {
     super(newProjectModuleModel, message("android.wizard.project.new.configure"));
 
@@ -316,7 +316,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myFormFactorSdkControls.startDataLoading(toWizardFormFactor(formFactor), minSdk);
     setTemplateThumbnail(newTemplate);
     boolean isKotlinOnly = newTemplate.getConstraints().contains(TemplateConstraint.Kotlin);
-    boolean isWatchFace = newTemplate.getCategory() == Category.WatchFace;
+    boolean isWatchFace = newTemplate.getFlags().contains(TemplateFlag.WatchFace);
 
     myProjectLanguage.setVisible(!isKotlinOnly && !isWatchFace);
     myProjectLanguageLabel.setVisible(!isKotlinOnly && !isWatchFace);
@@ -329,7 +329,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       myProjectModel.getApplicationName().set("My Watch Face");
     }
 
-    generateAppName.setVisible(StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && newTemplate.getName().equals(AI_STARTER_TEMPLATE_NAME));
+    generateAppName.setVisible(StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && newTemplate.getFlags().contains(TemplateFlag.NewProjectAgent));
   }
 
   @Override
