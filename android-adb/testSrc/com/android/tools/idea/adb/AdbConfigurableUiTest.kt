@@ -47,6 +47,7 @@ class AdbConfigurableUiTest : LightPlatform4TestCase() {
   fun testApply() {
     myAdbOptionsService.optionsUpdater
       .setAdbServerUsbBackend(AdbServerUsbBackend.DEFAULT)
+      .setAdbServerMdnsBackend(AdbServerMdnsBackend.DEFAULT)
       .setBurstMode(AdbServerBurstMode.DEFAULT)
       .setAdbServerLogsEnabled(false)
       .setAdbServerLogLevel(AdbServerLogLevel.MINIMAL)
@@ -54,12 +55,14 @@ class AdbConfigurableUiTest : LightPlatform4TestCase() {
     myConfigurable.reset(myAdbOptionsService)
 
     myConfigurable.adbServerUsbBackend = AdbServerUsbBackend.LIBUSB
+    myConfigurable.adbServerMdnsBackend = AdbServerMdnsBackend.OPENSCREEN
     myConfigurable.adbServerBurstMode = AdbServerBurstMode.ENABLED
     myConfigurable.adbServerLogsEnabled = true
     myConfigurable.adbServerLogLevel = AdbServerLogLevel.FULL
     myConfigurable.apply(myAdbOptionsService)
 
     assertThat(myAdbOptionsService.adbServerUsbBackend).isEqualTo(AdbServerUsbBackend.LIBUSB)
+    assertThat(myAdbOptionsService.adbServerMdnsBackend).isEqualTo(AdbServerMdnsBackend.OPENSCREEN)
     assertThat(myAdbOptionsService.adbServerBurstMode).isEqualTo(AdbServerBurstMode.ENABLED)
     assertThat(myAdbOptionsService.adbServerLogsEnabled).isEqualTo(true)
     assertThat(myAdbOptionsService.adbServerLogLevel).isEqualTo(AdbServerLogLevel.FULL)
@@ -69,6 +72,7 @@ class AdbConfigurableUiTest : LightPlatform4TestCase() {
   fun testReset() {
     myAdbOptionsService.optionsUpdater
       .setAdbServerUsbBackend(AdbServerUsbBackend.DEFAULT)
+      .setAdbServerMdnsBackend(AdbServerMdnsBackend.DEFAULT)
       .setBurstMode(AdbServerBurstMode.DEFAULT)
       .setAdbServerLogsEnabled(false)
       .setAdbServerLogLevel(AdbServerLogLevel.MINIMAL)
@@ -76,12 +80,14 @@ class AdbConfigurableUiTest : LightPlatform4TestCase() {
     myConfigurable.reset(myAdbOptionsService)
 
     myConfigurable.adbServerUsbBackend = AdbServerUsbBackend.LIBUSB
+    myConfigurable.adbServerMdnsBackend = AdbServerMdnsBackend.OPENSCREEN
     myConfigurable.adbServerBurstMode = AdbServerBurstMode.ENABLED
     myConfigurable.adbServerLogsEnabled = true
     myConfigurable.adbServerLogLevel = AdbServerLogLevel.FULL
     myConfigurable.reset(myAdbOptionsService)
 
     assertThat(myConfigurable.adbServerUsbBackend).isEqualTo(AdbServerUsbBackend.DEFAULT)
+    assertThat(myConfigurable.adbServerMdnsBackend).isEqualTo(AdbServerMdnsBackend.DEFAULT)
     assertThat(myConfigurable.adbServerBurstMode).isEqualTo(AdbServerBurstMode.DEFAULT)
     assertThat(myConfigurable.adbServerLogsEnabled).isEqualTo(false)
     assertThat(myAdbOptionsService.adbServerLogLevel).isEqualTo(AdbServerLogLevel.MINIMAL)
@@ -91,12 +97,16 @@ class AdbConfigurableUiTest : LightPlatform4TestCase() {
   fun testIsModified() {
     myAdbOptionsService.optionsUpdater
       .setAdbServerUsbBackend(AdbServerUsbBackend.DEFAULT)
+      .setAdbServerMdnsBackend(AdbServerMdnsBackend.DEFAULT)
       .setBurstMode(AdbServerBurstMode.DEFAULT)
       .setAdbServerLogsEnabled(false)
       .setAdbServerLogLevel(AdbServerLogLevel.MINIMAL)
       .commit()
     myConfigurable.reset(myAdbOptionsService)
     assertThat(myConfigurable.isModified(myAdbOptionsService)).isFalse()
+
+    myConfigurable.adbServerMdnsBackend = AdbServerMdnsBackend.OPENSCREEN
+    assertThat(myConfigurable.isModified(myAdbOptionsService)).isTrue()
 
     myConfigurable.reset(myAdbOptionsService)
     myConfigurable.adbServerUsbBackend = AdbServerUsbBackend.LIBUSB
