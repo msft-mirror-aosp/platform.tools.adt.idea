@@ -611,6 +611,7 @@ studio_plugin(
     directory = "firebase",
     libs = [
         "//tools/vendor/google/firebase/crashlytics-client:firebase_kt_proto",
+        "//tools/vendor/google/firebase-provisioning:firebase_provisioning_proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
     ],
@@ -620,6 +621,7 @@ studio_plugin(
     modules = {
         "firebase.jar": [
             "//tools/vendor/google/firebase:firebase",
+            "//tools/vendor/google/firebase-provisioning",
             "//tools/vendor/google/firebase/crashlytics-client",
         ],
     },
