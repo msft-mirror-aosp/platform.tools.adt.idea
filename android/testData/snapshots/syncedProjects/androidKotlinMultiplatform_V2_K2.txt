@@ -12,7 +12,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         CONENT_ENTRY                  : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
@@ -34,7 +33,6 @@ PROJECT                       : Kotlin Multiplatform
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -87,7 +85,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.androidLib.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -185,7 +182,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/androidLib/build/intermediates/javac/typeoneModetwoDebug/compileTypeoneModetwoDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -286,7 +282,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.androidLib.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -383,7 +378,6 @@ PROJECT                       : Kotlin Multiplatform
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -438,7 +432,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.app.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -514,7 +507,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -590,7 +582,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.app.main
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -697,7 +688,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform.kmpFirstLib [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -748,8 +738,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/kmpFirstLib/build/classes/kotlin/android/deviceTest [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.androidDeviceTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -952,8 +940,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/kmpFirstLib/build/classes/kotlin/android/hostTest [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.androidHostTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1070,8 +1056,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/kmpFirstLib/build/classes/kotlin/android/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.androidMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1163,8 +1147,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform.kmpFirstLib.commonMain [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.commonMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1228,8 +1210,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.kmpFirstLib.commonMain
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpFirstLib/Kotlin_Multiplatform.kmpFirstLib.commonTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1310,7 +1290,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform.kmpJvmOnly [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
@@ -1333,8 +1312,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform.kmpJvmOnly.commonMain [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpJvmOnly/Kotlin_Multiplatform.kmpJvmOnly.commonMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1393,8 +1370,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.kmpJvmOnly.commonMain
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpJvmOnly/Kotlin_Multiplatform.kmpJvmOnly.commonTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1454,7 +1429,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/kmpJvmOnly/build/classes/kotlin/jvm/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1517,7 +1491,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.kmpJvmOnly.jvmMain
-        ModuleFile                    :  [-]
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1585,7 +1558,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform.kmpSecondLib [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1634,8 +1606,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/kmpSecondLib/build/classes/kotlin/android/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpSecondLib/Kotlin_Multiplatform.kmpSecondLib.androidMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1719,8 +1689,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/Kotlin_Multiplatform.kmpSecondLib.commonMain [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpSecondLib/Kotlin_Multiplatform.kmpSecondLib.commonMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1779,8 +1747,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.kmpSecondLib.commonMain
-        ModuleFile                    : <PROJECT>/.idea/modules/kmpSecondLib/Kotlin_Multiplatform.kmpSecondLib.commonTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1840,7 +1806,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/kmpSecondLib/build/classes/kotlin/jvm/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1906,7 +1871,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : Kotlin_Multiplatform.kmpSecondLib.jvmMain
-        ModuleFile                    :  [-]
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -1974,7 +1938,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/build-logic [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         CONENT_ENTRY                  : file://<PROJECT>/build-logic
             EXCLUDE_FOLDER                : file://<PROJECT>/build-logic/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build-logic/build
@@ -1998,7 +1961,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/build-logic.lib-foo [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -2049,8 +2011,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build-logic/lib-foo/build/classes/kotlin/android/deviceTest [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.androidDeviceTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -2140,8 +2100,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build-logic/lib-foo/build/classes/kotlin/android/hostTest [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.androidHostTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -2234,8 +2192,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerSourceOutputPath      : file://<PROJECT>/build-logic/lib-foo/build/classes/kotlin/android/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.androidMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -2319,8 +2275,6 @@ PROJECT                       : Kotlin Multiplatform
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/build-logic.lib-foo.commonMain [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.commonMain.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE
@@ -2376,8 +2330,6 @@ PROJECT                       : Kotlin Multiplatform
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : build-logic.lib-foo.commonMain
-        ModuleFile                    : <PROJECT>/.idea/modules/build-logic/lib-foo/build-logic.lib-foo.commonTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Kotlin
             TypeId                        : kotlin-language
             ExternalSource                : GRADLE

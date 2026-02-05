@@ -8,7 +8,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         CONENT_ENTRY                  : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
@@ -28,7 +27,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -80,7 +78,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -150,7 +147,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -219,7 +215,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -285,7 +280,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -337,7 +331,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -405,7 +398,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -473,7 +465,6 @@ PROJECT                       : LightSyncBasedTestsWithMultipleModulesTestProjec
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    :  [-]
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
