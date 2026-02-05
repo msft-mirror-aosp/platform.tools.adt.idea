@@ -32,8 +32,7 @@ internal class FakeLogcatService : LogcatService {
   private val clearRequests = mutableListOf<String>()
 
   suspend fun logMessages(vararg messages: LogcatMessage) {
-    channel?.send(messages.asList())
-      ?: throw IllegalStateException("Channel not setup. Did you call readLogcat()?")
+    channel?.send(messages.asList()) ?: throw IllegalStateException("Channel not setup. Did you call readLogcat()?")
   }
 
   override fun readLogcat(

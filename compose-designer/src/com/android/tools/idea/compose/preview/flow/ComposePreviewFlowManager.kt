@@ -19,8 +19,6 @@ import com.android.tools.idea.compose.ComposePreviewElementsModel
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
 import com.android.tools.idea.compose.preview.AnnotationFilePreviewElementFinder
 import com.android.tools.idea.compose.preview.util.isFastPreviewAvailable
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.concurrency.smartModeFlow
 import com.android.tools.idea.editors.build.PsiCodeFileOutOfDateStatusReporter
@@ -31,11 +29,13 @@ import com.android.tools.idea.preview.flow.PreviewElementFilter
 import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,61 +45,44 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Class responsible for handling all the [StateFlow]s related to Compose Previews, e.g. managing
- * the render process and setting the current mode.
+ * Class responsible for handling all the [StateFlow]s related to Compose Previews, e.g. managing the render process and setting the current
+ * mode.
  */
 internal class ComposePreviewFlowManager(
   private val log: Logger = Logger.getInstance(ComposePreviewFlowManager::class.java),
   /** Delegate [PreviewFlowManager] containing common flow logic with other types of previews. */
-  private val delegate: CommonPreviewFlowManager<PsiComposePreviewElementInstance> =
-    CommonPreviewFlowManager(log),
+  private val delegate: CommonPreviewFlowManager<PsiComposePreviewElementInstance> = CommonPreviewFlowManager(log),
 ) : PreviewFlowManager<PsiComposePreviewElementInstance> by delegate {
 
   /**
-   * Preview element provider corresponding to the current state of the Preview. Different modes
-   * might require a different provider to be set, e.g. UI check mode needs a provider that produces
-   * previews with reference devices. When exiting the mode and returning to static preview, the
-   * element provider should be reset to [defaultPreviewElementProvider].
+   * Preview element provider corresponding to the current state of the Preview. Different modes might require a different provider to be
+   * set, e.g. UI check mode needs a provider that produces previews with reference devices. When exiting the mode and returning to static
+   * preview, the element provider should be reset to [defaultPreviewElementProvider].
    */
   val uiCheckFilterFlow = delegate.uiCheckFilterFlow
 
   /**
-   * Only for requests to refresh UI and notifications (without refreshing the preview contents).
-   * This allows to bundle notifications and respects the activation/deactivation lifecycle.
+   * Only for requests to refresh UI and notifications (without refreshing the preview contents). This allows to bundle notifications and
+   * respects the activation/deactivation lifecycle.
    *
-   * Each instance subscribes itself to the flow when it is activated, and it is automatically
-   * unsubscribed when the [lifecycleManager] detects a deactivation (see [onActivate],
-   * [initializeFlows] and [onDeactivate])
+   * Each instance subscribes itself to the flow when it is activated, and it is automatically unsubscribed when the [lifecycleManager]
+   * detects a deactivation (see [onActivate], [initializeFlows] and [onDeactivate])
    */
-  private val refreshNotificationsAndVisibilityFlow: MutableSharedFlow<Unit> =
-    MutableSharedFlow(replay = 1)
+  private val refreshNotificationsAndVisibilityFlow: MutableSharedFlow<Unit> = MutableSharedFlow(replay = 1)
 
-  /**
-   * Gets the current filter applied to the flows as a [PreviewElementFilter.Group] or null if the
-   * current filter is of another type.
-   */
-  fun getCurrentFilterAsGroup(): PreviewElementFilter.Group<PsiComposePreviewElementInstance>? =
-    delegate.getCurrentFilterAsGroup()
+  /** Gets the current filter applied to the flows as a [PreviewElementFilter.Group] or null if the current filter is of another type. */
+  fun getCurrentFilterAsGroup(): PreviewElementFilter.Group<PsiComposePreviewElementInstance>? = delegate.getCurrentFilterAsGroup()
 
-  /**
-   * Returns whether there are previews that have completed the render process, i.e. if
-   * [renderedPreviewElementsFlow] has elements.
-   */
-  fun hasRenderedPreviewElements() =
-    (renderedPreviewElementsFlow.value as? FlowableCollection.Present<*>)
-      ?.collection
-      ?.isNotEmpty() == true
+  /** Returns whether there are previews that have completed the render process, i.e. if [renderedPreviewElementsFlow] has elements. */
+  fun hasRenderedPreviewElements() = (renderedPreviewElementsFlow.value as? FlowableCollection.Present<*>)?.collection?.isNotEmpty() == true
 
-  /**
-   * Updates the value of [renderedPreviewElementsInstancesFlow] with the given list of previews.
-   */
+  /** Updates the value of [renderedPreviewElementsInstancesFlow] with the given list of previews. */
   override fun updateRenderedPreviews(previewElements: List<PsiComposePreviewElementInstance>) {
     delegate.updateRenderedPreviews(previewElements)
   }
 
   /** Returns how many previews are available to be rendered in the current file. */
-  fun previewsCount() =
-    (toRenderPreviewElementsFlow.value as? FlowableCollection.Present<*>)?.collection?.size ?: 0
+  fun previewsCount() = (toRenderPreviewElementsFlow.value as? FlowableCollection.Present<*>)?.collection?.size ?: 0
 
   /** Initializes the flows that will listen to different events and will call [requestRefresh]. */
   @OptIn(ExperimentalCoroutinesApi::class)
@@ -129,36 +112,28 @@ internal class ComposePreviewFlowManager(
           isFastPreviewAvailable = { isFastPreviewAvailable(project) },
           requestFastPreviewRefresh = requestFastPreviewRefresh,
           restorePreviousMode = restorePreviousMode,
-          previewElementProvider =
-            FilePreviewElementProvider(psiFilePointer, AnnotationFilePreviewElementFinder),
-          toInstantiatedPreviewElementsFlow =
-            ComposePreviewElementsModel::instantiatedPreviewElementsFlow,
+          previewElementProvider = FilePreviewElementProvider(psiFilePointer, AnnotationFilePreviewElementFinder),
+          toInstantiatedPreviewElementsFlow = ComposePreviewElementsModel::instantiatedPreviewElementsFlow,
         )
       }
 
       // Flow to collate and process refreshNotificationsAndVisibilityFlow requests.
       launch {
         refreshNotificationsAndVisibilityFlow.conflate().collect {
-          withContext(workerThread) {
-            refreshNotificationsAndVisibilityFlow
-              .resetReplayCache() // Do not keep re-playing after we have received the element.
+          withContext(Dispatchers.Default) {
+            refreshNotificationsAndVisibilityFlow.resetReplayCache() // Do not keep re-playing after we have received the element.
             log.debug("refreshNotificationsAndVisibilityFlow, request=$it")
             updateVisibilityAndNotifications()
           }
         }
       }
 
-      launch(workerThread) {
-        log.debug(
-          "smartModeFlow setup status=${queryStatus()}, dumbMode=${DumbService.isDumb(project)}"
-        )
+      launch(Dispatchers.Default) {
+        log.debug("smartModeFlow setup status=${queryStatus()}, dumbMode=${DumbService.isDumb(project)}")
         // Flow handling switch to smart mode.
         smartModeFlow(project, disposable, log).collectLatest {
           val projectBuildStatus = queryStatus()
-          log.debug(
-            "smartModeFlow, status change status=${projectBuildStatus}," +
-              " dumbMode=${DumbService.isDumb(project)}"
-          )
+          log.debug("smartModeFlow, status change status=${projectBuildStatus}," + " dumbMode=${DumbService.isDumb(project)}")
           when (projectBuildStatus) {
             // Do not refresh if we still need to build the project. Instead, only update the
             // empty panel and editor notifications if needed.
@@ -172,10 +147,8 @@ internal class ComposePreviewFlowManager(
     }
   }
 
-  fun CoroutineScope.updateVisibilityAndNotifications(
-    onVisibilityAndNotificationsUpdate: () -> Unit
-  ) {
-    launch(workerThread) { refreshNotificationsAndVisibilityFlow.emit(Unit) }
-    launch(uiThread) { onVisibilityAndNotificationsUpdate() }
+  fun CoroutineScope.updateVisibilityAndNotifications(onVisibilityAndNotificationsUpdate: () -> Unit) {
+    launch(Dispatchers.Default) { refreshNotificationsAndVisibilityFlow.emit(Unit) }
+    launch(Dispatchers.EDT) { onVisibilityAndNotificationsUpdate() }
   }
 }

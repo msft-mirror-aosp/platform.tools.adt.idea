@@ -68,12 +68,11 @@ import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
  * - fq name of qualifier [attributes]
  * - map from attribute name to serialized value
  *
- * We need to store the annotations values in their serialized form because we don't have a common
- * PSI representation between Kotlin and Java PSIs.
+ * We need to store the annotations values in their serialized form because we don't have a common PSI representation between Kotlin and
+ * Java PSIs.
  *
- * Serialization convention: enum -> "enum-fqn.enum-fieldName" class -> "class-fqn", if it's a
- * Kotlin fqn map it to a Java fqn annotation -> "annotation-fqcn" primitive Types/String ->
- * "x.toString()" array -> "QualifierInfo.attrValueToString(array[0]),
+ * Serialization convention: enum -> "enum-fqn.enum-fieldName" class -> "class-fqn", if it's a Kotlin fqn map it to a Java fqn annotation ->
+ * "annotation-fqcn" primitive Types/String -> "x.toString()" array -> "QualifierInfo.attrValueToString(array[0]),
  * "QualifierInfo.attrValueToString(array[1]) .."
  *
  * @see [serializeAttrValueToString]
@@ -92,26 +91,17 @@ private fun isConstantValueSerializableAsString(constant: ConstantValue<*>): Boo
 /**
  * Converts a [ConstantValue] to a [String].
  *
- * [ConstantValue] can be an enum, primitive type or an annotation, String, or Class object. It can
- * also be an array of these types.
+ * [ConstantValue] can be an enum, primitive type or an annotation, String, or Class object. It can also be an array of these types.
  *
  * Returns `null` if we can't reliably serialize value.
  */
 private fun serializeAttrValueToString(value: ConstantValue<*>): String? =
   when (value) {
-    is ArrayValue ->
-      value.value.map { serializeAttrValueToString(it) ?: return null }.joinToString()
+    is ArrayValue -> value.value.map { serializeAttrValueToString(it) ?: return null }.joinToString()
     is KClassValue -> {
-      val kotlinFqName =
-        (value.value as? KClassValue.Value.NormalClass)
-          ?.value
-          ?.classId
-          ?.asSingleFqName()
-          ?.asString()
+      val kotlinFqName = (value.value as? KClassValue.Value.NormalClass)?.value?.classId?.asSingleFqName()?.asString()
       // Try to map Kotlin fqcn to Java fqcn, e.g kotlin.String -> java.lang.String.
-      kotlinFqName?.let {
-        JavaToKotlinClassMap.mapKotlinToJava(FqNameUnsafe(it))?.asSingleFqName()?.asString() ?: it
-      }
+      kotlinFqName?.let { JavaToKotlinClassMap.mapKotlinToJava(FqNameUnsafe(it))?.asSingleFqName()?.asString() ?: it }
     }
     is AnnotationValue -> value.value.fqName?.asString()
     is EnumValue -> "${value.enumClassId.asSingleFqName().asString()}.${value.enumEntryName}"
@@ -121,15 +111,14 @@ private fun serializeAttrValueToString(value: ConstantValue<*>): String? =
 /**
  * Converts a [JvmAnnotationAttributeValue] to a [String].
  *
- * [JvmAnnotationAttributeValue] can be an enum, primitive type or an annotation, String, or Class
- * object. It can also be an array of these types.
+ * [JvmAnnotationAttributeValue] can be an enum, primitive type or an annotation, String, or Class object. It can also be an array of these
+ * types.
  *
  * Returns `null` if we can't reliably serialize value.
  */
 private fun serializeAttrValueToString(value: JvmAnnotationAttributeValue?): String? =
   when (value) {
-    is JvmAnnotationArrayValue ->
-      value.values.map { serializeAttrValueToString(it) ?: return null }.joinToString()
+    is JvmAnnotationArrayValue -> value.values.map { serializeAttrValueToString(it) ?: return null }.joinToString()
     is JvmAnnotationConstantValue -> value.constantValue.toString()
     is JvmAnnotationClassValue -> value.qualifiedName
     is JvmNestedAnnotationValue -> value.value.qualifiedName
@@ -155,27 +144,22 @@ private fun serializeKtAnnotationValue(value: KaAnnotationValue): String? {
       }
     }
     is KaAnnotationValue.EnumEntryValue -> value.callableId?.asSingleFqName()?.asString()
-    is KaAnnotationValue.ClassLiteralValue ->
-      (value.type as? KaClassType)?.classId?.normalizeToJVM()?.asSingleFqName()?.asString()
+    is KaAnnotationValue.ClassLiteralValue -> (value.type as? KaClassType)?.classId?.normalizeToJVM()?.asSingleFqName()?.asString()
     else -> null
   }
 }
 
 /**
- * Normalize ClassID by translating to JVM type: kotlin.String -> java.lang.String etc. See
- * [JavaToKotlinClassMap] for the complete mapping.
+ * Normalize ClassID by translating to JVM type: kotlin.String -> java.lang.String etc. See [JavaToKotlinClassMap] for the complete mapping.
  *
  * Returns [this] unaltered if it does not map to a JVM type.
  */
-private fun ClassId.normalizeToJVM(): ClassId =
-  JavaToKotlinClassMap.mapKotlinToJava(asSingleFqName().toUnsafe()) ?: this
+private fun ClassId.normalizeToJVM(): ClassId = JavaToKotlinClassMap.mapKotlinToJava(asSingleFqName().toUnsafe()) ?: this
 
 /**
- * Returns a [QualifierInfo] for a given [PsiElement] if a qualifier presents and it's only one
- * otherwise returns `null`.
+ * Returns a [QualifierInfo] for a given [PsiElement] if a qualifier presents and it's only one otherwise returns `null`.
  *
- * Returns `null` if any attr value of Qualifier can't be serialized value. See
- * [serializeAttrValueToString]
+ * Returns `null` if any attr value of Qualifier can't be serialized value. See [serializeAttrValueToString]
  */
 internal fun PsiElement.getQualifierInfo(): QualifierInfo? =
   when (this) {
@@ -185,15 +169,11 @@ internal fun PsiElement.getQualifierInfo(): QualifierInfo? =
   }
 
 /** Filters elements that has a [QualifierInfo] that equals to given a [qualifierInfo]. */
-internal fun <T : PsiModifierListOwner> Collection<T>.filterByQualifier(
-  qualifierInfo: QualifierInfo?
-): Collection<T> {
+internal fun <T : PsiModifierListOwner> Collection<T>.filterByQualifier(qualifierInfo: QualifierInfo?): Collection<T> {
   return this.filter {
     // If it's [KtLightElement], we search for [QualifierInfo] in `kotlinOrigin` of element, e.g
     // QualifierInfo could belong not to field, but to accessor.
-    val otherQualifierInfo =
-      if (it is KtLightElement<*, *>) (it.kotlinOrigin as? PsiElement)?.getQualifierInfo()
-      else it.getQualifierInfo()
+    val otherQualifierInfo = if (it is KtLightElement<*, *>) (it.kotlinOrigin as? PsiElement)?.getQualifierInfo() else it.getQualifierInfo()
     otherQualifierInfo == qualifierInfo
   }
 }
@@ -215,10 +195,7 @@ private fun KtAnnotated.getQualifierInfoFromKtAnnotatedK1(): QualifierInfo? {
     val qualifierFqName = qualifier.fqName?.asString() ?: return null
     val qualifierAttributes =
       qualifier.allValueArguments
-        .map {
-          it.key.asString() to
-            (serializeAttrValueToString(it.value) ?: return@getQualifierInfoFromKtAnnotatedK1 null)
-        }
+        .map { it.key.asString() to (serializeAttrValueToString(it.value) ?: return@getQualifierInfoFromKtAnnotatedK1 null) }
         .toMap()
     return QualifierInfo(qualifierFqName, qualifierAttributes)
   }
@@ -229,16 +206,12 @@ private fun KtAnnotated.getQualifierInfoFromKtAnnotatedK1(): QualifierInfo? {
 private fun KtAnnotated.getQualifierInfoFromKtAnnotatedK2(): QualifierInfo? {
   allowAnalysisOnEdt {
     analyze(this) {
-      val ktDeclarationSymbol =
-        (this@getQualifierInfoFromKtAnnotatedK2 as? KtDeclaration)?.symbol ?: return null
-      val qualifier =
-        ktDeclarationSymbol.annotations.singleOrNull { isQualifier(it.classId) } ?: return null
+      val ktDeclarationSymbol = (this@getQualifierInfoFromKtAnnotatedK2 as? KtDeclaration)?.symbol ?: return null
+      val qualifier = ktDeclarationSymbol.annotations.singleOrNull { isQualifier(it.classId) } ?: return null
 
       val qualifierFqName = qualifier.classId?.asFqNameString() ?: return null
       val qualifierAttributes =
-        qualifier.arguments.associate { arg ->
-          arg.name.asString() to (serializeKtAnnotationValue(arg.expression) ?: return null)
-        }
+        qualifier.arguments.associate { arg -> arg.name.asString() to (serializeKtAnnotationValue(arg.expression) ?: return null) }
 
       return QualifierInfo(qualifierFqName, qualifierAttributes)
     }
@@ -254,27 +227,20 @@ private fun PsiModifierListOwner.getQualifierInfoFromPsiModifierListOwner(): Qua
       qualifiers
         .first()
         .attributes
-        .map {
-          it.attributeName to
-            (serializeAttrValueToString(it.attributeValue)
-              ?: return@getQualifierInfoFromPsiModifierListOwner null)
-        }
+        .map { it.attributeName to (serializeAttrValueToString(it.attributeValue) ?: return@getQualifierInfoFromPsiModifierListOwner null) }
         .toMap()
     return QualifierInfo(qualifierFqName, qualifierAttributes)
   }
   return null
 }
 
-private fun KtAnnotationEntry.getDescriptor() =
-  analyzeK1(BodyResolveMode.PARTIAL).get(BindingContext.ANNOTATION, this)
+private fun KtAnnotationEntry.getDescriptor() = analyzeK1(BodyResolveMode.PARTIAL).get(BindingContext.ANNOTATION, this)
 
 private val AnnotationDescriptor.isQualifier: Boolean
   get() = annotationClass?.annotations?.hasAnnotation(DaggerClasses.Qualifier.fqName) == true
 
 private fun KaSession.isQualifier(annotationClassId: ClassId?): Boolean =
-  annotationClassId
-    ?.let { findClass(it) }
-    ?.let { DaggerClasses.Qualifier.classId in it.annotations } == true
+  annotationClassId?.let { findClass(it) }?.let { DaggerClasses.Qualifier.classId in it.annotations } == true
 
 private val PsiAnnotation.isQualifier: Boolean
   get() {

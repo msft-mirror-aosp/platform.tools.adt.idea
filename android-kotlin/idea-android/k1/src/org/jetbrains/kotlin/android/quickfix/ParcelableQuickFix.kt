@@ -26,7 +26,6 @@ import org.jetbrains.kotlin.android.implementParcelable
 import org.jetbrains.kotlin.android.isParcelize
 import org.jetbrains.kotlin.psi.KtClass
 
-
 class ParcelableQuickFix : DefaultLintQuickFix(AndroidBundle.message("implement.parcelable.intention.text")) {
     override fun apply(startElement: PsiElement, endElement: PsiElement, context: AndroidQuickfixContexts.Context) {
         startElement.getTargetClass()?.implementParcelable()

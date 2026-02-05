@@ -22,13 +22,9 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.util.lang.JavaVersion
 import java.util.concurrent.CompletableFuture
 
-class SetJavaToolchainQuickFix(
-  val versionToSet: Int,
-  val gradleModules: List<String>
-) : DescribedBuildIssueQuickFix {
+class SetJavaToolchainQuickFix(val versionToSet: Int, val gradleModules: List<String>) : DescribedBuildIssueQuickFix {
   override val description: String = "Set Java Toolchain to $versionToSet"
   override val id: String = "set.java.toolchain.$versionToSet"
 
@@ -36,21 +32,22 @@ class SetJavaToolchainQuickFix(
     val future = CompletableFuture<Any>()
     try {
       if (!project.isDisposed) {
-        val projectRootPath = project.guessProjectDir()?.path
-        val modules = gradleModules.mapNotNull { modulePath ->
-          projectRootPath ?: return@mapNotNull null
-          GradleHolderProjectPath(FileUtil.toSystemIndependentName(projectRootPath), modulePath).resolveIn(project)
+        val projectRootPath = project.guessProjectDir()?.path?.let {
+          FileUtil.toSystemIndependentName(it)
         }
-        val processor = AddJavaToolchainDefinition(project, versionToSet, modules)
+        val modules =
+          gradleModules.mapNotNull { modulePath ->
+            projectRootPath ?: return@mapNotNull null
+            GradleHolderProjectPath(projectRootPath, modulePath).resolveIn(project)
+          }
+        val processor = AddJavaToolchainDefinition(project, projectRootPath, versionToSet, modules)
         processor.setPreviewUsages(true)
         processor.run()
       }
       future.complete(null)
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
       future.completeExceptionally(e)
     }
     return future
   }
 }
-

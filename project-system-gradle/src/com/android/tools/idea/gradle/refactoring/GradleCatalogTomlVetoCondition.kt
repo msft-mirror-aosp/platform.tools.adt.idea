@@ -18,13 +18,10 @@ package com.android.tools.idea.gradle.refactoring
 import com.intellij.openapi.util.Condition
 import com.intellij.psi.PsiElement
 import org.toml.lang.psi.TomlKeySegment
-import org.toml.lang.psi.TomlKeyValue
-import org.toml.lang.psi.TomlTable
 
 /**
- * Only allow to rename declaration aliases.
- * Reference literals (version.ref value) do not go through this condition
- * as they have reference to library alias.
+ * Only allow to rename declaration aliases. Reference literals (version.ref value) do not go through this condition as they have reference
+ * to library alias.
  */
 class GradleCatalogTomlVetoCondition : Condition<PsiElement> {
   override fun value(psiElement: PsiElement): Boolean {

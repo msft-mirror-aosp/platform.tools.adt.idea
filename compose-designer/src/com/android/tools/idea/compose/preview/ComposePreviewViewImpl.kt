@@ -27,8 +27,6 @@ import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.GuiInputHandler
 import com.android.tools.idea.common.surface.handleLayoutlibNativeCrash
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.build.RenderingBuildStatusManager
 import com.android.tools.idea.editors.notifications.NotificationPanel
@@ -77,10 +75,7 @@ private const val COMPOSE_PREVIEW_DOC_URL = "https://d.android.com/jetpack/compo
 /** Interface that isolates the view of the Compose view so it can be replaced for testing. */
 interface ComposePreviewView : PreviewRepresentationView {
 
-  /**
-   * Sets whether the panel has content to display. If it does not, it will display an overlay with
-   * a message for the user.
-   */
+  /** Sets whether the panel has content to display. If it does not, it will display an overlay with a message for the user. */
   var hasContent: Boolean
 
   /** True if the view is displaying an overlay with a message. */
@@ -93,9 +88,8 @@ interface ComposePreviewView : PreviewRepresentationView {
   fun updateNotifications(parentEditor: FileEditor)
 
   /**
-   * Updates the surface visibility and displays the content or an error message depending on the
-   * build state. This method is called after certain updates like a build or a preview refresh has
-   * happened. Calling this method will also update the FileEditor notifications.
+   * Updates the surface visibility and displays the content or an error message depending on the build state. This method is called after
+   * certain updates like a build or a preview refresh has happened. Calling this method will also update the FileEditor notifications.
    */
   fun updateVisibilityAndNotifications()
 
@@ -109,9 +103,8 @@ interface ComposePreviewView : PreviewRepresentationView {
   fun onRefreshCompleted()
 
   /**
-   * Called when a Layoutlib native crash is detected. It will show a notification to the user
-   * allowing to re-enable the disabled Layoutlib. If the user chooses to re-enable layoutlib,
-   * [onLayoutlibReEnable] will be called.
+   * Called when a Layoutlib native crash is detected. It will show a notification to the user allowing to re-enable the disabled Layoutlib.
+   * If the user chooses to re-enable layoutlib, [onLayoutlibReEnable] will be called.
    */
   fun onLayoutlibNativeCrash(onLayoutlibReEnable: () -> Unit)
 }
@@ -130,8 +123,8 @@ fun interface ComposePreviewViewProvider {
 /**
  * [WorkBench] panel used to contain all the Compose Preview elements.
  *
- * This view contains all the different components that are part of the Compose Preview. If
- * expanded, in the content area the different areas look as follows:
+ * This view contains all the different components that are part of the Compose Preview. If expanded, in the content area the different
+ * areas look as follows:
  * ```
  * +------------------------------------------+
  * |                                          |     |
@@ -146,14 +139,13 @@ fun interface ComposePreviewViewProvider {
  * +------------------------------------------+
  * ```
  *
- * The [mainPanelSplitter] top panel contains the scrollable panel ([mainSurface]) and, also as
- * overlays, the zoom controls.
+ * The [mainPanelSplitter] top panel contains the scrollable panel ([mainSurface]) and, also as overlays, the zoom controls.
  *
  * @param project the current open project
- * @param psiFilePointer an [SmartPsiElementPointer] pointing to the file being rendered within this
- *   panel. Used to handle which notifications should be displayed.
- * @param renderingBuildStatusManager [RenderingBuildStatusManager] used to detect the current build
- *   status and show/hide the correct loading message.
+ * @param psiFilePointer an [SmartPsiElementPointer] pointing to the file being rendered within this panel. Used to handle which
+ *   notifications should be displayed.
+ * @param renderingBuildStatusManager [RenderingBuildStatusManager] used to detect the current build status and show/hide the correct
+ *   loading message.
  * @param uiDataProvider the [UiDataProvider] to be used by the [mainSurface] panel.
  * @param mainDesignSurfaceBuilder a builder to create main design surface
  * @param parentDisposable the [Disposable] to use as parent disposable for this panel.
@@ -167,8 +159,7 @@ internal class ComposePreviewViewImpl(
   parentDisposable: Disposable,
 ) : ComposePreviewView, UiDataProvider {
 
-  private val workbench =
-    WorkBench<DesignSurface<*>>(project, "Compose Preview", null, parentDisposable, 0)
+  private val workbench = WorkBench<DesignSurface<*>>(project, "Compose Preview", null, parentDisposable, 0)
 
   private val log = Logger.getInstance(ComposePreviewViewImpl::class.java)
 
@@ -199,38 +190,29 @@ internal class ComposePreviewViewImpl(
     // that contains it, i.e. the ComposeAdapterLightVirtualFile XML file. Instead, we should
     // return its origin file, so the navigation bar will show the kotlin file containing the
     // composable.
-    return (mainSurface.models.firstOrNull()?.virtualFile as? ComposeAdapterLightVirtualFile)
-      ?.originFile
-      ?.toPsiFile(project)
+    return (mainSurface.models.firstOrNull()?.virtualFile as? ComposeAdapterLightVirtualFile)?.originFile?.toPsiFile(project)
   }
 
   override val component: JComponent = UiDataProvider.wrapComponent(workbench, this)
 
   private val notificationPanel =
-    NotificationPanel(
-      ExtensionPointName.create(
-        "com.android.tools.idea.compose.preview.composeEditorNotificationProvider"
-      )
-    )
+    NotificationPanel(ExtensionPointName.create("com.android.tools.idea.compose.preview.composeEditorNotificationProvider"))
 
   /**
-   * Vertical splitter where the top component is the [mainSurface] and the bottom component, when
-   * visible, is an auxiliary panel associated with the preview. For example, it can be an animation
-   * inspector that lists all the animations the preview has.
+   * Vertical splitter where the top component is the [mainSurface] and the bottom component, when visible, is an auxiliary panel associated
+   * with the preview. For example, it can be an animation inspector that lists all the animations the preview has.
    */
-  private val mainPanelSplitter =
-    OnePixelSplitter(true, 0.7f).apply { this.setBlindZone { JBUI.insets(1, 0) } }
+  private val mainPanelSplitter = OnePixelSplitter(true, 0.7f).apply { this.setBlindZone { JBUI.insets(1, 0) } }
 
   /** [ActionData] that triggers Build and Refresh of the preview. */
   private val buildAndRefreshAction: ActionData
     get() {
-      val actionDataText =
-        "${message("panel.needs.build.action.text")}${getBuildAndRefreshShortcut().asString()}"
+      val actionDataText = "${message("panel.needs.build.action.text")}${getBuildAndRefreshShortcut().asString()}"
       return ActionData(actionDataText) {
         val virtualFile = psiFilePointer.virtualFile
-        scope.launch(workerThread) {
+        scope.launch(Dispatchers.Default) {
           if (virtualFile != null) project.requestBuildArtifactsForRendering(virtualFile)
-          withContext(uiThread) {
+          withContext(Dispatchers.EDT) {
             // Repaint the workbench, otherwise the text and link will keep displaying if the mouse
             // is hovering the link
             workbench.repaint()
@@ -242,11 +224,9 @@ internal class ComposePreviewViewImpl(
   private val actionsToolbar: ActionsToolbar
 
   /**
-   * This [kotlinx.coroutines.flow.Flow] stores requests to update the visibility and notifications
-   * of the Preview view. These requests are created when calling
-   * [updateVisibilityAndNotificationsRequestFlow] and handled by
-   * [handleUpdateVisibilityAndNotificationsRequest]. A request mechanism is used to ensure that the
-   * requests are handled sequentially.
+   * This [kotlinx.coroutines.flow.Flow] stores requests to update the visibility and notifications of the Preview view. These requests are
+   * created when calling [updateVisibilityAndNotificationsRequestFlow] and handled by [handleUpdateVisibilityAndNotificationsRequest]. A
+   * request mechanism is used to ensure that the requests are handled sequentially.
    */
   private val updateVisibilityAndNotificationsRequestFlow = MutableSharedFlow<Unit>(replay = 1)
 
@@ -293,18 +273,13 @@ internal class ComposePreviewViewImpl(
       }
       RenderingBuildStatus.Building -> workbench.showLoading(message("panel.building"))
       else -> {
-        if (DumbService.getInstance(project).isDumb)
-          workbench.showLoading(message("panel.indexing"))
+        if (DumbService.getInstance(project).isDumb) workbench.showLoading(message("panel.indexing"))
       }
     }
     workbench.focusTraversalPolicy = LayoutFocusTraversalPolicy()
     workbench.isFocusCycleRoot = true
 
-    scope.launch {
-      updateVisibilityAndNotificationsRequestFlow.collect {
-        handleUpdateVisibilityAndNotificationsRequest()
-      }
-    }
+    scope.launch { updateVisibilityAndNotificationsRequestFlow.collect { handleUpdateVisibilityAndNotificationsRequest() } }
   }
 
   override var focusMode by FocusModeProperty(content, mainSurface)
@@ -326,15 +301,11 @@ internal class ComposePreviewViewImpl(
 
   override fun updateNotifications(parentEditor: FileEditor) =
     UIUtil.invokeLaterIfNeeded {
-      if (Disposer.isDisposed(workbench) || project.isDisposed || !parentEditor.isValid)
-        return@invokeLaterIfNeeded
+      if (Disposer.isDisposed(workbench) || project.isDisposed || !parentEditor.isValid) return@invokeLaterIfNeeded
 
       val vFile = psiFilePointer.virtualFile
       if (vFile == null) {
-        thisLogger()
-          .warn(
-            "virtualFile is null for $psiFilePointer element=${psiFilePointer.element} file=${psiFilePointer.containingFile}"
-          )
+        thisLogger().warn("virtualFile is null for $psiFilePointer element=${psiFilePointer.element} file=${psiFilePointer.containingFile}")
       } else {
         notificationPanel.updateNotifications(vFile, parentEditor, project)
       }
@@ -346,23 +317,17 @@ internal class ComposePreviewViewImpl(
       actionsToolbar.updateActions()
       // Make sure all notifications are cleared-up
       if (!project.isDisposed) {
-        psiFilePointer.virtualFile?.let {
-          EditorNotifications.getInstance(project).updateNotifications(it)
-        }
+        psiFilePointer.virtualFile?.let { EditorNotifications.getInstance(project).updateNotifications(it) }
       }
     }
 
-  /**
-   * Shows an error message saying a successful build is needed and a link to trigger a new build.
-   */
+  /** Shows an error message saying a successful build is needed and a link to trigger a new build. */
   private fun showNeedsToBuildErrorPanel() {
     showModalErrorMessage(message("panel.needs.build"), buildAndRefreshAction)
   }
 
   override fun onRefreshCancelledByTheUser() {
-    if (!hasRendered)
-      showModalErrorMessage(message("panel.refresh.cancelled"), buildAndRefreshAction)
-    else onRefreshCompleted()
+    if (!hasRendered) showModalErrorMessage(message("panel.refresh.cancelled"), buildAndRefreshAction) else onRefreshCompleted()
   }
 
   override fun onRefreshCompleted() {
@@ -374,9 +339,8 @@ internal class ComposePreviewViewImpl(
   }
 
   /**
-   * Updates the surface visibility and displays the content or an error message depending on the
-   * build state. This method is called after certain updates like a build or a preview refresh has
-   * happened. Calling this method will also update the FileEditor notifications.
+   * Updates the surface visibility and displays the content or an error message depending on the build state. This method is called after
+   * certain updates like a build or a preview refresh has happened. Calling this method will also update the FileEditor notifications.
    */
   override fun updateVisibilityAndNotifications() {
     scope.launch { updateVisibilityAndNotificationsRequestFlow.emit(Unit) }
@@ -385,10 +349,7 @@ internal class ComposePreviewViewImpl(
   @RequiresBackgroundThread
   private suspend fun handleUpdateVisibilityAndNotificationsRequest() =
     withContext(Dispatchers.EDT) {
-      if (
-        workbench.isMessageVisible &&
-          renderingBuildStatusManager.status == RenderingBuildStatus.NeedsBuild
-      ) {
+      if (workbench.isMessageVisible && renderingBuildStatusManager.status == RenderingBuildStatus.NeedsBuild) {
         if (psiFilePointer.virtualFile?.fileSystem?.isReadOnly == true) {
           showModalErrorMessage(message("panel.read.only.file"))
         } else {
@@ -402,8 +363,7 @@ internal class ComposePreviewViewImpl(
             workbench.hideLoading()
             workbench.showContent()
           } else {
-            val extraActions =
-              listOfNotNull(createGeneratePreviewsActionData(), createScreenshotToCodeActionData())
+            val extraActions = listOfNotNull(createGeneratePreviewsActionData(), createScreenshotToCodeActionData())
             workbench.hideLoading()
             workbench.hideContent()
             workbench.loadingStopped(
@@ -425,8 +385,7 @@ internal class ComposePreviewViewImpl(
   private fun createGeneratePreviewsActionData(): AnAction? {
     return StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC.ifEnabled {
       getComposeStudioBotActionFactory()?.createPreviewGenerator()?.also {
-        it.templatePresentation.text =
-          message("action.generate.single.preview.for.file.empty.panel")
+        it.templatePresentation.text = message("action.generate.single.preview.for.file.empty.panel")
         it.templatePresentation.icon = StudioIcons.StudioBot.GENERIC_AI_ACTION
       }
     }

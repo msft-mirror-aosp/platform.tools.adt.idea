@@ -60,8 +60,8 @@ class SafeArgsIconsRenderingTest {
         writeText(
           // language=kotlin
           """
-            package com.example.myapplication
-            class FooClass
+          package com.example.myapplication
+          class FooClass
           """
             .trimIndent()
         )
@@ -75,10 +75,7 @@ class SafeArgsIconsRenderingTest {
     projectRule.requestSyncAndWait()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val file =
-      fixture.project
-        .findAppModule()
-        .fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = fixture.project.findAppModule().fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     WriteCommandAction.runWriteCommandAction(fixture.project) {
       file!!.replaceWithSaving(
         "class FooClass",
@@ -90,7 +87,7 @@ class SafeArgsIconsRenderingTest {
                 val directionsClass = 
             }
         }
-      """
+        """
           .trimIndent(),
         fixture.project,
       )
@@ -103,12 +100,8 @@ class SafeArgsIconsRenderingTest {
     fixture.type("Args")
     fixture.completeBasic()
     var icons =
-      fixture.lookupElements!!
-        .filter { it.lookupString.endsWith("FragmentArgs") }
-        .map { DefaultLookupItemRenderer.getRawIcon(it) }
-        .toSet()
-    assertThat(icons)
-      .containsExactly(IconManager.getInstance().getPlatformIcon(PlatformIcons.Class))
+      fixture.lookupElements!!.filter { it.lookupString.endsWith("FragmentArgs") }.map { DefaultLookupItemRenderer.getRawIcon(it) }.toSet()
+    assertThat(icons).containsExactly(IconManager.getInstance().getPlatformIcon(PlatformIcons.Class))
 
     // check directions classes
     fixture.moveCaret("val directionsClass = |")
@@ -119,8 +112,7 @@ class SafeArgsIconsRenderingTest {
         .filter { it.lookupString.endsWith("FragmentDirections") }
         .mapNotNull { DefaultLookupItemRenderer.getRawIcon(it) }
         .toSet()
-    assertThat(icons)
-      .containsExactly(IconManager.getInstance().getPlatformIcon(PlatformIcons.Class))
+    assertThat(icons).containsExactly(IconManager.getInstance().getPlatformIcon(PlatformIcons.Class))
   }
 
   @Test
@@ -128,10 +120,7 @@ class SafeArgsIconsRenderingTest {
     projectRule.requestSyncAndWait()
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
 
-    val file =
-      fixture.project
-        .findAppModule()
-        .fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
+    val file = fixture.project.findAppModule().fileUnderGradleRoot("src/main/java/com/example/myapplication/FooClass.kt")
     WriteCommandAction.runWriteCommandAction(fixture.project) {
       file!!.replaceWithSaving(
         "class FooClass",
@@ -146,7 +135,7 @@ class SafeArgsIconsRenderingTest {
                 val directionsClass2 = SecondFragmentDirections().
             }
         }
-      """
+        """
           .trimIndent(),
         fixture.project,
       )
@@ -157,34 +146,20 @@ class SafeArgsIconsRenderingTest {
     // check static method from args class
     fixture.moveCaret("val argsClass1 = SecondFragmentArgs.|")
     fixture.completeBasic()
-    var icons =
-      fixture.lookupElements!!
-        .map { it.lookupString to DefaultLookupItemRenderer.getRawIcon(it) }
-        .toSet()
-    assertThat(icons)
-      .contains("fromBundle" to IconManager.getInstance().getPlatformIcon(PlatformIcons.Function))
+    var icons = fixture.lookupElements!!.map { it.lookupString to DefaultLookupItemRenderer.getRawIcon(it) }.toSet()
+    assertThat(icons).contains("fromBundle" to IconManager.getInstance().getPlatformIcon(PlatformIcons.Function))
 
     // check static method from directions class
     fixture.moveCaret("val directionsClass1 = SecondFragmentDirections.|")
     fixture.completeBasic()
-    icons =
-      fixture.lookupElements!!
-        .mapNotNull { it.lookupString to DefaultLookupItemRenderer.getRawIcon(it) }
-        .toSet()
-    assertThat(icons)
-      .contains(
-        "actionSecondFragmentToFirstFragment" to
-          IconManager.getInstance().getPlatformIcon(PlatformIcons.Function)
-      )
+    icons = fixture.lookupElements!!.mapNotNull { it.lookupString to DefaultLookupItemRenderer.getRawIcon(it) }.toSet()
+    assertThat(icons).contains("actionSecondFragmentToFirstFragment" to IconManager.getInstance().getPlatformIcon(PlatformIcons.Function))
 
     // check methods from args class
     fixture.moveCaret("val argsClass2 = SecondFragmentArgs().|")
 
     fixture.completeBasic()
-    icons =
-      fixture.lookupElements!!
-        .map { it.lookupString to DefaultLookupItemRenderer.getRawIcon(it) }
-        .toSet()
+    icons = fixture.lookupElements!!.map { it.lookupString to DefaultLookupItemRenderer.getRawIcon(it) }.toSet()
     assertThat(icons)
       .containsAllOf(
         // componentN() functions of data class are filtered out when collecting variants during

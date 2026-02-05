@@ -42,26 +42,19 @@ import org.jetbrains.kotlin.storage.LockBasedStorageManager
 import org.jetbrains.kotlin.storage.StorageManager
 
 /**
- * A module service which stores safe args kt package descriptors([KtArgsPackageDescriptor]s and
- * [KtDirectionsPackageDescriptor]s) by querying from [NavXmlIndex].
+ * A module service which stores safe args kt package descriptors([KtArgsPackageDescriptor]s and [KtDirectionsPackageDescriptor]s) by
+ * querying from [NavXmlIndex].
  */
 class KtDescriptorCacheModuleService(private val module: Module) : Disposable.Default {
   private val fetcher = NavInfoFetcher(this, module, SafeArgsMode.KOTLIN)
 
-  private data class QualifiedDescriptor(
-    val fqName: FqName,
-    val descriptor: PackageFragmentDescriptor,
-  )
+  private data class QualifiedDescriptor(val fqName: FqName, val descriptor: PackageFragmentDescriptor)
 
   companion object {
-    @JvmStatic
-    fun getInstance(module: Module) =
-      module.getService(KtDescriptorCacheModuleService::class.java)!!
+    @JvmStatic fun getInstance(module: Module) = module.getService(KtDescriptorCacheModuleService::class.java)!!
   }
 
-  fun getDescriptors(
-    moduleDescriptor: ModuleDescriptor
-  ): Map<FqName, List<PackageFragmentDescriptor>> {
+  fun getDescriptors(moduleDescriptor: ModuleDescriptor): Map<FqName, List<PackageFragmentDescriptor>> {
     ProgressManager.checkCanceled()
 
     val navInfo = fetcher.getCurrentNavInfo() ?: return emptyMap()
@@ -69,13 +62,10 @@ class KtDescriptorCacheModuleService(private val module: Module) : Disposable.De
     return navInfo.entries
       .asSequence()
       .flatMap { navEntry ->
-        val sourceElement =
-          navEntry.backingXmlFile?.let { XmlSourceElement(it) } ?: SourceElement.NO_SOURCE
+        val sourceElement = navEntry.backingXmlFile?.let { XmlSourceElement(it) } ?: SourceElement.NO_SOURCE
         val navFileInfo = SafeArgsNavFileInfo(moduleDescriptor, module, navInfo, navEntry)
 
-        val packages =
-          createArgsPackages(navFileInfo, sourceElement) +
-            createDirectionsPackages(navFileInfo, sourceElement)
+        val packages = createArgsPackages(navFileInfo, sourceElement) + createDirectionsPackages(navFileInfo, sourceElement)
 
         packages.asSequence()
       }
@@ -93,8 +83,7 @@ class KtDescriptorCacheModuleService(private val module: Module) : Disposable.De
       .mapNotNull { destination ->
         val fqName =
           destination.name.let { name ->
-            val resolvedName =
-              if (!name.startsWith('.')) name else "${navFileInfo.navInfo.packageName}$name"
+            val resolvedName = if (!name.startsWith('.')) name else "${navFileInfo.navInfo.packageName}$name"
             resolvedName + "Directions"
           }
 
@@ -114,14 +103,7 @@ class KtDescriptorCacheModuleService(private val module: Module) : Disposable.De
           } ?: sourceElement
 
         val packageDescriptor =
-          KtDirectionsPackageDescriptor(
-            navFileInfo,
-            packageName,
-            className,
-            destination,
-            resolvedSourceElement,
-            storageManager,
-          )
+          KtDirectionsPackageDescriptor(navFileInfo, packageName, className, destination, resolvedSourceElement, storageManager)
 
         QualifiedDescriptor(packageName, packageDescriptor)
       }
@@ -139,8 +121,7 @@ class KtDescriptorCacheModuleService(private val module: Module) : Disposable.De
       .mapNotNull { destination ->
         val fqName =
           destination.name.let { name ->
-            val resolvedName =
-              if (!name.startsWith('.')) name else "${navFileInfo.navInfo.packageName}$name"
+            val resolvedName = if (!name.startsWith('.')) name else "${navFileInfo.navInfo.packageName}$name"
             resolvedName + "Args"
           }
 
@@ -160,12 +141,7 @@ class KtDescriptorCacheModuleService(private val module: Module) : Disposable.De
           } ?: sourceElement
 
         val superTypesProvider = { packageDescriptor: PackageFragmentDescriptorImpl ->
-          val ktType =
-            packageDescriptor.builtIns.getKotlinType(
-              "androidx.navigation.NavArgs",
-              null,
-              packageDescriptor.module,
-            )
+          val ktType = packageDescriptor.builtIns.getKotlinType("androidx.navigation.NavArgs", null, packageDescriptor.module)
           listOf(ktType)
         }
 
@@ -186,9 +162,4 @@ class KtDescriptorCacheModuleService(private val module: Module) : Disposable.De
   }
 }
 
-class SafeArgsNavFileInfo(
-  val moduleDescriptor: ModuleDescriptor,
-  val module: Module,
-  val navInfo: NavInfo,
-  val navEntry: NavEntry,
-)
+class SafeArgsNavFileInfo(val moduleDescriptor: ModuleDescriptor, val module: Module, val navInfo: NavInfo, val navEntry: NavEntry)

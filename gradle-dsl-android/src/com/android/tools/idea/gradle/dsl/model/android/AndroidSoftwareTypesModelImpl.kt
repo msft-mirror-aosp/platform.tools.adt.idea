@@ -23,8 +23,8 @@ import com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement.ANDROI
 import com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement.ANDROID_LIBRARY
 import com.android.tools.idea.gradle.dsl.parser.settings.DefaultsDslElement
 
-class AndroidSoftwareTypesModelImpl(private val defaultsDslElement: DefaultsDslElement) : GradleDslBlockModel(defaultsDslElement),
-                                                                                          AndroidSoftwareTypesModel {
+class AndroidSoftwareTypesModelImpl(private val defaultsDslElement: DefaultsDslElement) :
+  GradleDslBlockModel(defaultsDslElement), AndroidSoftwareTypesModel {
   override fun androidApp(): AndroidModel {
     val androidElement: AndroidDslElement = defaultsDslElement.ensurePropertyElement(ANDROID_APP)
     return AndroidModelImpl(androidElement)

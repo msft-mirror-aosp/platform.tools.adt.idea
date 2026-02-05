@@ -45,18 +45,27 @@ import com.intellij.util.ui.JBValue
 import com.intellij.util.ui.LafIconLookup.getIcon
 import com.intellij.util.ui.LafIconLookup.getSelectedIcon
 import icons.StudioIcons
+import java.awt.Component
 import java.awt.Dimension
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import java.awt.KeyEventDispatcher
+import java.awt.KeyboardFocusManager
 import java.awt.event.ActionEvent
+import java.awt.event.KeyEvent
 import javax.swing.AbstractAction
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JMenuItem
 import javax.swing.JPopupMenu
+import javax.swing.MenuElement
+import javax.swing.MenuSelectionManager
 import javax.swing.SwingConstants
+import javax.swing.event.PopupMenuEvent
+import javax.swing.event.PopupMenuListener
 import javax.swing.plaf.basic.BasicMenuItemUI
 import org.jetbrains.annotations.TestOnly
+import org.jetbrains.annotations.VisibleForTesting
 
 private const val POPUP_VERTICAL_BORDER = 6
 private const val TITLE_VERTICAL_BORDER = 2
@@ -83,19 +92,56 @@ private val separatorUI =
     }
   }
 
-class SystemUiModeAction :
-  DropDownAction("System UI Mode", "System UI Mode", StudioIcons.DeviceConfiguration.NIGHT_MODE) {
+enum class NavigationDirection {
+  LEFT,
+  RIGHT,
+}
+
+class SystemUiModeAction : DropDownAction("System UI Mode", "System UI Mode", StudioIcons.DeviceConfiguration.NIGHT_MODE) {
 
   override fun actionPerformed(event: AnActionEvent) {
-    val button =
-      event.presentation.getClientProperty(CustomComponentAction.COMPONENT_KEY) as? ActionButton
-        ?: return
+    val button = event.presentation.getClientProperty(CustomComponentAction.COMPONENT_KEY) as? ActionButton ?: return
+    val menu = createPopupMenu(event.dataContext)
+    JBPopupMenu.showBelow(button, menu)
+  }
+
+  @VisibleForTesting
+  fun createPopupMenu(dataContext: DataContext): JPopupMenu {
     val menu =
       JPopupMenu().apply {
         isLightWeightPopupEnabled = false
         isOpaque = false
         border = JBUI.Borders.empty(POPUP_VERTICAL_BORDER, 0)
       }
+
+    menu.addPopupMenuListener(
+      object : PopupMenuListener {
+        val dispatcher = KeyEventDispatcher { e ->
+          if (e.id == KeyEvent.KEY_PRESSED) {
+            if (e.keyCode == KeyEvent.VK_RIGHT) {
+              return@KeyEventDispatcher handleNavigation(menu, NavigationDirection.RIGHT)
+            }
+            if (e.keyCode == KeyEvent.VK_LEFT) {
+              return@KeyEventDispatcher handleNavigation(menu, NavigationDirection.LEFT)
+            }
+          }
+          false
+        }
+
+        override fun popupMenuWillBecomeVisible(e: PopupMenuEvent) {
+          KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(dispatcher)
+        }
+
+        override fun popupMenuWillBecomeInvisible(e: PopupMenuEvent) {
+          KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcher)
+        }
+
+        override fun popupMenuCanceled(e: PopupMenuEvent) {
+          KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(dispatcher)
+        }
+      }
+    )
+
     menu.layout = GridBagLayout()
     val numWallpapers = enumValues<Wallpaper>().size
     val gbc =
@@ -111,7 +157,7 @@ class SystemUiModeAction :
 
     enumValues<NightMode>().forEach { mode ->
       val action = SetNightModeAction(mode.shortDisplayValue, mode)
-      val item = ActionItem(action, event.dataContext)
+      val item = ActionItem(action, dataContext)
       gbc.gridy += 1
       menu.add(item, gbc)
     }
@@ -138,19 +184,17 @@ class SystemUiModeAction :
         add(null)
       }
     wallpapers.forEachIndexed { index, wallpaper ->
-      val menuItem = SetWallpaperAction(wallpaper).toMenuItem(event.dataContext)
+      val menuItem = SetWallpaperAction(wallpaper).toMenuItem(dataContext)
       gbc.insets =
         when (index) {
           0 -> JBUI.insets(4, sideBorderWidth.unscaled.toInt(), 0, 0)
-          numWallpapers ->
-            JBUI.insets(4, WALLPAPER_ICON_SEPARATION, 0, sideBorderWidth.unscaled.toInt())
+          numWallpapers -> JBUI.insets(4, WALLPAPER_ICON_SEPARATION, 0, sideBorderWidth.unscaled.toInt())
           else -> JBUI.insets(4, WALLPAPER_ICON_SEPARATION, 0, 0)
         }
       menu.add(menuItem, gbc)
       gbc.gridx += 1
     }
-
-    JBPopupMenu.showBelow(button, menu)
+    return menu
   }
 
   @TestOnly
@@ -164,15 +208,12 @@ class SystemUiModeAction :
   @TestOnly
   fun getNightModeActions(): List<AnAction> {
     val actions = mutableListOf<ConfigurationAction>()
-    enumValues<NightMode>().forEach { mode ->
-      actions.add(SetNightModeAction(mode.shortDisplayValue, mode))
-    }
+    enumValues<NightMode>().forEach { mode -> actions.add(SetNightModeAction(mode.shortDisplayValue, mode)) }
     return actions
   }
 }
 
-private class ActionItem(action: SetNightModeAction, dataContext: DataContext) :
-  JBMenuItem(action.templateText) {
+private class ActionItem(action: SetNightModeAction, dataContext: DataContext) : JBMenuItem(action.templateText) {
   init {
     val currentNightMode = dataContext.getData(CONFIGURATIONS)?.firstOrNull()?.nightMode
     if (currentNightMode == action.nightMode) {
@@ -193,15 +234,7 @@ private class ActionItem(action: SetNightModeAction, dataContext: DataContext) :
     border = JBUI.Borders.empty(2, sideBorderWidth.unscaled.toInt())
 
     addActionListener {
-      val anEvent =
-        AnActionEvent.createEvent(
-          action,
-          dataContext,
-          null,
-          ActionPlaces.POPUP,
-          ActionUiKind.POPUP,
-          null,
-        )
+      val anEvent = AnActionEvent.createEvent(action, dataContext, null, ActionPlaces.POPUP, ActionUiKind.POPUP, null)
       action.actionPerformed(anEvent)
     }
   }
@@ -218,8 +251,7 @@ private class ActionItem(action: SetNightModeAction, dataContext: DataContext) :
   }
 
   private fun shouldConvertIconToDarkVariant(): Boolean {
-    return JBColor.isBright() &&
-      ColorUtil.isDark(JBColor.namedColor("MenuItem.background", 0xffffff))
+    return JBColor.isBright() && ColorUtil.isDark(JBColor.namedColor("MenuItem.background", 0xffffff))
   }
 }
 
@@ -269,21 +301,13 @@ private class SetWallpaperAction(val wallpaper: Wallpaper?) : ConfigurationActio
   fun toMenuItem(dataContext: DataContext): JMenuItem {
     val scaledIconSize = JBUIScale.scale(ICON_SIZE)
     val scaledWallpaperIcon =
-      wallpaper?.let {
-        RoundedIcon(IconUtil.cropIcon(it.icon, scaledIconSize, scaledIconSize), 0.1)
-      } ?: getNullWallpaperIcon(scaledIconSize)
+      wallpaper?.let { RoundedIcon(IconUtil.cropIcon(it.icon, scaledIconSize, scaledIconSize), 0.1) }
+        ?: getNullWallpaperIcon(scaledIconSize)
     val action =
       object : AbstractAction(null, scaledWallpaperIcon) {
         override fun actionPerformed(e: ActionEvent) {
           val actionEvent =
-            AnActionEvent.createEvent(
-              this@SetWallpaperAction,
-              dataContext,
-              null,
-              ActionPlaces.POPUP,
-              ActionUiKind.POPUP,
-              null,
-            )
+            AnActionEvent.createEvent(this@SetWallpaperAction, dataContext, null, ActionPlaces.POPUP, ActionUiKind.POPUP, null)
           this@SetWallpaperAction.actionPerformed(actionEvent)
         }
       }
@@ -326,10 +350,38 @@ private fun getNullWallpaperIcon(scaledIconSize: Int) =
     setIcon(icon, 1, (scaledIconSize - icon.iconWidth) / 2, (scaledIconSize - icon.iconHeight) / 2)
   }
 
-private class SetNightModeAction(title: String, val nightMode: NightMode) :
-  ConfigurationAction(title) {
+private class SetNightModeAction(title: String, val nightMode: NightMode) : ConfigurationAction(title) {
 
   override fun updateConfiguration(configuration: Configuration, commit: Boolean) {
     configuration.nightMode = nightMode
   }
+}
+
+@VisibleForTesting
+fun handleNavigation(
+  menu: JPopupMenu,
+  direction: NavigationDirection,
+  manager: MenuSelectionManager = MenuSelectionManager.defaultManager(),
+): Boolean {
+  val path = manager.selectedPath
+  val selected = path.lastOrNull()
+  if (selected !is WallpaperItem) {
+    return false
+  }
+  val comp = selected as Component
+
+  val index = menu.getComponentIndex(comp)
+  if (index >= 0) {
+    val nextIndex = if (direction == NavigationDirection.RIGHT) index + 1 else index - 1
+    if (nextIndex >= 0 && nextIndex < menu.componentCount) {
+      val nextComponent = menu.getComponent(nextIndex)
+      if (nextComponent is WallpaperItem) {
+        val nextElement = nextComponent as MenuElement
+        val newPath = path.dropLast(1) + nextElement
+        manager.selectedPath = newPath.toTypedArray()
+        return true
+      }
+    }
+  }
+  return false
 }

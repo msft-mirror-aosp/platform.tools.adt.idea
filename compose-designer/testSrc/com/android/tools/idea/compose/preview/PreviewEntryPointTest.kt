@@ -66,10 +66,7 @@ class PreviewEntryPointTest {
     fixture.configureByText("Test.kt", fileContent)
     assertEquals(
       "Function \"NotUsed\" is never used",
-      fixture
-        .doHighlighting()
-        .single { it?.description?.startsWith("Function") ?: false }
-        .description,
+      fixture.doHighlighting().single { it?.description?.startsWith("Function") ?: false }.description,
     )
   }
 
@@ -107,10 +104,7 @@ class PreviewEntryPointTest {
     fixture.configureByText("Test.kt", fileContent)
     assertEquals(
       "Function \"NotUsed\" is never used",
-      fixture
-        .doHighlighting()
-        .single { it?.description?.startsWith("Function") ?: false }
-        .description,
+      fixture.doHighlighting().single { it?.description?.startsWith("Function") ?: false }.description,
     )
   }
 }

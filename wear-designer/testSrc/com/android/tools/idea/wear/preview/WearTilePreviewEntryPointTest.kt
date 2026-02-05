@@ -67,7 +67,7 @@ class WearTilePreviewEntryPointTest {
 
       fun NotUsed() {
       }
-    """
+      """
         .trimIndent()
 
     fixture.configureByText("Test.kt", fileContent)
@@ -78,10 +78,7 @@ class WearTilePreviewEntryPointTest {
         "Function \"NotATilePreviewSignature\" is never used",
         "Function \"NotUsed\" is never used",
       ),
-      fixture
-        .doHighlighting()
-        .filter { it?.description?.startsWith("Function") ?: false }
-        .map { it.description },
+      fixture.doHighlighting().filter { it?.description?.startsWith("Function") ?: false }.map { it.description },
     )
   }
 
@@ -115,7 +112,7 @@ class WearTilePreviewEntryPointTest {
         public void NotUsed() {
         }
       }
-    """
+      """
         .trimIndent()
 
     fixture.configureByText("Test.java", fileContent)
@@ -126,10 +123,7 @@ class WearTilePreviewEntryPointTest {
         "Method 'NotATilePreviewSignature()' is never used",
         "Method 'NotUsed()' is never used",
       ),
-      fixture
-        .doHighlighting()
-        .filter { it?.description?.startsWith("Method") ?: false }
-        .map { it.description },
+      fixture.doHighlighting().filter { it?.description?.startsWith("Method") ?: false }.map { it.description },
     )
   }
 
@@ -155,16 +149,13 @@ class WearTilePreviewEntryPointTest {
 
       @MyEmptyAnnotation
       fun NotUsed() = TilePreviewData()
-    """
+      """
         .trimIndent()
 
     fixture.configureByText("Test.kt", fileContent)
     assertEquals(
       "Function \"NotUsed\" is never used",
-      fixture
-        .doHighlighting()
-        .single { it?.description?.startsWith("Function") ?: false }
-        .description,
+      fixture.doHighlighting().single { it?.description?.startsWith("Function") ?: false }.description,
     )
   }
 
@@ -188,17 +179,14 @@ class WearTilePreviewEntryPointTest {
 
       @Preview
       fun PreviewAnnotationFromDifferentPackage() = TilePreviewData()
-    """
+      """
         .trimIndent()
 
     fixture.configureByText("Test.kt", fileContent)
 
     assertEquals(
       "Function \"PreviewAnnotationFromDifferentPackage\" is never used",
-      fixture
-        .doHighlighting()
-        .single { it?.description?.startsWith("Function") ?: false }
-        .description,
+      fixture.doHighlighting().single { it?.description?.startsWith("Function") ?: false }.description,
     )
   }
 }

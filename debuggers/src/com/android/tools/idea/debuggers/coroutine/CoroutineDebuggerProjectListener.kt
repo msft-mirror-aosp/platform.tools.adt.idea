@@ -27,10 +27,8 @@ import com.intellij.xdebugger.impl.frame.XDebugManagerProxy
 import org.jetbrains.android.AndroidStartupManager.ProjectDisposableScope
 import org.jetbrains.kotlin.idea.debugger.coroutine.DebuggerConnection
 
-/**
- * Class responsible for setting up the coroutine debugger panel
- */
-class CoroutineDebuggerProjectActivity : ProjectActivity{
+/** Class responsible for setting up the coroutine debugger panel */
+class CoroutineDebuggerProjectActivity : ProjectActivity {
   override suspend fun execute(project: Project) {
     if (!FlagController.isCoroutineDebuggerEnabled) {
       return
@@ -45,7 +43,6 @@ private class CoroutineDebuggerListener(private val project: Project) : XDebugge
     // don't show coroutine debugger panel if disabled in settings
     if (!CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()) {
       return
-
     }
     // we check the process handler to differentiate between regular JVM processes and Android processes.
     // we don't want to create the panel if the process is regular JVM.

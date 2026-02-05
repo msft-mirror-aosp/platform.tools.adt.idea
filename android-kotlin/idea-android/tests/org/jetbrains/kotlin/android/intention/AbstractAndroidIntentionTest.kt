@@ -20,18 +20,18 @@ import com.android.SdkConstants
 import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.PathUtil
+import java.io.File
 import org.jetbrains.kotlin.android.ConfigLibraryUtil
 import org.jetbrains.kotlin.android.InTextDirectivesUtils
 import org.jetbrains.kotlin.android.KotlinAndroidTestCase
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.utils.KotlinPaths
-import java.io.File
 
 abstract class AbstractAndroidIntentionTest : KotlinAndroidTestCase() {
     fun doTest(path: String) {
         val testFileText = FileUtil.loadFile(File(testDataPath, path))
-        val intentionClassName = InTextDirectivesUtils.findStringWithPrefixes(testFileText, "// INTENTION_CLASS: ")
-                                 ?: error("Intention class not found!")
+        val intentionClassName =
+            InTextDirectivesUtils.findStringWithPrefixes(testFileText, "// INTENTION_CLASS: ") ?: error("Intention class not found!")
 
         if (KotlinPluginModeProvider.isK2Mode() && InTextDirectivesUtils.isDirectiveDefined(testFileText, "// SKIP_K2")) {
             return
@@ -76,12 +76,10 @@ abstract class AbstractAndroidIntentionTest : KotlinAndroidTestCase() {
 
             if (checkManifest) {
                 myFixture.checkResultByFile("AndroidManifest.xml", "$customManifestPath.expected", true)
-            }
-            else {
+            } else {
                 myFixture.checkResultByFile("$path.expected")
             }
-        }
-        finally {
+        } finally {
             ConfigLibraryUtil.removeLibrary(myModule, "parcelizeRuntime")
             ConfigLibraryUtil.removeLibrary(myModule, "kotlinStdlib")
             if (withRuntime) {

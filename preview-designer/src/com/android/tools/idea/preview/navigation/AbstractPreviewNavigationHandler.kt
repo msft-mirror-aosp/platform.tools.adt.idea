@@ -18,17 +18,18 @@ package com.android.tools.idea.preview.navigation
 import com.android.tools.adtui.common.SwingCoordinate
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.SceneView
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.android.tools.idea.uibuilder.surface.PreviewNavigatableWrapper
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.util.PsiNavigationSupport
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.debug
 import com.intellij.pom.Navigatable
 import com.intellij.psi.PsiFile
 import java.awt.Rectangle
 import java.util.WeakHashMap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
@@ -40,9 +41,8 @@ import kotlinx.coroutines.withContext
 data class DefaultLocation(val fileName: String, val navigatable: Navigatable)
 
 /**
- * Navigation handler that defaults navigation from a [SceneView] to a particular predefined (via
- * [setDefaultLocation]) position in a file. However, it prioritizes the result of
- * [findNavigatableComponents] if that find a better match (usually used for subcomponents
+ * Navigation handler that defaults navigation from a [SceneView] to a particular predefined (via [setDefaultLocation]) position in a file.
+ * However, it prioritizes the result of [findNavigatableComponents] if that find a better match (usually used for subcomponents
  * navigation).
  */
 abstract class AbstractPreviewNavigationHandler : NavigationHandler {
@@ -56,16 +56,12 @@ abstract class AbstractPreviewNavigationHandler : NavigationHandler {
   fun setDefaultLocation(model: NlModel, psiFile: PsiFile, offset: Int) {
     LOG.debug { "Default location set to ${psiFile.name}:$offset" }
     defaultNavigationMap[model] =
-      DefaultLocation(
-        psiFile.name,
-        PsiNavigationSupport.getInstance()
-          .createNavigatable(model.project, psiFile.virtualFile!!, offset),
-      )
+      DefaultLocation(psiFile.name, PsiNavigationSupport.getInstance().createNavigatable(model.project, psiFile.virtualFile!!, offset))
   }
 
   override suspend fun handleNavigate(sceneView: SceneView, requestFocus: Boolean): Boolean {
     return (getDefaultLocation(sceneView.sceneManager.model)?.navigatable?.apply {
-        withContext(uiThread) { navigate(requestFocus) }
+        withContext(Dispatchers.EDT) { navigate(requestFocus) }
       } != null)
       .also { LOG.debug { "Navigated to default? $it" } }
   }
@@ -81,10 +77,7 @@ abstract class AbstractPreviewNavigationHandler : NavigationHandler {
     return findNavigatableComponents(sceneView, hitX, hitY, requestFocus, fileName, isOptionDown)
   }
 
-  override suspend fun findBoundsOfComponents(
-    sceneView: SceneView,
-    lineNumber: Int,
-  ): List<Rectangle> {
+  override suspend fun findBoundsOfComponents(sceneView: SceneView, lineNumber: Int): List<Rectangle> {
     val fileName = getDefaultLocation(sceneView.sceneManager.model)?.fileName ?: ""
     return findBoundsOfComponentsInFile(sceneView, fileName, lineNumber)
   }
@@ -98,18 +91,10 @@ abstract class AbstractPreviewNavigationHandler : NavigationHandler {
     shouldFindAllNavigatables: Boolean,
   ): List<PreviewNavigatableWrapper>
 
-  protected abstract fun findBoundsOfComponentsInFile(
-    sceneView: SceneView,
-    fileName: String,
-    lineNumber: Int,
-  ): List<Rectangle>
+  protected abstract fun findBoundsOfComponentsInFile(sceneView: SceneView, fileName: String, lineNumber: Int): List<Rectangle>
 
-  override suspend fun navigateTo(
-    sceneView: SceneView,
-    navigatable: Navigatable,
-    requestFocus: Boolean,
-  ): Boolean {
-    withContext(uiThread) { navigatable.navigate(requestFocus) }
+  override suspend fun navigateTo(sceneView: SceneView, navigatable: Navigatable, requestFocus: Boolean): Boolean {
+    withContext(Dispatchers.EDT) { navigatable.navigate(requestFocus) }
     return true
   }
 

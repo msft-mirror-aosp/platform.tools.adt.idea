@@ -41,14 +41,11 @@ import java.nio.file.Path
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
-internal class TestProjectFixtureRuleImpl(
-  private val testProject: TestProjectDefinition,
-  private val syncReady: Boolean,
-) : FixtureRule<JavaCodeInsightTestFixture> {
+internal class TestProjectFixtureRuleImpl(private val testProject: TestProjectDefinition, private val syncReady: Boolean) :
+  FixtureRule<JavaCodeInsightTestFixture> {
   private val tempDirFixture = AndroidProjectRuleTempDirectoryFixture("p")
   private val projectBuilder =
-    IdeaTestFixtureFactory.getFixtureFactory()
-      .createFixtureBuilder("_", tempDirFixture.projectDir.parentFile.toPath(), true)
+    IdeaTestFixtureFactory.getFixtureFactory().createFixtureBuilder("_", tempDirFixture.projectDir.parentFile.toPath(), true)
   private var projectContext_: PreparedTestProject.Context? = null
 
   override val fixture: JavaCodeInsightTestFixture
@@ -121,17 +118,12 @@ private fun setupJdk(path: Path, testRootDisposable: Disposable): Sdk? {
   VfsRootAccess.allowRootAccess(testRootDisposable, path.toString())
   val addedSdk = Jdks.getInstance().createAndAddJdk(path.toString())
   if (addedSdk != null) {
-    Disposer.register(testRootDisposable) {
-      WriteAction.runAndWait<Throwable> { ProjectJdkTable.getInstance().removeJdk(addedSdk) }
-    }
+    Disposer.register(testRootDisposable) { WriteAction.runAndWait<Throwable> { ProjectJdkTable.getInstance().removeJdk(addedSdk) } }
   }
   return addedSdk
 }
 
-private inline fun AggregateAndThrowIfAnyContext.withSdksHandled(
-  testRootDisposable: Disposable,
-  body: (Sdk?) -> Unit,
-) {
+private inline fun AggregateAndThrowIfAnyContext.withSdksHandled(testRootDisposable: Disposable, body: (Sdk?) -> Unit) {
   val jdkPath = EmbeddedDistributionPaths.getInstance().embeddedJdkPath
   val sdk =
     WriteAction.computeAndWait<Sdk, Throwable> {
@@ -142,11 +134,7 @@ private inline fun AggregateAndThrowIfAnyContext.withSdksHandled(
 
   val oldAndroidSdkPath = IdeSdks.getInstance().androidSdkPath
   Disposer.register(testRootDisposable) {
-    runWriteAction {
-      runCatchingAndRecord {
-        AndroidSdkPathStore.getInstance().androidSdkPath = oldAndroidSdkPath?.toPath()
-      }
-    }
+    runWriteAction { runCatchingAndRecord { AndroidSdkPathStore.getInstance().androidSdkPath = oldAndroidSdkPath?.toPath() } }
   }
   runCatchingAndRecord { body(sdk) }
   runInEdtAndWait { runCatchingAndRecord { removeAllAndroidSdks() } }

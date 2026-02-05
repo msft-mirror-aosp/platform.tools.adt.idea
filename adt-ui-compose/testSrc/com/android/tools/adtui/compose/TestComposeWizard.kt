@@ -27,16 +27,19 @@ import java.util.concurrent.TimeoutException
 import javax.swing.JPanel
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
-class TestComposeWizard(initialPage: @Composable WizardPageScope.() -> Unit) :
-  InternalWizardDialogScope, WizardPageScope() {
+class TestComposeWizard(initialPage: @Composable WizardPageScope.() -> Unit) : InternalWizardDialogScope, WizardPageScope() {
+
+  override val coroutineScope = CoroutineScope(SupervisorJob())
 
   private val pageStack = mutableStateListOf<@Composable WizardPageScope.() -> Unit>(initialPage)
 
   @Composable
   fun Content() {
-    prevAction =
-      if (pageStack.size > 1) WizardAction { pageStack.removeLast() } else WizardAction.Disabled
+    prevAction = if (pageStack.size > 1) WizardAction { pageStack.removeLast() } else WizardAction.Disabled
     WizardPageScaffold(this, pageStack.last())
   }
 
@@ -56,10 +59,11 @@ class TestComposeWizard(initialPage: @Composable WizardPageScope.() -> Unit) :
 
   override fun close() {
     closeLatch.countDown()
+    coroutineScope.cancel()
   }
 
   override fun cancel() {
-    closeLatch.countDown()
+    close()
   }
 
   fun awaitClose(timeout: Duration = 30.seconds) {

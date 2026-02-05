@@ -25,9 +25,7 @@ import org.junit.Test
 class PreviewCanvasTrackerTest {
   private val trackedEvents = LinkedList<AndroidStudioEvent>()
   private val previewCanvasTracker: PreviewCanvasTracker =
-    PreviewCanvasTrackerImpl({ command -> command.run() }) { event: AndroidStudioEvent.Builder ->
-      trackedEvents.add(event.build())
-    }
+    PreviewCanvasTrackerImpl({ command -> command.run() }) { event: AndroidStudioEvent.Builder -> trackedEvents.add(event.build()) }
 
   @Test
   fun testSetLayout() {

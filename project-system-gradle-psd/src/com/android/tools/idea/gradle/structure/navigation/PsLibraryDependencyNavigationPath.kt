@@ -19,14 +19,14 @@ import com.android.tools.idea.gradle.structure.configurables.PsContext
 import com.android.tools.idea.gradle.structure.configurables.dependencies.module.MODULE_DEPENDENCIES_PLACE_NAME
 import com.android.tools.idea.gradle.structure.model.PsLibraryDependency
 import com.android.tools.idea.gradle.structure.model.PsModulePath
-import com.android.tools.idea.gradle.structure.model.PsPath
 import com.android.tools.idea.gradle.structure.model.PsPlaceBasedPath
 import com.intellij.ui.navigation.Place
 
-
-data class PsLibraryDependencyNavigationPath(override val parent: PsDependenciesNavigationPath, val dependency: String) : PsPlaceBasedPath() {
-  constructor (dependency: PsLibraryDependency) :
-    this(PsDependenciesNavigationPath(PsModulePath(dependency.parent)), dependency.spec.compactNotation())
+data class PsLibraryDependencyNavigationPath(override val parent: PsDependenciesNavigationPath, val dependency: String) :
+  PsPlaceBasedPath() {
+  constructor(
+    dependency: PsLibraryDependency
+  ) : this(PsDependenciesNavigationPath(PsModulePath(dependency.parent)), dependency.spec.compactNotation())
 
   override fun queryPlace(place: Place, context: PsContext) {
     parent.queryPlace(place, context)

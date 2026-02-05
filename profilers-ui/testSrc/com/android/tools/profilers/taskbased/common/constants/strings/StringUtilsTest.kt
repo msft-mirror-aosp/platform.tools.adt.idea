@@ -25,10 +25,8 @@ import org.junit.runners.Parameterized
 @RunWith(Parameterized::class)
 class StringUtilsTest(private val taskType: ProfilerTaskType) {
 
-  companion object{
-    @JvmStatic
-    @Parameterized.Parameters
-    fun data() = ProfilerTaskType.values()
+  companion object {
+    @JvmStatic @Parameterized.Parameters fun data() = ProfilerTaskType.values()
   }
 
   @Test

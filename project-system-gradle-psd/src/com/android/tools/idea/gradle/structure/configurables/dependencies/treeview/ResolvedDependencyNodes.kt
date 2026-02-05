@@ -42,7 +42,9 @@ import java.io.File
 
 abstract class AbstractResolvedDependencyNode<T : PsBaseDependency> : AbstractPsModelNode<T> {
 
-  val isDeclared: Boolean get() = models.any { it.isDeclared }
+  val isDeclared: Boolean
+    get() = models.any { it.isDeclared }
+
   final override val models: List<T>
 
   protected constructor(parent: AbstractPsNode, dependency: T) : super(parent, parent.uiSettings) {
@@ -66,10 +68,8 @@ abstract class AbstractResolvedDependencyNode<T : PsBaseDependency> : AbstractPs
   }
 }
 
-class ResolvedModuleDependencyNode(
-  parent: AbstractPsNode,
-  dependency: PsResolvedModuleDependency
-) : AbstractResolvedDependencyNode<PsModuleDependency>(parent, dependency) {
+class ResolvedModuleDependencyNode(parent: AbstractPsNode, dependency: PsResolvedModuleDependency) :
+  AbstractResolvedDependencyNode<PsModuleDependency>(parent, dependency) {
 
   private val myChildren: List<AbstractPsModelNode<*>>
 
@@ -81,10 +81,8 @@ class ResolvedModuleDependencyNode(
   override fun getChildren(): Array<SimpleNode> = myChildren.toTypedArray()
 }
 
-class ResolvedLibraryDependencyNode(
-  parent: AbstractPsNode,
-  val dependency: PsResolvedLibraryDependency
-) : AbstractResolvedDependencyNode<PsLibraryDependency>(parent, listOf(dependency)) {
+class ResolvedLibraryDependencyNode(parent: AbstractPsNode, val dependency: PsResolvedLibraryDependency) :
+  AbstractResolvedDependencyNode<PsLibraryDependency>(parent, listOf(dependency)) {
 
   private var cachedChildren: Array<SimpleNode>? = null
 
@@ -104,19 +102,14 @@ class ResolvedLibraryDependencyNode(
     }
   }
 
-  private fun createChildren(): List<AbstractResolvedDependencyNode<*>> = dependency
-    .getTransitiveDependencies()
-    .sortedWith(PsDependencyComparator(this.uiSettings))
-    .map { transitiveLibrary ->
-      @Suppress("UNCHECKED_CAST")
-      (ResolvedLibraryDependencyNode(this, transitiveLibrary as PsResolvedLibraryDependency))
+  private fun createChildren(): List<AbstractResolvedDependencyNode<*>> =
+    dependency.getTransitiveDependencies().sortedWith(PsDependencyComparator(this.uiSettings)).map { transitiveLibrary ->
+      @Suppress("UNCHECKED_CAST") (ResolvedLibraryDependencyNode(this, transitiveLibrary as PsResolvedLibraryDependency))
     }
 }
 
-class ResolvedJarDependencyNode(
-  parent: AbstractPsNode,
-  val dependency: List<PsJarDependency>
-) : AbstractResolvedDependencyNode<PsJarDependency>(parent, dependency) {
+class ResolvedJarDependencyNode(parent: AbstractPsNode, val dependency: List<PsJarDependency>) :
+  AbstractResolvedDependencyNode<PsJarDependency>(parent, dependency) {
   override fun getChildren(): Array<SimpleNode> = arrayOf()
 
   override fun update(presentation: PresentationData) {
@@ -132,13 +125,12 @@ class ResolvedJarDependencyNode(
 
 fun createNodesForResolvedDependencies(
   parent: AbstractPsNode,
-  collection: PsDependencyCollection<*, *, *, *>
+  collection: PsDependencyCollection<*, *, *, *>,
 ): List<AbstractPsModelNode<*>> {
   val allTransitive = Sets.newHashSet<String>()
   val children = Lists.newArrayList<AbstractPsModelNode<*>>()
 
-  val declared = SortedList(
-    PsDependencyComparator(parent.uiSettings))
+  val declared = SortedList(PsDependencyComparator(parent.uiSettings))
   val mayBeTransitive = Lists.newArrayList<PsLibraryDependency>()
   for (dependency in collection.modules) {
     if (dependency.isDeclared) {
@@ -149,23 +141,20 @@ fun createNodesForResolvedDependencies(
   for (dependency in collection.libraries) {
     if (dependency.isDeclared) {
       declared.add(dependency)
-    }
-    else {
+    } else {
       mayBeTransitive.add(dependency)
     }
     addTransitive(dependency, allTransitive)
   }
 
   // Any other dependencies that are not declared, but somehow were not found as transitive.
-  val otherUnrecognised = mayBeTransitive
-    .filter { it -> !allTransitive.contains(it.spec.compactNotation()) }
+  val otherUnrecognised = mayBeTransitive.filter { it -> !allTransitive.contains(it.spec.compactNotation()) }
   declared.addAll(otherUnrecognised)
 
   declared.addAll(collection.jars)
 
   for (dependency in declared) {
-    val child = AbstractResolvedDependencyNode.createResolvedNode(
-      parent, dependency)
+    val child = AbstractResolvedDependencyNode.createResolvedNode(parent, dependency)
     if (child != null) {
       children.add(child)
     }
@@ -177,16 +166,13 @@ fun createNodesForResolvedDependencies(
 private fun getText(parent: AbstractPsNode, dependency: PsLibraryDependency, uiSettings: PsUISettings): String {
   val resolvedSpec = dependency.spec
   // TODO(b/74948244): Display POM dependency promotions correctly.
-  if (dependency is PsResolvedLibraryDependency &&
-      dependency.hasPromotedVersion() &&
-      parent !is ResolvedLibraryDependencyNode) {
+  if (dependency is PsResolvedLibraryDependency && dependency.hasPromotedVersion() && parent !is ResolvedLibraryDependencyNode) {
     // Show only "promoted" version for declared nodes.
     // TODO(b/74424544): Find a better representation for multiple versions here.
     val declaredSpecs =
-      (dependency as PsResolvedDependency)
-        .getParsedModels()
-        .filterIsInstance<ArtifactDependencyModel>()
-        .joinToString(separator = ",") { it.version().toString() }
+      (dependency as PsResolvedDependency).getParsedModels().filterIsInstance<ArtifactDependencyModel>().joinToString(separator = ",") {
+        it.version().toString()
+      }
 
     val version = declaredSpecs + "→" + resolvedSpec.version
     return getTextForSpec(resolvedSpec.name, version, resolvedSpec.group, uiSettings.DECLARED_DEPENDENCIES_SHOW_GROUP_ID)
@@ -194,16 +180,15 @@ private fun getText(parent: AbstractPsNode, dependency: PsLibraryDependency, uiS
   return resolvedSpec.getDisplayText(uiSettings.DECLARED_DEPENDENCIES_SHOW_GROUP_ID, true)
 }
 
-private fun getTextForSpec(name: String, version: String, group: String?, showGroupId: Boolean): String =
-  buildString {
-    if (showGroupId && StringUtil.isNotEmpty(group)) {
-      append(group)
-      append(SdkConstants.GRADLE_PATH_SEPARATOR)
-    }
-    append(name)
+private fun getTextForSpec(name: String, version: String, group: String?, showGroupId: Boolean): String = buildString {
+  if (showGroupId && StringUtil.isNotEmpty(group)) {
+    append(group)
     append(SdkConstants.GRADLE_PATH_SEPARATOR)
-    append(version)
   }
+  append(name)
+  append(SdkConstants.GRADLE_PATH_SEPARATOR)
+  append(version)
+}
 
 private fun addTransitive(dependency: PsLibraryDependency, allTransitive: MutableSet<String>) {
   if (dependency is PsResolvedLibraryDependency) {

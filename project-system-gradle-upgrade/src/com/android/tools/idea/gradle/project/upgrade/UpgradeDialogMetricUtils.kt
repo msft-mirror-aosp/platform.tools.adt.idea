@@ -18,8 +18,8 @@ package com.android.tools.idea.gradle.project.upgrade
 import com.android.SdkConstants.GRADLE_LATEST_VERSION
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.analytics.UsageTracker
-import com.android.tools.idea.gradle.util.GradleWrapper
 import com.android.tools.analytics.withProjectId
+import com.android.tools.idea.gradle.util.GradleWrapper
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.GradlePluginUpgradeDialogStats
 import com.intellij.openapi.project.Project
@@ -28,19 +28,20 @@ fun recordUpgradeDialogEvent(
   project: Project,
   oldPluginVersion: AgpVersion?,
   newPluginVersion: AgpVersion,
-  userAction: GradlePluginUpgradeDialogStats.UserAction
+  userAction: GradlePluginUpgradeDialogStats.UserAction,
 ) = recordUpgradeDialogEvent(project, oldPluginVersion.toString(), newPluginVersion.toString(), userAction)
 
 fun recordUpgradeDialogEvent(
   project: Project,
   oldPluginVersion: String?,
   newPluginVersion: String,
-  userAction: GradlePluginUpgradeDialogStats.UserAction
+  userAction: GradlePluginUpgradeDialogStats.UserAction,
 ) {
-  val dialogStats = GradlePluginUpgradeDialogStats.newBuilder()
-    .setRecommendedGradleVersion(GRADLE_LATEST_VERSION)
-    .setRecommendedAndroidGradlePluginVersion(newPluginVersion)
-    .setUserAction(userAction)
+  val dialogStats =
+    GradlePluginUpgradeDialogStats.newBuilder()
+      .setRecommendedGradleVersion(GRADLE_LATEST_VERSION)
+      .setRecommendedAndroidGradlePluginVersion(newPluginVersion)
+      .setUserAction(userAction)
 
   if (oldPluginVersion != null) {
     dialogStats.currentAndroidGradlePluginVersion = oldPluginVersion
@@ -51,10 +52,11 @@ fun recordUpgradeDialogEvent(
     dialogStats.currentGradleVersion = oldGradleVersion
   }
 
-  UsageTracker.log(AndroidStudioEvent.newBuilder()
-                     .setCategory(AndroidStudioEvent.EventCategory.PROJECT_SYSTEM)
-                     .setKind(AndroidStudioEvent.EventKind.GRADLE_PLUGIN_UPGRADE_DIALOG)
-                     .setGradlePluginUpgradeDialog(
-                       dialogStats
-                     ).withProjectId(project))
+  UsageTracker.log(
+    AndroidStudioEvent.newBuilder()
+      .setCategory(AndroidStudioEvent.EventCategory.PROJECT_SYSTEM)
+      .setKind(AndroidStudioEvent.EventKind.GRADLE_PLUGIN_UPGRADE_DIALOG)
+      .setGradlePluginUpgradeDialog(dialogStats)
+      .withProjectId(project)
+  )
 }

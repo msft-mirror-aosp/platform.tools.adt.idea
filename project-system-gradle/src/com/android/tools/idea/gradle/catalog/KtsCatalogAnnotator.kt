@@ -32,29 +32,18 @@ class KtsCatalogAnnotator : Annotator {
   override fun annotate(element: PsiElement, holder: AnnotationHolder) {
     if (element !is KtElement || !element.containingFile.name.endsWith("gradle.kts")) return
 
-    if (element is KtDotQualifiedExpression &&
-        element.isEndOfDotExpression() &&
-        element.hasCatalogReference()) {
+    if (element is KtDotQualifiedExpression && element.isEndOfDotExpression() && element.hasCatalogReference()) {
       // handle catalog reference
       if (hasLiveCatalogReference(element)) {
         element.markChildrenAsSuppressHighlight()
-      }
-      else {
-        holder
-          .newAnnotation(
-            HighlightSeverity.ERROR,
-            "Unresolved reference to version catalog",
-          )
-          .create()
+      } else {
+        holder.newAnnotation(HighlightSeverity.ERROR, "Unresolved reference to version catalog").create()
         element.markChildrenAsUnsuppressHighlight()
       }
     }
   }
 
-  private fun KtDotQualifiedExpression.hasCatalogReference() =
-    references.any { ref ->
-      ref is KtsDotExpressionVersionCatalogReference
-    }
+  private fun KtDotQualifiedExpression.hasCatalogReference() = references.any { ref -> ref is KtsDotExpressionVersionCatalogReference }
 
   companion object {
 
@@ -78,5 +67,4 @@ class KtsCatalogAnnotator : Annotator {
       }
     }
   }
-
 }

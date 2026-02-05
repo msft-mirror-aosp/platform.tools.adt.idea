@@ -16,7 +16,6 @@
 package com.android.build.attribution.ui.controllers
 
 import com.android.build.attribution.BuildAttributionWarningsFilter
-import com.android.build.diagnostic.WindowsDefenderCheckService
 import com.android.build.attribution.analyzers.CHECK_JETIFIER_TASK_NAME
 import com.android.build.attribution.analyzers.IncompatiblePluginWarning
 import com.android.build.attribution.analyzers.NoIncompatiblePlugins
@@ -37,6 +36,7 @@ import com.android.build.attribution.ui.model.WarningsTreeNode
 import com.android.build.attribution.ui.view.ViewActionHandlers
 import com.android.build.attribution.ui.view.WindowsDefenderPageHandler
 import com.android.build.attribution.ui.view.details.JetifierWarningDetailsView
+import com.android.build.diagnostic.WindowsDefenderCheckService
 import com.android.buildanalyzer.common.TaskCategory
 import com.android.builder.model.PROPERTY_CHECK_JETIFIER_RESULT_FILE
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
@@ -75,7 +75,7 @@ class BuildAnalyzerViewController(
   val model: BuildAnalyzerViewModel,
   private val project: Project,
   private val analytics: BuildAttributionUiAnalytics,
-  private val issueReporter: TaskIssueReporter
+  private val issueReporter: TaskIssueReporter,
 ) : ViewActionHandlers {
 
   init {
@@ -205,9 +205,8 @@ class BuildAnalyzerViewController(
 
   override fun runTestConfigurationCachingBuild() {
     val configurationCacheData = (model.reportUiData.confCachingData as? NoIncompatiblePlugins) ?: return
-    ConfigurationCacheTestBuildFlowRunner.getInstance(project).startTestBuildsFlow(
-      model.reportUiData.buildRequestData,
-      configurationCacheData.configurationCacheIsStableFeature)
+    ConfigurationCacheTestBuildFlowRunner.getInstance(project)
+      .startTestBuildsFlow(model.reportUiData.buildRequestData, configurationCacheData.configurationCacheIsStableFeature)
     analytics.rerunBuildWithConfCacheClicked()
   }
 
@@ -217,16 +216,16 @@ class BuildAnalyzerViewController(
   }
 
   override fun migrateToNonTransitiveRClass() {
-    ActionManager.getInstance().tryToExecute(
-      ActionManager.getInstance().getAction("AndroidMigrateToNonTransitiveRClassesAction"),
-      null, null, null, true)
+    ActionManager.getInstance()
+      .tryToExecute(ActionManager.getInstance().getAction("AndroidMigrateToNonTransitiveRClassesAction"), null, null, null, true)
     analytics.migrateToNonTransitiveRClassesClicked()
   }
 
   override fun updatePluginClicked(pluginWarningData: IncompatiblePluginWarning) {
     val duration = runAndMeasureDuration {
-      val openFile = PluginVersionDeclarationFinder(project)
-        .findFileToOpen(pluginWarningData.pluginInfo.pluginArtifact, pluginWarningData.plugin.displayNames())
+      val openFile =
+        PluginVersionDeclarationFinder(project)
+          .findFileToOpen(pluginWarningData.pluginInfo.pluginArtifact, pluginWarningData.plugin.displayNames())
       if (openFile?.canNavigate() == true) {
         openFile.navigate(true)
       }
@@ -249,21 +248,18 @@ class BuildAnalyzerViewController(
           invokeLater {
             val feedbackBalloonRelativePoint = sourceRelativePointSupplier.get()
             val message = "'android.enableJetifier' property is not found in 'gradle.properties'. Was it already removed?"
-            createPropertyRemovalFeedbackBalloon(message, MessageType.ERROR)
-              .show(feedbackBalloonRelativePoint, Balloon.Position.below)
+            createPropertyRemovalFeedbackBalloon(message, MessageType.ERROR).show(feedbackBalloonRelativePoint, Balloon.Position.below)
           }
-        }
-        else {
+        } else {
           invokeLater {
-            val openFileDescriptor = OpenFileDescriptor(project, property.propertiesFile.virtualFile,
-                                                        property.psiElement.textRange.endOffset)
+            val openFileDescriptor =
+              OpenFileDescriptor(project, property.propertiesFile.virtualFile, property.psiElement.textRange.endOffset)
             FileEditorManager.getInstance(project).openTextEditor(openFileDescriptor, true)?.let { editor ->
               blinkPropertyTextInEditor(editor, property)
               val pointInEditor = JBPopupFactory.getInstance().guessBestPopupLocation(editor)
-              val message = "'android.enableJetifier' property is now set to false.<br/>" +
-                            "Please, remove it after reviewing any associated comments."
-              createPropertyRemovalFeedbackBalloon(message, MessageType.INFO)
-                .show(pointInEditor, Balloon.Position.atRight)
+              val message =
+                "'android.enableJetifier' property is now set to false.<br/>" + "Please, remove it after reviewing any associated comments."
+              createPropertyRemovalFeedbackBalloon(message, MessageType.INFO).show(pointInEditor, Balloon.Position.atRight)
             }
           }
         }
@@ -279,15 +275,18 @@ class BuildAnalyzerViewController(
     rangeBlinker.startBlinking()
   }
 
-  private fun createPropertyRemovalFeedbackBalloon(messageHtml: String, type: MessageType) = JBPopupFactory.getInstance()
-    .createHtmlTextBalloonBuilder(messageHtml, type) {}
-    .setHideOnClickOutside(true)
-    .setHideOnAction(false)
-    .setHideOnFrameResize(false)
-    .setHideOnKeyOutside(false)
-    .createBalloon()
+  private fun createPropertyRemovalFeedbackBalloon(messageHtml: String, type: MessageType) =
+    JBPopupFactory.getInstance()
+      .createHtmlTextBalloonBuilder(messageHtml, type) {}
+      .setHideOnClickOutside(true)
+      .setHideOnAction(false)
+      .setHideOnFrameResize(false)
+      .setHideOnKeyOutside(false)
+      .createBalloon()
 
-  override fun createFindSelectedLibVersionDeclarationAction(selectionSupplier: Supplier<JetifierWarningDetailsView.DirectDependencyDescriptor?>): AnAction {
+  override fun createFindSelectedLibVersionDeclarationAction(
+    selectionSupplier: Supplier<JetifierWarningDetailsView.DirectDependencyDescriptor?>
+  ): AnAction {
     return FindSelectedLibVersionDeclarationAction(selectionSupplier, project, analytics)
   }
 
@@ -305,7 +304,8 @@ class BuildAnalyzerViewController(
     }
   }
 
-  override fun windowsDefenderPageHandler(): WindowsDefenderPageHandler = WindowsDefenderPageHandlerImpl(WindowsDefenderCheckService.getInstance(project))
+  override fun windowsDefenderPageHandler(): WindowsDefenderPageHandler =
+    WindowsDefenderPageHandlerImpl(WindowsDefenderCheckService.getInstance(project))
 
   private fun runAndMeasureDuration(action: () -> Unit): Duration {
     val watch = Stopwatch.createStarted()
@@ -336,8 +336,7 @@ class PluginVersionDeclarationFinder(val project: Project) {
     val psiToOpen = findPluginDeclarationPsi(rootBuildModel, pluginArtifact, pluginDisplayNames)
     return if (psiToOpen != null) {
       OpenFileDescriptor(project, psiToOpen.containingFile.virtualFile, psiToOpen.textOffset)
-    }
-    else {
+    } else {
       rootBuildModel?.virtualFile?.let { OpenFileDescriptor(project, it, -1) }
     }
   }
@@ -345,23 +344,31 @@ class PluginVersionDeclarationFinder(val project: Project) {
   private fun findPluginDeclarationPsi(
     projectBuildModel: GradleBuildModel?,
     pluginArtifact: GradlePluginsData.DependencyCoordinates?,
-    pluginDisplayNames: Set<String>
+    pluginDisplayNames: Set<String>,
   ): PsiElement? {
     if (projectBuildModel == null) return null
     // Examine dependencies block
     val buildScriptDependenciesBlock = projectBuildModel.buildscript().dependencies()
     pluginArtifact?.run {
-      buildScriptDependenciesBlock.artifacts(CommonConfigurationNames.CLASSPATH)
+      buildScriptDependenciesBlock
+        .artifacts(CommonConfigurationNames.CLASSPATH)
         .firstOrNull { name == it.name().forceString() && group == it.group().toString() }
-        ?.psiElement?.let { return it }
+        ?.psiElement
+        ?.let {
+          return it
+        }
     }
 
     // Examine plugins for plugin Dsl declarations.
-    projectBuildModel.plugins().firstOrNull { plugin ->
-      plugin.version().valueType == GradlePropertyModel.ValueType.STRING
-      && pluginDisplayNames.contains(plugin.name().toString())
-    }
-      ?.psiElement?.let { return it }
+    projectBuildModel
+      .plugins()
+      .firstOrNull { plugin ->
+        plugin.version().valueType == GradlePropertyModel.ValueType.STRING && pluginDisplayNames.contains(plugin.name().toString())
+      }
+      ?.psiElement
+      ?.let {
+        return it
+      }
 
     // TODO Support Plugin management case
 
@@ -371,11 +378,14 @@ class PluginVersionDeclarationFinder(val project: Project) {
 
 fun createCheckJetifierTaskRequest(
   project: Project,
-  originalBuildRequestData: GradleBuildInvoker.Request.RequestData
-): GradleBuildInvoker.Request = builder(project, originalBuildRequestData.rootProjectPath, listOf(CHECK_JETIFIER_TASK_NAME))
-  .setCommandLineArguments(listOf(
-    createProjectProperty(PROPERTY_CHECK_JETIFIER_RESULT_FILE, checkJetifierResultFile(originalBuildRequestData).absolutePath),
-    // 'checkJetifier' task does not support configuration cache so switch it off for this run to avoid errors.
-    "--no-configuration-cache"
-  ))
-  .build()
+  originalBuildRequestData: GradleBuildInvoker.Request.RequestData,
+): GradleBuildInvoker.Request =
+  builder(project, originalBuildRequestData.rootProjectPath, listOf(CHECK_JETIFIER_TASK_NAME))
+    .setCommandLineArguments(
+      listOf(
+        createProjectProperty(PROPERTY_CHECK_JETIFIER_RESULT_FILE, checkJetifierResultFile(originalBuildRequestData).absolutePath),
+        // 'checkJetifier' task does not support configuration cache so switch it off for this run to avoid errors.
+        "--no-configuration-cache",
+      )
+    )
+    .build()

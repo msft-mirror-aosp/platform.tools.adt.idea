@@ -33,9 +33,11 @@ import com.android.tools.idea.apk.viewer.pagealign.getAlignmentFinding
 import com.android.tools.idea.log.LogWrapper
 import com.android.tools.instrumentation.threading.agent.callback.ThreadingCheckerUtil
 import com.android.tools.proguard.ProguardMap
+import com.android.tools.r8.metadata.R8BuildMetadata
 import com.android.utils.FileUtils
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooser
@@ -74,6 +76,7 @@ import javax.swing.JComponent
 import javax.swing.LayoutFocusTraversalPolicy
 import kotlin.io.path.extension
 import kotlin.io.path.name
+import kotlin.io.path.pathString
 import kotlin.math.max
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -82,7 +85,7 @@ internal class ApkEditor(
   private val baseFile: VirtualFile,
   private val root: VirtualFile,
   private val applicationInfoProvider: AndroidApplicationInfoProvider,
-  private val isPageAlignFeatureEnabled : Boolean
+  private val isPageAlignFeatureEnabled: Boolean,
 ) : UserDataHolderBase(), FileEditor, ApkViewPanel.Listener {
   private var baseFileHash: String = ""
   private var apkViewPanel: ApkViewPanel? = null
@@ -90,8 +93,7 @@ internal class ApkEditor(
 
   private val splitter: JBSplitter
   private var currentEditor: ApkFileEditorComponent? = null
-  @VisibleForTesting
-  var proguardMapping: ProguardMappings? = null
+  @VisibleForTesting var proguardMapping: ProguardMappings? = null
 
   init {
     FileEditorUtil.DISABLE_GENERATED_FILE_NOTIFICATION_KEY.set(this, true)
@@ -104,7 +106,8 @@ internal class ApkEditor(
     // 1) IdeFrameImpl sets up a custom focus traversal policy that unconditionally set the focus to the preferred component
     //    of the editor window.
     // 2) IdeFrameImpl is the default focus cycle root for editor windows
-    // (see https://github.com/JetBrains/intellij-community/commit/65871b384739b52b1c0450235bc742d2ba7fb137#diff-5b11919bab177bf9ab13c335c32874be)
+    // (see
+    // https://github.com/JetBrains/intellij-community/commit/65871b384739b52b1c0450235bc742d2ba7fb137#diff-5b11919bab177bf9ab13c335c32874be)
     //
     // We need to declare the root component of this custom editor to be a focus cycle root and
     // set up the default focus traversal policy (layout) to ensure the TAB key cycles through all
@@ -119,67 +122,72 @@ internal class ApkEditor(
     // But if we do a copy, we need to update it whenever the real file changes. So we listen to changes
     // in the VFS as long as this editor is open.
     val connection = project.messageBus.connect(this)
-    connection.subscribe<BulkFileListener>(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
-      override fun after(events: MutableList<out VFileEvent>) {
-        val basePath = baseFile.path
-        for (event in events) {
-          if (FileUtil.pathsEqual(basePath, event.getPath())) {
-            if (baseFile.isValid) { // If the file is deleted, the editor is automatically closed.
-              if (baseFileHash != generateHash(Path.of(event.getPath()))) {
-                refreshApk(baseFile)
+    connection.subscribe<BulkFileListener>(
+      VirtualFileManager.VFS_CHANGES,
+      object : BulkFileListener {
+        override fun after(events: MutableList<out VFileEvent>) {
+          val basePath = baseFile.path
+          for (event in events) {
+            if (FileUtil.pathsEqual(basePath, event.getPath())) {
+              if (baseFile.isValid) { // If the file is deleted, the editor is automatically closed.
+                if (baseFileHash != generateHash(Path.of(event.getPath()))) {
+                  refreshApk(baseFile)
+                }
               }
             }
           }
         }
-      }
-    })
+      },
+    )
 
     refreshApk(baseFile)
     splitter.setSecondComponent(EmptyPanel().getComponent())
   }
 
   private fun refreshApk(apkVirtualFile: VirtualFile) {
-    ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Reading APK contents") {
-      override fun run(indicator: ProgressIndicator) {
-        disposeArchive()
-        try {
-          // This temporary copy is destroyed while disposing the archive, the disposeArchive method.
-          val copyOfApk = Files.createTempFile(apkVirtualFile.nameWithoutExtension, "." + apkVirtualFile.getExtension())
-          FileUtils.copyFile(VfsUtilCore.virtualToIoFile(apkVirtualFile).toPath(), copyOfApk)
-          val context = Archives.open(copyOfApk, LogWrapper(log))
-          archiveContext = context
-          proguardMapping = loadProguardMapping(context.getArchive(), apkVirtualFile.toNioPath())
-          // TODO(b/244771241) ApkViewPanel should be created on the UI thread
-          val panel = ThreadingCheckerUtil.withChecksDisabledForSupplier {
-            ApkViewPanel(
-              ApkParser(context, ApkSizeCalculator.getDefault()),
-              apkVirtualFile.name,
-              applicationInfoProvider,
-              isPageAlignFeatureEnabled
-            )
+    ProgressManager.getInstance()
+      .run(
+        object : Task.Backgroundable(project, "Reading APK contents") {
+          override fun run(indicator: ProgressIndicator) {
+            disposeArchive()
+            try {
+              // This temporary copy is destroyed while disposing the archive, the disposeArchive method.
+              val copyOfApk = Files.createTempFile(apkVirtualFile.nameWithoutExtension, "." + apkVirtualFile.getExtension())
+              FileUtils.copyFile(VfsUtilCore.virtualToIoFile(apkVirtualFile).toPath(), copyOfApk)
+              val context = Archives.open(copyOfApk, LogWrapper(log))
+              archiveContext = context
+              proguardMapping = loadProguardMapping(context.getArchive(), apkVirtualFile.toNioPath())
+              // TODO(b/244771241) ApkViewPanel should be created on the UI thread
+              val panel =
+                ThreadingCheckerUtil.withChecksDisabledForSupplier {
+                  ApkViewPanel(
+                    ApkParser(context, ApkSizeCalculator.getDefault()),
+                    apkVirtualFile.name,
+                    applicationInfoProvider,
+                    isPageAlignFeatureEnabled,
+                  )
+                }
+              apkViewPanel = panel
+              panel.setListener(this@ApkEditor)
+              ApplicationManager.getApplication().invokeLater {
+                splitter.setFirstComponent(panel.container)
+                selectionChanged(null)
+              }
+              val hash = generateHash(apkVirtualFile.toNioPath())
+              if (hash != null) {
+                baseFileHash = hash
+              }
+            } catch (e: IOException) {
+              log.error(e)
+              disposeArchive()
+              splitter.setFirstComponent(JBLabel(e.toString()))
+            }
           }
-          apkViewPanel = panel
-          panel.setListener(this@ApkEditor)
-          ApplicationManager.getApplication().invokeLater {
-            splitter.setFirstComponent(panel.container)
-            selectionChanged(null)
-          }
-          val hash = generateHash(apkVirtualFile.toNioPath())
-          if (hash != null) {
-            baseFileHash = hash
-          }
-        } catch (e: IOException) {
-          log.error(e)
-          disposeArchive()
-          splitter.setFirstComponent(JBLabel(e.toString()))
         }
-      }
-    })
+      )
   }
 
-  /**
-   * Changes the editor displayed based on the path selected in the tree.
-   */
+  /** Changes the editor displayed based on the path selected in the tree. */
   override fun selectionChanged(entries: Array<ArchiveTreeNode>?) {
     if (currentEditor != null) {
       Disposer.dispose(currentEditor!!)
@@ -195,7 +203,7 @@ internal class ApkEditor(
   override fun selectApkAndCompare() {
     val desc = FileChooserDescriptor(true, false, false, false, false, false)
     desc.withFileFilter(Condition { file: VirtualFile? -> ApkFileSystem.EXTENSIONS.contains(file!!.getExtension()) })
-    val file = FileChooser.chooseFile(desc, project, null) ?: return  // User canceled.
+    val file = FileChooser.chooseFile(desc, project, null) ?: return // User canceled.
     val oldApk: VirtualFile = checkNotNull(ApkFileSystem.getInstance().getRootByLocal(file))
     val builder = DialogBuilder(project)
     builder.setTitle(oldApk.name + " (old) vs " + root.name + " (new)")
@@ -221,8 +229,7 @@ internal class ApkEditor(
     return baseFile.name
   }
 
-  override fun setState(state: FileEditorState) {
-  }
+  override fun setState(state: FileEditorState) {}
 
   override fun isModified(): Boolean {
     return false
@@ -232,11 +239,9 @@ internal class ApkEditor(
     return baseFile.isValid
   }
 
-  override fun addPropertyChangeListener(listener: PropertyChangeListener) {
-  }
+  override fun addPropertyChangeListener(listener: PropertyChangeListener) {}
 
-  override fun removePropertyChangeListener(listener: PropertyChangeListener) {
-  }
+  override fun removePropertyChangeListener(listener: PropertyChangeListener) {}
 
   override fun getFile(): VirtualFile {
     return baseFile
@@ -372,8 +377,8 @@ internal class ApkEditor(
     }
 
     if (archive.isBaselineProfile(p, content)) {
-      @Suppress("UnstableApiUsage") val text: String? =
-        getPrettyPrintedBaseline(baseFile, content, p, FileSizeLimit.getContentLoadLimit(baseFile.getExtension()))
+      @Suppress("UnstableApiUsage")
+      val text: String? = getPrettyPrintedBaseline(baseFile, content, p, FileSizeLimit.getContentLoadLimit(baseFile.getExtension()))
       return when (text) {
         null -> ApkVirtualFile.create(p, content)
         else -> ApkVirtualFile.createText(p, text)
@@ -381,7 +386,26 @@ internal class ApkEditor(
     }
     if (p.extension == "json") {
       val gson = GsonBuilder().setPrettyPrinting().create()
-      val jsonObject = gson.fromJson(String(content), JsonObject::class.java)
+      val json = String(content)
+      val jsonObject = gson.fromJson(json, JsonObject::class.java)
+      if (p.pathString == "/BUNDLE-METADATA/com.android.tools/r8.json") {
+        val metadata = R8BuildMetadata.fromJson(json)
+        if (metadata.statsMetadata == null) {
+          val metadata = R8BuildMetadata.fromJson(json)
+          if (metadata.statsMetadata == null) {
+            val stats = jsonObject["stats"].asJsonObject
+            val elements = stats.entrySet().toList()
+            stats.add(
+              "WARNING",
+              JsonPrimitive("The following values are invalid and should be ignored. See http://issuetracker.google.com/issues/480125108"),
+            )
+            elements.forEach {
+              stats.remove(it.key)
+              stats.add(it.key, it.value)
+            }
+          }
+        }
+      }
       return ApkVirtualFile.createText(p, gson.toJson(jsonObject))
     }
 
@@ -397,8 +421,11 @@ internal class ApkEditor(
     val providers = FileEditorProviderManager.getInstance().getProviderList(project, file)
 
     // Skip 9 patch editor since nine patch information has been stripped out.
-    return providers.stream()
-      .filter { fileEditorProvider: FileEditorProvider? -> fileEditorProvider!!.javaClass.getName() != "com.android.tools.idea.editors.NinePatchEditorProvider" }
+    return providers
+      .stream()
+      .filter { fileEditorProvider: FileEditorProvider? ->
+        fileEditorProvider!!.javaClass.getName() != "com.android.tools.idea.editors.NinePatchEditorProvider"
+      }
       .findFirst()
   }
 
@@ -414,11 +441,9 @@ internal class ApkEditor(
           hashString.append(String.format("%02x", b))
         }
         return hashString.toString()
-      }
-      catch (_: NoSuchAlgorithmException) {
+      } catch (_: NoSuchAlgorithmException) {
         return null
-      }
-      catch (_: IOException) {
+      } catch (_: IOException) {
         return null
       }
     }
@@ -447,7 +472,8 @@ internal class ApkEditor(
               (or higher)
               
               
-          """.trimIndent()
+          """
+            .trimIndent()
         )
 
         try {
@@ -460,7 +486,8 @@ internal class ApkEditor(
               ${file.path}
               
               
-            """.trimIndent()
+            """
+              .trimIndent()
           )
         } catch (_: IOException) {
           // Couldn't write temp file -- oh well, we just aren't including a mention of it.
@@ -487,7 +514,7 @@ internal class ApkEditor(
       // Try to find the mapping file assuming file structure:
       //  module/build/outputs/apk/variant/app-variant.apk
       //  module/build/outputs/mapping/variant/mapping.txt
-      val parent = path.parent  ?: return null
+      val parent = path.parent ?: return null
       val variant = parent.name
       val mapping = parent.parent?.parent?.resolve("mapping/$variant/mapping.txt") ?: return null
       return try {

@@ -23,7 +23,6 @@ import com.android.tools.idea.gradle.project.build.attribution.BuildAttributionO
 import com.android.tools.idea.gradle.project.build.attribution.buildOutputLine
 import com.android.tools.idea.gradle.project.build.attribution.isBuildAttributionEnabledForProject
 import com.android.tools.idea.gradle.project.build.output.BuildOutputParserManager
-import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.run.createOutputBuildAction
 import com.android.tools.idea.gradle.util.AndroidGradleSettings.createProjectProperty
 import com.android.tools.idea.gradle.util.BuildMode
@@ -70,7 +69,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.compiler.CompilerPaths
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationEvent
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
@@ -108,26 +106,36 @@ import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.idea.base.projectStructure.externalProjectPath
 
-
 /**
  * Invokes Gradle tasks directly. Results of tasks execution are displayed in both the "Messages" tool window and the new "Gradle Console"
  * tool window.
  */
 // TODO(b/233583712): This class needs better tests to verify multi root builds, cancellation etc.
 @SuppressWarnings("UnstableApiUsage")
-class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal constructor(
+class GradleBuildInvokerImpl
+@NonInjectable
+@VisibleForTesting
+internal constructor(
   override val project: Project,
   private val documentManager: FileDocumentManager,
   private val taskExecutor: GradleTasksExecutor,
   private val nativeDebugSessionFinder: NativeDebugSessionFinder,
-  private val taskFinder: GradleTaskFinder) : GradleBuildInvoker {
+  private val taskFinder: GradleTaskFinder,
+) : GradleBuildInvoker {
   private val oneTimeGradleOptions: MutableList<String> = mutableListOf()
   private val lastBuildTasks: MutableMap<Path, List<String>> = mutableMapOf()
   private val buildStopper: BuildStopper = BuildStopper()
 
   @Suppress("unused")
-  constructor (project: Project) :
-    this(project, FileDocumentManager.getInstance(), GradleTasksExecutorImpl(), NativeDebugSessionFinder(project), GradleTaskFinder.getInstance())
+  constructor(
+    project: Project
+  ) : this(
+    project,
+    FileDocumentManager.getInstance(),
+    GradleTasksExecutorImpl(),
+    NativeDebugSessionFinder(project),
+    GradleTaskFinder.getInstance(),
+  )
 
   override fun buildConfiguration(modules: Array<Module>, deployApkFromBundle: Boolean): ListenableFuture<AssembleInvocationResult> {
     return if (deployApkFromBundle) {
@@ -137,50 +145,44 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       val buildMode = ASSEMBLE
       // If we have to build the whole project, i.e. we have one module and it's the root project's, then we need to extract all the modules
       // and get their build tasks.
-      val tasks = if (modules.size == 1 && modules.first().externalProjectPath == project.basePath) {
-        taskFinder.findTasksToExecute(project.modules, buildMode)
-      } else if (modules.size > 1) {
-        // Ife we have a list of modules to build, there we do not need to expand any further because we have all the necessary
-        // modules to build already.
-        taskFinder.findTasksToExecute(modules, buildMode)
-      } else {
-        // This is the case where we get the module of the Run Configuration and wee need to figure out which other modules we need to build.
-        val androidFacet = AndroidFacet.getInstance(modules.first())
-        // If we are building a library module or a unitTest one then we do not need to expand it any further and we just need to build
-        // the current module.
-        val expand = !(androidFacet?.configuration?.projectType == PROJECT_TYPE_LIBRARY || modules.first().isUnitTestModule())
-        taskFinder.findTasksToExecute(modules, buildMode, expand)
-      }
+      val tasks =
+        if (modules.size == 1 && modules.first().externalProjectPath == project.basePath) {
+          taskFinder.findTasksToExecute(project.modules, buildMode)
+        } else if (modules.size > 1) {
+          // Ife we have a list of modules to build, there we do not need to expand any further because we have all the necessary
+          // modules to build already.
+          taskFinder.findTasksToExecute(modules, buildMode)
+        } else {
+          // This is the case where we get the module of the Run Configuration and wee need to figure out which other modules we need to
+          // build.
+          val androidFacet = AndroidFacet.getInstance(modules.first())
+          // If we are building a library module or a unitTest one then we do not need to expand it any further and we just need to build
+          // the current module.
+          val expand = !(androidFacet?.configuration?.projectType == PROJECT_TYPE_LIBRARY || modules.first().isUnitTestModule())
+          taskFinder.findTasksToExecute(modules, buildMode, expand)
+        }
       if (tasks.isEmpty) {
         return Futures.immediateCancelledFuture<AssembleInvocationResult>()
       }
       return executeAssembleTasks(
         modules,
-        tasks.keySet()
-          .map { rootPath ->
-            GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath))
-              .setMode(buildMode)
-              .build()
-          }
+        tasks.keySet().map { rootPath ->
+          GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath)).setMode(buildMode).build()
+        },
       )
     }
   }
 
-  override fun cleanProject(): ListenableFuture<GradleInvocationResult> {
+  override fun cleanProject(): ListenableFuture<GradleMultiInvocationResult> {
     if (stopNativeDebugSessionOrStopBuild()) {
-      return Futures.immediateFuture(GradleInvocationResult(File(project.basePath!!), emptyList(), null))
+      return Futures.immediateFuture(GradleMultiInvocationResult(emptyList()))
     }
-    val modules = ModuleManager.getInstance(project).modules
-    val isCompositeBuild = modules.filter { it.gradleModuleModel != null }.distinctBy { module -> module.getGradleProjectPath()?.buildRoot }.size > 1
-    val tasks = if (isCompositeBuild) {
-      modules.mapNotNull { module ->
-        ExternalSystemModulePropertyManager.getInstance(module).getLinkedProjectId()
-      }.filter { it.lastIndexOf(":") == 0 }.toSet().map { path -> "$path:$CLEAN_TASK_NAME" }
-    }
-    else {
-      listOf(CLEAN_TASK_NAME)
-    }
-    return executeTasks(CLEAN, File(project.basePath!!), tasks)
+    // Collect the root project path for all modules, there is one root project path per included project.
+    val projectRootPaths: Set<File> =
+      ModuleManager.getInstance(project).modules.mapNotNull { module -> module.getGradleProjectPath()?.buildRoot?.let(::File) }.toSet()
+    return combineGradleInvocationResults(
+      projectRootPaths.map { projectRootPath -> executeTasks(CLEAN, projectRootPath, Collections.singletonList(CLEAN_TASK_NAME)) }
+    )
   }
 
   override fun generateSources(modules: Array<Module>): ListenableFuture<GradleMultiInvocationResult> {
@@ -188,21 +190,18 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
 
     val tasks: ListMultimap<Path, String> = taskFinder.findTasksToExecute(modules, buildMode)
     return combineGradleInvocationResults(
-      tasks.keySet()
-        .map { rootPath ->
-          executeTasks(
-            buildMode = buildMode,
-            rootProjectPath = rootPath.toFile(),
-            gradleTasks = tasks.get(rootPath),
-            commandLineArguments = Collections.singletonList(createGenerateSourcesOnlyProperty())
-          )
-        }
+      tasks.keySet().map { rootPath ->
+        executeTasks(
+          buildMode = buildMode,
+          rootProjectPath = rootPath.toFile(),
+          gradleTasks = tasks.get(rootPath),
+          commandLineArguments = Collections.singletonList(createGenerateSourcesOnlyProperty()),
+        )
+      }
     )
   }
 
-  /**
-   * @return {@code true} if the user selects to stop the current build.
-   */
+  /** @return {@code true} if the user selects to stop the current build. */
   private fun stopNativeDebugSessionOrStopBuild(): Boolean {
     val nativeDebugSession: XDebugSession = nativeDebugSessionFinder.findNativeDebugSession() ?: return false
     return when (invokeAndWaitIfNeeded(ModalityState.nonModal()) { TerminateDebuggerChoice.promptUserToStopNativeDebugSession(project) }) {
@@ -215,25 +214,23 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     }
   }
 
+  override val internalIsBuildRunning: Boolean
+    get() = taskExecutor.internalIsBuildRunning(project)
 
-  override val internalIsBuildRunning: Boolean get() = taskExecutor.internalIsBuildRunning(project)
-
-  override fun executeAssembleTasks(assembledModules: Array<Module>,
-                                    request: List<GradleBuildInvoker.Request>): ListenableFuture<AssembleInvocationResult> {
+  override fun executeAssembleTasks(
+    assembledModules: Array<Module>,
+    request: List<GradleBuildInvoker.Request>,
+  ): ListenableFuture<AssembleInvocationResult> {
     if (request.isEmpty()) {
       return Futures.immediateCancelledFuture<AssembleInvocationResult>()
     }
     val buildMode: BuildMode =
-      request
-        .mapNotNull { it.mode }
-        .distinct()
-        .singleOrNull() ?: throw IllegalArgumentException("Each request requires the same not null build mode to be set")
+      request.mapNotNull { it.mode }.distinct().singleOrNull()
+        ?: throw IllegalArgumentException("Each request requires the same not null build mode to be set")
 
     val modulesByRootProject: Map<Path, List<Module>> =
       assembledModules
-        .mapNotNull { module ->
-          module.getGradleProjectPath()?.let { module to it.buildRootDir.toPath() }
-        }
+        .mapNotNull { module -> module.getGradleProjectPath()?.let { module to it.buildRootDir.toPath() } }
         .groupBy { it.second }
         .mapValues { it.value.map { it.first } }
 
@@ -247,9 +244,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     return createProjectProperty(AndroidProject.PROPERTY_GENERATE_SOURCES_ONLY, true)
   }
 
-  /**
-   * Execute Gradle tasks that compile the relevant Java sources for thew whole project.
-   */
+  /** Execute Gradle tasks that compile the relevant Java sources for thew whole project. */
   override fun compileJava(): ListenableFuture<GradleMultiInvocationResult> {
     return compileJava(ModuleManager.getInstance(project).modules)
   }
@@ -257,14 +252,13 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
   /**
    * Execute Gradle tasks that compile the relevant Java sources.
    *
-   * @param modules         Modules that need to be compiled
+   * @param modules Modules that need to be compiled
    */
   override fun compileJava(modules: Array<Module>): ListenableFuture<GradleMultiInvocationResult> {
     val buildMode = COMPILE_JAVA
     val tasks: ListMultimap<Path, String> = taskFinder.findTasksToExecute(modules, buildMode)
     return combineGradleInvocationResults(
-      tasks.keySet()
-        .map { rootPath -> executeTasks(buildMode, rootPath.toFile(), tasks.get(rootPath)) }
+      tasks.keySet().map { rootPath -> executeTasks(buildMode, rootPath.toFile(), tasks.get(rootPath)) }
     )
   }
 
@@ -285,12 +279,9 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     }
     return executeAssembleTasks(
       modules,
-      tasks.keySet()
-        .map { rootPath ->
-          GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath))
-            .setMode(buildMode)
-            .build()
-        }
+      tasks.keySet().map { rootPath ->
+        GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath)).setMode(buildMode).build()
+      },
     )
   }
 
@@ -303,29 +294,22 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
 
     return executeAssembleTasks(
       modules,
-      tasks.keySet()
-        .map { rootPath ->
-          GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath))
-            .setMode(buildMode)
-            .build()
-        }
+      tasks.keySet().map { rootPath ->
+        GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath)).setMode(buildMode).build()
+      },
     )
   }
 
   override fun rebuild(): ListenableFuture<GradleMultiInvocationResult> {
     val buildMode = REBUILD
     val moduleManager: ModuleManager = ModuleManager.getInstance(project)
-    val tasks: ListMultimap<Path, String> =
-      taskFinder.findTasksToExecute(moduleManager.modules, buildMode)
+    val tasks: ListMultimap<Path, String> = taskFinder.findTasksToExecute(moduleManager.modules, buildMode)
     return combineGradleInvocationResults(
-      tasks.keySet()
-        .map { rootPath -> executeTasks(buildMode, rootPath.toFile(), tasks.get(rootPath)) }
+      tasks.keySet().map { rootPath -> executeTasks(buildMode, rootPath.toFile(), tasks.get(rootPath)) }
     )
   }
 
-  /**
-   * Execute the last run set of Gradle tasks, with the specified gradle options prepended before the tasks to run.
-   */
+  /** Execute the last run set of Gradle tasks, with the specified gradle options prepended before the tasks to run. */
   override fun rebuildWithTempOptions(rootProjectPath: File, options: List<String>): ListenableFuture<GradleMultiInvocationResult> {
     oneTimeGradleOptions.addAll(options)
     try {
@@ -334,8 +318,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       if (tasks.isEmpty()) {
         // For some reason the IDE lost the Gradle tasks executed during the last build.
         return rebuild()
-      }
-      else {
+      } else {
         // The use case for this is the following:
         // 1. the build fails, and the console has the message "Run with --stacktrace", which now is a hyperlink
         // 2. the user clicks the hyperlink
@@ -345,16 +328,14 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
         return combineGradleInvocationResults(
           listOf(
             executeTasks(
-              GradleBuildInvoker.Request
-                .builder(project, rootProjectPath, tasksFromLastBuild)
+              GradleBuildInvoker.Request.builder(project, rootProjectPath, tasksFromLastBuild)
                 .setCommandLineArguments(oneTimeGradleOptions)
                 .build()
             )
           )
         )
       }
-    }
-    finally {
+    } finally {
       // Don't reuse them on the next rebuild.
       oneTimeGradleOptions.clear()
     }
@@ -365,13 +346,13 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     modules: Array<Module>,
     envVariables: Map<String, String>,
     args: List<String>,
-    generateAllVariants: Boolean
+    generateAllVariants: Boolean,
   ): ListenableFuture<GradleMultiInvocationResult> {
     val buildMode = if (generateAllVariants) BASELINE_PROFILE_GEN_ALL_VARIANTS else BASELINE_PROFILE_GEN
     val tasks: ListMultimap<Path, String> = taskFinder.findTasksToExecute(modules, buildMode)
     return combineGradleInvocationResults(
-      tasks.keySet()
-        .map { rootPath -> executeTasks(
+      tasks.keySet().map { rootPath ->
+        executeTasks(
           GradleBuildInvoker.Request.builder(project, rootPath.toFile(), tasks.get(rootPath))
             .setTaskId(taskId)
             .setMode(buildMode)
@@ -386,7 +367,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
   private fun executeTasks(
     buildMode: BuildMode,
     rootProjectPath: File,
-    gradleTasks: List<String>
+    gradleTasks: List<String>,
   ): ListenableFuture<GradleInvocationResult> {
     return executeTasks(buildMode, rootProjectPath, gradleTasks, oneTimeGradleOptions)
   }
@@ -415,7 +396,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
   private fun createBuildTaskListener(
     request: GradleBuildInvoker.Request,
     executionName: String,
-    delegate: ExternalSystemTaskNotificationListener?
+    delegate: ExternalSystemTaskNotificationListener?,
   ): ExternalSystemTaskNotificationListener {
     val buildViewManager = project.getService(BuildViewManager::class.java)
     // This is resource is closed when onEnd is called or an exception is generated in this function bSee b/70299236.
@@ -424,8 +405,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     val eventDispatcher: BuildEventDispatcher = ExternalSystemEventDispatcher(request.taskId, buildViewManager)
     try {
       return MyListener(eventDispatcher, request, buildViewManager, executionName, delegate)
-    }
-    catch (exception: Exception) {
+    } catch (exception: Exception) {
       eventDispatcher.close()
       throw exception
     }
@@ -457,22 +437,19 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
   private fun internalExecuteTasks(
     request: GradleBuildInvoker.Request,
     buildAction: BuildAction<*>?,
-    buildTaskListener: ExternalSystemTaskNotificationListener
+    buildTaskListener: ExternalSystemTaskNotificationListener,
   ): ListenableFuture<GradleInvocationResult> {
     ApplicationManager.getApplication().invokeAndWait(documentManager::saveAllDocuments)
 
-    val resultFuture: ListenableFuture<GradleInvocationResult> =
-      taskExecutor.execute(request, buildAction, buildStopper, buildTaskListener)
+    val resultFuture: ListenableFuture<GradleInvocationResult> = taskExecutor.execute(request, buildAction, buildStopper, buildTaskListener)
 
     if (request.isWaitForCompletion && !ApplicationManager.getApplication().isDispatchThread) {
       try {
         resultFuture.get()
-      }
-      catch (e: InterruptedException) {
+      } catch (e: InterruptedException) {
         resultFuture.cancel(true)
         Thread.currentThread().interrupt()
-      }
-      catch (_: ExecutionException) {
+      } catch (_: ExecutionException) {
         // Ignore. We've been asked to wait for any result. That's it.
       }
     }
@@ -489,13 +466,13 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     return true
   }
 
-  private inner class MyListener constructor(
+  private inner class MyListener
+  constructor(
     private val buildEventDispatcher: BuildEventDispatcher,
     private val request: GradleBuildInvoker.Request,
     private val buildViewManager: BuildViewManager,
     private val executionName: String,
-    delegate: ExternalSystemTaskNotificationListener?
-
+    delegate: ExternalSystemTaskNotificationListener?,
   ) : ExternalSystemTaskNotificationListenerAdapter(delegate) {
     private var buildFailed: Boolean = false
 
@@ -523,14 +500,16 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       // sending another one replaces the mapping from the buildId to the build view breaking the build even pipeline. (See: b/190426050).
       if (buildViewManager.getBuildView(id) == null) {
         val eventTime: Long = System.currentTimeMillis()
-        val buildDescriptor = DefaultBuildDescriptor(id, executionName, projectPath, eventTime)
-          .withRestartAction(restartAction).withAction(stopAction)
-          .withExecutionFilter(AndroidReRunBuildFilter(projectPath))
-          .withExecutionEnvironment(request.executionEnvironment)
-          .withContextAction {
-            // add a new item to the build output popup menu
-            ActionManager.getInstance().getAction("Android.BuildTree.AdditionalActions")
-          }
+        val buildDescriptor =
+          DefaultBuildDescriptor(id, executionName, projectPath, eventTime)
+            .withRestartAction(restartAction)
+            .withAction(stopAction)
+            .withExecutionFilter(AndroidReRunBuildFilter(projectPath))
+            .withExecutionEnvironment(request.executionEnvironment)
+            .withContextAction {
+              // add a new item to the build output popup menu
+              ActionManager.getInstance().getAction("Android.BuildTree.AdditionalActions")
+            }
         if (isBuildAttributionEnabledForProject(project)) {
           buildDescriptor.withExecutionFilter(BuildAttributionOutputLinkFilter())
         }
@@ -566,9 +545,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       refreshRelevantGradleOutputs()
 
       val eventDispatcherFinished = CountDownLatch(1)
-      buildEventDispatcher.invokeOnCompletion {
-        eventDispatcherFinished.countDown()
-      }
+      buildEventDispatcher.invokeOnCompletion { eventDispatcherFinished.countDown() }
       buildEventDispatcher.close()
 
       // The underlying output parsers are closed asynchronously. Wait for completion in tests.
@@ -576,8 +553,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
         try {
           //noinspection ResultOfMethodCallIgnored
           eventDispatcherFinished.await(10, SECONDS)
-        }
-        catch (ex: InterruptedException) {
+        } catch (ex: InterruptedException) {
           throw RuntimeException("Timeout waiting for event dispatcher to finish.", ex)
         }
       }
@@ -589,14 +565,13 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       SaveAndSyncHandler.getInstance().scheduleRefresh()
 
       // Schedule refresh of all compiler outputs (javac/kotlinc/R.jar outputs) when VFS is out of sync with the file system
-      val allOutputs = CachedValuesManager.getManager(project).getCachedValue(
-        project
-      ) {
-        CachedValueProvider.Result(
-          CompilerPaths.getOutputPaths(ModuleManager.getInstance(project).modules),
-          ProjectSyncModificationTracker.getInstance(project)
-        )
-      }
+      val allOutputs =
+        CachedValuesManager.getManager(project).getCachedValue(project) {
+          CachedValueProvider.Result(
+            CompilerPaths.getOutputPaths(ModuleManager.getInstance(project).modules),
+            ProjectSyncModificationTracker.getInstance(project),
+          )
+        }
       val fs = LocalFileSystem.getInstance()
       val toRefresh = mutableSetOf<VirtualFile>()
       val isAsynchronous = !ApplicationManager.getApplication().isUnitTestMode
@@ -612,17 +587,15 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
             // Output exists, but it is not in VFS. We'll refresh its parent.
             VfsImplUtil.refreshAndFindFileByPath(LocalFileSystem.getInstance(), PathUtil.getParentPath(outputRoot)) { parent ->
               if (parent != null) {
-               RefreshQueue.getInstance().refresh(isAsynchronous, false, null, parent)
+                RefreshQueue.getInstance().refresh(isAsynchronous, false, null, parent)
               }
             }
           }
-        }
-        else {
+        } else {
           if (attributes == null) {
             // file does not exist, but it is in VFS
             toRefresh.add(vFile)
-          }
-          else if (attributes.isDirectory != vFile.isDirectory) {
+          } else if (attributes.isDirectory != vFile.isDirectory) {
             // Refresh as file became a directory, or vice versa
             toRefresh.add(vFile)
           }
@@ -637,13 +610,7 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
     override fun onSuccess(projectPath: String, id: ExternalSystemTaskId) {
       addBuildAttributionLinkToTheOutput(id)
       if (startBuildEventPosted) {
-        val event = FinishBuildEventImpl(
-          id,
-          null,
-          System.currentTimeMillis(),
-          "finished",
-          SuccessResultImpl()
-        )
+        val event = FinishBuildEventImpl(id, null, System.currentTimeMillis(), "finished", SuccessResultImpl())
         buildEventDispatcher.onEvent(id, event)
       }
       super.onSuccess(projectPath, id)
@@ -664,10 +631,15 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       if (startBuildEventPosted) {
         val title = "$executionName failed"
         val dataContext: DataContext = BuildConsoleUtils.getDataContext(id, buildViewManager)
-        val failureResult: FailureResult = ExternalSystemUtil.createFailureResult(
-          title, exception,
-          GRADLE_SYSTEM_ID, project, request.rootProjectPath.absolutePath, dataContext
-        )
+        val failureResult: FailureResult =
+          ExternalSystemUtil.createFailureResult(
+            title,
+            exception,
+            GRADLE_SYSTEM_ID,
+            project,
+            request.rootProjectPath.absolutePath,
+            dataContext,
+          )
         buildEventDispatcher.onEvent(id, FinishBuildEventImpl(id, null, System.currentTimeMillis(), "failed", failureResult))
       }
       super.onFailure(projectPath, id, exception)
@@ -724,15 +696,9 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       fileDocumentManager: FileDocumentManager,
       tasksExecutor: GradleTasksExecutor,
       nativeDebugSessionFinder: NativeDebugSessionFinder,
-      taskFinder: GradleTaskFinder
+      taskFinder: GradleTaskFinder,
     ): GradleBuildInvoker {
-      return GradleBuildInvokerImpl(
-        project,
-        fileDocumentManager,
-        tasksExecutor,
-        nativeDebugSessionFinder,
-        taskFinder
-      )
+      return GradleBuildInvokerImpl(project, fileDocumentManager, tasksExecutor, nativeDebugSessionFinder, taskFinder)
     }
 
     @TestOnly
@@ -740,15 +706,15 @@ class GradleBuildInvokerImpl @NonInjectable @VisibleForTesting internal construc
       project: Project,
       fileDocumentManager: FileDocumentManager,
       request: GradleBuildInvoker.Request,
-      executionName: String
+      executionName: String,
     ): ExternalSystemTaskNotificationListener {
       return GradleBuildInvokerImpl(
-        project,
-        fileDocumentManager,
-        FakeGradleTaskExecutor(),
-        NativeDebugSessionFinder(project),
-        GradleTaskFinder.getInstance()
-      )
+          project,
+          fileDocumentManager,
+          FakeGradleTaskExecutor(),
+          NativeDebugSessionFinder(project),
+          GradleTaskFinder.getInstance(),
+        )
         .createBuildTaskListener(request, executionName, null)
     }
   }

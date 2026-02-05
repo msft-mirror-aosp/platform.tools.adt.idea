@@ -50,17 +50,15 @@ private val log: Logger
 /** A collection of utility methods for interacting with an `Recipe`. */
 object RecipeUtils {
   // TODO(qumeric): remove this cache. It is not needed anymore, everything is fast without it.
-  private val recipeMetadataCache: ConcurrentHashMap<Pair<Recipe, Project>, List<RecipeMetadata>> =
-    ConcurrentHashMap()
+  private val recipeMetadataCache: ConcurrentHashMap<Pair<Recipe, Project>, List<RecipeMetadata>> = ConcurrentHashMap()
 
   @JvmStatic
   @WorkerThread
   /**
    * Creates a [RecipeMetadata] for the given [Recipe] for each module in the [Project]
    *
-   * A [RecipeMetadata] contains information about what will be changed when the recipe is applied
-   * to a module. This can potentially be a slow process (particularly for projects with a lot of
-   * modules) as it does a bunch of file I/O for each module.
+   * A [RecipeMetadata] contains information about what will be changed when the recipe is applied to a module. This can potentially be a
+   * slow process (particularly for projects with a lot of modules) as it does a bunch of file I/O for each module.
    */
   fun getRecipeMetadata(recipe: Recipe, project: Project): List<RecipeMetadata> {
     val key = Pair(recipe, project)
@@ -73,9 +71,7 @@ object RecipeUtils {
 
       val metadata = metadataBuilder.build()
 
-      Disposer.register(AndroidPluginDisposable.getProjectInstance(project)) {
-        recipeMetadataCache.remove(key)
-      }
+      Disposer.register(AndroidPluginDisposable.getProjectInstance(project)) { recipeMetadataCache.remove(key) }
 
       metadata
     }
@@ -86,8 +82,8 @@ object RecipeUtils {
   /**
    * Executes the given [Recipe] in the context of the given [Module]
    *
-   * Any new files that are generated will be saved in a unique temporary directory that will be
-   * deleted either by the operating system or when the virtual machine terminates
+   * Any new files that are generated will be saved in a unique temporary directory that will be deleted either by the operating system or
+   * when the virtual machine terminates
    */
   fun execute(recipe: Recipe, module: Module) {
     val moduleRoot = AndroidRootUtil.findModuleRootFolderPath(module)!!
@@ -150,12 +146,8 @@ object RecipeUtils {
       // FIXME(qumeric): sourceFiles.filter { it.name == SdkConstants.FN_ANDROID_MANIFEST_XML }
 
       // Ignore test configurations here.
-      dependencies[SdkConstants.GRADLE_IMPLEMENTATION_CONFIGURATION].forEach {
-        metadata.dependencies.add(it!!)
-      }
-      dependencies[SdkConstants.GRADLE_API_CONFIGURATION].forEach {
-        metadata.dependencies.add(it!!)
-      }
+      dependencies[SdkConstants.GRADLE_IMPLEMENTATION_CONFIGURATION].forEach { metadata.dependencies.add(it!!) }
+      dependencies[SdkConstants.GRADLE_API_CONFIGURATION].forEach { metadata.dependencies.add(it!!) }
       classpathEntries.forEach { metadata.classpathEntries.add(it) }
       manifests.forEach { parseManifestForPermissions(it, metadata) }
       plugins.forEach { metadata.plugins.add(it) }
@@ -175,12 +167,7 @@ object RecipeUtils {
       saxParser.parse(
         file,
         object : DefaultHandler() {
-          override fun startElement(
-            uri: String,
-            localName: String,
-            tagName: String,
-            attributes: Attributes,
-          ) {
+          override fun startElement(uri: String, localName: String, tagName: String, attributes: Attributes) {
             if (
               tagName == SdkConstants.TAG_USES_PERMISSION ||
                 tagName == SdkConstants.TAG_USES_PERMISSION_SDK_23 ||
@@ -205,8 +192,5 @@ object RecipeUtils {
     }
 
   private fun getAndroidModules(project: Project): List<Module> =
-    ModuleManager.getInstance(project)
-      .modules
-      .filter { module -> AndroidFacet.getInstance(module) != null }
-      .toList()
+    ModuleManager.getInstance(project).modules.filter { module -> AndroidFacet.getInstance(module) != null }.toList()
 }

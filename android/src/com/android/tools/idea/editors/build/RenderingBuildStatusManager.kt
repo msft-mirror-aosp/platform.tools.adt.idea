@@ -63,10 +63,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.analysisContext
 
-/**
- * This represents the build status of the project artifacts used to render previews without taking
- * into account any file modifications.
- */
+/** This represents the build status of the project artifacts used to render previews without taking into account any file modifications. */
 private enum class ProjectBuildStatus {
   /** The project is indexing or not synced yet */
   NotReady,
@@ -94,15 +91,13 @@ sealed class RenderingBuildStatus {
   /**
    * The project is compiled but one or more files are out of date.
    *
-   * Not all resource changes require a rebuild but we do not have an easy way for now to
-   * differentiate them. For example, a color change might be flagged as "out of date" but the
-   * preview should be ok dealing with that. However, adding or removing a resource will always
+   * Not all resource changes require a rebuild but we do not have an easy way for now to differentiate them. For example, a color change
+   * might be flagged as "out of date" but the preview should be ok dealing with that. However, adding or removing a resource will always
    * require a rebuild since the R class needs to change.
    *
    * @param areResourcesOutOfDate true if resources might be out of date.
    */
-  sealed class OutOfDate private constructor(val areResourcesOutOfDate: Boolean) :
-    RenderingBuildStatus() {
+  sealed class OutOfDate private constructor(val areResourcesOutOfDate: Boolean) : RenderingBuildStatus() {
     object Code : OutOfDate(false)
 
     object Resources : OutOfDate(true)
@@ -130,9 +125,8 @@ interface RenderingBuildStatusManager {
      * Creates a new [RenderingBuildStatusManager].
      *
      * @param parentDisposable [Disposable] to track for disposing this manager.
-     * @param psiFile the file in the editor to track changes and the build status. If the project
-     *   has not been built since it was open, this file is used to find if there are any existing
-     *   .class files that indicate that has been built before.
+     * @param psiFile the file in the editor to track changes and the build status. If the project has not been built since it was open,
+     *   this file is used to find if there are any existing .class files that indicate that has been built before.
      */
     fun create(parentDisposable: Disposable, psiFile: PsiFile): RenderingBuildStatusManager =
       RenderingBuildStatusManagerImpl(parentDisposable, psiFile, ::defaultClassFinderFactory)
@@ -141,16 +135,16 @@ interface RenderingBuildStatusManager {
      * Creates a new [RenderingBuildStatusManager].
      *
      * @param parentDisposable [Disposable] to track for disposing this manager.
-     * @param psiFile the file in the editor to track changes and the build status. If the project
-     *   has not been built since it was open, this file is used to find if there are any existing
-     *   .class files that indicate that has been built before.
+     * @param psiFile the file in the editor to track changes and the build status. If the project has not been built since it was open,
+     *   this file is used to find if there are any existing .class files that indicate that has been built before.
      * @param classFinderFactory factory method that provides the class finder lookup method that allows to determine if a class exists.
      */
     @TestOnly
-    fun createForTest(parentDisposable: Disposable,
-                      psiFile: PsiFile,
-                      classFinderFactory: (BuildTargetReference) -> suspend ((String) -> Boolean) = ::defaultClassFinderFactory): RenderingBuildStatusManagerForTests =
-      RenderingBuildStatusManagerImpl(parentDisposable, psiFile, classFinderFactory)
+    fun createForTest(
+      parentDisposable: Disposable,
+      psiFile: PsiFile,
+      classFinderFactory: (BuildTargetReference) -> suspend ((String) -> Boolean) = ::defaultClassFinderFactory,
+    ): RenderingBuildStatusManagerForTests = RenderingBuildStatusManagerImpl(parentDisposable, psiFile, classFinderFactory)
   }
 }
 
@@ -159,23 +153,18 @@ interface RenderingBuildStatusManagerForTests : RenderingBuildStatusManager {
   @TestOnly fun getResourcesListenerForTest(): ResourceChangeListener
 }
 
-/**
- * Returns true if the given [fqcn] exists in the [ModuleClassLoaderOverlays] for the given [buildTargetReference].
- */
+/** Returns true if the given [fqcn] exists in the [ModuleClassLoaderOverlays] for the given [buildTargetReference]. */
 private fun doesOverlayContainClass(buildTargetReference: BuildTargetReference, fqcn: String): Boolean =
   ModuleClassLoaderOverlays.getInstanceIfCreated(buildTargetReference)?.containsClass(fqcn) == true
 
 /**
- * The default implementation for the class finder lookup. The returned function will be able to lookup if a class exists for a given
- * FQCN.
+ * The default implementation for the class finder lookup. The returned function will be able to lookup if a class exists for a given FQCN.
  *
- * The given [buildTargetReference] is used as context for the classpath resolution. It will typically belong to the editor file
- * context.
+ * The given [buildTargetReference] is used as context for the classpath resolution. It will typically belong to the editor file context.
  */
 private fun defaultClassFinderFactory(buildTargetReference: BuildTargetReference): suspend ((String) -> Boolean) {
-  val buildSystemFilePreviewServices =
-    buildTargetReference.getBuildSystemFilePreviewServices()
-  val renderingServices =  buildSystemFilePreviewServices.getRenderingServices(buildTargetReference)
+  val buildSystemFilePreviewServices = buildTargetReference.getBuildSystemFilePreviewServices()
+  val renderingServices = buildSystemFilePreviewServices.getRenderingServices(buildTargetReference)
   return { fqcn: String ->
     withContext(Dispatchers.Default) {
       readAction { (renderingServices.classFileFinder?.findClassFile(fqcn) != null || doesOverlayContainClass(buildTargetReference, fqcn)) }
@@ -186,8 +175,8 @@ private fun defaultClassFinderFactory(buildTargetReference: BuildTargetReference
 private class RenderingBuildStatusManagerImpl(
   parentDisposable: Disposable,
   psiFile: PsiFile,
-  private val classFinderFactory: (BuildTargetReference) -> suspend ((String) -> Boolean)) :
-  RenderingBuildStatusManager, RenderingBuildStatusManagerForTests {
+  private val classFinderFactory: (BuildTargetReference) -> suspend ((String) -> Boolean),
+) : RenderingBuildStatusManager, RenderingBuildStatusManagerForTests {
   private val editorFilePtr: SmartPsiElementPointer<PsiFile> = runReadAction {
     SmartPointerManager.getInstance(psiFile.project).createSmartPsiElementPointer(psiFile)
   }
@@ -195,10 +184,8 @@ private class RenderingBuildStatusManagerImpl(
   private val scope = AndroidCoroutineScope(parentDisposable)
 
   private val project: Project = psiFile.project
-  private val buildTargetReference =
-    BuildTargetReference.from(psiFile) ?: error("Cannot get build target reference for: $psiFile")
-  private val buildSystemFilePreviewServices =
-    buildTargetReference.getBuildSystemFilePreviewServices()
+  private val buildTargetReference = BuildTargetReference.from(psiFile) ?: error("Cannot get build target reference for: $psiFile")
+  private val buildSystemFilePreviewServices = buildTargetReference.getBuildSystemFilePreviewServices()
 
   private val projectBuildStatusFlow = MutableStateFlow(ProjectBuildStatus.NotReady)
   private val areResourcesOutOfDateFlow = MutableStateFlow(false)
@@ -209,15 +196,11 @@ private class RenderingBuildStatusManagerImpl(
       ProjectSystemService.getInstance(project).projectSystem.getBuildManager().isBuilding ||
         FastPreviewManager.getInstance(project).isCompiling
 
-  private val myPsiCodeFileUpToDateStatusRecorder =
-    PsiCodeFileUpToDateStatusRecorder.getInstance(project)
+  private val myPsiCodeFileUpToDateStatusRecorder = PsiCodeFileUpToDateStatusRecorder.getInstance(project)
   private val buildListener =
     object : BuildListener {
       @UiThread
-      override fun buildStarted(
-        buildMode: BuildMode,
-        buildResult: ListenableFuture<BuildListener.BuildResult>,
-      ) {
+      override fun buildStarted(buildMode: BuildMode, buildResult: ListenableFuture<BuildListener.BuildResult>) {
         val preparedMarkUpToDateAction = myPsiCodeFileUpToDateStatusRecorder.prepareMarkUpToDate()
 
         projectBuildStatusFlow.value =
@@ -237,9 +220,7 @@ private class RenderingBuildStatusManagerImpl(
                 }
 
               fun handleSuccess(scope: GlobalSearchScope): ProjectBuildStatus {
-                SlowOperations.knownIssue("IDEA-359567").use {
-                  preparedMarkUpToDateAction.markUpToDate(scope)
-                }
+                SlowOperations.knownIssue("IDEA-359567").use { preparedMarkUpToDateAction.markUpToDate(scope) }
                 // Clear the resources out of date flag
                 areResourcesOutOfDateFlow.value = false
                 return ProjectBuildStatus.Built
@@ -255,13 +236,8 @@ private class RenderingBuildStatusManagerImpl(
 
               scope.launch {
                 val result =
-                  runCatching { buildResult.await() }
-                    .getOrElse {
-                      BuildListener.BuildResult(BuildStatus.FAILED, EverythingGlobalScope())
-                    }
-                withContext(AndroidDispatchers.uiThread) {
-                  projectBuildStatusFlow.value = handleBuildResult(result)
-                }
+                  runCatching { buildResult.await() }.getOrElse { BuildListener.BuildResult(BuildStatus.FAILED, EverythingGlobalScope()) }
+                withContext(AndroidDispatchers.uiThread) { projectBuildStatusFlow.value = handleBuildResult(result) }
               }
               ProjectBuildStatus.Building
             }
@@ -271,10 +247,7 @@ private class RenderingBuildStatusManagerImpl(
 
   private val resourceChangeListener = ResourceChangeListener { reason ->
     LOG.debug("ResourceNotificationManager resourceChange ${reason.joinToString()} ")
-    if (
-      reason.contains(ResourceNotificationManager.Reason.RESOURCE_EDIT) ||
-        reason.contains(ResourceNotificationManager.Reason.EDIT)
-    ) {
+    if (reason.contains(ResourceNotificationManager.Reason.RESOURCE_EDIT) || reason.contains(ResourceNotificationManager.Reason.EDIT)) {
       areResourcesOutOfDateFlow.value = true
     }
   }
@@ -286,16 +259,12 @@ private class RenderingBuildStatusManagerImpl(
           projectBuildStatusFlow,
           areResourcesOutOfDateFlow,
           fastPreviewCompileFlow(project, parentDisposable),
-        ) { outOfDateFiles, currentProjectBuildStatus, areResourcesOutOfDate, isFastPreviewCompiling
-          ->
+        ) { outOfDateFiles, currentProjectBuildStatus, areResourcesOutOfDate, isFastPreviewCompiling ->
           val isCodeOutOfDate = outOfDateFiles.isNotEmpty()
           when {
-            currentProjectBuildStatus == ProjectBuildStatus.NotReady ->
-              RenderingBuildStatus.NotReady
-            currentProjectBuildStatus == ProjectBuildStatus.Building || isFastPreviewCompiling ->
-              RenderingBuildStatus.Building
-            currentProjectBuildStatus == ProjectBuildStatus.NeedsBuild ->
-              RenderingBuildStatus.NeedsBuild
+            currentProjectBuildStatus == ProjectBuildStatus.NotReady -> RenderingBuildStatus.NotReady
+            currentProjectBuildStatus == ProjectBuildStatus.Building || isFastPreviewCompiling -> RenderingBuildStatus.Building
+            currentProjectBuildStatus == ProjectBuildStatus.NeedsBuild -> RenderingBuildStatus.NeedsBuild
             areResourcesOutOfDate -> RenderingBuildStatus.OutOfDate.Resources
             isCodeOutOfDate -> RenderingBuildStatus.OutOfDate.Code
             else -> RenderingBuildStatus.Ready
@@ -317,10 +286,7 @@ private class RenderingBuildStatusManagerImpl(
         object : FastPreviewManager.Companion.FastPreviewManagerListener {
           override fun onCompilationStarted(files: Collection<PsiFile>) {}
 
-          override fun onCompilationComplete(
-            result: CompilationResult,
-            files: Collection<PsiFile>,
-          ) {
+          override fun onCompilationComplete(result: CompilationResult, files: Collection<PsiFile>) {
             if (result.isSuccess) myPsiCodeFileUpToDateStatusRecorder.markAsUpToDate(files)
           }
         },
@@ -337,8 +303,7 @@ private class RenderingBuildStatusManagerImpl(
             resourceNotificationManager.removeListener(resourceChangeListener, facet, null, null)
           }
         if (isDisposerRegistered) {
-          ResourceNotificationManager.getInstance(project)
-            .addListener(resourceChangeListener, facet, null, null)
+          ResourceNotificationManager.getInstance(project).addListener(resourceChangeListener, facet, null, null)
           LOG.debug("ResourceNotificationManager.addListener")
         }
       }
@@ -351,9 +316,7 @@ private class RenderingBuildStatusManagerImpl(
           if (projectBuildStatusFlow.value === ProjectBuildStatus.NotReady) {
             // Check in the background the state of the build (hasBeenBuiltSuccessfully is a slow
             // method).
-            val newState =
-              if (editorHasExistingClassFile()) ProjectBuildStatus.Built
-              else ProjectBuildStatus.NeedsBuild
+            val newState = if (editorHasExistingClassFile()) ProjectBuildStatus.Built else ProjectBuildStatus.NeedsBuild
             // Only update the status if we are still in NotReady.
             if (projectBuildStatusFlow.value === ProjectBuildStatus.NotReady) {
               projectBuildStatusFlow.value = newState
@@ -370,12 +333,7 @@ private class RenderingBuildStatusManagerImpl(
     val psiFile: PsiFile = readAction { editorFilePtr.element } ?: return false
     val classFileFinder = classFinderFactory(buildTargetReference)
 
-    return readAction {
-      psiFile.findClassesFqNames()
-    }
-      .any {
-        classFileFinder(it)
-      }
+    return readAction { psiFile.findClassesFqNames() }.any { classFileFinder(it) }
   }
 
   private fun PsiFile.findClassesFqNames(): List<String> {

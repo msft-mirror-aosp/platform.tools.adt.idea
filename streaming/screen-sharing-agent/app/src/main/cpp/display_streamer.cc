@@ -134,8 +134,9 @@ Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_vi
   Size video_size = ComputeVideoSize(display_info.logical_size, codec_info, max_video_resolution);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_WIDTH, video_size.width);
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_HEIGHT, video_size.height);
+  bool useReducedFrameRate = Agent::device_type() == DeviceType::GLASSES || Agent::device_type() == DeviceType::WATCH;
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_FRAME_RATE,
-                        min(codec_info.max_frame_rate, Agent::device_type() == DeviceType::WATCH ? REDUCED_FRAME_RATE : MAX_FRAME_RATE));
+                        min(codec_info.max_frame_rate, useReducedFrameRate ? REDUCED_FRAME_RATE : MAX_FRAME_RATE));
   AMediaFormat_setInt32(media_format, AMEDIAFORMAT_KEY_BIT_RATE, bit_rate);
   media_status_t status = AMediaCodec_configure(codec, media_format, nullptr, nullptr, AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
   if (status != AMEDIA_OK) {
@@ -202,7 +203,7 @@ void DisplayStreamer::Run() {
   VideoPacketHeader packet_header = { .display_id = display_id_, .frame_number = frame_number_};
   FrameStreamStopReason stop_reason = FrameStreamStopReason::CODEC_STOPPED;
   int error_count = 0;
-  int frame_before_timeout = 0;
+  uint32_t frame_before_timeout = 0;
 
   while (stop_reason != FrameStreamStopReason::END_OF_STREAM && !thread_handle_.IsStopping() && !Agent::IsShuttingDown()) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
@@ -222,7 +223,7 @@ void DisplayStreamer::Run() {
       frame_timeout_ = INITIAL_FRAME_TIMEOUT;
       ReleaseVirtualDisplay(jni);
     }
-    Log::D("Display %d: stop_reason=%d, frame_number_=%d frame_before_timeout=%d frame_timeout_=%lld ms",
+    Log::D("Display %d: stop_reason=%d, frame_number_=%u frame_before_timeout=%u frame_timeout_=%lld ms",
            display_id_, stop_reason, frame_number_, frame_before_timeout, frame_timeout_.count());
     if (virtual_display_.IsNull() && display_token_.IsNull()) {
       string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);

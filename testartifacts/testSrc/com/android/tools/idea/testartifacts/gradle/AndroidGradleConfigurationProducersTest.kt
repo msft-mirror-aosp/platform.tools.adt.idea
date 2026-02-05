@@ -16,15 +16,15 @@
 package com.android.tools.idea.testartifacts.gradle
 
 import com.android.tools.idea.gradle.task.AndroidGradleTaskManager
-import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil
-import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil.Companion.createGradleRunConfiguration
-import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromDirectory
-import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromFile
-import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromClass
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromClass
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromDirectory
 import com.android.tools.idea.testartifacts.TestConfigurationTesting.createAndroidTestConfigurationFromMethod
+import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil
+import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil.Companion.createGradleRunConfiguration
 import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil.Companion.getPsiElement
+import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromClass
+import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromDirectory
+import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromFile
 import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromMethod
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths.ANDROID_KOTLIN_MULTIPLATFORM
@@ -76,13 +76,10 @@ import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * Tests for producing Gradle Run Configuration for Android unit test.
- */
+/** Tests for producing Gradle Run Configuration for Android unit test. */
 @RunsInEdt
 class AndroidGradleConfigurationProducersTest {
-  @get:Rule
-  val projectRule = AndroidGradleProjectRule().onEdt()
+  @get:Rule val projectRule = AndroidGradleProjectRule().onEdt()
   val project by lazy { projectRule.project }
 
   @Test
@@ -138,23 +135,25 @@ class AndroidGradleConfigurationProducersTest {
     projectRule.loadProject(TEST_RESOURCES)
 
     // Create the Run configuration.
-    val listener = object : ExternalSystemTaskNotificationListener {
-      var messagesLog = StringBuilder()
-      var finalMessage = ""
+    val listener =
+      object : ExternalSystemTaskNotificationListener {
+        var messagesLog = StringBuilder()
+        var finalMessage = ""
 
-      override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
-        messagesLog.append(text)
-      }
+        override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
+          messagesLog.append(text)
+        }
 
-      override fun onEnd(proojecPath: String, id: ExternalSystemTaskId) {
-        finalMessage = messagesLog.toString()
+        override fun onEnd(proojecPath: String, id: ExternalSystemTaskId) {
+          finalMessage = messagesLog.toString()
+        }
       }
-    }
 
     val gradleRunConfiguration = createAndroidGradleTestConfigurationFromClass(project, "com.example.app.ExampleUnitTest")!!
     // Starting from IDEA 2021.3, both the task names and script parameters are merged into taskNames as a list of separate tasks
     // that is passed to the Gradle executor as such.
-    assertThat(gradleRunConfiguration.settings.taskNames).isEqualTo(listOf(":app:testDebugUnitTest", "--tests", "\"com.example.app.ExampleUnitTest\""))
+    assertThat(gradleRunConfiguration.settings.taskNames)
+      .isEqualTo(listOf(":app:testDebugUnitTest", "--tests", "\"com.example.app.ExampleUnitTest\""))
     // Set the execution settings using the runConfiguration parameters.
     val firstExecutionSettings =
       ExternalSystemApiUtil.getExecutionSettings<GradleExecutionSettings>(project, project.basePath!!, GradleConstants.SYSTEM_ID)
@@ -165,12 +164,13 @@ class AndroidGradleConfigurationProducersTest {
 
     firstExecutionSettings.tasks = listOf(":app:testDebugUnitTest")
 
-    AndroidGradleTaskManager().executeTasks(
-      project.basePath!!,
-      ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
-      firstExecutionSettings,
-      listener
-    )
+    AndroidGradleTaskManager()
+      .executeTasks(
+        project.basePath!!,
+        ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
+        firstExecutionSettings,
+        listener,
+      )
 
     assertThat(listener.finalMessage.lines()).contains("> Task :app:testDebugUnitTest")
     // Clear the logged messages.
@@ -183,12 +183,13 @@ class AndroidGradleConfigurationProducersTest {
 
     secondExecutionSettings.tasks = listOf(":app:testDebugUnitTest")
 
-    AndroidGradleTaskManager().executeTasks(
-      project.basePath!!,
-      ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
-      secondExecutionSettings,
-      listener
-    )
+    AndroidGradleTaskManager()
+      .executeTasks(
+        project.basePath!!,
+        ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
+        secondExecutionSettings,
+        listener,
+      )
 
     // Check that the test task was re-executed because the task.upToDateWhen is set to false.
     val expectedMessage = "Task ':app:testDebugUnitTest' is not up-to-date because:((\r)?\n)+\\s+Task\\.upToDateWhen is false\\.".toRegex()
@@ -196,10 +197,7 @@ class AndroidGradleConfigurationProducersTest {
     assertThat(listener.messagesLog.lines()).contains("> Task :app:testDebugUnitTest")
   }
 
-  private fun copyUserDataKeysTo(
-    gradleRunConfiguration: GradleRunConfiguration,
-    firstExecutionSettings: GradleExecutionSettings,
-  ) {
+  private fun copyUserDataKeysTo(gradleRunConfiguration: GradleRunConfiguration, firstExecutionSettings: GradleExecutionSettings) {
     @Suppress("UnstableApiUsage", "UNCHECKED_CAST")
     for (key in gradleRunConfiguration.userMap.keys) {
       val userData = gradleRunConfiguration.getUserData<Any?>(key)
@@ -210,11 +208,11 @@ class AndroidGradleConfigurationProducersTest {
   @Test
   fun testJavaModulesTestTasksAreCreated() {
     projectRule.loadProject(UNIT_TESTING)
-    val gradleJavaConfiguration = createAndroidGradleTestConfigurationFromClass(
-      project, "com.example.javalib.JavaLibJavaTest")
+    val gradleJavaConfiguration = createAndroidGradleTestConfigurationFromClass(project, "com.example.javalib.JavaLibJavaTest")
     assertThat(gradleJavaConfiguration).isNotNull()
     // See above comment about the changes to task names.
-    assertThat(gradleJavaConfiguration!!.settings.taskNames).isEqualTo(listOf(":javalib:test", "--tests", "\"com.example.javalib.JavaLibJavaTest\""))
+    assertThat(gradleJavaConfiguration!!.settings.taskNames)
+      .isEqualTo(listOf(":javalib:test", "--tests", "\"com.example.javalib.JavaLibJavaTest\""))
   }
 
   @Test
@@ -240,7 +238,7 @@ class AndroidGradleConfigurationProducersTest {
     assertThat(ExternalSystemUtil.getConsoleManagerFor(packageConfigTask)).isInstanceOf(GradleTestsExecutionConsoleManager::class.java)
 
     // Verify We can render directory Run configurations using GradleTestsExecutionConsoleManager.
-    val  directoryConfiguration = createAndroidGradleTestConfigurationFromDirectory(project, "app/src/test/java")
+    val directoryConfiguration = createAndroidGradleTestConfigurationFromDirectory(project, "app/src/test/java")
     assertThat(directoryConfiguration).isNotNull()
     val directoryConfigTask = ExternalSystemExecuteTaskTask(project, directoryConfiguration!!.settings, null, directoryConfiguration)
     assertThat(ExternalSystemUtil.getConsoleManagerFor(directoryConfigTask)).isInstanceOf(GradleTestsExecutionConsoleManager::class.java)
@@ -261,9 +259,10 @@ class AndroidGradleConfigurationProducersTest {
     // Run a Gradle task.
     val projectPath = project.basePath!!
     val id = ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project)
-    val settings = GradleManager().executionSettingsProvider.`fun`(Pair.create<Project, String>(project, projectPath)).apply {
-      tasks = listOf(":app:testDebugUnitTest")
-    }
+    val settings =
+      GradleManager().executionSettingsProvider.`fun`(Pair.create<Project, String>(project, projectPath)).apply {
+        tasks = listOf(":app:testDebugUnitTest")
+      }
     try {
       AndroidGradleTaskManager().executeTasks(projectPath, id, settings, ExternalSystemTaskNotificationListener.NULL_OBJECT)
     } catch (_: ExternalSystemException) {
@@ -271,8 +270,8 @@ class AndroidGradleConfigurationProducersTest {
     }
 
     // Check that the JavaCoverageEngine won't require project rebuild.
-    val filePsiElement = TestConfigurationTestingUtil.getPsiElement(project, "app/src/main/java/google/simpleapplication/MyActivity.java",
-                                                                    false)
+    val filePsiElement =
+      TestConfigurationTestingUtil.getPsiElement(project, "app/src/main/java/google/simpleapplication/MyActivity.java", false)
     val module = ModuleUtilCore.findModuleForPsiElement(filePsiElement)
     assertThat(module).isNotNull()
 
@@ -295,10 +294,8 @@ class AndroidGradleConfigurationProducersTest {
     projectRule.loadProject(ANDROID_KOTLIN_MULTIPLATFORM)
     val configuration = createAndroidGradleTestConfigurationFromDirectory(project, "kmpFirstLib/src/androidHostTest")
     assertThat(configuration).isNotNull()
-    assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidHostTest",
-      ":kmpFirstLib:testAndroidHostTest",
-    )
+    assertThat(configuration!!.settings.taskNames)
+      .containsExactly(":kmpFirstLib:cleanTestAndroidHostTest", ":kmpFirstLib:testAndroidHostTest")
   }
 
   @Test
@@ -306,23 +303,28 @@ class AndroidGradleConfigurationProducersTest {
     projectRule.loadProject(ANDROID_KOTLIN_MULTIPLATFORM)
     val configuration = createAndroidGradleTestConfigurationFromClass(project, "com.example.kmpfirstlib.KmpAndroidFirstLibClassTest")
     assertThat(configuration).isNotNull()
-    assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidHostTest",
-      ":kmpFirstLib:testAndroidHostTest",
-      "--tests", "\"com.example.kmpfirstlib.KmpAndroidFirstLibClassTest\""
-    )
+    assertThat(configuration!!.settings.taskNames)
+      .containsExactly(
+        ":kmpFirstLib:cleanTestAndroidHostTest",
+        ":kmpFirstLib:testAndroidHostTest",
+        "--tests",
+        "\"com.example.kmpfirstlib.KmpAndroidFirstLibClassTest\"",
+      )
   }
 
   @Test
   fun testKotlinMultiplatformUnitTestRunConfigurationFromMethod() {
     projectRule.loadProject(ANDROID_KOTLIN_MULTIPLATFORM)
-    val configuration = createAndroidGradleTestConfigurationFromMethod(project, "com.example.kmpfirstlib.KmpAndroidFirstLibClassTest", "testThatPasses")
+    val configuration =
+      createAndroidGradleTestConfigurationFromMethod(project, "com.example.kmpfirstlib.KmpAndroidFirstLibClassTest", "testThatPasses")
     assertThat(configuration).isNotNull()
-    assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidHostTest",
-      ":kmpFirstLib:testAndroidHostTest",
-      "--tests", "\"com.example.kmpfirstlib.KmpAndroidFirstLibClassTest.testThatPasses\""
-    )
+    assertThat(configuration!!.settings.taskNames)
+      .containsExactly(
+        ":kmpFirstLib:cleanTestAndroidHostTest",
+        ":kmpFirstLib:testAndroidHostTest",
+        "--tests",
+        "\"com.example.kmpfirstlib.KmpAndroidFirstLibClassTest.testThatPasses\"",
+      )
   }
 
   @Test
@@ -330,11 +332,13 @@ class AndroidGradleConfigurationProducersTest {
     projectRule.loadProject(ANDROID_KOTLIN_MULTIPLATFORM)
     val configuration = createAndroidGradleTestConfigurationFromClass(project, "com.example.kmpfirstlib.KmpCommonFirstLibClassTest")
     assertThat(configuration).isNotNull()
-    assertThat(configuration!!.settings.taskNames).containsExactly(
-      ":kmpFirstLib:cleanTestAndroidHostTest",
-      ":kmpFirstLib:testAndroidHostTest",
-      "--tests", "\"com.example.kmpfirstlib.KmpCommonFirstLibClassTest\""
-    )
+    assertThat(configuration!!.settings.taskNames)
+      .containsExactly(
+        ":kmpFirstLib:cleanTestAndroidHostTest",
+        ":kmpFirstLib:testAndroidHostTest",
+        "--tests",
+        "\"com.example.kmpfirstlib.KmpCommonFirstLibClassTest\"",
+      )
   }
 
   // For reference: b/389733593
@@ -342,14 +346,17 @@ class AndroidGradleConfigurationProducersTest {
   fun testOnlyUnitTestConfigurationIsCreatedWhenAndroidTestIsDisabled() {
     projectRule.loadProject(SIMPLE_APPLICATION) { root ->
       val appBuildFile = File(root, "app/build.gradle")
-      appBuildFile.appendText("""
+      appBuildFile.appendText(
+        """
 
         androidComponents {
           beforeVariants(selector().all()) { variant ->
             variant.androidTest.enable = false
           }
         }
-      """.trimIndent())
+        """
+          .trimIndent()
+      )
     }
     // Verify we cannot create androidTest RC from UnitTest class.
     assertThat(createAndroidTestConfigurationFromClass(project, "google.simpleapplication.UnitTest")).isNull()
@@ -376,12 +383,11 @@ class AndroidGradleConfigurationProducersTest {
 
   private fun checkConfigurationTasksAreAsExpected(
     configurationFromContext: ConfigurationFromContextImpl,
-    configurationTasks: List<String>
+    configurationTasks: List<String>,
   ) {
     val configuration = configurationFromContext.configuration as? GradleRunConfiguration
     // Make sure that the tasks we set are as expected.
-    val module2 = ModuleManager.getInstance(project).modules
-      .first { module ->  module.name == "kotlinMultiPlatform.module2" }
+    val module2 = ModuleManager.getInstance(project).modules.first { module -> module.name == "kotlinMultiPlatform.module2" }
     assertThat(module2).isNotNull()
 
     assertThat(configuration!!.settings.taskNames).isEqualTo(configurationTasks)
@@ -389,7 +395,11 @@ class AndroidGradleConfigurationProducersTest {
 
   private fun verifyCannotCreateKotlinClassGradleConfigurationFromAndroidTestScope() {
     assertThat(
-      createAndroidGradleTestConfigurationFromFile(project, "app/src/androidTest/java/com/example/android/kotlin/ExampleInstrumentedTest.kt"))
+        createAndroidGradleTestConfigurationFromFile(
+          project,
+          "app/src/androidTest/java/com/example/android/kotlin/ExampleInstrumentedTest.kt",
+        )
+      )
       .isNull()
   }
 
@@ -410,9 +420,9 @@ class AndroidGradleConfigurationProducersTest {
   }
 
   private fun verifyCanCreateKotlinClassGradleConfigurationFromAndroidUnitTest() {
-    val psiFile = TestConfigurationTestingUtil.getPsiElement(project,
-                                                             "module2/src/androidUnitTest/kotlin/com/example/library/TestUnitTest.kt",
-                                                             false) as PsiFile
+    val psiFile =
+      TestConfigurationTestingUtil.getPsiElement(project, "module2/src/androidUnitTest/kotlin/com/example/library/TestUnitTest.kt", false)
+        as PsiFile
     // Create a runConfiguration context based on the testClass.
     val configurationFromContext = createConfigurationFromContext(psiFile)
     // Make sure that the configuration is created by the testClass gradle provider.
@@ -422,7 +432,7 @@ class AndroidGradleConfigurationProducersTest {
     checkConfigurationTasksAreAsExpected(
       configurationFromContext,
       // See above comment about the changes to task names.
-      listOf(":module2:testDebugUnitTest", "--tests", "\"com.example.library.TestUnitTest\"")
+      listOf(":module2:testDebugUnitTest", "--tests", "\"com.example.library.TestUnitTest\""),
     )
   }
 
@@ -438,7 +448,7 @@ class AndroidGradleConfigurationProducersTest {
       checkConfigurationTasksAreAsExpected(
         configurationFromContext,
         // See above comment about the changes to task names.
-        listOf(":module2:cleanTestDebugUnitTest", ":module2:testDebugUnitTest", "--tests", "\"com.example.library.*\"")
+        listOf(":module2:cleanTestDebugUnitTest", ":module2:testDebugUnitTest", "--tests", "\"com.example.library.*\""),
       )
     }
   }

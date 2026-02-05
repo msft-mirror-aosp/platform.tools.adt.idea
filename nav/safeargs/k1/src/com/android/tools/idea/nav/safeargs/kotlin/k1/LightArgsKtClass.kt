@@ -87,17 +87,7 @@ class LightArgsKtClass(
   sourceElement: SourceElement,
   containingDescriptor: DeclarationDescriptor,
   private val storageManager: StorageManager,
-) :
-  ClassDescriptorImpl(
-    containingDescriptor,
-    name,
-    Modality.FINAL,
-    ClassKind.CLASS,
-    superTypes,
-    sourceElement,
-    false,
-    storageManager,
-  ) {
+) : ClassDescriptorImpl(containingDescriptor, name, Modality.FINAL, ClassKind.CLASS, superTypes, sourceElement, false, storageManager) {
 
   private val _primaryConstructor = storageManager.createLazyValue { computePrimaryConstructor() }
   private val _companionObject = storageManager.createLazyValue { computeCompanionObject() }
@@ -105,8 +95,7 @@ class LightArgsKtClass(
 
   override fun getUnsubstitutedMemberScope(): MemberScope = scope()
 
-  override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope =
-    unsubstitutedMemberScope
+  override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope = unsubstitutedMemberScope
 
   override fun getConstructors() = listOf(_primaryConstructor())
 
@@ -126,13 +115,7 @@ class LightArgsKtClass(
         .asSequence()
         .map { arg ->
           val pName = Name.identifier(arg.name.toCamelCase())
-          val pType =
-            this.builtIns.getKotlinType(
-              arg.type,
-              arg.defaultValue,
-              containingDeclaration.module,
-              arg.isNonNull(),
-            )
+          val pType = this.builtIns.getKotlinType(arg.type, arg.defaultValue, containingDeclaration.module, arg.isNonNull())
           val hasDefaultValue = arg.defaultValue != null
           ValueParameterDescriptorImpl(
             constructor,
@@ -178,8 +161,7 @@ class LightArgsKtClass(
 
       override fun getUnsubstitutedMemberScope() = companionObjectScope()
 
-      override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope =
-        unsubstitutedMemberScope
+      override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope = unsubstitutedMemberScope
 
       private inner class CompanionScope : MemberScopeImpl() {
         private val companionMethods =
@@ -187,12 +169,7 @@ class LightArgsKtClass(
             val methods = mutableListOf<SimpleFunctionDescriptor>()
 
             val fromBundleParametersProvider = { method: SimpleFunctionDescriptorImpl ->
-              val bundleType =
-                argsClassDescriptor.builtIns.getKotlinType(
-                  "android.os.Bundle",
-                  null,
-                  argsClassDescriptor.module,
-                )
+              val bundleType = argsClassDescriptor.builtIns.getKotlinType("android.os.Bundle", null, argsClassDescriptor.module)
               val bundleParam =
                 ValueParameterDescriptorImpl(
                   method,
@@ -221,11 +198,7 @@ class LightArgsKtClass(
             if (navInfo.navFeatures.contains(SafeArgsFeature.FROM_SAVED_STATE_HANDLE)) {
               val fromSavedStateHandleParametersProvider = { method: SimpleFunctionDescriptorImpl ->
                 val handleType =
-                  argsClassDescriptor.builtIns.getKotlinType(
-                    "androidx.lifecycle.SavedStateHandle",
-                    null,
-                    argsClassDescriptor.module,
-                  )
+                  argsClassDescriptor.builtIns.getKotlinType("androidx.lifecycle.SavedStateHandle", null, argsClassDescriptor.module)
                 val handleParam =
                   ValueParameterDescriptorImpl(
                     method,
@@ -259,15 +232,10 @@ class LightArgsKtClass(
           kindFilter: DescriptorKindFilter,
           nameFilter: (Name) -> Boolean,
         ): Collection<DeclarationDescriptor> {
-          return companionMethods().filter {
-            kindFilter.acceptsKinds(DescriptorKindFilter.FUNCTIONS_MASK) && nameFilter(it.name)
-          }
+          return companionMethods().filter { kindFilter.acceptsKinds(DescriptorKindFilter.FUNCTIONS_MASK) && nameFilter(it.name) }
         }
 
-        override fun getContributedFunctions(
-          name: Name,
-          location: LookupLocation,
-        ): Collection<SimpleFunctionDescriptor> {
+        override fun getContributedFunctions(name: Name, location: LookupLocation): Collection<SimpleFunctionDescriptor> {
           return companionMethods().filter { it.name == name }
         }
 
@@ -284,18 +252,9 @@ class LightArgsKtClass(
       storageManager.createLazyValue {
         val methods = mutableListOf<SimpleFunctionDescriptor>()
 
-        val bundleType =
-          argsClassDescriptor.builtIns.getKotlinType(
-            "android.os.Bundle",
-            null,
-            argsClassDescriptor.module,
-          )
+        val bundleType = argsClassDescriptor.builtIns.getKotlinType("android.os.Bundle", null, argsClassDescriptor.module)
         val savedStateHandleType =
-          argsClassDescriptor.builtIns.getKotlinType(
-            "androidx.lifecycle.SavedStateHandle",
-            null,
-            argsClassDescriptor.module,
-          )
+          argsClassDescriptor.builtIns.getKotlinType("androidx.lifecycle.SavedStateHandle", null, argsClassDescriptor.module)
 
         // Add toBundle method.
         methods.add(argsClassDescriptor.createMethod(name = "toBundle", returnType = bundleType))
@@ -305,9 +264,7 @@ class LightArgsKtClass(
           argsClassDescriptor.createMethod(
             name = "copy",
             returnType = argsClassDescriptor.getDefaultType(),
-            valueParametersProvider = {
-              argsClassDescriptor.unsubstitutedPrimaryConstructor.valueParameters
-            },
+            valueParametersProvider = { argsClassDescriptor.unsubstitutedPrimaryConstructor.valueParameters },
           )
         )
 
@@ -318,12 +275,7 @@ class LightArgsKtClass(
           .map { arg ->
             val methodName = "component" + index++
             val returnType =
-              argsClassDescriptor.builtIns.getKotlinType(
-                arg.type,
-                arg.defaultValue,
-                argsClassDescriptor.module,
-                arg.isNonNull(),
-              )
+              argsClassDescriptor.builtIns.getKotlinType(arg.type, arg.defaultValue, argsClassDescriptor.module, arg.isNonNull())
             val xmlTag = argsClassDescriptor.source.getPsi() as? XmlTag
             val resolvedSourceElement =
               xmlTag?.findChildTagElementByNameAttr(SdkConstants.TAG_ARGUMENT, arg.name)?.let {
@@ -350,12 +302,7 @@ class LightArgsKtClass(
         // Add on version specific methods since the navigation library side is keeping introducing
         // new methods.
         if (navInfo.navFeatures.contains(SafeArgsFeature.TO_SAVED_STATE_HANDLE)) {
-          methods.add(
-            argsClassDescriptor.createMethod(
-              name = "toSavedStateHandle",
-              returnType = savedStateHandleType,
-            )
-          )
+          methods.add(argsClassDescriptor.createMethod(name = "toSavedStateHandle", returnType = savedStateHandleType))
         }
 
         methods
@@ -367,23 +314,12 @@ class LightArgsKtClass(
           .asSequence()
           .map { arg ->
             val pName = arg.name.toCamelCase()
-            val pType =
-              argsClassDescriptor.builtIns.getKotlinType(
-                arg.type,
-                arg.defaultValue,
-                argsClassDescriptor.module,
-                arg.isNonNull(),
-              )
+            val pType = argsClassDescriptor.builtIns.getKotlinType(arg.type, arg.defaultValue, argsClassDescriptor.module, arg.isNonNull())
             val xmlTag = argsClassDescriptor.source.getPsi() as? XmlTag
             val resolvedSourceElement =
               xmlTag?.findChildTagElementByNameAttr(SdkConstants.TAG_ARGUMENT, arg.name)?.let {
                 XmlSourceElement(
-                  SafeArgsXmlTag(
-                    it as XmlTagImpl,
-                    KotlinIcons.FIELD_VAL,
-                    arg.name,
-                    argsClassDescriptor.fqNameSafe.asString(),
-                  )
+                  SafeArgsXmlTag(it as XmlTagImpl, KotlinIcons.FIELD_VAL, arg.name, argsClassDescriptor.fqNameSafe.asString())
                 )
               } ?: argsClassDescriptor.source
             argsClassDescriptor.createProperty(pName, pType, resolvedSourceElement)
@@ -397,36 +333,20 @@ class LightArgsKtClass(
       kindFilter: DescriptorKindFilter,
       nameFilter: (Name) -> Boolean,
     ): Collection<DeclarationDescriptor> {
-      return methods().filter {
-        kindFilter.acceptsKinds(DescriptorKindFilter.FUNCTIONS_MASK) && nameFilter(it.name)
-      } +
-        properties().filter {
-          kindFilter.acceptsKinds(DescriptorKindFilter.VARIABLES_MASK) && nameFilter(it.name)
-        } +
-        classifiers().filter {
-          kindFilter.acceptsKinds(DescriptorKindFilter.SINGLETON_CLASSIFIERS_MASK) &&
-            nameFilter(it.name)
-        }
+      return methods().filter { kindFilter.acceptsKinds(DescriptorKindFilter.FUNCTIONS_MASK) && nameFilter(it.name) } +
+        properties().filter { kindFilter.acceptsKinds(DescriptorKindFilter.VARIABLES_MASK) && nameFilter(it.name) } +
+        classifiers().filter { kindFilter.acceptsKinds(DescriptorKindFilter.SINGLETON_CLASSIFIERS_MASK) && nameFilter(it.name) }
     }
 
-    override fun getContributedClassifier(
-      name: Name,
-      location: LookupLocation,
-    ): ClassifierDescriptor? {
+    override fun getContributedClassifier(name: Name, location: LookupLocation): ClassifierDescriptor? {
       return classifiers().firstOrNull { it.name == name }
     }
 
-    override fun getContributedFunctions(
-      name: Name,
-      location: LookupLocation,
-    ): Collection<SimpleFunctionDescriptor> {
+    override fun getContributedFunctions(name: Name, location: LookupLocation): Collection<SimpleFunctionDescriptor> {
       return methods().filter { it.name == name }
     }
 
-    override fun getContributedVariables(
-      name: Name,
-      location: LookupLocation,
-    ): List<PropertyDescriptor> {
+    override fun getContributedVariables(name: Name, location: LookupLocation): List<PropertyDescriptor> {
       return properties().filter { it.name == name }
     }
 

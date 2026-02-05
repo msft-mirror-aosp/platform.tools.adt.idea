@@ -21,9 +21,9 @@ import com.android.tools.adtui.instructions.NewRowInstruction
 import com.android.tools.adtui.instructions.TextInstruction
 import com.android.tools.adtui.stdui.UrlData
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
@@ -73,11 +73,10 @@ class CommonNlDesignSurfacePreviewViewTest {
   @RunsInEdt
   @Before
   fun setUp() =
-    runBlocking(uiThread) {
+    runBlocking(Dispatchers.EDT) {
       val surfaceBuilder = NlSurfaceBuilder.builder(project, fixture.testRootDisposable)
 
-      previewView =
-        CommonNlDesignSurfacePreviewView(project, surfaceBuilder, fixture.testRootDisposable)
+      previewView = CommonNlDesignSurfacePreviewView(project, surfaceBuilder, fixture.testRootDisposable)
 
       fakeUi =
         FakeUi(
@@ -96,7 +95,7 @@ class CommonNlDesignSurfacePreviewViewTest {
   fun testShowLoading() =
     runBlocking(Dispatchers.Default) {
       withContext(Dispatchers.Main) {
-        withContext(uiThread) {
+        withContext(Dispatchers.EDT) {
           previewView.showLoadingMessage("Loading foo")
           fakeUi.root.validate()
         }
@@ -114,33 +113,25 @@ class CommonNlDesignSurfacePreviewViewTest {
         // relies on animations to hide the content. For now, the best we can do is to check that
         // the panel has received the message by checking isLoading.
         // Reported as KTIJ-36421
-        withContext(Dispatchers.Main) {
-          Assert.assertFalse(fakeUi.findComponent<JBLoadingPanel>()!!.isLoading)
-        }
+        withContext(Dispatchers.Main) { Assert.assertFalse(fakeUi.findComponent<JBLoadingPanel>()!!.isLoading) }
       }
     }
 
   @Test
   fun testErrorMessage() =
     runBlocking(Dispatchers.Default) {
-      withContext(uiThread) {
-        previewView.showErrorMessage(
-          "error foo happened",
-          UrlData("foo url text", "www.foo.bar"),
-          null,
-        )
+      withContext(Dispatchers.EDT) {
+        previewView.showErrorMessage("error foo happened", UrlData("foo url text", "www.foo.bar"), null)
         fakeUi.root.validate()
       }
 
       delay(2000) // Let the message appear (it takes 1s by default in WorkBench)
 
-      withContext(uiThread) {
+      withContext(Dispatchers.EDT) {
         Assert.assertTrue(
           fakeUi
             .findComponent<InstructionsPanel> { panel ->
-              panel.toDisplayText().let {
-                it.contains("error foo happened") && it.contains("[foo url text]")
-              }
+              panel.toDisplayText().let { it.contains("error foo happened") && it.contains("[foo url text]") }
             }
             .isVisible()
         )
@@ -151,9 +142,7 @@ class CommonNlDesignSurfacePreviewViewTest {
         Assert.assertFalse(
           fakeUi
             .findComponent<InstructionsPanel> { panel ->
-              panel.toDisplayText().let {
-                it.contains("error foo happened") && it.contains("[foo url text]")
-              }
+              panel.toDisplayText().let { it.contains("error foo happened") && it.contains("[foo url text]") }
             }
             .isVisible()
         )
@@ -162,7 +151,7 @@ class CommonNlDesignSurfacePreviewViewTest {
 
   @Test
   fun testToolbar() =
-    runBlocking(uiThread) {
+    runBlocking(Dispatchers.EDT) {
       previewView.updateToolbar()
 
       // TODO(b/239802877): perform checks against the toolbar

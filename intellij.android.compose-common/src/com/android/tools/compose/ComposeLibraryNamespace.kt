@@ -36,4 +36,4 @@ const val COMPOSE_MODIFIER_FQN = "$COMPOSE_UI_PACKAGE.Modifier"
 const val COMPOSE_STRING_RESOURCE_FQN = "$COMPOSE_UI_PACKAGE.res.stringResource"
 
 const val COMPOSABLE_ANNOTATION_NAME = "Composable"
-const val COMPOSABLE_ANNOTATION_FQ_NAME ="androidx.compose.runtime.$COMPOSABLE_ANNOTATION_NAME"
+const val COMPOSABLE_ANNOTATION_FQ_NAME = "androidx.compose.runtime.$COMPOSABLE_ANNOTATION_NAME"

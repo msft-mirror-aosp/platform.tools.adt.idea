@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 @file:JvmName("AndroidEnvironmentUtils")
+
 package com.android.tools.idea
 
 import com.android.tools.idea.util.CommonAndroidUtil
 import com.intellij.openapi.project.Project
 
-/**
- * Returns true if called in Android Studio or if the project has an Android facet.
- */
+/** Returns true if called in Android Studio or if the project has an Android facet. */
 fun isAndroidEnvironment(project: Project): Boolean =
   IdeInfo.getInstance().isAndroidStudio || CommonAndroidUtil.getInstance().isAndroidProject(project)

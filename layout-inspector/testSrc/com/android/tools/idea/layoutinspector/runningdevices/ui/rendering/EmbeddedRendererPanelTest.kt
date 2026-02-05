@@ -89,19 +89,15 @@ class EmbeddedRendererPanelTest {
   private val screenDimension = Dimension(200, 250)
   /** The dimension of the device screen */
   private val deviceScreenDimension = Dimension(100, 150)
-  /**
-   * The rectangle that contains the device rendering, LI rendering should be overlaid to this
-   * rectangle.
-   */
-  private val deviceDisplayRectangle =
-    Rectangle(10, 10, deviceScreenDimension.width, deviceScreenDimension.height)
+  /** The rectangle that contains the device rendering, LI rendering should be overlaid to this rectangle. */
+  private val deviceDisplayRectangle = Rectangle(10, 10, deviceScreenDimension.width, deviceScreenDimension.height)
 
   /** An inspector model with views arranged vertically */
   private val verticalInspectorModel: InspectorModel
     get() =
       model(disposable, displayId = 0) {
         view(ROOT, 0, 0, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
+          view(VIEW1, 10, 15, 25, 25)
           compose(COMPOSE1, "Text", composeCount = 15, x = 10, y = 50, width = 80, height = 50)
         }
       }
@@ -111,7 +107,7 @@ class EmbeddedRendererPanelTest {
     get() =
       model(disposable, displayId = 0) {
         view(ROOT, 0, 0, deviceScreenDimension.height, deviceScreenDimension.width) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
+          view(VIEW1, 10, 15, 25, 25)
           compose(COMPOSE1, "Text", composeCount = 15, x = 10, y = 50, width = 80, height = 50)
         }
       }
@@ -128,11 +124,7 @@ class EmbeddedRendererPanelTest {
   @Test
   fun testBoundsOverflowRight() {
     val inspectorModelOverflowRight =
-      model(disposable) {
-        view(ROOT, 10, 0, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
-        }
-      }
+      model(disposable) { view(ROOT, 10, 0, deviceScreenDimension.width, deviceScreenDimension.height) { view(VIEW1, 10, 15, 25, 25) } }
 
     val (_, renderer) = createRenderer(inspectorModel = inspectorModelOverflowRight)
 
@@ -145,9 +137,7 @@ class EmbeddedRendererPanelTest {
   fun testBoundsOverflowLeft() {
     val inspectorModelOverflowLeft =
       model(disposable) {
-        view(ROOT, -10, 0, deviceScreenDimension.width - 10, deviceScreenDimension.height) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
-        }
+        view(ROOT, -10, 0, deviceScreenDimension.width - 10, deviceScreenDimension.height) { view(VIEW1, 10, 15, 25, 25) }
       }
 
     val (_, renderer) = createRenderer(inspectorModel = inspectorModelOverflowLeft)
@@ -160,11 +150,7 @@ class EmbeddedRendererPanelTest {
   @Test
   fun testBoundsOverflowBottom() {
     val inspectorModelOverflowBottom =
-      model(disposable) {
-        view(ROOT, 0, 10, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
-        }
-      }
+      model(disposable) { view(ROOT, 0, 10, deviceScreenDimension.width, deviceScreenDimension.height) { view(VIEW1, 10, 15, 25, 25) } }
 
     val (_, renderer) = createRenderer(inspectorModel = inspectorModelOverflowBottom)
 
@@ -176,11 +162,7 @@ class EmbeddedRendererPanelTest {
   @Test
   fun testBoundsOverflowTop() {
     val inspectorModelOverflowTop =
-      model(disposable) {
-        view(ROOT, 0, -10, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
-        }
-      }
+      model(disposable) { view(ROOT, 0, -10, deviceScreenDimension.width, deviceScreenDimension.height) { view(VIEW1, 10, 15, 25, 25) } }
 
     val (_, renderer) = createRenderer(inspectorModel = inspectorModelOverflowTop)
 
@@ -208,11 +190,9 @@ class EmbeddedRendererPanelTest {
           else -> throw IllegalArgumentException()
         }
 
-      val quadrant =
-        calculateRotationCorrection(displayProvider = { display }, { it.displayQuadrant }, { 0 })
+      val quadrant = calculateRotationCorrection(displayProvider = { display }, { it.displayQuadrant }, { 0 })
 
-      val (_, renderer) =
-        createRenderer(inspectorModel = verticalInspectorModel, displayOrientation = quadrant)
+      val (_, renderer) = createRenderer(inspectorModel = verticalInspectorModel, displayOrientation = quadrant)
 
       val renderImage = createRenderImage()
       paint(renderImage, renderer, displayQuadrant = it.displayQuadrant)
@@ -264,8 +244,7 @@ class EmbeddedRendererPanelTest {
 
     fakeUi.render()
 
-    assertThat(model.hoveredNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
+    assertThat(model.hoveredNode.value!!.bounds).isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
 
     val renderImage = createRenderImage()
     paint(renderImage, renderer)
@@ -290,8 +269,7 @@ class EmbeddedRendererPanelTest {
 
     fakeUi.render()
 
-    assertThat(model.hoveredNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
+    assertThat(model.hoveredNode.value!!.bounds).isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
 
     // move mouse out of screen.
     fakeUi.mouse.moveTo(screenDimension.width + 10, screenDimension.height + 10)
@@ -325,8 +303,7 @@ class EmbeddedRendererPanelTest {
     fakeUi.render()
     fakeUi.layoutAndDispatchEvents()
 
-    assertThat(model.selectedNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
+    assertThat(model.selectedNode.value!!.bounds).isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
 
     val renderImage = createRenderImage()
     paint(renderImage, renderer)
@@ -339,14 +316,14 @@ class EmbeddedRendererPanelTest {
     val recompositionModel =
       model(disposable, displayId = 0) {
         view(ROOT, 0, 0, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(VIEW1, 10, 15, 25, 25) { image() }
+          view(VIEW1, 10, 15, 25, 25)
           compose(COMPOSE1, "name", x = 10, y = 50, width = 80, height = 50, composeCount = 15)
         }
       }
 
     val window =
       window(ROOT, ROOT, 0, 0, deviceScreenDimension.width, deviceScreenDimension.height) {
-        view(drawId = VIEW1, x = 10, y = 15, width = 25, height = 25) { image() }
+        view(drawId = VIEW1, x = 10, y = 15, width = 25, height = 25)
         compose(COMPOSE1, "name", x = 10, y = 50, width = 80, height = 50, composeCount = 100)
       }
     // Receive an update with recomposition counts.
@@ -374,8 +351,7 @@ class EmbeddedRendererPanelTest {
     fakeUi.layoutAndDispatchEvents()
 
     assertThat(model.recomposingNodes.value).hasSize(1)
-    assertThat(model.recomposingNodes.value.first().bounds)
-      .isEqualTo(model.inspectorModel[COMPOSE1]!!.layoutBounds)
+    assertThat(model.recomposingNodes.value.first().bounds).isEqualTo(model.inspectorModel[COMPOSE1]!!.layoutBounds)
 
     val renderImage = createRenderImage()
     paint(renderImage, renderer)
@@ -404,8 +380,7 @@ class EmbeddedRendererPanelTest {
     fakeUi.render()
     fakeUi.layoutAndDispatchEvents()
 
-    assertThat(model.selectedNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[COMPOSE1]!!.layoutBounds)
+    assertThat(model.selectedNode.value!!.bounds).isEqualTo(model.inspectorModel[COMPOSE1]!!.layoutBounds)
 
     val renderImage = createRenderImage()
     paint(renderImage, renderer)
@@ -436,8 +411,7 @@ class EmbeddedRendererPanelTest {
     fakeUi.render()
     fakeUi.layoutAndDispatchEvents()
 
-    assertThat(model.selectedNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[ROOT]!!.layoutBounds)
+    assertThat(model.selectedNode.value!!.bounds).isEqualTo(model.inspectorModel[ROOT]!!.layoutBounds)
 
     val renderImage = createRenderImage()
     paint(renderImage, renderer)
@@ -452,7 +426,7 @@ class EmbeddedRendererPanelTest {
     val customModel =
       model(disposable, displayId = 0) {
         view(ROOT, 0, 0, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(drawId = VIEW1, x = -10, y = 15, width = 25, height = 25) { image() }
+          view(drawId = VIEW1, x = -10, y = 15, width = 25, height = 25)
           compose(COMPOSE1, "name", x = 10, y = 50, width = 80, height = 50, composeCount = 15)
         }
       }
@@ -476,8 +450,7 @@ class EmbeddedRendererPanelTest {
     fakeUi.render()
     fakeUi.layoutAndDispatchEvents()
 
-    assertThat(model.selectedNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
+    assertThat(model.selectedNode.value!!.bounds).isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
 
     val renderImage = createRenderImage()
     paint(renderImage, renderer)
@@ -523,8 +496,7 @@ class EmbeddedRendererPanelTest {
     model.setInterceptClicks(true)
 
     var latestPopup: FakeActionPopupMenu? = null
-    ApplicationManager.getApplication()
-      .replaceService(ActionManager::class.java, mock(), disposable)
+    ApplicationManager.getApplication().replaceService(ActionManager::class.java, mock(), disposable)
     doAnswer { invocation ->
         latestPopup = FakeActionPopupMenu(invocation.getArgument(1))
         latestPopup
@@ -538,11 +510,7 @@ class EmbeddedRendererPanelTest {
     assertThat(model.inspectorModel.selection).isNull()
 
     // Right click on VIEW1 when system views are showing:
-    fakeUi.mouse.click(
-      deviceDisplayRectangle.x + 10,
-      deviceDisplayRectangle.y + 15,
-      FakeMouse.Button.RIGHT,
-    )
+    fakeUi.mouse.click(deviceDisplayRectangle.x + 10, deviceDisplayRectangle.y + 15, FakeMouse.Button.RIGHT)
 
     assertThat(model.inspectorModel.selection).isEqualTo(model.inspectorModel[VIEW1])
 
@@ -650,10 +618,8 @@ class EmbeddedRendererPanelTest {
     fakeUi.render()
     fakeUi.layoutAndDispatchEvents()
 
-    assertThat(model.selectedNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
-    assertThat(model.hoveredNode.value!!.bounds)
-      .isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
+    assertThat(model.selectedNode.value!!.bounds).isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
+    assertThat(model.hoveredNode.value!!.bounds).isEqualTo(model.inspectorModel[VIEW1]!!.layoutBounds)
 
     model.setInterceptClicks(false)
 
@@ -740,7 +706,7 @@ class EmbeddedRendererPanelTest {
     val customModel =
       model(disposable, displayId = 1) {
         view(ROOT, 0, 0, deviceScreenDimension.width, deviceScreenDimension.height) {
-          view(drawId = VIEW1, x = -10, y = 15, width = 25, height = 25) { image() }
+          view(drawId = VIEW1, x = -10, y = 15, width = 25, height = 25)
           compose(COMPOSE1, "name", x = 10, y = 50, width = 80, height = 50, composeCount = 15)
         }
       }
@@ -758,17 +724,10 @@ class EmbeddedRendererPanelTest {
     assertSimilar(renderImage, testName.methodName)
   }
 
-  private fun paint(
-    image: BufferedImage,
-    renderer: EmbeddedRendererPanel,
-    displayQuadrant: Int = 0,
-  ) {
+  private fun paint(image: BufferedImage, renderer: EmbeddedRendererPanel, displayQuadrant: Int = 0) {
     val graphics = image.createGraphics()
     // add a gray background
-    graphics.fillRect(
-      Rectangle(0, 0, screenDimension.width, screenDimension.height),
-      backgroundColor,
-    )
+    graphics.fillRect(Rectangle(0, 0, screenDimension.width, screenDimension.height), backgroundColor)
     // render the display rectangle in black, the rendering from LI should be overlaid to it.
     graphics.color = Color(0, 0, 0)
     // rotate the device display rectangle to match the quadrant rotation
@@ -777,13 +736,7 @@ class EmbeddedRendererPanelTest {
         0,
         2 -> deviceDisplayRectangle
         1,
-        3 ->
-          Rectangle(
-            deviceDisplayRectangle.y,
-            deviceDisplayRectangle.x,
-            deviceDisplayRectangle.height,
-            deviceDisplayRectangle.width,
-          )
+        3 -> Rectangle(deviceDisplayRectangle.y, deviceDisplayRectangle.x, deviceDisplayRectangle.height, deviceDisplayRectangle.width)
         else -> throw IllegalArgumentException()
       }
     graphics.draw(displayRect)
@@ -830,30 +783,18 @@ class EmbeddedRendererPanelTest {
   }
 
   /**
-   * Check that the generated [renderImage] is similar to the one stored on disk. If the image
-   * stored on disk does not exist, it is created.
+   * Check that the generated [renderImage] is similar to the one stored on disk. If the image stored on disk does not exist, it is created.
    */
-  private fun assertSimilar(
-    renderImage: BufferedImage,
-    imageName: String,
-    maxDiff: Double = DIFF_THRESHOLD,
-  ) {
+  private fun assertSimilar(renderImage: BufferedImage, imageName: String, maxDiff: Double = DIFF_THRESHOLD) {
     val testDataPath = TEST_DATA_PATH.resolve(this.javaClass.simpleName)
-    ImageDiffUtil.assertImageSimilar(
-      resolveWorkspacePathUnchecked(testDataPath.resolve("$imageName.png").pathString),
-      renderImage,
-      maxDiff,
-    )
+    ImageDiffUtil.assertImageSimilar(resolveWorkspacePathUnchecked(testDataPath.resolve("$imageName.png").pathString), renderImage, maxDiff)
   }
 }
 
 private data class RotationCombination(val displayQuadrant: Int, val deviceRotation: Int)
 
 /** Generates all possible combinations of display quadrants and device rotation */
-private fun generateAllPossibleRotations(
-  displayQuadrants: List<Int>,
-  deviceRotations: List<Int>,
-): List<RotationCombination> {
+private fun generateAllPossibleRotations(displayQuadrants: List<Int>, deviceRotations: List<Int>): List<RotationCombination> {
   val combinations = mutableListOf<RotationCombination>()
 
   for (num1 in displayQuadrants) {

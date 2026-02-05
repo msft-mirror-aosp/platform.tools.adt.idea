@@ -15,10 +15,8 @@ class AppInspectionToolWindowFactoryTest {
   @Test
   fun isLibraryToolWindow() {
     val toolWindow =
-      LibraryDependentToolWindow.EXTENSION_POINT_NAME.extensions.find { it.id == "App Inspection" }
-        ?: fail("Tool window not found")
+      LibraryDependentToolWindow.EXTENSION_POINT_NAME.extensions.find { it.id == "App Inspection" } ?: fail("Tool window not found")
 
-    assertThat(toolWindow.librarySearchClass)
-      .isEqualTo(AndroidEnvironmentChecker::class.qualifiedName)
+    assertThat(toolWindow.librarySearchClass).isEqualTo(AndroidEnvironmentChecker::class.qualifiedName)
   }
 }

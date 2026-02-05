@@ -40,9 +40,12 @@ import com.android.tools.idea.run.configuration.editors.AndroidWearConfiguration
 import com.android.tools.idea.run.configuration.execution.ApplicationDeployerImpl
 import com.android.tools.idea.run.deployment.DeviceAndSnapshotComboBoxTargetProvider
 import com.android.tools.idea.testartifacts.instrumented.AndroidRunConfigurationToken.Companion.getModuleForAndroidRunConfiguration
+import com.intellij.compiler.options.CompileStepBeforeRun
+import com.intellij.execution.BeforeRunTask
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.configurations.ConfigurationFactory
+import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.execution.configurations.JavaRunConfigurationModule
 import com.intellij.execution.configurations.ModuleBasedConfiguration
 import com.intellij.execution.configurations.RunConfigurationWithSuppressedDefaultDebugAction
@@ -52,26 +55,38 @@ import com.intellij.execution.runners.RunConfigurationWithSuppressedDefaultRunAc
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.util.xmlb.XmlSerializer
 import org.jdom.Element
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.util.AndroidBundle
 
+abstract class AndroidWearConfigurationFactory(type: ConfigurationType) : ConfigurationFactory(type) {
+  override fun configureBeforeRunTaskDefaults(providerID: Key<out BeforeRunTask<*>>, task: BeforeRunTask<*>) {
+    if (CompileStepBeforeRun.ID == providerID) {
+      task.isEnabled = false
+    }
+  }
+}
+
 abstract class AndroidWearConfiguration(project: Project, factory: ConfigurationFactory) :
   ModuleBasedConfiguration<JavaRunConfigurationModule, Element>(JavaRunConfigurationModule(project, false), factory),
-  RunConfigurationWithSuppressedDefaultRunAction, RunConfigurationWithSuppressedDefaultDebugAction, PreferGradleMake, RunConfigurationWithDebugger {
+  RunConfigurationWithSuppressedDefaultRunAction,
+  RunConfigurationWithSuppressedDefaultDebugAction,
+  PreferGradleMake,
+  RunConfigurationWithDebugger {
 
   companion object {
     const val LAUNCH_OPTIONS_ELEMENT_NAME = "LaunchOptions"
     const val DEPLOY_OPTIONS_ELEMENT_NAME = "DeployOptions"
   }
 
-  override val androidDebuggerContext: AndroidDebuggerContext = AndroidDebuggerContext(
-    AndroidJavaDebugger.ID)
+  override val androidDebuggerContext: AndroidDebuggerContext = AndroidDebuggerContext(AndroidJavaDebugger.ID)
 
   abstract val componentLaunchOptions: WearSurfaceLaunchOptions
 
-  val deployOptions: DeployOptions = DeployOptions(emptyList(), "", installOnAllUsers = true, alwaysInstallWithPm = true, allowAssumeVerified = false)
+  val deployOptions: DeployOptions =
+    DeployOptions(emptyList(), "", installOnAllUsers = true, alwaysInstallWithPm = true, allowAssumeVerified = false)
 
   init {
     putUserData(DeployableToDevice.KEY, true)
@@ -87,8 +102,8 @@ abstract class AndroidWearConfiguration(project: Project, factory: Configuration
     if (project.getProjectSystem().getSyncManager().isSyncInProgress()) {
       throw RuntimeConfigurationError("Project is synchronizing")
     }
-    componentLaunchOptions.componentName ?: throw RuntimeConfigurationError(
-      "${componentLaunchOptions.userVisibleComponentTypeName} is not chosen")
+    componentLaunchOptions.componentName
+      ?: throw RuntimeConfigurationError("${componentLaunchOptions.userVisibleComponentTypeName} is not chosen")
   }
 
   private fun getAndroidFacetOrThrow(): AndroidFacet {
@@ -102,11 +117,12 @@ abstract class AndroidWearConfiguration(project: Project, factory: Configuration
 
   private fun getExecutor(environment: ExecutionEnvironment): AndroidConfigurationExecutor {
     val provider = DeviceAndSnapshotComboBoxTargetProvider.getInstance()
-    val deployTarget = if (provider.requiresRuntimePrompt(project)) {
-      invokeAndWaitIfNeeded { provider.showPrompt(project) }
-    } else {
-      provider.getDeployTarget(project)
-    } ?: throw ExecutionException(AndroidBundle.message("deployment.target.not.found"))
+    val deployTarget =
+      if (provider.requiresRuntimePrompt(project)) {
+        invokeAndWaitIfNeeded { provider.showPrompt(project) }
+      } else {
+        provider.getDeployTarget(project)
+      } ?: throw ExecutionException(AndroidBundle.message("deployment.target.not.found"))
     val deviceFutures = deployTarget.launchDevices(project)
 
     fillStatsForEnvironment(environment, deviceFutures)
@@ -114,28 +130,26 @@ abstract class AndroidWearConfiguration(project: Project, factory: Configuration
     val stats = RunStats.from(environment)
     return try {
       stats.start()
-      val apkProvider = project.getProjectSystem().getApkProvider(this) ?: throw ExecutionException(
-        AndroidBundle.message("android.run.configuration.not.supported",
-                              name)) // There is no test ApkInfo for AndroidWearConfiguration, thus it should be always single ApkInfo. Only App.
+      val apkProvider =
+        project.getProjectSystem().getApkProvider(this)
+          ?: throw ExecutionException(
+            AndroidBundle.message("android.run.configuration.not.supported", name)
+          ) // There is no test ApkInfo for AndroidWearConfiguration, thus it should be always single ApkInfo. Only App.
 
-      val applicationIdProvider = project.getProjectSystem().getApplicationIdProvider(this) ?: throw RuntimeException(
-        "Cannot get ApplicationIdProvider")
-      val applicationContext = FacetBasedApplicationProjectContext(applicationIdProvider.packageName, getAndroidFacetOrThrow());
+      val applicationIdProvider =
+        project.getProjectSystem().getApplicationIdProvider(this) ?: throw RuntimeException("Cannot get ApplicationIdProvider")
+      val applicationContext = FacetBasedApplicationProjectContext(applicationIdProvider.packageName, getAndroidFacetOrThrow())
 
-      val appRunSettings = object : AppRunSettings {
-        override val deployOptions = this@AndroidWearConfiguration.deployOptions
-        override val componentLaunchOptions = this@AndroidWearConfiguration.componentLaunchOptions
-      }
+      val appRunSettings =
+        object : AppRunSettings {
+          override val deployOptions = this@AndroidWearConfiguration.deployOptions
+          override val componentLaunchOptions = this@AndroidWearConfiguration.componentLaunchOptions
+        }
       val deployer = ApplicationDeployerImpl(project, stats)
-      val state = getExecutor(
-        environment, deviceFutures, appRunSettings, apkProvider,
-        applicationContext,
-        deployer
-      )
+      val state = getExecutor(environment, deviceFutures, appRunSettings, apkProvider, applicationContext, deployer)
       stats.markStateCreated()
       state
-    }
-    catch (t: Throwable) {
+    } catch (t: Throwable) {
       stats.abort()
       throw t
     }
@@ -147,7 +161,7 @@ abstract class AndroidWearConfiguration(project: Project, factory: Configuration
     appRunSettings: AppRunSettings,
     apkProvider: ApkProvider,
     applicationContext: ApplicationProjectContext,
-    deployer: ApplicationDeployer
+    deployer: ApplicationDeployer,
   ): AndroidConfigurationExecutor
 
   private fun fillStatsForEnvironment(environment: ExecutionEnvironment, deviceFutures: DeviceFutures) {
@@ -192,5 +206,4 @@ abstract class AndroidWearConfiguration(project: Project, factory: Configuration
 
   val module: Module?
     get() = configurationModule.module
-
 }

@@ -335,15 +335,9 @@ class ResourceFolderRepositoryBackgroundActionsTest {
 
       exceptionThrown.acquire()
       Thread.sleep(1000)
-      ResourceFolderRepositoryBackgroundActions.runInBackground {
-        actionCompletedCount.incrementAndGet()
-      }
-      ResourceFolderRepositoryBackgroundActions.runInBackground {
-        actionCompletedCount.incrementAndGet()
-      }
-      ResourceFolderRepositoryBackgroundActions.runInBackground {
-        actionCompletedCount.incrementAndGet()
-      }
+      ResourceFolderRepositoryBackgroundActions.runInBackground { actionCompletedCount.incrementAndGet() }
+      ResourceFolderRepositoryBackgroundActions.runInBackground { actionCompletedCount.incrementAndGet() }
+      ResourceFolderRepositoryBackgroundActions.runInBackground { actionCompletedCount.incrementAndGet() }
 
       waitForCondition(10.seconds) { actionCompletedCount.get() == 3 }
     }

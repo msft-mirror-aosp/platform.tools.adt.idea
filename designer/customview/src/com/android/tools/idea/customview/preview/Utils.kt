@@ -16,7 +16,6 @@
 package com.android.tools.idea.customview.preview
 
 import com.android.SdkConstants.CLASS_VIEW
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.preview.representation.InMemoryLayoutVirtualFile
 import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresentationPreview
 import com.intellij.openapi.application.readAction
@@ -28,6 +27,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassOwner
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.InheritanceUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal const val CUSTOM_VIEW_PREVIEW_ID = "android-custom-view"
@@ -39,7 +39,7 @@ class CustomViewLightVirtualFile(name: String, content: String, originFile: Virt
 internal fun PsiClass.extendsView(): Boolean = InheritanceUtil.isInheritor(this, CLASS_VIEW)
 
 internal suspend fun PsiFile.containsViewSuccessor(): Boolean =
-  withContext(workerThread) {
+  withContext(Dispatchers.Default) {
     // Quickly reject non-custom view files. A custom view constructor should have Context and
     // AttributeSet as parameters
     // (https://developer.android.com/training/custom-views/create-view#subclassview).
@@ -53,9 +53,7 @@ internal suspend fun PsiFile.containsViewSuccessor(): Boolean =
         try {
           val classes = readAction { this@containsViewSuccessor.classes }
           // Properly detect inheritance from View in Smart mode
-          smartReadAction(project) {
-            classes.any { aClass -> aClass.isValid && aClass.extendsView() }
-          }
+          smartReadAction(project) { classes.any { aClass -> aClass.isValid && aClass.extendsView() } }
         } catch (t: Exception) {
           Logger.getInstance(Utils::class.java).warn(t)
           false

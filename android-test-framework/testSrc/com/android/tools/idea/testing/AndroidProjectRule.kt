@@ -83,13 +83,11 @@ import org.mockito.Mockito
 /**
  * Rule that provides access to a [Project] containing one module configured with the Android facet.
  *
- * The defaults settings are using a [LightTempDirTestFixtureImpl] which means that it does not
- * create any file on disk, but instead relly on a
- * [com.intellij.openapi.vfs.ex.temp.TempFileSystem]].
+ * The defaults settings are using a [LightTempDirTestFixtureImpl] which means that it does not create any file on disk, but instead relly
+ * on a [com.intellij.openapi.vfs.ex.temp.TempFileSystem]].
  *
- * For tests that rely on file on disk, use the [AndroidProjectRule.Factory.onDisk()] factory method
- * to use a full on disk fixture with a single module, otherwise use the
- * [AndroidProjectRule.Factory.inMemory()] method.
+ * For tests that rely on file on disk, use the [AndroidProjectRule.Factory.onDisk()] factory method to use a full on disk fixture with a
+ * single module, otherwise use the [AndroidProjectRule.Factory.inMemory()] method.
  */
 interface AndroidProjectRule : TestRule {
 
@@ -108,8 +106,7 @@ interface AndroidProjectRule : TestRule {
   val fixture: CodeInsightTestFixture
 
   /**
-   * true iff the default module should be a valid Android module (if it should have an Android
-   * manifest and the Android facet attached).
+   * true iff the default module should be a valid Android module (if it should have an Android manifest and the Android facet attached).
    *
    * Note: this property applies to some [AndroidProjectRule] builders only.
    */
@@ -123,12 +120,10 @@ interface AndroidProjectRule : TestRule {
   fun named(projectName: String?): AndroidProjectRule
 
   /**
-   * Enables Kotlin and the Kotlin standard library for this project, using the given Kotlin project
-   * descriptor. Passing `null` disables Kotlin.
+   * Enables Kotlin and the Kotlin standard library for this project, using the given Kotlin project descriptor. Passing `null` disables
+   * Kotlin.
    */
-  fun withKotlin(
-    descriptor: KotlinAdtTestProjectDescriptor? = AdtTestProjectDescriptors.kotlin()
-  ): AndroidProjectRule
+  fun withKotlin(descriptor: KotlinAdtTestProjectDescriptor? = AdtTestProjectDescriptors.kotlin()): AndroidProjectRule
 
   val testRootDisposable: Disposable
     get() = fixture.testRootDisposable
@@ -142,8 +137,7 @@ interface AndroidProjectRule : TestRule {
   /** Factories method to build an [AndroidProjectRule] */
   companion object {
     /**
-     * Returns an [AndroidProjectRule] that uses a fixture which create the project in an in memory
-     * TempFileSystem
+     * Returns an [AndroidProjectRule] that uses a fixture which create the project in an in memory TempFileSystem
      *
      * @see IdeaTestFixtureFactory.createLightFixtureBuilder
      */
@@ -155,29 +149,19 @@ interface AndroidProjectRule : TestRule {
       return chain(testEnvironmentRule, fixtureRule, projectEnvironmentRule)
     }
 
-    /**
-     * Returns an [AndroidProjectRule] that uses a fixture on disk using a [JavaTestFixtureFactory]
-     */
+    /** Returns an [AndroidProjectRule] that uses a fixture on disk using a [JavaTestFixtureFactory] */
     @JvmStatic
     @JvmOverloads
-    fun onDisk(
-      fixtureName: String? = null,
-      extraModules: List<String> = listOf(),
-    ): Typed<JavaCodeInsightTestFixture, Nothing> {
+    fun onDisk(fixtureName: String? = null, extraModules: List<String> = listOf()): Typed<JavaCodeInsightTestFixture, Nothing> {
       val testEnvironmentRule = TestEnvironmentRuleImpl(withAndroidSdk = false)
-      val fixtureRule =
-        FixtureRuleImpl(
-          createHeavyFixtureFactory(extraModules),
-          withAndroidSdk = false,
-          fixtureName = fixtureName,
-        )
+      val fixtureRule = FixtureRuleImpl(createHeavyFixtureFactory(extraModules), withAndroidSdk = false, fixtureName = fixtureName)
       val projectEnvironmentRule = ProjectEnvironmentRuleImpl { fixtureRule.project }
       return chain(testEnvironmentRule, fixtureRule, projectEnvironmentRule)
     }
 
     /**
-     * Returns an [AndroidProjectRule] that uses a fixture on disk using a [JavaTestFixtureFactory]
-     * with an Android SDK using the given Android platform version.
+     * Returns an [AndroidProjectRule] that uses a fixture on disk using a [JavaTestFixtureFactory] with an Android SDK using the given
+     * Android platform version.
      */
     @JvmStatic
     @JvmOverloads
@@ -199,8 +183,8 @@ interface AndroidProjectRule : TestRule {
     }
 
     /**
-     * Returns an [AndroidProjectRule] that uses a fixture on disk using a [JavaTestFixtureFactory]
-     * with an Android SDK using the given Android platform version.
+     * Returns an [AndroidProjectRule] that uses a fixture on disk using a [JavaTestFixtureFactory] with an Android SDK using the given
+     * Android platform version.
      */
     // Needs an explicit overload so that callers don't need to depend on AndroidVersion in sdklib
     // to pass the default argument.
@@ -211,39 +195,25 @@ interface AndroidProjectRule : TestRule {
 
     /**
      * Returns an [AndroidProjectRule] that initializes the project from an instance of
-     * [com.android.tools.idea.gradle.model.IdeAndroidProject] obtained from
-     * [androidProjectBuilder]. Such a project will have a module from which an instance of
-     * [com.android.tools.idea.model.AndroidModel] can be retrieved.
+     * [com.android.tools.idea.gradle.model.IdeAndroidProject] obtained from [androidProjectBuilder]. Such a project will have a module from
+     * which an instance of [com.android.tools.idea.model.AndroidModel] can be retrieved.
      */
     @JvmStatic
     fun withAndroidModel(
-      androidProjectBuilder: AndroidProjectBuilder =
-        createAndroidProjectBuilderForDefaultTestProjectStructure()
+      androidProjectBuilder: AndroidProjectBuilder = createAndroidProjectBuilderForDefaultTestProjectStructure()
     ): Typed<JavaCodeInsightTestFixture, Nothing> {
       return withAndroidModels(
         prepareProjectSources = null,
-        AndroidModuleModelBuilder(
-          gradlePath = ":",
-          selectedBuildVariant = "debug",
-          projectBuilder = androidProjectBuilder,
-        ),
+        AndroidModuleModelBuilder(gradlePath = ":", selectedBuildVariant = "debug", projectBuilder = androidProjectBuilder),
       )
     }
 
-    /**
-     * Returns an [AndroidProjectRule] that initializes the project from models obtained from
-     * [projectModuleBuilders].
-     */
+    /** Returns an [AndroidProjectRule] that initializes the project from models obtained from [projectModuleBuilders]. */
     @JvmStatic
-    fun withAndroidModels(
-      vararg projectModuleBuilders: ModuleModelBuilder
-    ): Typed<JavaCodeInsightTestFixture, Nothing> =
+    fun withAndroidModels(vararg projectModuleBuilders: ModuleModelBuilder): Typed<JavaCodeInsightTestFixture, Nothing> =
       withAndroidModels(prepareProjectSources = null, *projectModuleBuilders)
 
-    /**
-     * Returns an [AndroidProjectRule] that initializes the project from models obtained from
-     * [projectModuleBuilders].
-     */
+    /** Returns an [AndroidProjectRule] that initializes the project from models obtained from [projectModuleBuilders]. */
     @JvmStatic
     fun withAndroidModels(
       prepareProjectSources: ((dir: File) -> Unit)? = null,
@@ -256,9 +226,8 @@ interface AndroidProjectRule : TestRule {
       )
 
     /**
-     * Returns an [AndroidProjectRule] that initializes the project from models obtained from
-     * [projectModuleBuilders] and populates its source directories by invoking
-     * [prepareProjectSources].
+     * Returns an [AndroidProjectRule] that initializes the project from models obtained from [projectModuleBuilders] and populates its
+     * source directories by invoking [prepareProjectSources].
      */
     @JvmStatic
     fun withAndroidModels(
@@ -276,22 +245,16 @@ interface AndroidProjectRule : TestRule {
 
       val testEnvironmentRule = TestEnvironmentRuleImpl(withAndroidSdk = false)
       val fixtureRule =
-        FixtureRuleImpl(
-          fixtureFactory,
-          withAndroidSdk = false,
-          initAndroid = false,
-          androidPlatformVersion = androidPlatformVersion,
-        )
+        FixtureRuleImpl(fixtureFactory, withAndroidSdk = false, initAndroid = false, androidPlatformVersion = androidPlatformVersion)
       val projectEnvironmentRule = ProjectEnvironmentRuleImpl { fixtureRule.project }
       return chain(testEnvironmentRule, fixtureRule, projectEnvironmentRule)
     }
 
     /**
-     * The rule this produces is a [IntegrationTestEnvironment] which additionally propagates the
-     * presence of an applicable [RunsInEdt] annotation (on the test class or method) to the call to
-     * [openPreparedProject], so that if the annotation is applied, the action on opening will be
-     * run in the EDT. Note that this is different from the usual [RunsInEdt] behavior implemented
-     * by [EdtRule], and that opening a prepared project is incompatible with running on the EDT.
+     * The rule this produces is a [IntegrationTestEnvironment] which additionally propagates the presence of an applicable [RunsInEdt]
+     * annotation (on the test class or method) to the call to [openPreparedProject], so that if the annotation is applied, the action on
+     * opening will be run in the EDT. Note that this is different from the usual [RunsInEdt] behavior implemented by [EdtRule], and that
+     * opening a prepared project is incompatible with running on the EDT.
      */
     @JvmStatic
     @JvmOverloads
@@ -304,9 +267,7 @@ interface AndroidProjectRule : TestRule {
         object : TestRule {
           override fun apply(base: Statement, description: Description): Statement {
             runOpenBodyOnEdt =
-              null !=
-                (description.getAnnotation(RunsInEdt::class.java)
-                  ?: description.testClass.getAnnotation(RunsInEdt::class.java))
+              null != (description.getAnnotation(RunsInEdt::class.java) ?: description.testClass.getAnnotation(RunsInEdt::class.java))
             return base
           }
         }
@@ -326,15 +287,11 @@ interface AndroidProjectRule : TestRule {
     }
 
     @JvmStatic
-    fun testProject(
-      testProjectDefinition: TestProjectDefinition
-    ): Typed<JavaCodeInsightTestFixture, TestProjectTestHelpers> =
+    fun testProject(testProjectDefinition: TestProjectDefinition): Typed<JavaCodeInsightTestFixture, TestProjectTestHelpers> =
       internalTestProject(testProjectDefinition, true)
 
     @JvmStatic
-    fun testProjectNoSync(
-      testProjectDefinition: TestProjectDefinition
-    ): Typed<JavaCodeInsightTestFixture, TestProjectTestHelpers> =
+    fun testProjectNoSync(testProjectDefinition: TestProjectDefinition): Typed<JavaCodeInsightTestFixture, TestProjectTestHelpers> =
       internalTestProject(testProjectDefinition, false)
 
     private fun internalTestProject(
@@ -367,8 +324,7 @@ interface AndroidProjectRule : TestRule {
   }
 
   fun <T : Any> replaceService(serviceType: Class<T>, newServiceInstance: T) {
-    ApplicationManager.getApplication()
-      .replaceService(serviceType, newServiceInstance, testRootDisposable)
+    ApplicationManager.getApplication().replaceService(serviceType, newServiceInstance, testRootDisposable)
   }
 
   fun <T : Any> mockService(serviceType: Class<T>): T {
@@ -407,8 +363,8 @@ interface AndroidProjectRule : TestRule {
 /**
  * The outer rule in the default implementation of the [AndroidProjectRule] chain of rules.
  *
- * [TestEnvironmentRule] is supposed to set up the Android Studio test environment which does not
- * require IntelliJ's test application being initialized.
+ * [TestEnvironmentRule] is supposed to set up the Android Studio test environment which does not require IntelliJ's test application being
+ * initialized.
  */
 internal interface TestEnvironmentRule : TestRule
 
@@ -434,11 +390,10 @@ internal interface FixtureRule<T : CodeInsightTestFixture> : TestRule {
 internal interface ProjectEnvironmentRule : TestRule
 
 /**
- * Combines implementations of the standard [AndroidProjectRule] chain components into a functioning
- * rule.
+ * Combines implementations of the standard [AndroidProjectRule] chain components into a functioning rule.
  *
- * Note: This utility provides a common structure to [AndroidProjectRule] variations, however custom
- * implementations that do not follow this pattern are possible.
+ * Note: This utility provides a common structure to [AndroidProjectRule] variations, however custom implementations that do not follow this
+ * pattern are possible.
  */
 private fun <T : CodeInsightTestFixture, H> chain(
   testEnvironmentRule: TestEnvironmentRule,
@@ -447,11 +402,7 @@ private fun <T : CodeInsightTestFixture, H> chain(
   edtRule: EdtRule? = null,
   tools: H? = null,
 ): AndroidProjectRule.Typed<T, H> {
-  val chain =
-    RuleChain.outerRule(testEnvironmentRule)
-      .maybeAround(edtRule)
-      .around(fixtureRule)
-      .around(projectEnvironmentRule)
+  val chain = RuleChain.outerRule(testEnvironmentRule).maybeAround(edtRule).around(fixtureRule).around(projectEnvironmentRule)
   return object : AndroidProjectRule.Typed<T, H>, TestRule by chain {
     override val testRootDisposable: Disposable
       get() = fixtureRule.testRootDisposable
@@ -469,9 +420,7 @@ private fun <T : CodeInsightTestFixture, H> chain(
       return this
     }
 
-    override fun withKotlin(
-      descriptor: KotlinAdtTestProjectDescriptor?
-    ): AndroidProjectRule.Typed<T, H> {
+    override fun withKotlin(descriptor: KotlinAdtTestProjectDescriptor?): AndroidProjectRule.Typed<T, H> {
       fixtureRule.projectDescriptor = descriptor ?: AdtTestProjectDescriptors.java()
       return this
     }
@@ -481,8 +430,7 @@ private fun <T : CodeInsightTestFixture, H> chain(
   }
 }
 
-class TestEnvironmentRuleImpl(val withAndroidSdk: Boolean) :
-  NamedExternalResource(), TestEnvironmentRule {
+class TestEnvironmentRuleImpl(val withAndroidSdk: Boolean) : NamedExternalResource(), TestEnvironmentRule {
   private val testEnvironmentDisposable: Disposable = Disposer.newDisposable()
   val mockitoCleaner = MockitoThreadLocalsCleaner()
   private var userHome: String? = null
@@ -503,13 +451,9 @@ class TestEnvironmentRuleImpl(val withAndroidSdk: Boolean) :
     mockitoCleaner.setup()
 
     userHome = System.getProperty("user.home")
-    val testSpecificName =
-      UsefulTestCase.TEMP_DIR_MARKER + description.testClass.simpleName.substringAfterLast('$')
+    val testSpecificName = UsefulTestCase.TEMP_DIR_MARKER + description.testClass.simpleName.substringAfterLast('$')
     // Reset user home directory.
-    System.setProperty(
-      "user.home",
-      FileUtils.join(FileUtil.getTempDirectory(), testSpecificName, "nonexistent_user_home"),
-    )
+    System.setProperty("user.home", FileUtils.join(FileUtil.getTempDirectory(), testSpecificName, "nonexistent_user_home"))
 
     // Disable antivirus checks on Windows.
     StudioFlags.ANTIVIRUS_METRICS_ENABLED.overrideForTest(false, testEnvironmentDisposable)
@@ -537,8 +481,7 @@ class TestEnvironmentRuleImpl(val withAndroidSdk: Boolean) :
   }
 }
 
-typealias FixtureFactory<T> =
-  (projectName: String, projectDescriptor: AdtTestProjectDescriptor) -> T
+typealias FixtureFactory<T> = (projectName: String, projectDescriptor: AdtTestProjectDescriptor) -> T
 
 class FixtureRuleImpl<T : CodeInsightTestFixture>(
   /** A method to create [CodeInsightTestFixture] instance. */
@@ -547,15 +490,11 @@ class FixtureRuleImpl<T : CodeInsightTestFixture>(
   /** True if this rule should include an Android SDK. */
   private val withAndroidSdk: Boolean = false,
 
-  /**
-   * Version of the android platform to use e.g. `android-33`. Only has effect when `withAndroidSdk
-   * = true`.
-   */
+  /** Version of the android platform to use e.g. `android-33`. Only has effect when `withAndroidSdk = true`. */
   private val androidPlatformVersion: AndroidVersion = Sdks.getLatestAndroidPlatform(),
 
   /**
-   * true iff the default module should be a valid Android module (if it should have an Android
-   * manifest and the Android facet attached).
+   * true iff the default module should be a valid Android module (if it should have an Android manifest and the Android facet attached).
    */
   override var initAndroid: Boolean = true,
 
@@ -623,10 +562,7 @@ class FixtureRuleImpl<T : CodeInsightTestFixture>(
     IndexingTestUtil.waitUntilIndexesAreReady(fixture.project)
   }
 
-  private fun <T : Facet<C>, C : FacetConfiguration> addFacet(
-    type: FacetType<T, C>,
-    facetName: String,
-  ): T {
+  private fun <T : Facet<C>, C : FacetConfiguration> addFacet(type: FacetType<T, C>, facetName: String): T {
     val facetManager = FacetManager.getInstance(module)
     val facet = facetManager.createFacet<T, C>(type, facetName, null)
     runInEdtAndWait {
@@ -642,8 +578,7 @@ class FixtureRuleImpl<T : CodeInsightTestFixture>(
   }
 }
 
-class ProjectEnvironmentRuleImpl(private val project: () -> Project) :
-  NamedExternalResource(), ProjectEnvironmentRule {
+class ProjectEnvironmentRuleImpl(private val project: () -> Project) : NamedExternalResource(), ProjectEnvironmentRule {
 
   override fun before(description: Description) {
     // Apply Android Studio code style settings (tests running as the Android plugin in IDEA should
@@ -660,10 +595,7 @@ class ProjectEnvironmentRuleImpl(private val project: () -> Project) :
   }
 }
 
-private fun createLightFixture(
-  projectName: String,
-  projectDescriptor: AdtTestProjectDescriptor,
-): CodeInsightTestFixture {
+private fun createLightFixture(projectName: String, projectDescriptor: AdtTestProjectDescriptor): CodeInsightTestFixture {
   // This is a very abstract way to initialize a new Project and a single Module.
   val factory = IdeaTestFixtureFactory.getFixtureFactory()
   val projectBuilder = factory.createLightFixtureBuilder(projectDescriptor, projectName)
@@ -676,29 +608,21 @@ private fun createJavaCodeInsightTestFixture(
   val name = projectName
   val tempDirFixture = AndroidProjectRuleTempDirectoryFixture(name)
   val projectBuilder =
-    IdeaTestFixtureFactory.getFixtureFactory()
-      .createFixtureBuilder(name, tempDirFixture.projectDir.parentFile.toPath(), true)
+    IdeaTestFixtureFactory.getFixtureFactory().createFixtureBuilder(name, tempDirFixture.projectDir.parentFile.toPath(), true)
 
   val javaCodeInsightTestFixture =
-    JavaTestFixtureFactory.getFixtureFactory()
-      .createCodeInsightFixture(projectBuilder.fixture, tempDirFixture)
+    JavaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(projectBuilder.fixture, tempDirFixture)
 
   return projectBuilder to javaCodeInsightTestFixture
 }
 
 /**
- * A [com.intellij.testFramework.fixtures.impl.TempDirTestFixtureImpl] that creates a unique temp
- * directory for each test and deletes it at [tearDown].
+ * A [com.intellij.testFramework.fixtures.impl.TempDirTestFixtureImpl] that creates a unique temp directory for each test and deletes it at
+ * [tearDown].
  */
-internal class AndroidProjectRuleTempDirectoryFixture(name: String) :
-  AndroidTempDirTestFixture(name) {
+internal class AndroidProjectRuleTempDirectoryFixture(name: String) : AndroidTempDirTestFixture(name) {
   private val tempRoot: String =
-    FileUtil.createTempDirectory(
-        "${UsefulTestCase.TEMP_DIR_MARKER}${Clock.systemUTC().millis()}",
-        null,
-        false,
-      )
-      .path
+    FileUtil.createTempDirectory("${UsefulTestCase.TEMP_DIR_MARKER}${Clock.systemUTC().millis()}", null, false).path
 
   override fun getRootTempDirectory(): String = tempRoot
 
@@ -713,13 +637,8 @@ internal class AndroidProjectRuleTempDirectoryFixture(name: String) :
   }
 }
 
-private fun createHeavyFixtureFactory(
-  extraModuleNames: List<String>
-): FixtureFactory<JavaCodeInsightTestFixture> {
-  fun createHeavyFixture(
-    projectName: String,
-    projectDescriptor: AdtTestProjectDescriptor,
-  ): JavaCodeInsightTestFixture {
+private fun createHeavyFixtureFactory(extraModuleNames: List<String>): FixtureFactory<JavaCodeInsightTestFixture> {
+  fun createHeavyFixture(projectName: String, projectDescriptor: AdtTestProjectDescriptor): JavaCodeInsightTestFixture {
     IdeaTestFixtureFactory.getFixtureFactory()
       .registerFixtureBuilder(
         AndroidTestCase.AndroidModuleFixtureBuilder::class.java,
@@ -728,19 +647,14 @@ private fun createHeavyFixtureFactory(
 
     val (projectBuilder, javaCodeInsightTestFixture) = createJavaCodeInsightTestFixture(projectName)
 
-    val moduleFixtureBuilder =
-      projectBuilder.addModule(AndroidTestCase.AndroidModuleFixtureBuilder::class.java)
+    val moduleFixtureBuilder = projectBuilder.addModule(AndroidTestCase.AndroidModuleFixtureBuilder::class.java)
     moduleFixtureBuilder.setProjectDescriptor(projectDescriptor)
-    initializeModuleFixtureBuilderWithSrcAndGen(
-      moduleFixtureBuilder,
-      javaCodeInsightTestFixture.tempDirPath,
-    )
+    initializeModuleFixtureBuilderWithSrcAndGen(moduleFixtureBuilder, javaCodeInsightTestFixture.tempDirPath)
 
     for (extraModuleName in extraModuleNames) {
       val moduleRootPath = "${javaCodeInsightTestFixture.tempDirPath}/${extraModuleName}"
       File(moduleRootPath).mkdirs()
-      val extraModuleFixtureBuilder =
-        projectBuilder.addModule(AndroidTestCase.AndroidModuleFixtureBuilder::class.java)
+      val extraModuleFixtureBuilder = projectBuilder.addModule(AndroidTestCase.AndroidModuleFixtureBuilder::class.java)
       extraModuleFixtureBuilder.setProjectDescriptor(projectDescriptor)
       extraModuleFixtureBuilder.setModuleName(extraModuleName)
       initializeModuleFixtureBuilderWithSrcAndGen(extraModuleFixtureBuilder, moduleRootPath)
@@ -752,10 +666,7 @@ private fun createHeavyFixtureFactory(
   return ::createHeavyFixture
 }
 
-/**
- * Create a project using [JavaCodeInsightTestFixture] with an Android module. The project is
- * created on disk under the /tmp folder
- */
+/** Create a project using [JavaCodeInsightTestFixture] with an Android module. The project is created on disk under the /tmp folder */
 private fun createJavaCodeInsightTestFixtureAndModels(
   projectName: String,
   projectModuleBuilders: List<ModuleModelBuilder>,
@@ -764,8 +675,7 @@ private fun createJavaCodeInsightTestFixtureAndModels(
   val (projectBuilder, javaCodeInsightTestFixture) = createJavaCodeInsightTestFixture(projectName)
 
   return object : JavaCodeInsightTestFixture by javaCodeInsightTestFixture {
-    override fun getTestRootDisposable(): Disposable =
-      javaCodeInsightTestFixture.testRootDisposable // KT-18324
+    override fun getTestRootDisposable(): Disposable = javaCodeInsightTestFixture.testRootDisposable // KT-18324
 
     override fun setUp() {
       javaCodeInsightTestFixture.setUp()
@@ -790,8 +700,7 @@ interface IntegrationTestEnvironmentRule : IntegrationTestEnvironment, TestRule 
   fun <T : Any> replaceService(serviceType: Class<T>, newServiceInstance: T)
 }
 
-class EdtAndroidProjectRule(val projectRule: AndroidProjectRule) :
-  TestRule by RuleChain.outerRule(projectRule).around(EdtRule())!! {
+class EdtAndroidProjectRule(val projectRule: AndroidProjectRule) : TestRule by RuleChain.outerRule(projectRule).around(EdtRule())!! {
   val project: Project
     get() = projectRule.project
 
@@ -801,8 +710,7 @@ class EdtAndroidProjectRule(val projectRule: AndroidProjectRule) :
   val testRootDisposable: Disposable
     get() = projectRule.testRootDisposable
 
-  fun setupProjectFrom(vararg moduleBuilders: ModuleModelBuilder) =
-    projectRule.setupProjectFrom(*moduleBuilders)
+  fun setupProjectFrom(vararg moduleBuilders: ModuleModelBuilder) = projectRule.setupProjectFrom(*moduleBuilders)
 }
 
 fun AndroidProjectRule.onEdt(): EdtAndroidProjectRule = EdtAndroidProjectRule(this)
@@ -816,9 +724,7 @@ internal fun removeAllAndroidSdks() {
 
 private fun prepareSdksForTests(javaCodeInsightTestFixture: JavaCodeInsightTestFixture) {
   if (IdeSdks.getInstance().androidSdkPath != TestUtils.getSdk()) {
-    println(
-      "Tests: Replacing Android SDK from ${IdeSdks.getInstance().androidSdkPath} to ${TestUtils.getSdk()}"
-    )
+    println("Tests: Replacing Android SDK from ${IdeSdks.getInstance().androidSdkPath} to ${TestUtils.getSdk()}")
     AndroidGradleTests.setUpSdks(javaCodeInsightTestFixture, TestUtils.getSdk().toFile())
   }
 }

@@ -57,8 +57,6 @@ class K1KotlinAndroidAddStringResourceIntention : KotlinAndroidAddStringResource
             fqNameSafe in fqNames || isStrictSubclassOfAny(fqNames)
 
         private fun ClassifierDescriptor.isStrictSubclassOfAny(fqNames: Set<FqName>): Boolean =
-            defaultType.constructor.supertypes.any {
-                it.constructor.declarationDescriptor?.isSubclassOfAny(fqNames) ?: false
-            }
+            defaultType.constructor.supertypes.any { it.constructor.declarationDescriptor?.isSubclassOfAny(fqNames) ?: false }
     }
 }

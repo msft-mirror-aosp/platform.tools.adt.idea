@@ -17,7 +17,6 @@ package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompile
 import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileByteArray
-import com.android.tools.idea.run.deployment.liveedit.analysis.directApiCompileIr
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.application.runReadAction
 import com.intellij.psi.PsiFile
@@ -48,14 +47,16 @@ class ModuleCompileTest {
 
   @Test
   fun testLibModule() {
-    val file = projectRule.fixture.addFileToProject(
-      "$libModule1Name/src/B.kt",
-      """
+    val file =
+      projectRule.fixture.addFileToProject(
+        "$libModule1Name/src/B.kt",
+        """
         public class B() {
           internal fun foo(): Int = 2
         }
-      """.trimIndent(),
-    ) as KtFile
+        """
+          .trimIndent(),
+      ) as KtFile
     val cache = MutableIrClassCache()
 
     // Direct API compile assumes all files are in the same module, so we need to invoke it once per file.
@@ -66,27 +67,31 @@ class ModuleCompileTest {
 
     val output = compile(listOf(LiveEditCompilerInput(file, readPsiValidationState(file))), compiler)
     val clazz = loadClass(output)
-    Assert.assertTrue(clazz.declaredMethods.stream().anyMatch {it.name.contains("foo\$$libModule1Name")})
+    Assert.assertTrue(clazz.declaredMethods.stream().anyMatch { it.name.contains("foo\$$libModule1Name") })
   }
 
   @Test
   fun testDifferentModules() {
-    val file1 = projectRule.fixture.addFileToProject(
-      "$libModule1Name/src/A.kt",
-      """
+    val file1 =
+      projectRule.fixture.addFileToProject(
+        "$libModule1Name/src/A.kt",
+        """
         public class A() {
           internal fun foo(): Int = 2
         }
-      """.trimIndent(),
-    ) as KtFile
-    val file2 = projectRule.fixture.addFileToProject(
-      "$libModule2Name/src/B.kt",
-      """
+        """
+          .trimIndent(),
+      ) as KtFile
+    val file2 =
+      projectRule.fixture.addFileToProject(
+        "$libModule2Name/src/B.kt",
+        """
         public class B() {
           internal fun bar(): Int = 2
         }
-      """.trimIndent(),
-    ) as KtFile
+        """
+          .trimIndent(),
+      ) as KtFile
     val cache = MutableIrClassCache()
 
     // Direct API compile assumes all files are in the same module, so we need to invoke it once per file.
@@ -95,8 +100,11 @@ class ModuleCompileTest {
 
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    val output = compile(listOf(LiveEditCompilerInput(file1, readPsiValidationState(file1)),
-                                LiveEditCompilerInput(file2, readPsiValidationState(file2))), compiler)
+    val output =
+      compile(
+        listOf(LiveEditCompilerInput(file1, readPsiValidationState(file1)), LiveEditCompilerInput(file2, readPsiValidationState(file2))),
+        compiler,
+      )
 
     val clazzA = loadClass(output, "A")
     Assert.assertTrue(clazzA.declaredMethods.stream().anyMatch { it.name.contains("foo\$$libModule1Name") })
@@ -107,28 +115,31 @@ class ModuleCompileTest {
 
   @Test
   fun `Single compiler invocation with files in different modules`() {
-    val file1 = projectRule.fixture.addFileToProject(
-      "$libModule1Name/src/A.kt",
-      """
+    val file1 =
+      projectRule.fixture.addFileToProject(
+        "$libModule1Name/src/A.kt",
+        """
         public class A() {
           internal fun foo(): Int = 2
         }
-      """.trimIndent(),
-    ) as KtFile
-    val file2 = projectRule.fixture.addFileToProject(
-      "$libModule2Name/src/B.kt",
-      """
+        """
+          .trimIndent(),
+      ) as KtFile
+    val file2 =
+      projectRule.fixture.addFileToProject(
+        "$libModule2Name/src/B.kt",
+        """
         public class B() {
           internal fun bar(): Int = 2
         }
-      """.trimIndent(),
-    ) as KtFile
+        """
+          .trimIndent(),
+      ) as KtFile
     if (!KotlinPluginModeProvider.isK2Mode()) {
       try {
         projectRule.directApiCompile(listOf(file1, file2))
         Assert.fail("Expecting LiveEditUpdateException")
-      }
-      catch (l: LiveEditUpdateException) {
+      } catch (l: LiveEditUpdateException) {
         // TODO: This test is wrong. We should *NOT* be getting a null pointer exception if you allow files of two different module to be
         //  compiled at once. I suspect we are not setting up the modules correctly for it to mirror an actual Android project set up.
         Assert.assertTrue(l.details.contains("NullPointerException"))
@@ -138,8 +149,11 @@ class ModuleCompileTest {
       val apk = projectRule.directApiCompileByteArray(listOf(file1, file2))
       val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-      val output = compile(listOf(LiveEditCompilerInput(file1, readPsiValidationState(file1)),
-                                  LiveEditCompilerInput(file2, readPsiValidationState(file2))), compiler)
+      val output =
+        compile(
+          listOf(LiveEditCompilerInput(file1, readPsiValidationState(file1)), LiveEditCompilerInput(file2, readPsiValidationState(file2))),
+          compiler,
+        )
 
       val clazzA = loadClass(output, "A")
       Assert.assertTrue(clazzA.declaredMethods.stream().anyMatch { it.name.contains("foo\$$libModule1Name") })
@@ -150,8 +164,6 @@ class ModuleCompileTest {
   }
 
   private fun readPsiValidationState(file: PsiFile): PsiState {
-    return runReadAction {
-      getPsiValidationState(file)
-    }
+    return runReadAction { getPsiValidationState(file) }
   }
 }

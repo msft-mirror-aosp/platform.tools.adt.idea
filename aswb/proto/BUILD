@@ -10,6 +10,7 @@ load(
 )
 load(
     "//tools/adt/idea/aswb/build_defs:build_defs.bzl",
+    "aswb_library",
     "combine_visibilities",
 )
 load("//tools/base/bazel:proto.bzl", "java_proto_library")
@@ -25,12 +26,15 @@ java_library(
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     exports = [
         # do not sort: to get a consistent version of the protobuf-java library across all proto users
-        "@maven//:io.grpc.grpc-protobuf",
+        "//tools/vendor/google/aswb/plugin_api/maven:grpc-protobuf",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto:build_event_stream_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/java/com/google/devtools/build/lib/starlarkdebug/proto:starlark_debugging_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:android_deploy_info_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:build_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:command_line_java_proto",
         "//tools/adt/idea/aswb/third_party/bazel/src/main/protobuf:deps_java_proto",
+        "//tools/vendor/google/aswb/plugin_api",
+        "//tools/vendor/google/aswb/plugin_api:jsr305",
+        "@maven//:com.google.errorprone.error_prone_annotations",  # unuseddeps: keep
     ],
 )

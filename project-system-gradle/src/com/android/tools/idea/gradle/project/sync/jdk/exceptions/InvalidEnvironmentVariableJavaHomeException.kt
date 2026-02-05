@@ -15,25 +15,25 @@
  */
 package com.android.tools.idea.gradle.project.sync.jdk.exceptions
 
+import com.android.tools.idea.gradle.project.sync.jdk.exceptions.base.GradleJdkException
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.InvalidEnvironmentVariableJavaHome
 import com.android.tools.idea.gradle.project.sync.jdk.exceptions.cause.InvalidGradleJdkCause.UndefinedEnvironmentVariableJavaHome
-import com.android.tools.idea.gradle.project.sync.jdk.exceptions.base.GradleJdkException
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil.JAVA_HOME
 import com.intellij.openapi.externalSystem.service.execution.ExternalSystemJdkUtil.USE_JAVA_HOME
 import com.intellij.openapi.project.Project
+import java.nio.file.Path
 import org.jetbrains.annotations.SystemIndependent
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
-import java.nio.file.Path
 
 /**
- * A [GradleJdkException] when gradle root [GradleProjectSettings.getGradleJvm] is configured with [USE_JAVA_HOME] macro
- * and the [JAVA_HOME] system environment variable isn't defined, invalid or corrupted.
+ * A [GradleJdkException] when gradle root [GradleProjectSettings.getGradleJvm] is configured with [USE_JAVA_HOME] macro and the [JAVA_HOME]
+ * system environment variable isn't defined, invalid or corrupted.
  */
 class InvalidEnvironmentVariableJavaHomeException(
   project: Project,
   gradleRootPath: @SystemIndependent String,
-  resolvedGradleJdkPath: Path?
-): GradleJdkException(project, gradleRootPath) {
+  resolvedGradleJdkPath: Path?,
+) : GradleJdkException(project, gradleRootPath) {
 
   override val cause =
     if (resolvedGradleJdkPath == null) UndefinedEnvironmentVariableJavaHome else InvalidEnvironmentVariableJavaHome(resolvedGradleJdkPath)

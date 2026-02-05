@@ -37,18 +37,13 @@ import org.jetbrains.annotations.VisibleForTesting
 
 private const val CONFIGURABLE_ID = "nele.options"
 private val DISPLAY_NAME =
-  if (IdeInfo.getInstance().isAndroidStudio) "UI Tools"
-  else message("android.uibuilder.nloptionsconfigurable.displayName")
+  if (IdeInfo.getInstance().isAndroidStudio) "UI Tools" else message("android.uibuilder.nloptionsconfigurable.displayName")
 
-@VisibleForTesting
-val LABEL_TRACK_PAD = message("android.uibuilder.nloptionsconfigurable.track.pad")
+@VisibleForTesting val LABEL_TRACK_PAD = message("android.uibuilder.nloptionsconfigurable.track.pad")
 
-@VisibleForTesting
-val LABEL_MAGNIFY_ZOOMING_SENSITIVITY =
-  message("android.uibuilder.nloptionsconfigurable.magnify.sensitivity")
+@VisibleForTesting val LABEL_MAGNIFY_ZOOMING_SENSITIVITY = message("android.uibuilder.nloptionsconfigurable.magnify.sensitivity")
 
-private val MAGNIFY_SUPPORTED =
-  SystemInfo.isMac && Registry.`is`("actionSystem.mouseGesturesEnabled", true)
+private val MAGNIFY_SUPPORTED = SystemInfo.isMac && Registry.`is`("actionSystem.mouseGesturesEnabled", true)
 
 class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigurable {
 
@@ -61,11 +56,9 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
     fun onOptionsChanged()
   }
 
-  private fun fireOptionsChanged() =
-    ApplicationManager.getApplication().messageBus.syncPublisher(Listener.TOPIC).onOptionsChanged()
+  private fun fireOptionsChanged() = ApplicationManager.getApplication().messageBus.syncPublisher(Listener.TOPIC).onOptionsChanged()
 
-  private class EditorModeCellRenderer :
-    SimpleListCellRenderer<AndroidEditorSettings.EditorMode>() {
+  private class EditorModeCellRenderer : SimpleListCellRenderer<AndroidEditorSettings.EditorMode>() {
     override fun customize(
       list: JList<out AndroidEditorSettings.EditorMode>,
       value: AndroidEditorSettings.EditorMode?,
@@ -81,13 +74,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
   }
 
   private class LayoutModeCellRenderer : SimpleListCellRenderer<LayoutType>() {
-    override fun customize(
-      list: JList<out LayoutType>,
-      value: LayoutType?,
-      index: Int,
-      selected: Boolean,
-      hasFocus: Boolean,
-    ) {
+    override fun customize(list: JList<out LayoutType>, value: LayoutType?, index: Int, selected: Boolean, hasFocus: Boolean) {
       value?.let { text = it.displayName }
     }
   }
@@ -125,10 +112,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
         row(message("android.uibuilder.nloptionsconfigurable.resource")) {
           editorModeComboBox()
             .bindItem(
-              {
-                state.preferredResourcesEditorMode
-                  ?: AndroidEditorSettings.DEFAULT_PREFERRED_RESOURCE_EDITOR_MODE
-              },
+              { state.preferredResourcesEditorMode ?: AndroidEditorSettings.DEFAULT_PREFERRED_RESOURCE_EDITOR_MODE },
               state::setPreferredResourcesEditorMode,
             )
             .apply { preferredResourcesEditorMode = component }
@@ -136,10 +120,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
         row(message("android.uibuilder.nloptionsconfigurable.kotlin")) {
           editorModeComboBox()
             .bindItem(
-              {
-                state.preferredEditorMode
-                  ?: AndroidEditorSettings.DEFAULT_PREFERRED_CODE_EDITOR_MODE
-              },
+              { state.preferredEditorMode ?: AndroidEditorSettings.DEFAULT_PREFERRED_CODE_EDITOR_MODE },
               state::setPreferredEditorMode,
             )
             .apply { preferredEditorMode = component }
@@ -147,10 +128,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
         indent {
           row {
             checkBox(message("android.uibuilder.nloptionsconfigurable.show.preview.split.mode"))
-              .bindSelected(
-                { state.showSplitViewForPreviewFiles },
-                state::setShowSplitViewForPreviewFiles,
-              )
+              .bindSelected({ state.showSplitViewForPreviewFiles }, state::setShowSplitViewForPreviewFiles)
               .apply { shouldShowSplitView = component }
           }
         }
@@ -159,19 +137,11 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
         val percentageValue = doubleToPercentageValue(state.magnifySensitivity)
         group(LABEL_TRACK_PAD) {
           row(LABEL_MAGNIFY_ZOOMING_SENSITIVITY) {
-            val minSensitivityPercentage =
-              doubleToPercentageValue(AndroidEditorSettings.MIN_MAGNIFY_SENSITIVITY)
-            val defaultSensitivityPercentage =
-              doubleToPercentageValue(AndroidEditorSettings.DEFAULT_MAGNIFY_SENSITIVITY)
-            val maxSensitivityPercentage =
-              doubleToPercentageValue(AndroidEditorSettings.MAX_MAGNIFY_SENSITIVITY)
+            val minSensitivityPercentage = doubleToPercentageValue(AndroidEditorSettings.MIN_MAGNIFY_SENSITIVITY)
+            val defaultSensitivityPercentage = doubleToPercentageValue(AndroidEditorSettings.DEFAULT_MAGNIFY_SENSITIVITY)
+            val maxSensitivityPercentage = doubleToPercentageValue(AndroidEditorSettings.MAX_MAGNIFY_SENSITIVITY)
             magnifySensitivity =
-              slider(
-                  minSensitivityPercentage,
-                  maxSensitivityPercentage,
-                  0,
-                  (maxSensitivityPercentage - minSensitivityPercentage) / 4,
-                )
+              slider(minSensitivityPercentage, maxSensitivityPercentage, 0, (maxSensitivityPercentage - minSensitivityPercentage) / 4)
                 .labelTable(
                   mapOf(
                     minSensitivityPercentage to JLabel("Slow"),
@@ -189,10 +159,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
         row(message("android.uibuilder.nloptionsconfigurable.view.mode")) {
           editorPreviewLayoutModeComboBox()
             .bindItem(
-              {
-                state.preferredPreviewLayoutMode
-                  ?: AndroidEditorSettings.DEFAULT_PREFERRED_PREVIEW_LAYOUT_TYPE
-              },
+              { state.preferredPreviewLayoutMode ?: AndroidEditorSettings.DEFAULT_PREFERRED_PREVIEW_LAYOUT_TYPE },
               state::setPreferredPreviewLayoutMode,
             )
             .apply { myPreferredLayoutType = this.component }
@@ -202,12 +169,11 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
             lateinit var defaultModeRadioButton: Cell<JBRadioButton>
             row {
               defaultModeRadioButton =
-                radioButton(
-                    message("android.uibuilder.nloptionsconfigurable.resource.usage.default")
-                  )
-                  .bindSelected({ !state.isPreviewEssentialsModeEnabled }) {
-                    state.isPreviewEssentialsModeEnabled = !it
-                  }
+                radioButton(message("android.uibuilder.nloptionsconfigurable.resource.usage.default")).bindSelected({
+                  !state.isPreviewEssentialsModeEnabled
+                }) {
+                  state.isPreviewEssentialsModeEnabled = !it
+                }
             }
             indent {
               row {
@@ -217,20 +183,17 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
               }
             }
             row {
-              radioButton(
-                  message("android.uibuilder.nloptionsconfigurable.resource.usage.essentials")
-                )
+              radioButton(message("android.uibuilder.nloptionsconfigurable.resource.usage.essentials"))
                 // TODO(b/327343295) add "Learn More" link when the DAC page is live
                 .comment(message("essentials.mode.hint"))
-                .bindSelected({ state.isPreviewEssentialsModeEnabled }) {
-                  state.isPreviewEssentialsModeEnabled = it
-                }
+                .bindSelected({ state.isPreviewEssentialsModeEnabled }) { state.isPreviewEssentialsModeEnabled = it }
             }
           }
         } else {
           row {
-            checkBox(message("android.uibuilder.nloptionsconfigurable.enable.live.updates"))
-              .bindSelected(fastPreviewState::isEnabled) { fastPreviewState.isEnabled = it }
+            checkBox(message("android.uibuilder.nloptionsconfigurable.enable.live.updates")).bindSelected(fastPreviewState::isEnabled) {
+              fastPreviewState.isEnabled = it
+            }
           }
         }
       }
@@ -244,15 +207,13 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
       preferredEditorMode.selectedItem != state.preferredEditorMode ||
       shouldShowSplitView.isSelected != state.showSplitViewForPreviewFiles ||
       myPreferredLayoutType.selectedItem != state.preferredPreviewLayoutMode ||
-      (magnifySensitivityValue != null &&
-        magnifySensitivityValue != doubleToPercentageValue(state.magnifySensitivity))
+      (magnifySensitivityValue != null && magnifySensitivityValue != doubleToPercentageValue(state.magnifySensitivity))
   }
 
   @Throws(ConfigurationException::class)
   override fun apply() {
     super.apply()
-    state.preferredResourcesEditorMode =
-      preferredResourcesEditorMode.selectedItem as AndroidEditorSettings.EditorMode
+    state.preferredResourcesEditorMode = preferredResourcesEditorMode.selectedItem as AndroidEditorSettings.EditorMode
     state.preferredEditorMode = preferredEditorMode.selectedItem as AndroidEditorSettings.EditorMode
     state.showSplitViewForPreviewFiles = shouldShowSplitView.isSelected
     state.preferredPreviewLayoutMode = myPreferredLayoutType.selectedItem as LayoutType
@@ -292,11 +253,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
     // Handle the case where preferredResourcesEditorMode, preferredEditorMode and
     // preferredPreviewLayoutMode were not set for
     // the first time yet.
-    if (
-      state.preferredResourcesEditorMode == null &&
-        state.preferredEditorMode == null &&
-        state.preferredPreviewLayoutMode == null
-    ) {
+    if (state.preferredResourcesEditorMode == null && state.preferredEditorMode == null && state.preferredPreviewLayoutMode == null) {
       // Default drawables to SPLIT and other resource types to DESIGN
       preferredResourcesEditorMode.selectedItem = AndroidEditorSettings.EditorMode.SPLIT
       preferredEditorMode.selectedItem = AndroidEditorSettings.EditorMode.CODE
@@ -311,21 +268,15 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
   }
 }
 
-/**
- * Helper function to convert percentage value to double. For example, when [percentage] is 22, the
- * return value is 0.22
- */
+/** Helper function to convert percentage value to double. For example, when [percentage] is 22, the return value is 0.22 */
 private fun percentageValueToDouble(percentage: Int): Double = percentage * 0.01
 
-/**
- * Helper function to convert a double value to percentage value. For example, when [double] is
- * 0.44, the return value is 44.
- */
+/** Helper function to convert a double value to percentage value. For example, when [double] is 0.44, the return value is 44. */
 private fun doubleToPercentageValue(double: Double): Int = (double * 100).toInt()
 
 /**
- * The magnify configurations is added conditionally, we cannot use the static xml files to define
- * the options. Thus, we add the corresponding options at runtime here.
+ * The magnify configurations is added conditionally, we cannot use the static xml files to define the options. Thus, we add the
+ * corresponding options at runtime here.
  */
 class NlOptionConfigurableSearchableOptionContributor : SearchableOptionContributor() {
 

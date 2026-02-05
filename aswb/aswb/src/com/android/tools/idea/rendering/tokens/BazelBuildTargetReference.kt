@@ -17,16 +17,16 @@
 package com.android.tools.idea.rendering.tokens
 
 import com.android.tools.idea.rendering.BuildTargetReference
+import com.android.tools.idea.run.deployment.liveedit.tokens.toPreferredLabel
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
+import com.google.idea.blaze.base.qsync.QuerySyncManager
+import com.google.idea.blaze.common.Label
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.serviceContainer.AlreadyDisposedException
-import com.google.idea.blaze.base.qsync.QuerySyncManager
-import com.google.idea.blaze.common.Label
-import com.google.idea.blaze.qsync.project.TargetsToBuild
-import com.intellij.openapi.project.Project
 import kotlin.jvm.optionals.getOrNull
 
+@ConsistentCopyVisibility
 internal data class BazelBuildTargetReference internal constructor(val module_: Module, val file: VirtualFile) : BuildTargetReference {
   fun getFileWorkspaceRelativePath() = WorkspaceRoot.virtualFilesToWorkspaceRelativePaths(project, listOf(file)).single()
 
@@ -37,21 +37,16 @@ internal data class BazelBuildTargetReference internal constructor(val module_: 
 }
 
 internal fun BazelBuildTargetReference.toAllLabels(): Set<Label> {
-  return QuerySyncManager.getInstance(project).getTargetsToBuildByPaths(
-    listOf(getFileWorkspaceRelativePath())).flatMap { it.targets }.toSet()
+  return QuerySyncManager.getInstance(project)
+    .getTargetsToBuildByPaths(listOf(getFileWorkspaceRelativePath()))
+    .flatMap { it.targets }
+    .toSet()
 }
 
 internal fun BazelBuildTargetReference.toPreferredLabel(): Label? {
-  return QuerySyncManager.getInstance(project)
-    .getTargetsToBuildByPaths(listOf(getFileWorkspaceRelativePath()))
-    .toPreferredLabel(project)
-}
-
-internal fun Collection<TargetsToBuild>.toPreferredLabel(project: Project): Label? {
-  val candidates = flatMap { it.targets }.toSet()
-  if (candidates.size <= 1) return candidates.singleOrNull()
-
   val snapshot = QuerySyncManager.getInstance(project).currentSnapshot.getOrNull() ?: return null
   val builds = snapshot.artifactIndex.builtDepsMap()
-  return candidates.filter { builds.containsKey(it) }.singleOrNull()
+  return QuerySyncManager.getInstance(project).getTargetsToBuildByPaths(listOf(getFileWorkspaceRelativePath())).toPreferredLabel() {
+    builds.containsKey(it)
+  }
 }

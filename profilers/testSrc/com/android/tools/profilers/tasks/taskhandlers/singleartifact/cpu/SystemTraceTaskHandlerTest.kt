@@ -35,7 +35,6 @@ import com.android.tools.profilers.cpu.config.PerfettoSystemTraceConfiguration
 import com.android.tools.profilers.event.FakeEventService
 import com.android.tools.profilers.memory.HeapProfdSessionArtifact
 import com.android.tools.profilers.sessions.SessionsManager
-import com.android.tools.profilers.taskbased.home.StartTaskSelectionError
 import com.android.tools.profilers.taskbased.home.StartTaskSelectionError.StartTaskSelectionErrorCode
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel.ProfilerDeviceSelection
 import com.android.tools.profilers.tasks.ProfilerTaskType
@@ -45,6 +44,11 @@ import com.android.tools.profilers.tasks.taskhandlers.TaskHandlerTestUtils.creat
 import com.android.tools.profilers.tasks.taskhandlers.TaskHandlerTestUtils.createProcess
 import com.google.common.truth.Truth.assertThat
 import io.ktor.util.reflect.instanceOf
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
@@ -54,22 +58,14 @@ import org.junit.runners.Parameterized
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
 import perfetto.protos.PerfettoConfig
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 @RunWith(Parameterized::class)
 class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   private val myTimer = FakeTimer()
-  private val ideProfilerServices = FakeIdeProfilerServices().apply {
-    enableTaskBasedUx(true)
-  }
+  private val ideProfilerServices = FakeIdeProfilerServices().apply { enableTaskBasedUx(true) }
   private val myTransportService = FakeTransportService(myTimer, false, ideProfilerServices.featureConfig.isTaskBasedUxEnabled)
 
-  @get:Rule
-  var myGrpcChannel = FakeGrpcChannel("SystemTraceTaskHandlerTestChannel", myTransportService, FakeEventService())
+  @get:Rule var myGrpcChannel = FakeGrpcChannel("SystemTraceTaskHandlerTestChannel", myTransportService, FakeEventService())
 
   private lateinit var myProfilers: StudioProfilers
   private lateinit var myManager: SessionsManager
@@ -77,11 +73,7 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
 
   @Before
   fun setup() {
-    myProfilers = StudioProfilers(
-      ProfilerClient(myGrpcChannel.channel),
-      ideProfilerServices,
-      myTimer
-    )
+    myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     mySystemTraceTaskHandler = SystemTraceTaskHandler(myManager, ideProfilerServices.featureConfig.isTraceboxEnabled)
     myProfilers.addTaskHandler(ProfilerTaskType.SYSTEM_TRACE, mySystemTraceTaskHandler)
@@ -93,8 +85,7 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   @Test
   fun testGetCpuRecordingConfigAtraceLessThanP() {
     // (withTraceBoxDisabled) If device is set and device level is less than 28, return AtraceConfiguration
-    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(
-      createFakeDevice(AndroidVersion.VersionCodes.N), false)
+    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(createFakeDevice(AndroidVersion.VersionCodes.N), false)
     // Simulate ongoing recording so that config is set.
     whenever(mySystemTraceTaskHandlerMock.sessionsManager.isSessionAlive).thenReturn(true)
     mySystemTraceTaskHandlerMock.setupStage()
@@ -105,8 +96,7 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   @Test
   fun testGetCpuRecordingConfigPerfettoAtleastP() {
     // (withTraceBoxDisabled) If device is set and device level is greater than 28, return PerfettoSystemTraceConfiguration
-    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(
-      createFakeDevice(AndroidVersion.VersionCodes.R), false)
+    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(createFakeDevice(AndroidVersion.VersionCodes.R), false)
     // Simulate ongoing recording so that config is set.
     whenever(mySystemTraceTaskHandlerMock.sessionsManager.isSessionAlive).thenReturn(true)
     mySystemTraceTaskHandlerMock.setupStage()
@@ -117,8 +107,7 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   @Test
   fun testCpuConfigIsNotSetIfTaskIsNotPerformingANewRecording() {
     // (withTraceBoxDisabled) If device is set and device level is greater than 28, return PerfettoSystemTraceConfiguration
-    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(
-      createFakeDevice(AndroidVersion.VersionCodes.R), false)
+    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(createFakeDevice(AndroidVersion.VersionCodes.R), false)
     // Simulate no ongoing recording, should not set the config as a consequence.
     whenever(mySystemTraceTaskHandlerMock.sessionsManager.isSessionAlive).thenReturn(false)
     // Should not throw an exception.
@@ -128,8 +117,7 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   @Test
   fun testGetCpuRecordingConfigPerfettoWithM() {
     // (withTraceBoxEnabled) If device is set and device level is greater than 22, return PerfettoSystemTraceConfiguration
-    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(
-      createFakeDevice(AndroidVersion.VersionCodes.M), true)
+    val mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(createFakeDevice(AndroidVersion.VersionCodes.M), true)
     // Simulate ongoing recording so that config is set.
     whenever(mySystemTraceTaskHandlerMock.sessionsManager.isSessionAlive).thenReturn(true)
     mySystemTraceTaskHandlerMock.setupStage()
@@ -139,28 +127,40 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
 
   @Test
   fun testSupportsArtifactWithSystemTraceSessionArtifact() {
-    val systemTraceSessionArtifact = SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(myProfilers,
-                                                                                                    Common.Session.getDefaultInstance(),
-                                                                                                    1L, 100L,
-                                                                                                    createDefaultPerfettoTraceConfiguration())
+    val systemTraceSessionArtifact =
+      SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(
+        myProfilers,
+        Common.Session.getDefaultInstance(),
+        1L,
+        100L,
+        createDefaultPerfettoTraceConfiguration(),
+      )
     assertThat(mySystemTraceTaskHandler.supportsArtifact(systemTraceSessionArtifact)).isTrue()
   }
 
   @Test
   fun testSupportsArtifactWithNonSystemTraceSessionArtifact() {
-    val heapProfdSessionArtifact = HeapProfdSessionArtifact(myProfilers, Common.Session.getDefaultInstance(),
-                                                            Common.SessionMetaData.getDefaultInstance(),
-                                                            Trace.TraceInfo.getDefaultInstance())
+    val heapProfdSessionArtifact =
+      HeapProfdSessionArtifact(
+        myProfilers,
+        Common.Session.getDefaultInstance(),
+        Common.SessionMetaData.getDefaultInstance(),
+        Trace.TraceInfo.getDefaultInstance(),
+      )
     assertThat(mySystemTraceTaskHandler.supportsArtifact(heapProfdSessionArtifact)).isFalse()
   }
 
   @Test
   fun testStartTaskInvokedOnEnterWithAliveSession() {
     TaskHandlerTestUtils.startSession(myExposureLevel, myProfilers, myTransportService, myTimer, Common.ProfilerTaskType.SYSTEM_TRACE)
-    val systemTraceSessionArtifact = SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(myProfilers,
-                                                                                                    Common.Session.getDefaultInstance(), 1L,
-                                                                                                    100L,
-                                                                                                    createDefaultPerfettoTraceConfiguration())
+    val systemTraceSessionArtifact =
+      SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(
+        myProfilers,
+        Common.Session.getDefaultInstance(),
+        1L,
+        100L,
+        createDefaultPerfettoTraceConfiguration(),
+      )
     selectDevice(createFakeDevice(29))
     val cpuTaskArgs = CpuTaskArgs(false, systemTraceSessionArtifact)
     mySystemTraceTaskHandler.enter(cpuTaskArgs)
@@ -184,22 +184,18 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   fun testStartTaskWithUnsetStage() {
     // To start the task and thus the capture, the stage must be set up before. Here we will test the case where startTask is invoked
     // without the stage being set precondition being met.
-    val exception = assertFailsWith<Throwable> {
-      mySystemTraceTaskHandler.startTask(CpuTaskArgs(false, null))
-    }
+    val exception = assertFailsWith<Throwable> { mySystemTraceTaskHandler.startTask(CpuTaskArgs(false, null)) }
     assertThat(mySystemTraceTaskHandler.stage).isNull()
-    assertThat(exception.message).isEqualTo("There was an error with the System Trace task. Error message: Cannot start the task as the " +
-                                            "InterimStage was null.")
+    assertThat(exception.message)
+      .isEqualTo("There was an error with the System Trace task. Error message: Cannot start the task as the " + "InterimStage was null.")
   }
 
   @Test
   fun testStopTaskSuccessfullyTerminatesRecording() {
     TaskHandlerTestUtils.startSession(myExposureLevel, myProfilers, myTransportService, myTimer, Common.ProfilerTaskType.SYSTEM_TRACE)
     // First start the task successfully.
-    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_TRACE) as StartTrace)
-      .startStatus = Trace.TraceStartStatus.newBuilder()
-      .setStatus(Trace.TraceStartStatus.Status.SUCCESS)
-      .build()
+    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_TRACE) as StartTrace).startStatus =
+      Trace.TraceStartStatus.newBuilder().setStatus(Trace.TraceStartStatus.Status.SUCCESS).build()
     // Explicitly set the device to be used to simulate reading device selection from main toolbar.
     selectDevice(createFakeDevice(29))
     mySystemTraceTaskHandler.setupStage()
@@ -209,10 +205,8 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // Wait for successful start event to be consumed.
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
     // Stop the task successfully.
-    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.STOP_TRACE) as StopTrace)
-      .stopStatus = Trace.TraceStopStatus.newBuilder()
-      .setStatus(Trace.TraceStopStatus.Status.SUCCESS)
-      .build()
+    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.STOP_TRACE) as StopTrace).stopStatus =
+      Trace.TraceStopStatus.newBuilder().setStatus(Trace.TraceStopStatus.Status.SUCCESS).build()
     mySystemTraceTaskHandler.stopTask()
     // Wait for successful end event to be consumed.
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
@@ -224,10 +218,8 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     selectDevice(createFakeDevice(29))
     TaskHandlerTestUtils.startSession(myExposureLevel, myProfilers, myTransportService, myTimer, Common.ProfilerTaskType.SYSTEM_TRACE)
     // First start the task successfully.
-    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_TRACE) as StartTrace)
-      .startStatus = Trace.TraceStartStatus.newBuilder()
-      .setStatus(Trace.TraceStartStatus.Status.SUCCESS)
-      .build()
+    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_TRACE) as StartTrace).startStatus =
+      Trace.TraceStartStatus.newBuilder().setStatus(Trace.TraceStartStatus.Status.SUCCESS).build()
     // Explicitly set the device to be used to simulate reading device selection from main toolbar.
     selectDevice(createFakeDevice(29))
     mySystemTraceTaskHandler.setupStage()
@@ -237,10 +229,8 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // Wait for successful start event to be consumed.
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
     // Stop the task successfully.
-    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.STOP_TRACE) as StopTrace)
-      .stopStatus = Trace.TraceStopStatus.newBuilder()
-      .setStatus(Trace.TraceStopStatus.Status.SUCCESS)
-      .build()
+    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.STOP_TRACE) as StopTrace).stopStatus =
+      Trace.TraceStopStatus.newBuilder().setStatus(Trace.TraceStopStatus.Status.SUCCESS).build()
     mySystemTraceTaskHandler.stopTask()
     // Wait for successful end event to be consumed.
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
@@ -255,10 +245,14 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     assertThat(myProfilers.stage).isNotInstanceOf(CpuProfilerStage::class.java)
 
     // Create a fake CpuCaptureSessionArtifact that uses a Perfetto (System Trace) configuration.
-    val systemTraceSessionArtifact = SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(myProfilers,
-                                                                                                    Common.Session.getDefaultInstance(), 1L,
-                                                                                                    100L,
-                                                                                                    createDefaultPerfettoTraceConfiguration())
+    val systemTraceSessionArtifact =
+      SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(
+        myProfilers,
+        Common.Session.getDefaultInstance(),
+        1L,
+        100L,
+        createDefaultPerfettoTraceConfiguration(),
+      )
     val cpuTaskArgs = CpuTaskArgs(false, systemTraceSessionArtifact)
     // The session is not alive (dead) so loadTask and thus loadCapture should be called.
     val argsSuccessfullyUsed = mySystemTraceTaskHandler.enter(cpuTaskArgs)
@@ -273,10 +267,14 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // Before enter + loadTask, the stage should not be set yet.
     assertThat(myProfilers.stage).isNotInstanceOf(CpuProfilerStage::class.java)
 
-    val systemTraceSessionArtifact = SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(myProfilers,
-                                                                                                    Common.Session.getDefaultInstance(), 1L,
-                                                                                                    100L,
-                                                                                                    createDefaultPerfettoTraceConfiguration())
+    val systemTraceSessionArtifact =
+      SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(
+        myProfilers,
+        Common.Session.getDefaultInstance(),
+        1L,
+        100L,
+        createDefaultPerfettoTraceConfiguration(),
+      )
     val cpuTaskArgs = CpuTaskArgs(false, systemTraceSessionArtifact)
     val argsSuccessfullyUsed = mySystemTraceTaskHandler.loadTask(cpuTaskArgs)
     assertThat(argsSuccessfullyUsed).isTrue()
@@ -290,12 +288,13 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // Before enter + loadTask, the stage should not be set yet.
     assertThat(myProfilers.stage).isNotInstanceOf(CpuProfilerStage::class.java)
 
-    val exception = assertFailsWith<Throwable> {
-      mySystemTraceTaskHandler.loadTask(CpuTaskArgs(false, null))
-    }
+    val exception = assertFailsWith<Throwable> { mySystemTraceTaskHandler.loadTask(CpuTaskArgs(false, null)) }
 
-    assertThat(exception.message).isEqualTo("There was an error with the System Trace task. Error message: The task arguments " +
-                                            "(CpuTaskArgs) supplied do not contains a valid artifact to load.")
+    assertThat(exception.message)
+      .isEqualTo(
+        "There was an error with the System Trace task. Error message: The task arguments " +
+          "(CpuTaskArgs) supplied do not contains a valid artifact to load."
+      )
 
     // Verify that the artifact doSelect behavior was not called by checking if the stage was not set to CpuProfilerStage.
     assertThat(myProfilers.stage).isNotInstanceOf(CpuProfilerStage::class.java)
@@ -304,12 +303,26 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   @Test
   fun testCreateArgsSuccessfully() {
     val selectedSession = Common.Session.newBuilder().setSessionId(1).setEndTimestamp(100).build()
-    val sessionIdToSessionItems = mapOf(
-      1L to SessionArtifactUtils.createSessionItem(myProfilers, selectedSession, 1, listOf(
-        SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(myProfilers, selectedSession, 1, 100L,
-                                                                       5L, 500L,
-                                                                       createDefaultPerfettoTraceConfiguration()))),
-    )
+    val sessionIdToSessionItems =
+      mapOf(
+        1L to
+          SessionArtifactUtils.createSessionItem(
+            myProfilers,
+            selectedSession,
+            1,
+            listOf(
+              SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(
+                myProfilers,
+                selectedSession,
+                1,
+                100L,
+                5L,
+                500L,
+                createDefaultPerfettoTraceConfiguration(),
+              )
+            ),
+          )
+      )
 
     val cpuTaskArgs = mySystemTraceTaskHandler.createArgs(false, sessionIdToSessionItems, selectedSession)
     assertThat(cpuTaskArgs).isNotNull()
@@ -326,16 +339,28 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // By setting a session id that does not match any of the session items, the task artifact will not be found in the call to createArgs
     // will fail to be constructed.
     val selectedSession = Common.Session.newBuilder().setSessionId(0).setEndTimestamp(100).build()
-    val sessionIdToSessionItems = mapOf(
-      1L to SessionArtifactUtils.createSessionItem(myProfilers, selectedSession, 1, listOf(
-        SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(myProfilers, selectedSession, 1, 100L,
-                                                                       5L, 500L,
-                                                                       createDefaultPerfettoTraceConfiguration()))),
-    )
+    val sessionIdToSessionItems =
+      mapOf(
+        1L to
+          SessionArtifactUtils.createSessionItem(
+            myProfilers,
+            selectedSession,
+            1,
+            listOf(
+              SessionArtifactUtils.createCpuCaptureSessionArtifactWithConfig(
+                myProfilers,
+                selectedSession,
+                1,
+                100L,
+                5L,
+                500L,
+                createDefaultPerfettoTraceConfiguration(),
+              )
+            ),
+          )
+      )
 
-    assertThrows(IllegalStateException::class.java) {
-      mySystemTraceTaskHandler.createArgs(false, sessionIdToSessionItems, selectedSession)
-    }
+    assertThrows(IllegalStateException::class.java) { mySystemTraceTaskHandler.createArgs(false, sessionIdToSessionItems, selectedSession) }
   }
 
   @Test
@@ -347,10 +372,14 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     myProfilers.taskHomeTabModel.processListModel.onDeviceSelection(mDevice)
     var mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(mDevice, false)
     assertNotNull(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(mDevice, process))
-    assertEquals(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(mDevice, process)!!.startTaskSelectionErrorCode,
-                 StartTaskSelectionErrorCode.INVALID_DEVICE)
-    assertEquals(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(mDevice, process)!!.actionableInfo,
-                 "No task configuration was found for API 23 device")
+    assertEquals(
+      mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(mDevice, process)!!.startTaskSelectionErrorCode,
+      StartTaskSelectionErrorCode.INVALID_DEVICE,
+    )
+    assertEquals(
+      mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(mDevice, process)!!.actionableInfo,
+      "No task configuration was found for API 23 device",
+    )
     val nDevice = createDevice(AndroidVersion.VersionCodes.N)
     mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(nDevice, false)
     assertNull(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(nDevice, process))
@@ -373,10 +402,14 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     val lDevice = createDevice(AndroidVersion.VersionCodes.LOLLIPOP)
     var mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(lDevice, true)
     assertNotNull(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(lDevice, process))
-    assertEquals(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(lDevice, process)!!.startTaskSelectionErrorCode,
-                 StartTaskSelectionErrorCode.INVALID_DEVICE)
-    assertEquals(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(lDevice, process)!!.actionableInfo,
-                 "No task configuration was found for API 21 device")
+    assertEquals(
+      mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(lDevice, process)!!.startTaskSelectionErrorCode,
+      StartTaskSelectionErrorCode.INVALID_DEVICE,
+    )
+    assertEquals(
+      mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(lDevice, process)!!.actionableInfo,
+      "No task configuration was found for API 21 device",
+    )
     val mDevice = createDevice(AndroidVersion.VersionCodes.M)
     mySystemTraceTaskHandlerMock = mockDeviceInSystemTraceTaskHandler(mDevice, true)
     assertNull(mySystemTraceTaskHandlerMock.checkSupportForDeviceAndProcess(mDevice, process))
@@ -398,17 +431,25 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // Explicitly set the device to be used to simulate reading device selection from main toolbar.
     selectDevice(nDevice)
     assertNotNull(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(nDevice, process))
-    assertEquals(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(nDevice, process)!!.startTaskSelectionErrorCode,
-                 StartTaskSelectionErrorCode.INVALID_DEVICE)
-    assertEquals(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(nDevice, process)!!.actionableInfo,
-                 "No task configuration was found for API 24 device")
+    assertEquals(
+      mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(nDevice, process)!!.startTaskSelectionErrorCode,
+      StartTaskSelectionErrorCode.INVALID_DEVICE,
+    )
+    assertEquals(
+      mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(nDevice, process)!!.actionableInfo,
+      "No task configuration was found for API 24 device",
+    )
     val oDevice = createDevice(25, "arm", isVirtual = true)
     selectDevice(oDevice)
     assertNotNull(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(oDevice, process))
-    assertEquals(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(oDevice, process)!!.startTaskSelectionErrorCode,
-                 StartTaskSelectionErrorCode.INVALID_DEVICE)
-    assertEquals(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(oDevice, process)!!.actionableInfo,
-                 "No task configuration was found for API 25 device")
+    assertEquals(
+      mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(oDevice, process)!!.startTaskSelectionErrorCode,
+      StartTaskSelectionErrorCode.INVALID_DEVICE,
+    )
+    assertEquals(
+      mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(oDevice, process)!!.actionableInfo,
+      "No task configuration was found for API 25 device",
+    )
   }
 
   @Test
@@ -432,10 +473,14 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
     // Api 23 devices should not be supported by either ATrace or Perfetto.
     val mDevice = createDevice(23, "arm")
     assertNotNull(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(mDevice, process))
-    assertEquals(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(mDevice, process)!!.startTaskSelectionErrorCode,
-                 StartTaskSelectionErrorCode.INVALID_DEVICE)
-    assertEquals(mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(mDevice, process)!!.actionableInfo,
-                 "No task configuration was found for API 23 device")
+    assertEquals(
+      mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(mDevice, process)!!.startTaskSelectionErrorCode,
+      StartTaskSelectionErrorCode.INVALID_DEVICE,
+    )
+    assertEquals(
+      mySystemTraceTaskHandler.checkSupportForDeviceAndProcess(mDevice, process)!!.actionableInfo,
+      "No task configuration was found for API 23 device",
+    )
   }
 
   @Test
@@ -444,26 +489,22 @@ class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   }
 
   private fun mockDeviceInSystemTraceTaskHandler(device: Common.Device?, taskBasedUxEnabled: Boolean): SystemTraceTaskHandler {
-    val profilersNow = spy(StudioProfilers(
-      ProfilerClient(myGrpcChannel.channel),
-      ideProfilerServices,
-      myTimer
-    ))
+    val profilersNow = spy(StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer))
     val taskHomeTabModel = spy(profilersNow.taskHomeTabModel)
     whenever(profilersNow.taskHomeTabModel).thenReturn(taskHomeTabModel)
     val sessionManagerNow = spy(profilersNow.sessionsManager)
     whenever(sessionManagerNow.studioProfilers).thenReturn(profilersNow)
-    whenever(taskHomeTabModel.selectedDevice).thenReturn(
-      device?.let { ProfilerDeviceSelection(device.model, 30, true, false, device) })
-    return SystemTraceTaskHandler(sessionManagerNow, taskBasedUxEnabled);
+    whenever(taskHomeTabModel.selectedDevice).thenReturn(device?.let { ProfilerDeviceSelection(device.model, 30, true, false, device) })
+    return SystemTraceTaskHandler(sessionManagerNow, taskBasedUxEnabled)
   }
 
-  private fun createDefaultPerfettoTraceConfiguration() = Trace.TraceConfiguration.newBuilder().setPerfettoOptions(
-    PerfettoConfig.TraceConfig.getDefaultInstance()).build()
+  private fun createDefaultPerfettoTraceConfiguration() =
+    Trace.TraceConfiguration.newBuilder().setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance()).build()
 
   private fun createFakeDevice(level: Int): Common.Device {
-    val deviceName = "FakeUnitTestDevice";
-    return Common.Device.newBuilder().setDeviceId(deviceName.hashCode().toLong())
+    val deviceName = "FakeUnitTestDevice"
+    return Common.Device.newBuilder()
+      .setDeviceId(deviceName.hashCode().toLong())
       .setSerial(deviceName)
       .setState(Common.Device.State.ONLINE)
       .setFeatureLevel(level) // 28 is needed for perfetto

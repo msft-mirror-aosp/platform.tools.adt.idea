@@ -18,7 +18,7 @@ package com.android.tools.idea.gradle.dsl.model
 import com.android.tools.idea.gradle.dsl.api.android.AndroidGradleDeclarativeBuildModel
 import com.android.tools.idea.gradle.dsl.api.android.FlavorTypeModel.TypeNameValueElement
 
-abstract class AndroidGradleFileModelTestCase: GradleFileModelTestCase("tools/adt/idea/gradle-dsl-android/testData/parser") {
+abstract class AndroidGradleFileModelTestCase : GradleFileModelTestCase("tools/adt/idea/gradle-dsl-android/testData/parser") {
   override fun getGradleDeclarativeBuildModel(): AndroidGradleDeclarativeBuildModel {
     return super.getGradleDeclarativeBuildModel() as AndroidGradleDeclarativeBuildModel
   }

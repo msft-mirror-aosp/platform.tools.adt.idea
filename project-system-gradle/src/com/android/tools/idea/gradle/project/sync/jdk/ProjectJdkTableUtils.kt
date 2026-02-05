@@ -20,16 +20,18 @@ import com.intellij.openapi.projectRoots.JavaSdk
 import com.intellij.openapi.projectRoots.ProjectJdkTable
 import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.util.containers.orNull
+import kotlin.io.path.Path
 
 /**
- * Collection of utils for the Project JDK table storing the different JDKs under studio
- * configuration directory on options/jdk.table.xml file.
+ * Collection of utils for the Project JDK table storing the different JDKs under studio configuration directory on options/jdk.table.xml
+ * file.
  */
 object ProjectJdkTableUtils {
 
   /**
-   * Create or recreate in case is already present but was corrupted a dedicated jdk.table.xml entry given a valid jdk path.
-   * The dedicated name is generated using the suggested name given a Jdk path were combines the provider and version i.e: jbr-17
+   * Create or recreate in case is already present but was corrupted a dedicated jdk.table.xml entry given a valid jdk path. The dedicated
+   * name is generated using the suggested name given a Jdk path were combines the provider and version i.e: jbr-17
+   *
    * @param jdkPath A valid jdk absolute path
    * @return Sdk name of table entry for the gradle jvm path if was possible to create or update it
    */
@@ -40,13 +42,17 @@ object ProjectJdkTableUtils {
   }
 
   /**
-   * Finds a JDK in the Project JDK table with the given major version.
+   * Finds a valid JDK in the Project JDK table with the given major version.
    *
    * @param version The major version of the JDK to find (e.g., 11, 17).
    * @return The [Sdk] if found, otherwise null.
    */
   fun findProjectTableJdkWithVersion(version: Int): Sdk? =
-    ProjectJdkTable.getInstance().getSdksOfType(JavaSdk.getInstance()).stream()
+    ProjectJdkTable.getInstance()
+      .getSdksOfType(JavaSdk.getInstance())
+      .stream()
       .filter { JavaSdk.getInstance().getVersion(it)?.maxLanguageLevel?.feature() == version }
-      .findFirst().orNull()
+      .filter { sdk -> sdk.homePath != null && IdeSdks.isValidJdkPath(Path(sdk.homePath!!)) }
+      .findFirst()
+      .orNull()
 }

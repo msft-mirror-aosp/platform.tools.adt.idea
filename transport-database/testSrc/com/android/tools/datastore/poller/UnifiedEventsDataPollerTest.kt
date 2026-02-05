@@ -20,19 +20,19 @@ import com.android.tools.datastore.DataStorePollerTest
 import com.android.tools.datastore.DataStoreService
 import com.android.tools.datastore.FakeLogService
 import com.android.tools.datastore.database.UnifiedEventsTable
-import com.android.tools.profiler.proto.Common
-import com.android.tools.profiler.proto.Transport.GetEventsRequest
-import com.android.tools.profiler.proto.TransportServiceGrpc
-import com.google.common.truth.Truth.assertThat
 import com.android.tools.idea.io.grpc.Server
 import com.android.tools.idea.io.grpc.inprocess.InProcessChannelBuilder
 import com.android.tools.idea.io.grpc.inprocess.InProcessServerBuilder
 import com.android.tools.idea.io.grpc.stub.StreamObserver
+import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.Transport.GetEventsRequest
+import com.android.tools.profiler.proto.TransportServiceGrpc
+import com.google.common.truth.Truth.assertThat
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.ReentrantLock
 
 class UnifiedEventsDataPollerTest : DataStorePollerTest() {
 
@@ -94,31 +94,18 @@ class UnifiedEventsDataPollerTest : DataStorePollerTest() {
     assertThat(response).containsExactlyElementsIn(FakeTransportService.eventsList)
   }
 
-
   private class FakeTransportService : TransportServiceGrpc.TransportServiceImplBase() {
 
     val eventsLock = ReentrantLock()
     val eventsPopulated = eventsLock.newCondition()
 
     companion object {
-      val eventsList = mutableListOf(Common.Event.newBuilder()
-                                       .setTimestamp(10)
-                                       .setPid(1)
-                                       .setGroupId(1)
-                                       .setKind(Common.Event.Kind.SESSION)
-                                       .build(),
-                                     Common.Event.newBuilder()
-                                       .setTimestamp(11)
-                                       .setPid(1)
-                                       .setGroupId(2)
-                                       .setKind(Common.Event.Kind.SESSION)
-                                       .build(),
-                                     Common.Event.newBuilder()
-                                       .setTimestamp(12)
-                                       .setPid(1)
-                                       .setGroupId(3)
-                                       .setKind(Common.Event.Kind.SESSION)
-                                       .build())
+      val eventsList =
+        mutableListOf(
+          Common.Event.newBuilder().setTimestamp(10).setPid(1).setGroupId(1).setKind(Common.Event.Kind.SESSION).build(),
+          Common.Event.newBuilder().setTimestamp(11).setPid(1).setGroupId(2).setKind(Common.Event.Kind.SESSION).build(),
+          Common.Event.newBuilder().setTimestamp(12).setPid(1).setGroupId(3).setKind(Common.Event.Kind.SESSION).build(),
+        )
     }
 
     override fun getEvents(request: GetEventsRequest?, responseObserver: StreamObserver<Common.Event>) {

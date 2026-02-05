@@ -20,7 +20,6 @@ import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.pipeline.InspectorClient
 import com.android.tools.idea.layoutinspector.ui.LAYOUT_INSPECTOR_DATA_KEY
-import com.android.tools.idea.layoutinspector.ui.RenderModel
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.ui.FileOpenCaptureRule
 import com.google.common.truth.Truth.assertThat
@@ -64,15 +63,15 @@ class SnapshotActionTest {
 
   @Test
   fun testActionIsDisabledWhenRenderModelIsEmpty() {
-    var event = createEvent(isRenderModelActive = true, isConnected = true)
+    var event = createEvent(isModelEmpty = false, isConnected = true)
     ExportSnapshotAction.update(event)
     assertThat(event.presentation.isEnabled).isTrue()
 
-    event = createEvent(isRenderModelActive = false, isConnected = true)
+    event = createEvent(isModelEmpty = true, isConnected = true)
     ExportSnapshotAction.update(event)
     assertThat(event.presentation.isEnabled).isFalse()
 
-    event = createEvent(isRenderModelActive = true, isConnected = true)
+    event = createEvent(isModelEmpty = false, isConnected = true)
     ExportSnapshotAction.update(event)
     assertThat(event.presentation.isEnabled).isTrue()
   }
@@ -109,22 +108,17 @@ class SnapshotActionTest {
     fileOpenCaptureRule.checkEditorOpened(tempFile.name, focusEditor = true)
   }
 
-  private fun createEvent(
-    isConnected: Boolean = false,
-    isRenderModelActive: Boolean = true,
-  ): AnActionEvent = runBlocking {
+  private fun createEvent(isConnected: Boolean = false, isModelEmpty: Boolean = false): AnActionEvent = runBlocking {
     val inspector: LayoutInspector = mock()
     val model: InspectorModel = mock()
-    val renderModel: RenderModel = mock()
     val client: InspectorClient = mock()
     val process: ProcessDescriptor = mock()
     whenever(inspector.currentClient).thenReturn(client)
     whenever(inspector.inspectorModel).thenReturn(model)
-    whenever(inspector.renderModel).thenReturn(renderModel)
     whenever(model.project).thenReturn(projectRule.project)
     whenever(client.process).thenReturn(process)
     whenever(process.name).thenReturn("process.name")
-    whenever(renderModel.isActive).thenReturn(isRenderModelActive)
+    whenever(model.isEmpty).thenReturn(isModelEmpty)
     doAnswer { invocation ->
         val path = invocation.arguments[0] as Path
         path.write(byteArrayOf(1, 2, 3))
@@ -133,23 +127,14 @@ class SnapshotActionTest {
       .saveSnapshot(any(), any())
     doAnswer { isConnected }.whenever(client).isConnected
     val dataContext = SimpleDataContext.getSimpleContext(LAYOUT_INSPECTOR_DATA_KEY, inspector)
-    AnActionEvent.createEvent(
-      dataContext,
-      Presentation(),
-      ActionPlaces.UNKNOWN,
-      ActionUiKind.NONE,
-      null,
-    )
+    AnActionEvent.createEvent(dataContext, Presentation(), ActionPlaces.UNKNOWN, ActionUiKind.NONE, null)
   }
 
   @Suppress("SameParameterValue")
   private fun overrideFileChooser(expectedFileName: String, fileToReturn: VirtualFileWrapper?) {
     val factory: FileChooserFactoryImpl =
       object : FileChooserFactoryImpl() {
-        override fun createSaveFileDialog(
-          descriptor: FileSaverDescriptor,
-          project: Project?,
-        ): FileSaverDialog {
+        override fun createSaveFileDialog(descriptor: FileSaverDescriptor, project: Project?): FileSaverDialog {
           return object : FileSaverDialog {
             override fun save(baseDir: VirtualFile?, filename: String?): VirtualFileWrapper? {
               assertThat(filename?.startsWith(expectedFileName) ?: false).isTrue()
@@ -163,21 +148,14 @@ class SnapshotActionTest {
           }
         }
 
-        override fun createFileChooser(
-          descriptor: FileChooserDescriptor,
-          project: Project?,
-          parent: Component?,
-        ): FileChooserDialog {
+        override fun createFileChooser(descriptor: FileChooserDescriptor, project: Project?, parent: Component?): FileChooserDialog {
           return object : FileChooserDialog {
             @Deprecated("Deprecated in Java")
             override fun choose(toSelect: VirtualFile?, project: Project?): Array<VirtualFile> {
               error("not implemented")
             }
 
-            override fun choose(
-              project: Project?,
-              vararg toSelect: VirtualFile?,
-            ): Array<VirtualFile> {
+            override fun choose(project: Project?, vararg toSelect: VirtualFile?): Array<VirtualFile> {
               return arrayOf(fileToReturn!!.virtualFile!!)
             }
           }

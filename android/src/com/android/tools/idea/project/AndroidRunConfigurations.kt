@@ -58,11 +58,8 @@ import org.jetbrains.android.dom.manifest.UsesFeature
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.util.AndroidUtils
 
-private val wearConfigurationProducers = listOf(
-  AndroidTileRunConfigurationProducer(),
-  AndroidComplicationRunConfigurationProducer(),
-  AndroidWatchFaceRunConfigurationProducer()
-)
+private val wearConfigurationProducers =
+  listOf(AndroidTileRunConfigurationProducer(), AndroidComplicationRunConfigurationProducer(), AndroidWatchFaceRunConfigurationProducer())
 
 class AndroidRunConfigurations {
 
@@ -75,9 +72,7 @@ class AndroidRunConfigurations {
   }
 
   private fun createAndroidRunConfigurations(project: Project) {
-    project.getAndroidFacets().filter { it.configuration.isAppProject }.forEach {
-      createAndroidRunConfiguration(it)
-    }
+    project.getAndroidFacets().filter { it.configuration.isAppProject }.forEach { createAndroidRunConfiguration(it) }
   }
 
   private fun createAndroidRunConfiguration(facet: AndroidFacet) {
@@ -102,33 +97,24 @@ class AndroidRunConfigurations {
     if (!StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.get()) {
       return
     }
-    project
-      .getAndroidFacets()
-      .filter { it.configuration.isAppProject }
-      .forEach { facet -> createDeclarativeWatchFaceConfiguration(facet) }
+    project.getAndroidFacets().filter { it.configuration.isAppProject }.forEach { facet -> createDeclarativeWatchFaceConfiguration(facet) }
   }
 
   /**
-   * Creates an [AndroidDeclarativeWatchFaceConfiguration] run configuration if the module is a
-   * Declarative Watch Face module. The module must have a `res/xml/watch_face_info.xml` file and
-   * shouldn't have any activities or services.
+   * Creates an [AndroidDeclarativeWatchFaceConfiguration] run configuration if the module is a Declarative Watch Face module. The module
+   * must have a `res/xml/watch_face_info.xml` file and shouldn't have any activities or services.
    *
-   * The run configuration is only added if there are no existing run configurations based on
-   * the [facet]'s module. If an existing declarative watch face run configuration already exists
-   * for the module, we don't want to create duplicates.
+   * The run configuration is only added if there are no existing run configurations based on the [facet]'s module. If an existing
+   * declarative watch face run configuration already exists for the module, we don't want to create duplicates.
    */
   private fun createDeclarativeWatchFaceConfiguration(facet: AndroidFacet) {
     if (!LaunchUtils.isWatchFeatureRequired(facet)) {
       return
     }
     val module = facet.module
-    val configurations = RunManager.getInstance(module.project)
-      .getConfigurationsList(AndroidDeclarativeWatchFaceConfigurationType())
+    val configurations = RunManager.getInstance(module.project).getConfigurationsList(AndroidDeclarativeWatchFaceConfigurationType())
     for (configuration in configurations) {
-      if (
-        configuration is AndroidDeclarativeWatchFaceConfiguration &&
-          configuration.configurationModule.module == module
-      ) {
+      if (configuration is AndroidDeclarativeWatchFaceConfiguration && configuration.configurationModule.module == module) {
         // There is already a run configuration for this module.
         return
       }
@@ -167,15 +153,11 @@ class AndroidRunConfigurations {
 
     val projectNameInExternalSystemStyle = PathUtil.suggestFileName(project.name, true, false)
     val moduleName = module.getModuleSystem().getDisplayNameForModuleGroup()
-    val configurationName =
-      resolveWatchFaceName(facet) ?: moduleName.removePrefix("$projectNameInExternalSystemStyle.")
+    val configurationName = resolveWatchFaceName(facet) ?: moduleName.removePrefix("$projectNameInExternalSystemStyle.")
     val settings =
       runReadAction {
         if (project.isDisposed) return@runReadAction null
-        runManager.createConfiguration(
-          configurationName,
-          AndroidDeclarativeWatchFaceConfigurationType::class.java,
-        )
+        runManager.createConfiguration(configurationName, AndroidDeclarativeWatchFaceConfigurationType::class.java)
       } ?: return
 
     val configuration = settings.configuration as AndroidDeclarativeWatchFaceConfiguration
@@ -199,25 +181,21 @@ class AndroidRunConfigurations {
       val labelPsiFile = label.xmlElement?.containingFile ?: return@runReadAction null
       val resourceName = runReadAction { label.value?.resourceName } ?: return@runReadAction null
       val resourceReference = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.STRING, resourceName)
-      val resolver = ConfigurationManager.getOrCreateInstance(facet.module)
-        .getConfiguration(labelPsiFile.virtualFile)
-        .resourceResolver
+      val resolver = ConfigurationManager.getOrCreateInstance(facet.module).getConfiguration(labelPsiFile.virtualFile).resourceResolver
       resolver.getResolvedResource(resourceReference)?.value
     }
   }
 
-  /**
-   * Creates component-based [AndroidWearConfiguration]s. Components are Wear Tiles, Complications
-   * and WatchFace Services.
-   */
+  /** Creates component-based [AndroidWearConfiguration]s. Components are Wear Tiles, Complications and WatchFace Services. */
   private suspend fun createWearConfigurations(project: Project) {
     if (!StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.get()) {
       return
     }
-    val runManager = runReadAction {
-      if (project.isDisposed) return@runReadAction null
-      RunManager.getInstance(project)
-    } ?: return
+    val runManager =
+      runReadAction {
+        if (project.isDisposed) return@runReadAction null
+        RunManager.getInstance(project)
+      } ?: return
 
     val maxAllowedRunConfigurations = StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_MAX_TOTAL_RUN_CONFIGS.get()
     val existingRunConfigurationCount = runManager.allConfigurationsList.size
@@ -227,21 +205,22 @@ class AndroidRunConfigurations {
     }
 
     val wearRunConfigurationsToAdd = mutableListOf<RunnerAndConfigurationSettings>()
-    project.getAndroidFacets().filter { it.configuration.isAppProject }.forEach {
-      if (!project.isDisposed) {
-        wearRunConfigurationsToAdd += createWearConfigurations(it.module)
+    project
+      .getAndroidFacets()
+      .filter { it.configuration.isAppProject }
+      .forEach {
+        if (!project.isDisposed) {
+          wearRunConfigurationsToAdd += createWearConfigurations(it.module)
+        }
+        if (existingRunConfigurationCount + wearRunConfigurationsToAdd.size > maxAllowedRunConfigurations) {
+          // We don't want to breach the maximum number of allowed run configurations
+          return
+        }
       }
-      if (existingRunConfigurationCount + wearRunConfigurationsToAdd.size > maxAllowedRunConfigurations) {
-        // We don't want to breach the maximum number of allowed run configurations
-        return
-      }
-    }
 
     runReadAction {
       if (!project.isDisposed) {
-        wearRunConfigurationsToAdd.forEach {
-          runManager.addConfiguration(it)
-        }
+        wearRunConfigurationsToAdd.forEach { runManager.addConfiguration(it) }
       }
     }
   }
@@ -249,24 +228,25 @@ class AndroidRunConfigurations {
   private fun addAndroidRunConfiguration(facet: AndroidFacet) {
     val module = facet.module
     val project = module.project
-    val runManager = runReadAction {
-      if (project.isDisposed) return@runReadAction null
-      RunManager.getInstance(project)
-    } ?: return
+    val runManager =
+      runReadAction {
+        if (project.isDisposed) return@runReadAction null
+        RunManager.getInstance(project)
+      } ?: return
 
     val projectNameInExternalSystemStyle = PathUtil.suggestFileName(project.name, true, false)
     val moduleName = module.getModuleSystem().getDisplayNameForModuleGroup()
     val configurationName = moduleName.removePrefix("$projectNameInExternalSystemStyle.")
-    val settings = runReadAction {
-      if (project.isDisposed) return@runReadAction null
-      runManager.createConfiguration(configurationName, AndroidRunConfigurationType::class.java)
-    } ?: return
+    val settings =
+      runReadAction {
+        if (project.isDisposed) return@runReadAction null
+        runManager.createConfiguration(configurationName, AndroidRunConfigurationType::class.java)
+      } ?: return
     val configuration = settings.configuration as AndroidRunConfiguration
     configuration.setModule(module)
     if (facet.configuration.projectType == AndroidProjectTypes.PROJECT_TYPE_INSTANTAPP) {
       configuration.setLaunchUrl(InstantApps.getDefaultInstantAppUrl(facet))
-    }
-    else {
+    } else {
       configuration.MODE = AndroidRunConfiguration.LAUNCH_DEFAULT_ACTIVITY
     }
 
@@ -288,9 +268,7 @@ class AndroidRunConfigurations {
   private suspend fun createWearConfigurations(module: Module): List<RunnerAndConfigurationSettings> {
     val wearComponents = extractWearComponents(module)
     val wearComponentsUsedInRunConfigurations = wearComponentsUsedInRunConfigurations(module.project)
-    return wearComponents
-      .filter { it.name !in wearComponentsUsedInRunConfigurations }
-      .map { createWearConfiguration(module, it) }
+    return wearComponents.filter { it.name !in wearComponentsUsedInRunConfigurations }.map { createWearConfiguration(module, it) }
   }
 
   private fun createWearConfiguration(module: Module, component: WearComponent): RunnerAndConfigurationSettings {
@@ -313,9 +291,7 @@ class AndroidRunConfigurations {
     val dumbServiceTracker = DumbService.getInstance(module.project)
     val wearComponentsCache =
       module.getUserData(extractWearComponentsCacheKey)
-        ?: ChangeTrackerCachedValue.softReference<List<WearComponent>>().also {
-          module.putUserData(extractWearComponentsCacheKey, it)
-        }
+        ?: ChangeTrackerCachedValue.softReference<List<WearComponent>>().also { module.putUserData(extractWearComponentsCacheKey, it) }
     return ChangeTrackerCachedValue.get(
       wearComponentsCache,
       { extractWearComponentsNonCached(module) },
@@ -328,19 +304,17 @@ class AndroidRunConfigurations {
 
   private suspend fun extractWearComponentsNonCached(module: Module): List<WearComponent> {
     return smartReadAction(module.project) {
-      val manifests = module.getModuleSystem()
-        .getMergedManifestContributors().let {
-          val primaryManifest = it.primaryManifest
-            ?.let { file -> AndroidUtils.loadDomElement(module, file, Manifest::class.java) }
-            ?: return@smartReadAction emptyList()
+      val manifests =
+        module.getModuleSystem().getMergedManifestContributors().let {
+          val primaryManifest =
+            it.primaryManifest?.let { file -> AndroidUtils.loadDomElement(module, file, Manifest::class.java) }
+              ?: return@smartReadAction emptyList()
 
           if (!isWatchFeatureRequired(primaryManifest)) {
             return@smartReadAction emptyList()
           }
 
-          val libraryManifests = it.libraryManifests.mapNotNull { file ->
-            AndroidUtils.loadDomElement(module, file, Manifest::class.java)
-          }
+          val libraryManifests = it.libraryManifests.mapNotNull { file -> AndroidUtils.loadDomElement(module, file, Manifest::class.java) }
 
           listOf(primaryManifest) + libraryManifests
         }
@@ -381,7 +355,6 @@ class AndroidRunConfigurations {
     val instance: AndroidRunConfigurations
       get() = ApplicationManager.getApplication().getService(AndroidRunConfigurations::class.java)
 
-    private val extractWearComponentsCacheKey =
-      Key<ChangeTrackerCachedValue<List<WearComponent>>>("extractWearComponents")
+    private val extractWearComponentsCacheKey = Key<ChangeTrackerCachedValue<List<WearComponent>>>("extractWearComponents")
   }
 }

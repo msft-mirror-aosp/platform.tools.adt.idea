@@ -25,7 +25,6 @@ import com.android.tools.idea.run.deployment.liveedit.getCompilerConfiguration
 import com.android.tools.idea.run.deployment.liveedit.isKotlinPluginBundled
 import com.android.tools.idea.run.deployment.liveedit.k2.OutputFileForKtCompiledFile
 import com.android.tools.idea.run.deployment.liveedit.k2.backendCodeGenForK2
-import com.android.tools.idea.run.deployment.liveedit.readActionPrebuildChecks
 import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.intellij.openapi.application.readAction
@@ -40,6 +39,9 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.util.io.createParentDirectories
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.createFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
@@ -54,74 +56,73 @@ import org.jetbrains.kotlin.backend.common.output.OutputFile
 import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.io.path.createFile
 
 private fun Throwable?.isCompilationError(): Boolean = this is LiveEditUpdateException && this.isCompilationError()
 
 /**
- * [Throwable] used by the [EmbeddedCompilerClientImpl] during a compilation when the embedded plugin is not being used. This signals
- * to the caller that the error *might* have been caused by an incompatibility of the Kotlin Plugin.
+ * [Throwable] used by the [EmbeddedCompilerClientImpl] during a compilation when the embedded plugin is not being used. This signals to the
+ * caller that the error *might* have been caused by an incompatibility of the Kotlin Plugin.
  */
-private class NotUsingKotlinBundledPlugin(cause: Throwable):
+private class NotUsingKotlinBundledPlugin(cause: Throwable) :
   Exception(FastPreviewBundle.message("fast.preview.error.needs.bundled.plugin"), cause)
 
 /**
- * Implementation of the [CompilerDaemonClient] that uses the embedded compiler in Android Studio. This allows
- * to compile fragments of code in-process similar to how Live Edit does for the emulator.
+ * Implementation of the [CompilerDaemonClient] that uses the embedded compiler in Android Studio. This allows to compile fragments of code
+ * in-process similar to how Live Edit does for the emulator.
  *
- * [isKotlinPluginBundled] is a method that returns if the available Kotlin Plugin is the version bundled with Android Studio. This
- * is used to diagnose problems and inform users when there is a failure that might have been caused by the user updating the Kotlin
- * Plugin.
+ * [isKotlinPluginBundled] is a method that returns if the available Kotlin Plugin is the version bundled with Android Studio. This is used
+ * to diagnose problems and inform users when there is a failure that might have been caused by the user updating the Kotlin Plugin.
  *
  * [beforeCompilationStarts] can be used during testing to trigger error conditions, by default in production, it does nothing.
  */
-class EmbeddedCompilerClientImpl private constructor(
+class EmbeddedCompilerClientImpl
+private constructor(
   private val project: Project,
   private val log: Logger,
   private val isKotlinPluginBundled: () -> Boolean,
-  private val beforeCompilationStarts: () -> Unit) : CompilerDaemonClient {
+  private val beforeCompilationStarts: () -> Unit,
+) : CompilerDaemonClient {
 
-  constructor(project: Project, log: Logger):
-    this(project, log, ::isKotlinPluginBundled, {})
+  constructor(project: Project, log: Logger) : this(project, log, ::isKotlinPluginBundled, {})
 
   @TestOnly
-  constructor(project: Project,
-              log: Logger,
-              isKotlinPluginBundled: Boolean = true,
-              beforeCompilationStarts: () -> Unit = {}) :
-    this(project, log,
-         isKotlinPluginBundled = { isKotlinPluginBundled },
-         beforeCompilationStarts = beforeCompilationStarts)
+  constructor(
+    project: Project,
+    log: Logger,
+    isKotlinPluginBundled: Boolean = true,
+    beforeCompilationStarts: () -> Unit = {},
+  ) : this(project, log, isKotlinPluginBundled = { isKotlinPluginBundled }, beforeCompilationStarts = beforeCompilationStarts)
 
   private val daemonLock = Mutex()
 
-  /**
-   * The embedded compiler does not have a daemon to start so is always running.
-   */
+  /** The embedded compiler does not have a daemon to start so is always running. */
   override val isRunning: Boolean = true
 
   /**
-   * The Live Edit inline candidates cache. The cache can only be accessed with the Compile lock (see [runWithCompileLock]).
-   * The cache is automatically invalidated on build.
+   * The Live Edit inline candidates cache. The cache can only be accessed with the Compile lock (see [runWithCompileLock]). The cache is
+   * automatically invalidated on build.
    */
   private val inlineCandidateCache = LiveEditService.getInstance(project).inlineCandidateCache()
 
   /**
-   * Compiles the given list of inputs. All inputs must belong to the same module.
-   * The output will be generated in the given [outputDirectory] and progress will be updated in the given [ProgressIndicator].
+   * Compiles the given list of inputs. All inputs must belong to the same module. The output will be generated in the given
+   * [outputDirectory] and progress will be updated in the given [ProgressIndicator].
    */
-  private suspend fun compileModuleKtFiles(applicationLiveEditServices: ApplicationLiveEditServices, moduleForAllInputs: Module, inputs: List<KtFile>, outputDirectory: Path) = withContext(AndroidDispatchers.workerThread) {
-    log.debug("compileModuleKtFiles($inputs, $outputDirectory)")
+  private suspend fun compileModuleKtFiles(
+    applicationLiveEditServices: ApplicationLiveEditServices,
+    moduleForAllInputs: Module,
+    inputs: List<KtFile>,
+    outputDirectory: Path,
+  ) =
+    withContext(AndroidDispatchers.workerThread) {
+      log.debug("compileModuleKtFiles($inputs, $outputDirectory)")
 
-    if (KotlinPluginModeProvider.isK2Mode()) {
-      compileKtFilesForK2(moduleForAllInputs, inputs, outputDirectory)
-      return@withContext
-    }
+      if (KotlinPluginModeProvider.isK2Mode()) {
+        compileKtFilesForK2(moduleForAllInputs, inputs, outputDirectory)
+        return@withContext
+      }
 
-    val generationState =
-      readAction {
+      val generationState = readAction {
         runWithCompileLock {
           beforeCompilationStarts()
 
@@ -130,15 +131,13 @@ class EmbeddedCompilerClientImpl private constructor(
           ProgressManager.checkCanceled()
           log.debug("analyze")
           val analysisResult = analyze(inputs, resolution)
-          val inlineCandidates = inputs
-            .flatMap { analyzeSingleDepthInlinedFunctions(it, analysisResult.bindingContext, inlineCandidateCache) }
-            .toSet()
+          val inlineCandidates =
+            inputs.flatMap { analyzeSingleDepthInlinedFunctions(it, analysisResult.bindingContext, inlineCandidateCache) }.toSet()
           ProgressManager.checkCanceled()
           log.debug("backCodeGen")
           try {
             backendCodeGen(applicationLiveEditServices, project, analysisResult, inputs, moduleForAllInputs, inlineCandidates)
-          }
-          catch (e: LiveEditUpdateException) {
+          } catch (e: LiveEditUpdateException) {
             if (e.isCompilationError() || e.cause.isCompilationError()) {
               log.debug("backCodeGen compilation exception ", e)
               throw e
@@ -152,9 +151,8 @@ class EmbeddedCompilerClientImpl private constructor(
             // Add any extra source file this compilation need in order to support the input file calling an inline function
             // from another source file then perform a compilation again.
             log.debug("inline analysis")
-            val inputFilesWithInlines = inputs.flatMap {
-              performInlineSourceDependencyAnalysis(resolution, it, analysisResult.bindingContext)
-            }
+            val inputFilesWithInlines =
+              inputs.flatMap { performInlineSourceDependencyAnalysis(resolution, it, analysisResult.bindingContext) }
 
             // We need to perform the analysis once more with the new set of input files.
             log.debug("inline analysis with inlines ${inputFilesWithInlines.joinToString(",") { it.name }}")
@@ -162,14 +160,21 @@ class EmbeddedCompilerClientImpl private constructor(
 
             // We will need to start using the new analysis for code gen.
             log.debug("backCodeGen retry")
-            backendCodeGen(applicationLiveEditServices, project, newAnalysisResult, inputFilesWithInlines, moduleForAllInputs, inlineCandidates)
+            backendCodeGen(
+              applicationLiveEditServices,
+              project,
+              newAnalysisResult,
+              inputFilesWithInlines,
+              moduleForAllInputs,
+              inlineCandidates,
+            )
           }
         }
       }
-    log.debug("backCodeGen completed")
+      log.debug("backCodeGen completed")
 
-    generationState.factory.asList().forEach { it.writeTo(outputDirectory) }
-  }
+      generationState.factory.asList().forEach { it.writeTo(outputDirectory) }
+    }
 
   @OptIn(KaExperimentalApi::class)
   private suspend fun compileKtFilesForK2(moduleForAllInputs: Module, inputs: List<KtFile>, outputDirectory: Path) {
@@ -191,11 +196,9 @@ class EmbeddedCompilerClientImpl private constructor(
 
           val configuration = getCompilerConfiguration(moduleForAllInputs, inputFile)
 
-          @OptIn(KaExperimentalApi::class)
-          val result = backendCodeGenForK2(inputFile, moduleForAllInputs, configuration)
+          @OptIn(KaExperimentalApi::class) val result = backendCodeGenForK2(inputFile, moduleForAllInputs, configuration)
           log.debug("backCodeGen for ${inputFile.virtualFilePath} completed")
-          @OptIn(KaExperimentalApi::class)
-          addIfNotDuplicated(pathToCompileOutput, result.output.map { OutputFileForKtCompiledFile(it) })
+          @OptIn(KaExperimentalApi::class) addIfNotDuplicated(pathToCompileOutput, result.output.map { OutputFileForKtCompiledFile(it) })
 
           filesAlreadyCompiled.addAll(result.output.getSourceVirtualFiles())
         }
@@ -206,23 +209,22 @@ class EmbeddedCompilerClientImpl private constructor(
   }
 
   @OptIn(KaExperimentalApi::class)
-  private fun List<KaCompiledFile>.getSourceVirtualFiles() =
-    flatMap { it.sourceFiles }.mapNotNull { VfsUtil.findFileByIoFile(it, false) }
+  private fun List<KaCompiledFile>.getSourceVirtualFiles() = flatMap { it.sourceFiles }.mapNotNull { VfsUtil.findFileByIoFile(it, false) }
 
   /**
-   * Add elements of [newCompileOutput] to [pathToCompileOutput] if [pathToCompileOutput] does not
-   * have its `relativePath` as a key. Otherwise, it compares the byte arrays and raises an error
-   * if they are different.
+   * Add elements of [newCompileOutput] to [pathToCompileOutput] if [pathToCompileOutput] does not have its `relativePath` as a key.
+   * Otherwise, it compares the byte arrays and raises an error if they are different.
    */
-  private fun addIfNotDuplicated(pathToCompileOutput: MutableMap<String, OutputFileForKtCompiledFile>,
-                                 newCompileOutput: List<OutputFileForKtCompiledFile>) {
+  private fun addIfNotDuplicated(
+    pathToCompileOutput: MutableMap<String, OutputFileForKtCompiledFile>,
+    newCompileOutput: List<OutputFileForKtCompiledFile>,
+  ) {
     for (output in newCompileOutput) {
       val duplicate = pathToCompileOutput[output.relativePath]
       if (duplicate == null) {
         pathToCompileOutput[output.relativePath] = output
       } else {
-        if (!output.asByteArray().contentEquals(duplicate.asByteArray()) &&
-            !output.relativePath.startsWith("META-INF/")) {
+        if (!output.asByteArray().contentEquals(duplicate.asByteArray()) && !output.relativePath.startsWith("META-INF/")) {
           error("Two Kotlin files must have the same output")
         }
       }
@@ -241,12 +243,12 @@ class EmbeddedCompilerClientImpl private constructor(
     files: Collection<PsiFile>,
     contextBuildTargetReference: BuildTargetReference,
     outputDirectory: Path,
-    indicator: ProgressIndicator): CompilationResult = coroutineScope {
+    indicator: ProgressIndicator,
+  ): CompilationResult = coroutineScope {
     daemonLock.withLock(this) {
       val allKtInputs = files.filterIsInstance<KtFile>().toList()
       val result = CompletableDeferred<CompilationResult>()
       val compilationIndicator = ProgressWrapper.wrap(indicator)
-
 
       // When the coroutine completes, make sure we also stop or cancel the indicator
       // depending on what happened with the co-routine.
@@ -255,8 +257,7 @@ class EmbeddedCompilerClientImpl private constructor(
           if (compilationIndicator.isRunning) {
             if (coroutineContext.job.isCancelled) compilationIndicator.cancel() else compilationIndicator.stop()
           }
-        }
-        catch (t: Throwable) {
+        } catch (t: Throwable) {
           // stop might throw if the indicator is already stopped
           log.warn(t)
         }
@@ -272,14 +273,11 @@ class EmbeddedCompilerClientImpl private constructor(
             compileModuleKtFiles(applicationLiveEditServices, module, inputs, outputDirectory = outputDirectory)
           }
         result.complete(CompilationResult.Success)
-      }
-      catch (t: CancellationException) {
+      } catch (t: CancellationException) {
         result.complete(CompilationResult.CompilationAborted())
-      }
-      catch (t: ProcessCanceledException) {
+      } catch (t: ProcessCanceledException) {
         result.complete(CompilationResult.CompilationAborted())
-      }
-      catch (t: Throwable) {
+      } catch (t: Throwable) {
         when {
           t.isCompilationError() || t.cause.isCompilationError() -> result.complete(CompilationResult.CompilationError(t))
           !isKotlinPluginBundled() -> {

@@ -51,6 +51,5 @@ class BadgeRenderer(val badge: BadgeItem, val emptyIcon: Icon) : TableCellRender
     return this
   }
 
-  private fun Icon.white(focused: Boolean): Icon =
-    if (focused && !NewUI.isEnabled()) ColoredIconGenerator.generateWhiteIcon(this) else this
+  private fun Icon.white(focused: Boolean): Icon = if (focused && !NewUI.isEnabled()) ColoredIconGenerator.generateWhiteIcon(this) else this
 }

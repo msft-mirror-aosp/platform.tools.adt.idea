@@ -91,13 +91,9 @@ class ClearcutCodeEditedListenerTest {
       with(editingMetricsEvent.characterMetrics) {
         assertThat(durationMs).isEqualTo(WINDOW_DURATION.inWholeMilliseconds)
         assertThat(charsAddedList.map { it.source })
-          .containsExactlyElementsIn(
-            events.filter { it.addedCharacterCount > 0 }.map { it.source.toProto() }.distinct()
-          )
+          .containsExactlyElementsIn(events.filter { it.addedCharacterCount > 0 }.map { it.source.toProto() }.distinct())
         assertThat(charsDeletedList.map { it.source })
-          .containsExactlyElementsIn(
-            events.filter { it.deletedCharacterCount > 0 }.map { it.source.toProto() }.distinct()
-          )
+          .containsExactlyElementsIn(events.filter { it.deletedCharacterCount > 0 }.map { it.source.toProto() }.distinct())
       }
     }
   }
@@ -120,13 +116,9 @@ class ClearcutCodeEditedListenerTest {
       with(editingMetricsEvent.characterMetrics) {
         assertThat(durationMs).isEqualTo(0L)
         assertThat(charsAddedList.map { it.source })
-          .containsExactlyElementsIn(
-            events.filter { it.addedCharacterCount > 0 }.map { it.source.toProto() }.distinct()
-          )
+          .containsExactlyElementsIn(events.filter { it.addedCharacterCount > 0 }.map { it.source.toProto() }.distinct())
         assertThat(charsDeletedList.map { it.source })
-          .containsExactlyElementsIn(
-            events.filter { it.deletedCharacterCount > 0 }.map { it.source.toProto() }.distinct()
-          )
+          .containsExactlyElementsIn(events.filter { it.deletedCharacterCount > 0 }.map { it.source.toProto() }.distinct())
       }
     }
   }
@@ -164,9 +156,7 @@ class ClearcutCodeEditedListenerTest {
           )
 
         assertThat(charsDeletedList.map { it.source })
-          .containsExactlyElementsIn(
-            events.filter { it.deletedCharacterCount > 0 }.map { it.source.toProto() }.distinct()
-          )
+          .containsExactlyElementsIn(events.filter { it.deletedCharacterCount > 0 }.map { it.source.toProto() }.distinct())
       }
     }
   }

@@ -36,9 +36,7 @@ class LogcatColorsTest {
   @Test
   fun tagColors_areDiverse() {
     val colors = mutableMapOf<TextAttributes, MutableList<Int>>()
-    repeat(100) {
-      colors.computeIfAbsent(logcatColors.getTagColor("tag$it")) { mutableListOf() }.add(it)
-    }
+    repeat(100) { colors.computeIfAbsent(logcatColors.getTagColor("tag$it")) { mutableListOf() }.add(it) }
 
     assertThat(colors.size).isAtLeast(50)
     colors.forEach { (_, tags) -> assertThat(tags.size).isAtMost(10) }
@@ -54,8 +52,7 @@ class LogcatColorsTest {
 
   @Test
   fun tagColors_doNotHaveBackground() {
-    assertThat(logcatColors.getTagColor("tag").backgroundColor)
-      .isEqualTo(TextAttributes().backgroundColor)
+    assertThat(logcatColors.getTagColor("tag").backgroundColor).isEqualTo(TextAttributes().backgroundColor)
   }
 
   @Test

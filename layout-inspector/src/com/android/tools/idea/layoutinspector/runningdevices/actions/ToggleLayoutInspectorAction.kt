@@ -15,12 +15,15 @@
  */
 package com.android.tools.idea.layoutinspector.runningdevices.actions
 
+import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManager
 import com.android.tools.idea.layoutinspector.runningdevices.LayoutInspectorManagerGlobalState
 import com.android.tools.idea.layoutinspector.settings.LayoutInspectorSettings
+import com.android.tools.idea.streaming.DEVICE_TYPE_KEY
 import com.android.tools.idea.streaming.core.DEVICE_ID_KEY
 import com.android.tools.idea.streaming.core.DISPLAY_VIEW_KEY
+import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -30,35 +33,31 @@ import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.ex.TooltipDescriptionProvider
 import com.intellij.openapi.actionSystem.ex.TooltipLinkProvider
 import com.intellij.openapi.project.Project
+import com.intellij.ui.LayeredIcon
 import icons.StudioIcons
+import javax.swing.Icon
 import javax.swing.JComponent
 import org.jetbrains.annotations.TestOnly
 
-const val TOGGLE_EMBEDDED_LAYOUT_INSPECTOR_ACTION_ID =
-  "com.android.tools.idea.layoutinspector.toggle.layout.inspector.action"
+const val TOGGLE_EMBEDDED_LAYOUT_INSPECTOR_ACTION_ID = "com.android.tools.idea.layoutinspector.toggle.layout.inspector.action"
 
 const val STUDIO_DOC_LI_URL = "https://d.android.com/r/studio-ui/layout-inspector"
 
-/**
- * The min API supported by the Embedded Layout Inspector. Before API 29 we don't have support for
- * live updates.
- */
+/** The min API supported by the Embedded Layout Inspector. Before API 29 we don't have support for live updates. */
 const val EMBEDDED_LAYOUT_INSPECTOR_MIN_API = 29
+
+private val ACTION_WARNING_ICON: Icon =
+  LayeredIcon.layeredIcon { arrayOf(StudioIcons.Shell.ToolWindows.CAPTURES, AllIcons.General.WarningDecorator) }
+private val ACTION_ICON: Icon = StudioIcons.Shell.ToolWindows.CAPTURES
+
+private val ACTION_TITLE = LayoutInspectorBundle.message("toggle.layout.inspector")
+private val ACTION_DESCRIPTION = LayoutInspectorBundle.message("toggle.embedded.layout.inspector.description")
+private val ACTION_DESCRIPTION_GLASSES = LayoutInspectorBundle.message("toggle.embedded.layout.inspector.glasses.description")
 
 /** Action used to turn Layout Inspector on and off in Running Devices tool window. */
 class ToggleLayoutInspectorAction(
-  @TestOnly
-  private val showNotificationDiscovery: (Project) -> Unit = {
-    showLayoutInspectorDiscoveryPopUp(it)
-  }
-) :
-  ToggleAction(
-    "Toggle Layout Inspector",
-    "Toggles Layout Inspection on and off for this device.",
-    StudioIcons.Shell.ToolWindows.CAPTURES,
-  ),
-  TooltipDescriptionProvider,
-  TooltipLinkProvider {
+  @TestOnly private val showNotificationDiscovery: (Project) -> Unit = { showLayoutInspectorDiscoveryPopUp(it) }
+) : ToggleAction(ACTION_TITLE, ACTION_DESCRIPTION, ACTION_ICON), TooltipDescriptionProvider, TooltipLinkProvider {
 
   override fun isSelected(e: AnActionEvent): Boolean {
     if (!LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled) {
@@ -102,12 +101,12 @@ class ToggleLayoutInspectorAction(
     val project = e.project ?: return
     val deviceId = DEVICE_ID_KEY.getData(e.dataContext) ?: return
     val isEnabled = LayoutInspectorSettings.getInstance().embeddedLayoutInspectorEnabled
-    e.presentation.isVisible =
-      isEnabled && LayoutInspectorManager.getInstance(project).isSupported(deviceId)
+    e.presentation.isVisible = isEnabled && LayoutInspectorManager.getInstance(project).isSupported(deviceId)
 
     val displayView = DISPLAY_VIEW_KEY.getData(e.dataContext)
     val apiLevel = runCatching { displayView?.apiLevel }.getOrNull()
     val serialNumber = runCatching { displayView?.deviceSerialNumber }.getOrNull()
+    val deviceType = DEVICE_TYPE_KEY.getData(e.dataContext)
 
     if (apiLevel == null || serialNumber == null) {
       e.presentation.isEnabled = false
@@ -117,9 +116,13 @@ class ToggleLayoutInspectorAction(
       // TODO(b/285889090): provide a better experience for devices with API lower than 29.
       e.presentation.isEnabled = false
       e.presentation.description = LayoutInspectorBundle.message("api.29.limit")
+    } else if (deviceType == DeviceType.AI_GLASSES) {
+      e.presentation.icon = ACTION_WARNING_ICON
+      e.presentation.description = ACTION_DESCRIPTION_GLASSES
     } else {
+      e.presentation.icon = ACTION_ICON
       e.presentation.isEnabled = true
-      e.presentation.description = ""
+      e.presentation.description = ACTION_DESCRIPTION
     }
 
     if (e.presentation.isVisible && e.presentation.isEnabled) {
@@ -129,40 +132,31 @@ class ToggleLayoutInspectorAction(
   }
 
   /**
-   * Checks if Layout Inspector is active for the current tab, across projects. If yes, disables the
-   * toggle action for the tab in the projects where Layout Inspector is not enabled. This is to
-   * avoid multiple projects trying to connect Layout Inspector to the same process at the same
-   * time, which is not a supported use case.
+   * Checks if Layout Inspector is active for the current tab, across projects. If yes, disables the toggle action for the tab in the
+   * projects where Layout Inspector is not enabled. This is to avoid multiple projects trying to connect Layout Inspector to the same
+   * process at the same time, which is not a supported use case.
    */
   private fun enforceOnlyOneLayoutInspectorPerDeviceAcrossProjects(e: AnActionEvent) {
     val project = e.project ?: return
     val deviceId = DEVICE_ID_KEY.getData(e.dataContext) ?: return
-    val isLayoutInspectorEnabledForTab =
-      LayoutInspectorManager.getInstance(project).isEnabled(deviceId)
-    if (
-      !isLayoutInspectorEnabledForTab &&
-        LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.contains(deviceId)
-    ) {
+    val isLayoutInspectorEnabledForTab = LayoutInspectorManager.getInstance(project).isEnabled(deviceId)
+    if (!isLayoutInspectorEnabledForTab && LayoutInspectorManagerGlobalState.tabsWithLayoutInspector.contains(deviceId)) {
       // Disable the toggle button if Layout Inspector is already active for this device (across
       // multiple projects), except for the tab in the project where Layout Inspector is already
       // active (the user needs to have the option to toggle Layout Inspector off).
       e.presentation.isEnabled = false
-      e.presentation.description =
-        LayoutInspectorBundle.message("layout.inspector.active.in.another.project")
+      e.presentation.description = LayoutInspectorBundle.message("layout.inspector.active.in.another.project")
     }
   }
 
   @Suppress("DialogTitleCapitalization")
   override fun getTooltipLink(owner: JComponent?): TooltipLinkProvider.TooltipLink {
-    return TooltipLinkProvider.TooltipLink(LayoutInspectorBundle.message("learn.more")) {
-      BrowserUtil.browse(STUDIO_DOC_LI_URL)
-    }
+    return TooltipLinkProvider.TooltipLink(LayoutInspectorBundle.message("learn.more")) { BrowserUtil.browse(STUDIO_DOC_LI_URL) }
   }
 }
 
 private fun showLayoutInspectorDiscoveryPopUp(project: Project) {
-  val notificationGroup =
-    NotificationGroupManager.getInstance().getNotificationGroup("LAYOUT_INSPECTOR_DISCOVERY")
+  val notificationGroup = NotificationGroupManager.getInstance().getNotificationGroup("LAYOUT_INSPECTOR_DISCOVERY")
   val notification =
     notificationGroup.createNotification(
       LayoutInspectorBundle.message("layout.inspector.discovery.title"),

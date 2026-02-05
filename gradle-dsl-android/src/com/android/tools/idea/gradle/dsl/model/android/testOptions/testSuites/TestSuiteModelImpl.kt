@@ -75,18 +75,12 @@ class TestSuiteModelImpl(dslElement: TestSuiteDslElement) : GradleDslBlockModel(
 
   override fun addTarget(targetName: String): TargetModel {
     val targetsDslElement = myDslElement.ensurePropertyElement(TargetsDslElement.TARGETS)
-    val targetElement =
-      targetsDslElement.ensureNamedPropertyElement(
-        TargetDslElement.TARGET,
-        GradleNameElement.create(targetName)
-      )
+    val targetElement = targetsDslElement.ensureNamedPropertyElement(TargetDslElement.TARGET, GradleNameElement.create(targetName))
 
     return TargetModelImpl(targetElement)
   }
 
-
   companion object {
-    @JvmStatic
-    val TARGET_VARIANTS: ModelPropertyDescription = ModelPropertyDescription("mTargetVariants", ModelPropertyType.MUTABLE_LIST)
+    @JvmStatic val TARGET_VARIANTS: ModelPropertyDescription = ModelPropertyDescription("mTargetVariants", ModelPropertyType.MUTABLE_LIST)
   }
 }

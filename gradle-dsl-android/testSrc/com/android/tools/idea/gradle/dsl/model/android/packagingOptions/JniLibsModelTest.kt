@@ -18,9 +18,9 @@ package com.android.tools.idea.gradle.dsl.model.android.packagingOptions
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.model.android.android
+import java.io.File
 import org.jetbrains.annotations.SystemDependent
 import org.junit.Test
-import java.io.File
 
 class JniLibsModelTest : AndroidGradleFileModelTestCase() {
 
@@ -110,8 +110,7 @@ class JniLibsModelTest : AndroidGradleFileModelTestCase() {
     REMOVE_ELEMENTS_AND_APPLY("removeElementsAndApply"),
     REMOVE_ELEMENTS_AND_APPLY_EXPECTED("removeElementsAndApplyExpected"),
     EDIT_ELEMENTS_AND_APPLY("editElementsAndApply"),
-    EDIT_ELEMENTS_AND_APPLY_EXPECTED("editElementsAndApplyExpected"),
-    ;
+    EDIT_ELEMENTS_AND_APPLY_EXPECTED("editElementsAndApplyExpected");
 
     override fun toFile(basePath: String, extension: String): File = super.toFile("$basePath/jniLibsModel/$path", extension)
   }

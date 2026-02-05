@@ -50,12 +50,9 @@ import javax.swing.JComponent
 
 const val MODULE_DEPENDENCIES_PLACE_NAME = "module.dependencies.place"
 
-/**
- * Panel that displays the table of "editable" dependencies.
- */
-internal class DeclaredDependenciesPanel(
-  val module: PsModule, context: PsContext
-) : AbstractDependenciesPanel("Declared Dependencies", context, module), DependencySelection {
+/** Panel that displays the table of "editable" dependencies. */
+internal class DeclaredDependenciesPanel(val module: PsModule, context: PsContext) :
+  AbstractDependenciesPanel("Declared Dependencies", context, module), DependencySelection {
   private val updateQueue = createMergingUpdateQueue("declaredDependenciesUpdates", context, this)
   private val dependenciesTableModel: DeclaredDependenciesTableModel
   private val dependenciesTable: DeclaredDependenciesTableView<PsBaseDependency>
@@ -65,9 +62,7 @@ internal class DeclaredDependenciesPanel(
 
   init {
     context.analyzerDaemon.onIssuesChange(this) {
-      updateQueue.enqueueTagged(DeclaredDependenciesPanel::class.java) {
-        updateIssues(selection)
-      }
+      updateQueue.enqueueTagged(DeclaredDependenciesPanel::class.java) { updateIssues(selection) }
     }
 
     placeName = MODULE_DEPENDENCIES_PLACE_NAME
@@ -77,8 +72,7 @@ internal class DeclaredDependenciesPanel(
 
     setIssuesViewer(IssuesViewer(context, SingleModuleIssuesRenderer(context)))
 
-    dependenciesTableModel = DeclaredDependenciesTableModel(
-      module, context)
+    dependenciesTableModel = DeclaredDependenciesTableModel(module, context)
     dependenciesTable = DeclaredDependenciesTableView(dependenciesTableModel, context)
 
     module.addDependencyChangedListener(this) { event ->
@@ -128,11 +122,7 @@ internal class DeclaredDependenciesPanel(
 
   override fun getExtraToolbarActions(focusComponent: JComponent): List<AnAction> {
     val actions = Lists.newArrayList<AnAction>()
-    actions.add(
-        RemoveDependencyAction()
-            .apply {
-              registerCustomShortcutSet(CommonShortcuts.getDelete(), focusComponent)
-            })
+    actions.add(RemoveDependencyAction().apply { registerCustomShortcutSet(CommonShortcuts.getDelete(), focusComponent) })
     return actions
   }
 
@@ -153,8 +143,7 @@ internal class DeclaredDependenciesPanel(
   override fun setSelection(selection: Collection<PsBaseDependency>?): ActionCallback {
     if (selection.isNullOrEmpty()) {
       dependenciesTable.clearSelection()
-    }
-    else {
+    } else {
       dependenciesTable.setSelection(selection.toSet())
     }
     updateDetailsAndIssues()
@@ -205,8 +194,7 @@ internal class DeclaredDependenciesPanel(
     dependenciesTable.selectDependency(toSelect)
   }
 
-  private inner class RemoveDependencyAction internal constructor() :
-      DumbAwareAction("Remove Dependency...", "", IconUtil.removeIcon) {
+  private inner class RemoveDependencyAction internal constructor() : DumbAwareAction("Remove Dependency...", "", IconUtil.removeIcon) {
 
     override fun update(e: AnActionEvent) {
       val details = currentDependencyDetails
@@ -218,12 +206,14 @@ internal class DeclaredDependenciesPanel(
     override fun actionPerformed(e: AnActionEvent) {
       val dependency = selection
       if (dependency != null) {
-        if (Messages.showYesNoDialog(
+        if (
+          Messages.showYesNoDialog(
             e.project,
             "Remove dependency '${dependency.joinedConfigurationNames} ${dependency.name}'?",
             "Remove Dependency",
-            Messages.getQuestionIcon()
-          ) == Messages.YES) {
+            Messages.getQuestionIcon(),
+          ) == Messages.YES
+        ) {
           module.removeDependency(dependency as PsDeclaredDependency)
           dependenciesTable.selectFirstRow()
         }

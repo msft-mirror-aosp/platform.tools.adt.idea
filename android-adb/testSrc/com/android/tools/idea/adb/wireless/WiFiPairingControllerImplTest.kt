@@ -15,7 +15,12 @@
  */
 package com.android.tools.idea.adb.wireless
 
+import com.android.adblib.AdbFeatures.TRACK_MDNS_SERVICE
+import com.android.adblib.MdnsPairingService
+import com.android.adblib.MdnsServices
+import com.android.adblib.MdnsTrackServiceInfo
 import com.android.adblib.ServerStatus
+import com.android.adblib.ServiceInstanceName
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.TimeoutRemainder
 import com.android.tools.adtui.swing.FakeUi
@@ -28,7 +33,9 @@ import com.android.tools.idea.adb.AdbOptionsService
 import com.android.tools.idea.adb.AdbServerMdnsBackend
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.ThreadingCheckRule
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.WIFI_PAIRING_EVENT
 import com.google.wireless.android.sdk.stats.ApiVersion
@@ -54,6 +61,8 @@ import javax.swing.JLabel
 import javax.swing.JTextField
 import javax.swing.text.html.HTML
 import javax.swing.text.html.HTMLDocument
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Rule
@@ -108,15 +117,11 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     )
   }
 
-  private val notificationService: MockWiFiPairingNotificationService by lazy {
-    MockWiFiPairingNotificationService(project)
-  }
+  private val notificationService: MockWiFiPairingNotificationService by lazy { MockWiFiPairingNotificationService(project) }
 
   private val model: MockWiFiPairingModel by lazy { MockWiFiPairingModel() }
 
-  private val view: MockDevicePairingView by lazy {
-    MockDevicePairingView(project, notificationService, model)
-  }
+  private val view: MockDevicePairingView by lazy { MockDevicePairingView(project, notificationService, model) }
 
   private val controller: WiFiPairingControllerImpl by lazy {
     WiFiPairingControllerImpl(
@@ -140,20 +145,14 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     super.setUp()
     testTimeout = TimeoutRemainder(30, testTimeUnit)
     enableHeadlessDialogs(testRootDisposable)
+    StudioFlags.ADB_WIFI_V2_DIALOG.overrideForTest(true, testRootDisposable)
   }
 
   @Suppress("SameParameterValue")
-  private fun createPairingCodePairingController(
-    pairingMdnsService: PairingMdnsService
-  ): PairingCodePairingController {
+  private fun createPairingCodePairingController(pairingMdnsService: PairingMdnsService): PairingCodePairingController {
     val model = PairingCodePairingModel(pairingMdnsService)
-    val view =
-      MockPairingCodePairingView(project, notificationService, model).also {
-        lastPairingCodeView = it
-      }
-    return PairingCodePairingController(project.coroutineScope, devicePairingService, view).also {
-      lastPairingCodeController = it
-    }
+    val view = MockPairingCodePairingView(project, notificationService, model).also { lastPairingCodeView = it }
+    return PairingCodePairingController(project.coroutineScope, devicePairingService, view).also { lastPairingCodeController = it }
   }
 
   @Test
@@ -180,8 +179,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
         .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
       whenever(systemRetriever.instance.isMac()).thenReturn(false)
-      whenever(adbService.instance.getServerStatus())
-        .thenReturn(ServerStatus(version = adbVersionBrokenOnMac))
+      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionBrokenOnMac))
       whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendBrokenOnMac)
 
       val support = devicePairingService.checkMdnsSupport()
@@ -200,8 +198,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
         .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
       whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus())
-        .thenReturn(ServerStatus(version = adbVersionBrokenOnMac))
+      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionBrokenOnMac))
       whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendBrokenOnMac)
 
       val support = devicePairingService.checkMdnsSupport()
@@ -220,8 +217,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
         .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
       whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus())
-        .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
       whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendBrokenOnMac)
 
       val support = devicePairingService.checkMdnsSupport()
@@ -240,8 +236,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
         .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
       whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus())
-        .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
       whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendWorkingOnMac)
 
       val support = devicePairingService.checkMdnsSupport()
@@ -260,10 +255,8 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
         .thenReturn(AdbCommandResult(0, listOf("ERROR: mdns discovery disabled"), listOf()))
 
       whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus())
-        .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
-      whenever(adbOptionRetriever.instance.getMdnsBackend())
-        .thenReturn(AdbServerMdnsBackend.DISABLED)
+      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+      whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(AdbServerMdnsBackend.DISABLED)
 
       val support = devicePairingService.checkMdnsSupport()
       Assert.assertEquals(MdnsSupportState.AdbDisabled, support)
@@ -317,8 +310,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
   fun viewShouldShowErrorIfMdnsCheckFails() = runBlocking {
     // Prepare
     adbService.useMock = true
-    whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
-      .thenReturn(AdbCommandResult(1, listOf(), listOf()))
+    whenever(adbService.instance.executeCommand(listOf("mdns", "check"), "")).thenReturn(AdbCommandResult(1, listOf(), listOf()))
 
     // Act
     createModalDialogAndInteractWithIt({ controller.showDialog() }) {
@@ -352,8 +344,11 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus())
-      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
+
+    whenever(adbService.instance.trackMdnsServices()).thenReturn(emptyFlow())
 
     // Act
     createModalDialogAndInteractWithIt({ controller.showDialog() }) {
@@ -369,23 +364,18 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
 
   /**
    * Summary of this test:
-   * * Display a QRCode that encodes a string of the form
-   *   `"WIFI:T:ADB;S:${generatedServiceName};P:${generatedPassword};;"`. `generatedServiceName` and
-   *   `generatedPassword` are random strings generated by Android Studio. The
-   *   `generatedServiceName` always starts with the `studio-` prefix to avoid collision with `adb-`
-   *   prefix.
-   * * Simulate the phone scanning the QR code, which results in exposing a mDNS service of the form
-   *   `"${generatedServiceName} _adb-tls-pairing._tcp. ${phoneIpAddress}:${phonePairingPort}"`. The
-   *   service is discovered by running `"adb mdns services"` in a loop.
-   * * Given that ${generatedServiceName} match the service name in the QR code, the controller
-   *   executes a `"adb mdns pair ${phoneIpAddress}:${phonePairingPort} ${generatedPassword}"`
-   *   command through ADB. This command returns the phone `IP/port` address for connecting (the
-   *   `port` for connecting is not the same as the `port` using for pairing) as well as the phone
-   *   mDNS service name (of the form `"adb-xxxx"`).
-   * * After the pair command succeeds, we wait for the phone to show up as a connected device via
-   *   `"adb devices"`. We match the phone using the results from the command above (mDNS service
-   *   name): the phone serial number contains the mDNS service names of the phone found in the step
-   *   above (i.e. `"adb-xxxx"`).
+   * * Display a QRCode that encodes a string of the form `"WIFI:T:ADB;S:${generatedServiceName};P:${generatedPassword};;"`.
+   *   `generatedServiceName` and `generatedPassword` are random strings generated by Android Studio. The `generatedServiceName` always
+   *   starts with the `studio-` prefix to avoid collision with `adb-` prefix.
+   * * Simulate the phone scanning the QR code, which results in exposing a mDNS service of the form `"${generatedServiceName}
+   *   _adb-tls-pairing._tcp. ${phoneIpAddress}:${phonePairingPort}"`. The service is discovered by running `"adb mdns services"` in a loop.
+   * * Given that ${generatedServiceName} match the service name in the QR code, the controller executes a `"adb mdns pair
+   *   ${phoneIpAddress}:${phonePairingPort} ${generatedPassword}"` command through ADB. This command returns the phone `IP/port` address
+   *   for connecting (the `port` for connecting is not the same as the `port` using for pairing) as well as the phone mDNS service name (of
+   *   the form `"adb-xxxx"`).
+   * * After the pair command succeeds, we wait for the phone to show up as a connected device via `"adb devices"`. We match the phone using
+   *   the results from the command above (mDNS service name): the phone serial number contains the mDNS service names of the phone found in
+   *   the step above (i.e. `"adb-xxxx"`).
    */
   @Test
   fun controllerShouldPairDeviceUsingQrCodeOnceItShowsUp() = runBlocking {
@@ -396,8 +386,6 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     val phoneIpAddress = "192.168.1.86"
     val phonePairingPort = 37313
     val phoneServiceName = "adb-939AX05XBZ-vWgJpq"
-    val phonePairingString =
-      "${generatedServiceName}\t_adb-tls-pairing._tcp.\t${phoneIpAddress}:${phonePairingPort}"
     val phoneConnectPort = 12345
     val phoneDeviceInfo =
       AdbOnlineDevice(
@@ -414,34 +402,16 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus())
-      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
 
-    whenever(adbService.instance.executeCommand(listOf("mdns", "services"), ""))
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
-      .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf("List of discovered mdns services", phonePairingString),
-          listOf(),
-        )
-      )
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 
-    whenever(
-        adbService.instance.executeCommand(
-          listOf("pair", "${phoneIpAddress}:${phonePairingPort}"),
-          generatedPassword + newLine(),
-        )
-      )
+    whenever(adbService.instance.trackMdnsServices())
+      .thenReturn(flowOf(createMdnsPairingService(generatedServiceName, phoneIpAddress, phonePairingPort)))
+
+    whenever(adbService.instance.executeCommand(listOf("pair", "${phoneIpAddress}:${phonePairingPort}"), generatedPassword + newLine()))
       .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf(
-            "Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"
-          ),
-          listOf(),
-        )
+        AdbCommandResult(0, listOf("Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"), listOf())
       )
 
     whenever(adbService.instance.waitForOnlineDevice(any())).thenReturn(phoneDeviceInfo)
@@ -477,14 +447,12 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       Truth.assertThat(mdnsService2).isEqualTo(mdnsService)
       Truth.assertThat(device).isEqualTo(phoneDeviceInfo)
 
-      val (title, content, type, icon) =
-        pumpAndWait(notificationService.showBalloonTracker.consume())
+      val (title, content, type, icon) = pumpAndWait(notificationService.showBalloonTracker.consume())
       Truth.assertThat(title).isEqualTo("${device.displayString} connected over Wi-Fi")
       Truth.assertThat(content).isEqualTo("The device is now available to use.")
       Truth.assertThat(type).isEqualTo(NotificationType.INFORMATION)
       Truth.assertThat(icon).isEqualTo(StudioIcons.Common.SUCCESS)
-      Truth.assertThat(usageTrackerRule.events())
-        .containsExactly(wifiPairingSuccess("35.0.2", 35L, "UpsideDownCake", QR_CODE))
+      Truth.assertThat(usageTrackerRule.events()).containsExactly(wifiPairingSuccess("35.0.2", 35L, "UpsideDownCake", QR_CODE))
     }
   }
 
@@ -496,46 +464,25 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     val phoneIpAddress = "192.168.1.86"
     val phonePairingPort = 37313
     val phoneServiceName = "adb-939AX05XBZ-vWgJpq"
-    val phonePairingString =
-      "${generatedServiceName}\t_adb-tls-pairing._tcp.\t${phoneIpAddress}:${phonePairingPort}"
     val phoneConnectPort = 12345
 
     adbService.useMock = true
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus())
-      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
 
-    whenever(adbService.instance.executeCommand(listOf("mdns", "services"), ""))
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
+
+    whenever(adbService.instance.trackMdnsServices())
+      .thenReturn(flowOf(createMdnsPairingService(generatedServiceName, phoneIpAddress, phonePairingPort)))
+
+    whenever(adbService.instance.executeCommand(listOf("pair", "${phoneIpAddress}:${phonePairingPort}"), generatedPassword + newLine()))
       .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf("List of discovered mdns services", phonePairingString),
-          listOf(),
-        )
+        AdbCommandResult(0, listOf("Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"), listOf())
       )
 
-    whenever(
-        adbService.instance.executeCommand(
-          listOf("pair", "${phoneIpAddress}:${phonePairingPort}"),
-          generatedPassword + newLine(),
-        )
-      )
-      .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf(
-            "Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"
-          ),
-          listOf(),
-        )
-      )
-
-    whenever(adbService.instance.waitForOnlineDevice(any()))
-      .thenThrow(RuntimeException(Exception()))
+    whenever(adbService.instance.waitForOnlineDevice(any())).thenThrow(RuntimeException(Exception()))
 
     // Act
     createModalDialogAndInteractWithIt({ controller.showDialog() }) {
@@ -549,31 +496,25 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
 
       // Assert
       Truth.assertThat(usageTrackerRule.events())
-        .containsExactly(
-          wifiPairingFailure("35.0.2", QR_CODE, listOf("RuntimeException", "Exception"))
-        )
+        .containsExactly(wifiPairingFailure("35.0.2", QR_CODE, listOf("RuntimeException", "Exception")))
     }
   }
 
   /**
    * Summary of this test:
-   * * Simulate the phone entering a pairing code pairing session, which results in exposing a mDNS
-   *   service of the form `"${generatedServiceName} _adb-tls-pairing._tcp.
-   *   ${phoneIpAddress}:${phonePairingPort}"`. The service is discovered by running `"adb mdns
-   *   services"` in a loop.
-   * * When the new mDNS service is detected, a new "Pair" panel is shown in the right hand side of
-   *   the pairing dialog, with a "Pair" button.
-   * * The test simulates clicking that button, which opens a new "Pairing Code Pairing" dialog,
-   *   then simulates a 6 digit pairing code in the new dialog. Finally, the test simulates clicking
-   *   the "Ok" button in the new dialog, which results in executing a `"adb mdns pair
-   *   ${phoneIpAddress}:${phonePairingPort} ${phonePairingCode}"` command through ADB. This command
-   *   returns the phone `IP/port` address for connecting (the `port` for connecting is not the same
-   *   as the `port` using for pairing) as well as the phone mDNS service name (of the form
-   *   `"adb-xxxx"`).
-   * * After the pair command succeeds, we wait for the phone to show up as a connected device via
-   *   `"adb devices"`. We match the phone using the results from the command above (mDNS service
-   *   name): the phone serial number contains the mDNS service names of the phone found in the step
-   *   above (i.e. `"adb-xxxx"`).
+   * * Simulate the phone entering a pairing code pairing session, which results in exposing a mDNS service of the form
+   *   `"${generatedServiceName} _adb-tls-pairing._tcp. ${phoneIpAddress}:${phonePairingPort}"`. The service is discovered by running `"adb
+   *   mdns services"` in a loop.
+   * * When the new mDNS service is detected, a new "Pair" panel is shown in the right hand side of the pairing dialog, with a "Pair"
+   *   button.
+   * * The test simulates clicking that button, which opens a new "Pairing Code Pairing" dialog, then simulates a 6 digit pairing code in
+   *   the new dialog. Finally, the test simulates clicking the "Ok" button in the new dialog, which results in executing a `"adb mdns pair
+   *   ${phoneIpAddress}:${phonePairingPort} ${phonePairingCode}"` command through ADB. This command returns the phone `IP/port` address for
+   *   connecting (the `port` for connecting is not the same as the `port` using for pairing) as well as the phone mDNS service name (of the
+   *   form `"adb-xxxx"`).
+   * * After the pair command succeeds, we wait for the phone to show up as a connected device via `"adb devices"`. We match the phone using
+   *   the results from the command above (mDNS service name): the phone serial number contains the mDNS service names of the phone found in
+   *   the step above (i.e. `"adb-xxxx"`).
    */
   @Test
   fun controllerShouldPairDeviceUsingPairingCodeOnceItShowsUp() = runBlocking {
@@ -581,8 +522,6 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     val phoneIpAddress = "192.168.1.86"
     val phonePairingPort = 37313
     val phoneServiceName = "adb-939AX05XBZ-vWgJpq"
-    val phonePairingString =
-      "${phoneServiceName}\t_adb-tls-pairing._tcp.\t${phoneIpAddress}:${phonePairingPort}"
     val phonePairingCode = "123456"
     val phoneConnectPort = 12345
     val phoneDeviceInfo =
@@ -600,44 +539,22 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus())
-      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
 
-    whenever(adbService.instance.executeCommand(listOf("mdns", "services"), ""))
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
-      .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf("List of discovered mdns services", phonePairingString),
-          listOf(),
-        )
-      )
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 
-    whenever(
-        adbService.instance.executeCommand(
-          listOf("pair", "${phoneIpAddress}:${phonePairingPort}"),
-          phonePairingCode + newLine(),
-        )
-      )
+    whenever(adbService.instance.trackMdnsServices())
+      .thenReturn(flowOf(createMdnsPairingService(phoneServiceName, phoneIpAddress, phonePairingPort)))
+
+    whenever(adbService.instance.executeCommand(listOf("pair", "${phoneIpAddress}:${phonePairingPort}"), phonePairingCode + newLine()))
       .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf(
-            "Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"
-          ),
-          listOf(),
-        )
+        AdbCommandResult(0, listOf("Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"), listOf())
       )
 
     whenever(adbService.instance.waitForOnlineDevice(any())).thenReturn(phoneDeviceInfo)
 
-    fun enterPairingCode(
-      pairingCodeDialog: DialogWrapper,
-      @Suppress("SameParameterValue") phonePairingCode: String,
-    ) {
-      val pairingView =
-        lastPairingCodeView ?: throw AssertionError("Pairing Code Pairing View show be set")
+    fun enterPairingCode(pairingCodeDialog: DialogWrapper, @Suppress("SameParameterValue") phonePairingCode: String) {
+      val pairingView = lastPairingCodeView ?: throw AssertionError("Pairing Code Pairing View show be set")
 
       val fakeUi = FakeUi(pairingCodeDialog.rootPane)
 
@@ -645,9 +562,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       phonePairingCode.forEachIndexed { index, ch ->
         // Note: FakeUi keyboard does not emulate focus, so we need to focus each
         //       custom component individually
-        fakeUi.keyboard.setFocus(
-          fakeUi.getComponent<JTextField> { c -> c.name == "PairingCode-Digit-${index}" }
-        )
+        fakeUi.keyboard.setFocus(fakeUi.getComponent<JTextField> { c -> c.name == "PairingCode-Digit-${index}" })
         fakeUi.keyboard.type(ch.code)
       }
 
@@ -679,14 +594,12 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
 
       Truth.assertThat(device).isEqualTo(phoneDeviceInfo)
 
-      val (title, content, type, icon) =
-        pumpAndWait(notificationService.showBalloonTracker.consume())
+      val (title, content, type, icon) = pumpAndWait(notificationService.showBalloonTracker.consume())
       Truth.assertThat(title).isEqualTo("${device.displayString} connected over Wi-Fi")
       Truth.assertThat(content).isEqualTo("The device is now available to use.")
       Truth.assertThat(type).isEqualTo(NotificationType.INFORMATION)
       Truth.assertThat(icon).isEqualTo(StudioIcons.Common.SUCCESS)
-      Truth.assertThat(usageTrackerRule.events())
-        .containsExactly(wifiPairingSuccess("35.0.2", 35L, "UpsideDownCake", PAIRING_CODE))
+      Truth.assertThat(usageTrackerRule.events()).containsExactly(wifiPairingSuccess("35.0.2", 35L, "UpsideDownCake", PAIRING_CODE))
     }
 
     // Act
@@ -694,8 +607,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       val fakeUi = FakeUi(it.rootPane)
 
       // Activate the needed page of the JBTabbedPane. Tabs are implemented by JLabel.
-      val pairingCodeTab =
-        fakeUi.getComponent<JLabel> { label -> label.text == "Pair using pairing code" }
+      val pairingCodeTab = fakeUi.getComponent<JLabel> { label -> label.text == "Pair using pairing code" }
       fakeUi.clickOn(pairingCodeTab)
 
       // Assert
@@ -729,8 +641,6 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     val phoneIpAddress = "192.168.1.86"
     val phonePairingPort = 37313
     val phoneServiceName = "adb-939AX05XBZ-vWgJpq"
-    val phonePairingString =
-      "${phoneServiceName}\t_adb-tls-pairing._tcp.\t${phoneIpAddress}:${phonePairingPort}"
     val phonePairingCode = "123456"
     val phoneConnectPort = 12345
 
@@ -738,45 +648,22 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus())
-      .thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
 
-    whenever(adbService.instance.executeCommand(listOf("mdns", "services"), ""))
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
-      .thenReturn(AdbCommandResult(0, listOf(), listOf())) // Simulate user taking some time to scan
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
+
+    whenever(adbService.instance.trackMdnsServices())
+      .thenReturn(flowOf(createMdnsPairingService(phoneServiceName, phoneIpAddress, phonePairingPort)))
+
+    whenever(adbService.instance.executeCommand(listOf("pair", "${phoneIpAddress}:${phonePairingPort}"), phonePairingCode + newLine()))
       .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf("List of discovered mdns services", phonePairingString),
-          listOf(),
-        )
+        AdbCommandResult(0, listOf("Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"), listOf())
       )
 
-    whenever(
-        adbService.instance.executeCommand(
-          listOf("pair", "${phoneIpAddress}:${phonePairingPort}"),
-          phonePairingCode + newLine(),
-        )
-      )
-      .thenReturn(
-        AdbCommandResult(
-          0,
-          listOf(
-            "Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"
-          ),
-          listOf(),
-        )
-      )
+    whenever(adbService.instance.waitForOnlineDevice(any())).thenThrow(RuntimeException(Exception()))
 
-    whenever(adbService.instance.waitForOnlineDevice(any()))
-      .thenThrow(RuntimeException(Exception()))
-
-    fun enterPairingCode(
-      pairingCodeDialog: DialogWrapper,
-      @Suppress("SameParameterValue") phonePairingCode: String,
-    ) {
-      val pairingView =
-        lastPairingCodeView ?: throw AssertionError("Pairing Code Pairing View show be set")
+    fun enterPairingCode(pairingCodeDialog: DialogWrapper, @Suppress("SameParameterValue") phonePairingCode: String) {
+      val pairingView = lastPairingCodeView ?: throw AssertionError("Pairing Code Pairing View show be set")
 
       val fakeUi = FakeUi(pairingCodeDialog.rootPane)
 
@@ -784,9 +671,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       phonePairingCode.forEachIndexed { index, ch ->
         // Note: FakeUi keyboard does not emulate focus, so we need to focus each
         //       custom component individually
-        fakeUi.keyboard.setFocus(
-          fakeUi.getComponent<JTextField> { c -> c.name == "PairingCode-Digit-${index}" }
-        )
+        fakeUi.keyboard.setFocus(fakeUi.getComponent<JTextField> { c -> c.name == "PairingCode-Digit-${index}" })
         fakeUi.keyboard.type(ch.code)
       }
 
@@ -806,9 +691,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       pumpAndWait(pairingView.showWaitingForDeviceProgressTracker.consume())
 
       Truth.assertThat(usageTrackerRule.events())
-        .containsExactly(
-          wifiPairingFailure("35.0.2", PAIRING_CODE, listOf("RuntimeException", "Exception"))
-        )
+        .containsExactly(wifiPairingFailure("35.0.2", PAIRING_CODE, listOf("RuntimeException", "Exception")))
     }
 
     // Act
@@ -816,8 +699,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       val fakeUi = FakeUi(it.rootPane)
 
       // Activate the needed page of the JBTabbedPane. Tabs are implemented by JLabel.
-      val pairingCodeTab =
-        fakeUi.getComponent<JLabel> { label -> label.text == "Pair using pairing code" }
+      val pairingCodeTab = fakeUi.getComponent<JLabel> { label -> label.text == "Pair using pairing code" }
       fakeUi.clickOn(pairingCodeTab)
 
       // Assert
@@ -839,13 +721,27 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     }
   }
 
+  private fun createMdnsPairingService(instance: String, ipv4: String, port: Int): MdnsServices {
+    val pairingService =
+      MdnsPairingService(
+        MdnsTrackServiceInfo(
+          ServiceInstanceName(instance, "_adb-tls-pairing._tcp", "local"),
+          ipv4,
+          emptyList(),
+          port,
+          null,
+          null,
+          null,
+          null,
+          null,
+        )
+      )
+    return MdnsServices(emptyList(), emptyList(), listOf(pairingService))
+  }
+
   @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
   fun <V> pumpAndWait(future: Future<V>): V {
-    return pumpEventsAndWaitForFuture(
-      future,
-      testTimeout.getRemainingUnits(TimeUnit.SECONDS),
-      testTimeUnit,
-    )
+    return pumpEventsAndWaitForFuture(future, testTimeout.getRemainingUnits(TimeUnit.SECONDS), testTimeUnit)
   }
 
   private fun newLine(): String {
@@ -859,12 +755,7 @@ private fun UsageTrackerRule.events() =
     .map { it.studioEvent.wifiPairingEvent.toBuilder().clearElapsedTimeMs().build() }
 
 @Suppress("SameParameterValue")
-private fun wifiPairingSuccess(
-  adbVersion: String,
-  deviceApi: Long,
-  deviceCodeName: String,
-  method: PairingMethod,
-) =
+private fun wifiPairingSuccess(adbVersion: String, deviceApi: Long, deviceCodeName: String, method: PairingMethod) =
   WifiPairingEvent.newBuilder()
     .setAdbVersion(adbVersion)
     .setDeviceApiVersion(ApiVersion.newBuilder().setApiLevel(deviceApi).setCodename(deviceCodeName))
@@ -873,11 +764,7 @@ private fun wifiPairingSuccess(
     .build()
 
 @Suppress("SameParameterValue")
-private fun wifiPairingFailure(
-  adbVersion: String,
-  method: PairingMethod,
-  exceptions: List<String>,
-) =
+private fun wifiPairingFailure(adbVersion: String, method: PairingMethod, exceptions: List<String>) =
   WifiPairingEvent.newBuilder()
     .setAdbVersion(adbVersion)
     .setPairingMethod(method)

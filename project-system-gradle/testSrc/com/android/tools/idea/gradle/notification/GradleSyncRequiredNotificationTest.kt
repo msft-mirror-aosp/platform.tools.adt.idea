@@ -37,11 +37,11 @@ import org.junit.Test
 
 class GradleSyncRequiredNotificationTest {
 
-  @get:Rule
-  val androidProjectRule = AndroidProjectRule.testProjectNoSync(LightGradleTestProjects.SIMPLE_APPLICATION)
+  @get:Rule val androidProjectRule = AndroidProjectRule.testProjectNoSync(LightGradleTestProjects.SIMPLE_APPLICATION)
 
   private val project: Project
     get() = androidProjectRule.project
+
   private val fixture: JavaCodeInsightTestFixture
     get() = androidProjectRule.fixture
 
@@ -49,14 +49,16 @@ class GradleSyncRequiredNotificationTest {
   fun testModifyingGradleBuildFileDisplaysNotification() {
     openFileInEditor("app/build.gradle", true)
     assertNotificationPanelText(
-      "Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly.")
+      "Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly."
+    )
   }
 
   @Test
   fun testModifyingGradleConfigPropertiesFileDisplaysNotification() {
     openFileInEditor(".gradle/config.properties", true)
     assertNotificationPanelText(
-      "Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly.")
+      "Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly."
+    )
   }
 
   @Test
@@ -64,7 +66,8 @@ class GradleSyncRequiredNotificationTest {
     project.createDaemonJvmPropertiesFile("17")
     openFileInEditor("gradle/gradle-daemon-jvm.properties", true)
     assertNotificationPanelText(
-      "Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly.")
+      "Gradle files have changed since last project sync. A project sync may be necessary for the IDE to work properly."
+    )
   }
 
   @Test
@@ -84,9 +87,7 @@ class GradleSyncRequiredNotificationTest {
         }
         GradleFilesUpdater.getInstance(project).updateFileHashes(GradleFiles.getInstance(project).updateCallback())
         if (editFile) {
-          WriteCommandAction.runWriteCommandAction(project) {
-            fixture.editor.executeAndSave { fixture.editor.insertText("test") }
-          }
+          WriteCommandAction.runWriteCommandAction(project) { fixture.editor.executeAndSave { fixture.editor.insertText("test") } }
         }
       }
     }

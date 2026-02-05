@@ -16,28 +16,45 @@
 package com.android.tools.idea.lang.proguardR8
 
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class ProguardR8CustomFoldingBuilderTest : JavaCodeInsightFixtureTestCase() {
+@RunWith(Parameterized::class)
+class ProguardR8CustomFoldingBuilderTest(private val fileType: LanguageFileType) : JavaCodeInsightFixtureTestCase() {
 
+  companion object {
+    @Suppress("unused")
+    @JvmStatic
+    @get:Parameterized.Parameters(name = "{0}")
+    val fileType = listOf(ProguardR8FileType.INSTANCE, KeepRulesR8FileType.INSTANCE)
+  }
+
+  @Test
   fun testCustomRegions() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
-        #region
-        
-        #endregion
-      """.trimIndent()
+      #region
+
+      #endregion
+      """
+        .trimIndent(),
     )
 
     val res = (myFixture as CodeInsightTestFixtureImpl).getFoldingDescription(false)
 
-    assertThat(res).isEqualTo(
-      """
-      <fold text='...'>#region
+    assertThat(res)
+      .isEqualTo(
+        """
+        <fold text='...'>#region
 
-      #endregion</fold>
-    """.trimIndent())
+        #endregion</fold>
+        """
+          .trimIndent()
+      )
   }
 }

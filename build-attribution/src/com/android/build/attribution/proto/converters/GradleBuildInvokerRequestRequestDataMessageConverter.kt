@@ -21,7 +21,6 @@ import com.android.build.attribution.proto.PairEnumFinder
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import com.android.tools.idea.gradle.util.BuildMode
 import com.google.common.annotations.VisibleForTesting
-import java.io.File
 
 class GradleBuildInvokerRequestRequestDataMessageConverter {
   companion object {
@@ -36,8 +35,7 @@ class GradleBuildInvokerRequestRequestDataMessageConverter {
         .setIsPassParentEnvs(requestData.isPassParentEnvs)
         .build()
 
-    fun construct(requestData: BuildAnalysisResultsMessage.RequestData)
-      : HistoricalRequestData {
+    fun construct(requestData: BuildAnalysisResultsMessage.RequestData): HistoricalRequestData {
       val buildMode = constructBuildMode(requestData.buildMode)
       val env = mutableMapOf<String, String>()
       requestData.envList.forEach { env[it.envKey] = it.envValue }
@@ -47,7 +45,7 @@ class GradleBuildInvokerRequestRequestDataMessageConverter {
         gradleTasks = requestData.gradleTasksList,
         jvmArguments = requestData.jvmArgumentsList,
         commandLineArguments = requestData.commandLineArgumentsList,
-        env = env
+        env = env,
       )
     }
 
@@ -59,15 +57,13 @@ class GradleBuildInvokerRequestRequestDataMessageConverter {
       }
 
     private fun transformEnv(key: String, value: String) =
-      BuildAnalysisResultsMessage.RequestData.Env.newBuilder()
-        .setEnvKey(key)
-        .setEnvValue(value)
-        .build()
+      BuildAnalysisResultsMessage.RequestData.Env.newBuilder().setEnvKey(key).setEnvValue(value).build()
 
     @VisibleForTesting
-    fun constructBuildMode(mode: BuildAnalysisResultsMessage.RequestData.BuildMode) = when (mode) {
-      BuildAnalysisResultsMessage.RequestData.BuildMode.UNSPECIFIED -> null
-      else -> PairEnumFinder.bToA<BuildMode, BuildAnalysisResultsMessage.RequestData.BuildMode>(mode)
-    }
+    fun constructBuildMode(mode: BuildAnalysisResultsMessage.RequestData.BuildMode) =
+      when (mode) {
+        BuildAnalysisResultsMessage.RequestData.BuildMode.UNSPECIFIED -> null
+        else -> PairEnumFinder.bToA<BuildMode, BuildAnalysisResultsMessage.RequestData.BuildMode>(mode)
+      }
   }
 }

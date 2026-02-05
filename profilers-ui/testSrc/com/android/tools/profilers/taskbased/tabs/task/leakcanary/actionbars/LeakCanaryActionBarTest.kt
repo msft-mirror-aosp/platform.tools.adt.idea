@@ -48,16 +48,13 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 
-class LeakCanaryActionBarTest: WithFakeTimer {
+class LeakCanaryActionBarTest : WithFakeTimer {
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
 
-  @Rule
-  @JvmField
-  val grpcChannel = FakeGrpcChannel("LeakCanaryModelTestChannel", transportService)
+  @Rule @JvmField val grpcChannel = FakeGrpcChannel("LeakCanaryModelTestChannel", transportService)
 
-  @get:Rule
-  val composeTestRule = StudioComposeTestRule.createStudioComposeTestRule()
+  @get:Rule val composeTestRule = StudioComposeTestRule.createStudioComposeTestRule()
 
   private lateinit var profilers: StudioProfilers
   private lateinit var leakCanaryModel: LeakCanaryModel
@@ -73,9 +70,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   @Test
   fun `test action bar display when recording`() {
     leakCanaryModel.setIsRecording(true)
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(ACTION_BAR_RECORDING).assertIsDisplayed()
     composeTestRule.onNodeWithText(ACTION_BAR_STOP_RECORDING).assertIsDisplayed()
   }
@@ -83,9 +78,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   @Test
   fun `test action bar display when not recording`() {
     leakCanaryModel.setIsRecording(false)
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(ACTION_BAR_RECORDING).assertDoesNotExist()
     composeTestRule.onNodeWithText(ACTION_BAR_STOP_RECORDING).assertDoesNotExist()
   }
@@ -93,18 +86,26 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   @Test
   fun `test stop recording button action`() {
     val startTimestamp = System.currentTimeMillis()
-    transportService.setCommandHandler(Commands.Command.CommandType.START_LEAKCANARY_TASK,
-                                       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp))
-    transportService.setCommandHandler(Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
-                                       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp))
-    transportService.setCommandHandler(Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
-                                       FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp))
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.START_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.CHECK_LEAKCANARY_PRESENT,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), startTimestamp),
+    )
     leakCanaryModel.startListening()
     // Recording is in progress
     assertTrue(leakCanaryModel.isRecording.value)
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(ACTION_BAR_STOP_RECORDING).performClick()
     // Click on 'Stop Recording' has stopped the recording
     assertFalse(leakCanaryModel.isRecording.value)
@@ -113,9 +114,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   @Test
   fun `retained object count from logcat is displayed`() {
     leakCanaryModel.setIsRecording(true)
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
 
     // Test for singular case
     leakCanaryModel.setObjectRetainedCount(1)
@@ -135,12 +134,10 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   fun `analysis progress from logcat is displayed`() {
     leakCanaryModel.setIsRecording(true)
     // Set retained object count to meet the requirement to trigger analysis view
-    leakCanaryModel.setObjectRetainedCount(leakCanaryModel.requiredRetainedObjectCount)
+    leakCanaryModel.setObjectRetainedCount(leakCanaryModel.retainedObjectThreshold.value)
     leakCanaryModel.setAnalysisProgress(50)
 
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
 
     // Verify that the analysis progress UI is displayed
     composeTestRule.onNodeWithText(LEAKCANARY_ANALYSIS).assertIsDisplayed()
@@ -150,18 +147,15 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   @Test
   fun `status is cleared when analysis is complete`() {
     leakCanaryModel.setIsRecording(true)
-    leakCanaryModel.setObjectRetainedCount(leakCanaryModel.requiredRetainedObjectCount)
+    leakCanaryModel.setObjectRetainedCount(leakCanaryModel.retainedObjectThreshold.value)
     leakCanaryModel.setAnalysisProgress(100)
 
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
 
     composeTestRule.onNodeWithText(LEAKCANARY_ANALYSIS).assertIsDisplayed()
 
     leakCanaryModel.setObjectRetainedCount(0)
     leakCanaryModel.setAnalysisProgress(0)
-
 
     composeTestRule.onNodeWithText(LEAKCANARY_ANALYSIS).assertDoesNotExist()
     composeTestRule.onNodeWithTag("AnalysisProgressBar").assertDoesNotExist()
@@ -171,9 +165,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
   fun `test force heap dump button not visible when flag is disabled`() {
     ideProfilerServices.enableLeakCanaryMilestone2(false)
     leakCanaryModel.setIsRecording(true)
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertDoesNotExist()
   }
 
@@ -187,9 +179,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
     // Button is enabled when at least one object is retained.
     leakCanaryModel.setObjectRetainedCount(1)
 
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsEnabled()
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).performClick()
@@ -209,9 +199,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
     // Button is disabled when 0 objects are retained.
     leakCanaryModel.setObjectRetainedCount(0)
 
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsNotEnabled()
   }
@@ -227,9 +215,7 @@ class LeakCanaryActionBarTest: WithFakeTimer {
     leakCanaryModel.setObjectRetainedCount(1)
     leakCanaryModel.setAnalysisProgress(50)
 
-    composeTestRule.setContent {
-      LeakCanaryActionBar(leakCanaryModel = leakCanaryModel)
-    }
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsNotEnabled()
   }

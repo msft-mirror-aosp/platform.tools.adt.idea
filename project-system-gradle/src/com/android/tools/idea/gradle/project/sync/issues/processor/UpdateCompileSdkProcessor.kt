@@ -31,9 +31,8 @@ import com.intellij.util.containers.toArray
 import java.util.Arrays
 import java.util.stream.Collectors
 
-class UpdateCompileSdkProcessor(
-  val project: Project,
-  private val buildFilesWithNewMinCompileSdk: Map<VirtualFile, Int>): BaseRefactoringProcessor(project) {
+class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWithNewMinCompileSdk: Map<VirtualFile, Int>) :
+  BaseRefactoringProcessor(project) {
   override fun createUsageViewDescriptor(usages: Array<out UsageInfo>): UsageViewDescriptor =
     object : UsageViewDescriptor {
       override fun getElements(): Array<PsiElement> = PsiElement.EMPTY_ARRAY
@@ -42,7 +41,7 @@ class UpdateCompileSdkProcessor(
 
       override fun getCodeReferencesText(usagesCount: Int, filesCount: Int): String =
         "Compile Sdk versions to update (${usagesCount} usage${if (usagesCount == 1) "" else "s"} in $filesCount " +
-        "file${if (filesCount == 1) "" else "s"})"
+          "file${if (filesCount == 1) "" else "s"})"
     }
 
   @VisibleForTesting

@@ -575,7 +575,6 @@ public final class StudioFlags {
     " compiler filter in ART to avoid bytecode verification when possible. This would speed up development cycles. Note that all release" +
     " build are still verified by ART regardless of this flag.");
 
-
   public static final Flag<Boolean> INSTALL_WITH_ASSUME_VERIFIED_ON_DEFAULT = new BooleanFlag(
     RUNDEBUG,
     "install.with.assume.verified.on.default",
@@ -2100,22 +2099,10 @@ public final class StudioFlags {
     "Maximum number of processes to retain after they are terminated. Changing the value of this flag requires restarting Android Studio.",
     100
   );
-  public static final Flag<Boolean> PROCESS_NAME_TRACKER_AGENT_ENABLE = new BooleanFlag(
-    PROCESS_NAME_MONITOR, "processnamemonitor.tracker.agent.enable", "Enable process tracking agent",
-    "Enable process tracking using an agent deployed to the device. Changing the value of this flag requires restarting Android Studio."
-  );
   public static final Flag<Integer> PROCESS_NAME_TRACKER_AGENT_INTERVAL_MS = new IntFlag(
     PROCESS_NAME_MONITOR, "processnamemonitor.tracker.agent.interval", "Process tracking agent polling interval",
     "Process tracking agent polling interval in milliseconds. Changing the value of this flag requires restarting Android Studio.",
     1000
-  );
-  public static final Flag<Boolean> PROCESS_NAME_MONITOR_ADBLIB_ENABLED = new BooleanFlag(
-    PROCESS_NAME_MONITOR, "processnamemonitor.adblib.enable", "Enable Adblib monitor",
-    "Enable the Adblib version of the process name monitor. " +
-    "Note that adblib process tracking can not work concurrently with ddmlib process tracking because only one concurrent JDWP " +
-    "session can be open per process per device. Therefore, this feature is only enabled if the flag " +
-    "ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER is also true. " +
-    "Changing the value of this flag requires restarting Android Studio."
   );
   // endregion NEW_SEND_FEEDBACK_DIALOG
 
@@ -2183,6 +2170,11 @@ public final class StudioFlags {
                     "Shows thoughts in the timeline",
                     "When enabled, thoughts will be shown in the timeline for models that support thinking."
     );
+
+  public static final Flag<Boolean> STUDIOBOT_CODE_SEARCH_PAGINATION_ENABLED =
+    new BooleanFlag(STUDIOBOT, "code.search.pagination.enabled",
+                    "Enable pagination support for code_search tool",
+                    "When enabled, the code_search tool supports pagination and returns the result in the new format.");
 
   public static final Flag<Boolean> STUDIOBOT_INLINE_CODE_COMPLETION_FILE_CONTEXT_ENABLED =
     new BooleanFlag(STUDIOBOT, "inline.code.completion.file.context.enabled",
@@ -2414,6 +2406,11 @@ public final class StudioFlags {
                     "Enable tl;dr mode for the agent",
                     "When enabled, the agent timeline UI will show a summary of each plan step execution.");
 
+  public static final Flag<Boolean> STUDIOBOT_PLANNING_MODE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "planning.mode.enabled",
+                    "Enable planning mode",
+                    "When enabled, planning mode will be enabled.");
+
   public static final Flag<Boolean> STUDIOBOT_STOP_BUTTON_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.stop.button.enabled",
                     "Enable Stop Button",
@@ -2517,6 +2514,12 @@ public final class StudioFlags {
                 "Output token limit for default chat model",
                 "Output token limit for default chat model",
                 8192);
+
+  public static final Flag<Integer> STUDIOBOT_MAX_AGENT_LLM_CALLS =
+    new IntFlag(STUDIOBOT, "max.agent.llm.calls",
+                "Max LLM calls per agent session",
+                "Maximum number of LLM calls an agent can make in a single run.",
+                500);
 
   public static final Flag<Boolean> STUDIOBOT_GENERATE_TEST_SCENARIOS =
     new BooleanFlag(STUDIOBOT, "generate.test.scenarios",
@@ -2672,6 +2675,14 @@ public final class StudioFlags {
                     "Enable Debugger tools.",
                     "Enable Debugger tools.");
 
+  public static final Flag<String> NPA_ICON_IMAGE_GENERATION_MODEL_NAME =
+    new StringFlag(STUDIOBOT, "npa.icon.image.generation.model.name",
+                   "New Project agent Icon generation model name", "The model name used for generating Icons inside new project agent", "gemini-2.5-flash-image");
+
+  public static final Flag<String> NPA_MOCKUP_IMAGE_GENERATION_MODEL_NAME =
+    new StringFlag(STUDIOBOT, "npa.mockup.image.generation.model.name",
+                   "New Project agent Mockups generation model name", "The model name used for generating mockups inside new project agent", "gemini-3-pro-image-preview");
+
   public enum DasherSupportMode {
     /**
      * Don't include any special treatment for dasher users.
@@ -2759,6 +2770,11 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "context.compression",
                     "Enable context compression",
                     "Enables agent context compression where when full, the oldest half is summarized to shorten the total context length");
+
+  public static final Flag<Boolean> STUDIOBOT_AI_CODE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "aicode",
+                    "Enable AICode integration",
+                    "Enable AICode backend integration to be used for agent, code transform and code completion");
 
   // endregion STUDIO_BOT
 

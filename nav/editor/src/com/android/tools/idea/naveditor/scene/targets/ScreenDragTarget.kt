@@ -63,10 +63,7 @@ class ScreenDragTarget(component: SceneComponent) : BaseTarget(), MultiComponent
         ImmutableList.of(getComponent())
       } else {
         val scene = myComponent.scene
-        selection
-          .stream()
-          .map { c: NlComponent? -> scene.getSceneComponent(c) }
-          .collect(ImmutableList.toImmutableList())
+        selection.stream().map { c: NlComponent? -> scene.getSceneComponent(c) }.collect(ImmutableList.toImmutableList())
       }
     }
     return null
@@ -109,14 +106,7 @@ class ScreenDragTarget(component: SceneComponent) : BaseTarget(), MultiComponent
 
   override fun render(list: DisplayList, sceneContext: SceneContext) {
     if (DEBUG_RENDERER) {
-      list.addRect(
-        sceneContext,
-        myLeft,
-        myTop,
-        myRight,
-        myBottom,
-        if (mIsOver) JBColor.yellow else JBColor.green,
-      )
+      list.addRect(sceneContext, myLeft, myTop, myRight, myBottom, if (mIsOver) JBColor.yellow else JBColor.green)
       list.addLine(sceneContext, myLeft, myTop, myRight, myBottom, JBColor.red)
       list.addLine(sceneContext, myLeft, myBottom, myRight, myTop, JBColor.red)
     }
@@ -149,17 +139,10 @@ class ScreenDragTarget(component: SceneComponent) : BaseTarget(), MultiComponent
     changedComponent = false
     targetSnapper.reset()
     targetSnapper.gatherNotches(myComponent)
-    component.children.forEachIndexed { i, child ->
-      childOffsets[i] = Point(x - child.drawX, y - child.drawY)
-    }
+    component.children.forEachIndexed { i, child -> childOffsets[i] = Point(x - child.drawX, y - child.drawY) }
   }
 
-  override fun mouseDrag(
-    @NavCoordinate x: Int,
-    @NavCoordinate y: Int,
-    closestTarget: List<Target>,
-    context: SceneContext,
-  ) {
+  override fun mouseDrag(@NavCoordinate x: Int, @NavCoordinate y: Int, closestTarget: List<Target>, context: SceneContext) {
     val parent = myComponent.parent ?: return
 
     myComponent.isDragging = true
@@ -177,16 +160,10 @@ class ScreenDragTarget(component: SceneComponent) : BaseTarget(), MultiComponent
     myComponent.setPosition(dx, dy)
     changedComponent = true
 
-    childOffsets.forEachIndexed { i, offset ->
-      offset?.let { component.getChild(i).setPosition(x - it.x, y - it.y) }
-    }
+    childOffsets.forEachIndexed { i, offset -> offset?.let { component.getChild(i).setPosition(x - it.x, y - it.y) } }
   }
 
-  override fun mouseRelease(
-    @NavCoordinate x: Int,
-    @NavCoordinate y: Int,
-    closestTargets: List<Target>,
-  ) {
+  override fun mouseRelease(@NavCoordinate x: Int, @NavCoordinate y: Int, closestTargets: List<Target>) {
     if (!myComponent.isDragging) {
       return
     }
@@ -219,8 +196,7 @@ class ScreenDragTarget(component: SceneComponent) : BaseTarget(), MultiComponent
     myComponent.scene.markNeedsLayout(Scene.IMMEDIATE_LAYOUT)
   }
 
-  override fun getMouseCursor(@JdkConstants.InputEventMask modifiersEx: Int): Cursor =
-    Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+  override fun getMouseCursor(@JdkConstants.InputEventMask modifiersEx: Int): Cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
 
   // endregion
   /////////////////////////////////////////////////////////////////////////////

@@ -16,7 +16,8 @@
 package com.android.tools.idea.diagnostics.hprof
 
 import com.android.tools.idea.diagnostics.hprof.util.FileBackedHashMap
-
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,9 +26,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.nio.channels.FileChannel
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
 
 class FileBackedHashMapTest {
 

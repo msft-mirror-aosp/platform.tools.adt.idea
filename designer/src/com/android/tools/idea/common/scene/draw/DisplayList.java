@@ -15,29 +15,27 @@
  */
 package com.android.tools.idea.common.scene.draw;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.android.sdklib.AndroidDpCoordinate;
 import com.android.tools.adtui.common.SwingCoordinate;
 import com.android.tools.idea.common.scene.SceneContext;
-import com.android.tools.idea.uibuilder.scene.decorator.*;
 import com.android.tools.idea.uibuilder.handlers.constraint.draw.DrawAnchor; // TODO: remove
 import com.android.tools.idea.uibuilder.handlers.constraint.draw.DrawConnection; // TODO: remove
 import com.android.tools.idea.uibuilder.handlers.constraint.draw.DrawConnectionUtils; // TODO: remove
+import com.android.tools.idea.uibuilder.scene.decorator.*;
 import com.android.tools.idea.uibuilder.scene.draw.DrawResize;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.diagnostic.Logger;
-import java.util.EmptyStackException;
-import java.util.Stack;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.awt.*;
 import java.awt.geom.GeneralPath;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EmptyStackException;
 import java.util.HashMap;
+import java.util.Stack;
 import java.util.function.Function;
-
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * DisplayList implementation for Scene

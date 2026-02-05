@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.structure.model.meta
 
 import com.android.tools.idea.concurrency.transform
-import com.android.tools.idea.gradle.structure.model.PsVariablesScope
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors.directExecutor
 
@@ -24,23 +23,25 @@ abstract class ModelPropertyBase<in ModelT, ValueT : Any> {
   abstract val parser: (String) -> Annotated<ParsedValue<ValueT>>
   abstract val formatter: (ValueT) -> String
   abstract val knownValuesGetter: (ModelT) -> ListenableFuture<List<ValueDescriptor<ValueT>>>
-  open val variableMatchingStrategy: VariableMatchingStrategy get() = VariableMatchingStrategy.BY_TYPE
+  open val variableMatchingStrategy: VariableMatchingStrategy
+    get() = VariableMatchingStrategy.BY_TYPE
 
-  fun bindContext(model: ModelT): ModelPropertyContext<ValueT> = object : ModelPropertyContext<ValueT> {
+  fun bindContext(model: ModelT): ModelPropertyContext<ValueT> =
+    object : ModelPropertyContext<ValueT> {
 
-    override fun parse(value: String): Annotated<ParsedValue<ValueT>> = parser(value)
+      override fun parse(value: String): Annotated<ParsedValue<ValueT>> = parser(value)
 
-    override fun format(value: ValueT): String = formatter(value)
+      override fun format(value: ValueT): String = formatter(value)
 
-    override fun getKnownValues(): ListenableFuture<KnownValues<ValueT>> =
-      knownValuesGetter(model).transform(directExecutor()) {
-        object : KnownValues<ValueT> {
-          private val knownValues = variableMatchingStrategy.prepare(it)
-          override val literals: List<ValueDescriptor<ValueT>> = it
-          override fun isSuitableVariable(variable: Annotated<ParsedValue.Set.Parsed<ValueT>>): Boolean =
-            variableMatchingStrategy.matches(variable.value, knownValues)
+      override fun getKnownValues(): ListenableFuture<KnownValues<ValueT>> =
+        knownValuesGetter(model).transform(directExecutor()) {
+          object : KnownValues<ValueT> {
+            private val knownValues = variableMatchingStrategy.prepare(it)
+            override val literals: List<ValueDescriptor<ValueT>> = it
+
+            override fun isSuitableVariable(variable: Annotated<ParsedValue.Set.Parsed<ValueT>>): Boolean =
+              variableMatchingStrategy.matches(variable.value, knownValues)
+          }
         }
-      }
-  }
+    }
 }
-

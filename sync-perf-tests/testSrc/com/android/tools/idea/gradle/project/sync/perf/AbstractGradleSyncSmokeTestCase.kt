@@ -16,24 +16,21 @@
 package com.android.tools.idea.gradle.project.sync.perf
 
 import com.android.tools.idea.testing.AndroidGradleProjectRule
-import com.android.tools.idea.testing.AndroidGradleTests.overrideJdkTo8
-import com.android.tools.idea.testing.AndroidGradleTests.restoreJdk
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ex.ApplicationManagerEx
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import java.io.File
 import org.jetbrains.android.AndroidTestBase
 import org.jetbrains.plugins.gradle.settings.DistributionType
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 @RunsInEdt
 abstract class AbstractGradleSyncSmokeTestCase {
@@ -42,8 +39,7 @@ abstract class AbstractGradleSyncSmokeTestCase {
   protected open val buildTaskTimeout: Long? = null
 
   protected val projectRule = AndroidGradleProjectRule()
-  @get:Rule
-  val ruleChain = org.junit.rules.RuleChain.outerRule(projectRule).around(EdtRule())!!
+  @get:Rule val ruleChain = org.junit.rules.RuleChain.outerRule(projectRule).around(EdtRule())!!
 
   @Before
   @Throws(Exception::class)
@@ -58,6 +54,7 @@ abstract class AbstractGradleSyncSmokeTestCase {
 
   /**
    * Verify that the test project is able to open and sync without errors.
+   *
    * @throws Exception
    */
   @Throws(java.lang.Exception::class)
@@ -85,7 +82,5 @@ abstract class AbstractGradleSyncSmokeTestCase {
 
 fun disableExpensivePlatformAssertions(fixture: CodeInsightTestFixture) {
   ApplicationManagerEx.setInStressTest(true)
-  Disposer.register(fixture.testRootDisposable, {
-    ApplicationManagerEx.setInStressTest(false)
-  })
+  Disposer.register(fixture.testRootDisposable, { ApplicationManagerEx.setInStressTest(false) })
 }

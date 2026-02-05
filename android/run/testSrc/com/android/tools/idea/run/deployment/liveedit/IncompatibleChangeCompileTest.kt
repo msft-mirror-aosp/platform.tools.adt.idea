@@ -23,6 +23,7 @@ import com.android.tools.idea.run.deployment.liveedit.analysis.enableLiveEdit
 import com.android.tools.idea.run.deployment.liveedit.analysis.modifyKtFile
 import com.android.tools.idea.run.deployment.liveedit.analysis.toIrClass
 import com.android.tools.idea.testing.AndroidProjectRule
+import kotlin.test.assertEquals
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -31,15 +32,13 @@ import org.junit.Test
 import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import kotlin.test.assertEquals
 
 @RunWith(JUnit4::class)
 class IncompatibleChangeCompileTest {
   private var projectRule = AndroidProjectRule.inMemory().withKotlin()
   private val fakeAdbRule = FakeAdbServerAdbLibRule()
 
-  @get:Rule
-  val chain = RuleChain.outerRule(projectRule).around(fakeAdbRule)!!
+  @get:Rule val chain = RuleChain.outerRule(projectRule).around(fakeAdbRule)!!
 
   @Before
   fun setUp() {
@@ -54,22 +53,29 @@ class IncompatibleChangeCompileTest {
 
   @Test
   fun `Add field`() {
-    val file = projectRule.createKtFile("A.kt", """
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
       class Test {
         val x = 0
       }
-    """)
+    """,
+      )
 
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    projectRule.modifyKtFile(file, """
+    projectRule.modifyKtFile(
+      file,
+      """
       class Test {
         val x = 0
         val y = 0
       }
-    """)
+    """,
+    )
 
     // First edit - diff with APK
     val firstError = Assert.assertThrows(LiveEditUpdateException::class.java) { compile(file, compiler) }
@@ -84,23 +90,60 @@ class IncompatibleChangeCompileTest {
   }
 
   @Test
-  fun `Remove field`() {
-    val file = projectRule.createKtFile("A.kt", """
+  fun `Skips compose $stable`() {
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
       class Test {
         val x = 0
-        val y = 0
       }
-    """)
+    """,
+      )
 
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    projectRule.modifyKtFile(file, """
+    projectRule.modifyKtFile(
+      file,
+      """
+      class Test {
+        val x = 0
+        val ${"`\$stable`"} = 0
+      }
+    """,
+    )
+
+    // We will allow $stable or any form of getters created by it.
+    compile(file, compiler)
+  }
+
+  @Test
+  fun `Remove field`() {
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
+      class Test {
+        val x = 0
+        val y = 0
+      }
+    """,
+      )
+
+    val cache = MutableIrClassCache()
+    val apk = projectRule.directApiCompileByteArray(file)
+    val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
+
+    projectRule.modifyKtFile(
+      file,
+      """
       class Test {
         val y = 0
       }
-    """)
+    """,
+    )
 
     // First edit - diff with APK
     val firstError = Assert.assertThrows(LiveEditUpdateException::class.java) { compile(file, compiler) }
@@ -116,22 +159,29 @@ class IncompatibleChangeCompileTest {
 
   @Test
   fun `Add fun`() {
-    val file = projectRule.createKtFile("A.kt", """
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
       class Test {
         fun x() = 0
       }
-    """)
+    """,
+      )
 
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    projectRule.modifyKtFile(file, """
+    projectRule.modifyKtFile(
+      file,
+      """
       class Test {
         fun x() = 0
         fun y(param: java.lang.String) = 0
       }
-    """)
+    """,
+    )
 
     // First edit - diff with APK
     val firstError = Assert.assertThrows(LiveEditUpdateException::class.java) { compile(file, compiler) }
@@ -147,23 +197,30 @@ class IncompatibleChangeCompileTest {
 
   @Test
   fun `Add fun overloaded`() {
-    val file = projectRule.createKtFile("A.kt", """
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
       class Test {
         fun y() = 0
       }
-    """)
+    """,
+      )
 
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    projectRule.modifyKtFile(file, """
+    projectRule.modifyKtFile(
+      file,
+      """
       class Test {
         fun y() = 0
         fun y(param: java.lang.String) = 0
         fun y(param: Test) = 0
       }
-    """)
+    """,
+    )
 
     // First edit - diff with APK
     val firstError = Assert.assertThrows(LiveEditUpdateException::class.java) { compile(file, compiler) }
@@ -179,22 +236,29 @@ class IncompatibleChangeCompileTest {
 
   @Test
   fun `Change init`() {
-    val file = projectRule.createKtFile("A.kt", """
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
       class Test {
         var x = 1
       }
-    """)
+    """,
+      )
 
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    projectRule.modifyKtFile(file, """
+    projectRule.modifyKtFile(
+      file,
+      """
       class Test {
         var x = 1
         init { x = 2 }
       }
-    """)
+    """,
+    )
 
     // First edit - diff with APK
     // We don't check init in the first diff.
@@ -209,23 +273,30 @@ class IncompatibleChangeCompileTest {
 
   @Test
   fun `Change init overloaded`() {
-    val file = projectRule.createKtFile("A.kt", """
+    val file =
+      projectRule.createKtFile(
+        "A.kt",
+        """
       class Test {
        constructor(x:Int, y:Int) { Test(x) }
        constructor(y:Int) { }
       }
-    """)
+    """,
+      )
 
     val cache = MutableIrClassCache()
     val apk = projectRule.directApiCompileByteArray(file)
     val compiler = LiveEditCompiler(projectRule.project, cache).withClasses(apk)
 
-    projectRule.modifyKtFile(file, """
+    projectRule.modifyKtFile(
+      file,
+      """
       class Test {
         constructor(x:Int, y:Int) { Test(y) }
         constructor(y:Int) { }
       }
-    """)
+    """,
+    )
 
     // First edit - diff with APK
     compile(file, compiler)

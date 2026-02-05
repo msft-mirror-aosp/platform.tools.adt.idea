@@ -20,9 +20,7 @@ import com.intellij.openapi.actionSystem.Shortcut
 import java.lang.Runnable
 import javax.swing.Icon
 
-/**
- * A wrapper for creating popup menu items for a UI component.
- */
+/** A wrapper for creating popup menu items for a UI component. */
 interface PopupMenuItem : Runnable {
   val text: String
 
@@ -40,5 +38,4 @@ interface PopupMenuItem : Runnable {
 
   val shortcuts: Array<Shortcut>?
     get() = null
-
 }

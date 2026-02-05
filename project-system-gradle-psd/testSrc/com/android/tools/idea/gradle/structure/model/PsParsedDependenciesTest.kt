@@ -16,9 +16,9 @@
 package com.android.tools.idea.gradle.structure.model
 
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
-import com.android.tools.idea.gradle.structure.PsdGradleFileModelTestCase
 import com.android.tools.idea.gradle.structure.PS_PARSED_DEPENDENCIES_FIND_LIBRARIES
 import com.android.tools.idea.gradle.structure.PS_PARSED_DEPENDENCIES_PARSED_DEPENDENCIES
+import com.android.tools.idea.gradle.structure.PsdGradleFileModelTestCase
 import com.intellij.testFramework.RunsInEdt
 import org.hamcrest.CoreMatchers.hasItems
 import org.junit.Assert.assertThat
@@ -38,8 +38,8 @@ class PsParsedDependenciesTest : PsdGradleFileModelTestCase() {
         "com.android.support:appcompat-v7:+" to "api",
         "com.example.libs:lib1:1.0" to "implementation",
         "com.example.libs:lib1:1.0" to "debugImplementation",
-        "com.example.libs:lib1:0.9.1" to "releaseImplementation"
-      )
+        "com.example.libs:lib1:0.9.1" to "releaseImplementation",
+      ),
     )
   }
 
@@ -53,8 +53,8 @@ class PsParsedDependenciesTest : PsdGradleFileModelTestCase() {
       hasItems(
         "com.example.libs:lib1:1.0" to "implementation",
         "com.example.libs:lib1:1.0" to "debugImplementation",
-        "com.example.libs:lib1:0.9.1" to "releaseImplementation"
-      )
+        "com.example.libs:lib1:0.9.1" to "releaseImplementation",
+      ),
     )
   }
 }

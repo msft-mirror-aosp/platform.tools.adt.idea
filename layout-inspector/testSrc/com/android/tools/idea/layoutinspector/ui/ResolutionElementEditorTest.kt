@@ -23,7 +23,7 @@ import com.android.resources.ResourceType
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.AndroidVersion.VersionCodes
 import com.android.testutils.ImageDiffUtil
-import com.android.testutils.TestUtils
+import com.android.testutils.TestUtils.resolveWorkspacePathUnchecked
 import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
@@ -50,6 +50,7 @@ import com.intellij.ui.JBColor
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.ActionEvent
+import java.nio.file.Path
 import javax.swing.Box.Filler
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -58,40 +59,38 @@ import javax.swing.LookAndFeel
 import javax.swing.UIManager
 import javax.swing.plaf.metal.MetalLookAndFeel
 import javax.swing.plaf.metal.MetalTheme
+import kotlin.io.path.pathString
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExternalResource
 import org.junit.rules.RuleChain
+import org.junit.rules.TestName
 
-private const val TEST_DATA_PATH = "tools/adt/idea/layout-inspector/testData/ui"
-private const val DIFF_THRESHOLD = 0.01
+private val TEST_DATA_PATH = Path.of("tools", "adt", "idea", "layout-inspector", "testData")
+private const val DIFF_THRESHOLD = 0.5
 
 class ResolutionElementEditorTest {
   // This test is SDK sensitive.
   // Explicitly specify the SDK to avoid failures in SDK upgrades.
-  private val projectRule =
-    AndroidProjectRule.withSdk(AndroidVersion(VersionCodes.VANILLA_ICE_CREAM))
+  private val projectRule = AndroidProjectRule.withSdk(AndroidVersion(VersionCodes.VANILLA_ICE_CREAM))
 
+  @get:Rule val testName = TestName()
   @get:Rule
   val ruleChain =
-    RuleChain.outerRule(projectRule)
-      .around(IntelliJLafRule())
-      .around(PortableUiFontRule())
-      .around(EdtRule())
-      .around(IconLoaderRule())!!
+    RuleChain.outerRule(projectRule).around(IntelliJLafRule()).around(PortableUiFontRule()).around(EdtRule()).around(IconLoaderRule())!!
 
   @Test
   fun testPaintClosed() = runBlocking {
     val editors = createEditors()
     getEditor(editors, 1).isVisible = false
-    checkImage(editors, "Closed")
+    checkImage(editors)
   }
 
   @Test
   fun testPaintOpen() = runBlocking {
     val editors = createEditors()
-    checkImage(editors, "Open")
+    checkImage(editors)
   }
 
   @Test
@@ -99,7 +98,7 @@ class ResolutionElementEditorTest {
     val editors = createEditors()
     getEditor(editors, 0).editorModel.isExpandedTableItem = true
     expandFirstLabel(getEditor(editors, 0), true)
-    checkImage(editors, "OpenWithDetails")
+    checkImage(editors)
   }
 
   @Test
@@ -108,7 +107,7 @@ class ResolutionElementEditorTest {
     getEditor(editors, 0).editorModel.isExpandedTableItem = true
     expandFirstLabel(getEditor(editors, 0), true)
     expandFirstLabel(getEditor(editors, 1), true)
-    checkImage(editors, "OpenWithTwoDetails")
+    checkImage(editors)
   }
 
   @Test
@@ -145,26 +144,11 @@ class ResolutionElementEditorTest {
   @Test
   fun testHasLinkPanel() = runBlocking {
     val model = runInEdtAndGet {
-      model(
-        projectRule.testRootDisposable,
-        projectRule.project,
-        FakeTreeSettings(),
-        body = DemoExample.setUpDemo(projectRule.fixture),
-      )
+      model(projectRule.testRootDisposable, projectRule.project, FakeTreeSettings(), body = DemoExample.setUpDemo(projectRule.fixture))
     }
     val node = model["title"]!!
-    val item1 =
-      createTestProperty(
-        ATTR_TEXT_COLOR,
-        PropertyType.COLOR,
-        null,
-        node.layout,
-        emptyList(),
-        node,
-        model,
-      )
-    val item2 =
-      createTestProperty(ATTR_ELEVATION, PropertyType.FLOAT, null, null, emptyList(), node, model)
+    val item1 = createTestProperty(ATTR_TEXT_COLOR, PropertyType.COLOR, null, node.layout, emptyList(), node, model)
+    val item2 = createTestProperty(ATTR_ELEVATION, PropertyType.FLOAT, null, null, emptyList(), node, model)
 
     // The "textColor" attribute is defined in the layout file, and we should have a link to the
     // layout definition
@@ -196,15 +180,18 @@ class ResolutionElementEditorTest {
     assertThat(toggleCount).isEqualTo(2)
   }
 
-  private fun checkImage(editors: JPanel, expected: String) {
+  private fun checkImage(editors: JPanel) {
     editors.setBounds(0, 0, 200, 300)
     val ui = FakeUi(editors)
     val generatedImage = ui.render()
-    ImageDiffUtil.assertImageSimilarPerPlatform(
-      TestUtils.resolveWorkspacePathUnchecked(TEST_DATA_PATH),
-      "testResolutionEditorPaint$expected",
-      generatedImage,
-      DIFF_THRESHOLD,
+
+    val testDataPath = TEST_DATA_PATH.resolve(this.javaClass.simpleName)
+    val imageName = testName.methodName
+
+    ImageDiffUtil.assertImageSimilar(
+      goldenFile = resolveWorkspacePathUnchecked(testDataPath.resolve("$imageName.png").pathString),
+      actual = generatedImage,
+      maxPercentDifferent = DIFF_THRESHOLD,
     )
   }
 
@@ -218,39 +205,17 @@ class ResolutionElementEditorTest {
 
   private suspend fun createEditors(): JPanel {
     val model = runInEdtAndGet {
-      model(
-        projectRule.testRootDisposable,
-        projectRule.project,
-        FakeTreeSettings(),
-        body = DemoExample.setUpDemo(projectRule.fixture),
-      )
+      model(projectRule.testRootDisposable, projectRule.project, FakeTreeSettings(), body = DemoExample.setUpDemo(projectRule.fixture))
     }
     val node = model["title"]!!
-    val textStyleMaterial =
-      ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "TextAppearance.Material")
+    val textStyleMaterial = ResourceReference(ResourceNamespace.ANDROID, ResourceType.STYLE, "TextAppearance.Material")
     var property =
-      createTestProperty(
-        ATTR_TEXT_COLOR,
-        PropertyType.COLOR,
-        value = null,
-        node.layout,
-        listOf(textStyleMaterial),
-        node,
-        model,
-      )
+      createTestProperty(ATTR_TEXT_COLOR, PropertyType.COLOR, value = null, node.layout, listOf(textStyleMaterial), node, model)
         as InspectorGroupPropertyItem
     val value = model.resourceLookup.findAttributeValue(property, node, property.source!!)
     if (value != null) {
       property =
-        createTestProperty(
-          ATTR_TEXT_COLOR,
-          PropertyType.COLOR,
-          value,
-          node.layout,
-          listOf(textStyleMaterial),
-          node,
-          model,
-        )
+        createTestProperty(ATTR_TEXT_COLOR, PropertyType.COLOR, value, node.layout, listOf(textStyleMaterial), node, model)
           as InspectorGroupPropertyItem
     }
     val editors = JPanel()
@@ -258,13 +223,7 @@ class ResolutionElementEditorTest {
     val propertiesModel = InspectorPropertiesModel(projectRule.testRootDisposable)
     editors.add(createEditor(property, propertiesModel))
     property.children.forEach { editors.add(createEditor(it, propertiesModel)) }
-    editors.add(
-      Filler(
-        Dimension(0, 0),
-        Dimension(Int.MAX_VALUE, Int.MAX_VALUE),
-        Dimension(Int.MAX_VALUE, Int.MAX_VALUE),
-      )
-    )
+    editors.add(Filler(Dimension(0, 0), Dimension(Int.MAX_VALUE, Int.MAX_VALUE), Dimension(Int.MAX_VALUE, Int.MAX_VALUE)))
     editors.background = JBColor.WHITE
     return editors
   }
@@ -273,10 +232,7 @@ class ResolutionElementEditorTest {
     return editors.getComponent(index) as ResolutionElementEditor
   }
 
-  private fun createEditor(
-    property: PropertyItem,
-    propertiesModel: InspectorPropertiesModel,
-  ): ResolutionElementEditor {
+  private fun createEditor(property: PropertyItem, propertiesModel: InspectorPropertiesModel): ResolutionElementEditor {
     val model = ResolutionStackModel(propertiesModel)
     val editorModel = TextFieldPropertyEditorModel(property, true)
     val editorComponent = PropertyTextField(editorModel)
@@ -285,8 +241,7 @@ class ResolutionElementEditorTest {
   }
 
   private fun findFirstLinkComponent(editor: ResolutionElementEditor): JComponent? =
-    editor.flatten(false).filter { (it as? JComponent)?.actionMap?.get("open") != null }[0]
-      as JComponent?
+    editor.flatten(false).filter { (it as? JComponent)?.actionMap?.get("open") != null }[0] as JComponent?
 }
 
 class IntelliJLafRule : ExternalResource() {

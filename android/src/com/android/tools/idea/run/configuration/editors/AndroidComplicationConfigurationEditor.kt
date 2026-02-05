@@ -17,7 +17,6 @@ package com.android.tools.idea.run.configuration.editors
 
 import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.deployer.model.component.Complication
-import com.android.tools.idea.concurrency.AndroidDispatchers.uiThread
 import com.android.tools.idea.run.configuration.AndroidComplicationConfiguration
 import com.android.tools.idea.run.configuration.ComplicationSlot
 import com.android.tools.idea.run.configuration.getComplicationTypesFromManifest
@@ -28,10 +27,10 @@ import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.project.Project
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
-import kotlinx.coroutines.Dispatchers
 import java.awt.event.ActionListener
 import javax.swing.BoxLayout
 import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.job
@@ -39,10 +38,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.util.AndroidBundle
 
-class AndroidComplicationConfigurationEditor(
-  project: Project,
-  configuration: AndroidComplicationConfiguration,
-) : AndroidWearConfigurationEditor<AndroidComplicationConfiguration>(project, configuration) {
+class AndroidComplicationConfigurationEditor(project: Project, configuration: AndroidComplicationConfiguration) :
+  AndroidWearConfigurationEditor<AndroidComplicationConfiguration>(project, configuration) {
 
   private var updatingJob: Job? = null
   private val slotsPanel = SlotsPanel()
@@ -67,19 +64,14 @@ class AndroidComplicationConfigurationEditor(
     }
   }
 
-  private val componentItemListener = ActionListener {
-    scope.launch { updateComplicationModel(arrayListOf()) }
-  }
+  private val componentItemListener = ActionListener { scope.launch { updateComplicationModel(arrayListOf()) } }
 
   override fun applyEditorTo(runConfiguration: AndroidComplicationConfiguration) {
     super.applyEditorTo(runConfiguration)
-    runConfiguration.componentLaunchOptions.chosenSlots =
-      slotsPanel.getModel().currentChosenSlots.map { it.copy() }
+    runConfiguration.componentLaunchOptions.chosenSlots = slotsPanel.getModel().currentChosenSlots.map { it.copy() }
   }
 
-  private suspend fun updateComplicationModel(
-    chosenSlots: MutableList<AndroidComplicationConfiguration.ChosenSlot>
-  ) {
+  private suspend fun updateComplicationModel(chosenSlots: MutableList<AndroidComplicationConfiguration.ChosenSlot>) {
     updatingJob?.cancelAndJoin()
     updatingJob = coroutineContext.job
     val componentName = wearComponentFqNameComboBox.item
@@ -94,9 +86,7 @@ class AndroidComplicationConfigurationEditor(
           currentChosenSlots = chosenSlots,
         )
       }
-    withContext(Dispatchers.EDT + ModalityState.any ().asContextElement()) {
-      slotsPanel.setModel(model)
-    }
+    withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { slotsPanel.setModel(model) }
   }
 
   @WorkerThread
@@ -105,8 +95,6 @@ class AndroidComplicationConfigurationEditor(
     if (componentName == null || module == null) {
       return emptyList()
     }
-    return parseRawComplicationTypes(
-      getComplicationTypesFromManifest(module, componentName) ?: emptyList()
-    )
+    return parseRawComplicationTypes(getComplicationTypesFromManifest(module, componentName) ?: emptyList())
   }
 }

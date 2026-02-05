@@ -43,23 +43,13 @@ class ComposeKDocLinkResolutionServiceTest {
   val projectRule =
     AndroidGradleProjectRule(
         workspaceRelativeTestDataPath = "tools/adt/idea/compose-ide-plugin/testData",
-        additionalRepositories =
-          listOf(
-            File(
-              getComposePluginTestDataPath(),
-              toSystemDependentName("projects/repoForSamplesArtifactTest"),
-            )
-          ),
+        additionalRepositories = listOf(File(getComposePluginTestDataPath(), toSystemDependentName("projects/repoForSamplesArtifactTest"))),
       )
       .onEdt()
   val project by lazy { projectRule.project }
-  val fixture by lazy {
-    projectRule.fixture.also { it.testDataPath = getComposePluginTestDataPath() }
-  }
+  val fixture by lazy { projectRule.fixture.also { it.testDataPath = getComposePluginTestDataPath() } }
 
-  /**
-   * core:haptics was chosen arbitrarily. Non-samples dependencies were removed. Library is not KMP.
-   */
+  /** core:haptics was chosen arbitrarily. Non-samples dependencies were removed. Library is not KMP. */
   @Test
   fun testDownloadingAndAttachingSamples() {
     projectRule.loadProject(TestProjectPaths.APP_WITH_LIB_WITH_SAMPLES)
@@ -67,21 +57,14 @@ class ComposeKDocLinkResolutionServiceTest {
     val result = getLibraryAdditionalArtifactPaths(project, LibraryPathType.SOURCE)
 
     assertThat(result.filter { it.contains("haptics") }.map { File(it).name })
-      .containsExactly(
-        "haptics-1.0.0-alpha01-sources.jar",
-        "haptics-1.0.0-alpha01-samples-sources.jar",
-      )
+      .containsExactly("haptics-1.0.0-alpha01-sources.jar", "haptics-1.0.0-alpha01-samples-sources.jar")
   }
 
   @Test
   fun testResolveSampleReference() {
     projectRule.loadProject(TestProjectPaths.APP_WITH_LIB_WITH_SAMPLES)
 
-    val file =
-      VfsUtil.findFile(
-        Paths.get(project.basePath!!, "/app/src/main/java/com/example/appforsamplestest/Main.kt"),
-        false,
-      )
+    val file = VfsUtil.findFile(Paths.get(project.basePath!!, "/app/src/main/java/com/example/appforsamplestest/Main.kt"), false)
     assume().that(file).isNotNull()
     fixture.openFileInEditor(file!!)
 
@@ -90,10 +73,8 @@ class ComposeKDocLinkResolutionServiceTest {
     assume().that(librarySourceFunction).isNotNull()
 
     val sampleTag = librarySourceFunction.docComment!!.getDefaultSection().findTagByName("sample")!!
-    val sample =
-      PsiTreeUtil.findChildOfType(sampleTag, KDocName::class.java)!!.mainReference.resolve()
+    val sample = PsiTreeUtil.findChildOfType(sampleTag, KDocName::class.java)!!.mainReference.resolve()
     assume().that(sample).isNotNull()
-    assertThat(sample!!.kotlinFqName!!.asString())
-      .isEqualTo("androidx.core.haptics.samples.PatternWaveform")
+    assertThat(sample!!.kotlinFqName!!.asString()).isEqualTo("androidx.core.haptics.samples.PatternWaveform")
   }
 }

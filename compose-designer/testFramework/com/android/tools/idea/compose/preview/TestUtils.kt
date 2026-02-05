@@ -16,7 +16,6 @@
 package com.android.tools.idea.compose.preview
 
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.preview.PreviewRefreshManager
 import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresentationPreview
@@ -36,6 +35,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import kotlin.time.Duration
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
@@ -45,21 +45,15 @@ import org.jetbrains.uast.UMethod
 const val COMPOSABLE_ANNOTATION_FQN = "androidx.compose.runtime.Composable"
 const val PREVIEW_TOOLING_PACKAGE = "androidx.compose.ui.tooling.preview"
 
-internal fun UFile.declaredMethods(): Sequence<UMethod> =
-  classes.asSequence().flatMap { it.methods.asSequence() }
+internal fun UFile.declaredMethods(): Sequence<UMethod> = classes.asSequence().flatMap { it.methods.asSequence() }
 
-fun UFile.method(name: String): UMethod? =
-  declaredMethods().filter { it.name == name }.singleOrNull()
+fun UFile.method(name: String): UMethod? = declaredMethods().filter { it.name == name }.singleOrNull()
 
 /** Returns the [HighlightInfo] description adding the relative line number */
 fun HighlightInfo.descriptionWithLineNumber() =
-  ReadAction.compute<String, Throwable> {
-    "${StringUtil.offsetToLineNumber(highlighter!!.document.text, startOffset)}: ${description}"
-  }
+  ReadAction.compute<String, Throwable> { "${StringUtil.offsetToLineNumber(highlighter!!.document.text, startOffset)}: ${description}" }
 
-/**
- * Simulates the initialization of an editor and returns the corresponding [PreviewRepresentation].
- */
+/** Simulates the initialization of an editor and returns the corresponding [PreviewRepresentation]. */
 fun getRepresentationForFile(
   file: PsiFile,
   project: Project,
@@ -68,24 +62,18 @@ fun getRepresentationForFile(
 ): PreviewRepresentation {
   ApplicationManager.getApplication().invokeAndWait {
     runWriteAction { fixture.configureFromExistingVirtualFile(file.virtualFile) }
-    val textEditor =
-      TextEditorProvider.getInstance().createEditor(project, file.virtualFile) as TextEditor
+    val textEditor = TextEditorProvider.getInstance().createEditor(project, file.virtualFile) as TextEditor
     Disposer.register(fixture.testRootDisposable, textEditor)
   }
 
-  val multiRepresentationPreview =
-    MultiRepresentationPreview(file, fixture.editor, listOf(previewProvider))
+  val multiRepresentationPreview = MultiRepresentationPreview(file, fixture.editor, listOf(previewProvider))
   Disposer.register(fixture.testRootDisposable, multiRepresentationPreview)
 
   runBlocking { multiRepresentationPreview.onInit() }
   return multiRepresentationPreview.currentRepresentation!!
 }
 
-data class DebugStatus(
-  val status: ComposePreviewManager.Status,
-  val renderResult: List<RenderResult>,
-  private val loggerContents: String,
-)
+data class DebugStatus(val status: ComposePreviewManager.Status, val renderResult: List<RenderResult>, private val loggerContents: String)
 
 private fun RenderLogger.toDebugString(): String {
   val output = StringBuilder()
@@ -101,28 +89,23 @@ private fun RenderLogger.toDebugString(): String {
   return output.toString()
 }
 
-/**
- * Returns the [ComposePreviewManager.Status] and the internal [RenderResult]s so they can be used
- * to testing.
- */
+/** Returns the [ComposePreviewManager.Status] and the internal [RenderResult]s so they can be used to testing. */
 @TestOnly
 fun ComposePreviewRepresentation.debugStatusForTesting(): DebugStatus {
-  val renderResults =
-    listOfNotNull(surface.model?.let { surface.getSceneManager(it) }?.renderResult)
+  val renderResults = listOfNotNull(surface.model?.let { surface.getSceneManager(it) }?.renderResult)
 
-  return DebugStatus(
-    status(),
-    renderResults,
-    renderResults.joinToString { it.logger.toDebugString() },
-  )
+  return DebugStatus(status(), renderResults, renderResults.joinToString { it.logger.toDebugString() })
 }
 
 /** Wait for all running refreshes to complete. */
 suspend fun waitForAllRefreshesToFinish(timeout: Duration) =
-  withContext(workerThread) {
-    PreviewRefreshManager.getInstance(RenderAsyncActionExecutor.RenderingTopic.COMPOSE_PREVIEW)
-      .refreshingTypeFlow
-      .awaitStatus("Timeout waiting for all pending refreshes to finish", timeout) { it == null }
+  withContext(Dispatchers.Default) {
+    PreviewRefreshManager.getInstance(RenderAsyncActionExecutor.RenderingTopic.COMPOSE_PREVIEW).refreshingTypeFlow.awaitStatus(
+      "Timeout waiting for all pending refreshes to finish",
+      timeout,
+    ) {
+      it == null
+    }
   }
 
 val SceneViewPeerPanel.displayName: String

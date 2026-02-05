@@ -113,8 +113,10 @@ internal class ScreenRecorderDialog(
 
   private fun recordingTimeText(timeMillis: Long): String {
     val seconds = (timeMillis / 1000).toInt()
-    return AndroidAdbUiBundle.message("screenrecord.dialog.progress",
-                                      String.format(Locale.getDefault(), "%02d:%02d", seconds / 60, seconds % 60))
+    return AndroidAdbUiBundle.message(
+      "screenrecord.dialog.progress",
+      String.format(Locale.getDefault(), "%02d:%02d", seconds / 60, seconds % 60),
+    )
   }
 
   private fun updateRecordingTime() {
@@ -133,11 +135,12 @@ internal class ScreenRecorderDialog(
     titlePanel.setText(dialogTitle)
     titlePanel.setActive(true)
     // WindowMoveListener allows the window to be moved by dragging the title panel.
-    val moveListener: WindowMoveListener = object : WindowMoveListener(titlePanel) {
-      override fun getView(component: Component): Component {
-        return SwingUtilities.getAncestorOfClass(DialogWrapperDialog::class.java, component)
+    val moveListener: WindowMoveListener =
+      object : WindowMoveListener(titlePanel) {
+        override fun getView(component: Component): Component {
+          return SwingUtilities.getAncestorOfClass(DialogWrapperDialog::class.java, component)
+        }
       }
-    }
     moveListener.installTo(titlePanel)
     dialogPanel.add(titlePanel, BorderLayout.NORTH)
 
@@ -148,9 +151,7 @@ internal class ScreenRecorderDialog(
     centerPanel.addToLeft(recordingLabel)
     centerPanel.addToCenter(Box.createRigidArea(Dimension(JBUIScale.scale(20), 0)))
     stopButton = JButton(AndroidAdbUiBundle.message("screenrecord.dialog.stop.recording"))
-    stopButton.addActionListener {
-      stopRecordingTimer()
-    }
+    stopButton.addActionListener { stopRecordingTimer() }
     centerPanel.addToRight(stopButton)
     dialogPanel.add(centerPanel, BorderLayout.CENTER)
     return dialogPanel

@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.util
 
-import org.junit.Test
 import java.time.Duration
 import kotlin.test.assertEquals
+import org.junit.Test
 
 class DurationUtilTest {
   @Test

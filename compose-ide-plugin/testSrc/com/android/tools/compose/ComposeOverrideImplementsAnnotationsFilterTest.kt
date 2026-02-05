@@ -27,10 +27,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
-/**
- * Tests both [ComposeOverrideImplementsAnnotationsFilter] and that it's defined correctly in
- * extension XML.
- */
+/** Tests both [ComposeOverrideImplementsAnnotationsFilter] and that it's defined correctly in extension XML. */
 @RunWith(JUnit4::class)
 class ComposeOverrideImplementsAnnotationsFilterTest {
   @get:Rule var projectRule = AndroidProjectRule.inMemory().withKotlin()
@@ -49,24 +46,22 @@ class ComposeOverrideImplementsAnnotationsFilterTest {
         "src/com/example/Foo.kt",
         // language=kotlin
         """
-      package com.example
+        package com.example
 
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      interface Interface {
-          @Composable
-          fun Function()
-      }
+        interface Interface {
+            @Composable
+            fun Function()
+        }
 
-      class Impleme<caret>ntation : Interface {
-      }
-      """
+        class Impleme<caret>ntation : Interface {
+        }
+        """
           .trimIndent(),
       )
 
-    val intention =
-      fixture.availableIntentions.singleOrNull { it.familyName == "Implement members" }
-        ?: error("Intention not found")
+    val intention = fixture.availableIntentions.singleOrNull { it.familyName == "Implement members" } ?: error("Intention not found")
     fixture.launchAction(intention)
 
     fixture.checkResult(
@@ -101,28 +96,24 @@ class ComposeOverrideImplementsAnnotationsFilterTest {
         "src/com/example/Foo.kt",
         // language=kotlin
         """
-      package com.example
+        package com.example
 
-      import androidx.compose.runtime.Composable
+        import androidx.compose.runtime.Composable
 
-      interface Interface {
-          fun Function(argument: @Composable () -> Unit)
-      }
+        interface Interface {
+            fun Function(argument: @Composable () -> Unit)
+        }
 
-      class Impleme<caret>ntation : Interface {
-      }
-      """
+        class Impleme<caret>ntation : Interface {
+        }
+        """
           .trimIndent(),
       )
 
-    val intention =
-      fixture.availableIntentions.singleOrNull { it.familyName == "Implement members" }
-        ?: error("Intention not found")
+    val intention = fixture.availableIntentions.singleOrNull { it.familyName == "Implement members" } ?: error("Intention not found")
     fixture.launchAction(intention)
 
-    val argumentType =
-      if (KotlinPluginModeProvider.isK2Mode()) "@Composable (() -> Unit)"
-      else "@Composable () -> Unit"
+    val argumentType = if (KotlinPluginModeProvider.isK2Mode()) "@Composable (() -> Unit)" else "@Composable () -> Unit"
     fixture.checkResult(
       // language=kotlin
       """

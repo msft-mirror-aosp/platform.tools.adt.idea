@@ -45,8 +45,7 @@ class UpdateCompileSdkProcessorTest {
   private var currentCompileSdkVersion: Int = 0
 
   val projectRule = AndroidGradleProjectRule()
-  @get:Rule
-  val rule: RuleChain = RuleChain.outerRule(EdtRule()).around(projectRule)
+  @get:Rule val rule: RuleChain = RuleChain.outerRule(EdtRule()).around(projectRule)
   val project: Project by lazy { projectRule.project }
 
   @Before
@@ -85,15 +84,17 @@ class UpdateCompileSdkProcessorTest {
     val processor = UpdateCompileSdkProcessor(project, mapOf(buildFile to newCompileSdkVersion))
     val usages = runReadAction { processor.findUsages() }
     var synced = false
-    GradleSyncState.subscribe(project, object : GradleSyncListener {
-      override fun syncSucceeded(project: Project) {
-        synced = true
-      }
-    }, projectRule.fixture.testRootDisposable)
+    GradleSyncState.subscribe(
+      project,
+      object : GradleSyncListener {
+        override fun syncSucceeded(project: Project) {
+          synced = true
+        }
+      },
+      projectRule.fixture.testRootDisposable,
+    )
 
-    WriteCommandAction.runWriteCommandAction(project) {
-      processor.updateProjectBuildModel(usages)
-    }
+    WriteCommandAction.runWriteCommandAction(project) { processor.updateProjectBuildModel(usages) }
     GradleSyncInvoker.getInstance().requestProjectSync(project, TRIGGER_QF_MIN_COMPILE_SDK_UPDATED)
 
     assertThat(String(buildFile.contentsToByteArray()).contains("compileSdk $newCompileSdkVersion")).isTrue()

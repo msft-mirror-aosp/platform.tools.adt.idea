@@ -18,15 +18,11 @@ package com.google.idea.blaze.android.run.runner
 import com.google.common.base.Stopwatch
 import com.google.idea.blaze.android.run.LaunchMetrics
 import com.google.idea.blaze.android.run.NativeSymbolFinder
-import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo
-import com.google.idea.blaze.android.run.runner.BlazeAndroidDeviceSelector.DeviceSession
 import com.google.idea.blaze.base.bazel.BazelExitCodeException
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker
 import com.google.idea.blaze.base.command.BlazeCommand
 import com.google.idea.blaze.base.command.BlazeCommandName
 import com.google.idea.blaze.base.command.buildresult.BuildResultParser
-import com.google.idea.blaze.base.qsync.DependencyTracker.DependencyBuildRequest
-import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.scope.output.StatusOutput
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs
@@ -34,11 +30,10 @@ import com.google.idea.blaze.base.util.SaveUtil
 import com.google.idea.blaze.common.Interners
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.exception.BuildException
-import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 
-/** Blaze specific build flow for android_binary builds.  */
+/** Blaze specific build flow for android_binary builds. */
 class BlazeApkBuildStep(
   val project: Project,
   val targets: List<Label>,
@@ -46,28 +41,22 @@ class BlazeApkBuildStep(
   private val exeFlags: List<String>,
   val useMobileInstall: Boolean,
   val nativeDebuggingEnabled: Boolean,
-  val liveEditEnabled: Boolean,
+  val liveEditDataExtractor: LiveEditDataExtractor?,
   private val launchId: String,
   private val buildInvoker: BuildInvoker,
   val deployInfoExtractor: DeployInfoExtractor,
 ) : ApkBuildStep {
 
-  /**
-   * Builds the android_binary.
-   */
+  /** Builds the android_binary. */
   override fun build(context: BlazeContext): BlazeBuildOutputs {
     SaveUtil.saveAllFiles()
 
     context.output(StatusOutput("Building Application."))
     val stopwatch = Stopwatch.createStarted()
 
-    val commandName =
-      if (useMobileInstall) BlazeCommandName.MOBILE_INSTALL else BlazeCommandName.BUILD
+    val commandName = if (useMobileInstall) BlazeCommandName.MOBILE_INSTALL else BlazeCommandName.BUILD
     val command =
-      BlazeCommand.builder(commandName)
-        .addTargetStrings(targets.map { it.toString() })
-        .addBlazeFlags(blazeFlags)
-        .addExeFlags(exeFlags)
+      BlazeCommand.builder(commandName).addTargetStrings(targets.map { it.toString() }).addBlazeFlags(blazeFlags).addExeFlags(exeFlags)
     if (useMobileInstall) {
       // mobile_install targets need these flags for build-only mode.
       command.addExeFlags("--nolaunch_app", "--nodeploy")
@@ -76,26 +65,10 @@ class BlazeApkBuildStep(
       command.addBlazeFlags("--output_groups=+android_deploy_info")
     }
     if (nativeDebuggingEnabled) {
-      command.addBlazeFlags(
-        NativeSymbolFinder.getInstances().map { it.additionalBuildFlags }
-      )
+      command.addBlazeFlags(NativeSymbolFinder.getInstances().map { it.additionalBuildFlags })
     }
 
-    if (liveEditEnabled) {
-      val dependencyBuilder = QuerySyncManager.getInstance(project).assertProjectLoaded().dependencyBuilder
-      val outputGroups =
-        DependencyBuildRequest.getOutputGroups(listOf(QuerySyncLanguage.JVM), DependencyBuildRequest.RequestType.LIVE_EDIT_BUILD_APK)
-      val preparedInvocation =
-        dependencyBuilder
-          .prepareInvocation(
-            context = context,
-            buildTargets = emptySet(), // This is supported by the dependency builder.
-            outputGroups = outputGroups,
-            replaceOutputGroups = false,
-            invoker = buildInvoker
-          )
-      preparedInvocation.updateCommand(command)
-    }
+    liveEditDataExtractor?.prepareInvocation(context, buildInvoker, command)
 
     val buildOutputs =
       try {
@@ -103,12 +76,7 @@ class BlazeApkBuildStep(
           buildInvoker.invoke(command, context) { streamProvider ->
             BlazeBuildOutputs.fromParsedBepOutput(BuildResultParser.getBuildOutput(streamProvider, Interners.STRING))
           }
-        LaunchMetrics.logBuildTime(
-          launchId,
-          stopwatch.elapsed(),
-          buildOutputs!!.buildResult().exitCode,
-          mapOf()
-        )
+        LaunchMetrics.logBuildTime(launchId, stopwatch.elapsed(), buildOutputs!!.buildResult().exitCode, mapOf())
         BazelExitCodeException.throwIfFailed(command, buildOutputs.buildResult())
         logger.info("Finished build, id: " + buildOutputs.idForLogging())
         context.output(StatusOutput("Build complete."))

@@ -17,25 +17,15 @@ package com.android.tools.idea.npw.module.recipes.kotlinMultiplatformLibrary
 
 import com.android.ide.common.repository.AgpVersion
 import com.android.sdklib.AndroidMajorVersion
-import com.android.sdklib.AndroidVersion
+import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidModel.Companion.KMP_ANDROID_MINIMUM_AGP_VERSION
+import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion.Companion.parse
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint
 import com.android.tools.idea.npw.module.recipes.androidModule.gradleToKtsIfKts
 import com.android.tools.idea.npw.module.recipes.emptyPluginsBlock
 import com.android.tools.idea.npw.module.recipes.minSdk
 
-fun buildKmpGradle(
-  agpVersion: AgpVersion,
-  name: String,
-  packageName: String,
-  compileApi: AndroidVersion,
-  minApi: AndroidMajorVersion,
-): String {
-  val androidTargetBlock =
-    androidTargetConfig(
-      agpVersion = agpVersion,
-      compileApi = compileApi,
-      minApi = minApi,
-      packageName = packageName,
-    )
+fun buildKmpGradle(agpVersion: AgpVersion, name: String, packageName: String, minApi: AndroidMajorVersion): String {
+  val androidTargetBlock = androidTargetConfig(agpVersion = agpVersion, minApi = minApi, packageName = packageName)
 
   val iosTargetBlock = iosTargetConfig(name)
 
@@ -102,17 +92,15 @@ fun buildKmpGradle(
   return allBlocks.gradleToKtsIfKts(true)
 }
 
-private fun androidTargetConfig(
-  agpVersion: AgpVersion,
-  packageName: String,
-  compileApi: AndroidVersion,
-  minApi: AndroidMajorVersion,
-): String {
+private fun androidTargetConfig(agpVersion: AgpVersion, packageName: String, minApi: AndroidMajorVersion): String {
+  val agpConstraint = VersionConstraint.agpFrom(KMP_ANDROID_MINIMUM_AGP_VERSION).isOkWith(parse(agpVersion.toString()))
+  val androidBlock = if (agpConstraint) "android" else "androidLibrary"
+
   return """
       // Target declarations - add or remove as needed below. These define
       // which platforms this KMP module supports.
       // See: https://kotlinlang.org/docs/multiplatform-discover-project.html#targets
-    androidLibrary {
+    $androidBlock {
       namespace '$packageName'
       ${minSdk(minApi, agpVersion)}
 

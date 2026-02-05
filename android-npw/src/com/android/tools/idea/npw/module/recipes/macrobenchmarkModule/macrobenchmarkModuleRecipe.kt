@@ -47,14 +47,11 @@ fun RecipeExecutor.generateMacrobenchmarkModule(
   useVersionCatalog: Boolean,
 ) {
   val projectBuildModel = ProjectBuildModel.getOrLog(targetModule.project)
-  val targetModuleAndroidModel =
-    projectBuildModel?.getModuleBuildModel(targetModule)?.android() ?: return
+  val targetModuleAndroidModel = projectBuildModel?.getModuleBuildModel(targetModule)?.android() ?: return
   val targetModuleGradleModel = GradleAndroidModel.get(targetModule) ?: return
   val targetModuleBuildTypes = targetModuleAndroidModel.buildTypes()
-  val targetApplicationId =
-    targetModuleAndroidModel.namespace().valueAsString() ?: "com.example.application"
-  val benchmarkBuildTypeName =
-    getUniqueBuildTypeName(BENCHMARK_BUILD_TYPE_NAME, targetModuleBuildTypes.map { it.name() })
+  val targetApplicationId = targetModuleAndroidModel.namespace().valueAsString() ?: "com.example.application"
+  val benchmarkBuildTypeName = getUniqueBuildTypeName(BENCHMARK_BUILD_TYPE_NAME, targetModuleBuildTypes.map { it.name() })
 
   val flavors = getTargetModelProductFlavors(targetModuleGradleModel)
 
@@ -98,9 +95,7 @@ fun RecipeExecutor.updateTargetModule(
   addProfileableToTargetManifest(targetModule)
 }
 
-/**
- * Generates unique build type name with prefix of [buildTypeName] if already exist in [buildTypes]
- */
+/** Generates unique build type name with prefix of [buildTypeName] if already exist in [buildTypes] */
 @VisibleForTesting
 fun getUniqueBuildTypeName(buildTypeName: String, buildTypes: List<String>): String {
   var uniqueName = buildTypeName
@@ -124,8 +119,7 @@ fun RecipeExecutor.addBuildTypeToTargetBuildGradle(
   if (this is FindReferencesRecipeExecutor) return
 
   // Release buildType should implicitly exist
-  val releaseBuildType: BuildTypeModel =
-    targetModuleModel.buildTypes().first { it.name() == "release" }
+  val releaseBuildType: BuildTypeModel = targetModuleModel.buildTypes().first { it.name() == "release" }
 
   val newBuildType = targetModuleModel.addBuildType(buildTypeName, releaseBuildType)
 
@@ -169,14 +163,8 @@ fun RecipeExecutor.createTestClasses(moduleData: ModuleTemplateData, targetAppli
   val language = moduleData.projectTemplateData.language
   val benchmarksContent =
     when (language) {
-      Language.Kotlin ->
-        exampleMacrobenchmarkKt(EXAMPLE_BENCHMARK_NAME, moduleData.packageName, targetApplicationId)
-      Language.Java ->
-        exampleMacrobenchmarkJava(
-          EXAMPLE_BENCHMARK_NAME,
-          moduleData.packageName,
-          targetApplicationId,
-        )
+      Language.Kotlin -> exampleMacrobenchmarkKt(EXAMPLE_BENCHMARK_NAME, moduleData.packageName, targetApplicationId)
+      Language.Java -> exampleMacrobenchmarkJava(EXAMPLE_BENCHMARK_NAME, moduleData.packageName, targetApplicationId)
     }
   val benchmarksFile = moduleData.srcDir.resolve("$EXAMPLE_BENCHMARK_NAME.${language.extension}")
   save(benchmarksContent, benchmarksFile)

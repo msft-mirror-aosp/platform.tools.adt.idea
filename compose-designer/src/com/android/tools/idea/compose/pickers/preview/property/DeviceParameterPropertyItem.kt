@@ -66,8 +66,8 @@ import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtValueArgument
 
 /**
- * A [PsiCallParameterPropertyItem] for the Device parameter. Contains internal properties used to
- * modify the device hardware, those are not actual parameters on file and are only kept on memory.
+ * A [PsiCallParameterPropertyItem] for the Device parameter. Contains internal properties used to modify the device hardware, those are not
+ * actual parameters on file and are only kept on memory.
  */
 internal class DeviceParameterPropertyItem(
   project: Project,
@@ -77,6 +77,7 @@ internal class DeviceParameterPropertyItem(
   parameterTypeNameIfStandard: Name?,
   argumentExpression: KtExpression?,
   defaultValue: String?,
+  initialValue: String? = null,
 ) :
   PsiCallParameterPropertyItem(
     project,
@@ -86,13 +87,12 @@ internal class DeviceParameterPropertyItem(
     parameterTypeNameIfStandard,
     argumentExpression,
     defaultValue,
+    initialValue = initialValue,
   ) {
   private val log = Logger.getInstance(this.javaClass)
 
   private val defaultDeviceValues: DeviceConfig =
-    ConfigurationManager.findExistingInstance(model.module)
-      ?.getDefaultPreviewDevice()
-      ?.toDeviceConfig()
+    ConfigurationManager.findExistingInstance(model.module)?.getDefaultPreviewDevice()?.toDeviceConfig()
       ?: DeviceConfig(
         shape = DEFAULT_SHAPE,
         width = DEFAULT_WIDTH_DP.toFloat(),
@@ -174,8 +174,7 @@ internal class DeviceParameterPropertyItem(
       DevicePropertyItem(
         name = PARAMETER_HARDWARE_CHIN_SIZE,
         defaultValue = defaultDeviceValues.chinSizeString,
-        inputValidation =
-          DeviceSpecDimValidator(strictPositive = false, maxFloatAllowed = MAX_CHIN_SIZE),
+        inputValidation = DeviceSpecDimValidator(strictPositive = false, maxFloatAllowed = MAX_CHIN_SIZE),
         getter = { it.chinSizeString },
       ) { config, newValue ->
         val newChinSize = newValue.toFloatOrNull()
@@ -187,11 +186,9 @@ internal class DeviceParameterPropertyItem(
           PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
         } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
       },
-      DevicePropertyItem(
-        name = PARAMETER_HARDWARE_CUTOUT,
-        defaultValue = defaultDeviceValues.cutout.name,
-        getter = { it.cutout.name },
-      ) { config, newValue ->
+      DevicePropertyItem(name = PARAMETER_HARDWARE_CUTOUT, defaultValue = defaultDeviceValues.cutout.name, getter = { it.cutout.name }) {
+        config,
+        newValue ->
         val newCutout = enumValueOfOrNull<Cutout>(newValue)
         newCutout?.let {
           config.cutout = newCutout
@@ -234,10 +231,7 @@ internal class DeviceParameterPropertyItem(
     return resolvedDeviceConfig.toMutableConfig()
   }
 
-  /**
-   * PropertyItem for internal device parameters, so that they all read and write to one single
-   * source.
-   */
+  /** PropertyItem for internal device parameters, so that they all read and write to one single source. */
   private inner class DevicePropertyItem(
     name: String,
     defaultValue: String?,

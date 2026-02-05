@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.gradle.project.sync.errors
 
+import com.android.tools.idea.gradle.project.sync.extensions.getGradleVersion
 import com.android.tools.idea.gradle.project.sync.idea.issues.BuildIssueComposer
 import com.android.tools.idea.gradle.project.sync.issues.SyncFailureUsageReporter
+import com.android.tools.idea.gradle.project.sync.quickFixes.OpenGradleDaemonJvmSettingsQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.SelectJdkFromFileSystemQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix
 import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix
@@ -33,7 +35,6 @@ import org.gradle.util.GradleVersion
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
-import org.jetbrains.plugins.gradle.issue.quickfix.GradleOpenDaemonJvmSettingsQuickFix
 import org.jetbrains.plugins.gradle.jvmcompat.GradleJvmSupportMatrix
 import org.jetbrains.plugins.gradle.properties.GradleDaemonJvmPropertiesFile
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
@@ -41,24 +42,23 @@ import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
 private const val UNSUPPORTED_JDK_VERSION_EXCEPTION = "Unsupported class file major version"
 
 /**
- * A [GradleIssueChecker] that provides quick-fixes for compatibility issues between project's Gradle version and
- * selected Gradle JVM version following [Gradle compatibility table](https://docs.gradle.org/current/userguide/compatibility.html).
- * In addition, overrides the platform [org.jetbrains.plugins.gradle.issue.IncompatibleGradleJvmAndGradleIssueChecker] to provide
- * better error description but also custom quick-fixes.
+ * A [GradleIssueChecker] that provides quick-fixes for compatibility issues between project's Gradle version and selected Gradle JVM
+ * version following [Gradle compatibility table](https://docs.gradle.org/current/userguide/compatibility.html). In addition, overrides the
+ * platform [org.jetbrains.plugins.gradle.issue.IncompatibleGradleJvmAndGradleIssueChecker] to provide better error description but also
+ * custom quick-fixes.
  */
-class IncompatibleGradleJvmAndGradleIssueChecker: GradleIssueChecker {
+class IncompatibleGradleJvmAndGradleIssueChecker : GradleIssueChecker {
 
   override fun check(issueData: GradleIssueData): BuildIssue? {
-    val gradleVersion = getGradleVersion(issueData) ?: return null
+    val gradleVersion = issueData.getGradleVersion() ?: return null
     val projectPath = Path(issueData.projectPath)
     val javaVersion = getJavaVersion(issueData, projectPath, gradleVersion)
 
     if (javaVersion != null) {
       if (!GradleJvmSupportMatrix.isSupported(gradleVersion, javaVersion)) {
         // Log metrics
-        SyncFailureUsageReporter.getInstance().collectFailure(
-          issueData.projectPath, AndroidStudioEvent.GradleSyncFailure.GRADLE_JVM_NOT_COMPATIBLE_WITH_AGP
-        )
+        SyncFailureUsageReporter.getInstance()
+          .collectFailure(issueData.projectPath, AndroidStudioEvent.GradleSyncFailure.GRADLE_JVM_NOT_COMPATIBLE_WITH_AGP)
 
         return createBuildIssue(projectPath, javaVersion, gradleVersion)
       }
@@ -72,14 +72,8 @@ class IncompatibleGradleJvmAndGradleIssueChecker: GradleIssueChecker {
     stacktrace: String?,
     location: FilePosition?,
     parentEventId: Any,
-    messageConsumer: Consumer<in BuildEvent>
-  ) = failureCause.contains(UNSUPPORTED_JDK_VERSION_EXCEPTION)
-
-  private fun getGradleVersion(issueData: GradleIssueData): GradleVersion? {
-    return issueData.buildEnvironment?.let {
-      GradleVersion.version(it.gradle.gradleVersion)
-    }
-  }
+    messageConsumer: Consumer<in BuildEvent>,
+  ) = message.contains(UNSUPPORTED_JDK_VERSION_EXCEPTION)
 
   private fun getJavaVersion(issueData: GradleIssueData, projectPath: Path, gradleVersion: GradleVersion): JavaVersion? {
     // Projects using Daemon JVM criteria with a compatible Gradle version will ignore javaHome defined on BuildEnvironment
@@ -90,31 +84,36 @@ class IncompatibleGradleJvmAndGradleIssueChecker: GradleIssueChecker {
       }
     }
 
-    return issueData.buildEnvironment?.let {
-      ExternalSystemJdkUtil.getJavaVersion(it.java.javaHome.path)
-    }
+    return issueData.buildEnvironment?.let { ExternalSystemJdkUtil.getJavaVersion(it.java.javaHome.path) }
   }
 
   private fun createBuildIssue(projectPath: Path, javaVersion: JavaVersion, gradleVersion: GradleVersion): BuildIssue {
     return BuildIssueComposer(
-      baseMessage = AndroidBundle.message("android.build.issue.incompatible.gradle.jvm.title"),
-      issueTitle = AndroidBundle.message("android.build.issue.incompatible.gradle.jvm.title")
-    ).apply {
-      val minimumSupportedJavaVersion = GradleJvmSupportMatrix.suggestOldestSupportedJavaVersion(gradleVersion)
-      val maximumSupportedJavaVersion = GradleJvmSupportMatrix.suggestLatestSupportedJavaVersion(gradleVersion)
-      addDescriptionOnNewLine(AndroidBundle.message(
-        "android.build.issue.incompatible.gradle.jvm.description",
-        gradleVersion.version, javaVersion.feature, minimumSupportedJavaVersion, maximumSupportedJavaVersion)
+        baseMessage = AndroidBundle.message("android.build.issue.incompatible.gradle.jvm.title"),
+        issueTitle = AndroidBundle.message("android.build.issue.incompatible.gradle.jvm.title"),
       )
+      .apply {
+        val minimumSupportedJavaVersion = GradleJvmSupportMatrix.suggestOldestSupportedJavaVersion(gradleVersion)
+        val maximumSupportedJavaVersion = GradleJvmSupportMatrix.suggestLatestSupportedJavaVersion(gradleVersion)
+        addDescriptionOnNewLine(
+          AndroidBundle.message(
+            "android.build.issue.incompatible.gradle.jvm.description",
+            gradleVersion.version,
+            javaVersion.feature,
+            minimumSupportedJavaVersion,
+            maximumSupportedJavaVersion,
+          )
+        )
 
-      startNewParagraph()
-      if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(projectPath, gradleVersion)) {
-        addQuickFix(UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix(gradleVersion, projectPath.toString()))
-        addQuickFix("Modify Daemon JVM criteria", GradleOpenDaemonJvmSettingsQuickFix)
-      } else {
-        addQuickFix(UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix(gradleVersion, projectPath.toString()))
-        addQuickFix(SelectJdkFromFileSystemQuickFix())
+        startNewParagraph()
+        if (GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(projectPath, gradleVersion)) {
+          addQuickFix(UpdateDaemonJvmCriteriaCompatibleGradleVersionQuickFix(gradleVersion, projectPath.toString()))
+          addQuickFix(OpenGradleDaemonJvmSettingsQuickFix)
+        } else {
+          addQuickFix(UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix(gradleVersion, projectPath.toString()))
+          addQuickFix(SelectJdkFromFileSystemQuickFix())
+        }
       }
-    }.composeBuildIssue()
+      .composeBuildIssue()
   }
 }

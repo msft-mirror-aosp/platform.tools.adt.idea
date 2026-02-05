@@ -81,13 +81,8 @@ class ComposePluginIrGenerationExtension : IrGenerationExtension {
 
     override fun hasErrors(): Boolean = hasError
 
-    override fun report(
-      severity: CompilerMessageSeverity,
-      message: String,
-      location: CompilerMessageSourceLocation?,
-    ) {
-      val messageWithLocation =
-        location?.let { "$message (${it.path}: ${it.line}, ${it.column})" } ?: message
+    override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageSourceLocation?) {
+      val messageWithLocation = location?.let { "$message (${it.path}: ${it.line}, ${it.column})" } ?: message
       when (severity) {
         CompilerMessageSeverity.OUTPUT,
         CompilerMessageSeverity.LOGGING,

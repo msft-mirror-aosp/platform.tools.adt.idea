@@ -83,13 +83,11 @@ fun OrganizationHeader(group: OrganizationGroup, onScrollEvent: (MouseEvent) -> 
       }
   ) {
     IconButton(
-      modifier =
-        Modifier.testTag("openButton").height(ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE.height.dp),
+      modifier = Modifier.testTag("openButton").height(ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE.height.dp),
       onClick = { group.setOpened(!opened.value) },
     ) {
       Row(verticalAlignment = Alignment.CenterVertically) {
-        if (opened.value)
-          Icon(AllIconsKeys.General.ChevronDown, contentDescription = descriptionOpened)
+        if (opened.value) Icon(AllIconsKeys.General.ChevronDown, contentDescription = descriptionOpened)
         else Icon(AllIconsKeys.General.ChevronRight, contentDescription = descriptionClosed)
 
         Spacer(Modifier.width(toolbarSpacing))
@@ -119,9 +117,7 @@ fun OrganizationHeader(group: OrganizationGroup, onScrollEvent: (MouseEvent) -> 
 fun createOrganizationHeader(group: OrganizationGroup): JComponent {
   enableNewSwingCompositing()
   var component: JComponent? = null
-  component = StudioComposePanel {
-    OrganizationHeader(group, onScrollEvent = { e -> component?.dispatchEvent(e) })
-  }
+  component = StudioComposePanel { OrganizationHeader(group, onScrollEvent = { e -> component?.dispatchEvent(e) }) }
   return component
 }
 

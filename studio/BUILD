@@ -98,6 +98,8 @@ studio_plugin(
         "//prebuilts/tools/common/m2:shark-graph-2.14",
         "//prebuilts/tools/common/m2:shark-hprof-2.14",
         "//prebuilts/tools/common/m2:shark-log-2.14",
+        "//prebuilts/tools/common/m2:tracing-desktop-2.0.0-alpha01",
+        "//prebuilts/tools/common/m2:tracing-wire-desktop-2.0.0-alpha01",
         "//prebuilts/tools/common/m2:wire-runtime-jvm-5.4.0",
         "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/.idea/libraries:agp-version",
@@ -149,8 +151,6 @@ studio_plugin(
         "//tools/base/repository:schema-generated",
         "//tools/base/sdk-common:aia-proto",
         "//tools/base/sdklib:schema-generated",
-        "//tools/base/tracer:tracing-desktop-2.0.0-SNAPSHOT",
-        "//tools/base/tracer:tracing-wire-desktop-2.0.0-SNAPSHOT",
         "//tools/adt/idea/debuggers:libjava_sites",
         "//tools/base/deploy/deployer:libjava_version",
         "//tools/vendor/google/game-tools/main:game-tools-protos",
@@ -610,14 +610,19 @@ studio_plugin(
     name = "com.google.services.firebase",
     directory = "firebase",
     libs = [
-        "//tools/vendor/google/firebase:libfirebase_java_proto",
+        "//tools/vendor/google/firebase/crashlytics-client:libfirebase_java_proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
     ],
     license_files = [
         "//tools/vendor/google/firebase:licenses",
     ],
-    modules = {"firebase.jar": ["//tools/vendor/google/firebase:firebase"]},
+    modules = {
+        "firebase.jar": [
+            "//tools/vendor/google/firebase:firebase",
+            "//tools/vendor/google/firebase/crashlytics-client",
+        ],
+    },
     visibility = ["//visibility:public"],
     deps = [
         ":com.android.tools.gradle.dsl",
@@ -816,6 +821,7 @@ studio_plugin(
         "//tools/vendor/google/ml/aiplugin/rag/lucene/sdkcompat:lucene-lib",
         "//tools/vendor/modelcontextprotocol/kotlin-sdk:mcp-sdk-libraries",
         "//tools/vendor/google/ml/aiplugin/android/journeys/gradle:libjourneys-java-proto",
+        "//tools/vendor/google/ml/aiplugin/backends/aicode:aicode_grpc",
     ],
     modules = {
         "aiplugin.jar": [
@@ -831,6 +837,7 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/android/journeys/gradle:aiplugin.android.journeys.gradle",
             "//tools/vendor/google/ml/aiplugin/android-plugin:aiplugin.android-plugin",
             "//tools/vendor/google/ml/aiplugin/android-plugin/descriptor:aiplugin.android-plugin.descriptor",
+            "//tools/vendor/google/ml/aiplugin/backends/aicode:aiplugin.backends.aicode",
             "//tools/vendor/google/ml/aiplugin/backends/local:aiplugin.backends.local",
             "//tools/vendor/google/ml/aiplugin/backends/third-party:aiplugin.backends.third-party",
             "//tools/vendor/google/ml/aiplugin/editor/prediction-services:aiplugin.editor.prediction-services",
@@ -861,6 +868,8 @@ studio_plugin(
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.libraries.compose.foundation.desktop",
         "@intellij//:intellij.libraries.compose.runtime.desktop",
+        "@intellij//:intellij.libraries.grpc",
+        "@intellij//:intellij.libraries.grpc.netty.shaded",
         "@intellij//:intellij.libraries.lucene.common",
         "@intellij//:intellij.libraries.skiko",
         "@intellij//:intellij.platform.jewel.foundation",

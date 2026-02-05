@@ -45,31 +45,21 @@ class CurrentWFFVersionServiceTest(val minSdkVersion: Int, val expectedFallbackV
     @JvmStatic
     @Parameterized.Parameters(name = "minSdkVersion={0} expectedFallbackVersion={1}")
     fun data(): List<Array<Any>> =
-      listOf(
-        arrayOf(30, WFFVersion1),
-        arrayOf(33, WFFVersion1),
-        arrayOf(34, WFFVersion2),
-        arrayOf(36, WFFVersion2),
-      )
+      listOf(arrayOf(30, WFFVersion1), arrayOf(33, WFFVersion1), arrayOf(34, WFFVersion2), arrayOf(36, WFFVersion2))
   }
 
   @get:Rule
   val projectRule =
-    AndroidProjectRule.withAndroidModel(
-      createAndroidProjectBuilderForDefaultTestProjectStructure().withMinSdk({ minSdkVersion })
-    )
+    AndroidProjectRule.withAndroidModel(createAndroidProjectBuilderForDefaultTestProjectStructure().withMinSdk({ minSdkVersion }))
 
   private val mainModule
-    get() =
-      projectRule.module.getModuleSystem().getProductionAndroidModule()
-        ?: error("expected main module to exist")
+    get() = projectRule.module.getModuleSystem().getProductionAndroidModule() ?: error("expected main module to exist")
 
   private lateinit var service: CurrentWFFVersionService
 
   @Before
   fun setup() {
-    projectRule.fixture.testDataPath =
-      resolveWorkspacePath("tools/adt/idea/wear-dwf/testData/").toString()
+    projectRule.fixture.testDataPath = resolveWorkspacePath("tools/adt/idea/wear-dwf/testData/").toString()
 
     service = CurrentWFFVersionService.getInstance()
   }

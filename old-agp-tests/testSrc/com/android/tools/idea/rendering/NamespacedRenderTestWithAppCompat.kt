@@ -32,9 +32,7 @@ class NamespacedRenderTestWithAppCompat {
 
   val AGP_VERSION = AGP_8_13
 
-  @get:Rule val projectRule = AndroidGradleProjectRule(
-    agpVersionSoftwareEnvironment = AGP_VERSION
-  )
+  @get:Rule val projectRule = AndroidGradleProjectRule(agpVersionSoftwareEnvironment = AGP_VERSION)
 
   @get:Rule val renderRule = RenderTestRule()
 
@@ -62,8 +60,7 @@ class NamespacedRenderTestWithAppCompat {
 
   @Test
   fun testActivityMain() {
-    val layout =
-      project.baseDir.findFileByRelativePath("app/src/main/res/layout/activity_main.xml")!!
+    val layout = project.baseDir.findFileByRelativePath("app/src/main/res/layout/activity_main.xml")!!
     RenderTestUtil.checkRendering(
       projectRule.mainAndroidFacet(":app"),
       layout,

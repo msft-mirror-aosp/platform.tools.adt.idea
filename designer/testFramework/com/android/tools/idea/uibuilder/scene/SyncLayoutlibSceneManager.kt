@@ -23,7 +23,6 @@ import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.LayoutScannerConfiguration.Companion.DISABLED
-import com.android.tools.idea.concurrency.AndroidDispatchers.workerThread
 import com.android.tools.idea.res.ResourceNotificationManager
 import com.android.tools.rendering.RenderResult
 import com.google.common.collect.ImmutableSet
@@ -33,17 +32,14 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.concurrency.EdtExecutorService
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /** [LayoutlibSceneManager] used for tests that performs all operations synchronously. */
 open class SyncLayoutlibSceneManager
 @JvmOverloads
-constructor(
-  surface: DesignSurface<LayoutlibSceneManager>,
-  model: NlModel,
-  private val listenToResourceChanges: Boolean = true,
-) :
+constructor(surface: DesignSurface<LayoutlibSceneManager>, model: NlModel, private val listenToResourceChanges: Boolean = true) :
   LayoutlibSceneManager(
     model,
     surface,
@@ -68,9 +64,7 @@ constructor(
     sceneRenderConfiguration.setRenderTaskBuilderWrapperForTest { it.disableSecurityManager() }
   }
 
-  /**
-   * Allows to set desirable render result for tests, if result is not set returns default value.
-   */
+  /** Allows to set desirable render result for tests, if result is not set returns default value. */
   override var renderResult: RenderResult? = null
     get() = field ?: super.renderResult
 
@@ -81,35 +75,24 @@ constructor(
   }
 
   override suspend fun requestRenderAndWait() =
-    withContext(workerThread) {
+    withContext(Dispatchers.Default) {
       if (ignoreRenderRequests) return@withContext
       super.requestRenderAndWait()
     }
 
-  override fun executeInRenderSessionAsync(
-    block: Runnable,
-    timeout: Long,
-    timeUnit: TimeUnit,
-  ): CompletableFuture<Void> {
+  override fun executeInRenderSessionAsync(block: Runnable, timeout: Long, timeUnit: TimeUnit): CompletableFuture<Void> {
     block.run()
     return CompletableFuture.completedFuture(null)
   }
 
-  fun putDefaultPropertyValue(
-    component: NlComponent,
-    namespace: ResourceNamespace,
-    attributeName: String,
-    value: String,
-  ) {
+  fun putDefaultPropertyValue(component: NlComponent, namespace: ResourceNamespace, attributeName: String, value: String) {
     if (renderResult == null) {
       sceneRenderConfiguration.needsInflation.set(true)
       requestRender()
     }
-    val map: MutableMap<ResourceReference, ResourceValue> =
-      renderResult!!.defaultProperties.getOrPut(component.snapshot!!) { HashMap() }
+    val map: MutableMap<ResourceReference, ResourceValue> = renderResult!!.defaultProperties.getOrPut(component.snapshot!!) { HashMap() }
     val reference = ResourceReference.attr(namespace, attributeName)
-    val resourceValue: ResourceValue =
-      StyleItemResourceValueImpl(namespace, attributeName, value, null)
+    val resourceValue: ResourceValue = StyleItemResourceValueImpl(namespace, attributeName, value, null)
     if (map[reference] != resourceValue) {
       // Make sure to "emulate" the consequences of a change
       simulateResourceChanged(ImmutableSet.of(ResourceNotificationManager.Reason.EDIT))
@@ -122,10 +105,7 @@ constructor(
       resourceChangeListener.resourcesChanged(reason)
       runInEdtAndWait {
         // Ensure all queued notifications have completed
-        PlatformTestUtil.waitForFuture(
-          resourceChangeListener.notificationExecutorService.submit {},
-          10_000L,
-        )
+        PlatformTestUtil.waitForFuture(resourceChangeListener.notificationExecutorService.submit {}, 10_000L)
       }
     }
   }

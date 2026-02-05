@@ -31,9 +31,7 @@ import org.junit.runners.JUnit4
 
 @RunWith(JUnit4::class)
 class AndroidCodeStyleSettingsTest {
-  @Rule
-  @JvmField
-  val myRule = AndroidProjectRule.inMemory()
+  @Rule @JvmField val myRule = AndroidProjectRule.inMemory()
 
   @Test
   fun initializedDefaultsInRealProjectInStudio() {
@@ -41,8 +39,7 @@ class AndroidCodeStyleSettingsTest {
     if (IdeInfo.getInstance().isAndroidStudio) {
       val newSettings = CodeStyleSettings()
       assertThat(AndroidXmlCodeStyleSettings.getInstance(newSettings).USE_CUSTOM_SETTINGS).isTrue()
-      assertThat(newSettings.getCustomSettings(JavaCodeStyleSettings::class.java).CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND)
-        .isEqualTo(99)
+      assertThat(newSettings.getCustomSettings(JavaCodeStyleSettings::class.java).CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND).isEqualTo(99)
       assertThat(newSettings.getCommonSettings(XMLLanguage.INSTANCE).FORCE_REARRANGE_MODE).isEqualTo(REARRANGE_ALWAYS)
 
       // CodeInsightTestFixtureImpl will instantiate a temporary code style for each test. This test only needs to verify the code style

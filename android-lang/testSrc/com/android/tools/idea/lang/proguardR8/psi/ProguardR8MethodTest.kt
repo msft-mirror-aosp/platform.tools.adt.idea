@@ -16,21 +16,25 @@
 package com.android.tools.idea.lang.proguardR8.psi
 
 import com.android.tools.idea.lang.androidSql.referenceAtCaret
-import com.android.tools.idea.lang.proguardR8.ProguardR8FileType
 import com.android.tools.idea.lang.proguardR8.ProguardR8TestCase
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.highlightedAs
 import com.android.tools.idea.testing.moveCaret
 import com.google.common.truth.Truth.assertThat
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
+import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.util.parentOfType
 import com.intellij.util.IncorrectOperationException
 import org.junit.Assert
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 
-class ProguardR8MethodTest : ProguardR8TestCase() {
+@RunWith(Parameterized::class)
+class ProguardR8MethodTest(private val fileType: LanguageFileType) : ProguardR8TestCase() {
 
   private fun getMethodsAtCaret(): List<PsiMethod> {
     val proguardMethod = myFixture.file.findElementAt(myFixture.caretOffset)!!.parentOfType<ProguardR8ClassMemberName>()
@@ -38,9 +42,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     return (proguardMethod!!.reference as PsiPolyVariantReference).multiResolve(false).map { it.element as PsiMethod }
   }
 
+  @Test
   fun testMatchesToPsiType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -48,16 +53,20 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         int myInt();
         String myString();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         int myIn${caret}t();
         java.lang.String myString();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     var method = myFixture.file.findElementAt(myFixture.caretOffset)!!.parentOfType<ProguardR8ClassMember>()!!
     assertThat(method.type).isNotNull()
@@ -71,9 +80,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(method.type!!.matchesPsiType(realType)).isTrue()
   }
 
+  @Test
   fun testMatchesToPsiParametersList() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -81,21 +91,24 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         void method1(int p1, String p2);
         void method2(long p1, long p2);
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         void method${caret}1(int, java.lang.String);
         void method2(long, long);
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val psiClass = myFixture.findClass("test.MyClass")
     val parameterList1 = psiClass.findMethodsByName("method1", false).first().parameterList
     val parameterList2 = psiClass.findMethodsByName("method2", false).first().parameterList
-
 
     val method1 = myFixture.file.findElementAt(myFixture.caretOffset)!!.parentOfType<ProguardR8ClassMember>()!!
     assertThat(method1.parameters!!.matchesPsiParameterList(parameterList1)).isTrue()
@@ -107,9 +120,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(method2.parameters!!.matchesPsiParameterList(parameterList1)).isFalse()
   }
 
+  @Test
   fun testMethodReferenceCorrectPrimitiveType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -117,29 +131,33 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         int myMethod();
         int myMethod(int p1);
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         int myMeth${caret}od(int);
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val method = myFixture.elementAtCaret
     assertThat(method).isNotNull()
 
-    val psiMethod = myFixture.findClass("test.MyClass")
-      .findMethodsByName("myMethod", false)
-      .firstOrNull { it.parameterList.parametersCount == 1 }
+    val psiMethod =
+      myFixture.findClass("test.MyClass").findMethodsByName("myMethod", false).firstOrNull { it.parameterList.parametersCount == 1 }
 
     assertThat(method).isEqualTo(psiMethod)
   }
 
+  @Test
   fun testMethodReferenceAnyPrimitiveType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -147,15 +165,19 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         int myPrimitive(long p1);
         int myPrimitive(int p1);
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         % myPrimiti${caret}ve(%);
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val methods = getMethodsAtCaret()
     assertThat(methods.size).isEqualTo(2)
@@ -164,9 +186,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(methods).containsExactlyElementsIn(psiMethods)
   }
 
+  @Test
   fun testMethodReferenceAnyType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -175,29 +198,32 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         StringBuilder myMethod(int p1);
         String myMethod(int p1, String p2);
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         *** myMeth${caret}od(***);
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val methods = getMethodsAtCaret()
     assertThat(methods.size).isEqualTo(1)
 
-    val psiMethods = myFixture.findClass("test.MyClass")
-      .findMethodsByName("myMethod", false)
-      .filter { it.parameters.size == 1 }
+    val psiMethods = myFixture.findClass("test.MyClass").findMethodsByName("myMethod", false).filter { it.parameters.size == 1 }
 
     assertThat(methods).containsExactlyElementsIn(psiMethods)
   }
 
+  @Test
   fun testMethodReferenceAnyNumAndTypeArgs() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -206,15 +232,19 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         String myMethod(int p1);
         String myMethod(int p1, String p2);
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         *** myMeth${caret}od(...);
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val methods = getMethodsAtCaret()
     assertThat(methods.size).isEqualTo(3)
@@ -223,24 +253,29 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(methods).containsExactlyElementsIn(psiMethods)
   }
 
+  @Test
   fun testMethodReferenceCorrectType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
       class MyClass {
         String myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         java.lang.String myMeth${caret}od();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val method = myFixture.elementAtCaret
 
@@ -248,53 +283,64 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(method).isEqualTo(myFixture.findClass("test.MyClass").findMethodsByName("myMethod", false).first())
   }
 
+  @Test
   fun testMethodReferenceIncorrectType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
       class MyClass {
         StringBuilder myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         java.lang.String myMeth${caret}od();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     assertThat(getMethodsAtCaret()).isEmpty()
   }
 
+  @Test
   fun testMethodReferenceIncorrectPrimitiveType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
       class MyClass {
         long myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         int myMeth${caret}od();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     assertThat(getMethodsAtCaret()).isEmpty()
   }
 
+  @Test
   fun testSuggestMethodsPrimitiveType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -303,15 +349,19 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         boolean myBooleanMethod2();
         int myNotBooleanMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         boolean ${caret}();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val method = myFixture.completeBasic()
 
@@ -319,9 +369,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(method.map { it.lookupString }).containsExactly("myBooleanMethod", "myBooleanMethod2")
   }
 
+  @Test
   fun testSuggestMethodsAnyPrimitiveType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -331,15 +382,19 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         int myPrimitive3();
         String myNotPrimitive();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         % ${caret}();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val method = myFixture.completeBasic()
 
@@ -347,9 +402,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(method.map { it.lookupString }).containsExactly("myPrimitive", "myPrimitive2", "myPrimitive3")
   }
 
+  @Test
   fun testSuggestMethodsAnyType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -359,15 +415,19 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         int myPrimitive3();
         String myNotPrimitive();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         *** ${caret}();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val method = myFixture.completeBasic()
 
@@ -375,9 +435,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(method.map { it.lookupString }).containsExactly("myPrimitive", "myPrimitive2", "myPrimitive3", "myNotPrimitive")
   }
 
+  @Test
   fun testNotSuggestFields() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -388,55 +449,68 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         String myNotPrimitive();
         long myPrimitive();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         % ${caret}();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val method = myFixture.completeBasic()
 
     assertThat(method.size).isEqualTo(1)
   }
 
+  @Test
   fun testRenameMethod() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       //package test;
 
       class MyClass {
         int myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class MyClass {
         int myMeth${caret}od();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.renameElementAtCaret("myMethodNew")
 
     val newMethod = myFixture.findClass("MyClass").findMethodsByName("myMethodNew", false).first()
     assertThat(newMethod).isNotNull()
 
-    myFixture.checkResult("""
+    myFixture.checkResult(
+      """
       -keep class MyClass {
         int myMethodNew();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
   }
 
+  @Test
   fun testResolveToAllOverloads() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -450,15 +524,19 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         String myMethod(StringBuilder p1);
         MyClass myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         *** my${caret}Method(...);
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     val methods = getMethodsAtCaret()
 
@@ -466,28 +544,33 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(methods).containsExactlyElementsIn(myFixture.findClass("test.MyClass").methods)
   }
 
+  @Test
   fun testRenameMethodNotValid() {
-    myFixture.addFileToProject("MyClass.kt",
-      //language=Kotlin
-                               """
+    myFixture.addFileToProject(
+      "MyClass.kt",
+      // language=Kotlin
+      """
       class MyClass {
         fun myMethod():Int {};
       }
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class MyClass {
         int myMeth${caret}od();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     try {
       myFixture.renameElementAtCaret("myMethod-New")
       Assert.fail("Expected to throw an IncorrectOperationException for invalid name")
-    }
-    catch (e: RuntimeException) {
+    } catch (e: RuntimeException) {
       assertThat(e.cause).isInstanceOf(IncorrectOperationException::class.java)
       assertEquals("\"myMethod-New\" is not an identifier for Shrinker Config.", e.cause?.message)
     }
@@ -495,75 +578,91 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     val method = myFixture.findClass("MyClass").findMethodsByName("myMethod", false).first()
     assertThat(method).isNotNull()
 
-    myFixture.checkResult("""
+    myFixture.checkResult(
+      """
       -keep class MyClass {
         int myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
   }
 
+  @Test
   fun testInspectUnresolvedMethod() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
       class MyClass {
         boolean myBoolean();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         long ${"myBoolean" highlightedAs ERROR};
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
 
     // don't highlight if class is unknown
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.My* {
         long myBoolean();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
 
     // don't highlight if method is with wildcards
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         long m*();
       }
-      """.trimIndent())
+      """
+        .trimIndent(),
+    )
 
     myFixture.checkHighlighting()
   }
 
+  @Test
   fun testCodeCompletionForIncompleteMethod() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
       class MyClass {
         public boolean[] myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
         public boolean[] $caret
       }
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
     val methods = myFixture.completeBasic()
 
@@ -571,9 +670,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(methods.map { it.lookupString }).contains("myMethod")
   }
 
+  @Test
   fun testCodeCompletionForMethodWithoutType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -581,15 +681,18 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         boolean[] myMethod1();
         int myMethod2();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
          $caret
       }
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
     val methods = myFixture.completeBasic()
 
@@ -597,9 +700,10 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(methods.map { it.lookupString }).containsAllOf("myMethod1", "myMethod2")
   }
 
+  @Test
   fun testResolveMethodWithoutType() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
@@ -607,15 +711,18 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
         boolean[] myMethod();
         int myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
          my${caret}Method();
       }
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
     val methods = (myFixture.referenceAtCaret as PsiPolyVariantReference).multiResolve(false).toList()
 
@@ -624,25 +731,28 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
     assertThat(methods.map { it.element!!.text }).containsExactly("boolean[] myMethod();", "int myMethod();")
   }
 
-
+  @Test
   fun testInsertMethodWithParentheses() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package test;
 
       class MyClass {
         int myMethod();
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class test.MyClass {
          my${caret};
       }
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
     myFixture.completeBasic()
 
@@ -651,35 +761,38 @@ class ProguardR8MethodTest : ProguardR8TestCase() {
       -keep class test.MyClass {
          myMethod();
       }
-      """.trimIndent()
+      """
+        .trimIndent()
     )
   }
 
   // Bug:153616200 , case 3.
+  @Test
   fun testResolveMethodKotlinIntrinsics() {
     myFixture.addClass(
-      //language=JAVA
+      // language=JAVA
       """
       package kotlin.jvm.internal;
 
       class Intrinsics {
         private static void throwParameterIsNullException(String paramName) { }
       }
-    """.trimIndent())
+      """
+        .trimIndent()
+    )
 
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
-      //language=SHRINKER_CONFIG
+      fileType,
+      // language=SHRINKER_CONFIG
       """
       -assumenosideeffects class kotlin.jvm.internal.Intrinsics {
           private static void throw<caret>ParameterIsNullException(...);
       }
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
-    val method = myFixture
-      .findClass("kotlin.jvm.internal.Intrinsics")
-      .findMethodsByName("throwParameterIsNullException").first()
+    val method = myFixture.findClass("kotlin.jvm.internal.Intrinsics").findMethodsByName("throwParameterIsNullException").first()
     val methodFromReference = myFixture.elementAtCaret
 
     assertThat(methodFromReference).isEqualTo(method)

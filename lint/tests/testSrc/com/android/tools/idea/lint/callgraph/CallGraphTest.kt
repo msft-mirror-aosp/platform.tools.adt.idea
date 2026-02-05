@@ -42,14 +42,10 @@ fun buildInterproceduralAnalysesForTest(
   project: Project,
 ): Triple<ClassHierarchy, IntraproceduralDispatchReceiverEvaluator, CallGraph> {
   val uastContext = project.getService(UastContext::class.java)
-  val psiFile =
-    PsiManager.getInstance(project).findFile(virtualFile) ?: throw Error("Failed to find PsiFile")
-  val file =
-    uastContext.convertWithParent<UFile>(psiFile)
-      ?: throw Error("Failed to convert PsiFile to UFile")
+  val psiFile = PsiManager.getInstance(project).findFile(virtualFile) ?: throw Error("Failed to find PsiFile")
+  val file = uastContext.convertWithParent<UFile>(psiFile) ?: throw Error("Failed to convert PsiFile to UFile")
   val cha = ClassHierarchyVisitor().also { file.accept(it) }.classHierarchy
-  val receiverEval =
-    IntraproceduralDispatchReceiverVisitor(cha).also { file.accept(it) }.receiverEval
+  val receiverEval = IntraproceduralDispatchReceiverVisitor(cha).also { file.accept(it) }.receiverEval
   val graph = CallGraphVisitor(receiverEval, cha).also { file.accept(it) }.callGraph
   return Triple(cha, receiverEval, graph)
 }
@@ -78,17 +74,14 @@ class CallGraphTest : LightJavaCodeInsightFixtureAdtTestCase() {
   fun testKotlinCallGraph() = doTest(".kt")
 
   private fun doTest(ext: String) {
-    myFixture.testDataPath =
-      resolveWorkspacePath("tools/adt/idea/lint/tests/testData/lint").toString()
+    myFixture.testDataPath = resolveWorkspacePath("tools/adt/idea/lint/tests/testData/lint").toString()
     val virtualFile = myFixture.copyFileToProject("callgraph/CallGraph$ext", "src/CallGraph$ext")
-    val (_, receiverEval, graph) =
-      buildInterproceduralAnalysesForTest(virtualFile, myFixture.project)
+    val (_, receiverEval, graph) = buildInterproceduralAnalysesForTest(virtualFile, myFixture.project)
     val contextualGraph = graph.buildContextualCallGraph(receiverEval)
     val nodeMap = graph.nodes.associateBy { it.shortName }
 
     fun String.assertCalls(vararg callees: String) {
-      val node =
-        nodeMap[this] ?: if (callees.isEmpty()) return else throw Error("No node found for ${this}")
+      val node = nodeMap[this] ?: if (callees.isEmpty()) return else throw Error("No node found for ${this}")
       val actual = node.likelyEdges.map { it.node.shortName }.toSet().toList()
       TestCase.assertEquals("Unexpected callees for ${this}", callees.sorted(), actual.sorted())
     }
@@ -100,10 +93,8 @@ class CallGraphTest : LightJavaCodeInsightFixtureAdtTestCase() {
       return paths.firstOrNull()?.map { (contextualNode, _) -> contextualNode.node.shortName }
     }
 
-    fun String.assertReaches(callee: String) =
-      TestCase.assertNotNull("${this} should reach $callee", this.findPath(callee))
-    fun String.assertDoesNotReach(callee: String) =
-      TestCase.assertNull("${this} should not reach $callee", this.findPath(callee))
+    fun String.assertReaches(callee: String) = TestCase.assertNotNull("${this} should reach $callee", this.findPath(callee))
+    fun String.assertDoesNotReach(callee: String) = TestCase.assertNull("${this} should not reach $callee", this.findPath(callee))
 
     // Check simple call chains.
     "Trivial#empty".assertCalls(/*nothing*/ )
@@ -130,8 +121,7 @@ class CallGraphTest : LightJavaCodeInsightFixtureAdtTestCase() {
     if (KotlinPluginModeProvider.isK2Mode() && ext == ".kt") {
       "SimpleLocal#typeEvidencedBoth".assertCalls("Impl#Impl", "SubImpl#SubImpl", "SubImpl#f")
     } else {
-      "SimpleLocal#typeEvidencedBoth"
-        .assertCalls("Impl#Impl", "SubImpl#SubImpl", "SubImpl#f", "Impl#f")
+      "SimpleLocal#typeEvidencedBoth".assertCalls("Impl#Impl", "SubImpl#SubImpl", "SubImpl#f", "Impl#f")
     }
 
     // Check calls through fields and array elements.
@@ -152,8 +142,7 @@ class CallGraphTest : LightJavaCodeInsightFixtureAdtTestCase() {
     "SubSubSubSpecial#SubSubSubSpecial".assertCalls("SubSubSpecial#SubSubSpecial")
 
     // Test class and field initializers.
-    "Initializers#Initializers"
-      .assertCalls("Object#Object", "Nested#f", "Empty#Empty", "Inner#Inner", "Nested#g")
+    "Initializers#Initializers".assertCalls("Object#Object", "Nested#f", "Empty#Empty", "Inner#Inner", "Nested#g")
     "Inner#Inner".assertCalls("Object#Object")
     "Nested#Nested".assertCalls("Nested#h", "Object#Object")
 

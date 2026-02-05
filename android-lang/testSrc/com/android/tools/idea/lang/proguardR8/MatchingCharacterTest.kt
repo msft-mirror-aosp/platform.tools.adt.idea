@@ -15,71 +15,88 @@
  */
 package com.android.tools.idea.lang.proguardR8
 
-class MatchingCharacterTest : ProguardR8TestCase() {
+import com.intellij.openapi.fileTypes.LanguageFileType
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+
+@RunWith(Parameterized::class)
+class MatchingCharacterTest(private val fileType: LanguageFileType) : ProguardR8TestCase() {
+  @Test
   fun testMatchesBraces() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class MyClass <caret>
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.type('{')
 
     myFixture.checkResult(
       """
-        -keep class MyClass {}
-      """.trimIndent()
+      -keep class MyClass {}
+      """
+        .trimIndent()
     )
   }
 
+  @Test
   fun testMatchesParenthesis() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -keep class MyClass {
         int method<caret>
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.type('(')
 
     myFixture.checkResult(
       """
-        -keep class MyClass {
-          int method()
-      """.trimIndent()
+      -keep class MyClass {
+        int method()
+      """
+        .trimIndent()
     )
   }
 
+  @Test
   fun testMatchesQuotes() {
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -include <caret>
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.type('\'')
 
     myFixture.checkResult(
       """
-        -include ''
-      """.trimIndent()
+      -include ''
+      """
+        .trimIndent()
     )
     myFixture.configureByText(
-      ProguardR8FileType.INSTANCE,
+      fileType,
       """
       -include <caret>
-      """.trimIndent()
+      """
+        .trimIndent(),
     )
 
     myFixture.type('"')
 
     myFixture.checkResult(
       """
-        -include ""
-      """.trimIndent()
+      -include ""
+      """
+        .trimIndent()
     )
   }
 }

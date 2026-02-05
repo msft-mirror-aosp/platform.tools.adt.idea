@@ -43,6 +43,7 @@ iml_module(
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
         # AI Plugin access to Gradle Project System functionality
         "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
+        "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle_tests",
         # TODO(b/427148033), MigrateToCatalogProcessor
         "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         # TODO(xof): investigate
@@ -301,6 +302,7 @@ iml_module(
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
                 "//tools/base/build-system:gradle-distrib",
+                "//tools/base/build-system:gradle-distrib-7.4",
                 "//tools/base/build-system:gradle-distrib-8.0",
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
@@ -670,7 +672,7 @@ iml_module(
 )
 
 generate_old_agp_tests_from_list(
-    name = "MultipleGradleRootsSyncUpdatesProjectJdkIntegrationTest",
+    name = "GradleSyncWithOldAgpIntegrationTest",
     iml_module = ":intellij.android.projectSystem.gradle.tests",
     tests_list = [
         dict(

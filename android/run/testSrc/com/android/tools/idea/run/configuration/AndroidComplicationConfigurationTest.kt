@@ -17,6 +17,7 @@ package com.android.tools.idea.run.configuration
 
 import com.android.tools.idea.execution.common.DeployableToDevice
 import com.google.common.truth.Truth.assertThat
+import com.intellij.compiler.options.CompileStepBeforeRun
 import com.intellij.execution.RunManager
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
@@ -28,16 +29,16 @@ import org.junit.Test
 
 class AndroidComplicationConfigurationTest {
 
-  @get:Rule
-  val projectRule = ProjectRule()
+  @get:Rule val projectRule = ProjectRule()
 
   val project: Project
     get() = projectRule.project
 
   @Test
   fun testProgramRunnerAvailable() {
-    val configSettings = RunManager.getInstance(project).createConfiguration(
-      "run complication", AndroidComplicationConfigurationType().configurationFactories.single())
+    val configSettings =
+      RunManager.getInstance(project)
+        .createConfiguration("run complication", AndroidComplicationConfigurationType().configurationFactories.single())
 
     val runnerForRun = ProgramRunner.getRunner(DefaultRunExecutor.EXECUTOR_ID, configSettings.configuration)
     assertThat(runnerForRun).isNotNull()
@@ -48,9 +49,21 @@ class AndroidComplicationConfigurationTest {
 
   @Test
   fun testDeploysToLocalDevice() {
-    val configSettings = RunManager.getInstance(project).createConfiguration(
-      "run complication", AndroidComplicationConfigurationType().configurationFactories.single())
+    val configSettings =
+      RunManager.getInstance(project)
+        .createConfiguration("run complication", AndroidComplicationConfigurationType().configurationFactories.single())
 
     assertThat(DeployableToDevice.deploysToLocalDevice(configSettings.configuration)).isTrue()
+  }
+
+  // Regression test for b/476891944
+  @Test
+  fun testDefaultMakeTaskIsDisabled() {
+    val factory = AndroidComplicationConfigurationType().configurationFactories.single()
+    val configSettings = RunManager.getInstance(project).createConfiguration("test config", factory)
+    val beforeRunTasks = configSettings.configuration.beforeRunTasks
+
+    val makeTasks = beforeRunTasks.filterIsInstance<CompileStepBeforeRun.MakeBeforeRunTask>().filter { it.isEnabled }
+    assertThat(makeTasks).isEmpty()
   }
 }

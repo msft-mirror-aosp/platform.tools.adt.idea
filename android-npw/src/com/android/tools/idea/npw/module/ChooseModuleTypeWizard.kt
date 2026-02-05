@@ -70,8 +70,7 @@ class ChooseModuleTypeWizard(
 
   val mainPanel = JPanel(BorderLayout())
 
-  private val importModuleGalleryEntry =
-    ImportModuleGalleryEntry() // Added to the left list bottom, and as a marker for the separator
+  private val importModuleGalleryEntry = ImportModuleGalleryEntry() // Added to the left list bottom, and as a marker for the separator
   private val moduleGalleryEntryList: List<ModuleGalleryEntry> =
     sortModuleEntries(moduleGalleryEntries, moduleParent) + Separator() + importModuleGalleryEntry
   private var selectedEntry: ModuleGalleryEntry? = null
@@ -103,9 +102,7 @@ class ChooseModuleTypeWizard(
       JBList(moduleGalleryEntryList).apply {
         setCellRenderer { list, value, _, isSelected, cellHasFocus ->
           if (value is Separator) {
-            GroupHeaderSeparator(JBUI.emptyInsets()).apply {
-              border = JBUI.Borders.empty(TABLE_TITLE_PADDING, 0)
-            }
+            GroupHeaderSeparator(JBUI.emptyInsets()).apply { border = JBUI.Borders.empty(TABLE_TITLE_PADDING, 0) }
           } else {
             JBLabel(value.name, value.icon, SwingConstants.LEFT).apply {
               isOpaque = true
@@ -135,10 +132,7 @@ class ChooseModuleTypeWizard(
           return
         }
         try {
-          currentModelWizard =
-            ModelWizard.Builder()
-              .addStep(entry.createStep(project, moduleParent, projectSyncInvoker))
-              .build()
+          currentModelWizard = ModelWizard.Builder().addStep(entry.createStep(project, moduleParent, projectSyncInvoker)).build()
         } catch (ex: Throwable) {
           logger.error(ex)
         }
@@ -152,9 +146,7 @@ class ChooseModuleTypeWizard(
         }
         selectedEntry = entry
 
-        modelWizardListeners.listen(currentModelWizard.onFirstStep()) {
-          leftPanel.isVisible = currentModelWizard.onFirstStep().get()
-        }
+        modelWizardListeners.listen(currentModelWizard.onFirstStep()) { leftPanel.isVisible = currentModelWizard.onFirstStep().get() }
 
         wizardModelChangedListener(currentModelWizard)
       }
@@ -212,13 +204,7 @@ class ChooseModuleTypeWizard(
         isOpaque = true
         background = UIUtil.getListBackground()
         foreground = JBColor(0x999999, 0x787878)
-        border =
-          JBUI.Borders.empty(
-            TABLE_TITLE_PADDING,
-            TABLE_CELL_LEFT_PADDING,
-            TABLE_TITLE_PADDING,
-            TABLE_TITLE_PADDING,
-          )
+        border = JBUI.Borders.empty(TABLE_TITLE_PADDING, TABLE_CELL_LEFT_PADDING, TABLE_TITLE_PADDING, TABLE_TITLE_PADDING)
       }
     }
   }
@@ -229,19 +215,12 @@ private class ImportModuleGalleryEntry : ModuleGalleryEntry {
   override val name: String = "Import..."
   override val description: String = message("android.wizard.module.import.gradle.description")
 
-  override fun createStep(
-    project: Project,
-    moduleParent: String,
-    projectSyncInvoker: ProjectSyncInvoker,
-  ): SkippableWizardStep<*> =
+  override fun createStep(project: Project, moduleParent: String, projectSyncInvoker: ProjectSyncInvoker): SkippableWizardStep<*> =
     SourceToGradleModuleStep(SourceToGradleModuleModel(project, projectSyncInvoker))
 }
 
 @VisibleForTesting
-fun sortModuleEntries(
-  moduleTypeProviders: List<ModuleGalleryEntry>,
-  moduleParent: String,
-): List<ModuleGalleryEntry> {
+fun sortModuleEntries(moduleTypeProviders: List<ModuleGalleryEntry>, moduleParent: String): List<ModuleGalleryEntry> {
   // To have a sequence specified by design, we hardcode the sequence. Everything else is added at
   // the end (sorted by name)
   val orderedNames =
@@ -263,29 +242,18 @@ fun sortModuleEntries(
     )
 
   return moduleTypeProviders
-    .filter {
-      it.name != message("android.wizard.module.new.kotlin.multiplatform.library") ||
-        shouldShowKMPModule(moduleParent)
-    }
+    .filter { it.name != message("android.wizard.module.new.kotlin.multiplatform.library") || shouldShowKMPModule(moduleParent) }
     .partition { it.name in orderedNames }
     .run { first.sortedBy { orderedNames.indexOf(it.name) } + second.sortedBy { it.name } }
 }
 
-/**
- * Determines if the KMP Module option should be shown. It requires being called from the top level
- * project (not inside another module)
- */
+/** Determines if the KMP Module option should be shown. It requires being called from the top level project (not inside another module) */
 private fun shouldShowKMPModule(moduleParent: String): Boolean {
   return moduleParent == ":"
 }
 
-fun showDefaultWizard(
-  project: Project,
-  moduleParent: String,
-  projectSyncInvoker: ProjectSyncInvoker,
-) {
-  val moduleDescriptions =
-    ModuleDescriptionProvider.EP_NAME.extensions.flatMap { it.getDescriptions(project) }
+fun showDefaultWizard(project: Project, moduleParent: String, projectSyncInvoker: ProjectSyncInvoker) {
+  val moduleDescriptions = ModuleDescriptionProvider.EP_NAME.extensions.flatMap { it.getDescriptions(project) }
   ChooseModuleTypeWizard(project, moduleParent, moduleDescriptions, projectSyncInvoker).show()
 }
 
@@ -299,11 +267,7 @@ private class Separator : ModuleGalleryEntry {
   override val description: String?
     get() = null
 
-  override fun createStep(
-    project: Project,
-    moduleParent: String,
-    projectSyncInvoker: ProjectSyncInvoker,
-  ): SkippableWizardStep<*> {
+  override fun createStep(project: Project, moduleParent: String, projectSyncInvoker: ProjectSyncInvoker): SkippableWizardStep<*> {
     throw UnsupportedOperationException()
   }
 }

@@ -26,12 +26,14 @@ import org.jetbrains.annotations.SystemIndependent
 /**
  * Gradle [Daemon JVM criteria](https://docs.gradle.org/current/userguide/gradle_daemon.html#sec:daemon_jvm_criteria) representation model
  * to allow configuring different option for test projects
+ *
  * @param version A Java language version of required JVM to run the build
  * @param vendor A JVM vendor being the known ones [KnownJvmVendor], if not specified Gradle considers all vendors compatible
  * @param autoDetectionEnabled Enables toolchain auto-detection to locate locally matching toolchain
  * @param autoProvisioningEnabled Enables toolchain auto-provisioning to download toolchain given provided download URLs
  * @param customToolchainInstallationsPath A comma-separated list of paths to specific installations being the default all the embedded JDKs
  * @param customToolchainInstallationsEnv A comma-separated list of environment variables of toolchain installations paths
+ * @param applyToolchainResolverPlugin Adds a simple resolver plugin to gradle.settings to make updateDaemonJvm task to succeed
  */
 data class GradleDaemonToolchain(
   val version: String,
@@ -40,5 +42,6 @@ data class GradleDaemonToolchain(
   val autoProvisioningEnabled: Boolean = false,
   val customToolchainInstallationsPath: List<@SystemIndependent String> =
     listOf(JDK_EMBEDDED_PATH, JDK_21_PATH, JDK_17_PATH, JDK_11_PATH, JDK_1_8_PATH),
-  val customToolchainInstallationsEnv: List<String>? = null
+  val customToolchainInstallationsEnv: List<String>? = null,
+  val applyToolchainResolverPlugin: Boolean = false,
 )

@@ -19,56 +19,88 @@ import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeBuildModel
 import com.android.tools.idea.gradle.dsl.api.android.AndroidDeclarativeModel
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel
-import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidLibraryModel
+import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidModel
+import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidModel.Companion.KMP_ANDROID_MINIMUM_AGP_VERSION
 import com.android.tools.idea.gradle.dsl.api.kotlin.KotlinModel
 import com.android.tools.idea.gradle.dsl.model.BlockModelBuilder
 import com.android.tools.idea.gradle.dsl.model.BlockModelProvider
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
 import com.android.tools.idea.gradle.dsl.parser.android.AndroidDslElement
-import com.android.tools.idea.gradle.dsl.parser.android.KmpAndroidLibraryDslElement
+import com.android.tools.idea.gradle.dsl.parser.android.KmpAndroidDslElement
 import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile
 import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslElement
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint
 
 class AndroidBlockModelProvider : BlockModelProvider<GradleBuildModel, GradleBuildFile> {
   override val parentClass = GradleBuildModel::class.java
   override val parentDslClass = GradleBuildFile::class.java
 
-  override fun availableModels(kind: GradleDslNameConverter.Kind): List<BlockModelBuilder<*, GradleBuildFile>> = when (kind) {
-    GradleDslNameConverter.Kind.DECLARATIVE -> emptyList()
-    else -> listOf(object : BlockModelBuilder<AndroidModel, GradleBuildFile> {
-      override fun modelClass() = AndroidModel::class.java
-      override fun create(parent: GradleBuildFile) = AndroidModelImpl(parent.ensurePropertyElement(AndroidDslElement.ANDROID))
-    })
-  }
+  override fun availableModels(kind: GradleDslNameConverter.Kind): List<BlockModelBuilder<*, GradleBuildFile>> =
+    when (kind) {
+      GradleDslNameConverter.Kind.DECLARATIVE -> emptyList()
+      else ->
+        listOf(
+          object : BlockModelBuilder<AndroidModel, GradleBuildFile> {
+            override fun modelClass() = AndroidModel::class.java
 
-  override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> = when (kind) {
-    GradleDslNameConverter.Kind.DECLARATIVE -> emptyMap()
-    else -> mapOf("android" to AndroidDslElement.ANDROID)
-  }
+            override fun create(parent: GradleBuildFile) = AndroidModelImpl(parent.ensurePropertyElement(AndroidDslElement.ANDROID))
+          }
+        )
+    }
+
+  override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> =
+    when (kind) {
+      GradleDslNameConverter.Kind.DECLARATIVE -> emptyMap()
+      else -> mapOf("android" to AndroidDslElement.ANDROID)
+    }
 }
 
-fun GradleBuildModel.android() = when {
-  this is GradleDeclarativeBuildModel -> getModel(AndroidDeclarativeModel::class.java)
-  else -> getModel(AndroidModel::class.java)
-}
+fun GradleBuildModel.android() =
+  when {
+    this is GradleDeclarativeBuildModel -> getModel(AndroidDeclarativeModel::class.java)
+    else -> getModel(AndroidModel::class.java)
+  }
 
-class KmpAndroidLibraryBlockModelProvider : BlockModelProvider<KotlinModel, KotlinDslElement> {
+class KmpAndroidBlockModelProvider : BlockModelProvider<KotlinModel, KotlinDslElement> {
   override val parentClass = KotlinModel::class.java
   override val parentDslClass = KotlinDslElement::class.java
 
-  override fun availableModels(kind: GradleDslNameConverter.Kind):
-    List<BlockModelBuilder<*, KotlinDslElement>> = listOf(
-    object : BlockModelBuilder<KmpAndroidLibraryModel, KotlinDslElement> {
-      override fun modelClass() = KmpAndroidLibraryModel::class.java
-      override fun create(parent: KotlinDslElement) =
-        KmpAndroidLibraryModelImpl(
-          parent.ensurePropertyElement(KmpAndroidLibraryDslElement.KMP_ANDROID_LIBRARY))
-    })
+  override fun availableModels(kind: GradleDslNameConverter.Kind): List<BlockModelBuilder<*, KotlinDslElement>> =
+    listOf(
+      object : BlockModelBuilder<KmpAndroidModel, KotlinDslElement> {
+        override fun modelClass() = KmpAndroidModel::class.java
+
+        override fun create(parent: KotlinDslElement): KmpAndroidModel {
+          // If block already exists, use it.
+          parent.getPropertyElement(KmpAndroidDslElement.KMP_ANDROID_LIBRARY)?.let {
+            return KmpAndroidModelImpl(it)
+          }
+          parent.getPropertyElement(KmpAndroidDslElement.KMP_ANDROID)?.let {
+            return KmpAndroidModelImpl(it)
+          }
+
+          // Neither exists. We need to decide which one to create by default.
+          val agpVersionConstraint = VersionConstraint.agpFrom(KMP_ANDROID_MINIMUM_AGP_VERSION)
+          val agpVersion = parent.dslFile.context.agpVersion
+
+          val agpCompatibility = agpVersionConstraint.isOkWith(agpVersion)
+
+          val description =
+            if (agpCompatibility) {
+              KmpAndroidDslElement.KMP_ANDROID
+            } else {
+              KmpAndroidDslElement.KMP_ANDROID_LIBRARY
+            }
+
+          return KmpAndroidModelImpl(parent.ensurePropertyElement(description))
+        }
+      }
+    )
 
   override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> {
-    return mapOf("androidLibrary" to KmpAndroidLibraryDslElement.KMP_ANDROID_LIBRARY)
+    return mapOf("android" to KmpAndroidDslElement.KMP_ANDROID, "androidLibrary" to KmpAndroidDslElement.KMP_ANDROID_LIBRARY)
   }
 }
 
-fun KotlinModel.androidLibrary() = getModel(KmpAndroidLibraryModel::class.java)
+fun KotlinModel.android() = getModel(KmpAndroidModel::class.java)

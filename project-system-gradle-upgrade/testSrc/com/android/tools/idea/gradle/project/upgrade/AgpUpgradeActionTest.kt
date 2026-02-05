@@ -21,8 +21,8 @@ import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.ide.trustedProjects.TrustedProjects
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.projectRoots.impl.JavaAwareProjectJdkTableImpl
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.PlatformTestUtil
@@ -35,8 +35,7 @@ import org.junit.Test
 @RunsInEdt
 class AgpUpgradeActionTest {
 
-  @get:Rule
-  val projectRule = AndroidProjectRule.withSdk().onEdt()
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
   val project by lazy { projectRule.project }
 
@@ -75,19 +74,27 @@ class AgpUpgradeActionTest {
 
   @Test
   fun testAgpUpgradeAction() {
-    projectRule.fixture.addFileToProject("build.gradle", """
+    projectRule.fixture.addFileToProject(
+      "build.gradle",
+      """
       buildscript {
         dependencies {
           classpath 'com.android.tools.build:gradle:4.2.0'
         }
       }
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     projectRule.fixture.addFileToProject("settings.gradle", "include ':app'")
-    projectRule.fixture.addFileToProject("app/build.gradle", """
+    projectRule.fixture.addFileToProject(
+      "app/build.gradle",
+      """
       plugins {
         id 'com.android.application'
       }
-    """.trimIndent())
+      """
+        .trimIndent(),
+    )
     val event = TestActionEvent.createTestEvent(SimpleDataContext.getProjectContext(project))
     AgpUpgradeAction().actionPerformed(event)
     fun ready(): Boolean {

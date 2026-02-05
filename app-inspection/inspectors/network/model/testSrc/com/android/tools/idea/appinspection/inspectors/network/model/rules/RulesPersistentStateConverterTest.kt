@@ -47,7 +47,7 @@ class RulesPersistentStateConverterTest {
         <option name="rulesList" value="" />
       </component>
     </project>
-  """
+    """
       .trimIndent()
 
   private val expectedMiscXml =
@@ -60,7 +60,7 @@ class RulesPersistentStateConverterTest {
         <option name="rulesList" value="" />
       </component>
     </project>
-  """
+    """
       .trimIndent()
 
   @Before
@@ -89,9 +89,7 @@ class RulesPersistentStateConverterTest {
   @Test
   fun testConversionWhenMiscXmlNotWritable() {
     val mockFiles = Mockito.mockStatic(Files::class.java, Mockito.CALLS_REAL_METHODS)
-    mockFiles
-      .whenever<Any> { Files.writeString(inMemoryMiscXml, expectedMiscXml, Charsets.UTF_8) }
-      .thenThrow(IOException("Test"))
+    mockFiles.whenever<Any> { Files.writeString(inMemoryMiscXml, expectedMiscXml, Charsets.UTF_8) }.thenThrow(IOException("Test"))
     assertThat(converter.isConversionNeeded).isFalse()
     mockFiles.close()
   }

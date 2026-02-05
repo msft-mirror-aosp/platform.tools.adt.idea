@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.gradle.dsl.model.crashlytics
 
-import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.TestFileName
+import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
+import java.io.File
 import org.jetbrains.annotations.SystemDependent
 import org.junit.Test
-import java.io.File
 
 class CrashlyticsModelTest : AndroidGradleFileModelTestCase() {
   @Test
@@ -57,10 +57,9 @@ class CrashlyticsModelTest : AndroidGradleFileModelTestCase() {
     verifyFileContents(myBuildFile, "")
   }
 
-  enum class TestFile(val path: @SystemDependent String): TestFileName {
+  enum class TestFile(val path: @SystemDependent String) : TestFileName {
     PARSE_CRASHLYTICS("parseCrashlytics"),
-    SET_ENABLE_NDK_EXPECTED("setEnableNdkExpected"),
-    ;
+    SET_ENABLE_NDK_EXPECTED("setEnableNdkExpected");
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {
       return super.toFile("$basePath/crashlyticsModel/$path", extension)

@@ -44,11 +44,11 @@ import org.mockito.kotlin.whenever
 @RunsInEdt
 class GradleRunTaskActionIntegrationTest {
 
-  @get:Rule
-  val androidProjectRule = AndroidProjectRule.testProject(AndroidCoreTestProject.SIMPLE_APPLICATION).onEdt()
+  @get:Rule val androidProjectRule = AndroidProjectRule.testProject(AndroidCoreTestProject.SIMPLE_APPLICATION).onEdt()
 
   private val project: Project
     get() = androidProjectRule.project
+
   private val fixture: CodeInsightTestFixture
     get() = androidProjectRule.fixture
 
@@ -66,12 +66,10 @@ class GradleRunTaskActionIntegrationTest {
     val gradleTaskListener = TestGradleTaskListener()
     ExternalSystemProgressNotificationManager.getInstance().addNotificationListener(gradleTaskListener, project)
     TestGradleTaskAction.executeTask(project, fixture, taskName, linkedExternalProjectPath)
-    gradleTaskListener.capturedException?.let {
-      throw it
-    }
+    gradleTaskListener.capturedException?.let { throw it }
   }
 
-  private class TestGradleTaskListener: ExternalSystemTaskNotificationListener {
+  private class TestGradleTaskListener : ExternalSystemTaskNotificationListener {
     var capturedException: Exception? = null
 
     override fun onFailure(proojecPath: String, id: ExternalSystemTaskId, exception: Exception) {
@@ -84,24 +82,22 @@ class GradleRunTaskActionIntegrationTest {
       project: Project,
       fixture: CodeInsightTestFixture,
       taskName: String,
-      linkedExternalProjectPath: @SystemIndependent String
+      linkedExternalProjectPath: @SystemIndependent String,
     ) {
       val buildGradleFile = VfsUtil.findRelativeFile(project.guessProjectDir(), "build.gradle")
       fixture.openFileInEditor(buildGradleFile!!)
 
-      val gradleTaskActionEvent = mock<AnActionEvent>().apply {
-        whenever(dataContext).thenReturn(
-          SimpleDataContext.builder()
-            .add(CommonDataKeys.EDITOR, fixture.editor)
-            .add(CommonDataKeys.PROJECT, project)
-            .build()
-        )
-        whenever(place).thenReturn(TOOLWINDOW_GRADLE)
-      }
-      val gradleTaskData = TaskData(GRADLE_SYSTEM_ID, taskName, linkedExternalProjectPath, "Test run task from Gradle tool window").apply {
-        group = GradleTaskClassifier.classifyTaskName(taskName)
-        type = GRADLE_API_DEFAULT_TASK
-      }
+      val gradleTaskActionEvent =
+        mock<AnActionEvent>().apply {
+          whenever(dataContext)
+            .thenReturn(SimpleDataContext.builder().add(CommonDataKeys.EDITOR, fixture.editor).add(CommonDataKeys.PROJECT, project).build())
+          whenever(place).thenReturn(TOOLWINDOW_GRADLE)
+        }
+      val gradleTaskData =
+        TaskData(GRADLE_SYSTEM_ID, taskName, linkedExternalProjectPath, "Test run task from Gradle tool window").apply {
+          group = GradleTaskClassifier.classifyTaskName(taskName)
+          type = GRADLE_API_DEFAULT_TASK
+        }
       perform(project, GRADLE_SYSTEM_ID, gradleTaskData, gradleTaskActionEvent)
     }
   }

@@ -27,7 +27,6 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisData
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisEnded
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisEnded.Status
-import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisEnded.Status.FAILURE
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisEnded.Status.STATUS_UNSPECIFIED
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisEnded.Status.SUCCESS
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisStarted
@@ -39,20 +38,17 @@ import com.intellij.openapi.project.ProjectManager
 import java.security.MessageDigest
 import java.util.concurrent.BlockingDeque
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
-/**
- * Handles LeakCanary logcat tracking commands, capturing and processing LeakCanary logs from a connected Android device.
- */
+/** Handles LeakCanary logcat tracking commands, capturing and processing LeakCanary logs from a connected Android device. */
 class LeakCanaryLogcatCommandHandler(
   private val device: IDevice,
   private val transportStub: TransportServiceGrpc.TransportServiceBlockingStub,
-  private val eventQueue: BlockingDeque<Common.Event>
+  private val eventQueue: BlockingDeque<Common.Event>,
 ) : TransportProxy.ProxyCommandHandler {
 
   private val scopeJob = SupervisorJob()
@@ -75,11 +71,12 @@ class LeakCanaryLogcatCommandHandler(
 
   companion object {
     private const val LEAKCANARY_TAG = "LeakCanary"
+    private const val LEAKCANARY_MANUAL_TAG = "LeakCanary:Manual"
   }
 
   override fun shouldHandle(command: Commands.Command): Boolean {
     return command.type == Commands.Command.CommandType.START_LEAKCANARY_TASK ||
-           command.type == Commands.Command.CommandType.STOP_LEAKCANARY_TASK
+      command.type == Commands.Command.CommandType.STOP_LEAKCANARY_TASK
   }
 
   private fun resetTrackingState() {
@@ -94,9 +91,8 @@ class LeakCanaryLogcatCommandHandler(
   }
 
   /**
-   * Starts listening and detecting LeakCanary logs from Logcat,
-   * sends start object count tracking command to the agent
-   * And sends a started status info event.
+   * Starts listening and detecting LeakCanary logs from Logcat, sends start object count tracking command to the agent And sends a started
+   * status info event.
    */
   private fun startTrace(command: Commands.Command) {
     currentMode = command.getStartLeakcanaryTask().mode
@@ -107,11 +103,12 @@ class LeakCanaryLogcatCommandHandler(
 
     var isTaskStarted = true
     if (currentMode == LeakCanaryMode.ON_HOST) {
-      val objectCountCommand = Commands.Command.newBuilder()
-        .setStreamId(command.streamId)
-        .setPid(pid)
-        .setType(Commands.Command.CommandType.START_LEAKCANARY_OBJECT_COUNT_TRACKING)
-        .build()
+      val objectCountCommand =
+        Commands.Command.newBuilder()
+          .setStreamId(command.streamId)
+          .setPid(pid)
+          .setType(Commands.Command.CommandType.START_LEAKCANARY_OBJECT_COUNT_TRACKING)
+          .build()
       try {
         transportStub.execute(Transport.ExecuteRequest.newBuilder().setCommand(objectCountCommand).build())
       } catch (e: Exception) {
@@ -129,40 +126,39 @@ class LeakCanaryLogcatCommandHandler(
   }
 
   /**
-   * Stops listening and detecting LeakCanary logs from Logcat,
-   * sends a Logcat info event,
-   * sends stop object count tracking command to the agent,
-   * And a session ended event effectively terminating the task.
+   * Stops listening and detecting LeakCanary logs from Logcat, sends a Logcat info event, sends stop object count tracking command to the
+   * agent, And a session ended event effectively terminating the task.
    */
   private fun stopTrace(command: Commands.Command) {
     val endTime = getCurrentTimestampInNs()
 
     // Only stop object count tracking if we were in ON_HOST mode
     if (currentMode == LeakCanaryMode.ON_HOST) {
-      val stopObjectCountCommand = Commands.Command.newBuilder()
-        .setStreamId(command.streamId)
-        .setPid(pid)
-        .setType(Commands.Command.CommandType.STOP_LEAKCANARY_OBJECT_COUNT_TRACKING)
-        .build()
+      val stopObjectCountCommand =
+        Commands.Command.newBuilder()
+          .setStreamId(command.streamId)
+          .setPid(pid)
+          .setType(Commands.Command.CommandType.STOP_LEAKCANARY_OBJECT_COUNT_TRACKING)
+          .build()
       try {
         transportStub.execute(Transport.ExecuteRequest.newBuilder().setCommand(stopObjectCountCommand).build())
       } catch (e: Exception) {
         logger.warn("Failed to execute stop object count tracking command", e)
       }
-    }
-    else {
+    } else {
       resetTrackingState()
     }
 
     sendLeakCanaryAnalysisInfoEvent(timestampNs = endTime, isStarted = false, stopStatus = SUCCESS)
 
-    val endSessionCommand = Commands.Command.newBuilder()
-      .setStreamId(command.streamId)
-      .setPid(pid)
-      .setSessionId(command.sessionId)
-      .setType(Commands.Command.CommandType.END_SESSION)
-      .setEndSession(EndSession.newBuilder().setSessionId(command.sessionId))
-      .build()
+    val endSessionCommand =
+      Commands.Command.newBuilder()
+        .setStreamId(command.streamId)
+        .setPid(pid)
+        .setSessionId(command.sessionId)
+        .setType(Commands.Command.CommandType.END_SESSION)
+        .setEndSession(EndSession.newBuilder().setSessionId(command.sessionId))
+        .build()
     try {
       transportStub.execute(Transport.ExecuteRequest.newBuilder().setCommand(endSessionCommand).build())
     } catch (e: Exception) {
@@ -180,44 +176,40 @@ class LeakCanaryLogcatCommandHandler(
   }
 
   /**
-   * Sends event to the event queue, indicating the start or stop of tracking for a session.
-   * This helps ensure that a LeakCanary task was started/stopped regardless of leaks will be detected or not.
+   * Sends event to the event queue, indicating the start or stop of tracking for a session. This helps ensure that a LeakCanary task was
+   * started/stopped regardless of leaks will be detected or not.
    *
    * @param timestampNs The timestamp (in nanoseconds) associated with the event.
    * @param isStarted A boolean flag indicating whether this is a start event (true) or a stop event (false).
    * @param stopStatus The status of the LeakCanary tracking stop event (relevant only if `startEvent` is false).
    */
-  private fun sendLeakCanaryAnalysisInfoEvent(timestampNs: Long, isStarted: Boolean,
-                                              stopStatus: Status = STATUS_UNSPECIFIED) {
-    val infoEvent: LeakCanaryAnalysisStatus = if (isStarted) {
-      // Start event
-      LeakCanaryAnalysisStatus.newBuilder()
-        .setAnalysisStarted(LeakCanaryAnalysisStarted.newBuilder()
-                              .setTimestamp(timestampNs)
-                              .build())
-        .build()
-    }
-    else {
-      // Stop event
-      LeakCanaryAnalysisStatus.newBuilder()
-        .setAnalysisEnded(LeakCanaryAnalysisEnded.newBuilder()
-                            .setStartTimestamp(startTimeNs)
-                            .setEndTimestamp(timestampNs)
-                            .setStatus(stopStatus)
-                            .build())
-        .build()
-    }
+  private fun sendLeakCanaryAnalysisInfoEvent(timestampNs: Long, isStarted: Boolean, stopStatus: Status = STATUS_UNSPECIFIED) {
+    val infoEvent: LeakCanaryAnalysisStatus =
+      if (isStarted) {
+        // Start event
+        LeakCanaryAnalysisStatus.newBuilder()
+          .setAnalysisStarted(LeakCanaryAnalysisStarted.newBuilder().setTimestamp(timestampNs).build())
+          .build()
+      } else {
+        // Stop event
+        LeakCanaryAnalysisStatus.newBuilder()
+          .setAnalysisEnded(
+            LeakCanaryAnalysisEnded.newBuilder().setStartTimestamp(startTimeNs).setEndTimestamp(timestampNs).setStatus(stopStatus).build()
+          )
+          .build()
+      }
 
-    eventQueue.offer(Common.Event.newBuilder()
-                       .setGroupId(pid.toLong())
-                       .setPid(pid)
-                       .setIsEnded(!isStarted)
-                       .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
-                       .setLeakCanaryAnalysisStatus(infoEvent)
-                       .setTimestamp(timestampNs)
-                       .build())
+    eventQueue.offer(
+      Common.Event.newBuilder()
+        .setGroupId(pid.toLong())
+        .setPid(pid)
+        .setIsEnded(!isStarted)
+        .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_STATUS)
+        .setLeakCanaryAnalysisStatus(infoEvent)
+        .setTimestamp(timestampNs)
+        .build()
+    )
   }
-
 
   /**
    * Sends a LeakCanary log message event to the event queue.
@@ -228,16 +220,16 @@ class LeakCanaryLogcatCommandHandler(
     try {
       val analysis = LeakCanaryParser().parseLogcatMessage(analysisData)
       val leakCanaryEvent = LeakCanaryAnalysisData.newBuilder().setData(analysis.toString()).build()
-      eventQueue.offer(Common.Event.newBuilder()
-                         .setGroupId(pid.toLong())
-                         .setPid(pid)
-                         .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS)
-                         .setLeakcanaryAnalysis(leakCanaryEvent)
-                         .setTimestamp(getCurrentTimestampInNs())
-                         .build()
+      eventQueue.offer(
+        Common.Event.newBuilder()
+          .setGroupId(pid.toLong())
+          .setPid(pid)
+          .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS)
+          .setLeakcanaryAnalysis(leakCanaryEvent)
+          .setTimestamp(getCurrentTimestampInNs())
+          .build()
       )
-    }
-    catch (e: Exception) {
+    } catch (e: Exception) {
       logger.info("Failed to parse LeakCanary report. Skipping event.", e)
     }
   }
@@ -251,37 +243,45 @@ class LeakCanaryLogcatCommandHandler(
     return Transport.ExecuteResponse.newBuilder().build()
   }
 
-  /**
-   * Identifies and reads leakCanary logs from logcat and sends them to the event queue.
-   */
+  /** Identifies and reads leakCanary logs from logcat and sends them to the event queue. */
   private fun readLeakLog() {
     val logcatService: LogcatService = LogcatService.getInstance(ProjectManager.getInstance().defaultProject)
-    logCollectionJob = scope.launch {
-      logger.info("Coroutine Started")
-      logcatService.readLogcat(
-        serialNumber = device.serialNumber,
-        sdk = device.version.androidApiLevel,
-        maxHistoryEntries = 0,
-      ).collect { logcatMessages ->
-        logcatMessages.forEach { logcatMessage ->
-          // Handlers are called sequentially. If a handler returns true, it means it processed the event
-          // and subsequent handlers are skipped for this logcatMessage.
-          var handled = detectAndHandleObjectRetainedAndAnalysis(logcatMessage)
+    logCollectionJob =
+      scope.launch {
+        logger.info("Coroutine Started")
+        logcatService.readLogcat(serialNumber = device.serialNumber, sdk = device.version.androidApiLevel, maxHistoryEntries = 0).collect {
+          logcatMessages ->
+          logcatMessages.forEach { logcatMessage ->
+            val isAppLog = logcatMessage.header.pid == pid
+            val isInjectedLeak = logcatMessage.header.tag == LEAKCANARY_MANUAL_TAG
 
-          if (!handled) {
-            handled = detectAndHandleCompleteLeakTraces(logcatMessage)
-          }
+            if (!isAppLog && !isInjectedLeak) {
+              return@forEach
+            }
 
-          // Partial traces should only run if the logcat message was not handled by an explicit LeakCanary event (complete trace, trigger, etc.)
-          if (!handled) {
-            detectAndHandlePartialLeakTraces(logcatMessage)
+            // Handlers are called sequentially. If a handler returns true, it means it processed the event
+            // and subsequent handlers are skipped for this logcatMessage.
+            var handled = detectAndHandleObjectRetainedAndAnalysis(logcatMessage)
+
+            if (!handled) {
+              handled = detectAndHandleCompleteLeakTraces(logcatMessage)
+            }
+
+            // Partial traces should only run if the logcat message was not handled by an explicit LeakCanary event (complete trace,
+            // trigger, etc.)
+            if (!handled) {
+              detectAndHandlePartialLeakTraces(logcatMessage)
+            }
+            // Note: detectAndHandlePartialLeakTraces doesn't return a boolean because it often spans multiple logcat entries.
+            // The logic for partial trace completion is handled inside the function itself, including the TWO_SECONDS check
+            // against the previous log entry.
           }
-          // Note: detectAndHandlePartialLeakTraces doesn't return a boolean because it often spans multiple logcat entries.
-          // The logic for partial trace completion is handled inside the function itself, including the TWO_SECONDS check
-          // against the previous log entry.
         }
       }
-    }
+  }
+
+  private fun isValidTag(tag: String): Boolean {
+    return tag == LEAKCANARY_TAG || tag == LEAKCANARY_MANUAL_TAG
   }
 
   // Returns true if any event was sent, false otherwise.
@@ -290,8 +290,7 @@ class LeakCanaryLogcatCommandHandler(
     val analysisProgressRegex = """Analysis in progress, (\d+)% done""".toRegex()
     var handled = false
 
-    if (logcatMessage.header.tag != LEAKCANARY_TAG)
-      return false
+    if (logcatMessage.header.tag != LEAKCANARY_TAG) return false
 
     logcatMessage.message.split("\n").forEach { line ->
       if (retainedObjectsRegex.containsMatchIn(line) || analysisProgressRegex.containsMatchIn(line)) {
@@ -310,7 +309,7 @@ class LeakCanaryLogcatCommandHandler(
     val metaSectionPattern = "METADATA"
     var handled = false
 
-    if (LEAKCANARY_TAG != logcatMessage.header.tag) return false
+    if (!isValidTag(logcatMessage.header.tag)) return false
 
     // The following logic reads LeakCanary's logs line by line, but LeakCanary may print multiple lines as one logcat entry
     // (with one header). Therefore, we need to break the message into lines before processing.
@@ -383,7 +382,8 @@ Analysis duration: -1 ms
 Heap dump file path: -
 Heap dump timestamp: 0
 Heap dump duration: Unknown
-====================================""".trimIndent()
+===================================="""
+      .trimIndent()
   }
 
   private fun detectAndHandlePartialLeakTraces(logcatMessage: LogcatMessage) {
@@ -391,7 +391,7 @@ Heap dump duration: Unknown
     val lastFramePattern = "╰→"
     val initialTabSpace = "  "
 
-    if (logcatMessage.header.tag == LEAKCANARY_TAG) {
+    if (isValidTag(logcatMessage.header.tag)) {
       prevLogTimeStampOfPartialTrace = logcatMessage.header.timestamp.epochSecond
       // The following logic reads LeakCanary's logs line by line, but LeakCanary may print multiple lines as one logcat entry
       // (with one header). Therefore, we need to break the message into lines before processing.
@@ -413,8 +413,7 @@ Heap dump duration: Unknown
           capturedLogsForPartialTrace.appendLine(line)
         }
       }
-    }
-    else {
+    } else {
       // Logic for partial trace timeout when a non-LeakCanary log message is received
       if (inLastFrameOfPartialTrace && logcatMessage.header.timestamp.epochSecond - prevLogTimeStampOfPartialTrace >= TWO_SECONDS) {
         sendLeakCanaryAnalysisEvent(convertPartialToCompleteTrace(capturedLogsForPartialTrace))

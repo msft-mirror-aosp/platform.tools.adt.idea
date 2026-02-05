@@ -101,17 +101,7 @@ class LightDirectionsKtClass(
   sourceElement: SourceElement,
   containingDescriptor: DeclarationDescriptor,
   private val storageManager: StorageManager,
-) :
-  ClassDescriptorImpl(
-    containingDescriptor,
-    name,
-    Modality.FINAL,
-    ClassKind.CLASS,
-    emptyList(),
-    sourceElement,
-    false,
-    storageManager,
-  ) {
+) : ClassDescriptorImpl(containingDescriptor, name, Modality.FINAL, ClassKind.CLASS, emptyList(), sourceElement, false, storageManager) {
 
   private val LOG
     get() = Logger.getInstance(LightDirectionsKtClass::class.java)
@@ -121,8 +111,7 @@ class LightDirectionsKtClass(
 
   override fun getUnsubstitutedMemberScope(): MemberScope = scope()
 
-  override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope =
-    unsubstitutedMemberScope
+  override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope = unsubstitutedMemberScope
 
   override fun getConstructors(): Collection<ClassConstructorDescriptor> = emptyList()
 
@@ -154,25 +143,19 @@ class LightDirectionsKtClass(
 
       override fun getUnsubstitutedMemberScope() = companionScope()
 
-      override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope =
-        unsubstitutedMemberScope
+      override fun getUnsubstitutedMemberScope(kotlinTypeRefiner: KotlinTypeRefiner): MemberScope = unsubstitutedMemberScope
 
       private inner class CompanionObjectScope : MemberScopeImpl() {
         private val companionMethods =
           storageManager.createLazyValue {
             // action methods
             val navDirectionType =
-              directionsClassDescriptor.builtIns.getKotlinType(
-                "androidx.navigation.NavDirections",
-                null,
-                directionsClassDescriptor.module,
-              )
+              directionsClassDescriptor.builtIns.getKotlinType("androidx.navigation.NavDirections", null, directionsClassDescriptor.module)
             destination
               .getActionsWithResolvedArguments(
                 navEntry.data,
                 navInfo.packageName,
-                adjustArgumentsWithDefaults =
-                  (navInfo.navFeatures.contains(SafeArgsFeature.ADJUST_PARAMS_WITH_DEFAULTS)),
+                adjustArgumentsWithDefaults = (navInfo.navFeatures.contains(SafeArgsFeature.ADJUST_PARAMS_WITH_DEFAULTS)),
               )
               .asSequence()
               .mapNotNull { action ->
@@ -236,15 +219,10 @@ class LightDirectionsKtClass(
           kindFilter: DescriptorKindFilter,
           nameFilter: (Name) -> Boolean,
         ): Collection<DeclarationDescriptor> {
-          return companionMethods().filter {
-            kindFilter.acceptsKinds(DescriptorKindFilter.FUNCTIONS_MASK) && nameFilter(it.name)
-          }
+          return companionMethods().filter { kindFilter.acceptsKinds(DescriptorKindFilter.FUNCTIONS_MASK) && nameFilter(it.name) }
         }
 
-        override fun getContributedFunctions(
-          name: Name,
-          location: LookupLocation,
-        ): Collection<SimpleFunctionDescriptor> {
+        override fun getContributedFunctions(name: Name, location: LookupLocation): Collection<SimpleFunctionDescriptor> {
           return companionMethods().filter { it.name == name }
         }
 
@@ -262,16 +240,10 @@ class LightDirectionsKtClass(
       kindFilter: DescriptorKindFilter,
       nameFilter: (Name) -> Boolean,
     ): Collection<DeclarationDescriptor> {
-      return classifiers().filter {
-        kindFilter.acceptsKinds(DescriptorKindFilter.SINGLETON_CLASSIFIERS_MASK) &&
-          nameFilter(it.name)
-      }
+      return classifiers().filter { kindFilter.acceptsKinds(DescriptorKindFilter.SINGLETON_CLASSIFIERS_MASK) && nameFilter(it.name) }
     }
 
-    override fun getContributedClassifier(
-      name: Name,
-      location: LookupLocation,
-    ): ClassifierDescriptor? {
+    override fun getContributedClassifier(name: Name, location: LookupLocation): ClassifierDescriptor? {
       return classifiers().firstOrNull { it.name == name }
     }
 

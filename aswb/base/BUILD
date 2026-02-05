@@ -386,12 +386,6 @@ aswb_library(
         "tests/utils/integration/**/*.java",
         "tests/utils/integration/**/*.kt",
     ]),
-    data = [
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test",
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test:test_srcs",
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test2",
-        "//tools/adt/idea/aswb/base/tests/utils/testdata/java/com/test2:test2_srcs",
-    ],
     visibility = PLUGIN_PACKAGES_VISIBILITY,
     deps = [
         ":base",

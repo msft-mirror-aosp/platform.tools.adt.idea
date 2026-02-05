@@ -19,7 +19,7 @@ import static com.google.idea.blaze.android.run.LaunchMetrics.logBinaryLaunch;
 
 import com.android.tools.idea.execution.common.DeployableToDevice;
 import com.android.tools.idea.run.ValidationError;
-import com.google.common.annotations.VisibleForTesting;
+import com.android.tools.sdk.AndroidPlatform;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -33,6 +33,8 @@ import com.google.idea.blaze.android.run.binary.mobileinstall.MobileInstallDeplo
 import com.google.idea.blaze.android.run.runner.BlazeAndroidDeployAndLaunchStrategy;
 import com.google.idea.blaze.android.run.runner.BlazeAndroidRunConfigurationRunner;
 import com.google.idea.blaze.android.run.runner.BlazeApkBuildStep;
+import com.google.idea.blaze.android.run.runner.LiveEditDataExtractor;
+import com.google.idea.blaze.android.sync.sdk.SdkUtil;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeInvocationContext;
 import com.google.idea.blaze.base.logging.EventLoggingService;
@@ -56,6 +58,7 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,8 +71,7 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
   private final Project project;
   private final BlazeAndroidBinaryRunConfigurationState configState;
 
-  @VisibleForTesting
-  BlazeAndroidBinaryRunConfigurationHandler(BlazeCommandRunConfiguration configuration) {
+  public BlazeAndroidBinaryRunConfigurationHandler(BlazeCommandRunConfiguration configuration) {
     this.project = configuration.getProject();
     this.configState =
         new BlazeAndroidBinaryRunConfigurationState(
@@ -126,14 +128,18 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
     ImmutableList<String> exeFlags =
         ImmutableList.copyOf(
             configState.getCommonState().getExeFlagsState().getFlagsForExternalProcesses());
+    Label binaryTargetLabel =
+      configuration.getSingleTargetPattern() != null ? Label.of(configuration.getSingleTargetPattern()) : Label.of("//");
     BlazeApkBuildStep buildStep =
         BazelApkBuildStepProvider
             .getBinaryBuildStep(
               project,
               AndroidBinaryLaunchMethodsUtils.useMobileInstall(configState.getLaunchMethod()),
               configState.getCommonState().isNativeDebuggingEnabled(),
-              QuerySyncUserPreferencesProvider.getInstance(project).getUserPreferences().getLiveEditEnabled(),
-              configuration.getSingleTargetPattern() != null ? Label.of(configuration.getSingleTargetPattern()): Label.of("//"),
+              QuerySyncUserPreferencesProvider.getInstance(project).getUserPreferences().getLiveEditEnabled()
+              ? createLiveEditDataExtractor(binaryTargetLabel)
+              : null,
+              binaryTargetLabel,
               blazeFlags,
               exeFlags,
               launchId);
@@ -160,7 +166,17 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
         env.getExecutor().getId(),
         configuration.getSingleTargetPattern(),
         configState.getCommonState().isNativeDebuggingEnabled());
-    return new BlazeAndroidRunConfigurationRunner(launchStrategy, configuration, buildStep, buildStep.getDeployInfoExtractor());
+
+    return new BlazeAndroidRunConfigurationRunner(launchStrategy, configuration, buildStep, buildStep.getDeployInfoExtractor(),
+                                                  buildStep.getLiveEditDataExtractor());
+  }
+
+  private LiveEditDataExtractor createLiveEditDataExtractor(Label binaryTargetLabel) {
+    AndroidPlatform androidPlatform = SdkUtil.getAndroidPlatform(project);
+    if (androidPlatform == null) {
+      throw new IllegalStateException("Internal error: Android platform is not available");
+    }
+    return new AndroidBinaryLiveEditDataExtractor(project, binaryTargetLabel);
   }
 
   @Override
@@ -250,7 +266,7 @@ public class BlazeAndroidBinaryRunConfigurationHandler implements BlazeAndroidRu
             Messages.getQuestionIcon());
     if (choice == Messages.YES) {
       Messages.showInfoMessage(
-          String.format(
+          String.format(Locale.ROOT,
               "Successfully migrated %d run configuration(s) to mobile-install",
               doMigrate(project)),
           "Success!");

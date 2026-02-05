@@ -40,9 +40,7 @@ class InspectionsTest {
 
   @Test
   fun testNeedsComposableInspection() {
-    fixture.enableInspections(
-      ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName")
     @Language("kotlin")
@@ -72,9 +70,7 @@ class InspectionsTest {
 
   @Test
   fun testNoParametersInPreview() {
-    fixture.enableInspections(
-      PreviewAnnotationInFunctionWithParametersInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(PreviewAnnotationInFunctionWithParametersInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName")
     @Language("kotlin")
@@ -152,10 +148,12 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """5: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
-        |15: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
-        |34: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
-        |54: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter"""
+      """
+      |5: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
+      |15: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
+      |34: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
+      |54: Composable functions with non-default parameters are not supported in Preview unless they are annotated with @PreviewParameter
+      """
         .trimMargin(),
       inspections,
     )
@@ -163,9 +161,7 @@ class InspectionsTest {
 
   @Test
   fun testNoMultipleParameterProvider() {
-    fixture.enableInspections(
-      PreviewMultipleParameterProvidersInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(PreviewMultipleParameterProvidersInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName", "ClassName")
     @Language("kotlin")
@@ -208,8 +204,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """12: Multiple @PreviewParameter are not allowed
-        |21: Multiple @PreviewParameter are not allowed
+      """
+      |12: Multiple @PreviewParameter are not allowed
+      |21: Multiple @PreviewParameter are not allowed
       """
         .trimMargin(),
       inspections,
@@ -218,9 +215,7 @@ class InspectionsTest {
 
   @Test
   fun testParameterProviderOnFirstParameterOnly() {
-    fixture.enableInspections(
-      PreviewParameterProviderOnFirstParameterInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(PreviewParameterProviderOnFirstParameterInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName", "ClassName")
     @Language("kotlin")
@@ -280,8 +275,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """12: @PreviewParameter is only allowed in the first parameter of a Composable function
-        |23: @PreviewParameter is only allowed in the first parameter of a Composable function
+      """
+      |12: @PreviewParameter is only allowed in the first parameter of a Composable function
+      |23: @PreviewParameter is only allowed in the first parameter of a Composable function
       """
         .trimMargin(),
       inspections,
@@ -382,16 +378,18 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """15: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |16: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |20: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |21: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |35: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |36: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |51: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |53: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |68: Preview must be a top level declaration or in a top level class with a default constructor.
-                    |70: Preview must be a top level declaration or in a top level class with a default constructor."""
+      """
+      |15: Preview must be a top level declaration or in a top level class with a default constructor.
+      |16: Preview must be a top level declaration or in a top level class with a default constructor.
+      |20: Preview must be a top level declaration or in a top level class with a default constructor.
+      |21: Preview must be a top level declaration or in a top level class with a default constructor.
+      |35: Preview must be a top level declaration or in a top level class with a default constructor.
+      |36: Preview must be a top level declaration or in a top level class with a default constructor.
+      |51: Preview must be a top level declaration or in a top level class with a default constructor.
+      |53: Preview must be a top level declaration or in a top level class with a default constructor.
+      |68: Preview must be a top level declaration or in a top level class with a default constructor.
+      |70: Preview must be a top level declaration or in a top level class with a default constructor.
+      """
         .trimMargin(),
       inspections,
     )
@@ -408,19 +406,19 @@ class InspectionsTest {
       import $PREVIEW_TOOLING_PACKAGE.Preview
       import $COMPOSABLE_ANNOTATION_FQN
 
-      private const val badWidth = 3000
+      private const val badWidth = 3001
 
-      private const val goodWidth = 2000
+      private const val goodWidth = 3000
 
       @Preview(widthDp = badWidth) // warning
       annotation class BadAnnotation
 
-      @Preview(widthDp = 2000)
-      annotation class GoodAnnotation(val widthDp: Int = 2001) // MultiPreview annotation parameters have no effect
+      @Preview(widthDp = 3000)
+      annotation class GoodAnnotation(val widthDp: Int = 3001) // MultiPreview annotation parameters have no effect
 
       @Composable
       @GoodAnnotation
-      @Preview(name = "Preview 1", heightDp = 2001, widthDp = 2001) // Only one warning
+      @Preview(name = "Preview 1", heightDp = 3001, widthDp = 3001) // Only one warning
       fun Preview1() {
       }
 
@@ -440,8 +438,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """7: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
-        |15: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
+      """
+      |7: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
+      |15: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
       """
         .trimMargin(),
       inspections,
@@ -459,19 +458,19 @@ class InspectionsTest {
       import $PREVIEW_TOOLING_PACKAGE.Preview
       import $COMPOSABLE_ANNOTATION_FQN
 
-      private const val badHeight = 3000
+      private const val badHeight = 3001
 
-      private const val goodHeight = 2000
+      private const val goodHeight = 3000
 
       @Preview(heightDp = badHeight) // warning
       annotation class BadAnnotation
 
-      @Preview(heightDp = 2000)
-      annotation class GoodAnnotation(val heightDp: Int = 2001) // MultiPreview annotation parameters have no effect
+      @Preview(heightDp = 3000)
+      annotation class GoodAnnotation(val heightDp: Int = 3001) // MultiPreview annotation parameters have no effect
 
       @Composable
       @GoodAnnotation
-      @Preview(name = "Preview 1", heightDp = 2001, widthDp = 2001) // Only one warning
+      @Preview(name = "Preview 1", heightDp = 3001, widthDp = 3001) // Only one warning
       fun Preview1() {
       }
 
@@ -491,8 +490,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """7: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
-        |15: Preview width and height are limited to be between 1 and 2,000, setting a lower or higher number will not change the preview dimension
+      """
+      |7: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
+      |15: Preview width and height are limited to be between 1 and 3,000, setting a lower or higher number will not change the preview dimension
       """
         .trimMargin(),
       inspections,
@@ -511,24 +511,20 @@ class InspectionsTest {
       import $COMPOSABLE_ANNOTATION_FQN
 
       @Composable
-      @Preview(name = "Preview 1", heightDp = 2001, widthDp = 2001)
+      @Preview(name = "Preview 1", heightDp = 3001, widthDp = 3001)
       fun Preview1() {
       }
     """
         .trimIndent()
 
     fixture.configureByText("Test.kt", fileContent)
-    val inspections =
-      fixture
-        .doHighlighting(HighlightSeverity.WARNING)
-        .sortedByDescending { -it.startOffset }
-        .toTypedArray()
+    val inspections = fixture.doHighlighting(HighlightSeverity.WARNING).sortedByDescending { -it.startOffset }.toTypedArray()
 
     // Verify the height inspection only highlights the height parameter and value, i.e. "heightDp =
-    // 2001"
+    // 3001"
     val heightInspection = inspections[0]
     var highlightLength = heightInspection.actualEndOffset - heightInspection.actualStartOffset
-    assertEquals("heightDp = 2001".length, highlightLength)
+    assertEquals("heightDp = 3001".length, highlightLength)
   }
 
   @Test
@@ -574,8 +570,9 @@ class InspectionsTest {
         .joinToString("\n") { it.descriptionWithLineNumber() }
 
     assertEquals(
-      """7: Preview fontScale value must be greater than zero
-        |21: Preview fontScale value must be greater than zero
+      """
+      |7: Preview fontScale value must be greater than zero
+      |21: Preview fontScale value must be greater than zero
       """
         .trimMargin(),
       inspections,
@@ -630,10 +627,7 @@ class InspectionsTest {
 
     fixture.configureByText("Test.kt", fileContent)
     val inspections =
-      fixture
-        .doHighlighting(HighlightSeverity.ERROR)
-        .sortedByDescending { -it.startOffset }
-        .map { it.descriptionWithLineNumber() }
+      fixture.doHighlighting(HighlightSeverity.ERROR).sortedByDescending { -it.startOffset }.map { it.descriptionWithLineNumber() }
 
     val apiLevelErrorMessagePrefix = "Preview apiLevel must be set to an integer between "
     assertEquals(3, inspections.size)
@@ -644,9 +638,7 @@ class InspectionsTest {
 
   @Test
   fun testInspectionsWithNoImport() {
-    fixture.enableInspections(
-      ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry
-    )
+    fixture.enableInspections(ComposePreviewNeedsComposableAnnotationInspection() as InspectionProfileEntry)
 
     @Suppress("TestFunctionName")
     @Language("kotlin")
@@ -708,8 +700,7 @@ class InspectionsTest {
 
     fixture.configureByText("Test.kt", fileContent)
     assertEquals(
-      "6: Preview functions usually don't call themselves recursively," +
-        " so please double-check you're calling the intended function",
+      "6: Preview functions usually don't call themselves recursively," + " so please double-check you're calling the intended function",
       fixture.doHighlighting(HighlightSeverity.WEAK_WARNING).single().descriptionWithLineNumber(),
     )
   }
@@ -744,16 +735,10 @@ class InspectionsTest {
 
     fixture.configureByText("Test.kt", fileContent)
     val inspections =
-      fixture
-        .doHighlighting(HighlightSeverity.ERROR)
-        .sortedByDescending { -it.startOffset }
-        .map { it.descriptionWithLineNumber() }
+      fixture.doHighlighting(HighlightSeverity.ERROR).sortedByDescending { -it.startOffset }.map { it.descriptionWithLineNumber() }
 
     assertEquals(1, inspections.size)
-    assertEquals(
-      "9: This constant uses a legacy device spec, which is no longer supported",
-      inspections[0],
-    ) // Preview 1 error
+    assertEquals("9: This constant uses a legacy device spec, which is no longer supported", inspections[0]) // Preview 1 error
 
     @Suppress("TestFunctionName")
     @Language("kotlin")
@@ -778,16 +763,10 @@ class InspectionsTest {
       }
     """
         .trimIndent()
-    val quickFix =
-      QuickFixWrapper.unwrap(fixture.getAllQuickFixes().single()) as LocalQuickFixOnPsiElement
+    val quickFix = QuickFixWrapper.unwrap(fixture.getAllQuickFixes().single()) as LocalQuickFixOnPsiElement
     ApplicationManager.getApplication().invokeAndWait {
       CommandProcessor.getInstance()
-        .executeCommand(
-          fixture.project,
-          { runWriteAction { quickFix.applyFix() } },
-          "Replace with new device spec",
-          null,
-        )
+        .executeCommand(fixture.project, { runWriteAction { quickFix.applyFix() } }, "Replace with new device spec", null)
     }
     fixture.checkResult(fileContentAfterFix)
   }

@@ -52,11 +52,10 @@ class SafeArgsKtPackageDescriptorTestMultiKtModules {
   }
 
   /**
-   * Check contributed descriptors for base app and library module by providing fully qualified
-   * package names
+   * Check contributed descriptors for base app and library module by providing fully qualified package names
    *
-   * Test Project structure: -base app module(safe arg mode is on) --> lib dep module(safe arg mode
-   * is on) -excluded lib module(safe arg mode is on)
+   * Test Project structure: -base app module(safe arg mode is on) --> lib dep module(safe arg mode is on) -excluded lib module(safe arg
+   * mode is on)
    */
   @Test
   fun multiModuleTest() {
@@ -68,10 +67,9 @@ class SafeArgsKtPackageDescriptorTestMultiKtModules {
     val appModuleDescriptor = appModule.toDescriptor()
 
     val classesMetadataAppPackageInApp =
-      appModuleDescriptor!!
-        .getPackage(FqName("com.example.myapplication"))
-        .memberScope
-        .classesInScope { name -> name.endsWith("Args") || name.endsWith("Directions") }
+      appModuleDescriptor!!.getPackage(FqName("com.example.myapplication")).memberScope.classesInScope { name ->
+        name.endsWith("Args") || name.endsWith("Directions")
+      }
 
     assertThat(classesMetadataAppPackageInApp.map { it.fqcn to it.file })
       .containsExactly(
@@ -81,8 +79,7 @@ class SafeArgsKtPackageDescriptorTestMultiKtModules {
 
     // check contents when providing lib package name in app module.
     val classesMetadataLibPackageInApp =
-      appModuleDescriptor.getPackage(FqName("com.example.mylibrary")).memberScope.classesInScope {
-        name ->
+      appModuleDescriptor.getPackage(FqName("com.example.mylibrary")).memberScope.classesInScope { name ->
         name.endsWith("Args") || name.endsWith("Directions")
       }
 
@@ -100,10 +97,9 @@ class SafeArgsKtPackageDescriptorTestMultiKtModules {
     val libModuleDescriptor = libModule.toDescriptor()
 
     val classesMetadataInLib =
-      libModuleDescriptor!!
-        .getPackage(FqName("com.example.mylibrary"))
-        .memberScope
-        .classesInScope { name -> name.endsWith("Args") || name.endsWith("Directions") }
+      libModuleDescriptor!!.getPackage(FqName("com.example.mylibrary")).memberScope.classesInScope { name ->
+        name.endsWith("Args") || name.endsWith("Directions")
+      }
 
     assertThat(classesMetadataInLib.map { it.fqcn to it.file })
       .containsExactly(
@@ -116,10 +112,9 @@ class SafeArgsKtPackageDescriptorTestMultiKtModules {
     val libModuleExcludedDescriptor = libModuleExcluded.toDescriptor()
 
     val classesMetadataInLibExcluded =
-      libModuleExcludedDescriptor!!
-        .getPackage(FqName("com.example.mylibrary"))
-        .memberScope
-        .classesInScope { name -> name.endsWith("Args") || name.endsWith("Directions") }
+      libModuleExcludedDescriptor!!.getPackage(FqName("com.example.mylibrary")).memberScope.classesInScope { name ->
+        name.endsWith("Args") || name.endsWith("Directions")
+      }
 
     assertThat(classesMetadataInLibExcluded.map { it.fqcn to it.file })
       .containsExactly(

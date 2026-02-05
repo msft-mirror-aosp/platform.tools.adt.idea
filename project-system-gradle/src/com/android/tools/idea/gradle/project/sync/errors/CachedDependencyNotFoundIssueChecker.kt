@@ -18,17 +18,16 @@ package com.android.tools.idea.gradle.project.sync.errors
 import com.android.tools.idea.gradle.project.sync.idea.issues.BuildIssueComposer
 import com.android.tools.idea.gradle.project.sync.issues.SyncFailureUsageReporter
 import com.android.tools.idea.gradle.project.sync.quickFixes.ToggleOfflineModeQuickFix
-import com.intellij.build.issue.BuildIssue
-import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
-import org.jetbrains.plugins.gradle.issue.GradleIssueData
-
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.GradleSyncFailure.CACHED_DEPENDENCY_NOT_FOUND
 import com.intellij.build.FilePosition
 import com.intellij.build.events.BuildEvent
-import org.jetbrains.plugins.gradle.service.execution.GradleExecutionErrorHandler.getRootCauseAndLocation
+import com.intellij.build.issue.BuildIssue
 import java.util.function.Consumer
+import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
+import org.jetbrains.plugins.gradle.issue.GradleIssueData
+import org.jetbrains.plugins.gradle.service.execution.GradleExecutionErrorHandler.getRootCauseAndLocation
 
-class CachedDependencyNotFoundIssueChecker: GradleIssueChecker {
+class CachedDependencyNotFoundIssueChecker : GradleIssueChecker {
   private val NO_CACHED_VERSION = "No cached version of "
   private val OFFLINE_MODE = "available for offline mode."
 
@@ -40,17 +39,19 @@ class CachedDependencyNotFoundIssueChecker: GradleIssueChecker {
     // Log metrics.
     SyncFailureUsageReporter.getInstance().collectFailure(issueData.projectPath, CACHED_DEPENDENCY_NOT_FOUND)
 
-    return BuildIssueComposer(message).apply {
-      addQuickFix("Disable Gradle 'offline mode' and sync project", ToggleOfflineModeQuickFix(false))
-    }.composeBuildIssue()
+    return BuildIssueComposer(message)
+      .apply { addQuickFix("Disable Gradle 'offline mode' and sync project", ToggleOfflineModeQuickFix(false)) }
+      .composeBuildIssue()
   }
 
-  override fun consumeBuildOutputFailureMessage(message: String,
-                                                failureCause: String,
-                                                stacktrace: String?,
-                                                location: FilePosition?,
-                                                parentEventId: Any,
-                                                messageConsumer: Consumer<in BuildEvent>): Boolean {
+  override fun consumeBuildOutputFailureMessage(
+    message: String,
+    failureCause: String,
+    stacktrace: String?,
+    location: FilePosition?,
+    parentEventId: Any,
+    messageConsumer: Consumer<in BuildEvent>,
+  ): Boolean {
     return (failureCause.startsWith(NO_CACHED_VERSION) && failureCause.contains(OFFLINE_MODE))
   }
 }

@@ -121,59 +121,39 @@ class MethodInterceptTransformTest {
   @Test
   fun `check instance intercept`() {
     val testClassLoader =
-      setupTestClassLoaderWithTransformation(
-        mapOf("Test" to Caller::class.java),
-        beforeTransformTrace,
-        afterTransformTrace,
-      ) { visitor ->
+      setupTestClassLoaderWithTransformation(mapOf("Test" to Caller::class.java), beforeTransformTrace, afterTransformTrace) { visitor ->
         MethodInterceptTransform(
           visitor,
           virtualTrampolineMethod = Trampoline::invoke.javaMethod!!,
           staticTrampolineMethod = Trampoline::invokeStatic.javaMethod!!,
-          shouldIntercept = { className, _ ->
-            className == Type.getInternalName(MethodInterceptTest::class.java)
-          },
+          shouldIntercept = { className, _ -> className == Type.getInternalName(MethodInterceptTest::class.java) },
         )
       }
 
-    val methodIntercept =
-      testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as CallerInterface
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as CallerInterface
     methodIntercept.testInstanceNoArgsCall()
 
-    assertEquals(
-      "VIRTUAL MethodInterceptTest@1 noArgsInstanceMethod null",
-      Trampoline.callLog.toString().trim(),
-    )
+    assertEquals("VIRTUAL MethodInterceptTest@1 noArgsInstanceMethod null", Trampoline.callLog.toString().trim())
 
     Trampoline.callLog.clear()
 
     methodIntercept.testInstanceArgsCall()
-    assertEquals(
-      "VIRTUAL MethodInterceptTest@1 instanceMethod 123,98765,StringArg",
-      Trampoline.callLog.toString().trim(),
-    )
+    assertEquals("VIRTUAL MethodInterceptTest@1 instanceMethod 123,98765,StringArg", Trampoline.callLog.toString().trim())
   }
 
   @Test
   fun `check static intercept`() {
     val testClassLoader =
-      setupTestClassLoaderWithTransformation(
-        mapOf("Test" to Caller::class.java),
-        beforeTransformTrace,
-        afterTransformTrace,
-      ) { visitor ->
+      setupTestClassLoaderWithTransformation(mapOf("Test" to Caller::class.java), beforeTransformTrace, afterTransformTrace) { visitor ->
         MethodInterceptTransform(
           visitor,
           virtualTrampolineMethod = Trampoline::invoke.javaMethod!!,
           staticTrampolineMethod = Trampoline::invokeStatic.javaMethod!!,
-          shouldIntercept = { className, _ ->
-            className.startsWith(Type.getInternalName(MethodInterceptTest::class.java))
-          },
+          shouldIntercept = { className, _ -> className.startsWith(Type.getInternalName(MethodInterceptTest::class.java)) },
         )
       }
 
-    val methodIntercept =
-      testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as CallerInterface
+    val methodIntercept = testClassLoader.loadClass("Test").getDeclaredConstructor().newInstance() as CallerInterface
     methodIntercept.testStaticNoArgsCall()
 
     assertEquals(
@@ -193,18 +173,12 @@ class MethodInterceptTransformTest {
   @Test
   fun `check broken trampoline`() {
     try {
-      setupTestClassLoaderWithTransformation(
-        mapOf("Test" to Caller::class.java),
-        beforeTransformTrace,
-        afterTransformTrace,
-      ) { visitor ->
+      setupTestClassLoaderWithTransformation(mapOf("Test" to Caller::class.java), beforeTransformTrace, afterTransformTrace) { visitor ->
         MethodInterceptTransform(
           visitor,
           virtualTrampolineMethod = BrokenTrampoline::invoke.javaMethod!!,
           staticTrampolineMethod = Trampoline::invokeStatic.javaMethod!!,
-          shouldIntercept = { className, _ ->
-            className.startsWith(Type.getInternalName(MethodInterceptTest::class.java))
-          },
+          shouldIntercept = { className, _ -> className.startsWith(Type.getInternalName(MethodInterceptTest::class.java)) },
         )
       }
     } catch (e: AssertionError) {
@@ -215,18 +189,12 @@ class MethodInterceptTransformTest {
     }
 
     try {
-      setupTestClassLoaderWithTransformation(
-        mapOf("Test" to Caller::class.java),
-        beforeTransformTrace,
-        afterTransformTrace,
-      ) { visitor ->
+      setupTestClassLoaderWithTransformation(mapOf("Test" to Caller::class.java), beforeTransformTrace, afterTransformTrace) { visitor ->
         MethodInterceptTransform(
           visitor,
           virtualTrampolineMethod = Trampoline::invoke.javaMethod!!,
           staticTrampolineMethod = BrokenTrampoline::invokeStatic.javaMethod!!,
-          shouldIntercept = { className, _ ->
-            className.startsWith(Type.getInternalName(MethodInterceptTest::class.java))
-          },
+          shouldIntercept = { className, _ -> className.startsWith(Type.getInternalName(MethodInterceptTest::class.java)) },
         )
       }
     } catch (e: AssertionError) {
@@ -257,7 +225,6 @@ class MethodInterceptTransformTest {
 
     @JvmStatic fun invoke(method: String, params: Array<Any>?): Unit = error("Broken trampoline")
 
-    @JvmStatic
-    fun invokeStatic(ownerClass: String, method: String): Unit = error("Broken trampoline")
+    @JvmStatic fun invokeStatic(ownerClass: String, method: String): Unit = error("Broken trampoline")
   }
 }

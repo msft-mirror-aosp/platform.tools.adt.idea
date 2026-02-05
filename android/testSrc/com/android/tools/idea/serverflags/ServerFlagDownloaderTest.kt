@@ -106,9 +106,7 @@ class ServerFlagDownloaderTest : TestCase() {
     val expected = serverFlagTestData
     saveServerFlagList(expected, localPath, VERSION)
 
-    ServerFlagDownloader.downloadServerFlagList(baseUrl.toString(), localPath, VERSION) {
-      createTempFile()
-    }
+    ServerFlagDownloader.downloadServerFlagList(baseUrl.toString(), localPath, VERSION) { createTempFile() }
 
     val actual = loadServerFlagList(localPath, VERSION)
     assertThat(actual).isEqualTo(expected)
@@ -141,8 +139,7 @@ class ServerFlagDownloaderTest : TestCase() {
     private val server: HttpServer = HttpServer.create(InetSocketAddress(0), 0)
 
     val url: URL
-      @Throws(MalformedURLException::class)
-      get() = URL(String.format("http://localhost:%d/serverflags", address.port))
+      @Throws(MalformedURLException::class) get() = URL(String.format("http://localhost:%d/serverflags", address.port))
 
     init {
       server.createContext("/", this)

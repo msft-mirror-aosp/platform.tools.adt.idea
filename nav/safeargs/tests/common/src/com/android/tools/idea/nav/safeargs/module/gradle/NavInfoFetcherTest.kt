@@ -36,8 +36,7 @@ class NavInfoFetcherTest {
 
   @get:Rule val ruleChain = RuleChain.outerRule(projectRule).around(EdtRule())!!
 
-  private val changeReasons: MutableSet<NavInfoChangeReason> =
-    EnumSet.noneOf(NavInfoChangeReason::class.java)
+  private val changeReasons: MutableSet<NavInfoChangeReason> = EnumSet.noneOf(NavInfoChangeReason::class.java)
   private var baselineModificationCount = 0L
   private lateinit var module: Module
   private lateinit var fetcher: NavInfoFetcher
@@ -50,8 +49,7 @@ class NavInfoFetcherTest {
 
     module = projectRule.getModule("app.main")
     fetcher =
-      NavInfoFetcher(projectRule.fixture.testRootDisposable, module, SafeArgsMode.KOTLIN) {
-        changeReason ->
+      NavInfoFetcher(projectRule.fixture.testRootDisposable, module, SafeArgsMode.KOTLIN) { changeReason ->
         changeReasons.add(changeReason)
       }
   }
@@ -152,11 +150,7 @@ class NavInfoFetcherTest {
     waitForPendingUpdates(module)
 
     assertModified(NavInfoChangeReason.NAVIGATION_RESOURCE_CHANGED)
-    assertThat(
-        fetcher.getCurrentNavInfo()!!.entries.single().data.resolvedDestinations.singleOrNull {
-          it.id == "FirstFragmentChanged"
-        }
-      )
+    assertThat(fetcher.getCurrentNavInfo()!!.entries.single().data.resolvedDestinations.singleOrNull { it.id == "FirstFragmentChanged" })
       .isNotNull()
   }
 
@@ -179,9 +173,7 @@ class NavInfoFetcherTest {
   @Test
   fun updatesOnProjectSync() {
     registerAndClearFetcher()
-    module.project.messageBus
-      .syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC)
-      .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
+    module.project.messageBus.syncPublisher(PROJECT_SYSTEM_SYNC_TOPIC).syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS)
 
     assertModified(NavInfoChangeReason.GRADLE_SYNC)
   }

@@ -32,10 +32,7 @@ import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.utils.Printer
 import org.jetbrains.kotlin.utils.alwaysTrue
 
-/**
- * Directions Kt package descriptor, which wraps and indirectly exposes a [LightDirectionsKtClass]
- * class descriptor
- */
+/** Directions Kt package descriptor, which wraps and indirectly exposes a [LightDirectionsKtClass] class descriptor */
 class KtDirectionsPackageDescriptor(
   private val containingNavFileInfo: SafeArgsNavFileInfo,
   fqName: FqName,
@@ -74,22 +71,18 @@ class KtDirectionsPackageDescriptor(
       kindFilter: DescriptorKindFilter,
       nameFilter: (Name) -> Boolean,
     ): Collection<DeclarationDescriptor> {
-      return classes().filter {
-        kindFilter.acceptsKinds(DescriptorKindFilter.NON_SINGLETON_CLASSIFIERS_MASK) &&
-          nameFilter(it.name)
-      }
+      return classes().filter { kindFilter.acceptsKinds(DescriptorKindFilter.NON_SINGLETON_CLASSIFIERS_MASK) && nameFilter(it.name) }
     }
 
     override fun getClassifierNames(): Set<Name> {
-      return getContributedDescriptors(DescriptorKindFilter.CLASSIFIERS, alwaysTrue())
-        .filterIsInstance<ClassifierDescriptor>()
-        .mapTo(mutableSetOf()) { it.name }
+      return getContributedDescriptors(DescriptorKindFilter.CLASSIFIERS, alwaysTrue()).filterIsInstance<ClassifierDescriptor>().mapTo(
+        mutableSetOf()
+      ) {
+        it.name
+      }
     }
 
-    override fun getContributedClassifier(
-      name: Name,
-      location: LookupLocation,
-    ): ClassifierDescriptor? {
+    override fun getContributedClassifier(name: Name, location: LookupLocation): ClassifierDescriptor? {
       return classes().firstOrNull { it.name == name }
     }
 

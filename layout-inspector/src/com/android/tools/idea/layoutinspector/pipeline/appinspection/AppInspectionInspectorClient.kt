@@ -38,7 +38,6 @@ import com.android.tools.idea.layoutinspector.pipeline.InspectorConnectionError
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.compose.ComposeLayoutInspectorClient
 import com.android.tools.idea.layoutinspector.pipeline.appinspection.view.ViewLayoutInspectorClient
 import com.android.tools.idea.layoutinspector.properties.PropertiesProvider
-import com.android.tools.idea.layoutinspector.skia.SkiaParserImpl
 import com.android.tools.idea.layoutinspector.tree.TreeSettings
 import com.android.tools.idea.layoutinspector.view.inspection.LayoutInspectorViewProtocol
 import com.google.wireless.android.sdk.stats.DynamicLayoutInspectorAttachToProcess.ClientType.APP_INSPECTION_CLIENT
@@ -62,8 +61,7 @@ import org.jetbrains.annotations.TestOnly
 /**
  * An [InspectorClient] that talks to an app-inspection based inspector running on a target device.
  *
- * @param apiServices App inspection services used for initializing and shutting down app
- *   inspection-based inspectors.
+ * @param apiServices App inspection services used for initializing and shutting down app inspection-based inspectors.
  */
 class AppInspectionInspectorClient(
   process: ProcessDescriptor,
@@ -74,9 +72,7 @@ class AppInspectionInspectorClient(
   private val inspectorClientSettings: InspectorClientSettings,
   coroutineScope: CoroutineScope,
   parentDisposable: Disposable,
-  @TestOnly
-  private val apiServices: AppInspectionApiServices =
-    AppInspectionDiscoveryService.instance.apiServices,
+  @TestOnly private val apiServices: AppInspectionApiServices = AppInspectionDiscoveryService.instance.apiServices,
   private val debugViewAttributes: DebugViewAttributes = DebugViewAttributes(model.project),
 ) :
   AbstractInspectorClient(
@@ -101,25 +97,9 @@ class AppInspectionInspectorClient(
     logError(t)
   }
 
-  override val capabilities =
-    EnumSet.of(
-      Capability.SUPPORTS_CONTINUOUS_MODE,
-      Capability.SUPPORTS_SYSTEM_NODES,
-      Capability.SUPPORTS_SKP,
-    )!!
+  override val capabilities = EnumSet.of(Capability.SUPPORTS_CONTINUOUS_MODE, Capability.SUPPORTS_SYSTEM_NODES, Capability.SUPPORTS_SKP)!!
 
-  private val skiaParser =
-    SkiaParserImpl({
-      viewInspector?.updateScreenshotType(LayoutInspectorViewProtocol.Screenshot.Type.BITMAP)
-      capabilities.remove(Capability.SUPPORTS_SKP)
-    })
-
-  override val treeLoader =
-    AppInspectionTreeLoader(
-      notificationModel = notificationModel,
-      logEvent = ::logEventToMetrics,
-      skiaParser = skiaParser,
-    )
+  override val treeLoader = AppInspectionTreeLoader(logEvent = ::logEventToMetrics)
   override val provider: PropertiesProvider
     get() = propertiesProvider
 
@@ -132,9 +112,7 @@ class AppInspectionInspectorClient(
 
         // Create the app inspection connection now, so we can log that it happened.
         apiServices.attachToProcess(process, model.project.name)
-        launchMonitor.updateProgress(
-          DynamicLayoutInspectorErrorInfo.AttachErrorState.ATTACH_SUCCESS
-        )
+        launchMonitor.updateProgress(DynamicLayoutInspectorErrorInfo.AttachErrorState.ATTACH_SUCCESS)
 
         composeInspector =
           ComposeLayoutInspectorClient.launch(
@@ -161,12 +139,7 @@ class AppInspectionInspectorClient(
             ::fireTreeEvent,
             launchMonitor,
           )
-        propertiesProvider =
-          AppInspectionPropertiesProvider(
-            viewIns.propertiesCache,
-            composeInspector?.parametersCache,
-            model,
-          )
+        propertiesProvider = AppInspectionPropertiesProvider(viewIns.propertiesCache, composeInspector?.parametersCache, model)
         viewInspector = viewIns
 
         logEventToMetrics(DynamicLayoutInspectorEventType.ATTACH_SUCCESS)
@@ -213,10 +186,7 @@ class AppInspectionInspectorClient(
       }
   }
 
-  /**
-   * A function to notify the user if the version of compose and scenecore don't support xr
-   * inspection.
-   */
+  /** A function to notify the user if the version of compose and scenecore don't support xr inspection. */
   // TODO: unify with compose checks in ComposeLayoutInspectorClient#checkComposeVersion
   private suspend fun checkRequiredVersionsForXr() {
     // The minimum version of compose required to support XR inspection.
@@ -224,31 +194,16 @@ class AppInspectionInspectorClient(
     val actualComposeVersion = composeInspector?.composeVersion?.let { Version.parse(it) }
     if (actualComposeVersion != null && actualComposeVersion < Version.parse(minComposeVersion)) {
       val notificationId = "compose.inspection.does.not.support.xr"
-      notificationModel.addNotification(
-        notificationId,
-        LayoutInspectorBundle.message(notificationId, minComposeVersion),
-        Status.Warning,
-      )
+      notificationModel.addNotification(notificationId, LayoutInspectorBundle.message(notificationId, minComposeVersion), Status.Warning)
     }
 
     // The minimum version of scenecore required to support XR inspection.
     val minScenecoreVersion = "1.0.0-alpha04"
-    val actualScenecoreVersionString =
-      findScenecoreVersion(
-        project = project,
-        appInspectionApiServices = apiServices,
-        process = process,
-      )
+    val actualScenecoreVersionString = findScenecoreVersion(project = project, appInspectionApiServices = apiServices, process = process)
     val actualScenecoreVersion = actualScenecoreVersionString?.let { Version.parse(it) }
-    if (
-      actualScenecoreVersion != null && actualScenecoreVersion < Version.parse(minScenecoreVersion)
-    ) {
+    if (actualScenecoreVersion != null && actualScenecoreVersion < Version.parse(minScenecoreVersion)) {
       val notificationId = "scenecore.inspection.not.supported"
-      notificationModel.addNotification(
-        notificationId,
-        LayoutInspectorBundle.message(notificationId, minScenecoreVersion),
-        Status.Warning,
-      )
+      notificationModel.addNotification(notificationId, LayoutInspectorBundle.message(notificationId, minScenecoreVersion), Status.Warning)
     }
   }
 
@@ -282,9 +237,8 @@ class AppInspectionInspectorClient(
   }
 
   /**
-   * [CancellationException] can hide other errors from App Inspection. Which can be stored one or
-   * more level deep, for example `t.cause.cause`. This function finds that error or returns the
-   * original one if it can't be found.
+   * [CancellationException] can hide other errors from App Inspection. Which can be stored one or more level deep, for example
+   * `t.cause.cause`. This function finds that error or returns the original one if it can't be found.
    */
   private fun getOriginalError(t: Throwable): Throwable {
     return if (t is CancellationException) {
@@ -311,8 +265,7 @@ class AppInspectionInspectorClient(
     val errorCode = throwable.toAttachErrorInfo().code
     launchMonitor.logAttachErrorToMetrics(errorCode)
 
-    return errorCode != AttachErrorCode.UNKNOWN_APP_INSPECTION_ERROR &&
-      errorCode != AttachErrorCode.UNEXPECTED_ERROR
+    return errorCode != AttachErrorCode.UNKNOWN_APP_INSPECTION_ERROR && errorCode != AttachErrorCode.UNEXPECTED_ERROR
   }
 
   private fun logError(throwable: Throwable) {
@@ -348,8 +301,6 @@ class AppInspectionInspectorClient(
       try {
         viewInspector?.disconnect()
         composeInspector?.disconnect()
-        // TODO: skiaParser#shutdown is a blocking function. Should be ported to coroutines
-        skiaParser.shutdown()
         logEventToMetrics(DynamicLayoutInspectorEventType.SESSION_DATA)
       } catch (t: Throwable) {
         val error = getOriginalError(t)
@@ -436,10 +387,7 @@ class AppInspectionInspectorClient(
     }
   }
 
-  override suspend fun saveSnapshot(
-    path: Path,
-    screenshotType: LayoutInspectorViewProtocol.Screenshot.Type,
-  ) {
+  override suspend fun saveSnapshot(path: Path, screenshotType: LayoutInspectorViewProtocol.Screenshot.Type) {
     val startTime = System.currentTimeMillis()
     val metadata = viewInspector?.saveSnapshot(path, screenshotType)
     metadata?.saveDuration = System.currentTimeMillis() - startTime

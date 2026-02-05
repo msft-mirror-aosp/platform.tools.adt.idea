@@ -26,6 +26,15 @@
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.threading-agent-callback" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" />
+    <orderEntry type="module-library">
+      <library name="r8">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../../../../prebuilts/r8/r8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
     <orderEntry type="module" module-name="android.sdktools.testutils" scope="TEST" />
   </component>
 </module>

@@ -20,16 +20,15 @@ import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.io.FileUtilRt
+import java.io.File
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 class HttpProxySettingsCleanUpTest {
 
-  @get:Rule
-  var myRule = AndroidGradleProjectRule()
+  @get:Rule var myRule = AndroidGradleProjectRule()
 
   @Before
   fun setUp() {
@@ -43,9 +42,8 @@ class HttpProxySettingsCleanUpTest {
   }
 
   /**
-   * Test that when we run [HttpProxySettingsCleanUp.cleanUp] in headless mode,
-   * the function does attempt to display [com.android.tools.idea.gradle.project.ProxySettingsDialog]
-   * and throw an exception. @see [](http://issuetracker.google.com/290465997)
+   * Test that when we run [HttpProxySettingsCleanUp.cleanUp] in headless mode, the function does attempt to display
+   * [com.android.tools.idea.gradle.project.ProxySettingsDialog] and throw an exception. @see [](http://issuetracker.google.com/290465997)
    */
   @Test
   fun testHttpProxySettingsCleanUpInHeadlessModeWithGradleProperties() {
@@ -67,5 +65,4 @@ class HttpProxySettingsCleanUpTest {
     val home = System.getProperty("user.home")
     return File(File(home), FileUtil.toSystemDependentName(".gradle/gradle.properties"))
   }
-
 }

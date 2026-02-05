@@ -50,8 +50,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 
-const val COMPOSE_STATE_READ_SCOPE_HIGHLIGHTING_TEXT_ATTRIBUTES_NAME =
-  "ComposeStateReadScopeHighlightingTextAttributes"
+const val COMPOSE_STATE_READ_SCOPE_HIGHLIGHTING_TEXT_ATTRIBUTES_NAME = "ComposeStateReadScopeHighlightingTextAttributes"
 val COMPOSE_STATE_READ_SCOPE_HIGHLIGHTING_TEXT_ATTRIBUTES_KEY: TextAttributesKey =
   TextAttributesKey.createTextAttributesKey(
     COMPOSE_STATE_READ_SCOPE_HIGHLIGHTING_TEXT_ATTRIBUTES_NAME,
@@ -80,8 +79,7 @@ object ComposeStateReadInlayHintsCollector : SharedBypassCollector {
     if (element !is KtNameReferenceExpression) return
     val stateRead = element.getStateRead() ?: return
     val position = InlineInlayPosition(element.endOffset, relatedToPrevious = true)
-    val tooltip =
-      ComposeBundle.message("state.read.message", stateRead.stateVar.text, stateRead.scopeName)
+    val tooltip = ComposeBundle.message("state.read.message", stateRead.stateVar.text, stateRead.scopeName)
     sink.addPresentation(position, tooltip = tooltip, hasBackground = true) {
       val actionData =
         InlayActionData(

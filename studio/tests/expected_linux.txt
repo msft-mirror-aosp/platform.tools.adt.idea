@@ -440,7 +440,7 @@ android-studio/jbr/release
 android-studio/lib/annotations.jar
 android-studio/lib/app-backend.jar
 android-studio/lib/app.jar
-android-studio/lib/build-marker-AI-253.29346.138.__BUILD_NUMBER__
+android-studio/lib/build-marker-AI-253.30387.90.__BUILD_NUMBER__
 android-studio/lib/eclipse.lsp4j.debug.jar
 android-studio/lib/eclipse.lsp4j.jar
 android-studio/lib/eclipse.lsp4j.jsonrpc.debug.jar
@@ -2388,9 +2388,9 @@ android-studio/plugins/android/lib/studio-grpc.jar
 android-studio/plugins/android/lib/studio-proto.jar
 android-studio/plugins/android/lib/tensorflow-lite-metadata-0.1.0-rc2.jar
 android-studio/plugins/android/lib/traceprocessor_protos.jar
-android-studio/plugins/android/lib/tracing-desktop-2.0.0-SNAPSHOT.jar
+android-studio/plugins/android/lib/tracing-desktop-2.0.0-alpha01.jar
 android-studio/plugins/android/lib/tracing-perfetto-handshake-1.0.0-beta02.jar
-android-studio/plugins/android/lib/tracing-wire-desktop-2.0.0-SNAPSHOT.jar
+android-studio/plugins/android/lib/tracing-wire-desktop-2.0.0-alpha01.jar
 android-studio/plugins/android/lib/transport_java_proto.jar
 android-studio/plugins/android/lib/ui-animation-tooling-internal.jar
 android-studio/plugins/android/lib/utp-core-proto-jarjar.jar
@@ -3080,6 +3080,7 @@ android-studio/plugins/firebase/lib/firebase.so.jar
 android-studio/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 android-studio/plugins/firebase/lib/libfirebase_java_proto.jar
 android-studio/plugins/firebase/lib/protobuf-java-util-3.22.3.jar
+android-studio/plugins/gemini/lib/aicode_grpc.jar
 android-studio/plugins/gemini/lib/aida_grpc.jar
 android-studio/plugins/gemini/lib/aida_proto.jar
 android-studio/plugins/gemini/lib/aida_protobuf.jar

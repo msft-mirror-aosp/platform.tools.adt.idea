@@ -21,8 +21,8 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.util.application
-import kotlinx.coroutines.runBlocking
 import java.nio.file.Paths
+import kotlinx.coroutines.runBlocking
 
 @Suppress("UnstableApiUsage")
 internal class AndroidSdkPathStoreTest : LightPlatformTestCase() {
@@ -31,11 +31,9 @@ internal class AndroidSdkPathStoreTest : LightPlatformTestCase() {
     try {
       PropertiesComponent.getInstance().unsetValue("android.sdk.path")
       PropertiesComponent.getInstance().unsetValue("migrate.android.sdk.path.to.roamable.storage")
-    }
-    catch (e: Throwable) {
+    } catch (e: Throwable) {
       addSuppressedException(e)
-    }
-    finally {
+    } finally {
       super.tearDown()
     }
   }
@@ -83,10 +81,7 @@ internal class AndroidSdkPathStoreTest : LightPlatformTestCase() {
     PropertiesComponent.getInstance().setValue("migrate.android.sdk.path.to.roamable.storage", false, true)
   }
 
-  private fun IComponentStore.createAndroidSdkPathStore(
-    initialAndroidSdkPathState: String? = null,
-    action: (AndroidSdkPathStore) -> Unit
-  ) {
+  private fun IComponentStore.createAndroidSdkPathStore(initialAndroidSdkPathState: String? = null, action: (AndroidSdkPathStore) -> Unit) {
     val androidSdkPathStore = AndroidSdkPathStore()
 
     if (application.getServiceIfCreated(AndroidSdkPathStore::class.java) != null) {
@@ -94,27 +89,21 @@ internal class AndroidSdkPathStoreTest : LightPlatformTestCase() {
     }
 
     try {
-      runBlocking {
-        initComponent(androidSdkPathStore, null, PluginId.findId("org.jetbrains.android")!!)
-      }
+      runBlocking { initComponent(androidSdkPathStore, null, PluginId.findId("org.jetbrains.android")!!) }
 
       if (initialAndroidSdkPathState != null) {
         // Save initial state and re-init component to trigger loadState method
         try {
           androidSdkPathStore.androidSdkPath = Paths.get(initialAndroidSdkPathState)
           saveComponent(androidSdkPathStore)
-        }
-        finally {
+        } finally {
           unloadComponent(androidSdkPathStore)
         }
-        runBlocking {
-          initComponent(androidSdkPathStore, null, PluginId.findId("org.jetbrains.android")!!)
-        }
+        runBlocking { initComponent(androidSdkPathStore, null, PluginId.findId("org.jetbrains.android")!!) }
       }
 
       action(androidSdkPathStore)
-    }
-    finally {
+    } finally {
       // clear state
       unloadComponent(androidSdkPathStore)
     }
