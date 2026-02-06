@@ -17,7 +17,7 @@ package com.android.tools.rendering
 
 import com.android.testutils.VirtualTimeScheduler
 import com.android.testutils.concurrency.OnDemandExecutorService
-import com.android.tools.rendering.RenderAsyncActionExecutor.*
+import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.google.common.truth.Truth
 import com.google.common.util.concurrent.MoreExecutors
 import java.util.concurrent.AbstractExecutorService

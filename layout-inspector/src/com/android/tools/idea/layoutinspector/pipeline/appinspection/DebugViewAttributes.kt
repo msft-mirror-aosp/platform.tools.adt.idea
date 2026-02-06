@@ -24,7 +24,8 @@ import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescript
 import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.android.tools.idea.layoutinspector.model.NotificationModel
 import com.android.tools.idea.layoutinspector.model.StatusNotificationAction
-import com.android.tools.idea.layoutinspector.pipeline.appinspection.SetFlagResult.Failure.Reason.*
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.SetFlagResult.Failure.Reason.SECURITY_EXCEPTION
+import com.android.tools.idea.layoutinspector.pipeline.appinspection.SetFlagResult.Failure.Reason.UNKNOWN
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project

@@ -19,7 +19,7 @@ import com.android.tools.adtui.model.stdui.CommonAction
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import java.beans.PropertyChangeListener
-import java.util.*
+import java.util.Arrays
 import org.junit.ClassRule
 import org.junit.Test
 import org.junit.runner.RunWith

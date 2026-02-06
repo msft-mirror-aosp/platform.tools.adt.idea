@@ -25,7 +25,10 @@ import java.net.URL
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 import org.jetbrains.android.AndroidTestBase
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test

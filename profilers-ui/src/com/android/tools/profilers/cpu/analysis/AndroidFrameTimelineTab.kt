@@ -18,7 +18,11 @@ package com.android.tools.profilers.cpu.analysis
 import com.android.tools.adtui.PaginatedTableView
 import com.android.tools.adtui.model.formatter.TimeFormatter
 import com.android.tools.profilers.StudioProfilersView
-import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel.Column.*
+import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel.Column.APP_TIME
+import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel.Column.COMPOSITION_TIME
+import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel.Column.FRAME_NUMBER
+import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel.Column.GPU_TIME
+import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel.Column.TOTAL_TIME
 import com.android.tools.profilers.cpu.analysis.TableUtils.setColumnRenderers
 import java.awt.BorderLayout
 
