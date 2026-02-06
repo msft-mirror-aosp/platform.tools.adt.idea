@@ -52,16 +52,38 @@ interface SnapshotComparisonTest {
 
   /** The list of file name suffixes applicable to the currently running test. */
   val snapshotSuffixes: List<String>
-    get() =
-      listOfNotNull(
-        "_K2_phased".takeIf { KotlinPluginModeProvider.isK2Mode() && StudioFlags.PHASED_SYNC_ENABLED.get() },
-        "_K2".takeIf { KotlinPluginModeProvider.isK2Mode() },
-        "_phased".takeIf { StudioFlags.PHASED_SYNC_ENABLED.get() },
-        "",
-      )
+    get() = SnapshotSuffix.snapshotSuffixesApplicable()
 
   /** Assumed to be matched by [UsefulTestCase.getName]. */
   fun getName(): String
+}
+
+/** Snapshot filename suffixes ordered by matching priority, where [BASELINE] must be last. */
+enum class SnapshotSuffix(val suffix: String) {
+  K2_PHASED("_K2_phased") {
+    override val isEnabled
+      get() = KotlinPluginModeProvider.isK2Mode() && StudioFlags.PHASED_SYNC_ENABLED.get()
+  },
+  K2("_K2") {
+    override val isEnabled
+      get() = KotlinPluginModeProvider.isK2Mode()
+  },
+  PHASED("_phased") {
+    override val isEnabled
+      get() = StudioFlags.PHASED_SYNC_ENABLED.get()
+  },
+  BASELINE("") {
+    override val isEnabled
+      get() = true
+  };
+
+  abstract val isEnabled: Boolean
+
+  companion object {
+    fun nonBaselineSnapshots() = entries.filter { it != BASELINE }
+
+    fun snapshotSuffixesApplicable() = entries.filter { it.isEnabled }.map { it.suffix }
+  }
 }
 
 private val testLogsPath: String?
@@ -81,35 +103,57 @@ private fun SnapshotComparisonTest.assertInSnapshotTextContext() =
   Truth.assert_()
     .withMessage(
       """
-  There has been a change to the contents of snapshot test ${getName()}.
-
-  If that change is intentional, update the expectation files.
-
-  To update the files from a presubmit failure, download and unzip the outputs.zip for this target:
-    unzip -d $(bazel info workspace) -o outputs.zip
-
-  For a local bazel invocation, outputs.zip will be in bazel-testlogs:
-    unzip -d $(bazel info workspace) -o \
-      $(bazel info bazel-testlogs)/${testLogsPath ?: "<bazel test target for ${getName()}>"}/test.outputs/outputs.zip
-
-  Or, to re-run the test and update the expectations in place, either add -DUPDATE_TEST_SNAPSHOTS
-  to the jvm options in the idea test configuration and re-run the test, or from bazel, run:
-    bazel test ${System.getenv("TEST_TARGET")?.takeIf { it.isNotEmpty() } ?: "<bazel test target for ${getName()}>"} \
-      --nocache_test_results \
-      --sandbox_writable_path=${'$'}(bazel info workspace) \
-      --strategy=TestRunner=standalone \
-      --jvmopt=\"-DUPDATE_TEST_SNAPSHOTS=$(bazel info workspace)\" \
-      --test_timeout=6000 \
-      --test_output=streamed
-
-  NB: All the commands above assume 'tools/base/bazel' is on your path.
+    |There has been a change to the contents of snapshot test ${getName()}.
+    |
+    |If that change is intentional, update the expectation files.
+    |
+    |${updateSnapshotGuidelinesText()}
   """
-        .trimIndent()
+        .trimMargin()
+    )
+
+private fun SnapshotComparisonTest.assertDuplicatedSnapshotsTextContext() =
+  Truth.assert_()
+    .withMessage(
+      """
+    |There are duplicated snapshot files to their baseline content ${getName()}.
+    |
+    |${updateSnapshotGuidelinesText()}
+  """
+        .trimMargin()
     )
 
 fun SnapshotComparisonTest.assertIsEqualToSnapshot(text: String, snapshotTestSuffix: String = "") {
   val (fullSnapshotName, expectedText) = getAndMaybeUpdateSnapshot(snapshotTestSuffix, text)
   assertInSnapshotTextContext().that(text).named("Snapshot comparison for $fullSnapshotName").isEqualTo(expectedText)
+  assertNoDuplicatedSnapshots()
+}
+
+fun SnapshotComparisonTest.assertNoDuplicatedSnapshots() {
+  val sanitizedTestName = sanitizeFileName(UsefulTestCase.getTestName(getName(), true))
+  val duplicates = mutableListOf<File>()
+
+  val baseline = getCandidateSnapshotFile(sanitizedTestName, SnapshotSuffix.BASELINE.suffix)
+  val baselineContent = baseline.readText()
+  SnapshotSuffix.nonBaselineSnapshots().forEach {
+    val snapshotFile = getCandidateSnapshotFile(sanitizedTestName, it.suffix)
+    if (snapshotFile.exists()) {
+      val content = snapshotFile.readText()
+      if (content == baselineContent) {
+        duplicates.add(snapshotFile)
+      }
+    }
+  }
+
+  if (duplicates.isNotEmpty()) {
+    if (System.getProperty(updateSnapshotsJvmProperty) != null) {
+      duplicates.forEach {
+        println("Delete duplicated snapshot file: ${it.absolutePath}")
+        it.delete()
+      }
+    }
+    assertDuplicatedSnapshotsTextContext().that(duplicates).named("Duplicated snapshots of ${baseline.name}").isEmpty()
+  }
 }
 
 fun SnapshotComparisonTest.assertAreEqualToSnapshots(vararg checks: Pair<String, String>) {
@@ -160,13 +204,17 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
   return snapshotFile.name to expectedText
 }
 
-private fun SnapshotComparisonTest.getCandidateSnapshotFiles(project: String, suffix: String): List<File> {
+private fun SnapshotComparisonTest.getCandidateSnapshotFiles(project: String, additionalSuffix: String): List<File> {
+  return snapshotSuffixes.map { getCandidateSnapshotFile(project, "$it$additionalSuffix") }
+}
+
+private fun SnapshotComparisonTest.getCandidateSnapshotFile(project: String, suffix: String): File {
   val configuredWorkspace =
     System.getProperty(updateSnapshotsJvmProperty)
       ?.takeUnless { it.isEmpty() }
       ?.let { Paths.get(it).resolve(snapshotDirectoryWorkspaceRelativePath) }
       ?: resolveWorkspacePath(snapshotDirectoryWorkspaceRelativePath)
-  return snapshotSuffixes.map { configuredWorkspace.resolve("${project.substringAfter("projects/")}$it$suffix.txt").toFile() }
+  return configuredWorkspace.resolve("${project.substringAfter("projects/")}$suffix.txt").toFile()
 }
 
 private fun SnapshotComparisonTest.getExpectedTextAndFileFor(project: String, suffix: String): Pair<String, File> =
@@ -217,3 +265,26 @@ fun nameProperties(
     }
   }
 }
+
+private fun SnapshotComparisonTest.updateSnapshotGuidelinesText() =
+  """
+  To update the files from a presubmit failure, download and unzip the outputs.zip for this target:
+    unzip -d $(bazel info workspace) -o outputs.zip
+
+  For a local bazel invocation, outputs.zip will be in bazel-testlogs:
+    unzip -d $(bazel info workspace) -o \
+      $(bazel info bazel-testlogs)/${testLogsPath ?: "<bazel test target for ${getName()}>"}/test.outputs/outputs.zip
+
+  Or, to re-run the test and update the expectations in place, either add -DUPDATE_TEST_SNAPSHOTS
+  to the jvm options in the idea test configuration and re-run the test, or from bazel, run:
+    bazel test ${System.getenv("TEST_TARGET")?.takeIf { it.isNotEmpty() } ?: "<bazel test target for ${getName()}>"} \
+      --nocache_test_results \
+      --sandbox_writable_path=${'$'}(bazel info workspace) \
+      --strategy=TestRunner=standalone \
+      --jvmopt=\"-DUPDATE_TEST_SNAPSHOTS=$(bazel info workspace)\" \
+      --test_timeout=6000 \
+      --test_output=streamed
+
+  NB: All the commands above assume 'tools/base/bazel' is on your path.
+  """
+    .trimIndent()
