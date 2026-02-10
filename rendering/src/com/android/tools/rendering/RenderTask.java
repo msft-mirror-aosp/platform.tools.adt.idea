@@ -490,9 +490,6 @@ public class RenderTask {
     }
   }
 
-  public boolean isRenderSizeOverridden() {
-    return myHardwareConfigHelper.isRenderSizeOverridden();
-  }
 
 
   /**
