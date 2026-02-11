@@ -920,6 +920,7 @@ fun AndroidProjectStubBuilder.buildAgpProjectFlagsStub(): IdeAndroidGradlePlugin
     disableAgpUpgradePrompt = false,
     useCustomManagedDevices = false,
     highlightGradualR8Api = false,
+    builtInKotlinDefaultEnabled = true,
   )
 
 fun AndroidProjectStubBuilder.buildDefaultConfigStub() =
