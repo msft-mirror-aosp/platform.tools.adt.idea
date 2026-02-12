@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,23 @@ package com.android.tools.idea.gradle.project.entities.impl
 
 import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity
 import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityBuilder
+import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityId
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
+import com.intellij.openapi.module.Module
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
+import com.intellij.platform.workspace.jps.entities.ModuleId
+import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.ConnectionId
 import com.intellij.platform.workspace.storage.EntitySource
-import com.intellij.platform.workspace.storage.EntityType
 import com.intellij.platform.workspace.storage.GeneratedCodeApiVersion
 import com.intellij.platform.workspace.storage.GeneratedCodeImplVersion
 import com.intellij.platform.workspace.storage.MutableEntityStorage
+import com.intellij.platform.workspace.storage.SymbolicEntityId
 import com.intellij.platform.workspace.storage.WorkspaceEntity
 import com.intellij.platform.workspace.storage.WorkspaceEntityBuilder
 import com.intellij.platform.workspace.storage.WorkspaceEntityInternalApi
+import com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId
 import com.intellij.platform.workspace.storage.annotations.Parent
 import com.intellij.platform.workspace.storage.impl.EntityLink
 import com.intellij.platform.workspace.storage.impl.ModifiableWorkspaceEntityBase
@@ -44,18 +49,24 @@ import com.intellij.platform.workspace.storage.metadata.model.EntityMetadata
 @GeneratedCodeApiVersion(3)
 @GeneratedCodeImplVersion(7)
 @OptIn(WorkspaceEntityInternalApi::class)
-internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleModelEntityData) : GradleModuleModelEntity,
-                                                                                                  WorkspaceEntityBase(dataSource) {
+internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleModelEntityData) :
+  GradleModuleModelEntity, WorkspaceEntityBase(dataSource) {
 
   private companion object {
-    internal val MODULE_CONNECTION_ID: ConnectionId =
-      ConnectionId.create(ModuleEntity::class.java, GradleModuleModelEntity::class.java, ConnectionId.ConnectionType.ONE_TO_ONE, false)
+    internal val MODULE_CONNECTION_ID: ConnectionId = ConnectionId.create(
+      ModuleEntity::class.java,
+      GradleModuleModelEntity::class.java,
+      ConnectionId.ConnectionType.ONE_TO_ONE,
+      false
+    )
 
     private val connections = listOf<ConnectionId>(
       MODULE_CONNECTION_ID,
     )
 
   }
+
+  override val symbolicId: GradleModuleModelEntityId = super.symbolicId
 
   override val module: ModuleEntity
     get() = snapshot.extractOneToOneParent(MODULE_CONNECTION_ID, this)!!
@@ -78,7 +89,8 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
 
 
   internal class Builder(result: GradleModuleModelEntityData?) :
-    ModifiableWorkspaceEntityBase<GradleModuleModelEntity, GradleModuleModelEntityData>(result), GradleModuleModelEntityBuilder {
+    ModifiableWorkspaceEntityBase<GradleModuleModelEntity, GradleModuleModelEntityData>(result),
+    GradleModuleModelEntityBuilder {
     internal constructor() : this(GradleModuleModelEntityData())
 
     override fun applyToBuilder(builder: MutableEntityStorage) {
@@ -130,7 +142,8 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
     override fun relabel(dataSource: WorkspaceEntity, parents: Set<WorkspaceEntity>?) {
       dataSource as GradleModuleModelEntity
       if (this.entitySource != dataSource.entitySource) this.entitySource = dataSource.entitySource
-      if (this.gradleModuleModel != dataSource.gradleModuleModel) this.gradleModuleModel = dataSource.gradleModuleModel
+      if (this.gradleModuleModel != dataSource.gradleModuleModel) this.gradleModuleModel =
+        dataSource.gradleModuleModel
       updateChildToParentReferences(parents)
     }
 
@@ -149,7 +162,10 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
         val _diff = diff
         return if (_diff != null) {
           @OptIn(EntityStorageInstrumentationApi::class)
-          ((_diff as MutableEntityStorageInstrumentation).getParentBuilder(MODULE_CONNECTION_ID, this) as? ModuleEntityBuilder)
+          ((_diff as MutableEntityStorageInstrumentation).getParentBuilder(
+            MODULE_CONNECTION_ID,
+            this
+          ) as? ModuleEntityBuilder)
             ?: (this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)]!! as ModuleEntityBuilder)
         } else {
           this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)]!! as ModuleEntityBuilder
@@ -187,7 +203,8 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
 
       }
 
-    override fun getEntityClass(): Class<GradleModuleModelEntity> = GradleModuleModelEntity::class.java
+    override fun getEntityClass(): Class<GradleModuleModelEntity> =
+      GradleModuleModelEntity::class.java
   }
 }
 

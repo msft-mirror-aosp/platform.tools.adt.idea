@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,19 @@
 package com.android.tools.idea.gradle.project.entities
 
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
+import com.intellij.openapi.module.Module
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
+import com.intellij.platform.workspace.jps.entities.ModuleId
+import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntitySource
 import com.intellij.platform.workspace.storage.EntityType
 import com.intellij.platform.workspace.storage.GeneratedCodeApiVersion
 import com.intellij.platform.workspace.storage.MutableEntityStorage
+import com.intellij.platform.workspace.storage.SymbolicEntityId
 import com.intellij.platform.workspace.storage.WorkspaceEntity
 import com.intellij.platform.workspace.storage.WorkspaceEntityBuilder
+import com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId
 import com.intellij.platform.workspace.storage.annotations.Parent
 
 @GeneratedCodeApiVersion(3)
@@ -35,7 +40,8 @@ interface GradleModuleModelEntityBuilder : WorkspaceEntityBuilder<GradleModuleMo
   var gradleModuleModel: GradleModuleModel
 }
 
-internal object GradleModuleModelEntityType : EntityType<GradleModuleModelEntity, GradleModuleModelEntityBuilder>() {
+internal object GradleModuleModelEntityType :
+  EntityType<GradleModuleModelEntity, GradleModuleModelEntityBuilder>() {
   override val entityClass: Class<GradleModuleModelEntity> get() = GradleModuleModelEntity::class.java
   operator fun invoke(
     gradleModuleModel: GradleModuleModel,
@@ -53,7 +59,8 @@ internal object GradleModuleModelEntityType : EntityType<GradleModuleModelEntity
 fun MutableEntityStorage.modifyGradleModuleModelEntity(
   entity: GradleModuleModelEntity,
   modification: GradleModuleModelEntityBuilder.() -> Unit,
-): GradleModuleModelEntity = modifyEntity(GradleModuleModelEntityBuilder::class.java, entity, modification)
+): GradleModuleModelEntity =
+  modifyEntity(GradleModuleModelEntityBuilder::class.java, entity, modification)
 
 var ModuleEntityBuilder.gradleModuleModel: GradleModuleModelEntityBuilder?
   by WorkspaceEntity.extensionBuilder(GradleModuleModelEntity::class.java)
@@ -65,4 +72,5 @@ fun GradleModuleModelEntity(
   gradleModuleModel: GradleModuleModel,
   entitySource: EntitySource,
   init: (GradleModuleModelEntityBuilder.() -> Unit)? = null,
-): GradleModuleModelEntityBuilder = GradleModuleModelEntityType(gradleModuleModel, entitySource, init)
+): GradleModuleModelEntityBuilder =
+  GradleModuleModelEntityType(gradleModuleModel, entitySource, init)

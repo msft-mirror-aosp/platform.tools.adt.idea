@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,38 +29,152 @@ import com.intellij.platform.workspace.storage.metadata.model.ValueTypeMetadata
 @OptIn(WorkspaceEntityInternalApi::class)
 internal object MetadataStorageImpl : MetadataStorageBase() {
   override fun initializeMetadata() {
-    val primitiveTypeStringNotNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "String")
-    val primitiveTypeIntNotNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Int")
-    val primitiveTypeListNotNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "List")
-    val primitiveTypeBooleanNotNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Boolean")
-    val primitiveTypeIntNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Int")
-    val primitiveTypeStringNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "String")
-    val primitiveTypeSetNotNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Set")
-    val primitiveTypeMapNotNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Map")
-    val primitiveTypeListNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "List")
-    val primitiveTypeSetNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Set")
-    val primitiveTypeMapNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Map")
-    val primitiveTypeBooleanNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Boolean")
-    val primitiveTypeCharNullable = ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Char")
+    val primitiveTypeStringNotNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "String")
+    val primitiveTypeIntNotNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Int")
+    val primitiveTypeListNotNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "List")
+    val primitiveTypeBooleanNotNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Boolean")
+    val primitiveTypeIntNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Int")
+    val primitiveTypeStringNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "String")
+    val primitiveTypeSetNotNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Set")
+    val primitiveTypeMapNotNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = false, type = "Map")
+    val primitiveTypeListNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "List")
+    val primitiveTypeSetNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Set")
+    val primitiveTypeMapNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Map")
+    val primitiveTypeBooleanNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Boolean")
+    val primitiveTypeCharNullable =
+      ValueTypeMetadata.SimpleType.PrimitiveType(isNullable = true, type = "Char")
 
     var typeMetadata: StorageTypeMetadata
 
     typeMetadata = FinalClassMetadata.ClassMetadata(
-      fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource", properties = listOf(
+      fqName = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId",
+      properties = listOf(
         OwnPropertyMetadata(
-          isComputable = false, isKey = false, isOpen = false, name = "phase", valueType = ValueTypeMetadata.SimpleType.CustomType(
+          isComputable = false,
+          isKey = false,
+          isOpen = false,
+          name = "moduleId",
+          valueType = ValueTypeMetadata.SimpleType.CustomType(
+            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+              fqName = "com.intellij.platform.workspace.jps.entities.ModuleId", properties = listOf(
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "name",
+                  valueType = primitiveTypeStringNotNullable,
+                  withDefault = false
+                ),
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "presentableName",
+                  valueType = primitiveTypeStringNotNullable,
+                  withDefault = false
+                )
+              ), supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+            )
+          ),
+          withDefault = false
+        ),
+        OwnPropertyMetadata(
+          isComputable = false,
+          isKey = false,
+          isOpen = false,
+          name = "presentableName",
+          valueType = primitiveTypeStringNotNullable,
+          withDefault = false
+        )
+      ),
+      supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+    )
+
+    addMetadata(typeMetadata)
+
+    typeMetadata = FinalClassMetadata.ClassMetadata(
+      fqName = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityId",
+      properties = listOf(
+        OwnPropertyMetadata(
+          isComputable = false,
+          isKey = false,
+          isOpen = false,
+          name = "moduleId",
+          valueType = ValueTypeMetadata.SimpleType.CustomType(
+            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+              fqName = "com.intellij.platform.workspace.jps.entities.ModuleId", properties = listOf(
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "name",
+                  valueType = primitiveTypeStringNotNullable,
+                  withDefault = false
+                ),
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "presentableName",
+                  valueType = primitiveTypeStringNotNullable,
+                  withDefault = false
+                )
+              ), supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+            )
+          ),
+          withDefault = false
+        ),
+        OwnPropertyMetadata(
+          isComputable = false,
+          isKey = false,
+          isOpen = false,
+          name = "presentableName",
+          valueType = primitiveTypeStringNotNullable,
+          withDefault = false
+        )
+      ),
+      supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+    )
+
+    addMetadata(typeMetadata)
+
+    typeMetadata = FinalClassMetadata.ClassMetadata(
+      fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource",
+      properties = listOf(
+        OwnPropertyMetadata(
+          isComputable = false,
+          isKey = false,
+          isOpen = false,
+          name = "phase",
+          valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-              fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase", subclasses = listOf(
+              fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
+              subclasses = listOf(
                 FinalClassMetadata.ClassMetadata(
-                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase", properties = listOf(
+                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase",
+                  properties = listOf(
                     OwnPropertyMetadata(
                       isComputable = false,
                       isKey = false,
                       isOpen = false,
                       name = "modelFetchPhase",
                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                          fqName = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase", subclasses = listOf(
+                        isNullable = false,
+                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                          fqName = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase",
+                          subclasses = listOf(
                             FinalClassMetadata.ClassMetadata(
                               fqName = "com.intellij.gradle.toolingExtension.modelAction.GradleBuildFinishedModelFetchPhase",
                               properties = listOf(
@@ -117,7 +231,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                 "kotlin.Comparable"
                               )
                             )
-                          ), supertypes = listOf(
+                          ),
+                          supertypes = listOf(
                             "java.io.Serializable",
                             "java.lang.Comparable",
                             "kotlin.Comparable"
@@ -134,7 +249,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       valueType = primitiveTypeStringNotNullable,
                       withDefault = false
                     )
-                  ), supertypes = listOf(
+                  ),
+                  supertypes = listOf(
                     "kotlin.Comparable",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Dynamic",
@@ -161,7 +277,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   )
                 ),
                 FinalClassMetadata.ClassMetadata(
-                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase", properties = listOf(
+                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase",
+                  properties = listOf(
                     OwnPropertyMetadata(
                       isComputable = false,
                       isKey = false,
@@ -178,19 +295,22 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       valueType = primitiveTypeIntNotNullable,
                       withDefault = false
                     )
-                  ), supertypes = listOf(
+                  ),
+                  supertypes = listOf(
                     "kotlin.Comparable",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Static",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Static"
                   )
                 )
-              ), supertypes = listOf(
+              ),
+              supertypes = listOf(
                 "java.lang.Comparable",
                 "kotlin.Comparable"
               )
             )
-          ), withDefault = false
+          ),
+          withDefault = false
         ),
         OwnPropertyMetadata(
           isComputable = false,
@@ -211,7 +331,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           ),
           withDefault = false
         )
-      ), supertypes = listOf(
+      ),
+      supertypes = listOf(
         "com.intellij.platform.workspace.storage.EntitySource",
         "org.jetbrains.plugins.gradle.service.syncAction.GradleEntitySource",
         "org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeEntitySource"
@@ -221,21 +342,30 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadata(typeMetadata)
 
     typeMetadata = FinalClassMetadata.ClassMetadata(
-      fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleSourceSetEntitySource", properties = listOf(
+      fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleSourceSetEntitySource",
+      properties = listOf(
         OwnPropertyMetadata(
-          isComputable = false, isKey = false, isOpen = false, name = "phase", valueType = ValueTypeMetadata.SimpleType.CustomType(
+          isComputable = false,
+          isKey = false,
+          isOpen = false,
+          name = "phase",
+          valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-              fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase", subclasses = listOf(
+              fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
+              subclasses = listOf(
                 FinalClassMetadata.ClassMetadata(
-                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase", properties = listOf(
+                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase",
+                  properties = listOf(
                     OwnPropertyMetadata(
                       isComputable = false,
                       isKey = false,
                       isOpen = false,
                       name = "modelFetchPhase",
                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                          fqName = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase", subclasses = listOf(
+                        isNullable = false,
+                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                          fqName = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase",
+                          subclasses = listOf(
                             FinalClassMetadata.ClassMetadata(
                               fqName = "com.intellij.gradle.toolingExtension.modelAction.GradleBuildFinishedModelFetchPhase",
                               properties = listOf(
@@ -292,7 +422,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                 "kotlin.Comparable"
                               )
                             )
-                          ), supertypes = listOf(
+                          ),
+                          supertypes = listOf(
                             "java.io.Serializable",
                             "java.lang.Comparable",
                             "kotlin.Comparable"
@@ -309,7 +440,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       valueType = primitiveTypeStringNotNullable,
                       withDefault = false
                     )
-                  ), supertypes = listOf(
+                  ),
+                  supertypes = listOf(
                     "kotlin.Comparable",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Dynamic",
@@ -336,7 +468,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   )
                 ),
                 FinalClassMetadata.ClassMetadata(
-                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase", properties = listOf(
+                  fqName = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase",
+                  properties = listOf(
                     OwnPropertyMetadata(
                       isComputable = false,
                       isKey = false,
@@ -353,19 +486,22 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       valueType = primitiveTypeIntNotNullable,
                       withDefault = false
                     )
-                  ), supertypes = listOf(
+                  ),
+                  supertypes = listOf(
                     "kotlin.Comparable",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Static",
                     "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase.Static"
                   )
                 )
-              ), supertypes = listOf(
+              ),
+              supertypes = listOf(
                 "java.lang.Comparable",
                 "kotlin.Comparable"
               )
             )
-          ), withDefault = false
+          ),
+          withDefault = false
         ),
         OwnPropertyMetadata(
           isComputable = false,
@@ -374,7 +510,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           name = "projectEntitySource",
           valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-              fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource", properties = listOf(
+              fqName = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource",
+              properties = listOf(
                 OwnPropertyMetadata(
                   isComputable = false,
                   isKey = false,
@@ -405,7 +542,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   ),
                   withDefault = false
                 )
-              ), supertypes = listOf(
+              ),
+              supertypes = listOf(
                 "com.intellij.platform.workspace.storage.EntitySource",
                 "org.jetbrains.plugins.gradle.service.syncAction.GradleEntitySource",
                 "org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeEntitySource"
@@ -441,7 +579,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           ),
           withDefault = false
         )
-      ), supertypes = listOf(
+      ),
+      supertypes = listOf(
         "com.intellij.platform.workspace.storage.EntitySource",
         "org.jetbrains.plugins.gradle.service.syncAction.GradleEntitySource",
         "org.jetbrains.plugins.gradle.service.syncAction.impl.bridge.GradleBridgeEntitySource"
@@ -453,7 +592,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     typeMetadata = EntityMetadata(
       fqName = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity",
       entityDataFqName = "com.android.tools.idea.gradle.project.entities.impl.GradleAndroidModelEntityData",
-      supertypes = listOf("com.intellij.platform.workspace.storage.WorkspaceEntity"),
+      supertypes = listOf(
+        "com.intellij.platform.workspace.storage.WorkspaceEntity",
+        "com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId"
+      ),
       properties = listOf(
         OwnPropertyMetadata(
           isComputable = false,
@@ -463,6 +605,60 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false,
             typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.EntitySource")
+          ),
+          withDefault = false
+        ),
+        OwnPropertyMetadata(
+          isComputable = true,
+          isKey = false,
+          isOpen = false,
+          name = "symbolicId",
+          valueType = ValueTypeMetadata.SimpleType.CustomType(
+            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+              fqName = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId",
+              properties = listOf(
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "moduleId",
+                  valueType = ValueTypeMetadata.SimpleType.CustomType(
+                    isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                      fqName = "com.intellij.platform.workspace.jps.entities.ModuleId",
+                      properties = listOf(
+                        OwnPropertyMetadata(
+                          isComputable = false,
+                          isKey = false,
+                          isOpen = false,
+                          name = "name",
+                          valueType = primitiveTypeStringNotNullable,
+                          withDefault = false
+                        ),
+                        OwnPropertyMetadata(
+                          isComputable = false,
+                          isKey = false,
+                          isOpen = false,
+                          name = "presentableName",
+                          valueType = primitiveTypeStringNotNullable,
+                          withDefault = false
+                        )
+                      ),
+                      supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+                    )
+                  ),
+                  withDefault = false
+                ),
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "presentableName",
+                  valueType = primitiveTypeStringNotNullable,
+                  withDefault = false
+                )
+              ),
+              supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+            )
           ),
           withDefault = false
         ),
@@ -486,7 +682,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           name = "gradleAndroidModel",
           valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-              fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", properties = listOf(
+              fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl",
+              properties = listOf(
                 OwnPropertyMetadata(
                   isComputable = false,
                   isKey = false,
@@ -496,7 +693,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider", properties = listOf(
+                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider",
+                          properties = listOf(
                             OwnPropertyMetadata(
                               isComputable = false,
                               isKey = false,
@@ -505,7 +703,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               valueType = ValueTypeMetadata.ParameterizedType(
                                 generics = listOf(
                                   ValueTypeMetadata.SimpleType.CustomType(
-                                    isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                    isNullable = false,
+                                    typeMetadata = FinalClassMetadata.ClassMetadata(
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl",
                                       properties = listOf(
                                         OwnPropertyMetadata(
@@ -541,7 +740,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -558,7 +758,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -575,7 +776,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -592,7 +794,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -609,7 +812,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -621,8 +825,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               valueType = ValueTypeMetadata.ParameterizedType(
                                 generics = listOf(
                                   ValueTypeMetadata.SimpleType.CustomType(
-                                    isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", properties = listOf(
+                                    isNullable = false,
+                                    typeMetadata = FinalClassMetadata.ClassMetadata(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl",
+                                      properties = listOf(
                                         OwnPropertyMetadata(
                                           isComputable = false,
                                           isKey = false,
@@ -630,7 +836,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "directory",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = false,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -641,7 +849,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "myFolder",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -661,7 +871,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = primitiveTypeStringNotNullable,
                                           withDefault = false
                                         )
-                                      ), supertypes = listOf(
+                                      ),
+                                      supertypes = listOf(
                                         "com.android.tools.idea.gradle.model.IdeCustomSourceDirectory",
                                         "java.io.Serializable"
                                       )
@@ -684,7 +895,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -695,7 +907,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "folderField",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -712,7 +926,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -729,7 +944,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -746,7 +962,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -763,7 +980,44 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
+                              ),
+                              withDefault = false
+                            ),
+                            OwnPropertyMetadata(
+                              isComputable = false,
+                              isKey = false,
+                              isOpen = false,
+                              name = "keepRulesDirectories",
+                              valueType = ValueTypeMetadata.ParameterizedType(
+                                generics = listOf(
+                                  ValueTypeMetadata.SimpleType.CustomType(
+                                    isNullable = false,
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
+                                  )
+                                ),
+                                primitive = primitiveTypeListNotNullable
+                              ),
+                              withDefault = false
+                            ),
+                            OwnPropertyMetadata(
+                              isComputable = false,
+                              isKey = false,
+                              isOpen = false,
+                              name = "keepRulesDirectoriesField",
+                              valueType = ValueTypeMetadata.ParameterizedType(
+                                generics = listOf(
+                                  ValueTypeMetadata.SimpleType.CustomType(
+                                    isNullable = false,
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
+                                  )
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -780,7 +1034,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -797,7 +1052,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -808,7 +1064,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "manifestFile",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -819,7 +1077,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "manifestFileField",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -836,7 +1096,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -853,7 +1114,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -886,7 +1148,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -903,7 +1166,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -920,7 +1184,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -937,7 +1202,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -954,7 +1220,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -971,7 +1238,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -988,7 +1256,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -1005,11 +1274,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             )
-                          ), supertypes = listOf("java.io.Serializable")
+                          ),
+                          supertypes = listOf("java.io.Serializable")
                         )
                       )
                     ), primitive = primitiveTypeListNotNullable
@@ -1132,8 +1403,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   valueType = ValueTypeMetadata.ParameterizedType(
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
-                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                          fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest", subclasses = listOf(
+                        isNullable = false,
+                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                          fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest",
+                          subclasses = listOf(
                             FinalClassMetadata.EnumClassMetadata(
                               fqName = "com.android.tools.idea.projectsystem.CommonTestType\$DeviceTest",
                               properties = listOf(
@@ -1156,16 +1429,15 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               ),
                               values = listOf("ANDROID_TEST")
                             )
-                          ), supertypes = listOf("com.android.tools.idea.projectsystem.TestComponentType")
+                          ),
+                          supertypes = listOf("com.android.tools.idea.projectsystem.TestComponentType")
                         )
                       ),
                       ValueTypeMetadata.ParameterizedType(
                         generics = listOf(
                           ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false,
-                            typeMetadata = FinalClassMetadata.KnownClass(
-                              fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
-                            )
+                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
                           )
                         ), primitive = primitiveTypeListNotNullable
                       )
@@ -1181,8 +1453,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   valueType = ValueTypeMetadata.ParameterizedType(
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
-                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                          fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", subclasses = listOf(
+                        isNullable = false,
+                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                          fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest",
+                          subclasses = listOf(
                             FinalClassMetadata.EnumClassMetadata(
                               fqName = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest",
                               properties = listOf(
@@ -1208,16 +1482,15 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                 "UNIT_TEST"
                               )
                             )
-                          ), supertypes = listOf("com.android.tools.idea.projectsystem.TestComponentType")
+                          ),
+                          supertypes = listOf("com.android.tools.idea.projectsystem.TestComponentType")
                         )
                       ),
                       ValueTypeMetadata.ParameterizedType(
                         generics = listOf(
                           ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false,
-                            typeMetadata = FinalClassMetadata.KnownClass(
-                              fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
-                            )
+                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
                           )
                         ), primitive = primitiveTypeListNotNullable
                       )
@@ -1267,9 +1540,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                         generics = listOf(
                           ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false,
-                            typeMetadata = FinalClassMetadata.KnownClass(
-                              fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
-                            )
+                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
                           )
                         ), primitive = primitiveTypeListNotNullable
                       )
@@ -1284,7 +1555,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   name = "androidProject",
                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                      fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", properties = listOf(
+                      fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl",
+                      properties = listOf(
                         OwnPropertyMetadata(
                           isComputable = false,
                           isKey = false,
@@ -1292,14 +1564,16 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "aaptOptions",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
                                   isOpen = false,
                                   name = "namespacing",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                    isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                    isNullable = false,
+                                    typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                       fqName = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing",
                                       properties = listOf(),
                                       supertypes = listOf(
@@ -1315,7 +1589,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   ),
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeAaptOptions",
                                 "java.io.Serializable"
                               )
@@ -1345,6 +1620,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   isKey = false,
                                   isOpen = false,
                                   name = "applicationRClassConstantIds",
+                                  valueType = primitiveTypeBooleanNotNullable,
+                                  withDefault = false
+                                ),
+                                OwnPropertyMetadata(
+                                  isComputable = false,
+                                  isKey = false,
+                                  isOpen = false,
+                                  name = "builtInKotlinDefaultEnabled",
                                   valueType = primitiveTypeBooleanNotNullable,
                                   withDefault = false
                                 ),
@@ -1470,7 +1753,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -1511,7 +1795,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = primitiveTypeStringNullable,
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeBasicVariant",
                                     "java.io.Serializable"
                                   )
@@ -1567,10 +1852,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           valueType = ValueTypeMetadata.ParameterizedType(
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
-                                isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", subclasses = listOf(
+                                isNullable = false,
+                                typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable",
+                                  subclasses = listOf(
                                     FinalClassMetadata.ClassMetadata(
-                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", properties = listOf(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl",
+                                      properties = listOf(
                                         OwnPropertyMetadata(
                                           isComputable = false,
                                           isKey = false,
@@ -1592,7 +1880,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -1625,7 +1914,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -1637,7 +1927,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = ValueTypeMetadata.ParameterizedType(
                                             generics = listOf(
                                               ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                isNullable = false,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl",
                                                   properties = listOf(
                                                     OwnPropertyMetadata(
@@ -1646,7 +1937,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "abiFilters",
                                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                                        generics = listOf(primitiveTypeStringNotNullable),
+                                                        generics = listOf(
+                                                          primitiveTypeStringNotNullable
+                                                        ),
                                                         primitive = primitiveTypeSetNotNullable
                                                       ),
                                                       withDefault = false
@@ -1660,9 +1953,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -1688,7 +1984,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "buildInformation",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                        isNullable = false,
+                                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl",
                                                           properties = listOf(
                                                             OwnPropertyMetadata(
@@ -1756,7 +2053,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       valueType = ValueTypeMetadata.ParameterizedType(
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
-                                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                            isNullable = false,
+                                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl",
                                                               properties = listOf(
                                                                 OwnPropertyMetadata(
@@ -1773,7 +2071,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                   isOpen = false,
                                                                   name = "type",
                                                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                    isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                                    isNullable = false,
+                                                                    typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                                       fqName = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type",
                                                                       properties = listOf(),
                                                                       supertypes = listOf(
@@ -1812,9 +2111,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -1824,7 +2126,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "codeShrinker",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                        isNullable = true,
+                                                        typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.CodeShrinker",
                                                           properties = listOf(),
                                                           supertypes = listOf(
@@ -1846,7 +2149,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "compileClasspathCore",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                                                        isNullable = false,
+                                                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl",
                                                           subclasses = listOf(
                                                             FinalClassMetadata.ObjectMetadata(
@@ -1865,7 +2169,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"
                                                                         )
                                                                       )
-                                                                    ), primitive = primitiveTypeListNotNullable
+                                                                    ),
+                                                                    primitive = primitiveTypeListNotNullable
                                                                   ),
                                                                   withDefault = false
                                                                 )
@@ -1887,7 +2192,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                   valueType = ValueTypeMetadata.ParameterizedType(
                                                                     generics = listOf(
                                                                       ValueTypeMetadata.SimpleType.CustomType(
-                                                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                                        isNullable = false,
+                                                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl",
                                                                           properties = listOf(
                                                                             OwnPropertyMetadata(
@@ -1945,7 +2251,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                                       withDefault = false
                                                                                     )
                                                                                   ),
-                                                                                  supertypes = listOf("java.io.Serializable")
+                                                                                  supertypes = listOf(
+                                                                                    "java.io.Serializable"
+                                                                                  )
                                                                                 )
                                                                               ),
                                                                               withDefault = false
@@ -1957,7 +2265,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                           )
                                                                         )
                                                                       )
-                                                                    ), primitive = primitiveTypeListNotNullable
+                                                                    ),
+                                                                    primitive = primitiveTypeListNotNullable
                                                                   ),
                                                                   withDefault = false
                                                                 ),
@@ -1988,9 +2297,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                     generics = listOf(
                                                                       ValueTypeMetadata.SimpleType.CustomType(
                                                                         isNullable = false,
-                                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl")
+                                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"
+                                                                        )
                                                                       )
-                                                                    ), primitive = primitiveTypeListNotNullable
+                                                                    ),
+                                                                    primitive = primitiveTypeListNotNullable
                                                                   ),
                                                                   withDefault = false
                                                                 ),
@@ -2017,7 +2329,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                   name = "referee",
                                                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                                     isNullable = false,
-                                                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect")
+                                                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect"
+                                                                    )
                                                                   ),
                                                                   withDefault = false
                                                                 )
@@ -2054,9 +2368,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2069,9 +2386,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2102,9 +2422,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2117,9 +2440,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2129,7 +2455,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "ideSetupTaskNames",
                                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                                        generics = listOf(primitiveTypeStringNotNullable),
+                                                        generics = listOf(
+                                                          primitiveTypeStringNotNullable
+                                                        ),
                                                         primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
@@ -2157,7 +2485,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "mappingR8PartitionFile",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2168,7 +2498,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "mappingR8TextFile",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2179,7 +2511,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "multiFlavorSourceProvider",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2189,7 +2523,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "name",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                        isNullable = false,
+                                                        typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.IdeArtifactName",
                                                           properties = listOf(),
                                                           supertypes = listOf(
@@ -2212,85 +2547,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isComputable = false,
                                                       isKey = false,
                                                       isOpen = false,
-                                                      name = "privacySandboxSdkInfo",
-                                                      valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                                          fqName = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl",
-                                                          properties = listOf(
-                                                            OwnPropertyMetadata(
-                                                              isComputable = false,
-                                                              isKey = false,
-                                                              isOpen = false,
-                                                              name = "additionalApkSplitFile",
-                                                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = false,
-                                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
-                                                              ),
-                                                              withDefault = false
-                                                            ),
-                                                            OwnPropertyMetadata(
-                                                              isComputable = false,
-                                                              isKey = false,
-                                                              isOpen = false,
-                                                              name = "additionalApkSplitTask",
-                                                              valueType = primitiveTypeStringNotNullable,
-                                                              withDefault = false
-                                                            ),
-                                                            OwnPropertyMetadata(
-                                                              isComputable = false,
-                                                              isKey = false,
-                                                              isOpen = false,
-                                                              name = "outputListingFile",
-                                                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = false,
-                                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
-                                                              ),
-                                                              withDefault = false
-                                                            ),
-                                                            OwnPropertyMetadata(
-                                                              isComputable = false,
-                                                              isKey = false,
-                                                              isOpen = false,
-                                                              name = "outputListingLegacyFile",
-                                                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = false,
-                                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
-                                                              ),
-                                                              withDefault = false
-                                                            ),
-                                                            OwnPropertyMetadata(
-                                                              isComputable = false,
-                                                              isKey = false,
-                                                              isOpen = false,
-                                                              name = "task",
-                                                              valueType = primitiveTypeStringNotNullable,
-                                                              withDefault = false
-                                                            ),
-                                                            OwnPropertyMetadata(
-                                                              isComputable = false,
-                                                              isKey = false,
-                                                              isOpen = false,
-                                                              name = "taskLegacy",
-                                                              valueType = primitiveTypeStringNotNullable,
-                                                              withDefault = false
-                                                            )
-                                                          ),
-                                                          supertypes = listOf(
-                                                            "com.android.tools.idea.gradle.model.IdePrivacySandboxSdkInfo",
-                                                            "java.io.Serializable"
-                                                          )
-                                                        )
-                                                      ),
-                                                      withDefault = false
-                                                    ),
-                                                    OwnPropertyMetadata(
-                                                      isComputable = false,
-                                                      isKey = false,
-                                                      isOpen = false,
                                                       name = "runtimeClasspathCore",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2308,7 +2570,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "testOptions",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                        isNullable = true,
+                                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl",
                                                           properties = listOf(
                                                             OwnPropertyMetadata(
@@ -2325,7 +2588,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                               isOpen = false,
                                                               name = "execution",
                                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                                isNullable = true,
+                                                                typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                                   fqName = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution",
                                                                   properties = listOf(),
                                                                   supertypes = listOf(
@@ -2367,7 +2631,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       valueType = ValueTypeMetadata.ParameterizedType(
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
-                                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                            isNullable = false,
+                                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl",
                                                               properties = listOf(
                                                                 OwnPropertyMetadata(
@@ -2404,7 +2669,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "variantSourceProvider",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     )
@@ -2449,7 +2716,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = ValueTypeMetadata.ParameterizedType(
                                             generics = listOf(
                                               ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                isNullable = false,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl",
                                                   properties = listOf(
                                                     OwnPropertyMetadata(
@@ -2469,9 +2737,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2484,9 +2755,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2497,7 +2771,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "compileClasspathCore",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2536,9 +2812,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2548,7 +2827,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "ideSetupTaskNames",
                                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                                        generics = listOf(primitiveTypeStringNotNullable),
+                                                        generics = listOf(
+                                                          primitiveTypeStringNotNullable
+                                                        ),
                                                         primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
@@ -2568,7 +2849,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "mockablePlatformJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2579,7 +2862,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "multiFlavorSourceProvider",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2590,7 +2875,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "name",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.IdeArtifactName"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2601,7 +2888,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "runtimeClasspathCore",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2614,9 +2903,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -2627,7 +2919,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "variantSourceProvider",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     )
@@ -2658,7 +2952,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "mainArtifact",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = false,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -2689,8 +2985,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "minSdkVersion",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl", properties = listOf(
+                                            isNullable = false,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl",
+                                              properties = listOf(
                                                 OwnPropertyMetadata(
                                                   isComputable = false,
                                                   isKey = false,
@@ -2715,7 +3013,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   valueType = primitiveTypeStringNullable,
                                                   withDefault = false
                                                 )
-                                              ), supertypes = listOf(
+                                              ),
+                                              supertypes = listOf(
                                                 "com.android.tools.idea.gradle.model.IdeApiVersion",
                                                 "java.io.Serializable"
                                               )
@@ -2737,7 +3036,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "productFlavors",
                                           valueType = ValueTypeMetadata.ParameterizedType(
-                                            generics = listOf(primitiveTypeStringNotNullable),
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable
+                                            ),
                                             primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
@@ -2755,7 +3056,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -2768,7 +3070,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                             generics = listOf(
                                               primitiveTypeStringNotNullable,
                                               ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                isNullable = false,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl",
                                                   properties = listOf(
                                                     OwnPropertyMetadata(
@@ -2812,7 +3115,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "resourceConfigurations",
                                           valueType = ValueTypeMetadata.ParameterizedType(
-                                            generics = listOf(primitiveTypeStringNotNullable),
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable
+                                            ),
                                             primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
@@ -2832,7 +3137,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "targetSdkVersion",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -2843,7 +3150,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "testFixturesArtifact",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -2876,7 +3185,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = ValueTypeMetadata.ParameterizedType(
                                             generics = listOf(
                                               ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                isNullable = false,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl",
                                                   properties = listOf(
                                                     OwnPropertyMetadata(
@@ -2903,7 +3213,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       valueType = ValueTypeMetadata.ParameterizedType(
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
-                                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                            isNullable = false,
+                                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl",
                                                               properties = listOf(
                                                                 OwnPropertyMetadata(
@@ -2920,7 +3231,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                   isOpen = false,
                                                                   name = "targetedDevices",
                                                                   valueType = ValueTypeMetadata.ParameterizedType(
-                                                                    generics = listOf(primitiveTypeStringNotNullable),
+                                                                    generics = listOf(
+                                                                      primitiveTypeStringNotNullable
+                                                                    ),
                                                                     primitive = primitiveTypeListNotNullable
                                                                   ),
                                                                   withDefault = false
@@ -2963,7 +3276,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = ValueTypeMetadata.ParameterizedType(
                                             generics = listOf(
                                               ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                isNullable = false,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl",
                                                   properties = listOf(
                                                     OwnPropertyMetadata(
@@ -3025,7 +3339,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = primitiveTypeStringNullable,
                                           withDefault = false
                                         )
-                                      ), supertypes = listOf(
+                                      ),
+                                      supertypes = listOf(
                                         "com.android.tools.idea.gradle.model.IdeVariantCore",
                                         "com.android.tools.idea.gradle.model.IdeVariantHeader",
                                         "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable",
@@ -3033,7 +3348,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       )
                                     ),
                                     FinalClassMetadata.ObjectMetadata(
-                                      fqName = "com.android.tools.idea.gradle.model.impl.ThrowingIdeVariantCore", properties = listOf(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.ThrowingIdeVariantCore",
+                                      properties = listOf(
                                         OwnPropertyMetadata(
                                           isComputable = false,
                                           isKey = false,
@@ -3055,7 +3371,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3088,7 +3405,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3105,7 +3423,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3143,7 +3462,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3162,7 +3482,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "mainArtifact",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = false,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -3194,7 +3516,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "minSdkVersion",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = false,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -3212,7 +3536,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "productFlavors",
                                           valueType = ValueTypeMetadata.ParameterizedType(
-                                            generics = listOf(primitiveTypeStringNotNullable),
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable
+                                            ),
                                             primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
@@ -3230,7 +3556,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3244,7 +3571,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               primitiveTypeStringNotNullable,
                                               ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = false,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl"
+                                                )
                                               )
                                             ), primitive = primitiveTypeMapNotNullable
                                           ),
@@ -3256,7 +3585,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "resourceConfigurations",
                                           valueType = ValueTypeMetadata.ParameterizedType(
-                                            generics = listOf(primitiveTypeStringNotNullable),
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable
+                                            ),
                                             primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
@@ -3276,7 +3607,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "targetSdkVersion",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -3287,7 +3620,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "testFixturesArtifact",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -3325,7 +3660,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3342,7 +3678,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -3378,14 +3715,16 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = primitiveTypeStringNullable,
                                           withDefault = false
                                         )
-                                      ), supertypes = listOf(
+                                      ),
+                                      supertypes = listOf(
                                         "com.android.tools.idea.gradle.model.IdeVariantCore",
                                         "com.android.tools.idea.gradle.model.IdeVariantHeader",
                                         "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable",
                                         "java.io.Serializable"
                                       )
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeVariantCore",
                                     "com.android.tools.idea.gradle.model.IdeVariantHeader",
                                     "java.io.Serializable"
@@ -3403,7 +3742,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "defaultSourceProvider",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -3412,7 +3752,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = ValueTypeMetadata.ParameterizedType(
                                     generics = listOf(
                                       ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl",
                                           properties = listOf(
                                             OwnPropertyMetadata(
@@ -3430,7 +3771,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "sourceProvider",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = true,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                )
                                               ),
                                               withDefault = false
                                             )
@@ -3452,11 +3795,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "sourceProvider",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                    )
                                   ),
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeSourceProviderContainer",
                                 "java.io.Serializable"
                               )
@@ -3479,7 +3825,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "dependenciesInfo",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -3496,7 +3843,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = primitiveTypeBooleanNotNullable,
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeDependenciesInfo",
                                 "java.io.Serializable"
                               )
@@ -3580,7 +3928,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "javaCompileOptions",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -3613,7 +3962,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = primitiveTypeStringNotNullable,
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeJavaCompileOptions",
                                 "java.io.Serializable"
                               )
@@ -3654,7 +4004,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "lintOptions",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -3662,7 +4013,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "baselineFile",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -3672,7 +4025,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   isOpen = false,
                                   name = "check",
                                   valueType = ValueTypeMetadata.ParameterizedType(
-                                    generics = listOf(primitiveTypeStringNotNullable),
+                                    generics = listOf(
+                                      primitiveTypeStringNotNullable
+                                    ),
                                     primitive = primitiveTypeSetNullable
                                   ),
                                   withDefault = false
@@ -3683,7 +4038,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   isOpen = false,
                                   name = "disable",
                                   valueType = ValueTypeMetadata.ParameterizedType(
-                                    generics = listOf(primitiveTypeStringNotNullable),
+                                    generics = listOf(
+                                      primitiveTypeStringNotNullable
+                                    ),
                                     primitive = primitiveTypeSetNotNullable
                                   ),
                                   withDefault = false
@@ -3694,7 +4051,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   isOpen = false,
                                   name = "enable",
                                   valueType = ValueTypeMetadata.ParameterizedType(
-                                    generics = listOf(primitiveTypeStringNotNullable),
+                                    generics = listOf(
+                                      primitiveTypeStringNotNullable
+                                    ),
                                     primitive = primitiveTypeSetNotNullable
                                   ),
                                   withDefault = false
@@ -3706,7 +4065,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "htmlOutput",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -3845,7 +4206,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "lintConfig",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -3856,7 +4219,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "sarifOutput",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -3888,7 +4253,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "textOutput",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -3907,7 +4274,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "xmlOutput",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = true,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -3919,7 +4288,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = primitiveTypeBooleanNotNullable,
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeLintOptions",
                                 "java.io.Serializable"
                               )
@@ -3934,7 +4304,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "multiVariantData",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -3943,7 +4314,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = ValueTypeMetadata.ParameterizedType(
                                     generics = listOf(
                                       ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl",
                                           properties = listOf(
                                             OwnPropertyMetadata(
@@ -3952,8 +4324,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               isOpen = false,
                                               name = "buildType",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl", properties = listOf(
+                                                isNullable = false,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl",
+                                                  properties = listOf(
                                                     OwnPropertyMetadata(
                                                       isComputable = false,
                                                       isKey = false,
@@ -3971,9 +4345,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -4052,7 +4429,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "matchingFallbacks",
                                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                                        generics = listOf(primitiveTypeStringNotNullable),
+                                                        generics = listOf(
+                                                          primitiveTypeStringNotNullable
+                                                        ),
                                                         primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
@@ -4082,9 +4461,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -4122,7 +4504,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       valueType = primitiveTypeStringNullable,
                                                       withDefault = false
                                                     )
-                                                  ), supertypes = listOf(
+                                                  ),
+                                                  supertypes = listOf(
                                                     "com.android.tools.idea.gradle.model.IdeBaseConfig",
                                                     "com.android.tools.idea.gradle.model.IdeBuildType",
                                                     "java.io.Serializable"
@@ -4144,7 +4527,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -4155,7 +4539,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "sourceProvider",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = true,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                )
                                               ),
                                               withDefault = false
                                             )
@@ -4177,8 +4563,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   isOpen = false,
                                   name = "defaultConfig",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                    isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl", properties = listOf(
+                                    isNullable = false,
+                                    typeMetadata = FinalClassMetadata.ClassMetadata(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl",
+                                      properties = listOf(
                                         OwnPropertyMetadata(
                                           isComputable = false,
                                           isKey = false,
@@ -4208,7 +4596,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -4247,7 +4636,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "matchingFallbacks",
                                           valueType = ValueTypeMetadata.ParameterizedType(
-                                            generics = listOf(primitiveTypeStringNotNullable),
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable
+                                            ),
                                             primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
@@ -4267,7 +4658,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "minSdkVersion",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -4280,8 +4673,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                             generics = listOf(
                                               primitiveTypeStringNotNullable,
                                               ValueTypeMetadata.ParameterizedType(
-                                                generics = listOf(primitiveTypeStringNotNullable),
-                                                primitive = primitiveTypeListNotNullable
+                                                generics = listOf(
+                                                  primitiveTypeStringNotNullable
+                                                ), primitive = primitiveTypeListNotNullable
                                               )
                                             ), primitive = primitiveTypeMapNotNullable
                                           ),
@@ -4316,7 +4710,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                 )
                                               )
-                                            ), primitive = primitiveTypeListNotNullable
+                                            ),
+                                            primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
                                         ),
@@ -4330,7 +4725,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               primitiveTypeStringNotNullable,
                                               ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = false,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl"
+                                                )
                                               )
                                             ), primitive = primitiveTypeMapNotNullable
                                           ),
@@ -4342,7 +4739,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "resourceConfigurations",
                                           valueType = ValueTypeMetadata.ParameterizedType(
-                                            generics = listOf(primitiveTypeStringNotNullable),
+                                            generics = listOf(
+                                              primitiveTypeStringNotNullable
+                                            ),
                                             primitive = primitiveTypeListNotNullable
                                           ),
                                           withDefault = false
@@ -4354,7 +4753,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           name = "targetSdkVersion",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = true,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl"
+                                            )
                                           ),
                                           withDefault = false
                                         ),
@@ -4409,7 +4810,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isOpen = false,
                                           name = "vectorDrawables",
                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                            isNullable = true,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl",
                                               properties = listOf(
                                                 OwnPropertyMetadata(
@@ -4453,7 +4855,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           valueType = primitiveTypeStringNullable,
                                           withDefault = false
                                         )
-                                      ), supertypes = listOf(
+                                      ),
+                                      supertypes = listOf(
                                         "com.android.tools.idea.gradle.model.IdeBaseConfig",
                                         "com.android.tools.idea.gradle.model.IdeProductFlavor",
                                         "java.io.Serializable"
@@ -4470,7 +4873,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = ValueTypeMetadata.ParameterizedType(
                                     generics = listOf(
                                       ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl",
                                           properties = listOf(
                                             OwnPropertyMetadata(
@@ -4486,7 +4890,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -4497,7 +4902,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "productFlavor",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = false,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl"
+                                                )
                                               ),
                                               withDefault = false
                                             ),
@@ -4508,7 +4915,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "sourceProvider",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = true,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                )
                                               ),
                                               withDefault = false
                                             )
@@ -4524,7 +4933,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   ),
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeMultiVariantData",
                                 "java.io.Serializable"
                               )
@@ -4547,7 +4957,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "projectPath",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -4555,7 +4966,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "buildId",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = false,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 ),
@@ -4574,11 +4987,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   name = "rootBuildId",
                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = false,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   ),
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeProjectPath",
                                 "java.io.Serializable"
                               )
@@ -4632,7 +5048,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -4656,7 +5073,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "storeFile",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -4668,7 +5087,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = primitiveTypeStringNullable,
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeSigningConfig",
                                     "java.io.Serializable"
                                   )
@@ -4695,14 +5115,16 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
                                       isOpen = false,
                                       name = "junitEngineInfo",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl",
                                           properties = listOf(
                                             OwnPropertyMetadata(
@@ -4711,7 +5133,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               isOpen = false,
                                               name = "includedEngines",
                                               valueType = ValueTypeMetadata.ParameterizedType(
-                                                generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable
+                                                generics = listOf(primitiveTypeStringNotNullable),
+                                                primitive = primitiveTypeSetNotNullable
                                               ),
                                               withDefault = false
                                             )
@@ -4740,7 +5163,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = ValueTypeMetadata.ParameterizedType(
                                         generics = listOf(
                                           ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                            isNullable = false,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl",
                                               properties = listOf(
                                                 OwnPropertyMetadata(
@@ -4758,7 +5182,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   name = "sourceProvider",
                                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                     isNullable = false,
-                                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                                      fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                                    )
                                                   ),
                                                   withDefault = false
                                                 ),
@@ -4768,7 +5194,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   isOpen = false,
                                                   name = "type",
                                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                    isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                    isNullable = false,
+                                                    typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                       fqName = "com.android.tools.idea.gradle.model.IdeTestSuiteSource\$SourceType",
                                                       properties = listOf(),
                                                       supertypes = listOf(
@@ -4802,12 +5229,15 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "targetedVariants",
                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                        generics = listOf(primitiveTypeStringNotNullable),
+                                        generics = listOf(
+                                          primitiveTypeStringNotNullable
+                                        ),
                                         primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeTestSuite",
                                     "java.io.Serializable"
                                   )
@@ -4826,7 +5256,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -4834,7 +5265,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "buildInformation",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = false,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -4846,7 +5279,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = primitiveTypeStringNotNullable,
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeVariantBuildInformation",
                                     "java.io.Serializable"
                                   )
@@ -4882,7 +5316,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           ),
                           withDefault = false
                         )
-                      ), supertypes = listOf(
+                      ),
+                      supertypes = listOf(
                         "com.android.tools.idea.gradle.model.IdeAndroidProject",
                         "java.io.Serializable"
                       )
@@ -4910,9 +5345,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   withDefault = false
                 ),
                 OwnPropertyMetadata(
-                  isComputable = false, isKey = false, isOpen = false, name = "data", valueType = ValueTypeMetadata.SimpleType.CustomType(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "data",
+                  valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                      fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelData", properties = listOf(
+                      fqName = "com.android.tools.idea.gradle.project.model.GradleAndroidModelData",
+                      properties = listOf(
                         OwnPropertyMetadata(
                           isComputable = false,
                           isKey = false,
@@ -4950,7 +5390,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "declaredDependencies",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -4962,7 +5403,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       ValueTypeMetadata.ParameterizedType(
                                         generics = listOf(
                                           ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                            isNullable = false,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl\$IdeCoordinatesImpl",
                                               properties = listOf(
                                                 OwnPropertyMetadata(
@@ -4999,7 +5441,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   ),
                                   withDefault = false
                                 )
-                              ), supertypes = listOf("com.android.tools.idea.gradle.model.IdeDeclaredDependencies")
+                              ),
+                              supertypes = listOf("com.android.tools.idea.gradle.model.IdeDeclaredDependencies")
                             )
                           ),
                           withDefault = false
@@ -5068,9 +5511,11 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           ),
                           withDefault = false
                         )
-                      ), supertypes = listOf("com.android.tools.idea.gradle.project.model.ModuleModel")
+                      ),
+                      supertypes = listOf("com.android.tools.idea.gradle.project.model.ModuleModel")
                     )
-                  ), withDefault = false
+                  ),
+                  withDefault = false
                 ),
                 OwnPropertyMetadata(
                   isComputable = false,
@@ -5095,7 +5540,11 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   withDefault = false
                 ),
                 OwnPropertyMetadata(
-                  isComputable = false, isKey = false, isOpen = false, name = "desugaring", valueType = ValueTypeMetadata.ParameterizedType(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "desugaring",
+                  valueType = ValueTypeMetadata.ParameterizedType(
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
@@ -5126,7 +5575,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                         )
                       )
                     ), primitive = primitiveTypeSetNotNullable
-                  ), withDefault = false
+                  ),
+                  withDefault = false
                 ),
                 OwnPropertyMetadata(
                   isComputable = false,
@@ -5137,15 +5587,15 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest"
+                        )
                       ),
                       ValueTypeMetadata.ParameterizedType(
                         generics = listOf(
                           ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false,
-                            typeMetadata = FinalClassMetadata.KnownClass(
-                              fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
-                            )
+                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
                           )
                         ), primitive = primitiveTypeListNotNullable
                       )
@@ -5199,15 +5649,15 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest"
+                        )
                       ),
                       ValueTypeMetadata.ParameterizedType(
                         generics = listOf(
                           ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false,
-                            typeMetadata = FinalClassMetadata.KnownClass(
-                              fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
-                            )
+                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
                           )
                         ), primitive = primitiveTypeListNotNullable
                       )
@@ -5268,7 +5718,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   name = "minSdkVersion",
                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                      fqName = "com.android.sdklib.AndroidVersion", properties = listOf(), supertypes = listOf(
+                      fqName = "com.android.sdklib.AndroidVersion",
+                      properties = listOf(),
+                      supertypes = listOf(
                         "java.io.Serializable",
                         "java.lang.Comparable",
                         "kotlin.Comparable"
@@ -5306,7 +5758,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl"
+                        )
                       )
                     ), primitive = primitiveTypeMapNotNullable
                   ),
@@ -5322,7 +5776,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl"
+                        )
                       )
                     ), primitive = primitiveTypeMapNotNullable
                   ),
@@ -5338,7 +5794,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl"
+                        )
                       )
                     ), primitive = primitiveTypeMapNotNullable
                   ),
@@ -5354,7 +5812,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl"
+                        )
                       )
                     ), primitive = primitiveTypeMapNotNullable
                   ),
@@ -5367,11 +5827,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   name = "namespacing",
                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
-                      fqName = "com.android.tools.idea.model.Namespacing", properties = listOf(), supertypes = listOf(
+                      fqName = "com.android.tools.idea.model.Namespacing",
+                      properties = listOf(),
+                      supertypes = listOf(
                         "java.io.Serializable",
                         "kotlin.Comparable",
                         "kotlin.Enum"
-                      ), values = listOf(
+                      ),
+                      values = listOf(
                         "DISABLED",
                         "REQUIRED"
                       )
@@ -5407,32 +5870,42 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.ParameterizedType(
-                        generics = listOf(primitiveTypeStringNotNullable),
-                        primitive = primitiveTypeListNotNullable
+                        generics = listOf(
+                          primitiveTypeStringNotNullable
+                        ), primitive = primitiveTypeListNotNullable
                       )
                     ), primitive = primitiveTypeMapNotNullable
                   ),
                   withDefault = false
                 ),
                 OwnPropertyMetadata(
-                  isComputable = false, isKey = false, isOpen = false, name = "resValues", valueType = ValueTypeMetadata.ParameterizedType(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "resValues",
+                  valueType = ValueTypeMetadata.ParameterizedType(
                     generics = listOf(
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                          fqName = "com.android.projectmodel.DynamicResourceValue", properties = listOf(
+                          fqName = "com.android.projectmodel.DynamicResourceValue",
+                          properties = listOf(
                             OwnPropertyMetadata(
                               isComputable = false,
                               isKey = false,
                               isOpen = false,
                               name = "type",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
-                                  fqName = "com.android.resources.ResourceType", properties = listOf(), supertypes = listOf(
+                                isNullable = false,
+                                typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                  fqName = "com.android.resources.ResourceType",
+                                  properties = listOf(),
+                                  supertypes = listOf(
                                     "java.io.Serializable",
                                     "kotlin.Comparable",
                                     "kotlin.Enum"
-                                  ), values = listOf(
+                                  ),
+                                  values = listOf(
                                     "AAPT",
                                     "ANIM",
                                     "ANIMATOR",
@@ -5476,11 +5949,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               valueType = primitiveTypeStringNotNullable,
                               withDefault = false
                             )
-                          ), supertypes = listOf()
+                          ),
+                          supertypes = listOf()
                         )
                       )
                     ), primitive = primitiveTypeMapNotNullable
-                  ), withDefault = false
+                  ),
+                  withDefault = false
                 ),
                 OwnPropertyMetadata(
                   isComputable = false,
@@ -5551,11 +6026,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
-                          fqName = "com.android.sdklib.devices.Abi", properties = listOf(), supertypes = listOf(
+                          fqName = "com.android.sdklib.devices.Abi",
+                          properties = listOf(),
+                          supertypes = listOf(
                             "java.io.Serializable",
                             "kotlin.Comparable",
                             "kotlin.Enum"
-                          ), values = listOf(
+                          ),
+                          values = listOf(
                             "ARM64_V8A",
                             "ARMEABI",
                             "ARMEABI_V7A",
@@ -5589,11 +6067,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   name = "testExecutionOption",
                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(
-                      fqName = "com.android.tools.idea.model.TestExecutionOption", properties = listOf(), supertypes = listOf(
+                      fqName = "com.android.tools.idea.model.TestExecutionOption",
+                      properties = listOf(),
+                      supertypes = listOf(
                         "java.io.Serializable",
                         "kotlin.Comparable",
                         "kotlin.Enum"
-                      ), values = listOf(
+                      ),
+                      values = listOf(
                         "ANDROIDX_TEST_ORCHESTRATOR",
                         "ANDROID_TEST_ORCHESTRATOR",
                         "HOST"
@@ -5682,9 +6163,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                         generics = listOf(
                           ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false,
-                            typeMetadata = FinalClassMetadata.KnownClass(
-                              fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
-                            )
+                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
                           )
                         ), primitive = primitiveTypeListNotNullable
                       )
@@ -5730,7 +6209,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   valueType = primitiveTypeIntNullable,
                   withDefault = false
                 )
-              ), supertypes = listOf(
+              ),
+              supertypes = listOf(
                 "com.android.tools.idea.gradle.project.model.GradleAndroidModel",
                 "com.android.tools.idea.model.AndroidModel"
               )
@@ -5745,7 +6225,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           name = "resolvedVariant",
           valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-              fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", properties = listOf(
+              fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl",
+              properties = listOf(
                 OwnPropertyMetadata(
                   isComputable = false,
                   isKey = false,
@@ -5786,9 +6267,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   withDefault = false
                 ),
                 OwnPropertyMetadata(
-                  isComputable = false, isKey = false, isOpen = false, name = "core", valueType = ValueTypeMetadata.SimpleType.CustomType(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "core",
+                  valueType = ValueTypeMetadata.SimpleType.CustomType(
                     isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                      fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", properties = listOf(
+                      fqName = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl",
+                      properties = listOf(
                         OwnPropertyMetadata(
                           isComputable = false,
                           isKey = false,
@@ -5852,14 +6338,17 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
                                       isOpen = false,
                                       name = "abiFilters",
                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                        generics = listOf(primitiveTypeStringNotNullable),
+                                        generics = listOf(
+                                          primitiveTypeStringNotNullable
+                                        ),
                                         primitive = primitiveTypeSetNotNullable
                                       ),
                                       withDefault = false
@@ -5877,7 +6366,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -5903,7 +6393,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "buildInformation",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl",
                                           properties = listOf(
                                             OwnPropertyMetadata(
@@ -5971,7 +6462,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = ValueTypeMetadata.ParameterizedType(
                                         generics = listOf(
                                           ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                            isNullable = false,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl",
                                               properties = listOf(
                                                 OwnPropertyMetadata(
@@ -5988,7 +6480,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   isOpen = false,
                                                   name = "type",
                                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                    isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                    isNullable = false,
+                                                    typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                       fqName = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type",
                                                       properties = listOf(),
                                                       supertypes = listOf(
@@ -6031,7 +6524,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -6041,7 +6535,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "codeShrinker",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                        isNullable = true,
+                                        typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.CodeShrinker",
                                           properties = listOf(),
                                           supertypes = listOf(
@@ -6063,8 +6558,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "compileClasspathCore",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl", subclasses = listOf(
+                                        isNullable = false,
+                                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl",
+                                          subclasses = listOf(
                                             FinalClassMetadata.ObjectMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.ThrowingIdeDependencies",
                                               properties = listOf(
@@ -6081,7 +6578,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"
                                                         )
                                                       )
-                                                    ), primitive = primitiveTypeListNotNullable
+                                                    ),
+                                                    primitive = primitiveTypeListNotNullable
                                                   ),
                                                   withDefault = false
                                                 )
@@ -6103,7 +6601,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   valueType = ValueTypeMetadata.ParameterizedType(
                                                     generics = listOf(
                                                       ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                        isNullable = false,
+                                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl",
                                                           properties = listOf(
                                                             OwnPropertyMetadata(
@@ -6112,7 +6611,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                               isOpen = false,
                                                               name = "dependencies",
                                                               valueType = ValueTypeMetadata.ParameterizedType(
-                                                                generics = listOf(primitiveTypeIntNotNullable),
+                                                                generics = listOf(
+                                                                  primitiveTypeIntNotNullable
+                                                                ),
                                                                 primitive = primitiveTypeListNullable
                                                               ),
                                                               withDefault = false
@@ -6123,7 +6624,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                               isOpen = false,
                                                               name = "target",
                                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                                isNullable = false,
+                                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                                   fqName = "com.android.tools.idea.gradle.model.LibraryReference",
                                                                   properties = listOf(
                                                                     OwnPropertyMetadata(
@@ -6205,7 +6707,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"
                                                         )
                                                       )
-                                                    ), primitive = primitiveTypeListNotNullable
+                                                    ),
+                                                    primitive = primitiveTypeListNotNullable
                                                   ),
                                                   withDefault = false
                                                 ),
@@ -6232,7 +6735,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   name = "referee",
                                                   valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                     isNullable = false,
-                                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect")
+                                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                                      fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect"
+                                                    )
                                                   ),
                                                   withDefault = false
                                                 )
@@ -6243,7 +6748,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                 "java.io.Serializable"
                                               )
                                             )
-                                          ), supertypes = listOf(
+                                          ),
+                                          supertypes = listOf(
                                             "com.android.tools.idea.gradle.model.IdeDependenciesCore",
                                             "java.io.Serializable"
                                           )
@@ -6272,7 +6778,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -6289,7 +6796,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -6303,7 +6811,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           primitiveTypeStringNotNullable,
                                           ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = false,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                            )
                                           )
                                         ), primitive = primitiveTypeMapNotNullable
                                       ),
@@ -6322,7 +6832,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -6339,7 +6850,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -6349,7 +6861,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "ideSetupTaskNames",
                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                        generics = listOf(primitiveTypeStringNotNullable),
+                                        generics = listOf(
+                                          primitiveTypeStringNotNullable
+                                        ),
                                         primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
@@ -6377,7 +6891,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "mappingR8PartitionFile",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -6388,7 +6904,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "mappingR8TextFile",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -6398,8 +6916,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "multiFlavorSourceProvider",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider", properties = listOf(
+                                        isNullable = true,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
+                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider",
+                                          properties = listOf(
                                             OwnPropertyMetadata(
                                               isComputable = false,
                                               isKey = false,
@@ -6413,7 +6933,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6430,7 +6951,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6447,7 +6969,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6464,7 +6987,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6481,7 +7005,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6498,7 +7023,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6510,7 +7036,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               valueType = ValueTypeMetadata.ParameterizedType(
                                                 generics = listOf(
                                                   ValueTypeMetadata.SimpleType.CustomType(
-                                                    isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                    isNullable = false,
+                                                    typeMetadata = FinalClassMetadata.ClassMetadata(
                                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl",
                                                       properties = listOf(
                                                         OwnPropertyMetadata(
@@ -6520,7 +7047,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                           name = "directory",
                                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           ),
                                                           withDefault = false
                                                         ),
@@ -6531,7 +7060,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                           name = "myFolder",
                                                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = true,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           ),
                                                           withDefault = false
                                                         ),
@@ -6575,7 +7106,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6586,7 +7118,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "folderField",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = true,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                )
                                               ),
                                               withDefault = false
                                             ),
@@ -6603,7 +7137,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6620,7 +7155,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6637,7 +7173,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6654,7 +7191,44 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
+                                              ),
+                                              withDefault = false
+                                            ),
+                                            OwnPropertyMetadata(
+                                              isComputable = false,
+                                              isKey = false,
+                                              isOpen = false,
+                                              name = "keepRulesDirectories",
+                                              valueType = ValueTypeMetadata.ParameterizedType(
+                                                generics = listOf(
+                                                  ValueTypeMetadata.SimpleType.CustomType(
+                                                    isNullable = false,
+                                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                    )
+                                                  )
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
+                                              ),
+                                              withDefault = false
+                                            ),
+                                            OwnPropertyMetadata(
+                                              isComputable = false,
+                                              isKey = false,
+                                              isOpen = false,
+                                              name = "keepRulesDirectoriesField",
+                                              valueType = ValueTypeMetadata.ParameterizedType(
+                                                generics = listOf(
+                                                  ValueTypeMetadata.SimpleType.CustomType(
+                                                    isNullable = false,
+                                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                    )
+                                                  )
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6671,7 +7245,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6688,7 +7263,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6699,7 +7275,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "manifestFile",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = true,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                )
                                               ),
                                               withDefault = false
                                             ),
@@ -6710,7 +7288,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               name = "manifestFileField",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                 isNullable = true,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                )
                                               ),
                                               withDefault = false
                                             ),
@@ -6727,7 +7307,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6744,7 +7325,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6777,7 +7359,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6794,7 +7377,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6811,7 +7395,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6828,7 +7413,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6845,7 +7431,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6862,7 +7449,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6879,7 +7467,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             ),
@@ -6896,11 +7485,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                                     )
                                                   )
-                                                ), primitive = primitiveTypeListNotNullable
+                                                ),
+                                                primitive = primitiveTypeListNotNullable
                                               ),
                                               withDefault = false
                                             )
-                                          ), supertypes = listOf("java.io.Serializable")
+                                          ),
+                                          supertypes = listOf("java.io.Serializable")
                                         )
                                       ),
                                       withDefault = false
@@ -6911,7 +7502,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "name",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.IdeArtifactName",
                                           properties = listOf(),
                                           supertypes = listOf(
@@ -6934,85 +7526,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isComputable = false,
                                       isKey = false,
                                       isOpen = false,
-                                      name = "privacySandboxSdkInfo",
-                                      valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                          fqName = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl",
-                                          properties = listOf(
-                                            OwnPropertyMetadata(
-                                              isComputable = false,
-                                              isKey = false,
-                                              isOpen = false,
-                                              name = "additionalApkSplitFile",
-                                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
-                                              ),
-                                              withDefault = false
-                                            ),
-                                            OwnPropertyMetadata(
-                                              isComputable = false,
-                                              isKey = false,
-                                              isOpen = false,
-                                              name = "additionalApkSplitTask",
-                                              valueType = primitiveTypeStringNotNullable,
-                                              withDefault = false
-                                            ),
-                                            OwnPropertyMetadata(
-                                              isComputable = false,
-                                              isKey = false,
-                                              isOpen = false,
-                                              name = "outputListingFile",
-                                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
-                                              ),
-                                              withDefault = false
-                                            ),
-                                            OwnPropertyMetadata(
-                                              isComputable = false,
-                                              isKey = false,
-                                              isOpen = false,
-                                              name = "outputListingLegacyFile",
-                                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = false,
-                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
-                                              ),
-                                              withDefault = false
-                                            ),
-                                            OwnPropertyMetadata(
-                                              isComputable = false,
-                                              isKey = false,
-                                              isOpen = false,
-                                              name = "task",
-                                              valueType = primitiveTypeStringNotNullable,
-                                              withDefault = false
-                                            ),
-                                            OwnPropertyMetadata(
-                                              isComputable = false,
-                                              isKey = false,
-                                              isOpen = false,
-                                              name = "taskLegacy",
-                                              valueType = primitiveTypeStringNotNullable,
-                                              withDefault = false
-                                            )
-                                          ),
-                                          supertypes = listOf(
-                                            "com.android.tools.idea.gradle.model.IdePrivacySandboxSdkInfo",
-                                            "java.io.Serializable"
-                                          )
-                                        )
-                                      ),
-                                      withDefault = false
-                                    ),
-                                    OwnPropertyMetadata(
-                                      isComputable = false,
-                                      isKey = false,
-                                      isOpen = false,
                                       name = "runtimeClasspathCore",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = false,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7030,8 +7549,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "testOptions",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", properties = listOf(
+                                        isNullable = true,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl",
+                                          properties = listOf(
                                             OwnPropertyMetadata(
                                               isComputable = false,
                                               isKey = false,
@@ -7046,7 +7567,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               isOpen = false,
                                               name = "execution",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = true, typeMetadata = FinalClassMetadata.EnumClassMetadata(
+                                                isNullable = true,
+                                                typeMetadata = FinalClassMetadata.EnumClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution",
                                                   properties = listOf(),
                                                   supertypes = listOf(
@@ -7071,7 +7593,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               valueType = primitiveTypeStringNullable,
                                               withDefault = false
                                             )
-                                          ), supertypes = listOf(
+                                          ),
+                                          supertypes = listOf(
                                             "com.android.tools.idea.gradle.model.IdeTestOptions",
                                             "java.io.Serializable"
                                           )
@@ -7087,7 +7610,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = ValueTypeMetadata.ParameterizedType(
                                         generics = listOf(
                                           ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                            isNullable = false,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl",
                                               properties = listOf(
                                                 OwnPropertyMetadata(
@@ -7124,11 +7648,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "variantSourceProvider",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                        )
                                       ),
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeAndroidArtifactCore",
                                     "com.android.tools.idea.gradle.model.IdeBaseArtifactCore",
                                     "java.io.Serializable"
@@ -7169,7 +7696,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -7191,7 +7719,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNullable
+                                        ),
+                                        primitive = primitiveTypeListNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -7208,7 +7737,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -7219,7 +7749,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "compileClasspathCore",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = false,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7241,7 +7773,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           primitiveTypeStringNotNullable,
                                           ValueTypeMetadata.SimpleType.CustomType(
                                             isNullable = false,
-                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                            )
                                           )
                                         ), primitive = primitiveTypeMapNotNullable
                                       ),
@@ -7260,7 +7794,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -7270,7 +7805,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "ideSetupTaskNames",
                                       valueType = ValueTypeMetadata.ParameterizedType(
-                                        generics = listOf(primitiveTypeStringNotNullable),
+                                        generics = listOf(
+                                          primitiveTypeStringNotNullable
+                                        ),
                                         primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
@@ -7290,7 +7827,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "mockablePlatformJar",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7301,7 +7840,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "multiFlavorSourceProvider",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7312,7 +7853,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "name",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = false,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.IdeArtifactName"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7323,7 +7866,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "runtimeClasspathCore",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = false,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7340,7 +7885,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -7351,11 +7897,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "variantSourceProvider",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = true,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                        )
                                       ),
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeBaseArtifactCore",
                                     "com.android.tools.idea.gradle.model.IdeJavaArtifactCore",
                                     "java.io.Serializable"
@@ -7413,7 +7962,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           name = "minSdkVersion",
                           valueType = ValueTypeMetadata.SimpleType.CustomType(
                             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl", properties = listOf(
+                              fqName = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl",
+                              properties = listOf(
                                 OwnPropertyMetadata(
                                   isComputable = false,
                                   isKey = false,
@@ -7438,7 +7988,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   valueType = primitiveTypeStringNullable,
                                   withDefault = false
                                 )
-                              ), supertypes = listOf(
+                              ),
+                              supertypes = listOf(
                                 "com.android.tools.idea.gradle.model.IdeApiVersion",
                                 "java.io.Serializable"
                               )
@@ -7490,7 +8041,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               primitiveTypeStringNotNullable,
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -7515,7 +8067,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = primitiveTypeStringNotNullable,
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeClassField",
                                     "java.io.Serializable"
                                   )
@@ -7596,7 +8149,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -7621,7 +8175,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = ValueTypeMetadata.ParameterizedType(
                                         generics = listOf(
                                           ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                            isNullable = false,
+                                            typeMetadata = FinalClassMetadata.ClassMetadata(
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl",
                                               properties = listOf(
                                                 OwnPropertyMetadata(
@@ -7638,7 +8193,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   isOpen = false,
                                                   name = "targetedDevices",
                                                   valueType = ValueTypeMetadata.ParameterizedType(
-                                                    generics = listOf(primitiveTypeStringNotNullable),
+                                                    generics = listOf(
+                                                      primitiveTypeStringNotNullable
+                                                    ),
                                                     primitive = primitiveTypeListNotNullable
                                                   ),
                                                   withDefault = false
@@ -7662,7 +8219,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       ),
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeTestSuiteVariantTarget",
                                     "java.io.Serializable"
                                   )
@@ -7681,7 +8239,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                             generics = listOf(
                               ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -7698,7 +8257,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = primitiveTypeStringNotNullable,
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf(
+                                  ),
+                                  supertypes = listOf(
                                     "com.android.tools.idea.gradle.model.IdeTestedTargetVariant",
                                     "java.io.Serializable"
                                   )
@@ -7740,14 +8300,16 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                           valueType = primitiveTypeStringNullable,
                           withDefault = false
                         )
-                      ), supertypes = listOf(
+                      ),
+                      supertypes = listOf(
                         "com.android.tools.idea.gradle.model.IdeVariantCore",
                         "com.android.tools.idea.gradle.model.IdeVariantHeader",
                         "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable",
                         "java.io.Serializable"
                       )
                     )
-                  ), withDefault = false
+                  ),
+                  withDefault = false
                 ),
                 OwnPropertyMetadata(
                   isComputable = false,
@@ -7789,14 +8351,16 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                          fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", properties = listOf(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl",
+                          properties = listOf(
                             OwnPropertyMetadata(
                               isComputable = false,
                               isKey = false,
                               isOpen = false,
                               name = "abiFilters",
                               valueType = ValueTypeMetadata.ParameterizedType(
-                                generics = listOf(primitiveTypeStringNotNullable), primitive = primitiveTypeSetNotNullable
+                                generics = listOf(primitiveTypeStringNotNullable),
+                                primitive = primitiveTypeSetNotNullable
                               ),
                               withDefault = false
                             ),
@@ -7813,7 +8377,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -7840,7 +8405,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "buildInformation",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -7857,7 +8424,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNullable
+                                ),
+                                primitive = primitiveTypeListNullable
                               ),
                               withDefault = false
                             ),
@@ -7874,7 +8442,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -7885,7 +8454,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "codeShrinker",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.CodeShrinker")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.CodeShrinker"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -7896,7 +8467,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "compileClasspath",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                  fqName = "com.android.tools.idea.gradle.model.IdeDependencies", properties = listOf(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeDependencies",
+                                  properties = listOf(
                                     OwnPropertyMetadata(
                                       isComputable = false,
                                       isKey = false,
@@ -7904,7 +8476,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       name = "classpath",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                         isNullable = false,
-                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                          fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                        )
                                       ),
                                       withDefault = false
                                     ),
@@ -7916,10 +8490,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       valueType = ValueTypeMetadata.ParameterizedType(
                                         generics = listOf(
                                           ValueTypeMetadata.SimpleType.CustomType(
-                                            isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
-                                              fqName = "com.android.tools.idea.gradle.model.IdeLibrary", subclasses = listOf(
+                                            isNullable = false,
+                                            typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                                              fqName = "com.android.tools.idea.gradle.model.IdeLibrary",
+                                              subclasses = listOf(
                                                 FinalClassMetadata.ClassMetadata(
-                                                  fqName = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl", properties = listOf(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl",
+                                                  properties = listOf(
                                                     OwnPropertyMetadata(
                                                       isComputable = false,
                                                       isKey = false,
@@ -7943,7 +8520,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "lintJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -7961,7 +8540,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "sourceSet",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = false, typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
+                                                        isNullable = false,
+                                                        typeMetadata = ExtendableClassMetadata.AbstractClassMetadata(
                                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet",
                                                           subclasses = listOf(
                                                             FinalClassMetadata.EnumClassMetadata(
@@ -8037,14 +8617,16 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       valueType = primitiveTypeStringNullable,
                                                       withDefault = false
                                                     )
-                                                  ), supertypes = listOf(
+                                                  ),
+                                                  supertypes = listOf(
                                                     "com.android.tools.idea.gradle.model.IdeLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeModuleLibrary",
                                                     "java.io.Serializable"
                                                   )
                                                 ),
                                                 FinalClassMetadata.ClassMetadata(
-                                                  fqName = "com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl", properties = listOf(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl",
+                                                  properties = listOf(
                                                     OwnPropertyMetadata(
                                                       isComputable = false,
                                                       isKey = false,
@@ -8060,11 +8642,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "lintJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     )
-                                                  ), supertypes = listOf(
+                                                  ),
+                                                  supertypes = listOf(
                                                     "com.android.tools.idea.gradle.model.IdeLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeUnknownLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeUnresolvedLibrary",
@@ -8073,7 +8658,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   )
                                                 ),
                                                 FinalClassMetadata.ClassMetadata(
-                                                  fqName = "com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl", properties = listOf(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl",
+                                                  properties = listOf(
                                                     OwnPropertyMetadata(
                                                       isComputable = false,
                                                       isKey = false,
@@ -8081,7 +8667,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "aidlFolder",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8092,7 +8680,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "artifact",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8111,7 +8701,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "assetsFolder",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8124,9 +8716,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8136,8 +8731,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       isOpen = false,
                                                       name = "component",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                        isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                                          fqName = "com.android.ide.common.gradle.Component", properties = listOf(
+                                                        isNullable = true,
+                                                        typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                          fqName = "com.android.ide.common.gradle.Component",
+                                                          properties = listOf(
                                                             OwnPropertyMetadata(
                                                               isComputable = false,
                                                               isKey = false,
@@ -8152,8 +8749,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                               isOpen = false,
                                                               name = "module",
                                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                                                  fqName = "com.android.ide.common.gradle.Module", properties = listOf(
+                                                                isNullable = false,
+                                                                typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                                  fqName = "com.android.ide.common.gradle.Module",
+                                                                  properties = listOf(
                                                                     OwnPropertyMetadata(
                                                                       isComputable = false,
                                                                       isKey = false,
@@ -8170,7 +8769,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                       valueType = primitiveTypeStringNotNullable,
                                                                       withDefault = false
                                                                     )
-                                                                  ), supertypes = listOf("java.io.Serializable")
+                                                                  ),
+                                                                  supertypes = listOf("java.io.Serializable")
                                                                 )
                                                               ),
                                                               withDefault = false
@@ -8189,8 +8789,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                               isOpen = false,
                                                               name = "version",
                                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                                isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                                                                  fqName = "com.android.ide.common.gradle.Version", properties = listOf(
+                                                                isNullable = false,
+                                                                typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                                  fqName = "com.android.ide.common.gradle.Version",
+                                                                  properties = listOf(
                                                                     OwnPropertyMetadata(
                                                                       isComputable = false,
                                                                       isKey = false,
@@ -8501,7 +9103,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                               )
                                                                             )
                                                                           )
-                                                                        ), primitive = primitiveTypeListNotNullable
+                                                                        ),
+                                                                        primitive = primitiveTypeListNotNullable
                                                                       ),
                                                                       withDefault = false
                                                                     ),
@@ -8574,11 +9177,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                                               )
                                                                             )
                                                                           )
-                                                                        ), primitive = primitiveTypeListNotNullable
+                                                                        ),
+                                                                        primitive = primitiveTypeListNotNullable
                                                                       ),
                                                                       withDefault = false
                                                                     )
-                                                                  ), supertypes = listOf(
+                                                                  ),
+                                                                  supertypes = listOf(
                                                                     "java.io.Serializable",
                                                                     "java.lang.Comparable",
                                                                     "kotlin.Comparable"
@@ -8587,7 +9192,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                               ),
                                                               withDefault = false
                                                             )
-                                                          ), supertypes = listOf("java.io.Serializable")
+                                                          ),
+                                                          supertypes = listOf("java.io.Serializable")
                                                         )
                                                       ),
                                                       withDefault = false
@@ -8599,7 +9205,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "docJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8610,7 +9218,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "externalAnnotations",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8621,7 +9231,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "folder",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8632,7 +9244,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "jniFolder",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8643,7 +9257,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "lintJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8654,7 +9270,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "manifest",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8673,7 +9291,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "proguardRules",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8684,7 +9304,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "publicResources",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8695,7 +9317,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "renderscriptFolder",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8706,7 +9330,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "resFolder",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8717,7 +9343,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "resStaticLibrary",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8730,9 +9358,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8745,9 +9376,12 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8758,11 +9392,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "symbolFile",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     )
-                                                  ), supertypes = listOf(
+                                                  ),
+                                                  supertypes = listOf(
                                                     "com.android.tools.idea.gradle.model.IdeAndroidLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeArtifactLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeLibrary",
@@ -8773,7 +9410,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                   )
                                                 ),
                                                 FinalClassMetadata.ClassMetadata(
-                                                  fqName = "com.android.tools.idea.gradle.model.IdeJavaLibraryImpl", properties = listOf(
+                                                  fqName = "com.android.tools.idea.gradle.model.IdeJavaLibraryImpl",
+                                                  properties = listOf(
                                                     OwnPropertyMetadata(
                                                       isComputable = false,
                                                       isKey = false,
@@ -8781,7 +9419,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "artifact",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = false,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8800,7 +9440,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "component",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.ide.common.gradle.Component")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.ide.common.gradle.Component"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8811,7 +9453,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "docJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8822,7 +9466,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       name = "lintJar",
                                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
                                                         isNullable = true,
-                                                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                        typeMetadata = FinalClassMetadata.KnownClass(
+                                                          fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                        )
                                                       ),
                                                       withDefault = false
                                                     ),
@@ -8843,13 +9489,17 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                         generics = listOf(
                                                           ValueTypeMetadata.SimpleType.CustomType(
                                                             isNullable = false,
-                                                            typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                                            typeMetadata = FinalClassMetadata.KnownClass(
+                                                              fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                                            )
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     )
-                                                  ), supertypes = listOf(
+                                                  ),
+                                                  supertypes = listOf(
                                                     "com.android.tools.idea.gradle.model.IdeArtifactLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeJavaLibrary",
                                                     "com.android.tools.idea.gradle.model.IdeLibrary",
@@ -8859,7 +9509,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                     "java.io.Serializable"
                                                   )
                                                 )
-                                              ), supertypes = listOf()
+                                              ),
+                                              supertypes = listOf()
                                             )
                                           )
                                         ), primitive = primitiveTypeListNotNullable
@@ -8879,7 +9530,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.IdeLibrary"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNullable
+                                        ),
+                                        primitive = primitiveTypeListNullable
                                       ),
                                       withDefault = false
                                     ),
@@ -8889,7 +9541,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       isOpen = false,
                                       name = "resolver",
                                       valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                        isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                        isNullable = false,
+                                        typeMetadata = FinalClassMetadata.ClassMetadata(
                                           fqName = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl",
                                           properties = listOf(
                                             OwnPropertyMetadata(
@@ -8898,7 +9551,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               isOpen = false,
                                               name = "globalLibraryTable",
                                               valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                                isNullable = true, typeMetadata = FinalClassMetadata.ClassMetadata(
+                                                isNullable = true,
+                                                typeMetadata = FinalClassMetadata.ClassMetadata(
                                                   fqName = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl",
                                                   properties = listOf(
                                                     OwnPropertyMetadata(
@@ -8912,12 +9566,15 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                             generics = listOf(
                                                               ValueTypeMetadata.SimpleType.CustomType(
                                                                 isNullable = false,
-                                                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeLibrary")
+                                                                typeMetadata = FinalClassMetadata.KnownClass(
+                                                                  fqName = "com.android.tools.idea.gradle.model.IdeLibrary"
+                                                                )
                                                               )
                                                             ),
                                                             primitive = primitiveTypeListNotNullable
                                                           )
-                                                        ), primitive = primitiveTypeListNotNullable
+                                                        ),
+                                                        primitive = primitiveTypeListNotNullable
                                                       ),
                                                       withDefault = false
                                                     )
@@ -8945,9 +9602,7 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl"
                                                     )
                                                   ),
-                                                  supertypes = listOf(
-                                                    "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable"
-                                                  )
+                                                  supertypes = listOf("com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTable")
                                                 )
                                               ),
                                               withDefault = false
@@ -8971,11 +9626,13 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                               fqName = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl"
                                             )
                                           )
-                                        ), primitive = primitiveTypeListNotNullable
+                                        ),
+                                        primitive = primitiveTypeListNotNullable
                                       ),
                                       withDefault = false
                                     )
-                                  ), supertypes = listOf()
+                                  ),
+                                  supertypes = listOf()
                                 )
                               ),
                               withDefault = false
@@ -8987,7 +9644,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "compileClasspathCore",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9006,7 +9665,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "core",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9023,7 +9684,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9040,7 +9702,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9054,7 +9717,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   primitiveTypeStringNotNullable,
                                   ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = false,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                    )
                                   )
                                 ), primitive = primitiveTypeMapNotNullable
                               ),
@@ -9073,7 +9738,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9090,7 +9756,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9128,7 +9795,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "mappingR8PartitionFile",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9139,7 +9808,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "mappingR8TextFile",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9150,7 +9821,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "multiFlavorSourceProvider",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9161,18 +9834,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "name",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName")
-                              ),
-                              withDefault = false
-                            ),
-                            OwnPropertyMetadata(
-                              isComputable = false,
-                              isKey = false,
-                              isOpen = false,
-                              name = "privacySandboxSdkInfo",
-                              valueType = ValueTypeMetadata.SimpleType.CustomType(
-                                isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeArtifactName"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9183,7 +9847,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "runtimeClasspath",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeDependencies")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeDependencies"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9194,7 +9860,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "runtimeClasspathCore",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9213,7 +9881,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "testOptions",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9230,7 +9900,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9241,11 +9912,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "variantSourceProvider",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                )
                               ),
                               withDefault = false
                             )
-                          ), supertypes = listOf(
+                          ),
+                          supertypes = listOf(
                             "com.android.tools.idea.gradle.model.IdeAndroidArtifact",
                             "com.android.tools.idea.gradle.model.IdeAndroidArtifactCore",
                             "com.android.tools.idea.gradle.model.IdeBaseArtifact",
@@ -9288,7 +9962,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                     generics = listOf(
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-                          fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl", properties = listOf(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl",
+                          properties = listOf(
                             OwnPropertyMetadata(
                               isComputable = false,
                               isKey = false,
@@ -9310,7 +9985,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNullable
+                                ),
+                                primitive = primitiveTypeListNullable
                               ),
                               withDefault = false
                             ),
@@ -9327,7 +10003,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9338,7 +10015,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "compileClasspath",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeDependencies")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeDependencies"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9349,7 +10028,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "compileClasspathCore",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9368,7 +10049,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "core",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9382,7 +10065,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                   primitiveTypeStringNotNullable,
                                   ValueTypeMetadata.SimpleType.CustomType(
                                     isNullable = false,
-                                    typeMetadata = FinalClassMetadata.KnownClass(fqName = "java.io.File")
+                                    typeMetadata = FinalClassMetadata.KnownClass(
+                                      fqName = "java.io.File"
+                                    )
                                   )
                                 ), primitive = primitiveTypeMapNotNullable
                               ),
@@ -9401,7 +10086,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9431,7 +10117,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "mockablePlatformJar",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.FileImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.FileImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9442,7 +10130,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "multiFlavorSourceProvider",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9453,7 +10143,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "name",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeArtifactName")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeArtifactName"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9464,7 +10156,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "runtimeClasspath",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeDependencies")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeDependencies"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9475,7 +10169,9 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "runtimeClasspathCore",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = false,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl"
+                                )
                               ),
                               withDefault = false
                             ),
@@ -9492,7 +10188,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                       fqName = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl"
                                     )
                                   )
-                                ), primitive = primitiveTypeListNotNullable
+                                ),
+                                primitive = primitiveTypeListNotNullable
                               ),
                               withDefault = false
                             ),
@@ -9503,11 +10200,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                               name = "variantSourceProvider",
                               valueType = ValueTypeMetadata.SimpleType.CustomType(
                                 isNullable = true,
-                                typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider")
+                                typeMetadata = FinalClassMetadata.KnownClass(
+                                  fqName = "com.android.tools.idea.gradle.model.IdeSourceProvider"
+                                )
                               ),
                               withDefault = false
                             )
-                          ), supertypes = listOf(
+                          ),
+                          supertypes = listOf(
                             "com.android.tools.idea.gradle.model.IdeBaseArtifact",
                             "com.android.tools.idea.gradle.model.IdeBaseArtifactCore",
                             "com.android.tools.idea.gradle.model.IdeJavaArtifact",
@@ -9606,15 +10306,22 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   withDefault = false
                 ),
                 OwnPropertyMetadata(
-                  isComputable = false, isKey = false, isOpen = false, name = "resValues", valueType = ValueTypeMetadata.ParameterizedType(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "resValues",
+                  valueType = ValueTypeMetadata.ParameterizedType(
                     generics = listOf(
                       primitiveTypeStringNotNullable,
                       ValueTypeMetadata.SimpleType.CustomType(
                         isNullable = false,
-                        typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl")
+                        typeMetadata = FinalClassMetadata.KnownClass(
+                          fqName = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl"
+                        )
                       )
                     ), primitive = primitiveTypeMapNotNullable
-                  ), withDefault = false
+                  ),
+                  withDefault = false
                 ),
                 OwnPropertyMetadata(
                   isComputable = false,
@@ -9740,7 +10447,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   valueType = primitiveTypeStringNullable,
                   withDefault = false
                 )
-              ), supertypes = listOf(
+              ),
+              supertypes = listOf(
                 "com.android.tools.idea.gradle.model.IdeVariant",
                 "com.android.tools.idea.gradle.model.IdeVariantCore",
                 "com.android.tools.idea.gradle.model.IdeVariantHeader"
@@ -9773,7 +10481,10 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     typeMetadata = EntityMetadata(
       fqName = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity",
       entityDataFqName = "com.android.tools.idea.gradle.project.entities.impl.GradleModuleModelEntityData",
-      supertypes = listOf("com.intellij.platform.workspace.storage.WorkspaceEntity"),
+      supertypes = listOf(
+        "com.intellij.platform.workspace.storage.WorkspaceEntity",
+        "com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId"
+      ),
       properties = listOf(
         OwnPropertyMetadata(
           isComputable = false,
@@ -9783,6 +10494,60 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false,
             typeMetadata = FinalClassMetadata.KnownClass(fqName = "com.intellij.platform.workspace.storage.EntitySource")
+          ),
+          withDefault = false
+        ),
+        OwnPropertyMetadata(
+          isComputable = true,
+          isKey = false,
+          isOpen = false,
+          name = "symbolicId",
+          valueType = ValueTypeMetadata.SimpleType.CustomType(
+            isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+              fqName = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityId",
+              properties = listOf(
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "moduleId",
+                  valueType = ValueTypeMetadata.SimpleType.CustomType(
+                    isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
+                      fqName = "com.intellij.platform.workspace.jps.entities.ModuleId",
+                      properties = listOf(
+                        OwnPropertyMetadata(
+                          isComputable = false,
+                          isKey = false,
+                          isOpen = false,
+                          name = "name",
+                          valueType = primitiveTypeStringNotNullable,
+                          withDefault = false
+                        ),
+                        OwnPropertyMetadata(
+                          isComputable = false,
+                          isKey = false,
+                          isOpen = false,
+                          name = "presentableName",
+                          valueType = primitiveTypeStringNotNullable,
+                          withDefault = false
+                        )
+                      ),
+                      supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+                    )
+                  ),
+                  withDefault = false
+                ),
+                OwnPropertyMetadata(
+                  isComputable = false,
+                  isKey = false,
+                  isOpen = false,
+                  name = "presentableName",
+                  valueType = primitiveTypeStringNotNullable,
+                  withDefault = false
+                )
+              ),
+              supertypes = listOf("com.intellij.platform.workspace.storage.SymbolicEntityId")
+            )
           ),
           withDefault = false
         ),
@@ -9806,7 +10571,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
           name = "gradleModuleModel",
           valueType = ValueTypeMetadata.SimpleType.CustomType(
             isNullable = false, typeMetadata = FinalClassMetadata.ClassMetadata(
-              fqName = "com.android.tools.idea.gradle.project.model.GradleModuleModel", properties = listOf(
+              fqName = "com.android.tools.idea.gradle.project.model.GradleModuleModel",
+              properties = listOf(
                 OwnPropertyMetadata(
                   isComputable = false,
                   isKey = false,
@@ -9923,7 +10689,8 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                   ),
                   withDefault = false
                 )
-              ), supertypes = listOf("com.android.tools.idea.gradle.project.model.ModuleModel")
+              ),
+              supertypes = listOf("com.android.tools.idea.gradle.project.model.ModuleModel")
             )
           ),
           withDefault = false
@@ -9951,98 +10718,339 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
   }
 
   override fun initializeMetadataHash() {
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity", metadataHash = 291042158)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity", metadataHash = -2091474654)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl", metadataHash = 251223978)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider", metadataHash = -1945917941)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.FileImpl", metadataHash = -931484829)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl", metadataHash = -815189750)
-    addMetadataHash(typeFqn = "com.android.ide.common.repository.AgpVersion", metadataHash = 1123400306)
-    addMetadataHash(typeFqn = "com.android.ide.common.repository.AgpVersion\$PreviewKind", metadataHash = -480172821)
-    addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest", metadataHash = 1008443228)
-    addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$DeviceTest", metadataHash = 322202123)
-    addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", metadataHash = 829021672)
-    addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest", metadataHash = -1096743187)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = 111358691)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", metadataHash = -1399748338)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing", metadataHash = -1321757945)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl", metadataHash = -1307277753)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl", metadataHash = -1332620076)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -1552735920)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl", metadataHash = -1332513311)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl", metadataHash = 1184279692)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl", metadataHash = -1690144445)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl", metadataHash = 657314908)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type", metadataHash = 2020553170)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.CodeShrinker", metadataHash = -851385001)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl", metadataHash = -1503884810)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect", metadataHash = 1757445528)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl", metadataHash = -1269747967)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.LibraryReference", metadataHash = -1813287898)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.ResolverType", metadataHash = 127788945)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreRef", metadataHash = -44807925)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.ThrowingIdeDependencies", metadataHash = 124244585)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactName", metadataHash = -1494944155)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdePrivacySandboxSdkInfoImpl", metadataHash = 990934072)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl", metadataHash = -740402387)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution", metadataHash = 565979040)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl", metadataHash = 1118555776)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl", metadataHash = 1861591437)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl", metadataHash = -975396586)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl", metadataHash = -1240097636)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl", metadataHash = 1986597723)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl", metadataHash = -82604861)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl", metadataHash = 538254316)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.ThrowingIdeVariantCore", metadataHash = -551332648)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl", metadataHash = 1524180647)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl", metadataHash = -1302774755)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl", metadataHash = -2133111791)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl", metadataHash = 234558871)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl", metadataHash = -1957440230)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl", metadataHash = -292674770)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl", metadataHash = -1770948907)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl", metadataHash = -44724237)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl", metadataHash = -880231745)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl", metadataHash = -460813861)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl", metadataHash = 681444105)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl", metadataHash = 490057410)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidProjectType", metadataHash = -157603277)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl", metadataHash = -1020039765)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl", metadataHash = 1315666621)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl", metadataHash = 247927489)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl", metadataHash = 1326960038)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeTestSuiteSource\$SourceType", metadataHash = 1932382412)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl", metadataHash = 1141762271)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeViewBindingOptionsImpl", metadataHash = 935217792)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelData", metadataHash = -826500388)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl", metadataHash = 735844252)
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity",
+      metadataHash = 470826076
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity",
+      metadataHash = -322539513
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId",
+      metadataHash = -868348912
+    )
+    addMetadataHash(
+      typeFqn = "com.intellij.platform.workspace.jps.entities.ModuleId",
+      metadataHash = -575206713
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl",
+      metadataHash = -357218386
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeSourceProvider",
+      metadataHash = 578362715
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.FileImpl",
+      metadataHash = -931484829
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl",
+      metadataHash = -815189750
+    )
+    addMetadataHash(
+      typeFqn = "com.android.ide.common.repository.AgpVersion",
+      metadataHash = 1123400306
+    )
+    addMetadataHash(
+      typeFqn = "com.android.ide.common.repository.AgpVersion\$PreviewKind",
+      metadataHash = -480172821
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$DeviceTest",
+      metadataHash = 1008443228
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$DeviceTest",
+      metadataHash = 322202123
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest",
+      metadataHash = 829021672
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest",
+      metadataHash = -1096743187
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl",
+      metadataHash = -833505075
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl",
+      metadataHash = -1399748338
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing",
+      metadataHash = -1321757945
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl",
+      metadataHash = 1250299549
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl",
+      metadataHash = -1332620076
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable",
+      metadataHash = -1464342034
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl",
+      metadataHash = 949145097
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl",
+      metadataHash = -269343974
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTasksAndOutputInformationImpl",
+      metadataHash = -1690144445
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBytecodeTransformationImpl",
+      metadataHash = 657314908
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeBytecodeTransformation\$Type",
+      metadataHash = 2020553170
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.CodeShrinker",
+      metadataHash = -851385001
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl",
+      metadataHash = -1503884810
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect",
+      metadataHash = 1757445528
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl",
+      metadataHash = -1269747967
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.LibraryReference",
+      metadataHash = -1813287898
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.ResolverType",
+      metadataHash = 127788945
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreRef",
+      metadataHash = -44807925
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.ThrowingIdeDependencies",
+      metadataHash = 124244585
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactName",
+      metadataHash = -1494944155
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl",
+      metadataHash = -740402387
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeTestOptions\$Execution",
+      metadataHash = 565979040
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl",
+      metadataHash = 1118555776
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl",
+      metadataHash = 1861591437
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl",
+      metadataHash = -975396586
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl",
+      metadataHash = -1240097636
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl",
+      metadataHash = 1986597723
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl",
+      metadataHash = -82604861
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl",
+      metadataHash = 538254316
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.ThrowingIdeVariantCore",
+      metadataHash = -551332648
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl",
+      metadataHash = 1524180647
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl",
+      metadataHash = -1302774755
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDependenciesInfoImpl",
+      metadataHash = -2133111791
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl",
+      metadataHash = 234558871
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl",
+      metadataHash = -1957440230
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl",
+      metadataHash = -292674770
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl",
+      metadataHash = -1770948907
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl",
+      metadataHash = -44724237
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl",
+      metadataHash = -880231745
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl",
+      metadataHash = -460813861
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProductFlavorContainerImpl",
+      metadataHash = 681444105
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl",
+      metadataHash = 490057410
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidProjectType",
+      metadataHash = -157603277
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl",
+      metadataHash = -1020039765
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl",
+      metadataHash = 1315666621
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl",
+      metadataHash = 247927489
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl",
+      metadataHash = 1326960038
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeTestSuiteSource\$SourceType",
+      metadataHash = 1932382412
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl",
+      metadataHash = 1141762271
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeViewBindingOptionsImpl",
+      metadataHash = 935217792
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.model.GradleAndroidModelData",
+      metadataHash = -826500388
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl",
+      metadataHash = 735844252
+    )
     addMetadataHash(
       typeFqn = "com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl\$IdeCoordinatesImpl",
       metadataHash = -1673119559
     )
-    addMetadataHash(typeFqn = "com.android.tools.lint.detector.api.Desugaring", metadataHash = -355362316)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures", metadataHash = 730136386)
+    addMetadataHash(
+      typeFqn = "com.android.tools.lint.detector.api.Desugaring",
+      metadataHash = -355362316
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.model.AndroidModelFeatures",
+      metadataHash = 730136386
+    )
     addMetadataHash(typeFqn = "com.android.sdklib.AndroidVersion", metadataHash = 648464680)
     addMetadataHash(typeFqn = "com.android.tools.idea.model.Namespacing", metadataHash = 1620955126)
-    addMetadataHash(typeFqn = "com.android.projectmodel.DynamicResourceValue", metadataHash = -1669148046)
+    addMetadataHash(
+      typeFqn = "com.android.projectmodel.DynamicResourceValue",
+      metadataHash = -1669148046
+    )
     addMetadataHash(typeFqn = "com.android.resources.ResourceType", metadataHash = -819739526)
     addMetadataHash(typeFqn = "com.android.sdklib.devices.Abi", metadataHash = 681885929)
-    addMetadataHash(typeFqn = "com.android.tools.idea.model.TestExecutionOption", metadataHash = -43978618)
-    addMetadataHash(typeFqn = "com.android.tools.idea.model.TestOptions", metadataHash = -1696386486)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl", metadataHash = -1168803030)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl", metadataHash = 68036569)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeDependencies", metadataHash = 957361702)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeLibrary", metadataHash = -1697725822)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactLibrary", metadataHash = -901900944)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibrary", metadataHash = -136897773)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedAndroidLibrary", metadataHash = 1772351568)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl", metadataHash = -335587206)
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.model.TestExecutionOption",
+      metadataHash = -43978618
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.model.TestOptions",
+      metadataHash = -1696386486
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantImpl",
+      metadataHash = -1403774944
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl",
+      metadataHash = -922825763
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeDependencies",
+      metadataHash = 957361702
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeLibrary",
+      metadataHash = -1697725822
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeArtifactLibrary",
+      metadataHash = -901900944
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibrary",
+      metadataHash = -136897773
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedAndroidLibrary",
+      metadataHash = 1772351568
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl",
+      metadataHash = -335587206
+    )
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Component", metadataHash = 1245196504)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Module", metadataHash = 278064161)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Version", metadataHash = -307285691)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Part", metadataHash = 1119935650)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.DEV", metadataHash = -719581278)
-    addMetadataHash(typeFqn = "com.android.ide.common.gradle.NonNumeric", metadataHash = -1495351275)
+    addMetadataHash(
+      typeFqn = "com.android.ide.common.gradle.NonNumeric",
+      metadataHash = -1495351275
+    )
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Numeric", metadataHash = -1149827682)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Special", metadataHash = -315748414)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.FINAL", metadataHash = 1018468416)
@@ -10052,33 +11060,110 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.SNAPSHOT", metadataHash = 2048690102)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.SP", metadataHash = -1232106801)
     addMetadataHash(typeFqn = "com.android.ide.common.gradle.Separator", metadataHash = 1930764962)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeJavaLibrary", metadataHash = -73609323)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedJavaLibrary", metadataHash = -556879643)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeJavaLibraryImpl", metadataHash = -513831227)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibrary", metadataHash = 1471010740)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl", metadataHash = -285282637)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet", metadataHash = -879747018)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl", metadataHash = 188174125)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet", metadataHash = 1808927677)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnknownLibrary", metadataHash = -384625973)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedUnknownLibrary", metadataHash = -2078218641)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl", metadataHash = 2037151378)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl", metadataHash = -1636050817)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl", metadataHash = 124029262)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable", metadataHash = 1979204270)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl", metadataHash = 1209154017)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.project.model.GradleModuleModel", metadataHash = 1690690747)
-    addMetadataHash(typeFqn = "com.intellij.platform.workspace.storage.EntitySource", metadataHash = 352141809)
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeJavaLibrary",
+      metadataHash = -73609323
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedJavaLibrary",
+      metadataHash = -556879643
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeJavaLibraryImpl",
+      metadataHash = -513831227
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibrary",
+      metadataHash = 1471010740
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeModuleLibraryImpl",
+      metadataHash = -285282637
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet",
+      metadataHash = -879747018
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl",
+      metadataHash = 188174125
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet",
+      metadataHash = 1808927677
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeUnknownLibrary",
+      metadataHash = -384625973
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeUnresolvedUnknownLibrary",
+      metadataHash = -2078218641
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl",
+      metadataHash = 2037151378
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl",
+      metadataHash = -1636050817
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl",
+      metadataHash = 124029262
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.KotlinMultiplatformIdeLibraryTable",
+      metadataHash = 1979204270
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl",
+      metadataHash = 1209154017
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntityId",
+      metadataHash = 62283853
+    )
+    addMetadataHash(
+      typeFqn = "com.android.tools.idea.gradle.project.model.GradleModuleModel",
+      metadataHash = 1690690747
+    )
+    addMetadataHash(
+      typeFqn = "com.intellij.platform.workspace.storage.SymbolicEntityId",
+      metadataHash = -1345500419
+    )
+    addMetadataHash(
+      typeFqn = "com.intellij.platform.workspace.storage.EntitySource",
+      metadataHash = 352141809
+    )
     addMetadataHash(
       typeFqn = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectEntitySource",
       metadataHash = -2140153311
     )
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase", metadataHash = 688612452)
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$DataServices", metadataHash = -325852323)
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleDataServicesSyncPhase", metadataHash = 1034273257)
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Dynamic", metadataHash = 896961146)
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase", metadataHash = 739426399)
-    addMetadataHash(typeFqn = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase", metadataHash = 1617061511)
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase",
+      metadataHash = 688612452
+    )
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$DataServices",
+      metadataHash = -325852323
+    )
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleDataServicesSyncPhase",
+      metadataHash = 1034273257
+    )
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Dynamic",
+      metadataHash = 896961146
+    )
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleDynamicSyncPhase",
+      metadataHash = 739426399
+    )
+    addMetadataHash(
+      typeFqn = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase",
+      metadataHash = 1617061511
+    )
     addMetadataHash(
       typeFqn = "com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase\$BuildFinished",
       metadataHash = -384742708
@@ -10095,8 +11180,14 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
       typeFqn = "com.intellij.gradle.toolingExtension.modelAction.GradleProjectLoadedModelFetchPhase",
       metadataHash = 1467460995
     )
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Static", metadataHash = -1225530548)
-    addMetadataHash(typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase", metadataHash = 79572120)
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase\$Static",
+      metadataHash = -1225530548
+    )
+    addMetadataHash(
+      typeFqn = "org.jetbrains.plugins.gradle.service.syncAction.GradleStaticSyncPhase",
+      metadataHash = 79572120
+    )
     addMetadataHash(
       typeFqn = "com.android.tools.idea.gradle.project.sync.idea.AndroidGradleSourceSetEntitySource",
       metadataHash = -1411794747
