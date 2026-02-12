@@ -75,7 +75,7 @@ data class ProjectStructureSnapshotTestDef(
   }
 
   override fun runTest(root: File, project: Project) {
-    val text = project.saveAndDump(additionalRoots = roots.mapValues { root.resolve(it.value) })
+    val text = project.saveAndDump(additionalRoots = roots.mapValues { root.resolve(it.value) }, ignoreModuleFileAndType = true)
     SnapshotContext(testProject.projectName, agpVersion, PROJECT_STRUCTURE_SNAPSHOT_DIR).assertIsEqualToSnapshot(text)
   }
 
@@ -190,7 +190,7 @@ class LightSyncReferenceTest : SnapshotComparisonTest {
   @Test
   fun testLightSyncActual() {
     AssumeUtil.assumeNotWindows() // TODO (b/399625141): fix on windows
-    val dump = projectRule.project.saveAndDump()
+    val dump = projectRule.project.saveAndDump(ignoreModuleFileAndType = true)
     assertIsEqualToSnapshot(dump)
   }
 

@@ -53,7 +53,7 @@ aswb_library(
         "//tools/vendor/google/asfg/ext/proto:intellijext_java_proto",
         "//tools/vendor/google/aswb/plugin_api",
         "//tools/vendor/google/aswb/plugin_api:jsr305",  # unuseddeps: keep for @Nullable
-        "@maven//:com.google.protobuf.protobuf-java",  # unuseddeps: keep for consistent protobuf-java version
+        "//tools/vendor/google/aswb/plugin_api/maven:protobuf-java",  # unuseddeps: keep for consistent protobuf-java version
     ],
 )
 

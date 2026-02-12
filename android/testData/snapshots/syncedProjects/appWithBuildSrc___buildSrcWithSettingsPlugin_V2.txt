@@ -12,9 +12,7 @@ PROJECT                       : project
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/project [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/project.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>
+        CONTENT_ENTRY                 : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -35,8 +33,6 @@ PROJECT                       : project
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/project.app.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -57,7 +53,7 @@ PROJECT                       : project
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/app
+        CONTENT_ENTRY                 : file://<PROJECT>/app
             EXCLUDE_FOLDER                : file://<PROJECT>/app/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/app/build
         JDK                           : <NAME_CUT> Android SDK
@@ -91,8 +87,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/project.app.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -110,10 +104,10 @@ PROJECT                       : project
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/assets [-]
@@ -253,8 +247,6 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/project.app.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -272,9 +264,9 @@ PROJECT                       : project
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/main
             JavaSource                    : file://<PROJECT>/app/src/main/java
             JavaResource                  : file://<PROJECT>/app/src/main/res
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
@@ -359,8 +351,6 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/project.app.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -378,10 +368,10 @@ PROJECT                       : project
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/test
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/test
             JavaSource (test)             : file://<PROJECT>/app/src/test/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/assets [-]
@@ -498,12 +488,10 @@ PROJECT                       : project
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/project.buildSrc [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/project.buildSrc.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc
             EXCLUDE_FOLDER                : file://<PROJECT>/buildSrc/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/buildSrc/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -521,12 +509,10 @@ PROJECT                       : project
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/project.buildSrc.lib1 [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/lib1/project.buildSrc.lib1.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/lib1
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/lib1
             EXCLUDE_FOLDER                : file://<PROJECT>/buildSrc/lib1/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/buildSrc/lib1/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -544,9 +530,7 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/buildSrc/lib1/build/classes/java/main
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/lib1/project.buildSrc.lib1.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/lib1/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/lib1/src/main
             JavaSource                    : file://<PROJECT>/buildSrc/lib1/src/main/java
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/buildSrc/lib1/src/main/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
@@ -570,9 +554,7 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.buildSrc.lib1.main
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/lib1/project.buildSrc.lib1.test.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/lib1/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/lib1/src/test [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/buildSrc/lib1/src/test/java [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/buildSrc/lib1/src/test/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
@@ -592,12 +574,10 @@ PROJECT                       : project
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/project.buildSrc.lib2 [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/lib2/project.buildSrc.lib2.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/lib2
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/lib2
             EXCLUDE_FOLDER                : file://<PROJECT>/buildSrc/lib2/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/buildSrc/lib2/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -615,9 +595,7 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/buildSrc/lib2/build/classes/java/main
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/lib2/project.buildSrc.lib2.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/lib2/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/lib2/src/main
             JavaSource                    : file://<PROJECT>/buildSrc/lib2/src/main/java
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/buildSrc/lib2/src/main/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
@@ -640,9 +618,7 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.buildSrc.lib2.main
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/lib2/project.buildSrc.lib2.test.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/lib2/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/lib2/src/test [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/buildSrc/lib2/src/test/java [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/buildSrc/lib2/src/test/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
@@ -661,9 +637,7 @@ PROJECT                       : project
             compilerSourceOutputPath      : file://<PROJECT>/buildSrc/build/classes/java/main
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/project.buildSrc.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/src/main
             JavaSource                    : file://<PROJECT>/buildSrc/src/main/java
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/buildSrc/src/main/groovy [-]
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/buildSrc/src/main/resources [-]
@@ -766,9 +740,7 @@ PROJECT                       : project
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : project.buildSrc.main
-        ModuleFile                    : <PROJECT>/.idea/modules/buildSrc/project.buildSrc.test.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/buildSrc/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/buildSrc/src/test [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/buildSrc/src/test/groovy [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/buildSrc/src/test/java [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/buildSrc/src/test/resources [-]

@@ -20,8 +20,10 @@ import com.android.tools.idea.gradle.structure.model.PsIssueType.LIBRARY_UPDATES
 import com.android.tools.idea.gradle.structure.model.PsIssueType.PROJECT_ANALYSIS
 import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth.assertThat
-import java.util.*
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.MockitoAnnotations.initMocks

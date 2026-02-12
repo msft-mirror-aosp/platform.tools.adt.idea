@@ -65,6 +65,7 @@ import com.android.testutils.FakeProcessHandle
 import com.android.testutils.TestUtils
 import com.android.tools.adtui.ImageUtils.rotateByQuadrants
 import com.android.tools.adtui.util.normalizedRotation
+import com.android.tools.adtui.util.scaled
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.io.grpc.ForwardingServerCall.SimpleForwardingServerCall
 import com.android.tools.idea.io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener
@@ -137,7 +138,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   private val executor = AppExecutorUtil.createBoundedApplicationPoolExecutor("FakeEmulatorControllerService", 1)
   private val coroutineDispatcher = executor.asCoroutineDispatcher()
   private var grpcServer: Server? = null
-  private val lifeCycleLock = Object()
+  private val lifeCycleLock = Any()
   private var startTime = 0L
 
   private val config = EmulatorConfiguration.readAvdDefinition(avdFolder)
@@ -519,14 +520,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         displayHeight = it.height
       }
     }
-    val aspectRatio = displayHeight.toDouble() / displayWidth
-    val w = if (width == 0) displayWidth else min(width, displayWidth)
-    val h = if (height == 0) displayHeight else min(height, displayHeight)
-    return if (displayRotation.number % 2 == 0) {
-      Dimension(w.coerceAtMost((h / aspectRatio).toInt()), h.coerceAtMost((w * aspectRatio).toInt()))
-    } else {
-      Dimension(h.coerceAtMost((w / aspectRatio).toInt()), w.coerceAtMost((h * aspectRatio).toInt()))
-    }
+    return computeConstrainedSize(displayWidth, displayHeight, displayRotation.number, width, height)
   }
 
   private fun createVirtualSceneCameraNotification(cameraActive: Boolean, displayId: Int): Notification =
@@ -695,8 +689,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     override fun getScreenshot(request: ImageFormat, responseObserver: StreamObserver<Image>) {
       executor.execute {
         val displayId = request.display
-        val size = getScaledAndRotatedDisplaySize(request.width, request.height, displayId)
-        val image = drawDisplayImage(size, displayId)
+        val image = createScreenshotImage(request, displayId)
         val stream = ByteArrayOutputStream()
         ImageIO.write(image, "PNG", stream)
 
@@ -720,6 +713,11 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         sendScreenshot(request, responseObserver)
       }
     }
+  }
+
+  private fun createScreenshotImage(request: ImageFormat, displayId: Int): BufferedImage {
+    val size = getScaledAndRotatedDisplaySize(request.width, request.height, displayId)
+    return drawDisplayImage(size, displayId)
   }
 
   private inner class EmulatorSnapshotService(private val executor: ExecutorService) : SnapshotServiceGrpc.SnapshotServiceImplBase() {
@@ -1611,7 +1609,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     fun createWatchAvd(
       parentFolder: Path,
       sdkFolder: Path = getSdkFolder(parentFolder),
-      androidVersion: AndroidVersion = AndroidVersion(30, 0),
+      androidVersion: AndroidVersion = AndroidVersion(33, 0),
       skinFolder: Path? = getSkinFolder("wearos_small_round"),
     ): Path {
       val api = androidVersion.androidApiLevel.majorVersion
@@ -1850,12 +1848,14 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           hw.initialOrientation=landscape
           hw.keyboard=yes
           hw.keyboard.lid=yes
-          hw.lcd.density = 160
-          hw.lcd.width = 450
-          hw.lcd.height = 450
-          hw.lcd.transparent = yes
-          hw.mainKeys = no
-          hw.ramSize = 3096
+          hw.lcd.density=160
+          hw.lcd.width=450
+          hw.lcd.height=450
+          hw.lcd.transparent=yes
+          environment.width=1200
+          environment.height=900
+          hw.mainKeys=no
+          hw.ramSize=3096
           hw.sdCard=yes
           hw.sensors.orientation=yes
           hw.sensors.proximity=yes
@@ -1865,41 +1865,41 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           runtime.network.speed=full
           sdcard.size=512M
           showDeviceFrame=yes
-          tag.displaynames = Android XR Glasses
-          tag.ids=android-xr-glasses
-          hw.touchpad0 = true
-          hw.touchpad0.width = 1543
-          hw.touchpad0.height = 297
-          hw.screen = no-touch
+          tag.displaynames=AI Glasses
+          tag.ids=ai-glasses
+          hw.touchpad0=true
+          hw.touchpad0.width=1543
+          hw.touchpad0.height=297
+          hw.screen=no-touch
           """
           .trimIndent()
 
       val hardwareIni =
         """
-          hw.cpu.arch = $abi
-          hw.cpu.model = qemu32
-          hw.cpu.ncore = 4
-          hw.lcd.density = 160
-          hw.lcd.width = 450
-          hw.lcd.height = 450
-          hw.initialOrientation = portrait
-          hw.ramSize = 3072
-          hw.screen = multi-touch
-          hw.dPad = false
-          hw.rotaryInput = false
-          hw.gsmModem = true
-          hw.gps = false
-          hw.battery = true
-          hw.accelerometer = false
-          hw.gyroscope = true
-          hw.audioInput = true
-          hw.audioOutput = true
-          hw.sdCard = true
-          hw.sdCard.path = $avdFolder/sdcard.img
-          hw.touchpad0 = true
-          hw.touchpad0.width = 1543
-          hw.touchpad0.height = 297
-          android.sdk.root = $sdkFolder
+          hw.cpu.arch=$abi
+          hw.cpu.model=qemu32
+          hw.cpu.ncore=4
+          hw.lcd.density=160
+          hw.lcd.width=450
+          hw.lcd.height=450
+          hw.initialOrientation=portrait
+          hw.ramSize=3072
+          hw.screen=multi-touch
+          hw.dPad=false
+          hw.rotaryInput=false
+          hw.gsmModem=true
+          hw.gps=false
+          hw.battery=true
+          hw.accelerometer=false
+          hw.gyroscope=true
+          hw.audioInput=true
+          hw.audioOutput=true
+          hw.sdCard=true
+          hw.sdCard.path=$avdFolder/sdcard.img
+          hw.touchpad0=true
+          hw.touchpad0.width=1543
+          hw.touchpad0.height=297
+          android.sdk.root=$sdkFolder
           """
           .trimIndent()
 
@@ -2073,9 +2073,9 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       return avdFolder
     }
 
-    @JvmStatic fun getSkinFolder(skinName: String): Path = getRootSkinFolder().resolve(skinName)
+    @JvmStatic fun getSkinFolder(skinName: String): Path = getDeviceArtFolder().resolve(skinName)
 
-    @JvmStatic fun getRootSkinFolder(): Path = TestUtils.resolveWorkspacePathUnchecked(DEVICE_ART_RESOURCES_DIR)
+    @JvmStatic fun getDeviceArtFolder(): Path = TestUtils.resolveWorkspacePathUnchecked(DEVICE_ART_RESOURCES_DIR)
 
     @JvmStatic fun grpcServerName(port: Int) = "FakeEmulator@${port}"
 
@@ -2111,6 +2111,20 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         "android.emulation.control.EmulatorController/getXrOptions",
       )
     val IGNORE_SCREENSHOT_CALL_FILTER = DEFAULT_CALL_FILTER.or("android.emulation.control.EmulatorController/streamScreenshot")
+  }
+}
+
+/**
+ * Computes size of the largest rectangle with aspect ratio determined by [width] and [height] rotated by [rotation] quadrants that fits
+ * into [maxWidth] by [maxHeight] rectangle and also doesn't exceed [width] by [height].
+ */
+private fun computeConstrainedSize(width: Int, height: Int, rotation: Int, maxWidth: Int, maxHeight: Int): Dimension {
+  val aspectRatio = height.toDouble() / width
+  val w = if (maxWidth == 0) width else min(maxWidth, width)
+  val h = if (maxHeight == 0) height else min(maxHeight, height)
+  return when (rotation % 2) {
+    0 -> Dimension(w.coerceAtMost(h.scaled(1 / aspectRatio)), h.coerceAtMost(w.scaled(aspectRatio)))
+    else -> Dimension(h.coerceAtMost(w.scaled(1 / aspectRatio)), w.coerceAtMost(h.scaled(aspectRatio)))
   }
 }
 

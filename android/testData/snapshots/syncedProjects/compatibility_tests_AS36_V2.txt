@@ -12,9 +12,7 @@ PROJECT                       : AS36
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/AS36 [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/AS36.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>
+        CONTENT_ENTRY                 : file://<PROJECT>
             EXCLUDE_FOLDER                : file://<PROJECT>/.gradle
             EXCLUDE_FOLDER                : file://<PROJECT>/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -35,8 +33,6 @@ PROJECT                       : AS36
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/AS36.app.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -57,7 +53,7 @@ PROJECT                       : AS36
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/app
+        CONTENT_ENTRY                 : file://<PROJECT>/app
             EXCLUDE_FOLDER                : file://<PROJECT>/app/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/app/build
         JDK                           : <NAME_CUT> Android SDK
@@ -91,8 +87,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/AS36.app.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -110,10 +104,10 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTest
             JavaSource (test)             : file://<PROJECT>/app/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/androidTest/assets [-]
@@ -255,8 +249,6 @@ PROJECT                       : AS36
             compilerSourceOutputPath      : file://<PROJECT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/app/AS36.app.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -274,9 +266,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/main
             JavaSource                    : file://<PROJECT>/app/src/main/java
             JavaResource                  : file://<PROJECT>/app/src/main/res
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/app/build/generated/ap_generated_sources/debug/out [-]
@@ -360,8 +352,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.app.main
-        ModuleFile                    : <PROJECT>/.idea/modules/app/AS36.app.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -379,10 +369,10 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/test
+        CONTENT_ENTRY                 : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/test
             JavaSource (test)             : file://<PROJECT>/app/src/test/java
-        CONENT_ENTRY                  : file://<PROJECT>/app/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/app/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/app/src/test/assets [-]
@@ -497,12 +487,10 @@ PROJECT                       : AS36
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/AS36.features [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/features/AS36.features.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/features
+        CONTENT_ENTRY                 : file://<PROJECT>/features
             EXCLUDE_FOLDER                : file://<PROJECT>/features/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/features/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -523,8 +511,6 @@ PROJECT                       : AS36
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature/AS36.features.dynamicfeature.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -545,7 +531,7 @@ PROJECT                       : AS36
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature
             EXCLUDE_FOLDER                : file://<PROJECT>/features/dynamicfeature/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/features/dynamicfeature/build
         JDK                           : <NAME_CUT> Android SDK
@@ -578,8 +564,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.features.dynamicfeature.main
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature/AS36.features.dynamicfeature.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -597,9 +581,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/src/androidTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/src/androidTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/features/dynamicfeature/src/androidTest/assets [-]
@@ -648,8 +632,6 @@ PROJECT                       : AS36
             compilerSourceOutputPath      : file://<PROJECT>/features/dynamicfeature/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature/AS36.features.dynamicfeature.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -667,9 +649,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/src/main
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/features/dynamicfeature/src/debug/assets [-]
@@ -716,8 +698,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.features.dynamicfeature.main
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature/AS36.features.dynamicfeature.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -735,9 +715,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/features/dynamicfeature/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/features/dynamicfeature/src/test/assets [-]
@@ -785,8 +765,6 @@ PROJECT                       : AS36
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature2/AS36.features.dynamicfeature2.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -807,7 +785,7 @@ PROJECT                       : AS36
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2
             EXCLUDE_FOLDER                : file://<PROJECT>/features/dynamicfeature2/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/features/dynamicfeature2/build
         JDK                           : <NAME_CUT> Android SDK
@@ -840,8 +818,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.features.dynamicfeature2.main
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature2/AS36.features.dynamicfeature2.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -859,9 +835,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/src/androidTest [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/src/androidTest [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/features/dynamicfeature2/src/androidTest/assets [-]
@@ -910,8 +886,6 @@ PROJECT                       : AS36
             compilerSourceOutputPath      : file://<PROJECT>/features/dynamicfeature2/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature2/AS36.features.dynamicfeature2.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -929,9 +903,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/src/main
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debug/out [-]
             Generated                     : true
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/features/dynamicfeature2/src/debug/assets [-]
@@ -978,8 +952,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.features.dynamicfeature2.main
-        ModuleFile                    : <PROJECT>/.idea/modules/features/dynamicfeature2/AS36.features.dynamicfeature2.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -997,9 +969,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/src/test [-]
-        CONENT_ENTRY                  : file://<PROJECT>/features/dynamicfeature2/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/features/dynamicfeature2/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/features/dynamicfeature2/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/features/dynamicfeature2/src/test/assets [-]
@@ -1044,12 +1016,10 @@ PROJECT                       : AS36
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/AS36.libs [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/AS36.libs.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/libs
+        CONTENT_ENTRY                 : file://<PROJECT>/libs
             EXCLUDE_FOLDER                : file://<PROJECT>/libs/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/libs/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -1070,8 +1040,6 @@ PROJECT                       : AS36
         COMPILER_MODULE_EXTENSION
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/android_library/AS36.libs.android_library.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1092,7 +1060,7 @@ PROJECT                       : AS36
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library
             EXCLUDE_FOLDER                : file://<PROJECT>/libs/android_library/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/libs/android_library/build
         JDK                           : <NAME_CUT> Android SDK
@@ -1124,8 +1092,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.libs.android_library.main
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/android_library/AS36.libs.android_library.androidTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1143,10 +1109,10 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debugAndroidTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/src/androidTest
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/src/androidTest
             JavaSource (test)             : file://<PROJECT>/libs/android_library/src/androidTest/java
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/src/androidTestDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/src/androidTestDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debugAndroidTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/libs/android_library/src/androidTest/assets [-]
@@ -1288,8 +1254,6 @@ PROJECT                       : AS36
             compilerSourceOutputPath      : file://<PROJECT>/libs/android_library/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/android_library/AS36.libs.android_library.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1307,9 +1271,9 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debug/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/src/debug [-]
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debug/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/src/debug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/src/main
             JavaSource                    : file://<PROJECT>/libs/android_library/src/main/java
             JavaResource                  : file://<PROJECT>/libs/android_library/src/main/res
         WATCHED_SOURCE_FOLDER         : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debug/out [-]
@@ -1391,8 +1355,6 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.libs.android_library.main
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/android_library/AS36.libs.android_library.unitTest.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android
             TypeId                        : android
             ExternalSource                : GRADLE
@@ -1410,10 +1372,10 @@ PROJECT                       : AS36
             ProguardLogsFolderRelativePath          : /proguard_logs
             UseCustomManifestPackage      : false
             - ProGuardCfgFiles            : file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debugUnitTest/out [-]
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/src/test
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debugUnitTest/out [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/src/test
             JavaSource (test)             : file://<PROJECT>/libs/android_library/src/test/java
-        CONENT_ENTRY                  : file://<PROJECT>/libs/android_library/src/testDebug [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/android_library/src/testDebug [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/libs/android_library/build/generated/ap_generated_sources/debugUnitTest/out [-]
             Generated                     : true
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/libs/android_library/src/test/assets [-]
@@ -1528,12 +1490,10 @@ PROJECT                       : AS36
             compilerTestOutputPath        : file://<PROJECT>/build/classes/test/AS36.libs.java_lib [-]
             isCompilerPathInherited       : true
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/java_lib/AS36.libs.java_lib.iml [-]
-        ModuleTypeName                : JAVA_MODULE
         FACET                         : Android-Gradle
             TypeId                        : android-gradle
             ExternalSource                : GRADLE
-        CONENT_ENTRY                  : file://<PROJECT>/libs/java_lib
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/java_lib
             EXCLUDE_FOLDER                : file://<PROJECT>/libs/java_lib/.gradle [-]
             EXCLUDE_FOLDER                : file://<PROJECT>/libs/java_lib/build
         JDK                           : <NAME_CUT> JavaSDK
@@ -1554,9 +1514,7 @@ PROJECT                       : AS36
             compilerSourceOutputPath      : file://<PROJECT>/libs/java_lib/build/classes/java/main [-]
             isCompilerPathInherited       : false
             isExcludeOutput               : true
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/java_lib/AS36.libs.java_lib.main.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/libs/java_lib/src/main
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/java_lib/src/main
             JavaSource                    : file://<PROJECT>/libs/java_lib/src/main/java
         WATCHED_RESOURCE_FOLDER       : file://<PROJECT>/libs/java_lib/src/main/resources [-]
         JDK                           : <NAME_CUT> JavaSDK
@@ -1582,9 +1540,7 @@ PROJECT                       : AS36
             isExcludeOutput               : true
         TEST_MODULE_PROPERTIES
             productionModuleName          : AS36.libs.java_lib.main
-        ModuleFile                    : <PROJECT>/.idea/modules/libs/java_lib/AS36.libs.java_lib.test.iml [-]
-        ModuleTypeName                : JAVA_MODULE
-        CONENT_ENTRY                  : file://<PROJECT>/libs/java_lib/src/test [-]
+        CONTENT_ENTRY                 : file://<PROJECT>/libs/java_lib/src/test [-]
         WATCHED_TEST_SOURCE_FOLDER    : file://<PROJECT>/libs/java_lib/src/test/java [-]
         WATCHED_TEST_RESOURCE_FOLDER  : file://<PROJECT>/libs/java_lib/src/test/resources [-]
         JDK                           : <NAME_CUT> JavaSDK

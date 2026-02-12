@@ -86,7 +86,7 @@ public class StudioCrashReporterTest {
 
   @Test
   public void testIdeBrandIncludedInExceptionReport() throws Exception {
-    UsageTrackerWriter<AndroidStudioEvent.Builder> usageTracker = NullUsageTracker.INSTANCE;
+    UsageTrackerWriter usageTracker = NullUsageTracker.INSTANCE;
     UsageTracker.setIdeBrand(AndroidStudioEvent.IdeBrand.ANDROID_STUDIO);
     try {
       UsageTracker.setWriterForTest(usageTracker);

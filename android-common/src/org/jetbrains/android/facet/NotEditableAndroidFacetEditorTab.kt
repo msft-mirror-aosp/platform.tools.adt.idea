@@ -3,7 +3,6 @@ package org.jetbrains.android.facet
 
 import com.intellij.facet.ui.FacetEditorTab
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.layout.*
 import javax.swing.JComponent
 import org.jetbrains.annotations.Nls
 

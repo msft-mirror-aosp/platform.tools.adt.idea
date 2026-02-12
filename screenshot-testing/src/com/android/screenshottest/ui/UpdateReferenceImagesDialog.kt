@@ -140,14 +140,13 @@ class UpdateReferenceImagesDialog(
 
   fun updateDialogWithTestResult(previewDetails: PreviewDetails, isChecked: Boolean) {
     ApplicationManager.getApplication().invokeLater {
-      if (!isFirstTestDiscovered) {
-        isFirstTestDiscovered = true
-        populateCenterPanel()
-      }
-
       val (testId, className, methodName, previewName, testResult, destImagePath, srcImagePath, diffImagePath, diffPercent) = previewDetails
 
       if (methodName.isNotBlank() && previewName.isNotBlank()) {
+        if (!isFirstTestDiscovered) {
+          isFirstTestDiscovered = true
+          populateCenterPanel()
+        }
 
         val root = tree.model.root as CheckedTreeNode
         val model = tree.model as DefaultTreeModel
@@ -191,6 +190,18 @@ class UpdateReferenceImagesDialog(
     // failure or that no tests were found to run. Close the dialog and show an error.
     ApplicationManager.getApplication().invokeLater {
       if (!isFirstTestDiscovered) {
+        // Log the SCREENSHOT_DIALOG_TEST_RESULTS_EMPTY event
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .apply {
+              kind = AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW
+              screenshotTestComposePreviewEvent =
+                ScreenshotTestComposePreviewEvent.newBuilder()
+                  .apply { type = ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_TEST_RESULTS_EMPTY }
+                  .build()
+            }
+            .withProjectId(project)
+        )
         logger.error("No tests were discovered in the test suite")
         close(CANCEL_EXIT_CODE)
         Messages.showErrorDialog(project, "Error while generating screenshots", "Failed to generate screenshots")
@@ -210,6 +221,20 @@ class UpdateReferenceImagesDialog(
       // Only act if we haven't discovered any tests yet (meaning the failure happened during build or startup)
       if (!isFirstTestDiscovered && !isCancelled) {
         logger.warn("Build or execution failed. Closing dialog.")
+
+        // Log the SCREENSHOT_DIALOG_BUILD_FAILURE event when build fails
+        UsageTracker.log(
+          AndroidStudioEvent.newBuilder()
+            .apply {
+              kind = AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW
+              screenshotTestComposePreviewEvent =
+                ScreenshotTestComposePreviewEvent.newBuilder()
+                  .apply { type = ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE }
+                  .build()
+            }
+            .withProjectId(project)
+        )
+
         close(CANCEL_EXIT_CODE)
 
         // Open the Run window so the user can see the build error
@@ -454,6 +479,19 @@ class UpdateReferenceImagesDialog(
           logger.info("Reference images were updated successfully")
           Messages.showInfoMessage(project, "Reference images were updated successfully.", "Update Successful")
         } else {
+          // Log the SCREENSHOT_DIALOG_UPDATE_ACTION_FAILURE event for analytics
+          // on failure to copy reference images
+          UsageTracker.log(
+            AndroidStudioEvent.newBuilder()
+              .apply {
+                kind = AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW
+                screenshotTestComposePreviewEvent =
+                  ScreenshotTestComposePreviewEvent.newBuilder()
+                    .apply { type = ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_UPDATE_ACTION_FAILURE }
+                    .build()
+              }
+              .withProjectId(project)
+          )
           val failedNames = failures.joinToString(separator = "\n") { "- ${it.previewData.methodName}.${it.previewData.previewName}" }
           logger.error("Failed to copy the following previews: $failedNames")
           Messages.showErrorDialog(project, "Failed to copy the following previews:\n\n$failedNames", "Copy Failed")

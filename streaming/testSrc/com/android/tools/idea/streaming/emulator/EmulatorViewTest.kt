@@ -44,6 +44,7 @@ import com.android.tools.idea.streaming.core.DeviceInputListenerManager
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
 import com.android.tools.idea.streaming.emulator.FakeEmulator.Companion.IGNORE_SCREENSHOT_CALL_FILTER
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
+import com.android.tools.idea.streaming.testutil.newEmulatorDisplayPanel
 import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
@@ -197,7 +198,7 @@ class EmulatorViewTest {
     var call = getStreamScreenshotCallAndWaitForFrame()
     assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 363 height: 547")
     assertAppearance("EmulatorView1")
-    assertThat(call.completion.isCancelled).isFalse() // The call has not been cancelled.
+    assertThat(call.completion.isCancelled).isFalse() // The call has not been canceled.
     assertThat(call.completion.isDone).isFalse() // The call is still ongoing.
 
     // Check zoom.
@@ -255,8 +256,8 @@ class EmulatorViewTest {
     call = getStreamScreenshotCallAndWaitForFrame()
     assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 364")
     assertAppearance("EmulatorView2")
-    assertThat(previousCall.completion.isCancelled).isTrue() // The previous call is cancelled.
-    assertThat(call.completion.isCancelled).isFalse() // The latest call has not been cancelled.
+    assertThat(previousCall.completion.isCancelled).isTrue() // The previous call is canceled.
+    assertThat(call.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call.completion.isDone).isFalse() // The latest call is still ongoing.
 
     // Check rotation.
@@ -273,10 +274,10 @@ class EmulatorViewTest {
     fakeUi.mouse.press(10, 153)
     val inputEventCall = fakeEmulator.getNextGrpcCall(2.seconds)
     assertThat(inputEventCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
-    assertThat(shortDebugString(inputEventCall.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 35 y: 61 buttons: 1 }")
+    assertThat(shortDebugString(inputEventCall.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 42 y: 61 buttons: 1 }")
     (inputEvents.take() as AndroidInputEvent.TouchEvent).apply {
       assertThat(deviceSerialNumber).isEqualTo(fakeEmulator.serialNumber)
-      assertThat(touches).containsExactly(AndroidInputEvent.TouchEvent.Touch(35, 61, 0))
+      assertThat(touches).containsExactly(AndroidInputEvent.TouchEvent.Touch(42, 61, 0))
     }
 
     fakeUi.mouse.dragTo(215, 48)
@@ -315,7 +316,7 @@ class EmulatorViewTest {
     fakeUi.layoutAndDispatchEvents()
     call = getStreamScreenshotCallAndWaitForFrame()
     assertThat(shortDebugString(call.request)).isEqualTo("format: RGB888 width: 454 height: 364")
-    assertThat(view.canZoomOut()).isFalse() // zoom-in mode cancelled by the rotation.
+    assertThat(view.canZoomOut()).isFalse() // zoom-in mode canceled by the rotation.
     assertThat(view.canZoomToFit()).isFalse()
     assertAppearance("EmulatorView2")
 
@@ -651,7 +652,7 @@ class EmulatorViewTest {
 
     val call = fakeEmulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
-    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1118 y: 1989 }") // No pressed buttons.
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 }") // No pressed buttons.
   }
 
   @Test
@@ -674,8 +675,8 @@ class EmulatorViewTest {
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
     assertThat(shortDebugString(call.getNextRequest(1.seconds)))
       .isEqualTo(
-        "touch_event { touches { x: 1118 y: 1989 pressure: 1024 expiration: NEVER_EXPIRE }" + // Non-zero pressure.
-          " touches { x: 321 y: 970 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
+        "touch_event { touches { x: 1109 y: 1989 pressure: 1024 expiration: NEVER_EXPIRE }" + // Non-zero pressure.
+          " touches { x: 330 y: 970 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
       )
 
     fakeUi.keyboard.release(VK_CONTROL)
@@ -711,7 +712,7 @@ class EmulatorViewTest {
     // Here we expect the gRPC call from `press()`, as `moveTo()` should not send any gRPC call.
     call = fakeEmulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
-    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1118 y: 1989 buttons: 1 }")
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 buttons: 1 }")
   }
 
   @Test
@@ -733,11 +734,11 @@ class EmulatorViewTest {
         call = fakeEmulator.getNextGrpcCall(2.seconds)
         assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
       }
-      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1118 y: 1989 $expected }")
+      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 $expected }")
 
       fakeUi.mouse.release()
 
-      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1118 y: 1989 }") // No pressed buttons.
+      assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 }") // No pressed buttons.
     }
   }
 
@@ -754,15 +755,15 @@ class EmulatorViewTest {
 
     val call = fakeEmulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
-    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1118 y: 1989 buttons: 2 }")
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 buttons: 2 }")
 
     fakeUi.mouse.dragDelta(5, 0)
 
-    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1172 y: 1989 buttons: 2 }")
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1163 y: 1989 buttons: 2 }")
 
     fakeUi.mouse.release()
 
-    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1172 y: 1989 }") // No pressed buttons.
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1163 y: 1989 }") // No pressed buttons.
   }
 
   @Test

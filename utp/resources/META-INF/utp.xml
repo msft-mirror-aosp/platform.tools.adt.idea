@@ -19,4 +19,8 @@
     <taskManager implementation="com.android.tools.utp.UtpAndroidGradleTaskManagerExtension" />
   </extensions>
 
+  <extensions defaultExtensionNs="com.intellij">
+    <console.folding implementation="com.android.tools.utp.UtpEventMessageFolding" />
+  </extensions>
+
 </idea-plugin>

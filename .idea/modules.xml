@@ -17,6 +17,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/journeys/gradle/aiplugin.android.journeys.gradle.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/journeys/gradle/aiplugin.android.journeys.gradle.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/journeys/aiplugin.android.journeys.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/journeys/aiplugin.android.journeys.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/npa-evals/aiplugin.android.npa.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/npa-evals/aiplugin.android.npa.evals.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/rag-evals/aiplugin.android.rag.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/rag-evals/aiplugin.android.rag.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/uitools-evals/aiplugin.android.uitools.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/uitools-evals/aiplugin.android.uitools.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/upgrade-evals/aiplugin.android.upgrade.evals.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/android/upgrade-evals/aiplugin.android.upgrade.evals.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/backends/aicode/aiplugin.backends.aicode.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/backends/aicode/aiplugin.backends.aicode.iml" />
@@ -458,6 +459,7 @@
       <module fileurl="file://$PROJECT_DIR$/testartifacts/intellij.android.testartifacts.tests.iml" filepath="$PROJECT_DIR$/testartifacts/intellij.android.testartifacts.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.iml" filepath="$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.iml" />
       <module fileurl="file://$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.tests.iml" filepath="$PROJECT_DIR$/threading-checker/intellij.android.threading-checker.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tracer/intellij.android.tracer.iml" filepath="$PROJECT_DIR$/tracer/intellij.android.tracer.iml" />
       <module fileurl="file://$PROJECT_DIR$/android-transport/intellij.android.transport.iml" filepath="$PROJECT_DIR$/android-transport/intellij.android.transport.iml" />
       <module fileurl="file://$PROJECT_DIR$/transport-database/intellij.android.transportDatabase.iml" filepath="$PROJECT_DIR$/transport-database/intellij.android.transportDatabase.iml" />
       <module fileurl="file://$PROJECT_DIR$/studio-updater/intellij.android.updater.studio-updater.iml" filepath="$PROJECT_DIR$/studio-updater/intellij.android.updater.studio-updater.iml" />
@@ -517,6 +519,7 @@
       <module fileurl="file://$PROJECT_DIR$/utp/utp.iml" filepath="$PROJECT_DIR$/utp/utp.iml" />
       <module fileurl="file://$PROJECT_DIR$/whats-new-assistant/whats-new-assistant.iml" filepath="$PROJECT_DIR$/whats-new-assistant/whats-new-assistant.iml" />
       <module fileurl="file://$PROJECT_DIR$/whats-new-assistant/whats-new-assistant-test.iml" filepath="$PROJECT_DIR$/whats-new-assistant/whats-new-assistant-test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/firebase-provisioning/firebase-provisioning.iml" filepath="$PROJECT_DIR$/../../vendor/google/firebase-provisioning/firebase-provisioning.iml" />
     </modules>
   </component>
 </project>

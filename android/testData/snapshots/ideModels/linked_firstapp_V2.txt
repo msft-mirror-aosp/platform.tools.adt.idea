@@ -9,8 +9,7 @@ MODULE                        : My_First_App
         compilerTestOutputPath        : file://<ROOT>/firstapp/build/classes/test/My_First_App [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    :  [-]
-    CONENT_ENTRY                  : file://<ROOT>/firstapp
+    CONTENT_ENTRY                 : file://<ROOT>/firstapp
         EXCLUDE_FOLDER                : file://<ROOT>/firstapp/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/firstapp/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -680,6 +679,7 @@ MODULE                        : My_First_App.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : com.example.firstapp
         testApplicationId             : com.example.firstapp.test
@@ -1750,6 +1750,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         testApplicationId             : com.example.mysharedlibrary.test
         buildType                     : debug

@@ -35,6 +35,7 @@ import com.android.tools.idea.wizard.template.Recipe
 import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.TemplateConstraint
 import com.android.tools.idea.wizard.template.TemplateData
+import com.android.tools.idea.wizard.template.TemplateFlag
 import com.android.tools.idea.wizard.template.Thumb
 import com.android.tools.idea.wizard.template.Widget
 import com.android.tools.idea.wizard.template.WizardUiContext
@@ -152,6 +153,7 @@ class RenderTemplateModelTest {
       override val category = Category.Activity
       override val formFactor = FormFactor.Mobile
       override val constraints = constraints
+      override val flags = emptyList<TemplateFlag>()
       override val useGenericInstrumentedTests = false
       override val useGenericLocalTests = false
     }

@@ -569,26 +569,27 @@ maven_repository(
         "@maven//:com.google.protobuf.protobuf-java_3.17.2",
         "@maven//:junit.junit_4.13.2",
         "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.8.10",
-        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.0.21",  # Empty Activity template Kotlin/Compose 2.0.21
+        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.2.10",  # Empty Activity template Kotlin/Compose 2.2.10
         "@maven//:org.jetbrains.kotlin.jvm.org.jetbrains.kotlin.jvm.gradle.plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kapt.org.jetbrains.kotlin.kapt.gradle.plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions-runtime_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-android-extensions_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-annotation-processing-gradle_1.8.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-build-tools-impl_2.0.21",  # Empty Activity template Kotlin/Compose 2.0.21
+        "@maven//:org.jetbrains.kotlin.kotlin-build-tools-impl_2.2.10",  # Empty Activity template Kotlin/Compose 2.2.10
         "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.8.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-compose-compiler-plugin-embeddable_2.0.21",  # Empty Activity template Kotlin/Compose 2.0.21
+        "@maven//:org.jetbrains.kotlin.kotlin-compose-compiler-plugin-embeddable_2.2.10",  # Empty Activity template Kotlin/Compose 2.2.10
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.6.21",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.9.10",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect_2.0.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_2.2.10",
         "@maven//:org.jetbrains.kotlin.kotlin-script-runtime_1.8.10",
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_1.8.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.0.21",  # Empty Activity template Kotlin/Compose 2.0.21
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-common_2.2.10",  # Empty Activity template Kotlin/Compose 2.2.10
         "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_1.8.10",
-        "@maven//:org.jetbrains.kotlin.plugin.compose.org.jetbrains.kotlin.plugin.compose.gradle.plugin_2.0.21",  # Empty Activity template Kotlin/Compose 2.0.21
+        "@maven//:org.jetbrains.kotlin.plugin.compose.org.jetbrains.kotlin.plugin.compose.gradle.plugin_2.2.10",  # Empty Activity template Kotlin/Compose 2.2.10
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.4",
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-test_1.6.4",
         "@maven//:org.jetbrains.markdown_0.2.1",
@@ -700,58 +701,6 @@ iml_test(
         "noci:studio-win",
     ],
     test_class = "com.android.tools.idea.DebugNativeApkTest",
-)
-
-iml_test(
-    name = "BuildAndRunInstrumentedTest",
-    timeout = "long",
-    data = [
-        ":instrumenttestapp_project_model",
-        ":run_instrumented_test_project_deps",
-        "//prebuilts/studio/sdk:build-tools/33.0.1",
-        "//prebuilts/studio/sdk:emulator",
-        "//prebuilts/studio/sdk:platform-tools",
-        INTEGRATION_TEST_GRADLE_VERSION,
-        "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images",
-    ],
-    module = ":intellij.android.core.integration",
-    tags = [
-        "studio-e2e-test",
-    ],
-    tags_linux = [
-        "block-network",
-    ],
-    tags_mac = [],
-    tags_windows = [
-        "block-network",
-        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
-    ],
-    test_class = "com.android.tools.idea.BuildAndRunInstrumentedTest",
-)
-
-iml_test(
-    name = "MultipleDevicesInstrumentedTest",
-    timeout = "long",
-    data = [
-        ":instrumenttestapp_project_model",
-        ":run_instrumented_test_project_deps",
-        "//prebuilts/studio/sdk:build-tools/33.0.1",
-        "//prebuilts/studio/sdk:emulator",
-        "//prebuilts/studio/sdk:platform-tools",
-        INTEGRATION_TEST_GRADLE_VERSION,
-        "@system_image_android-33_aosp_atd_x86_64//:x86_64-android-33AospAtd-images",
-    ],
-    module = ":intellij.android.core.integration",
-    tags = [
-        "studio-e2e-test",
-    ],
-    tags_linux = ["block-network"],
-    tags_mac = [],
-    tags_windows = [
-        "block-network",
-        "manual",  # RBE environment doesn't allow emulation (requires nested virtualization).
-    ],
-    test_class = "com.android.tools.idea.MultipleDevicesInstrumentedTest",
 )
 
 iml_test(
@@ -1002,6 +951,7 @@ maven_repository(
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.5.2",
         "@maven//:org.jetbrains.markdown_0.2.1",
     ],
+    visibility = ["//tools/adt/idea/android/integration/instrumentation:__pkg__"],
 )
 
 maven_repository(
@@ -1244,6 +1194,7 @@ studio_project_model(
     manifest_path = "tools/adt/idea/android/integration/run_instrumented_test_project_deps.manifest",
     out_dir_name = "instrumenttestapp_project_model",
     project_path = "tools/adt/idea/android/integration/testData/InstrumentedTestApp",
+    visibility = ["//tools/adt/idea/android/integration/instrumentation:__pkg__"],
 )
 
 studio_project_model(

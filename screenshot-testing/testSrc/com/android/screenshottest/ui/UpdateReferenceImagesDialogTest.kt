@@ -177,8 +177,19 @@ class UpdateReferenceImagesDialogTest {
     dialog.onTestSuiteFinished()
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
+    val usages = metricsTrackerRule.testTracker.usages
+    val emptyResultEvent =
+      usages.find {
+        it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
+          it.studioEvent.screenshotTestComposePreviewEvent.type ==
+            ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_TEST_RESULTS_EMPTY
+      }
+
     // Verify the logger was called with expected message
     verify(mockLogger).error(contains("No tests were discovered"))
+
+    // Verify metric was logged
+    assertTrue("Should have logged empty results metric", emptyResultEvent != null)
 
     // Verify dialog was closed
     assertEquals(DialogWrapper.CANCEL_EXIT_CODE, dialog.exitCode)
@@ -294,6 +305,22 @@ class UpdateReferenceImagesDialogTest {
       ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_CLOSE,
       usages.last().studioEvent.screenshotTestComposePreviewEvent.type,
     )
+  }
+
+  @Test
+  fun testBuildFailureLogsMetric() = runInEdtAndWait {
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val usages = metricsTrackerRule.testTracker.usages
+    val failureEvent =
+      usages.find {
+        it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
+          it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
+      }
+
+    assertTrue("Should have logged build failure metric", failureEvent != null)
+    assertEquals(DialogWrapper.CANCEL_EXIT_CODE, dialog.exitCode)
   }
 
   private fun findTree(dialog: UpdateReferenceImagesDialog): CheckboxTree {

@@ -29,6 +29,7 @@ import com.android.tools.idea.wizard.model.ModelWizard.Facade
 import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.Template
+import com.android.tools.idea.wizard.template.TemplateFlag
 import com.android.tools.idea.wizard.template.WizardUiContext
 import com.google.common.base.Suppliers
 import java.util.function.Supplier
@@ -101,7 +102,7 @@ class ChooseAndroidProjectStep(model: NewProjectModel) :
       TemplateResolver.getAllTemplates().filter {
         WizardUiContext.NewProject in it.uiContexts &&
           it.formFactor.projectChooserCategory() == this &&
-          (it.name !in setOf("Architecture Sample", "AI Starter") || StudioFlags.NPW_ENABLE_ARCHITECTURE_SAMPLE_TEMPLATE.get())
+          (!it.flags.contains(TemplateFlag.NewProjectAgent) || StudioFlags.NPW_SHOW_NPA_TEMPLATES.get())
       }
 
     private fun createFormFactors(): List<FormFactor> = FormFactor.values().filterNot { it.getProjectTemplates().isEmpty() }

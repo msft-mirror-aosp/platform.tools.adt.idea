@@ -9,8 +9,7 @@ MODULE                        : project
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/project [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    :  [-]
-    CONENT_ENTRY                  : file://<ROOT>
+    CONTENT_ENTRY                 : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -768,6 +767,7 @@ MODULE                        : project.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : google.simpleapplication
         testApplicationId             : google.simpleapplication.test

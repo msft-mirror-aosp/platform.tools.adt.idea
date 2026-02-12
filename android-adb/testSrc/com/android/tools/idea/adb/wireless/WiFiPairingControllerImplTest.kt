@@ -103,17 +103,12 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
 
   private val systemRetriever = mockOrActual<MockableSystem> { MockableSystem() }
   private val adbOptionRetriever = mockOrActual { MockableAdbOptionMdns() }
-  private val adbVersionBrokenOnMac = "35.0.1"
-  private val adbVersionWorkingOnMac = "35.0.2"
-  private val mdnsBackendBrokenOnMac = AdbServerMdnsBackend.BONJOUR
-  private val mdnsBackendWorkingOnMac = AdbServerMdnsBackend.OPENSCREEN
+  private val adbVersion = "35.0.2"
 
   private val devicePairingService: WiFiPairingService by lazy {
     WiFiPairingServiceImpl(
       randomProvider,
       adbService.instance,
-      { adbOptionRetriever.instance.getMdnsBackend() },
-      { systemRetriever.instance.isMac() },
     )
   }
 
@@ -169,82 +164,6 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
   }
 
   @Test
-  fun mDNSSupportedOnNonMac() {
-    adbService.useMock = true
-    mDNSConfigurationRetriever.useMock = true
-    adbOptionRetriever.useMock = true
-    systemRetriever.useMock = true
-    runBlocking {
-      whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
-        .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
-
-      whenever(systemRetriever.instance.isMac()).thenReturn(false)
-      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionBrokenOnMac))
-      whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendBrokenOnMac)
-
-      val support = devicePairingService.checkMdnsSupport()
-      Assert.assertEquals(MdnsSupportState.Supported, support)
-    }
-  }
-
-  @Test
-  fun mDNSBrokenOnMacDueToSDK() {
-    adbService.useMock = true
-    mDNSConfigurationRetriever.useMock = true
-    adbOptionRetriever.useMock = true
-    systemRetriever.useMock = true
-    runBlocking {
-      whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
-        .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
-
-      whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionBrokenOnMac))
-      whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendBrokenOnMac)
-
-      val support = devicePairingService.checkMdnsSupport()
-      Assert.assertEquals(MdnsSupportState.AdbMacEnvironmentBroken, support)
-    }
-  }
-
-  @Test
-  fun mDNSBrokenOnMacDueTomDNSSelection() {
-    adbService.useMock = true
-    mDNSConfigurationRetriever.useMock = true
-    adbOptionRetriever.useMock = true
-    systemRetriever.useMock = true
-    runBlocking {
-      whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
-        .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
-
-      whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
-      whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendBrokenOnMac)
-
-      val support = devicePairingService.checkMdnsSupport()
-      Assert.assertEquals(MdnsSupportState.AdbMacEnvironmentBroken, support)
-    }
-  }
-
-  @Test
-  fun mDNSWorkingOnMac() {
-    adbService.useMock = true
-    mDNSConfigurationRetriever.useMock = true
-    adbOptionRetriever.useMock = true
-    systemRetriever.useMock = true
-    runBlocking {
-      whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
-        .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
-
-      whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
-      whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(mdnsBackendWorkingOnMac)
-
-      val support = devicePairingService.checkMdnsSupport()
-      Assert.assertEquals(MdnsSupportState.Supported, support)
-    }
-  }
-
-  @Test
   fun mDNSShowWhenDisabled() {
     adbService.useMock = true
     mDNSConfigurationRetriever.useMock = true
@@ -255,7 +174,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
         .thenReturn(AdbCommandResult(0, listOf("ERROR: mdns discovery disabled"), listOf()))
 
       whenever(systemRetriever.instance.isMac()).thenReturn(true)
-      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+      whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
       whenever(adbOptionRetriever.instance.getMdnsBackend()).thenReturn(AdbServerMdnsBackend.DISABLED)
 
       val support = devicePairingService.checkMdnsSupport()
@@ -344,7 +263,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
 
     whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 
@@ -402,7 +321,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
 
     whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 
@@ -470,7 +389,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
 
     whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 
@@ -539,7 +458,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
 
     whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 
@@ -648,7 +567,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
       .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
 
-    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersionWorkingOnMac))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
 
     whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
 

@@ -24,7 +24,7 @@ import com.intellij.util.ui.components.BorderLayoutPanel
 import icons.StudioIcons
 
 /** Constants for the Running Devices tool window. */
-@JvmField val DISPLAY_VIEW_KEY = DataKey.create<AbstractDisplayView>("DisplayView")
+@JvmField val DISPLAY_VIEW_KEY = DataKey.create<DisplayView>("DisplayView")
 
 @JvmField val STREAMING_CONTENT_PANEL_KEY = DataKey.create<BorderLayoutPanel>("StreamingContentPanel")
 

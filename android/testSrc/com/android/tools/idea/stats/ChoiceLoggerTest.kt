@@ -20,7 +20,6 @@ import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker.setWriterForTest
 import com.android.tools.analytics.UsageTrackerWriter
 import com.google.common.truth.Truth.assertThat
-import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.SentimentSurveyEvent
 import com.google.wireless.android.sdk.stats.SurveyResponse
 import com.google.wireless.android.sdk.stats.UserSentiment
@@ -30,7 +29,7 @@ import org.junit.Test
 
 class ChoiceLoggerTest {
   lateinit var usageTrackerWriter: TestUsageTracker
-  lateinit var oldUsageTrackerWriter: UsageTrackerWriter<AndroidStudioEvent.Builder>
+  lateinit var oldUsageTrackerWriter: UsageTrackerWriter
 
   @Before
   fun setUp() {

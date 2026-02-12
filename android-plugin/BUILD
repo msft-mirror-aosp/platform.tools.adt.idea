@@ -90,6 +90,8 @@ iml_module(
         "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
         "//tools/vendor/google/marketing",
         "//tools/adt/idea/logcat/gradle:intellij.android.logcat.gradle",
+        "//tools/vendor/google/firebase-provisioning",
+        "//tools/adt/idea/tracer:intellij.android.tracer",
     ],
     # do not sort: must match IML order
     deps = [

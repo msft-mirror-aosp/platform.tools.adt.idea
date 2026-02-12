@@ -3,7 +3,7 @@ package com.android.tools.idea.diagnostics.crash
 import com.android.testutils.VirtualTimeScheduler
 import java.util.concurrent.TimeUnit
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 

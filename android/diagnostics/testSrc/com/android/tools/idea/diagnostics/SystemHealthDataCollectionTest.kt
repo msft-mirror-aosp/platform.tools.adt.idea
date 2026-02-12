@@ -36,7 +36,7 @@ import org.junit.Test
 class SystemHealthDataCollectionTest {
 
   private lateinit var systemHealthDataCollection: SystemHealthDataCollection
-  private lateinit var oldWriter: UsageTrackerWriter<AndroidStudioEvent.Builder>
+  private lateinit var oldWriter: UsageTrackerWriter
   private lateinit var testUsageTracker: TestUsageTracker
 
   private lateinit var scheduler: VirtualTimeScheduler

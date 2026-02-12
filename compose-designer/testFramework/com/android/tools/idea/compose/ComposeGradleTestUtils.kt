@@ -17,7 +17,7 @@ package com.android.tools.idea.compose
 
 import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
-import com.android.tools.idea.common.SyncNlModel.*
+import com.android.tools.idea.common.SyncNlModel.create
 import com.android.tools.idea.common.layout.positionable.scaledContentSize
 import com.android.tools.idea.common.model.AccessibilityModelUpdater
 import com.android.tools.idea.common.model.NlModel

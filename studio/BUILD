@@ -292,6 +292,7 @@ studio_plugin(
             "//tools/adt/idea/samples-browser:samples-browser",
             "//tools/adt/idea/sdk-updates:intellij.android.sdkUpdates",
             "//tools/adt/idea/threading-checker:intellij.android.threading-checker",
+            "//tools/adt/idea/tracer:intellij.android.tracer",
             "//tools/adt/idea/android-transport:intellij.android.transport",
             "//tools/adt/idea/wear-pairing:intellij.android.wear-pairing",
             "//tools/adt/idea/wear-preview-elements:intellij.android.wear-preview-elements",
@@ -610,7 +611,8 @@ studio_plugin(
     name = "com.google.services.firebase",
     directory = "firebase",
     libs = [
-        "//tools/vendor/google/firebase/crashlytics-client:libfirebase_java_proto",
+        "//tools/vendor/google/firebase/crashlytics-client:firebase_kt_proto",
+        "//tools/vendor/google/firebase-provisioning:firebase_provisioning_proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
     ],
@@ -620,6 +622,7 @@ studio_plugin(
     modules = {
         "firebase.jar": [
             "//tools/vendor/google/firebase:firebase",
+            "//tools/vendor/google/firebase-provisioning",
             "//tools/vendor/google/firebase/crashlytics-client",
         ],
     },

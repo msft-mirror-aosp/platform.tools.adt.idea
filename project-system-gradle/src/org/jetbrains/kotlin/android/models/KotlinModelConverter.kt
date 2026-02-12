@@ -24,6 +24,7 @@ import com.android.builder.model.proto.ide.TestInfo
 import com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags.BooleanFlag
 import com.android.ide.common.gradle.Component
 import com.android.ide.common.gradle.Version
+import com.android.ide.common.repository.AgpVersion
 import com.android.kotlin.multiplatform.ide.models.serialization.androidDependencyKey
 import com.android.kotlin.multiplatform.ide.models.serialization.androidSourceSetKey
 import com.android.kotlin.multiplatform.models.AndroidCompilation
@@ -172,7 +173,7 @@ class KotlinModelConverter {
     )
   }
 
-  private fun AndroidGradlePluginProjectFlags.convert() =
+  private fun AndroidGradlePluginProjectFlags.convert(agpVersion: AgpVersion) =
     IdeAndroidGradlePluginProjectFlagsImpl(
       applicationRClassConstantIds =
         booleanFlagValuesList.firstOrNull { it.flag == ProtoBooleanFlag.APPLICATION_R_CLASS_CONSTANT_IDS }?.value
@@ -208,6 +209,11 @@ class KotlinModelConverter {
       disableAgpUpgradePrompt = false,
       useCustomManagedDevices = false, // Gradle managed devices are not supported for KMP
       highlightGradualR8Api = false, // Does not support gradual R8 for KMP
+      builtInKotlinDefaultEnabled =
+        booleanFlagValuesList.firstOrNull { it.flag == ProtoBooleanFlag.BUILT_IN_KOTLIN_DEFAULT_ENABLED }?.value
+          ?: agpVersion.isAtLeast(9, 0, 0),
+      // This doesn't respect the corner case of the flag in projects that use agp 9.0.x and disable built-in Kotlin,
+      // as we don't have easy access to the legacy gradle properties model here.
     )
 
   private fun SigningConfig.convert() =
@@ -433,11 +439,11 @@ class KotlinModelConverter {
       compilationInfoMap[AndroidCompilation.CompilationType.INSTRUMENTED_TEST] ?: Pair(null, null)
 
     val mainSourceSetCompileDependencies =
-      sourceSetCompileDependenciesMap[mainAndroidCompilation.defaultSourceSetName]!!.map {
+      sourceSetCompileDependenciesMap[mainAndroidCompilation.defaultSourceSetName]?.map {
         IdeDependencyCoreImpl(target = it, dependencies = null)
       }
     val mainSourceSetRuntimeDependencies =
-      sourceSetRuntimeDependenciesMap[mainAndroidCompilation.defaultSourceSetName]!!.map {
+      sourceSetRuntimeDependenciesMap[mainAndroidCompilation.defaultSourceSetName]?.map {
         IdeDependencyCoreImpl(target = it, dependencies = null)
       }
     val unitTestSourceSetCompileDependencies =
@@ -482,8 +488,8 @@ class KotlinModelConverter {
         ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
         generatedSourceFolders = emptyList(), // For now, there is no generated sourced
         isTestArtifact = false,
-        compileClasspathCore = IdeDependenciesCoreDirect(dependencies = mainSourceSetCompileDependencies),
-        runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = mainSourceSetRuntimeDependencies),
+        compileClasspathCore = IdeDependenciesCoreDirect(dependencies = mainSourceSetCompileDependencies ?: emptyList()),
+        runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = mainSourceSetRuntimeDependencies ?: emptyList()),
         unresolvedDependencies = emptyList(),
         applicationId = null,
         signingConfigName = null,
@@ -516,8 +522,8 @@ class KotlinModelConverter {
           ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
           generatedSourceFolders = emptyList(), // For now, there is no generated sourced
           isTestArtifact = true,
-          compileClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetCompileDependencies!!),
-          runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetRuntimeDependencies!!),
+          compileClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetCompileDependencies ?: emptyList()),
+          runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetRuntimeDependencies ?: emptyList()),
           unresolvedDependencies = emptyList(),
           mockablePlatformJar = unitTestAndroidCompilation.unitTestInfo.mockablePlatformJar.convertAndDeduplicate(),
           generatedClassPaths = emptyMap(),
@@ -539,8 +545,8 @@ class KotlinModelConverter {
           ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
           generatedSourceFolders = emptyList(), // For now, there is no generated sourced
           isTestArtifact = true,
-          compileClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetCompileDependencies!!),
-          runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetRuntimeDependencies!!),
+          compileClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetCompileDependencies ?: emptyList()),
+          runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetRuntimeDependencies ?: emptyList()),
           unresolvedDependencies = emptyList(),
           applicationId = androidTestAndroidCompilation.instrumentedTestInfo.namespace,
           signingConfigName = androidTestAndroidCompilation.instrumentedTestInfo.signingConfig?.name,
@@ -605,6 +611,7 @@ class KotlinModelConverter {
       )
 
     val variants = listOf(androidMainVariant)
+    val agpVersion = AgpVersion.parse(targetInfo.agpVersion)
 
     val androidProject =
       IdeAndroidProjectImpl(
@@ -667,7 +674,7 @@ class KotlinModelConverter {
         dependenciesInfo = null,
         groupId = targetInfo.groupId,
         namespace = mainAndroidCompilation.mainInfo.namespace,
-        agpFlags = targetInfo.flags.convert(),
+        agpFlags = targetInfo.flags.convert(agpVersion),
         variantsBuildInformation =
           listOf(IdeVariantBuildInformationImpl(variantName = kotlinMultiplatformAndroidVariantName, mainBuildInformation)),
         lintChecksJars = targetInfo.lintChecksJarsList.convertAndDeduplicate(),

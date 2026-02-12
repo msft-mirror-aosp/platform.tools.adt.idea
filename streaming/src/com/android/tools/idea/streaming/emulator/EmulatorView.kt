@@ -199,15 +199,16 @@ import org.jetbrains.annotations.VisibleForTesting
  * @param displaySize the size of the device display; a null value defaults to `emulator.emulatorConfig.displaySize`
  * @param deviceFrameVisible controls visibility of the device frame
  */
-class EmulatorView(
+internal class EmulatorView(
   disposableParent: Disposable,
-  val emulator: EmulatorController,
+  override val emulator: EmulatorController,
   project: Project,
   displayId: Int,
   private val displaySize: Dimension?,
   deviceFrameVisible: Boolean,
 ) :
   AbstractDisplayView(project, displayId, "StreamingContextMenuVirtualDevice"),
+  EmulatorDisplayView,
   ConnectionStateListener,
   EmulatorSettingsListener,
   EmulatorNotificationDispatcher.Listener {
@@ -384,7 +385,8 @@ class EmulatorView(
       }
 
     multiTouchMode =
-      mouseCoordinates != null &&
+      emulatorConfig.hasTouchScreen &&
+        mouseCoordinates != null &&
         !virtualSceneCameraActive &&
         modifiers and CTRL_DOWN_MASK != 0 &&
         !isHardwareInputEnabled() &&
@@ -903,12 +905,12 @@ class EmulatorView(
       LOG.info("Received notification: ${shortDebugString(message)}")
 
       if (notificationReceiver != this) {
-        return // This notification feed has already been cancelled.
+        return // This notification feed has already been canceled.
       }
 
       EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
         if (notificationReceiver != this) {
-          return@invokeLater // This notification feed has already been cancelled.
+          return@invokeLater // This notification feed has already been canceled.
         }
         when {
           message.hasCameraNotification() -> virtualSceneCameraActive = message.cameraNotification.active
@@ -1390,7 +1392,7 @@ class EmulatorView(
       }
       if (screenshotReceiver != this) {
         expectedFrameNumber++
-        return // This screenshot feed has already been cancelled.
+        return // This screenshot feed has already been canceled.
       }
 
       if (imageFormat.width == 0 || imageFormat.height == 0) {
@@ -1513,7 +1515,7 @@ class EmulatorView(
       screenshotForProcessing.set(screenshotWithoutSkin)
 
       executeOnPooledThread {
-        // If the screenshot feed has not been cancelled, update the skin and the display image.
+        // If the screenshot feed has not been canceled, update the skin and the display image.
         if (screenshotReceiver == this) {
           val screenshot = screenshotForProcessing.getAndSet(null)
           if (screenshot == null) {
@@ -1530,7 +1532,7 @@ class EmulatorView(
       screenshotForDisplay.set(screenshot)
 
       EventQueue.invokeLater { // This is safe because this code doesn't touch PSI or VFS.
-        // If the screenshot feed has not been cancelled, update the display image.
+        // If the screenshot feed has not been canceled, update the display image.
         if (screenshotReceiver == this) {
           updateDisplayImage()
         }

@@ -252,10 +252,10 @@ public final class StudioFlags {
     "Enable Navigation UI template",
     "Allows the Navigation UI template to be used.");
 
-  public static final Flag<Boolean> NPW_ENABLE_ARCHITECTURE_SAMPLE_TEMPLATE = new BooleanFlag(
-    NPW, "arch.sample.template",
-    "Enable Architecture Sample template",
-    "Allows the Architecture Sample template to be used.");
+  public static final Flag<Boolean> NPW_SHOW_NPA_TEMPLATES = new BooleanFlag(
+    NPW, "show.npa.templates",
+    "Show templates used by the New Project Agent in the regular list of templates",
+    "Allows manually testing the base templates used by the New Project Agent.");
 
   public static final Flag<String> NPW_AI_STARTER_TEMPLATE = new StringFlag(
     NPW, "ai.starter.template",
@@ -619,27 +619,6 @@ public final class StudioFlags {
     "Enable package filtering for the \"Device Explorer\" tool window",
     "Enable package filtering for the \"Device Explorer\" tool window, which allows users to filter processes by app package ids.\n" +
     "Changing the value of this flag requires restarting Android Studio.");
-
-  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_CLIENT_MANAGER = new BooleanFlag(
-    RUNDEBUG,
-    "adblib.migration.ddmlib.clientmanager",
-    "Use adblib to track device processes (Client)",
-    "Use adblib instead of ddmlib to track processes (Client) on devices and handle debug sessions. " +
-    "Note: Changing the value of this flag requires restarting Android Studio.");
-
-  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_IDEVICE_MANAGER = new BooleanFlag(
-    RUNDEBUG,
-    "adblib.migration.ddmlib.idevicemanager",
-    "Use adblib to track devices (IDevice)",
-    "Use adblib instead of ddmlib to track and implement `IDevice` instances. " +
-    "Note: Changing the value of this flag requires restarting Android Studio.");
-
-  public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_ADB_DELEGATE = new BooleanFlag(
-    RUNDEBUG,
-    "adblib.migration.ddmlib.androiddebugbridgedelegate",
-    "Use adblib version of `AndroidDebugBridgeDelegate`",
-    "Use adblib version of `AndroidDebugBridgeDelegate` in `AndroidDebugBridge` class. " +
-    "Note: Changing the value of this flag requires restarting Android Studio.");
 
   public static final Flag<Boolean> ADBLIB_MIGRATION_DDMLIB_ADB_DELEGATE_USAGE_TRACKER = new BooleanFlag(
     RUNDEBUG,
@@ -1284,7 +1263,7 @@ public final class StudioFlags {
   public static final Flag<Boolean> RUNNING_DEVICES_COLLAPSIBLE_FLOATING_TOOLBARS = new BooleanFlag(
     EMBEDDED_EMULATOR, "collapsible.floating.toolbars", "Make zoom and XR toolbars collapsible",
     "Make zoom and XR toolbars in the Running Devices window collapsible");
-  public static final Flag<Boolean> UI_SETTINGS_B475894230_LOGGING = new BooleanFlag(
+  public static final Flag<Boolean> UI_SETTINGS_B475894230_LOGGING = new DebugFlag(
     EMBEDDED_EMULATOR, "b475894230.logging", "Enable logging for investigation of b/475894230",
     "Enable logging for investigation of b/475894230");
   //endregion
@@ -1874,18 +1853,6 @@ public final class StudioFlags {
   );
   // endregion
 
-  //region DDMLIB
-  private static final FlagGroup DDMLIB = new FlagGroup(FLAGS, "ddmlib", "DDMLIB");
-  public static final Flag<Boolean> ENABLE_JDWP_PROXY_SERVICE = new BooleanFlag(
-    DDMLIB, "enable.jdwp.proxy.service", "Enable jdwp proxy service",
-    "Creates a proxy service within DDMLIB to allow shared device client connections."
-  );
-  public static final Flag<Boolean> ENABLE_DDMLIB_COMMAND_SERVICE = new BooleanFlag(
-    DDMLIB, "enable.ddmlib.command.service", "Enable ddmlib command service",
-    "Creates a service within DDMLIB to allow external processes to issue commands to ddmlib."
-  );
-  // endregion DDMLIB
-
   // region Play Policy Insights
   private static final FlagGroup PLAY_POLICY_INSIGHTS = new FlagGroup(FLAGS, "playpolicyinsights", "Play Policy Insights");
 
@@ -1992,14 +1959,6 @@ public final class StudioFlags {
 
   // region App Insights
   private static final FlagGroup APP_INSIGHTS = new FlagGroup(FLAGS, "appinsights", "App Insights");
-
-  public static final Flag<Boolean> GEMINI_FETCH_REAL_INSIGHT =
-    new BooleanFlag(
-      APP_INSIGHTS,
-      "gemini.fetch.real.insight",
-      "Fetch real insights",
-      "Fetch actual insights from AiInsightClient"
-    );
 
   public static final Flag<Boolean> GEMINI_ASSISTED_CONTEXT_FETCH =
     new BooleanFlag(
@@ -2254,6 +2213,10 @@ public final class StudioFlags {
                     "Enable @file attachment and the context drawer.",
                     "When enabled, @file can be used to attach text files as context. Also enables the context drawer for context management.");
 
+  public static final Flag<Boolean> STUDIOBOT_CONTEXT_ATTACHMENT_CHANGES_ENABLED =
+    new BooleanFlag(STUDIOBOT, "chat.context.attachment.changes",
+                    "Enable inline context management.",
+                    "When enabled, inline references in the query box will be used for context management.");
   public static final Flag<Boolean> STUDIOBOT_FOLDER_CONTEXT_SELECTION_ENABLED =
     new BooleanFlag(STUDIOBOT, "chat.enable.folder.context.selection",
                     "Enable @folder attachment.",
@@ -2305,6 +2268,16 @@ public final class StudioFlags {
     new BooleanFlag(STUDIOBOT, "rag.use.lucindex",
                     "Enable the new Lucene-backed IntelliJ index for RAG",
                     "When enabled, the RAG index will use the new Lucene-backed IntelliJ index pipeline. Otherwise, the original crawler-based pipeline will be used.");
+
+  public static final Flag<Boolean> STUDIOBOT_WORD_DIFF_ENABLED =
+    new BooleanFlag(STUDIOBOT, "word.diff",
+                    "Enable word-level diffs",
+                    "Enables word-level diffs in the changes drawer and inline diffs.");
+
+  public static final Flag<Boolean> STUDIOBOT_INLINE_DIFF_WORD_DIFF_IGNORE_WHITESPACE =
+    new BooleanFlag(STUDIOBOT, "inline.diff.word.diff.ignore.whitespace",
+                    "Ignore whitespace in word diffs",
+                    "Whether word-level diffs in the inline diff viewer should ignore whitespace.");
 
   public static final Flag<Boolean> STUDIOBOT_IS_G1_INTEGRATION_ENABLED =
     new BooleanFlag(STUDIOBOT, "g1.integration.enabled",
@@ -2776,6 +2749,16 @@ public final class StudioFlags {
                     "Enable AICode integration",
                     "Enable AICode backend integration to be used for agent, code transform and code completion");
 
+  public static final Flag<Boolean> STUDIOBOT_SHOW_ON_FIRST_OPEN =
+    new BooleanFlag(STUDIOBOT,
+                    "show.on.first.open",
+                    "Open Studio Bot tool window on first launch",
+                    "Automatically open Studio Bot tool window on first Studio launch");
+
+  public static final Flag<Boolean> STUDIOBOT_NEW_SUB_AGENT_MODE_ENABLED =
+    new BooleanFlag(STUDIOBOT, "new.subagent.mode",
+                    "Enable new Sub-Agent mode",
+                    "This enable the new sub-agent infrastructure,bringing in the task and run_skill tool");
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
@@ -2872,10 +2855,6 @@ public final class StudioFlags {
     JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.execution", "Enable Journeys with Gemini execution",
     "Enable Journeys with Gemini related functionality to allow users to create, edit and execute Journeys."
   );
-  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_RECORDING = new BooleanFlag(
-    JOURNEYS_WITH_GEMINI, "enable.journeys.with.gemini.recording", "Enable Journeys with Gemini recording",
-    "Enable recording of Journeys with Gemini"
-  );
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_EDITOR_DISABLE_XML_SPACE_PRESERVE = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "journeys.with.gemini.editor.disable.xml.space.preserve", "Disable insertion of 'xml:space:\"preserve\" attribute",
     "Disable insertion of 'xml:space:\"preserve\" attribute when editing a Journey XML file."
@@ -2901,6 +2880,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_NEW_WIZARD = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.new.wizard", "Enable Journeys New Wizard",
     "Enable the new wizard for creating Journeys with Gemini."
+  );
+  public static final Flag<Boolean> JOURNEYS_WITH_GEMINI_RUN_WITH_AGENT = new BooleanFlag(
+    JOURNEYS_WITH_GEMINI, "enable.agent.support", "Enable the Journeys agent",
+    "Enable running Journey tests using an AI agent"
   );
   // endregion JOURNEYS_WITH_GEMINI
 

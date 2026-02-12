@@ -9,8 +9,7 @@ MODULE                        : MainActivity
         compilerTestOutputPath        : file://<ROOT>/build/classes/test/MainActivity [-]
         isCompilerPathInherited       : true
         isExcludeOutput               : true
-    ModuleFile                    :  [-]
-    CONENT_ENTRY                  : file://<ROOT>
+    CONTENT_ENTRY                 : file://<ROOT>
         EXCLUDE_FOLDER                : file://<ROOT>/.gradle
         EXCLUDE_FOLDER                : file://<ROOT>/build
     JDK                           : <NAME_CUT> JavaSDK
@@ -951,6 +950,7 @@ MODULE                        : MainActivity.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : localDebug
         applicationId                 : com.example.mainactivity
         testApplicationId             : com.example.mainactivity.test
@@ -1861,6 +1861,7 @@ MODULE                        : MainActivity.lib
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         testApplicationId             : com.example.lib.test
         buildType                     : debug
