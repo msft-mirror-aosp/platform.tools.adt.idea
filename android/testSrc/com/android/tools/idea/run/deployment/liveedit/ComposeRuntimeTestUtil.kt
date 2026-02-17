@@ -17,7 +17,6 @@ package com.android.tools.idea.run.deployment.liveedit
 
 import androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar
 import com.android.testutils.TestUtils
-import com.android.tools.compose.ComposePluginIrGenerationExtension
 import com.android.tools.idea.projectsystem.TestProjectSystem
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.registerServiceInstance
@@ -30,7 +29,6 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.runInEdtAndWait
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KotlinCompilerPluginsProvider
 import org.jetbrains.kotlin.analysis.api.projectStructure.KaModule
-import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -85,17 +83,10 @@ private val composeCompilerPluginProviderForTest by lazy {
  * Register the plugin for the given project rule. If you are using the default model via [AndroidProjectRule.inMemory], you should probably
  * use [setUpComposeInProjectFixture] which will also add the Compose Runtime dependency to the project.
  */
-@OptIn(ExperimentalCompilerApi::class)
 fun registerComposeCompilerPlugin(project: Project) {
   // Register the compose compiler plugin much like what Intellij would normally do.
-  if (KotlinPluginModeProvider.isK2Mode()) {
-    if (project.getService(KotlinCompilerPluginsProvider::class.java) == composeCompilerPluginProviderForTest) return
-    project.registerServiceInstance(KotlinCompilerPluginsProvider::class.java, composeCompilerPluginProviderForTest, project)
-    return
-  }
-  if (IrGenerationExtension.getInstances(project).find { it is ComposePluginIrGenerationExtension } == null) {
-    IrGenerationExtension.registerExtension(project, ComposePluginIrGenerationExtension())
-  }
+  if (project.getService(KotlinCompilerPluginsProvider::class.java) == composeCompilerPluginProviderForTest) return
+  project.registerServiceInstance(KotlinCompilerPluginsProvider::class.java, composeCompilerPluginProviderForTest, project)
 }
 
 /**
