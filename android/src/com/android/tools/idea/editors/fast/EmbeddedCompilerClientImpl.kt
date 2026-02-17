@@ -16,7 +16,6 @@
 package com.android.tools.idea.editors.fast
 
 import com.android.tools.compile.fast.CompilationResult
-import com.android.tools.idea.concurrency.AndroidDispatchers
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
@@ -44,6 +43,7 @@ import java.nio.file.Path
 import kotlin.io.path.createFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.Mutex
@@ -114,7 +114,7 @@ private constructor(
     inputs: List<KtFile>,
     outputDirectory: Path,
   ) =
-    withContext(AndroidDispatchers.workerThread) {
+    withContext(Dispatchers.Default) {
       log.debug("compileModuleKtFiles($inputs, $outputDirectory)")
 
       if (KotlinPluginModeProvider.isK2Mode()) {
