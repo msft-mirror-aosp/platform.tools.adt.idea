@@ -24,21 +24,21 @@ import org.junit.Test
 
 class PerfgateComposeRenderQualityGradleTest : PerfgateComposeGradleTestBase() {
   @Test
-  fun renderQualityEnabled_5Previews() = runBlocking {
+  fun qualityRefresh_5Previews() = runBlocking {
     Assert.assertEquals(1, composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size)
-    addPreviewsAndMeasure(4, 5, buildMeasurements("renderQualityEnabled_5_previews"), measuredRunnable = ::qualityRefresh)
+    addPreviewsAndMeasure(4, 5, buildMeasurements("qualityRefresh_5_previews"), measuredRunnable = ::qualityRefresh)
   }
 
   @Test
-  fun renderQualityEnabled_30Previews() = runBlocking {
+  fun qualityRefresh_30Previews() = runBlocking {
     Assert.assertEquals(1, composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size)
-    addPreviewsAndMeasure(29, 30, buildMeasurements("renderQualityEnabled_30_previews"), measuredRunnable = ::qualityRefresh)
+    addPreviewsAndMeasure(29, 30, buildMeasurements("qualityRefresh_30_previews"), measuredRunnable = ::qualityRefresh)
   }
 
   @Test
-  fun renderQualityEnabled_200Previews() = runBlocking {
+  fun qualityRefresh_200Previews() = runBlocking {
     Assert.assertEquals(1, composePreviewRepresentation.renderedPreviewElementsInstancesFlowForTest().value.asCollection().size)
-    addPreviewsAndMeasure(199, 200, buildMeasurements("renderQualityEnabled_200_previews"), measuredRunnable = ::qualityRefresh)
+    addPreviewsAndMeasure(199, 200, buildMeasurements("qualityRefresh_200_previews"), measuredRunnable = ::qualityRefresh)
   }
 
   private suspend fun qualityRefresh() {
