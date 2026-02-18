@@ -15,7 +15,6 @@
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="module" module-name="intellij.android.core" />
     <orderEntry type="module" module-name="intellij.android.kotlin.idea.common" />
-    <orderEntry type="module" module-name="intellij.android.kotlin.idea.k1" />
     <orderEntry type="module" module-name="intellij.android.kotlin.idea.k2" />
   </component>
 </module>
